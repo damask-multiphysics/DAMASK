@@ -188,6 +188,11 @@ module constitutive
       real(pReal), dimension(3,3) :: P
     end function constitutive_mech_getP
 
+    module function constitutive_damage_get_phi(co,ip,el) result(phi)
+      integer, intent(in) :: co, ip, el
+      real(pReal) :: phi
+    end function constitutive_damage_get_phi
+
     module function thermal_T(ph,me) result(T)
       integer, intent(in) :: ph,me
       real(pReal) :: T
@@ -203,6 +208,11 @@ module constitutive
       real(pReal), intent(in) :: T
       integer, intent(in) :: co, ce
     end subroutine constitutive_thermal_setT
+    
+    module subroutine constitutive_damage_set_phi(phi,co,ce)
+      real(pReal), intent(in) :: phi
+      integer, intent(in) :: co, ce
+    end subroutine constitutive_damage_set_phi
 
 ! == cleaned:end ===================================================================================
 
@@ -229,39 +239,14 @@ module constitutive
       logical :: converged_
     end function crystallite_stress
 
-    module function constitutive_homogenizedC(co,ip,el) result(C)
-      integer, intent(in) :: co, ip, el
+    module function constitutive_homogenizedC(ph,me) result(C)
+      integer, intent(in) :: ph, me
       real(pReal), dimension(6,6) :: C
     end function constitutive_homogenizedC
 
-    module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-      real(pReal),  intent(in), dimension(3,3) :: &
-        S
-    end subroutine source_damage_anisoBrittle_dotState
 
-    module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-    end subroutine source_damage_anisoDuctile_dotState
 
-    module subroutine source_damage_isoDuctile_dotState(co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-    end subroutine source_damage_isoDuctile_dotState
 
-    module subroutine source_thermal_externalheat_dotState(phase, of)
-      integer, intent(in) :: &
-        phase, &
-        of
-    end subroutine source_thermal_externalheat_dotState
 
     module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
       integer, intent(in) :: &
@@ -343,19 +328,6 @@ module constitutive
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
-
-    module subroutine source_damage_isoBrittle_deltaState(C, Fe, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-      real(pReal),  intent(in), dimension(3,3) :: &
-        Fe
-      real(pReal),  intent(in), dimension(6,6) :: &
-        C
-    end subroutine source_damage_isoBrittle_deltaState
-
-
     module subroutine constitutive_plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
         co, &                                                                                       !< component-ID of integration point
@@ -391,6 +363,8 @@ module constitutive
     constitutive_restartRead, &
     integrateDamageState, &
     constitutive_thermal_setT, &
+    constitutive_damage_set_phi, &
+    constitutive_damage_get_phi, &
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &

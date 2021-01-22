@@ -52,4 +52,5 @@
 #include "homogenization_mech_isostrain.f90"
 #include "homogenization_mech_RGC.f90"
 #include "homogenization_thermal.f90"
+#include "homogenization_damage.f90"
 #include "CPFEM.f90"

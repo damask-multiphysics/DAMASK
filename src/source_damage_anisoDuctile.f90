@@ -30,7 +30,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function source_damage_anisoDuctile_init(source_length) result(mySources)
 
-  integer, intent(in)                  :: source_length  
+  integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
   class(tNode), pointer :: &
@@ -67,7 +67,7 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
       if(mySources(sourceOffset,p)) then
         source_damage_anisoDuctile_offset(p) = sourceOffset
         associate(prm  => param(source_damage_anisoDuctile_instance(p)))
-        src => sources%get(sourceOffset) 
+        src => sources%get(sourceOffset)
 
         N_sl           = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
         prm%q          = src%get_asFloat('q')
@@ -81,7 +81,7 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
 #else
         prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
- 
+
         ! sanity checks
         if (prm%q              <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (any(prm%gamma_crit <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
@@ -115,21 +115,21 @@ module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
     el                                                                                              !< element
 
   integer :: &
-    phase, &
-    constituent, &
+    ph, &
+    me, &
     sourceOffset, &
     damageOffset, &
     homog
 
-  phase = material_phaseAt(co,el)
-  constituent = material_phasememberAt(co,ip,el)
-  sourceOffset = source_damage_anisoDuctile_offset(phase)
+  ph = material_phaseAt(co,el)
+  me = material_phasememberAt(co,ip,el)
+  sourceOffset = source_damage_anisoDuctile_offset(ph)
   homog = material_homogenizationAt(el)
   damageOffset = material_homogenizationMemberAt(ip,el)
 
-  associate(prm => param(source_damage_anisoDuctile_instance(phase)))
-  damageState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    = sum(plasticState(phase)%slipRate(:,constituent)/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit)
+  associate(prm => param(source_damage_anisoDuctile_instance(ph)))
+  damageState(ph)%p(sourceOffset)%dotState(1,me) &
+    = sum(plasticState(ph)%slipRate(:,me)/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit)
   end associate
 
 end subroutine source_damage_anisoDuctile_dotState

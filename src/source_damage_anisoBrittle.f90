@@ -15,7 +15,7 @@ submodule (constitutive:constitutive_damage) source_damage_anisoBrittle
       dot_o, &                                                                                      !< opening rate of cleavage planes
       q                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:), allocatable :: &
-      s_crit, &                                                                                     !< critical displacement 
+      s_crit, &                                                                                     !< critical displacement
       g_crit                                                                                        !< critical load
     real(pReal), dimension(:,:,:,:), allocatable :: &
       cleavage_systems
@@ -37,7 +37,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function source_damage_anisoBrittle_init(source_length) result(mySources)
 
-  integer, intent(in)                  :: source_length  
+  integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
   class(tNode), pointer :: &
@@ -62,7 +62,7 @@ module function source_damage_anisoBrittle_init(source_length) result(mySources)
   allocate(source_damage_anisoBrittle_instance(phases%length), source=0)
 
   do p = 1, phases%length
-    phase => phases%get(p) 
+    phase => phases%get(p)
     if(any(mySources(:,p))) source_damage_anisoBrittle_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
     sources => phase%get('source')
@@ -70,20 +70,20 @@ module function source_damage_anisoBrittle_init(source_length) result(mySources)
       if(mySources(sourceOffset,p)) then
         source_damage_anisoBrittle_offset(p) = sourceOffset
         associate(prm  => param(source_damage_anisoBrittle_instance(p)))
-        src => sources%get(sourceOffset) 
-  
+        src => sources%get(sourceOffset)
+
         N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
-  
+
         prm%q       = src%get_asFloat('q')
         prm%dot_o   = src%get_asFloat('dot_o')
-  
+
         prm%s_crit  = src%get_asFloats('s_crit',  requiredSize=size(N_cl))
         prm%g_crit  = src%get_asFloats('g_crit',  requiredSize=size(N_cl))
-  
+
         prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
                                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
-  
+
         ! expand: family => system
         prm%s_crit = math_expand(prm%s_crit,N_cl)
         prm%g_crit = math_expand(prm%g_crit,N_cl)
@@ -93,7 +93,7 @@ module function source_damage_anisoBrittle_init(source_length) result(mySources)
 #else
         prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
- 
+
           ! sanity checks
         if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
@@ -130,8 +130,8 @@ module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
     S
 
   integer :: &
-    phase, &
-    constituent, &
+    ph, &
+    me, &
     sourceOffset, &
     damageOffset, &
     homog, &
@@ -139,14 +139,14 @@ module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
-  phase = material_phaseAt(co,el)
-  constituent = material_phasememberAt(co,ip,el)
-  sourceOffset = source_damage_anisoBrittle_offset(phase)
+  ph = material_phaseAt(co,el)
+  me = material_phasememberAt(co,ip,el)
+  sourceOffset = source_damage_anisoBrittle_offset(ph)
   homog = material_homogenizationAt(el)
   damageOffset = material_homogenizationMemberAt(ip,el)
 
-  associate(prm => param(source_damage_anisoBrittle_instance(phase)))
-  damageState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
+  associate(prm => param(source_damage_anisoBrittle_instance(ph)))
+  damageState(ph)%p(sourceOffset)%dotState(1,me) = 0.0_pReal
   do i = 1, prm%sum_N_cl
     traction_d    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
@@ -154,8 +154,8 @@ module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
 
     traction_crit = prm%g_crit(i)*damage(homog)%p(damageOffset)**2.0_pReal
 
-    damageState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    = damageState(phase)%p(sourceOffset)%dotState(1,constituent) &
+    damageState(ph)%p(sourceOffset)%dotState(1,me) &
+    = damageState(ph)%p(sourceOffset)%dotState(1,me) &
     + prm%dot_o / prm%s_crit(i) &
       * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
          (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
