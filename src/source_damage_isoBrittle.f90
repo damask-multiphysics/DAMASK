@@ -28,7 +28,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function source_damage_isoBrittle_init(source_length) result(mySources)
 
-  integer, intent(in)                  :: source_length  
+  integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
   class(tNode), pointer :: &
@@ -52,7 +52,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
   allocate(source_damage_isoBrittle_instance(phases%length), source=0)
 
   do p = 1, phases%length
-    phase => phases%get(p) 
+    phase => phases%get(p)
     if(any(mySources(:,p))) source_damage_isoBrittle_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
     sources => phase%get('source')
@@ -60,7 +60,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
       if(mySources(sourceOffset,p)) then
         source_damage_isoBrittle_offset(p) = sourceOffset
         associate(prm  => param(source_damage_isoBrittle_instance(p)))
-        src => sources%get(sourceOffset) 
+        src => sources%get(sourceOffset)
 
         prm%W_crit = src%get_asFloat('W_crit')
 
@@ -69,7 +69,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
 #else
         prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
- 
+
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
@@ -94,43 +94,36 @@ end function source_damage_isoBrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoBrittle_deltaState(C, Fe, co, ip, el)
+module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph,me)
 
-  integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+  integer, intent(in) :: ph,me
   real(pReal),  intent(in), dimension(3,3) :: &
     Fe
   real(pReal),  intent(in), dimension(6,6) :: &
     C
 
   integer :: &
-    phase, &
-    constituent, &
     sourceOffset
   real(pReal), dimension(6) :: &
     strain
   real(pReal) :: &
     strainenergy
 
-  phase = material_phaseAt(co,el)                                                                  !< phase ID at co,ip,el
-  constituent = material_phasememberAt(co,ip,el)                                                   !< state array offset for phase ID at co,ip,el
-  sourceOffset = source_damage_isoBrittle_offset(phase)
+  sourceOffset = source_damage_isoBrittle_offset(ph)
 
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
-  associate(prm => param(source_damage_isoBrittle_instance(phase)))
+  associate(prm => param(source_damage_isoBrittle_instance(ph)))
   strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
   ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
-  if (strainenergy > damageState(phase)%p(sourceOffset)%subState0(1,constituent)) then
-    damageState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
-      strainenergy - damageState(phase)%p(sourceOffset)%state(1,constituent)
+  if (strainenergy > damageState(ph)%p(sourceOffset)%subState0(1,me)) then
+    damageState(ph)%p(sourceOffset)%deltaState(1,me) = &
+      strainenergy - damageState(ph)%p(sourceOffset)%state(1,me)
   else
-    damageState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
-      damageState(phase)%p(sourceOffset)%subState0(1,constituent) - &
-      damageState(phase)%p(sourceOffset)%state(1,constituent)
+    damageState(ph)%p(sourceOffset)%deltaState(1,me) = &
+      damageState(ph)%p(sourceOffset)%subState0(1,me) - &
+      damageState(ph)%p(sourceOffset)%state(1,me)
   endif
   end associate
 

@@ -656,8 +656,11 @@ module function mech_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAndHappy
       ip, &                                                                                         !< integration point number
       el                                                                                            !< element number
 
+    real(pReal), dimension(6,6) :: C
 
-    equivalentMu = lattice_equivalent_mu(constitutive_homogenizedC(grainID,ip,el),'voigt')
+
+    C = constitutive_homogenizedC(material_phaseAt(grainID,el),material_phaseMemberAt(grainID,ip,el))
+    equivalentMu = lattice_equivalent_mu(C,'voigt')
 
   end function equivalentMu
 

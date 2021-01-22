@@ -10,8 +10,15 @@ submodule(constitutive) constitutive_damage
     DAMAGE_ANISODUCTILE_ID
   end enum
 
+
+  type :: tDataContainer
+    real(pReal), dimension(:), allocatable :: phi, d_phi_d_dot_phi
+  end type tDataContainer
+
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
     phase_source                                                                                !< active sources mechanisms of each phase
+
+  type(tDataContainer), dimension(:), allocatable :: current
 
   interface
 
@@ -44,6 +51,38 @@ submodule(constitutive) constitutive_damage
     integer, intent(in) :: kinematics_length
     logical, dimension(:,:), allocatable :: myKinematics
   end function kinematics_slipplane_opening_init
+
+    module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph, me)
+      integer, intent(in) :: ph,me
+      real(pReal),  intent(in), dimension(3,3) :: &
+        Fe
+      real(pReal),  intent(in), dimension(6,6) :: &
+        C
+    end subroutine source_damage_isoBrittle_deltaState
+
+
+    module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
+      integer, intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+      real(pReal),  intent(in), dimension(3,3) :: &
+        S
+    end subroutine source_damage_anisoBrittle_dotState
+
+    module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
+      integer, intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end subroutine source_damage_anisoDuctile_dotState
+
+    module subroutine source_damage_isoDuctile_dotState(co, ip, el)
+      integer, intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end subroutine source_damage_isoDuctile_dotState
 
 
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
@@ -120,7 +159,8 @@ contains
 module subroutine damage_init
 
   integer :: &
-    ph                                                                                              !< counter in phase loop
+    ph, &                                                                                           !< counter in phase loop
+    Nconstituents
   class(tNode), pointer :: &
    phases, &
    phase, &
@@ -129,10 +169,18 @@ module subroutine damage_init
 
   phases => config_material%get('phase')
 
+  allocate(current(phases%length))
+
   allocate(damageState (phases%length))
   allocate(phase_Nsources(phases%length),source = 0)           ! same for kinematics
 
   do ph = 1,phases%length
+
+    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+
+    allocate(current(ph)%phi(Nconstituents),source=1.0_pReal)
+    allocate(current(ph)%d_phi_d_dot_phi(Nconstituents),source=0.0_pReal)
+
     phase => phases%get(ph)
     sources => phase%get('source',defaultVal=emptyList)
     phase_Nsources(ph) = sources%length
@@ -295,7 +343,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     enddo
 
     if(converged_) then
-      broken = constitutive_damage_deltaState(mech_F_e(ph,me),co,ip,el,ph,me)
+      broken = constitutive_damage_deltaState(mech_F_e(ph,me),ph,me)
       exit iteration
     endif
 
@@ -368,14 +416,14 @@ end subroutine damage_results
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
+function constitutive_damage_collectDotState(co,ip,el,ph,me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID me integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     ph, &
-    of
+    me
   integer :: &
     so                                                                                               !< counter in source loop
   logical :: broken
@@ -394,12 +442,11 @@ function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
         call source_damage_anisoDuctile_dotState(co, ip, el)
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
-                co, ip, el) ! correct stress?
+        call source_damage_anisoBrittle_dotState(mech_S(ph,me),co, ip, el) ! correct stress?
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,of)))
+    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,me)))
 
   enddo SourceLoop
 
@@ -411,14 +458,11 @@ end function constitutive_damage_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
+function constitutive_damage_deltaState(Fe, ph, me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
     ph, &
-    of
+    me
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
   integer :: &
@@ -436,14 +480,13 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
      sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
-                                                   co, ip, el)
-        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,of)))
+        call source_damage_isoBrittle_deltaState(constitutive_homogenizedC(ph,me), Fe, ph,me)
+        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,me)))
         if(.not. broken) then
           myOffset = damageState(ph)%p(so)%offsetDeltaState
           mySize   = damageState(ph)%p(so)%sizeDeltaState
-          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) = &
-          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) + damageState(ph)%p(so)%deltaState(1:mySize,of)
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,me) = &
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%p(so)%deltaState(1:mySize,me)
         endif
 
     end select sourceType
@@ -482,6 +525,30 @@ function source_active(source_label,src_length)  result(active_source)
 
 
 end function source_active
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief Set damage parameter
+!----------------------------------------------------------------------------------------------
+module subroutine constitutive_damage_set_phi(phi,co,ce)
+
+  real(pReal), intent(in) :: phi
+  integer, intent(in) :: ce, co
+
+
+  current(material_phaseAt2(co,ce))%phi(material_phaseMemberAt2(co,ce)) = phi
+
+end subroutine constitutive_damage_set_phi
+
+
+module function constitutive_damage_get_phi(co,ip,el) result(phi)
+  
+  integer, intent(in) :: co, ip, el
+  real(pReal) :: phi
+
+  phi = current(material_phaseAt(co,el))%phi(material_phaseMemberAt(co,ip,el))
+
+end function constitutive_damage_get_phi
 
 
 end submodule constitutive_damage

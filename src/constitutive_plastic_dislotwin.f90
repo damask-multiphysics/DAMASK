@@ -150,7 +150,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   Ninstances = count(myPlasticity)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
-  
+
   print*, 'Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
   print*, 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
 
@@ -485,35 +485,32 @@ end function plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Return the homogenized elasticity matrix.
 !--------------------------------------------------------------------------------------------------
-module function plastic_dislotwin_homogenizedC(co,ip,el) result(homogenizedC)
+module function plastic_dislotwin_homogenizedC(ph,me) result(homogenizedC)
 
+  integer,     intent(in) :: &
+    ph, me
   real(pReal), dimension(6,6) :: &
     homogenizedC
-  integer,     intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
 
-  integer :: i, &
-             of
+  integer :: i
   real(pReal) :: f_unrotated
 
-  of = material_phasememberAt(co,ip,el)
-  associate(prm => param(phase_plasticityInstance(material_phaseAt(co,el))),&
-            stt => state(phase_plasticityInstance(material_phaseAT(co,el))))
+
+  associate(prm => param(phase_plasticityInstance(ph)),&
+            stt => state(phase_plasticityInstance(ph)))
 
   f_unrotated = 1.0_pReal &
-              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
-              - sum(stt%f_tr(1:prm%sum_N_tr,of))
+              - sum(stt%f_tw(1:prm%sum_N_tw,me)) &
+              - sum(stt%f_tr(1:prm%sum_N_tr,me))
 
   homogenizedC = f_unrotated * prm%C66
   do i=1,prm%sum_N_tw
     homogenizedC = homogenizedC &
-                 + stt%f_tw(i,of)*prm%C66_tw(1:6,1:6,i)
+                 + stt%f_tw(i,me)*prm%C66_tw(1:6,1:6,i)
   enddo
   do i=1,prm%sum_N_tr
     homogenizedC = homogenizedC &
-                 + stt%f_tr(i,of)*prm%C66_tr(1:6,1:6,i)
+                 + stt%f_tr(i,me)*prm%C66_tr(1:6,1:6,i)
   enddo
 
   end associate

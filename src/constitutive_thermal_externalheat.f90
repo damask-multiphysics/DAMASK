@@ -85,18 +85,18 @@ end function source_thermal_externalheat_init
 !> @brief rate of change of state
 !> @details state only contains current time to linearly interpolate given heat powers
 !--------------------------------------------------------------------------------------------------
-module subroutine source_thermal_externalheat_dotState(phase, of)
+module subroutine source_thermal_externalheat_dotState(ph, me)
 
   integer, intent(in) :: &
-    phase, &
-    of
+    ph, &
+    me
 
   integer :: &
     sourceOffset
 
-  sourceOffset = source_thermal_externalheat_offset(phase)
+  sourceOffset = source_thermal_externalheat_offset(ph)
 
-  thermalState(phase)%p(sourceOffset)%dotState(1,of) = 1.0_pReal                                     ! state is current time
+  thermalState(ph)%p(sourceOffset)%dotState(1,me) = 1.0_pReal                                     ! state is current time
 
 end subroutine source_thermal_externalheat_dotState
 
@@ -104,11 +104,11 @@ end subroutine source_thermal_externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_externalheat_getRate(TDot, phase, of)
+module subroutine thermal_externalheat_getRate(TDot, ph, me)
 
   integer, intent(in) :: &
-    phase, &
-    of
+    ph, &
+    me
   real(pReal),  intent(out) :: &
     TDot
 
@@ -117,18 +117,18 @@ module subroutine thermal_externalheat_getRate(TDot, phase, of)
   real(pReal) :: &
     frac_time
 
-  sourceOffset = source_thermal_externalheat_offset(phase)
+  sourceOffset = source_thermal_externalheat_offset(ph)
 
-  associate(prm => param(source_thermal_externalheat_instance(phase)))
+  associate(prm => param(source_thermal_externalheat_instance(ph)))
   do interval = 1, prm%nIntervals                                                                   ! scan through all rate segments
-    frac_time = (thermalState(phase)%p(sourceOffset)%state(1,of) - prm%t_n(interval)) &
+    frac_time = (thermalState(ph)%p(sourceOffset)%state(1,me) - prm%t_n(interval)) &
               / (prm%t_n(interval+1) - prm%t_n(interval))                                           ! fractional time within segment
     if (     (frac_time <  0.0_pReal .and. interval == 1) &
         .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
         .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
       TDot = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
              prm%f_T(interval+1) * frac_time                                                        ! interpolate heat rate between segment boundaries...
-                                                                                                    ! ...or extrapolate if outside of bounds
+                                                                                                    ! ...or extrapolate if outside me bounds
   enddo
   end associate
 

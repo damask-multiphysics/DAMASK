@@ -30,7 +30,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function source_damage_isoDuctile_init(source_length) result(mySources)
 
-  integer, intent(in)                  :: source_length  
+  integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
   class(tNode), pointer :: &
@@ -54,7 +54,7 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
   allocate(source_damage_isoDuctile_instance(phases%length), source=0)
 
   do p = 1, phases%length
-    phase => phases%get(p) 
+    phase => phases%get(p)
     if(count(mySources(:,p)) == 0) cycle
     if(any(mySources(:,p))) source_damage_isoDuctile_instance(p) = count(mySources(:,1:p))
     sources => phase%get('source')
@@ -62,7 +62,7 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
       if(mySources(sourceOffset,p)) then
         source_damage_isoDuctile_offset(p) = sourceOffset
         associate(prm  => param(source_damage_isoDuctile_instance(p)))
-        src => sources%get(sourceOffset) 
+        src => sources%get(sourceOffset)
 
         prm%q          = src%get_asFloat('q')
         prm%gamma_crit = src%get_asFloat('gamma_crit')
@@ -72,7 +72,7 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
 #else
         prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
- 
+
         ! sanity checks
         if (prm%q          <= 0.0_pReal) extmsg = trim(extmsg)//' q'
         if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
@@ -106,21 +106,21 @@ module subroutine source_damage_isoDuctile_dotState(co, ip, el)
     el                                                                                              !< element
 
   integer :: &
-    phase, &
-    constituent, &
+    ph, &
+    me, &
     sourceOffset, &
     damageOffset, &
     homog
 
-  phase = material_phaseAt(co,el)
-  constituent = material_phasememberAt(co,ip,el)
-  sourceOffset = source_damage_isoDuctile_offset(phase)
+  ph = material_phaseAt(co,el)
+  me = material_phasememberAt(co,ip,el)
+  sourceOffset = source_damage_isoDuctile_offset(ph)
   homog = material_homogenizationAt(el)
   damageOffset = material_homogenizationMemberAt(ip,el)
 
-  associate(prm => param(source_damage_isoDuctile_instance(phase)))
-  damageState(phase)%p(sourceOffset)%dotState(1,constituent) = &
-    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit
+  associate(prm => param(source_damage_isoDuctile_instance(ph)))
+  damageState(ph)%p(sourceOffset)%dotState(1,me) = &
+    sum(plasticState(ph)%slipRate(:,me))/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit
   end associate
 
 end subroutine source_damage_isoDuctile_dotState
