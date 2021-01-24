@@ -180,6 +180,29 @@ module subroutine homogenization_thermal_setField(T,dot_T, ce)
 end subroutine homogenization_thermal_setField
 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+module subroutine thermal_conduction_results(ho,group)
+
+  integer,          intent(in) :: ho
+  character(len=*), intent(in) :: group
+
+  integer :: o
+
+  associate(prm => param(ho))
+    outputsLoop: do o = 1,size(prm%output)
+      select case(trim(prm%output(o)))
+        case('T')
+          call results_writeDataset(group,current(ho)%T,'T','temperature','K')
+      end select
+    enddo outputsLoop
+  end associate
+
+end subroutine thermal_conduction_results
+
+
 module function homogenization_thermal_T(ce) result(T)
 
   integer, intent(in) :: ce

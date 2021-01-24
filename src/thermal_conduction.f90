@@ -15,19 +15,10 @@ module thermal_conduction
   implicit none
   private
 
-  type :: tParameters
-    character(len=pStringLen), allocatable, dimension(:) :: &
-      output
-  end type tParameters
-
-  type(tparameters),             dimension(:), allocatable :: &
-    param
-
   public :: &
     thermal_conduction_init, &
     thermal_conduction_getSource, &
-    thermal_conduction_putTemperatureAndItsRate, &
-    thermal_conduction_results
+    thermal_conduction_putTemperatureAndItsRate
 
 contains
 
@@ -38,37 +29,22 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_init()
 
-  integer :: Ninstances,Nmaterialpoints,ho,ip,el,ce
+  integer :: Nmaterialpoints,ho
   class(tNode), pointer :: &
-    material_homogenization, &
-    homog, &
-    homogThermal
+    material_homogenization
 
 
   print'(/,a)', ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
 
-  Ninstances = count(thermal_type == THERMAL_conduction_ID)
-  allocate(param(Ninstances))
-
   material_homogenization => config_material%get('homogenization')
   do ho = 1, size(material_name_homogenization)
     if (thermal_type(ho) /= THERMAL_conduction_ID) cycle
-    homog => material_homogenization%get(ho)
-    homogThermal => homog%get('thermal')
-    associate(prm => param(thermal_typeInstance(ho)))
-
-#if defined (__GFORTRAN__)
-    prm%output = output_asStrings(homogThermal)
-#else
-    prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
-#endif
 
     Nmaterialpoints=count(material_homogenizationAt==ho)
 
     allocate  (temperature    (ho)%p(Nmaterialpoints), source=thermal_initialT(ho))
     allocate  (temperatureRate(ho)%p(Nmaterialpoints), source=0.0_pReal)
 
-    end associate
   enddo
 
 end subroutine thermal_conduction_init
@@ -118,27 +94,5 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
 
 end subroutine thermal_conduction_putTemperatureAndItsRate
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
-!--------------------------------------------------------------------------------------------------
-subroutine thermal_conduction_results(homog,group)
-
-  integer,          intent(in) :: homog
-  character(len=*), intent(in) :: group
-
-  integer :: o
-
-  associate(prm => param(damage_typeInstance(homog)))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case('T')
-        call results_writeDataset(group,temperature(homog)%p,'T',&
-                                  'temperature','K')
-    end select
-  enddo outputsLoop
-  end associate
-
-end subroutine thermal_conduction_results
 
 end module thermal_conduction

@@ -134,6 +134,10 @@ module homogenization
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
+    module subroutine thermal_conduction_results(ho,group)
+      integer,          intent(in) :: ho
+      character(len=*), intent(in) :: group
+    end subroutine thermal_conduction_results
 
     module function homogenization_thermal_T(ce) result(T)
       integer, intent(in) :: ce
