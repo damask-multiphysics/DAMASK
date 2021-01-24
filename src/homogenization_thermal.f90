@@ -4,6 +4,21 @@
 submodule(homogenization) homogenization_thermal
 
 
+  type :: tDataContainer
+    real(pReal), dimension(:), allocatable :: T, dot_T
+  end type tDataContainer
+
+  type(tDataContainer), dimension(:), allocatable :: current
+
+  type :: tParameters
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      output
+  end type tParameters
+
+  type(tparameters),             dimension(:), allocatable :: &
+    param
+
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -11,11 +26,40 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine thermal_init()
 
+  class(tNode), pointer :: &
+    configHomogenizations, &
+    configHomogenization, &
+    configHomogenizationThermal
+  integer :: ho
+
 
   print'(/,a)',   ' <<<+-  homogenization_thermal init  -+>>>'
 
+
   allocate(homogenization_T(discretization_nIPs*discretization_Nelems))
   allocate(homogenization_dot_T(discretization_nIPs*discretization_Nelems))
+
+  configHomogenizations => config_material%get('homogenization')
+  allocate(param(configHomogenizations%length))
+  allocate(current(configHomogenizations%length))
+
+  do ho = 1, configHomogenizations%length
+    allocate(current(ho)%T(count(material_homogenizationAt2==ho)), source=thermal_initialT(ho))
+    allocate(current(ho)%dot_T(count(material_homogenizationAt2==ho)), source=0.0_pReal)
+    configHomogenization => configHomogenizations%get(ho)
+    associate(prm => param(ho))
+      if (configHomogenization%contains('thermal')) then
+        configHomogenizationThermal => configHomogenization%get('thermal')
+#if defined (__GFORTRAN__)
+        prm%output = output_asStrings(configHomogenizationThermal)
+#else
+        prm%output = configHomogenizationThermal%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
+      else
+        prm%output = emptyStringArray
+      endif
+    end associate
+  enddo
 
 end subroutine thermal_init
 
