@@ -23,7 +23,7 @@ module damage_nonlocal
     real(pReal) :: &
     charLength                                                                                      !< characteristic length scale for gradient problems
   end type tNumerics
-    
+
   type(tparameters),             dimension(:), allocatable :: &
     param
   type(tNumerics), private :: &
@@ -33,7 +33,6 @@ module damage_nonlocal
     damage_nonlocal_init, &
     damage_nonlocal_getSourceAndItsTangent, &
     damage_nonlocal_getDiffusion, &
-    damage_nonlocal_getMobility, &
     damage_nonlocal_putNonLocalDamage, &
     damage_nonlocal_results
 
@@ -104,7 +103,7 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
 
   phiDot = 0.0_pReal
   dPhiDot_dPhi = 0.0_pReal
- 
+
   call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
   phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
   dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
@@ -137,29 +136,6 @@ function damage_nonlocal_getDiffusion(ip,el)
     num%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(homog),pReal)
 
 end function damage_nonlocal_getDiffusion
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Returns homogenized nonlocal damage mobility
-!--------------------------------------------------------------------------------------------------
-real(pReal) function damage_nonlocal_getMobility(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  integer :: &
-    co
-
-  damage_nonlocal_getMobility = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(co,el))
-  enddo
-
-  damage_nonlocal_getMobility = damage_nonlocal_getMobility/&
-                                real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-
-end function damage_nonlocal_getMobility
 
 
 !--------------------------------------------------------------------------------------------------

@@ -145,6 +145,15 @@ module homogenization
       real(pReal), intent(out) :: Tdot
     end subroutine thermal_conduction_getSource
 
+   module function damage_nonlocal_getMobility(ip,el) result(M)
+    integer, intent(in) :: &
+      ip, &                                                                                           !< integration point number
+      el                                                                                              !< element number
+    integer :: &
+      co
+    real(pReal) :: M
+    end function damage_nonlocal_getMobility
+
   end interface
 
   public ::  &
@@ -154,6 +163,7 @@ module homogenization
     thermal_conduction_getConductivity, &
     thermal_conduction_getMassDensity, &
     thermal_conduction_getSource, &
+    damage_nonlocal_getMobility, &
     homogenization_thermal_setfield, &
     homogenization_thermal_T, &
     homogenization_forward, &

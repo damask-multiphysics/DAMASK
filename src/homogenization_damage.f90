@@ -3,6 +3,8 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_damage
 
+  use lattice
+
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: phi
   end type tDataContainer
@@ -76,6 +78,30 @@ module subroutine damage_partition(ce)
   enddo
 
 end subroutine damage_partition
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns homogenized nonlocal damage mobility
+!--------------------------------------------------------------------------------------------------
+module function damage_nonlocal_getMobility(ip,el) result(M)
+
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
+  integer :: &
+    co
+  real(pReal) :: M
+
+  M = 0.0_pReal
+
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+    M = M + lattice_M(material_phaseAt(co,el))
+  enddo
+
+  M = M/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+
+end function damage_nonlocal_getMobility
 
 
 end submodule homogenization_damage
