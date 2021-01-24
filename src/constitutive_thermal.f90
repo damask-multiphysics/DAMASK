@@ -10,9 +10,9 @@ submodule(constitutive) constitutive_thermal
   end enum
 
   type :: tDataContainer
-    real(pReal), dimension(:), allocatable :: T
+    real(pReal), dimension(:), allocatable :: T, dot_T
   end type tDataContainer
-  integer(kind(THERMAL_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
+  integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
   type(tDataContainer), dimension(:), allocatable :: current
@@ -94,6 +94,7 @@ module subroutine thermal_init(phases)
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
     allocate(current(ph)%T(Nconstituents),source=300.0_pReal)
+    allocate(current(ph)%dot_T(Nconstituents),source=0.0_pReal)
     phase => phases%get(ph)
     if(phase%contains('thermal')) then
       thermal => phase%get('thermal')
@@ -147,13 +148,11 @@ module subroutine constitutive_thermal_getRate(TDot, ip, el)
   integer :: &
     ph, &
     homog, &
-    instance, &
     me, &
     so, &
     co
 
    homog  = material_homogenizationAt(el)
-   instance = thermal_typeInstance(homog)
 
   TDot = 0.0_pReal
   do co = 1, homogenization_Nconstituents(homog)
