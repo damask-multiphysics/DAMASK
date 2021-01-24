@@ -132,7 +132,7 @@ subroutine grid_thermal_spectral_init
   ce = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     ce = ce + 1
-    T_current(i,j,k) = temperature(material_homogenizationAt(ce))%p(material_homogenizationMemberAt(1,ce))
+    T_current(i,j,k) = homogenization_thermal_T(ce)
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
   enddo; enddo; enddo
@@ -194,7 +194,6 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
     call homogenization_thermal_setField(T_current(i,j,k), &
                                                      (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
                                                      ce)
-    homogenization_T(ce) = T_current(i,j,k)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
@@ -239,7 +238,6 @@ subroutine grid_thermal_spectral_forward(cutBack)
       call homogenization_thermal_setField(T_current(i,j,k), &
                                           (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
                                                        ce)
-      homogenization_T(ce) = T_current(i,j,k)
     enddo; enddo; enddo
   else
     T_lastInc = T_current

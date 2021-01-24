@@ -37,9 +37,6 @@ module subroutine thermal_init()
   print'(/,a)',   ' <<<+-  homogenization_thermal init  -+>>>'
 
 
-  allocate(homogenization_T(discretization_nIPs*discretization_Nelems))
-  allocate(homogenization_dot_T(discretization_nIPs*discretization_Nelems))
-
   configHomogenizations => config_material%get('homogenization')
   allocate(param(configHomogenizations%length))
   allocate(current(configHomogenizations%length))
@@ -92,7 +89,7 @@ module subroutine thermal_homogenize(ip,el)
 
   integer, intent(in) :: ip,el
 
-  call constitutive_thermal_getRate(homogenization_dot_T((el-1)*discretization_nIPs+ip), ip,el)
+  !call constitutive_thermal_getRate(homogenization_dot_T((el-1)*discretization_nIPs+ip), ip,el)
 
 end subroutine thermal_homogenize
 
@@ -181,5 +178,16 @@ module subroutine homogenization_thermal_setField(T,dot_T, ce)
 
 
 end subroutine homogenization_thermal_setField
+
+
+module function homogenization_thermal_T(ce) result(T)
+
+  integer, intent(in) :: ce
+  real(pReal) :: T
+
+  T = current(material_homogenizationAt2(ce))%T(material_homogenizationMemberAt2(ce))
+
+end function homogenization_thermal_T
+
 
 end submodule homogenization_thermal

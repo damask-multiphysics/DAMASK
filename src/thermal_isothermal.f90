@@ -16,9 +16,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_isothermal_init(T)
-
-  real(pReal), dimension(:), intent(inout) ::  T
+subroutine thermal_isothermal_init()
 
   integer :: Ninstances,Nmaterialpoints,ho,ip,el,ce
 
@@ -32,15 +30,6 @@ subroutine thermal_isothermal_init(T)
     allocate(temperature    (ho)%p(Nmaterialpoints),source=thermal_initialT(ho))
     allocate(temperatureRate(ho)%p(Nmaterialpoints),source = 0.0_pReal)
 
-  enddo
-
-  ce = 0
-  do el = 1, discretization_Nelems
-    do ip = 1, discretization_nIPs
-      ce = ce + 1
-      ho = material_homogenizationAt(el)
-      if (thermal_type(ho) == THERMAL_isothermal_ID) T(ce) = thermal_initialT(ho)
-    enddo
   enddo
 
 end subroutine thermal_isothermal_init

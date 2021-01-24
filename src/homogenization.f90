@@ -28,8 +28,6 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pReal),   dimension(:),         allocatable, public :: &
-    homogenization_T, &
-    homogenization_dot_T, &
     homogenization_phi, &
     homogenization_dot_phi
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
@@ -136,6 +134,12 @@ module homogenization
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
+
+    module function homogenization_thermal_T(ce) result(T)
+      integer, intent(in) :: ce
+      real(pReal) :: T
+    end function homogenization_thermal_T
+
   end interface
 
   public ::  &
@@ -145,6 +149,7 @@ module homogenization
     thermal_conduction_getConductivity, &
     thermal_conduction_getMassDensity, &
     homogenization_thermal_setfield, &
+    homogenization_thermal_T, &
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &
@@ -182,8 +187,8 @@ subroutine homogenization_init()
   call thermal_init()
   call damage_init()
 
-  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init(homogenization_T)
-  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init(homogenization_T)
+  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init()
+  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init()
 
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
