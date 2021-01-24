@@ -154,6 +154,16 @@ module homogenization
     real(pReal) :: M
     end function damage_nonlocal_getMobility
 
+module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
+
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
+  real(pReal),   intent(in) :: &
+    phi
+  real(pReal) :: &
+    phiDot, dPhiDot_dPhi
+end subroutine damage_nonlocal_getSourceAndItsTangent
   end interface
 
   public ::  &
@@ -164,6 +174,7 @@ module homogenization
     thermal_conduction_getMassDensity, &
     thermal_conduction_getSource, &
     damage_nonlocal_getMobility, &
+    damage_nonlocal_getSourceAndItsTangent, &
     homogenization_thermal_setfield, &
     homogenization_thermal_T, &
     homogenization_forward, &

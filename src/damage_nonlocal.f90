@@ -31,7 +31,6 @@ module damage_nonlocal
 
   public :: &
     damage_nonlocal_init, &
-    damage_nonlocal_getSourceAndItsTangent, &
     damage_nonlocal_getDiffusion, &
     damage_nonlocal_putNonLocalDamage, &
     damage_nonlocal_results
@@ -86,29 +85,6 @@ subroutine damage_nonlocal_init
   enddo
 
 end subroutine damage_nonlocal_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  calculates homogenized damage driving forces
-!--------------------------------------------------------------------------------------------------
-subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal),   intent(in) :: &
-    phi
-  real(pReal) :: &
-    phiDot, dPhiDot_dPhi
-
-  phiDot = 0.0_pReal
-  dPhiDot_dPhi = 0.0_pReal
-
-  call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-
-end subroutine damage_nonlocal_getSourceAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
