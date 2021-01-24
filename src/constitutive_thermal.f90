@@ -116,8 +116,8 @@ module subroutine thermal_init(phases)
   PhaseLoop2:do ph = 1,phases%length
 
     do so = 1,thermal_Nsources(ph)
-      thermalState(ph)%p(so)%partitionedState0 = thermalState(ph)%p(so)%state0
-      thermalState(ph)%p(so)%state             = thermalState(ph)%p(so)%partitionedState0
+      deallocate(thermalState(ph)%p(so)%partitionedState0)
+      thermalState(ph)%p(so)%state             = thermalState(ph)%p(so)%state0
     enddo
 
     thermal_source_maxSizeDotState   = max(thermal_source_maxSizeDotState, &
@@ -210,9 +210,6 @@ module function thermal_stress(Delta_t,ph,me) result(converged_)
   integer :: so
 
 
-  do so = 1, thermal_Nsources(ph)
-    thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%subState0(:,me)
-  enddo
   converged_ = .not. integrateThermalState(Delta_t,ph,me)
 
 end function thermal_stress
@@ -237,26 +234,11 @@ function integrateThermalState(Delta_t, ph,me) result(broken)
 
   do so = 1, thermal_Nsources(ph)
     sizeDotState = thermalState(ph)%p(so)%sizeDotState
-    thermalState(ph)%p(so)%state(1:sizeDotState,me) = thermalState(ph)%p(so)%subState0(1:sizeDotState,me) &
+    thermalState(ph)%p(so)%state(1:sizeDotState,me) = thermalState(ph)%p(so)%state0(1:sizeDotState,me) &
                                                     + thermalState(ph)%p(so)%dotState(1:sizeDotState,me) * Delta_t
   enddo
 
 end function integrateThermalState
-
-
-module subroutine constitutive_thermal_initializeRestorationPoints(ph,me)
-
-  integer, intent(in) :: ph, me
-
-  integer :: so
-
-
-  do so = 1, size(thermalState(ph)%p)
-    thermalState(ph)%p(so)%partitionedState0(:,me) = thermalState(ph)%p(so)%state0(:,me)
-  enddo
-
-end subroutine constitutive_thermal_initializeRestorationPoints
-
 
 
 module subroutine thermal_forward()

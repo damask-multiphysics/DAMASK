@@ -120,10 +120,6 @@ module constitutive
       integer, intent(in) :: ph, me
     end subroutine mech_initializeRestorationPoints
 
-    module subroutine constitutive_thermal_initializeRestorationPoints(ph,me)
-      integer, intent(in) :: ph, me
-    end subroutine constitutive_thermal_initializeRestorationPoints
-
 
     module subroutine mech_windForward(ph,me)
       integer, intent(in) :: ph, me
@@ -364,7 +360,6 @@ module constitutive
     constitutive_mech_setF, &
     constitutive_mech_getF, &
     constitutive_initializeRestorationPoints, &
-    constitutive_thermal_initializeRestorationPoints, &
     constitutive_windForward, &
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
@@ -630,9 +625,6 @@ subroutine crystallite_init()
   do ph = 1, phases%length
     do so = 1, phase_Nsources(ph)
       allocate(damageState(ph)%p(so)%subState0,source=damageState(ph)%p(so)%state0)                 ! ToDo: hack
-    enddo
-    do so = 1, thermal_Nsources(ph)
-      allocate(thermalState(ph)%p(so)%subState0,source=thermalState(ph)%p(so)%state0)               ! ToDo: hack
     enddo
   enddo
 

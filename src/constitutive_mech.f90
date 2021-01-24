@@ -1586,9 +1586,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   do so = 1, phase_Nsources(ph)
     damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%partitionedState0(:,me)
   enddo
-  do so = 1, thermal_Nsources(ph)
-    thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%partitionedState0(:,me)
-  enddo
   subFp0 = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
   subFi0 = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
   subF0  = constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)

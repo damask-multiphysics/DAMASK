@@ -279,7 +279,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         call thermal_partition(homogenization_T(ce),ce)
         do co = 1, homogenization_Nconstituents(ho)
           ph = material_phaseAt(co,el)
-          call constitutive_thermal_initializeRestorationPoints(ph,material_phaseMemberAt(co,ip,el))
           if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
             if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
