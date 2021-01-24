@@ -12,8 +12,6 @@ module homogenization
   use material
   use constitutive
   use discretization
-  use thermal_isothermal
-  use thermal_conduction
   use damage_none
   use damage_nonlocal
   use HDF5_utilities
@@ -144,6 +142,13 @@ module homogenization
       real(pReal) :: T
     end function homogenization_thermal_T
 
+    module subroutine thermal_conduction_getSource(Tdot, ip,el)
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal), intent(out) :: Tdot
+    end subroutine thermal_conduction_getSource
+
   end interface
 
   public ::  &
@@ -152,6 +157,7 @@ module homogenization
     thermal_conduction_getSpecificHeat, &
     thermal_conduction_getConductivity, &
     thermal_conduction_getMassDensity, &
+    thermal_conduction_getSource, &
     homogenization_thermal_setfield, &
     homogenization_thermal_T, &
     homogenization_forward, &
@@ -190,9 +196,6 @@ subroutine homogenization_init()
   call mech_init(num_homog)
   call thermal_init()
   call damage_init()
-
-  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init()
-  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init()
 
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init

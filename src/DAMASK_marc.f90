@@ -351,7 +351,7 @@ end subroutine hypela2
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
   use prec
-  use thermal_conduction
+  use homogenization
   use discretization_marc
 
   implicit none

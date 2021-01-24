@@ -213,4 +213,27 @@ module function homogenization_thermal_T(ce) result(T)
 end function homogenization_thermal_T
 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return heat generation rate
+!--------------------------------------------------------------------------------------------------
+module subroutine thermal_conduction_getSource(Tdot, ip,el)
+
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
+  real(pReal), intent(out) :: &
+    Tdot
+
+ integer :: &
+    homog
+
+  homog = material_homogenizationAt(el)
+  call constitutive_thermal_getRate(TDot, ip,el)
+
+  Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
+
+end subroutine thermal_conduction_getSource
+
+
 end submodule homogenization_thermal

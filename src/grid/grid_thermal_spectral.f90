@@ -15,7 +15,6 @@ module grid_thermal_spectral
   use IO
   use spectral_utilities
   use discretization_grid
-  use thermal_conduction
   use homogenization
   use YAML_types
   use config
@@ -188,9 +187,6 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call thermal_conduction_putTemperatureAndItsRate(T_current(i,j,k), &
-                                                     (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
-                                                     1,ce)
     call homogenization_thermal_setField(T_current(i,j,k), &
                                                      (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
                                                      ce)
@@ -231,10 +227,6 @@ subroutine grid_thermal_spectral_forward(cutBack)
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
-      call thermal_conduction_putTemperatureAndItsRate(T_current(i,j,k), &
-                                                       (T_current(i,j,k) - &
-                                                        T_lastInc(i,j,k))/params%timeinc, &
-                                                       1,ce)
       call homogenization_thermal_setField(T_current(i,j,k), &
                                           (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
                                                        ce)
