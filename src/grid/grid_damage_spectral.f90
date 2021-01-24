@@ -198,7 +198,6 @@ function grid_damage_spectral_solution(timeinc) result(solution)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
     call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),1,cell)
-    homogenization_phi(cell) = phi_current(i,j,k)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
@@ -236,7 +235,6 @@ subroutine grid_damage_spectral_forward(cutBack)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       cell = cell + 1
       call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),1,cell)
-      homogenization_phi(cell) = phi_current(i,j,k)
     enddo; enddo; enddo
   else
     phi_lastInc = phi_current

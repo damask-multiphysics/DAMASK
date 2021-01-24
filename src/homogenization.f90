@@ -25,9 +25,6 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
-  real(pReal),   dimension(:),         allocatable, public :: &
-    homogenization_phi, &
-    homogenization_dot_phi
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
@@ -75,8 +72,7 @@ module homogenization
       integer,     intent(in) :: ce
     end subroutine thermal_partition
 
-    module subroutine damage_partition(phi,ce)
-      real(pReal), intent(in) :: phi
+    module subroutine damage_partition(ce)
       integer,     intent(in) :: ce
     end subroutine damage_partition
 
@@ -326,6 +322,26 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
          endif
          call thermal_homogenize(ip,el)
         enddo
+      enddo
+    enddo
+    !$OMP END DO
+
+    !$OMP DO PRIVATE(ho,ph,ce)
+    do el = FEsolving_execElem(1),FEsolving_execElem(2)
+      if (terminallyIll) continue
+      ho = material_homogenizationAt(el)
+      do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+        ce = (el-1)*discretization_nIPs + ip
+        call damage_partition(ce)
+      !  do co = 1, homogenization_Nconstituents(ho)
+      !    ph = material_phaseAt(co,el)
+      !    if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
+      !      if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
+      !        print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
+      !      terminallyIll = .true.                                                                  ! ...and kills all others
+      !   endif
+      !   call thermal_homogenize(ip,el)
+      !  enddo
       enddo
     enddo
     !$OMP END DO
