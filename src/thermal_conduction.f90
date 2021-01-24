@@ -26,9 +26,6 @@ module thermal_conduction
   public :: &
     thermal_conduction_init, &
     thermal_conduction_getSource, &
-    thermal_conduction_getConductivity, &
-    thermal_conduction_getSpecificHeat, &
-    thermal_conduction_getMassDensity, &
     thermal_conduction_putTemperatureAndItsRate, &
     thermal_conduction_results
 
@@ -108,90 +105,6 @@ subroutine thermal_conduction_getSource(Tdot, ip,el)
   Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
 
 end subroutine thermal_conduction_getSource
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return homogenized thermal conductivity in reference configuration
-!--------------------------------------------------------------------------------------------------
-function thermal_conduction_getConductivity(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal), dimension(3,3) :: &
-    thermal_conduction_getConductivity
-
-  integer :: &
-    co
-
-
-  thermal_conduction_getConductivity = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    thermal_conduction_getConductivity = thermal_conduction_getConductivity + &
-     crystallite_push33ToRef(co,ip,el,lattice_K(:,:,material_phaseAt(co,el)))
-  enddo
-
-  thermal_conduction_getConductivity = thermal_conduction_getConductivity &
-                                     / real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-
-end function thermal_conduction_getConductivity
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns homogenized specific heat capacity
-!--------------------------------------------------------------------------------------------------
-function thermal_conduction_getSpecificHeat(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal) :: &
-    thermal_conduction_getSpecificHeat
-
-  integer :: &
-    co
-
-
-  thermal_conduction_getSpecificHeat = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
-                                       + lattice_c_p(material_phaseAt(co,el))
-  enddo
-
-  thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
-                                     / real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-
-end function thermal_conduction_getSpecificHeat
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns homogenized mass density
-!--------------------------------------------------------------------------------------------------
-function thermal_conduction_getMassDensity(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal) :: &
-    thermal_conduction_getMassDensity
-
-  integer :: &
-    co
-
-
-  thermal_conduction_getMassDensity = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
-                                      + lattice_rho(material_phaseAt(co,el))
-  enddo
-
-  thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
-                                    / real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-
-end function thermal_conduction_getMassDensity
 
 
 !--------------------------------------------------------------------------------------------------

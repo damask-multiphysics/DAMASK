@@ -200,11 +200,11 @@ module constitutive
       integer, intent(in) :: co, ip, el
     end subroutine constitutive_mech_setF
 
-    module subroutine constitutive_thermal_setT(T,co,ce)
-      real(pReal), intent(in) :: T
-      integer, intent(in) :: co, ce
-    end subroutine constitutive_thermal_setT
-    
+    module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
+      real(pReal), intent(in) :: T, dot_T
+      integer, intent(in) :: ce, co
+    end subroutine constitutive_thermal_setField
+
     module subroutine constitutive_damage_set_phi(phi,co,ce)
       real(pReal), intent(in) :: phi
       integer, intent(in) :: co, ce
@@ -353,7 +353,7 @@ module constitutive
     constitutive_restartWrite, &
     constitutive_restartRead, &
     integrateDamageState, &
-    constitutive_thermal_setT, &
+    constitutive_thermal_setField, &
     constitutive_damage_set_phi, &
     constitutive_damage_get_phi, &
     constitutive_mech_getP, &

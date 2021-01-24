@@ -75,8 +75,7 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
-    module subroutine thermal_partition(T,ce)
-      real(pReal), intent(in) :: T
+    module subroutine thermal_partition(ce)
       integer,     intent(in) :: ce
     end subroutine thermal_partition
 
@@ -112,11 +111,40 @@ module homogenization
       logical, dimension(2) :: doneAndHappy
     end function mech_updateState
 
+
+    module function thermal_conduction_getConductivity(ip,el) result(K)
+
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal), dimension(3,3) :: K
+
+    end function thermal_conduction_getConductivity
+
+    module function thermal_conduction_getSpecificHeat(ce) result(c_P)
+      integer, intent(in) :: ce
+      real(pReal) :: c_P
+    end function thermal_conduction_getSpecificHeat
+
+    module function thermal_conduction_getMassDensity(ce) result(rho)
+      integer, intent(in) :: ce
+      real(pReal) :: rho
+    end function thermal_conduction_getMassDensity
+
+    module subroutine homogenization_thermal_setField(T,dot_T, ce)
+      integer, intent(in) :: ce
+      real(pReal),   intent(in) :: T, dot_T
+    end subroutine homogenization_thermal_setField
+
   end interface
 
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
+    thermal_conduction_getSpecificHeat, &
+    thermal_conduction_getConductivity, &
+    thermal_conduction_getMassDensity, &
+    homogenization_thermal_setfield, &
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &
@@ -276,7 +304,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
-        call thermal_partition(homogenization_T(ce),ce)
+        call thermal_partition(ce)
         do co = 1, homogenization_Nconstituents(ho)
           ph = material_phaseAt(co,el)
           if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
