@@ -1959,7 +1959,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     detFi
   integer :: &
     k, i, j, &
-    instance, of
+    instance, of, me, ph
 
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
@@ -1985,7 +1985,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
       case (KINEMATICS_slipplane_opening_ID) kinematicsType
         call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, co, ip, el)
+        me = material_phaseMemberAt(co,ip,el)
+        ph = material_phaseAt(co,el)
+        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
       case default kinematicsType
         my_Li = 0.0_pReal
         my_dLi_dS = 0.0_pReal

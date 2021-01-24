@@ -245,9 +245,6 @@ module constitutive
     end function constitutive_homogenizedC
 
 
-
-
-
     module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
       integer, intent(in) :: &
         ip, &                                                                                       !< integration point number
@@ -317,11 +314,9 @@ module constitutive
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
+      integer, intent(in) :: ph, me
+                                                                                       !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
@@ -762,9 +757,6 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
-
-
-
 
 
 !--------------------------------------------------------------------------------------------------
