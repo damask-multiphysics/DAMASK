@@ -1656,11 +1656,9 @@ end function crystallite_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_restore(ip,el,includeL)
+module subroutine mech_restore(ce,includeL)
 
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
+  integer, intent(in) :: ce
   logical, intent(in) :: &
     includeL                                                                                        !< protect agains fake cutback
 
@@ -1668,9 +1666,9 @@ module subroutine mech_restore(ip,el,includeL)
     co, ph, me
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    ph = material_phaseAt(co,el)
-    me = material_phaseMemberAt(co,ip,el)
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
+    ph = material_phaseAt2(co,ce)
+    me = material_phaseMemberAt2(co,ce)
     if (includeL) then
       constitutive_mech_Lp(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me)
       constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)

@@ -190,9 +190,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      me = material_homogenizationMemberAt(ip,el)
-!--------------------------------------------------------------------------------------------------
-! initialize restoration points
+      ce = (el-1)*discretization_nIPs + ip
+      me = material_homogenizationMemberAt2(ce)
+
       call constitutive_initializeRestorationPoints(ip,el)
 
       subFrac = 0.0_pReal
@@ -226,7 +226,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         else                                                                                      ! cutback makes sense
           subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
 
-          call constitutive_restore(ip,el,subStep < 1.0_pReal)
+          call constitutive_restore(ce,subStep < 1.0_pReal)
 
           if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
           if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%subState0(:,me)
@@ -243,7 +243,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 ! deformation partitioning
 
           if (.not. doneAndHappy(1)) then
-            ce = (el-1)*discretization_nIPs + ip
             call mech_partition(  homogenization_F0(1:3,1:3,ce) &
                                 + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))*(subStep+subFrac), &
                                 ip,el)
@@ -255,7 +254,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             if (.not. converged) then
               doneAndHappy = [.true.,.false.]
             else
-              ce = (el-1)*discretization_nIPs + ip
               doneAndHappy = mech_updateState(dt*subStep, &
                                               homogenization_F0(1:3,1:3,ce) &
                                               + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &

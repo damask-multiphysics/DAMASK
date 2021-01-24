@@ -137,8 +137,8 @@ module constitutive
     end subroutine thermal_forward
 
 
-    module subroutine mech_restore(ip,el,includeL)
-      integer, intent(in) :: ip, el
+    module subroutine mech_restore(ce,includeL)
+      integer, intent(in) :: ce
       logical, intent(in) :: includeL
     end subroutine mech_restore
 
@@ -497,26 +497,24 @@ end subroutine constitutive_allocateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_restore(ip,el,includeL)
+subroutine constitutive_restore(ce,includeL)
 
   logical, intent(in) :: includeL
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
+  integer, intent(in) :: ce
 
   integer :: &
     co, &                                                                                            !< constituent number
     so
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    do so = 1, phase_Nsources(material_phaseAt(co,el))
-      damageState(material_phaseAt(co,el))%p(so)%state(          :,material_phasememberAt(co,ip,el)) = &
-      damageState(material_phaseAt(co,el))%p(so)%partitionedState0(:,material_phasememberAt(co,ip,el))
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
+    do so = 1, phase_Nsources(material_phaseAt2(co,ce))
+      damageState(material_phaseAt2(co,ce))%p(so)%state(          :,material_phasememberAt2(co,ce)) = &
+      damageState(material_phaseAt2(co,ce))%p(so)%partitionedState0(:,material_phasememberAt2(co,ce))
     enddo
   enddo
 
-  call mech_restore(ip,el,includeL)
+  call mech_restore(ce,includeL)
 
 end subroutine constitutive_restore
 
