@@ -150,16 +150,34 @@ module homogenization
     real(pReal) :: M
     end function damage_nonlocal_getMobility
 
-module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
+    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal),   intent(in) :: &
-    phi
-  real(pReal) :: &
-    phiDot, dPhiDot_dPhi
-end subroutine damage_nonlocal_getSourceAndItsTangent
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal),   intent(in) :: &
+        phi
+      real(pReal) :: &
+        phiDot, dPhiDot_dPhi
+    end subroutine damage_nonlocal_getSourceAndItsTangent
+
+
+    module subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
+
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal),   intent(in) :: &
+        phi
+
+    end subroutine damage_nonlocal_putNonLocalDamage
+
+    module subroutine damage_nonlocal_results(homog,group)
+
+      integer,          intent(in) :: homog
+      character(len=*), intent(in) :: group
+
+    end subroutine damage_nonlocal_results
   end interface
 
   public ::  &
@@ -171,6 +189,7 @@ end subroutine damage_nonlocal_getSourceAndItsTangent
     thermal_conduction_getSource, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_getSourceAndItsTangent, &
+    damage_nonlocal_putNonLocalDamage, &
     homogenization_thermal_setfield, &
     homogenization_thermal_T, &
     homogenization_forward, &

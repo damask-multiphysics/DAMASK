@@ -14,26 +14,17 @@ module damage_nonlocal
   implicit none
   private
 
-  type :: tParameters
-    character(len=pStringLen), allocatable, dimension(:) :: &
-      output
-  end type tParameters
-
   type, private :: tNumerics
     real(pReal) :: &
     charLength                                                                                      !< characteristic length scale for gradient problems
   end type tNumerics
 
-  type(tparameters),             dimension(:), allocatable :: &
-    param
   type(tNumerics), private :: &
     num
 
   public :: &
     damage_nonlocal_init, &
-    damage_nonlocal_getDiffusion, &
-    damage_nonlocal_putNonLocalDamage, &
-    damage_nonlocal_results
+    damage_nonlocal_getDiffusion
 
 contains
 
@@ -46,9 +37,7 @@ subroutine damage_nonlocal_init
   integer :: Ninstances,Nmaterialpoints,h
   class(tNode), pointer :: &
     num_generic, &
-    material_homogenization, &
-    homog, &
-    homogDamage
+    material_homogenization
 
   print'(/,a)', ' <<<+-  damage_nonlocal init  -+>>>'; flush(6)
 
@@ -58,20 +47,10 @@ subroutine damage_nonlocal_init
   num%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
   Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
-  allocate(param(Ninstances))
 
   material_homogenization => config_material%get('homogenization')
   do h = 1, material_homogenization%length
     if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-    homog => material_homogenization%get(h)
-    homogDamage => homog%get('damage')
-    associate(prm => param(damage_typeInstance(h)))
-
-#if defined (__GFORTRAN__)
-    prm%output = output_asStrings(homogDamage)
-#else
-    prm%output = homogDamage%get_asStrings('output',defaultVal=emptyStringArray)
-#endif
 
     Nmaterialpoints = count(material_homogenizationAt == h)
     damageState_h(h)%sizeState = 1
@@ -80,7 +59,6 @@ subroutine damage_nonlocal_init
 
     damage(h)%p => damageState_h(h)%state(1,:)
 
-    end associate
   enddo
 
 end subroutine damage_nonlocal_init
@@ -112,48 +90,5 @@ function damage_nonlocal_getDiffusion(ip,el)
 
 end function damage_nonlocal_getDiffusion
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief updated nonlocal damage field with solution from damage phase field PDE
-!--------------------------------------------------------------------------------------------------
-subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal),   intent(in) :: &
-    phi
-  integer :: &
-    homog, &
-    offset
-
-  homog  = material_homogenizationAt(el)
-  offset = material_homogenizationMemberAt(ip,el)
-  damage(homog)%p(offset) = phi
-
-end subroutine damage_nonlocal_putNonLocalDamage
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
-!--------------------------------------------------------------------------------------------------
-subroutine damage_nonlocal_results(homog,group)
-
-  integer,          intent(in) :: homog
-  character(len=*), intent(in) :: group
-
-  integer :: o
-
-  associate(prm => param(damage_typeInstance(homog)))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(prm%output(o))
-      case ('phi')
-        call results_writeDataset(group,damage(homog)%p,prm%output(o),&
-                                  'damage indicator','-')
-    end select
-  enddo outputsLoop
-  end associate
-
-end subroutine damage_nonlocal_results
 
 end module damage_nonlocal
