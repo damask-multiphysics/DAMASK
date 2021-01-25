@@ -35,7 +35,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_damage_anisoBrittle_init(source_length) result(mySources)
+module function anisobrittle_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -114,13 +114,13 @@ module function source_damage_anisoBrittle_init(source_length) result(mySources)
     enddo
   enddo
 
-end function source_damage_anisoBrittle_init
+end function anisobrittle_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
+module subroutine anisobrittle_dotState(S, co, ip, el)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
@@ -163,7 +163,7 @@ module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
   enddo
   end associate
 
-end subroutine source_damage_anisoBrittle_dotState
+end subroutine anisobrittle_dotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -196,7 +196,7 @@ end subroutine source_damage_anisoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoBrittle_results(phase,group)
+module subroutine anisobrittle_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -213,6 +213,6 @@ module subroutine source_damage_anisoBrittle_results(phase,group)
   enddo outputsLoop
   end associate
 
-end subroutine source_damage_anisoBrittle_results
+end subroutine anisobrittle_results
 
 end submodule source_damage_anisoBrittle

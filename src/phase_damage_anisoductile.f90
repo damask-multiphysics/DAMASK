@@ -28,7 +28,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_damage_anisoDuctile_init(source_length) result(mySources)
+module function anisoductile_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -101,13 +101,13 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
   enddo
 
 
-end function source_damage_anisoDuctile_init
+end function anisoductile_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
+module subroutine anisoductile_dotState(co, ip, el)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
@@ -132,7 +132,7 @@ module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
     = sum(plasticState(ph)%slipRate(:,me)/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit)
   end associate
 
-end subroutine source_damage_anisoDuctile_dotState
+end subroutine anisoductile_dotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoDuctile_results(phase,group)
+module subroutine anisoductile_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -182,6 +182,6 @@ module subroutine source_damage_anisoDuctile_results(phase,group)
   enddo outputsLoop
   end associate
 
-end subroutine source_damage_anisoDuctile_results
+end subroutine anisoductile_results
 
 end submodule source_damage_anisoDuctile

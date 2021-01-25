@@ -22,25 +22,25 @@ submodule(constitutive) constitutive_damage
 
   interface
 
-  module function source_damage_anisoBrittle_init(source_length) result(mySources)
-    integer, intent(in) :: source_length
-    logical, dimension(:,:), allocatable :: mySources
-  end function source_damage_anisoBrittle_init
+    module function anisobrittle_init(source_length) result(mySources)
+      integer, intent(in) :: source_length
+      logical, dimension(:,:), allocatable :: mySources
+    end function anisobrittle_init
 
-  module function source_damage_anisoDuctile_init(source_length) result(mySources)
-    integer, intent(in) :: source_length
-    logical, dimension(:,:), allocatable :: mySources
-  end function source_damage_anisoDuctile_init
+    module function anisoductile_init(source_length) result(mySources)
+      integer, intent(in) :: source_length
+      logical, dimension(:,:), allocatable :: mySources
+    end function anisoductile_init
 
-  module function source_damage_isoBrittle_init(source_length) result(mySources)
-    integer, intent(in) :: source_length
-    logical, dimension(:,:), allocatable :: mySources
-  end function source_damage_isoBrittle_init
+    module function isobrittle_init(source_length) result(mySources)
+      integer, intent(in) :: source_length
+      logical, dimension(:,:), allocatable :: mySources
+    end function isobrittle_init
 
-  module function source_damage_isoDuctile_init(source_length) result(mySources)
-    integer, intent(in) :: source_length
-    logical, dimension(:,:), allocatable :: mySources
-  end function source_damage_isoDuctile_init
+    module function isoductile_init(source_length) result(mySources)
+      integer, intent(in) :: source_length
+      logical, dimension(:,:), allocatable :: mySources
+    end function isoductile_init
 
 
     module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph, me)
@@ -52,93 +52,93 @@ submodule(constitutive) constitutive_damage
     end subroutine source_damage_isoBrittle_deltaState
 
 
-    module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
+    module subroutine anisobrittle_dotState(S, co, ip, el)
       integer, intent(in) :: &
         co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
       real(pReal),  intent(in), dimension(3,3) :: &
         S
-    end subroutine source_damage_anisoBrittle_dotState
+    end subroutine anisobrittle_dotState
 
-    module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
+    module subroutine anisoductile_dotState(co, ip, el)
       integer, intent(in) :: &
         co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
-    end subroutine source_damage_anisoDuctile_dotState
+    end subroutine anisoductile_dotState
 
-    module subroutine source_damage_isoDuctile_dotState(co, ip, el)
+    module subroutine isoductile_dotState(co, ip, el)
       integer, intent(in) :: &
         co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
-    end subroutine source_damage_isoDuctile_dotState
+    end subroutine isoductile_dotState
 
 
-  module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-    integer, intent(in) :: &
-      phase, &                                                                                      !< phase ID of element
-      constituent                                                                                   !< position of element within its phase instance
-    real(pReal),  intent(in) :: &
-      phi                                                                                           !< damage parameter
-    real(pReal),  intent(out) :: &
-      localphiDot, &
-      dLocalphiDot_dPhi
-  end subroutine source_damage_anisoBrittle_getRateAndItsTangent
+    module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+      integer, intent(in) :: &
+        phase, &                                                                                      !< phase ID of element
+        constituent                                                                                   !< position of element within its phase instance
+      real(pReal),  intent(in) :: &
+        phi                                                                                           !< damage parameter
+      real(pReal),  intent(out) :: &
+        localphiDot, &
+        dLocalphiDot_dPhi
+    end subroutine source_damage_anisoBrittle_getRateAndItsTangent
 
-  module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-    integer, intent(in) :: &
-      phase, &                                                                                      !< phase ID of element
-      constituent                                                                                   !< position of element within its phase instance
-    real(pReal),  intent(in) :: &
-      phi                                                                                           !< damage parameter
-    real(pReal),  intent(out) :: &
-      localphiDot, &
-      dLocalphiDot_dPhi
-  end subroutine source_damage_anisoDuctile_getRateAndItsTangent
+    module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+      integer, intent(in) :: &
+        phase, &                                                                                      !< phase ID of element
+        constituent                                                                                   !< position of element within its phase instance
+      real(pReal),  intent(in) :: &
+        phi                                                                                           !< damage parameter
+      real(pReal),  intent(out) :: &
+        localphiDot, &
+        dLocalphiDot_dPhi
+    end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 
-  module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-    integer, intent(in) :: &
-      phase, &                                                                                      !< phase ID of element
-      constituent                                                                                   !< position of element within its phase instance
-    real(pReal),  intent(in) :: &
-      phi                                                                                           !< damage parameter
-    real(pReal),  intent(out) :: &
-      localphiDot, &
-      dLocalphiDot_dPhi
-  end subroutine source_damage_isoBrittle_getRateAndItsTangent
+    module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+      integer, intent(in) :: &
+        phase, &                                                                                      !< phase ID of element
+        constituent                                                                                   !< position of element within its phase instance
+      real(pReal),  intent(in) :: &
+        phi                                                                                           !< damage parameter
+      real(pReal),  intent(out) :: &
+        localphiDot, &
+        dLocalphiDot_dPhi
+    end subroutine source_damage_isoBrittle_getRateAndItsTangent
 
-  module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-    integer, intent(in) :: &
-      phase, &                                                                                      !< phase ID of element
-      constituent                                                                                   !< position of element within its phase instance
-    real(pReal),  intent(in) :: &
-      phi                                                                                           !< damage parameter
-    real(pReal),  intent(out) :: &
-      localphiDot, &
-      dLocalphiDot_dPhi
-  end subroutine source_damage_isoDuctile_getRateAndItsTangent
+    module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+      integer, intent(in) :: &
+        phase, &                                                                                      !< phase ID of element
+        constituent                                                                                   !< position of element within its phase instance
+      real(pReal),  intent(in) :: &
+        phi                                                                                           !< damage parameter
+      real(pReal),  intent(out) :: &
+        localphiDot, &
+        dLocalphiDot_dPhi
+    end subroutine source_damage_isoDuctile_getRateAndItsTangent
 
-  module subroutine source_damage_anisoBrittle_results(phase,group)
-    integer,          intent(in) :: phase
-    character(len=*), intent(in) :: group
-  end subroutine source_damage_anisoBrittle_results
+    module subroutine anisobrittle_results(phase,group)
+      integer,          intent(in) :: phase
+      character(len=*), intent(in) :: group
+    end subroutine anisobrittle_results
 
-  module subroutine source_damage_anisoDuctile_results(phase,group)
-    integer,          intent(in) :: phase
-    character(len=*), intent(in) :: group
-  end subroutine source_damage_anisoDuctile_results
+    module subroutine anisoductile_results(phase,group)
+      integer,          intent(in) :: phase
+      character(len=*), intent(in) :: group
+    end subroutine anisoductile_results
 
-  module subroutine source_damage_isoBrittle_results(phase,group)
-    integer,          intent(in) :: phase
-    character(len=*), intent(in) :: group
-  end subroutine source_damage_isoBrittle_results
+    module subroutine isobrittle_results(phase,group)
+      integer,          intent(in) :: phase
+      character(len=*), intent(in) :: group
+    end subroutine isobrittle_results
 
-  module subroutine source_damage_isoDuctile_results(phase,group)
-    integer,          intent(in) :: phase
-    character(len=*), intent(in) :: group
-  end subroutine source_damage_isoDuctile_results
+    module subroutine isoductile_results(phase,group)
+      integer,          intent(in) :: phase
+      character(len=*), intent(in) :: group
+    end subroutine isoductile_results
 
  end interface
 
@@ -162,11 +162,11 @@ module subroutine damage_init
   allocate(current(phases%length))
 
   allocate(damageState (phases%length))
-  allocate(phase_Nsources(phases%length),source = 0)           ! same for kinematics
+  allocate(phase_Nsources(phases%length),source = 0)
 
   do ph = 1,phases%length
 
-    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == ph)
 
     allocate(current(ph)%phi(Nconstituents),source=1.0_pReal)
     allocate(current(ph)%d_phi_d_dot_phi(Nconstituents),source=0.0_pReal)
@@ -181,10 +181,10 @@ module subroutine damage_init
 
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
-    where(source_damage_isoBrittle_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISOBRITTLE_ID
-    where(source_damage_isoDuctile_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISODUCTILE_ID
-    where(source_damage_anisoBrittle_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISOBRITTLE_ID
-    where(source_damage_anisoDuctile_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISODUCTILE_ID
+    where(isobrittle_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISOBRITTLE_ID
+    where(isoductile_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISODUCTILE_ID
+    where(anisobrittle_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISOBRITTLE_ID
+    where(anisoductile_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISODUCTILE_ID
   endif
 
 end subroutine damage_init
@@ -208,30 +208,30 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
     localphiDot, &
     dLocalphiDot_dPhi
   integer :: &
-    phase, &
-    grain, &
-    source, &
-    constituent
+    ph, &
+    co, &
+    so, &
+    me
 
    phiDot = 0.0_pReal
    dPhiDot_dPhi = 0.0_pReal
 
-   do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-     phase = material_phaseAt(grain,el)
-     constituent = material_phasememberAt(grain,ip,el)
-     do source = 1, phase_Nsources(phase)
-       select case(phase_source(source,phase))
+   do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+     ph = material_phaseAt(co,el)
+     me = material_phasememberAt(co,ip,el)
+     do so = 1, phase_Nsources(ph)
+       select case(phase_source(so,ph))
          case (DAMAGE_ISOBRITTLE_ID)
-           call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+           call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
          case (DAMAGE_ISODUCTILE_ID)
-           call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+           call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
          case (DAMAGE_ANISOBRITTLE_ID)
-           call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+           call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
          case (DAMAGE_ANISODUCTILE_ID)
-           call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+           call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
          case default
          localphiDot = 0.0_pReal
@@ -369,16 +369,16 @@ module subroutine damage_results(group,ph)
     sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_isoBrittle_results(ph,group//'sources/')
+        call isobrittle_results(ph,group//'sources/')
 
       case (DAMAGE_ISODUCTILE_ID) sourceType
-        call source_damage_isoDuctile_results(ph,group//'sources/')
+        call isoductile_results(ph,group//'sources/')
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call source_damage_anisoBrittle_results(ph,group//'sources/')
+        call anisobrittle_results(ph,group//'sources/')
 
       case (DAMAGE_ANISODUCTILE_ID) sourceType
-        call source_damage_anisoDuctile_results(ph,group//'sources/')
+        call anisoductile_results(ph,group//'sources/')
 
     end select sourceType
 
@@ -410,13 +410,13 @@ function constitutive_damage_collectDotState(co,ip,el,ph,me) result(broken)
     sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISODUCTILE_ID) sourceType
-        call source_damage_isoDuctile_dotState(co, ip, el)
+        call isoductile_dotState(co, ip, el)
 
       case (DAMAGE_ANISODUCTILE_ID) sourceType
-        call source_damage_anisoDuctile_dotState(co, ip, el)
+        call anisoductile_dotState(co, ip, el)
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call source_damage_anisoBrittle_dotState(mech_S(ph,me),co, ip, el) ! correct stress?
+        call anisobrittle_dotState(mech_S(ph,me),co, ip, el) ! correct stress?
 
     end select sourceType
 
