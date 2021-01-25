@@ -274,8 +274,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State(:,me)
 
           endif steppingNeeded
-        elseif ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
-               num%subStepSizeHomog * subStep <=  num%subStepMinHomog ) then                   ! would require too small subStep
+        elseif (subStep <= 1.0 )  then
                                                                                                     ! cutback makes no sense
           if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
             print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
