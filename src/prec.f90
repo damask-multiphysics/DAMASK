@@ -47,7 +47,6 @@ module prec
       dotState, &                                                                                   !< rate of state change
       deltaState                                                                                    !< increment of state change
     real(pReal), allocatable, dimension(:,:) :: &
-      partitionedState0, &
       subState0
   end type
 

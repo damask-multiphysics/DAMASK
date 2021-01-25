@@ -32,7 +32,6 @@ module subroutine mech_none_init
     Nmaterialpoints = count(material_homogenizationAt == h)
     homogState(h)%sizeState = 0
     allocate(homogState(h)%state0   (0,Nmaterialpoints))
-    allocate(homogState(h)%subState0(0,Nmaterialpoints))
     allocate(homogState(h)%state    (0,Nmaterialpoints))
 
   enddo

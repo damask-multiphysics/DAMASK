@@ -116,12 +116,11 @@ module subroutine thermal_init(phases)
   PhaseLoop2:do ph = 1,phases%length
 
     do so = 1,thermal_Nsources(ph)
-      deallocate(thermalState(ph)%p(so)%partitionedState0)
-      thermalState(ph)%p(so)%state             = thermalState(ph)%p(so)%state0
+      thermalState(ph)%p(so)%state  = thermalState(ph)%p(so)%state0
     enddo
 
-    thermal_source_maxSizeDotState   = max(thermal_source_maxSizeDotState, &
-                                                maxval(thermalState(ph)%p%sizeDotState))
+    thermal_source_maxSizeDotState  = max(thermal_source_maxSizeDotState, &
+                                          maxval(thermalState(ph)%p%sizeDotState))
   enddo PhaseLoop2
 
 !--------------------------------------------------------------------------------------------------

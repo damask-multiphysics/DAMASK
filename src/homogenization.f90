@@ -233,9 +233,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
     myNgrains, co, ce, ho, me, ph
-  real(pReal) :: &
-    subFrac, &
-    subStep
   logical :: &
     converged
   logical, dimension(2) :: &
@@ -249,8 +246,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
       me = material_homogenizationMemberAt2(ce)
-
-      call constitutive_initializeRestorationPoints(ip,el)
 
       call constitutive_restore(ce,.false.) ! wrong name (is more a forward function)
 

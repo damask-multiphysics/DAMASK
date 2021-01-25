@@ -115,12 +115,6 @@ module constitutive
       integer,          intent(in) :: ph
     end subroutine damage_results
 
-
-    module subroutine mech_initializeRestorationPoints(ph,me)
-      integer, intent(in) :: ph, me
-    end subroutine mech_initializeRestorationPoints
-
-
     module subroutine mech_windForward(ph,me)
       integer, intent(in) :: ph, me
     end subroutine mech_windForward
@@ -359,7 +353,6 @@ module constitutive
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &
-    constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
@@ -404,11 +397,9 @@ subroutine constitutive_init
   PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(ph)%partitionedState0 = plasticState(ph)%state0
-    plasticState(ph)%state             = plasticState(ph)%partitionedState0
+    plasticState(ph)%state             = plasticState(ph)%state0
     forall(so = 1:phase_Nsources(ph))
-      damageState(ph)%p(so)%partitionedState0 = damageState(ph)%p(so)%state0
-      damageState(ph)%p(so)%state             = damageState(ph)%p(so)%partitionedState0
+      damageState(ph)%p(so)%state = damageState(ph)%p(so)%state0
     end forall
 
     constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
@@ -473,7 +464,6 @@ subroutine constitutive_allocateState(state, &
 
   allocate(state%atol             (sizeState),               source=0.0_pReal)
   allocate(state%state0           (sizeState,Nconstituents), source=0.0_pReal)
-  allocate(state%partitionedState0(sizeState,Nconstituents), source=0.0_pReal)
   allocate(state%state            (sizeState,Nconstituents), source=0.0_pReal)
 
   allocate(state%dotState      (sizeDotState,Nconstituents), source=0.0_pReal)
@@ -500,7 +490,7 @@ subroutine constitutive_restore(ce,includeL)
   do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
     do so = 1, phase_Nsources(material_phaseAt2(co,ce))
       damageState(material_phaseAt2(co,ce))%p(so)%state(          :,material_phasememberAt2(co,ce)) = &
-      damageState(material_phaseAt2(co,ce))%p(so)%partitionedState0(:,material_phasememberAt2(co,ce))
+      damageState(material_phaseAt2(co,ce))%p(so)%state0(:,material_phasememberAt2(co,ce))
     enddo
   enddo
 
@@ -652,33 +642,6 @@ end subroutine crystallite_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Backup data for homog cutback.
-!--------------------------------------------------------------------------------------------------
-subroutine constitutive_initializeRestorationPoints(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
-  integer :: &
-    co, &                                                                                            !< constituent number
-    so,ph, me
-
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    ph = material_phaseAt(co,el)
-    me = material_phaseMemberAt(co,ip,el)
-
-    call mech_initializeRestorationPoints(ph,me)
-
-    do so = 1, size(damageState(ph)%p)
-      damageState(ph)%p(so)%partitionedState0(:,me) = damageState(ph)%p(so)%state0(:,me)
-    enddo
-
-  enddo
-
-end subroutine constitutive_initializeRestorationPoints
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_windForward(ip,el)
@@ -699,7 +662,7 @@ subroutine constitutive_windForward(ip,el)
     call mech_windForward(ph,me)
 
     do so = 1, phase_Nsources(material_phaseAt(co,el))
-      damageState(ph)%p(so)%partitionedState0(:,me) = damageState(ph)%p(so)%state(:,me)
+      damageState(ph)%p(so)%state0(:,me) = damageState(ph)%p(so)%state(:,me)
     enddo
 
   enddo

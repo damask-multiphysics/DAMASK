@@ -27,7 +27,6 @@ subroutine damage_none_init
     Nmaterialpoints = count(material_homogenizationAt == h)
     damageState_h(h)%sizeState = 0
     allocate(damageState_h(h)%state0   (0,Nmaterialpoints))
-    allocate(damageState_h(h)%subState0(0,Nmaterialpoints))
     allocate(damageState_h(h)%state    (0,Nmaterialpoints))
 
     allocate  (damage(h)%p(Nmaterialpoints), source=1.0_pReal)
