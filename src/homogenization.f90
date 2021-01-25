@@ -242,7 +242,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     doneAndHappy
 
   !$OMP PARALLEL
-  !$OMP DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
+  !$OMP DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
@@ -252,60 +252,39 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       call constitutive_initializeRestorationPoints(ip,el)
 
-      subFrac = 0.0_pReal
-      converged = .false.                                                                           ! pretend failed step ...
-      subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
+      call constitutive_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if (homogState(ho)%sizeState > 0)   homogState(ho)%subState0(:,me)  = homogState(ho)%State0(:,me)
-      if (damageState_h(ho)%sizeState > 0)  damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State0(:,me)
+      if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
+      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
 
-      cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
+      doneAndHappy = [.false.,.true.]
 
-        if (converged) then
-          subFrac = subFrac + subStep
-          subStep = min(1.0_pReal-subFrac,num%stepIncreaseHomog*subStep)             ! introduce flexibility for step increase/acceleration
+      NiterationMPstate = 0
+      convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
+                                    .and. NiterationMPstate < num%nMPstate)
+        NiterationMPstate = NiterationMPstate + 1
 
-        elseif (subStep <= 1.0 )  then
-                                                                                                    ! cutback makes no sense
-          if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
-            print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
-          terminallyIll = .true.                                                                  ! ...and kills all others
-        else                                                                                      ! cutback makes sense
-          subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
 
-          call constitutive_restore(ce,subStep < 1.0_pReal)
+        if (.not. doneAndHappy(1)) then
+          call mech_partition(homogenization_F(1:3,1:3,ce),ip,el)
+          converged = .true.
+          do co = 1, myNgrains
+            converged = converged .and. crystallite_stress(dt,co,ip,el)
+          enddo
 
-          if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
-          if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%subState0(:,me)
+          if (.not. converged) then
+            doneAndHappy = [.true.,.false.]
+          else
+            doneAndHappy = mech_updateState(dt,homogenization_F(1:3,1:3,ce),ip,el)
+            converged = all(doneAndHappy)
+          endif
         endif
 
-        if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
-
-        NiterationMPstate = 0
-        convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
-                                      .and. NiterationMPstate < num%nMPstate)
-          NiterationMPstate = NiterationMPstate + 1
-
-!--------------------------------------------------------------------------------------------------
-! deformation partitioning
-
-          if (.not. doneAndHappy(1)) then
-            call mech_partition(homogenization_F(1:3,1:3,ce),ip,el)
-            converged = .true.
-            do co = 1, myNgrains
-              converged = converged .and. crystallite_stress(dt,co,ip,el)
-            enddo
-
-            if (.not. converged) then
-              doneAndHappy = [.true.,.false.]
-            else
-              doneAndHappy = mech_updateState(dt,homogenization_F(1:3,1:3,ce),ip,el)
-              converged = all(doneAndHappy)
-            endif
-          endif
-
-        enddo convergenceLooping
-      enddo cutBackLooping
+      enddo convergenceLooping
+      if (.not. converged) then
+        if (.not. terminallyIll) print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
+        terminallyIll = .true.
+      endif
     enddo
   enddo
   !$OMP END DO
@@ -337,7 +316,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
-        call damage_partition(ce)
+      ! call damage_partition(ce)
       !  do co = 1, homogenization_Nconstituents(ho)
       !    ph = material_phaseAt(co,el)
       !    if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
