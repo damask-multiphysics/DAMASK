@@ -265,15 +265,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           subFrac = subFrac + subStep
           subStep = min(1.0_pReal-subFrac,num%stepIncreaseHomog*subStep)             ! introduce flexibility for step increase/acceleration
 
-          steppingNeeded: if (subStep > num%subStepMinHomog) then
-            error stop
-            ! wind forward grain starting point
-            call constitutive_windForward(ip,el)
-
-            if(homogState(ho)%sizeState > 0)  homogState(ho)%subState0(:,me) = homogState(ho)%State(:,me)
-            if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State(:,me)
-
-          endif steppingNeeded
         elseif (subStep <= 1.0 )  then
                                                                                                     ! cutback makes no sense
           if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
@@ -294,29 +285,21 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
                                       .and. NiterationMPstate < num%nMPstate)
           NiterationMPstate = NiterationMPstate + 1
-          if (subStep /= 1.0 .or. subFrac /= 0.0) error stop
-
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
 
           if (.not. doneAndHappy(1)) then
-            call mech_partition(  homogenization_F0(1:3,1:3,ce) &
-                                + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))*(subStep+subFrac), &
-                                ip,el)
+            call mech_partition(homogenization_F(1:3,1:3,ce),ip,el)
             converged = .true.
             do co = 1, myNgrains
-              converged = converged .and. crystallite_stress(dt*subStep,co,ip,el)
+              converged = converged .and. crystallite_stress(dt,co,ip,el)
             enddo
 
             if (.not. converged) then
               doneAndHappy = [.true.,.false.]
             else
-              doneAndHappy = mech_updateState(dt*subStep, &
-                                              homogenization_F0(1:3,1:3,ce) &
-                                              + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &
-                                                     *(subStep+subFrac), &
-                                              ip,el)
+              doneAndHappy = mech_updateState(dt,homogenization_F(1:3,1:3,ce),ip,el)
               converged = all(doneAndHappy)
             endif
           endif
