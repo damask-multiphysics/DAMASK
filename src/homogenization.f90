@@ -266,7 +266,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           subStep = min(1.0_pReal-subFrac,num%stepIncreaseHomog*subStep)             ! introduce flexibility for step increase/acceleration
 
           steppingNeeded: if (subStep > num%subStepMinHomog) then
-
+            error stop
             ! wind forward grain starting point
             call constitutive_windForward(ip,el)
 
@@ -294,6 +294,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
                                       .and. NiterationMPstate < num%nMPstate)
           NiterationMPstate = NiterationMPstate + 1
+          if (subStep /= 1.0 .or. subFrac /= 0.0) error stop
+
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
