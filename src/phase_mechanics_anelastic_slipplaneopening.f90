@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_damage) kinematics_slipplane_opening
+submodule(constitutive:constitutive_mech) kinematics_slipplane_opening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 
@@ -34,7 +34,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
 
-  integer, intent(in)                  :: kinematics_length  
+  integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances,p,i,k
@@ -47,8 +47,8 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     mech, &
     pl, &
     kinematics, &
-    kinematic_type 
- 
+    kinematic_type
+
   print'(/,a)', ' <<<+-  kinematics_slipplane init  -+>>>'
 
   myKinematics = kinematics_active('slipplane_opening',kinematics_length)
@@ -70,7 +70,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_slipplane_opening_instance(p)))
-        kinematic_type => kinematics%get(k) 
+        kinematic_type => kinematics%get(k)
 
         prm%dot_o    = kinematic_type%get_asFloat('dot_o')
         prm%q        = kinematic_type%get_asFloat('q')

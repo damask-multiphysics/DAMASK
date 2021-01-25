@@ -42,15 +42,6 @@ submodule(constitutive) constitutive_damage
     logical, dimension(:,:), allocatable :: mySources
   end function source_damage_isoDuctile_init
 
-  module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
-    integer, intent(in) :: kinematics_length
-    logical, dimension(:,:), allocatable :: myKinematics
-  end function kinematics_cleavage_opening_init
-
-  module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
-    integer, intent(in) :: kinematics_length
-    logical, dimension(:,:), allocatable :: myKinematics
-  end function kinematics_slipplane_opening_init
 
     module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph, me)
       integer, intent(in) :: ph,me
@@ -164,8 +155,7 @@ module subroutine damage_init
   class(tNode), pointer :: &
    phases, &
    phase, &
-   sources, &
-   kinematics
+   sources
 
   phases => config_material%get('phase')
 
@@ -195,22 +185,6 @@ module subroutine damage_init
     where(source_damage_isoDuctile_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISODUCTILE_ID
     where(source_damage_anisoBrittle_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISOBRITTLE_ID
     where(source_damage_anisoDuctile_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISODUCTILE_ID
-  endif
-
-!--------------------------------------------------------------------------------------------------
-! initialize kinematic mechanisms
-  allocate(phase_Nkinematics(phases%length),source = 0)
-  do ph = 1,phases%length
-    phase => phases%get(ph)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
-    phase_Nkinematics(ph) = kinematics%length
-  enddo
-
-  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
-
-  if(maxval(phase_Nkinematics) /= 0) then
-    where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
-    where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
   endif
 
 end subroutine damage_init
@@ -542,7 +516,7 @@ end subroutine constitutive_damage_set_phi
 
 
 module function constitutive_damage_get_phi(co,ip,el) result(phi)
-  
+
   integer, intent(in) :: co, ip, el
   real(pReal) :: phi
 

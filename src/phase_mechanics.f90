@@ -268,6 +268,16 @@ submodule(constitutive) constitutive_mech
         el
     end subroutine plastic_nonlocal_deltaState
 
+  module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
+    integer, intent(in) :: kinematics_length
+    logical, dimension(:,:), allocatable :: myKinematics
+  end function kinematics_cleavage_opening_init
+
+  module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
+    integer, intent(in) :: kinematics_length
+    logical, dimension(:,:), allocatable :: myKinematics
+  end function kinematics_slipplane_opening_init
+
     module subroutine plastic_isotropic_results(instance,group)
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
@@ -338,7 +348,8 @@ module subroutine mech_init(phases)
     phase, &
     mech, &
     elastic, &
-    stiffDegradation
+    stiffDegradation, &
+   kinematics
 
   print'(/,a)', ' <<<+-  constitutive_mech init  -+>>>'
 
@@ -480,6 +491,22 @@ module subroutine mech_init(phases)
      call IO_error(301,ext_msg='integrator')
 
   end select
+
+!--------------------------------------------------------------------------------------------------
+! initialize kinematic mechanisms
+  allocate(phase_Nkinematics(phases%length),source = 0)
+  do ph = 1,phases%length
+    phase => phases%get(ph)
+    kinematics => phase%get('kinematics',defaultVal=emptyList)
+    phase_Nkinematics(ph) = kinematics%length
+  enddo
+
+  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
+
+  if(maxval(phase_Nkinematics) /= 0) then
+    where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
+    where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
+  endif
 
 end subroutine mech_init
 
