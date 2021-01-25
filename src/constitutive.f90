@@ -489,7 +489,7 @@ subroutine constitutive_restore(ce,includeL)
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
     do so = 1, phase_Nsources(material_phaseAt2(co,ce))
-      damageState(material_phaseAt2(co,ce))%p(so)%state(          :,material_phasememberAt2(co,ce)) = &
+      damageState(material_phaseAt2(co,ce))%p(so)%state( :,material_phasememberAt2(co,ce)) = &
       damageState(material_phaseAt2(co,ce))%p(so)%state0(:,material_phasememberAt2(co,ce))
     enddo
   enddo
@@ -558,7 +558,6 @@ subroutine crystallite_init()
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
     eMax                                                                                            !< maximum number of elements
-
 
   class(tNode), pointer :: &
     num_crystallite, &

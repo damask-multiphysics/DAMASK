@@ -38,10 +38,6 @@ module homogenization
   type :: tNumerics
     integer :: &
       nMPstate                                                                                      !< materialpoint state loop limit
-    real(pReal) :: &
-      subStepMinHomog, &                                                                            !< minimum (relative) size of sub-step allowed during cutback in homogenization
-      subStepSizeHomog, &                                                                           !< size of first substep when cutback in homogenization
-      stepIncreaseHomog                                                                             !< increase of next substep size when previous substep converged in homogenization
   end type tNumerics
 
   type(tNumerics) :: num
@@ -200,14 +196,7 @@ subroutine homogenization_init()
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
   num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
-  num%subStepMinHomog   = num_homogGeneric%get_asFloat('subStepMin',   defaultVal=1.0e-3_pReal)
-  num%subStepSizeHomog  = num_homogGeneric%get_asFloat('subStepSize',  defaultVal=0.25_pReal)
-  num%stepIncreaseHomog = num_homogGeneric%get_asFloat('stepIncrease', defaultVal=1.5_pReal)
-
   if (num%nMPstate < 1)                   call IO_error(301,ext_msg='nMPstate')
-  if (num%subStepMinHomog <= 0.0_pReal)   call IO_error(301,ext_msg='subStepMinHomog')
-  if (num%subStepSizeHomog <= 0.0_pReal)  call IO_error(301,ext_msg='subStepSizeHomog')
-  if (num%stepIncreaseHomog <= 0.0_pReal) call IO_error(301,ext_msg='stepIncreaseHomog')
 
 
   call mech_init(num_homog)
