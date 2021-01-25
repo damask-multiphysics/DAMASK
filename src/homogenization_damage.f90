@@ -126,4 +126,48 @@ module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, p
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief updated nonlocal damage field with solution from damage phase field PDE
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
+
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
+  real(pReal),   intent(in) :: &
+    phi
+  integer :: &
+    homog, &
+    offset
+
+  homog  = material_homogenizationAt(el)
+  offset = material_homogenizationMemberAt(ip,el)
+  damage(homog)%p(offset) = phi
+
+end subroutine damage_nonlocal_putNonLocalDamage
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_nonlocal_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+
+  integer :: o
+
+  associate(prm => param(damage_typeInstance(homog)))
+  outputsLoop: do o = 1,size(prm%output)
+    select case(prm%output(o))
+      case ('phi')
+        call results_writeDataset(group,damage(homog)%p,prm%output(o),&
+                                  'damage indicator','-')
+    end select
+  enddo outputsLoop
+  end associate
+
+end subroutine damage_nonlocal_results
+
 end submodule homogenization_damage
