@@ -1586,9 +1586,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   do so = 1, phase_Nsources(ph)
     damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%partitionedState0(:,me)
   enddo
-  do so = 1, thermal_Nsources(ph)
-    thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%partitionedState0(:,me)
-  enddo
   subFp0 = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
   subFi0 = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
   subF0  = constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)
@@ -1656,11 +1653,9 @@ end function crystallite_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_restore(ip,el,includeL)
+module subroutine mech_restore(ce,includeL)
 
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
+  integer, intent(in) :: ce
   logical, intent(in) :: &
     includeL                                                                                        !< protect agains fake cutback
 
@@ -1668,9 +1663,9 @@ module subroutine mech_restore(ip,el,includeL)
     co, ph, me
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    ph = material_phaseAt(co,el)
-    me = material_phaseMemberAt(co,ip,el)
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
+    ph = material_phaseAt2(co,ce)
+    me = material_phaseMemberAt2(co,ce)
     if (includeL) then
       constitutive_mech_Lp(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me)
       constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
@@ -1961,7 +1956,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     detFi
   integer :: &
     k, i, j, &
-    instance, of
+    instance, of, me, ph
 
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
@@ -1987,7 +1982,9 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
       case (KINEMATICS_slipplane_opening_ID) kinematicsType
         call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, co, ip, el)
+        me = material_phaseMemberAt(co,ip,el)
+        ph = material_phaseAt(co,el)
+        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
       case default kinematicsType
         my_Li = 0.0_pReal
         my_dLi_dS = 0.0_pReal

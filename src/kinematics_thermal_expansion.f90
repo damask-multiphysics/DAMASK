@@ -84,12 +84,9 @@ end function kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, co, ip, el)
+module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
-  integer, intent(in) :: &
-    co, &                                                                                          !< grain number
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ph, me
   real(pReal),   intent(out), dimension(3,3) :: &
     Li                                                                                              !< thermal velocity gradient
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
@@ -98,16 +95,13 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, c
   integer :: &
     phase, &
     homog
-  real(pReal) :: &
-    T, TDot
+  real(pReal) :: T, dot_T
 
-  phase = material_phaseAt(co,el)
-  homog = material_homogenizationAt(el)
-  T = temperature(homog)%p(material_homogenizationMemberAt(ip,el))
-  TDot = temperatureRate(homog)%p(material_homogenizationMemberAt(ip,el))
+  T     = current(ph)%T(me)
+  dot_T = current(ph)%dot_T(me)
 
-  associate(prm => param(kinematics_thermal_expansion_instance(phase)))
-  Li = TDot * ( &
+  associate(prm => param(kinematics_thermal_expansion_instance(ph)))
+  Li = dot_T * ( &
                 prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
               + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
               + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient

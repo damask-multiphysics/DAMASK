@@ -42,8 +42,6 @@
 #include "source_damage_anisoDuctile.f90"
 #include "kinematics_cleavage_opening.f90"
 #include "kinematics_slipplane_opening.f90"
-#include "thermal_isothermal.f90"
-#include "thermal_conduction.f90"
 #include "damage_none.f90"
 #include "damage_nonlocal.f90"
 #include "homogenization.f90"

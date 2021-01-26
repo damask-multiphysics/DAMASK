@@ -10,9 +10,9 @@ submodule(constitutive) constitutive_thermal
   end enum
 
   type :: tDataContainer
-    real(pReal), dimension(:), allocatable :: T
+    real(pReal), dimension(:), allocatable :: T, dot_T
   end type tDataContainer
-  integer(kind(THERMAL_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
+  integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
   type(tDataContainer), dimension(:), allocatable :: current
@@ -94,6 +94,7 @@ module subroutine thermal_init(phases)
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
     allocate(current(ph)%T(Nconstituents),source=300.0_pReal)
+    allocate(current(ph)%dot_T(Nconstituents),source=0.0_pReal)
     phase => phases%get(ph)
     if(phase%contains('thermal')) then
       thermal => phase%get('thermal')
@@ -115,8 +116,8 @@ module subroutine thermal_init(phases)
   PhaseLoop2:do ph = 1,phases%length
 
     do so = 1,thermal_Nsources(ph)
-      thermalState(ph)%p(so)%partitionedState0 = thermalState(ph)%p(so)%state0
-      thermalState(ph)%p(so)%state             = thermalState(ph)%p(so)%partitionedState0
+      deallocate(thermalState(ph)%p(so)%partitionedState0)
+      thermalState(ph)%p(so)%state             = thermalState(ph)%p(so)%state0
     enddo
 
     thermal_source_maxSizeDotState   = max(thermal_source_maxSizeDotState, &
@@ -147,13 +148,11 @@ module subroutine constitutive_thermal_getRate(TDot, ip, el)
   integer :: &
     ph, &
     homog, &
-    instance, &
     me, &
     so, &
     co
 
    homog  = material_homogenizationAt(el)
-   instance = thermal_typeInstance(homog)
 
   TDot = 0.0_pReal
   do co = 1, homogenization_Nconstituents(homog)
@@ -211,9 +210,6 @@ module function thermal_stress(Delta_t,ph,me) result(converged_)
   integer :: so
 
 
-  do so = 1, thermal_Nsources(ph)
-    thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%subState0(:,me)
-  enddo
   converged_ = .not. integrateThermalState(Delta_t,ph,me)
 
 end function thermal_stress
@@ -238,26 +234,11 @@ function integrateThermalState(Delta_t, ph,me) result(broken)
 
   do so = 1, thermal_Nsources(ph)
     sizeDotState = thermalState(ph)%p(so)%sizeDotState
-    thermalState(ph)%p(so)%state(1:sizeDotState,me) = thermalState(ph)%p(so)%subState0(1:sizeDotState,me) &
+    thermalState(ph)%p(so)%state(1:sizeDotState,me) = thermalState(ph)%p(so)%state0(1:sizeDotState,me) &
                                                     + thermalState(ph)%p(so)%dotState(1:sizeDotState,me) * Delta_t
   enddo
 
 end function integrateThermalState
-
-
-module subroutine constitutive_thermal_initializeRestorationPoints(ph,me)
-
-  integer, intent(in) :: ph, me
-
-  integer :: so
-
-
-  do so = 1, size(thermalState(ph)%p)
-    thermalState(ph)%p(so)%partitionedState0(:,me) = thermalState(ph)%p(so)%state0(:,me)
-  enddo
-
-end subroutine constitutive_thermal_initializeRestorationPoints
-
 
 
 module subroutine thermal_forward()
@@ -291,15 +272,16 @@ end function thermal_T
 !----------------------------------------------------------------------------------------------
 !< @brief Set temperature
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_setT(T,co,ce)
+module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
 
-  real(pReal), intent(in) :: T
+  real(pReal), intent(in) :: T, dot_T
   integer, intent(in) :: ce, co
 
 
   current(material_phaseAt2(co,ce))%T(material_phaseMemberAt2(co,ce)) = T
+  current(material_phaseAt2(co,ce))%dot_T(material_phaseMemberAt2(co,ce)) = dot_T
 
-end subroutine constitutive_thermal_setT
+end subroutine constitutive_thermal_setField
 
 
 

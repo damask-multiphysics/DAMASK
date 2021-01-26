@@ -12,8 +12,6 @@ module homogenization
   use material
   use constitutive
   use discretization
-  use thermal_isothermal
-  use thermal_conduction
   use damage_none
   use damage_nonlocal
   use HDF5_utilities
@@ -28,8 +26,6 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pReal),   dimension(:),         allocatable, public :: &
-    homogenization_T, &
-    homogenization_dot_T, &
     homogenization_phi, &
     homogenization_dot_phi
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
@@ -75,8 +71,7 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
-    module subroutine thermal_partition(T,ce)
-      real(pReal), intent(in) :: T
+    module subroutine thermal_partition(ce)
       integer,     intent(in) :: ce
     end subroutine thermal_partition
 
@@ -112,11 +107,59 @@ module homogenization
       logical, dimension(2) :: doneAndHappy
     end function mech_updateState
 
+
+    module function thermal_conduction_getConductivity(ip,el) result(K)
+
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal), dimension(3,3) :: K
+
+    end function thermal_conduction_getConductivity
+
+    module function thermal_conduction_getSpecificHeat(ce) result(c_P)
+      integer, intent(in) :: ce
+      real(pReal) :: c_P
+    end function thermal_conduction_getSpecificHeat
+
+    module function thermal_conduction_getMassDensity(ce) result(rho)
+      integer, intent(in) :: ce
+      real(pReal) :: rho
+    end function thermal_conduction_getMassDensity
+
+    module subroutine homogenization_thermal_setField(T,dot_T, ce)
+      integer, intent(in) :: ce
+      real(pReal),   intent(in) :: T, dot_T
+    end subroutine homogenization_thermal_setField
+
+    module subroutine thermal_conduction_results(ho,group)
+      integer,          intent(in) :: ho
+      character(len=*), intent(in) :: group
+    end subroutine thermal_conduction_results
+
+    module function homogenization_thermal_T(ce) result(T)
+      integer, intent(in) :: ce
+      real(pReal) :: T
+    end function homogenization_thermal_T
+
+    module subroutine thermal_conduction_getSource(Tdot, ip,el)
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal), intent(out) :: Tdot
+    end subroutine thermal_conduction_getSource
+
   end interface
 
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
+    thermal_conduction_getSpecificHeat, &
+    thermal_conduction_getConductivity, &
+    thermal_conduction_getMassDensity, &
+    thermal_conduction_getSource, &
+    homogenization_thermal_setfield, &
+    homogenization_thermal_T, &
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &
@@ -154,9 +197,6 @@ subroutine homogenization_init()
   call thermal_init()
   call damage_init()
 
-  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init(homogenization_T)
-  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init(homogenization_T)
-
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
 
@@ -190,9 +230,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      me = material_homogenizationMemberAt(ip,el)
-!--------------------------------------------------------------------------------------------------
-! initialize restoration points
+      ce = (el-1)*discretization_nIPs + ip
+      me = material_homogenizationMemberAt2(ce)
+
       call constitutive_initializeRestorationPoints(ip,el)
 
       subFrac = 0.0_pReal
@@ -226,7 +266,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         else                                                                                      ! cutback makes sense
           subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
 
-          call constitutive_restore(ip,el,subStep < 1.0_pReal)
+          call constitutive_restore(ce,subStep < 1.0_pReal)
 
           if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
           if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%subState0(:,me)
@@ -243,7 +283,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 ! deformation partitioning
 
           if (.not. doneAndHappy(1)) then
-            ce = (el-1)*discretization_nIPs + ip
             call mech_partition(  homogenization_F0(1:3,1:3,ce) &
                                 + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))*(subStep+subFrac), &
                                 ip,el)
@@ -255,7 +294,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             if (.not. converged) then
               doneAndHappy = [.true.,.false.]
             else
-              ce = (el-1)*discretization_nIPs + ip
               doneAndHappy = mech_updateState(dt*subStep, &
                                               homogenization_F0(1:3,1:3,ce) &
                                               + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &
@@ -278,10 +316,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
-        call thermal_partition(homogenization_T(ce),ce)
+        call thermal_partition(ce)
         do co = 1, homogenization_Nconstituents(ho)
           ph = material_phaseAt(co,el)
-          call constitutive_thermal_initializeRestorationPoints(ph,material_phaseMemberAt(co,ip,el))
           if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
             if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'

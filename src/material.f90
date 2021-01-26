@@ -71,9 +71,7 @@ module material
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
 
   type(group_float),  allocatable, dimension(:), public :: &
-    temperature, &                                                                                  !< temperature field
-    damage, &                                                                                       !< damage field
-    temperatureRate                                                                                 !< temperature change rate field
+    damage                                                                                       !< damage field
 
   public :: &
     material_init, &
@@ -107,9 +105,7 @@ subroutine material_init(restart)
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h     (size(material_name_homogenization)))
 
-  allocate(temperature     (size(material_name_homogenization)))
   allocate(damage          (size(material_name_homogenization)))
-  allocate(temperatureRate (size(material_name_homogenization)))
 
 
   if (.not. restart) then

@@ -15,7 +15,6 @@ module grid_thermal_spectral
   use IO
   use spectral_utilities
   use discretization_grid
-  use thermal_conduction
   use homogenization
   use YAML_types
   use config
@@ -132,7 +131,7 @@ subroutine grid_thermal_spectral_init
   ce = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     ce = ce + 1
-    T_current(i,j,k) = temperature(material_homogenizationAt(ce))%p(material_homogenizationMemberAt(1,ce))
+    T_current(i,j,k) = homogenization_thermal_T(ce)
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
   enddo; enddo; enddo
@@ -188,10 +187,9 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call thermal_conduction_putTemperatureAndItsRate(T_current(i,j,k), &
+    call homogenization_thermal_setField(T_current(i,j,k), &
                                                      (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
-                                                     1,ce)
-    homogenization_T(ce) = T_current(i,j,k)
+                                                     ce)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
@@ -229,11 +227,9 @@ subroutine grid_thermal_spectral_forward(cutBack)
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
-      call thermal_conduction_putTemperatureAndItsRate(T_current(i,j,k), &
-                                                       (T_current(i,j,k) - &
-                                                        T_lastInc(i,j,k))/params%timeinc, &
-                                                       1,ce)
-      homogenization_T(ce) = T_current(i,j,k)
+      call homogenization_thermal_setField(T_current(i,j,k), &
+                                          (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
+                                                       ce)
     enddo; enddo; enddo
   else
     T_lastInc = T_current
@@ -283,8 +279,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
     ce = ce + 1
     call thermal_conduction_getSource(Tdot, 1,ce)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + Tdot) &
-                            + thermal_conduction_getMassDensity (1,ce)* &
-                              thermal_conduction_getSpecificHeat(1,ce)*(T_lastInc(i,j,k)  - &
+                            + thermal_conduction_getMassDensity (ce)* &
+                              thermal_conduction_getSpecificHeat(ce)*(T_lastInc(i,j,k)  - &
                                                                           T_current(i,j,k))&
                             + mu_ref*T_current(i,j,k)
   enddo; enddo; enddo
@@ -315,7 +311,7 @@ subroutine updateReference
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
     K_ref  = K_ref  + thermal_conduction_getConductivity(1,ce)
-    mu_ref = mu_ref + thermal_conduction_getMassDensity(1,ce)* thermal_conduction_getSpecificHeat(1,ce)
+    mu_ref = mu_ref + thermal_conduction_getMassDensity(ce)* thermal_conduction_getSpecificHeat(ce)
   enddo; enddo; enddo
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)

@@ -425,7 +425,7 @@ program DAMASK_grid
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
             if (worldrank == 0) then
               write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
-                                solres%converged, solres%iterationsNeeded
+                                solres(1)%converged, solres(1)%iterationsNeeded
               flush(statUnit)
             endif
           elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?

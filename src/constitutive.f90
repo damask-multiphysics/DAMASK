@@ -120,10 +120,6 @@ module constitutive
       integer, intent(in) :: ph, me
     end subroutine mech_initializeRestorationPoints
 
-    module subroutine constitutive_thermal_initializeRestorationPoints(ph,me)
-      integer, intent(in) :: ph, me
-    end subroutine constitutive_thermal_initializeRestorationPoints
-
 
     module subroutine mech_windForward(ph,me)
       integer, intent(in) :: ph, me
@@ -137,8 +133,8 @@ module constitutive
     end subroutine thermal_forward
 
 
-    module subroutine mech_restore(ip,el,includeL)
-      integer, intent(in) :: ip, el
+    module subroutine mech_restore(ce,includeL)
+      integer, intent(in) :: ce
       logical, intent(in) :: includeL
     end subroutine mech_restore
 
@@ -204,11 +200,11 @@ module constitutive
       integer, intent(in) :: co, ip, el
     end subroutine constitutive_mech_setF
 
-    module subroutine constitutive_thermal_setT(T,co,ce)
-      real(pReal), intent(in) :: T
-      integer, intent(in) :: co, ce
-    end subroutine constitutive_thermal_setT
-    
+    module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
+      real(pReal), intent(in) :: T, dot_T
+      integer, intent(in) :: ce, co
+    end subroutine constitutive_thermal_setField
+
     module subroutine constitutive_damage_set_phi(phi,co,ce)
       real(pReal), intent(in) :: phi
       integer, intent(in) :: co, ce
@@ -243,9 +239,6 @@ module constitutive
       integer, intent(in) :: ph, me
       real(pReal), dimension(6,6) :: C
     end function constitutive_homogenizedC
-
-
-
 
 
     module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
@@ -317,11 +310,9 @@ module constitutive
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
+      integer, intent(in) :: ph, me
+                                                                                       !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
@@ -362,14 +353,13 @@ module constitutive
     constitutive_restartWrite, &
     constitutive_restartRead, &
     integrateDamageState, &
-    constitutive_thermal_setT, &
+    constitutive_thermal_setField, &
     constitutive_damage_set_phi, &
     constitutive_damage_get_phi, &
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &
     constitutive_initializeRestorationPoints, &
-    constitutive_thermal_initializeRestorationPoints, &
     constitutive_windForward, &
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
@@ -497,26 +487,24 @@ end subroutine constitutive_allocateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_restore(ip,el,includeL)
+subroutine constitutive_restore(ce,includeL)
 
   logical, intent(in) :: includeL
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
+  integer, intent(in) :: ce
 
   integer :: &
     co, &                                                                                            !< constituent number
     so
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    do so = 1, phase_Nsources(material_phaseAt(co,el))
-      damageState(material_phaseAt(co,el))%p(so)%state(          :,material_phasememberAt(co,ip,el)) = &
-      damageState(material_phaseAt(co,el))%p(so)%partitionedState0(:,material_phasememberAt(co,ip,el))
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
+    do so = 1, phase_Nsources(material_phaseAt2(co,ce))
+      damageState(material_phaseAt2(co,ce))%p(so)%state(          :,material_phasememberAt2(co,ce)) = &
+      damageState(material_phaseAt2(co,ce))%p(so)%partitionedState0(:,material_phasememberAt2(co,ce))
     enddo
   enddo
 
-  call mech_restore(ip,el,includeL)
+  call mech_restore(ce,includeL)
 
 end subroutine constitutive_restore
 
@@ -637,9 +625,6 @@ subroutine crystallite_init()
   do ph = 1, phases%length
     do so = 1, phase_Nsources(ph)
       allocate(damageState(ph)%p(so)%subState0,source=damageState(ph)%p(so)%state0)                 ! ToDo: hack
-    enddo
-    do so = 1, thermal_Nsources(ph)
-      allocate(thermalState(ph)%p(so)%subState0,source=thermalState(ph)%p(so)%state0)               ! ToDo: hack
     enddo
   enddo
 
@@ -764,9 +749,6 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
-
-
-
 
 
 !--------------------------------------------------------------------------------------------------
