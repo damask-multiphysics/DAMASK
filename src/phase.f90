@@ -15,7 +15,6 @@ module phase
   use discretization
   use parallelization
   use HDF5_utilities
-  use results
   implicit none
   private
 
@@ -335,9 +334,7 @@ module phase
     results, &
     lattice, &
     discretization, &
-    parallelization, &
-    HDF5_utilities, &
-    results
+    HDF5_utilities
 #endif
 
   public :: &
@@ -576,9 +573,7 @@ subroutine crystallite_init()
   class(tNode), pointer :: &
     num_crystallite, &
     debug_crystallite, &                                                                            ! pointer to debug options for crystallite
-    phases, &
-    phase, &
-    mech
+    phases
 
 
   print'(/,a)', ' <<<+-  crystallite init  -+>>>'

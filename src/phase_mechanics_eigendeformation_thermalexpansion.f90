@@ -4,9 +4,6 @@
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 submodule(phase:thermal) thermalexpansion
-  use prec
-  use YAML_types
-  use config
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -18,7 +15,6 @@ submodule(phase:thermal) thermalexpansion
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param
-
 
 contains
 

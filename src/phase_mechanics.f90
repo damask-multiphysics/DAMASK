@@ -1027,7 +1027,6 @@ subroutine crystallite_results(group,ph)
   integer,          intent(in) :: ph
 
   integer :: ou
-  real(pReal), allocatable, dimension(:,:,:) :: selected_tensors
   real(pReal), allocatable, dimension(:,:)   :: selected_rotations
   character(len=:), allocatable              :: structureLabel
 
