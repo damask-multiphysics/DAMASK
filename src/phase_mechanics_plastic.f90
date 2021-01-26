@@ -86,6 +86,104 @@ submodule(constitutive:constitutive_mech) plastic
         el                                                                                          !< current element number
     end subroutine nonlocal_LpAndItsTangent
 
+
+        module subroutine plastic_isotropic_dotState(Mp,instance,me)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_isotropic_dotState
+
+    module subroutine plastic_phenopowerlaw_dotState(Mp,instance,me)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_phenopowerlaw_dotState
+
+    module subroutine plastic_kinehardening_dotState(Mp,instance,me)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_kinehardening_dotState
+
+    module subroutine plastic_dislotwin_dotState(Mp,T,instance,me)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                  intent(in) :: &
+        T
+      integer,                      intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_dislotwin_dotState
+
+    module subroutine plastic_disloTungsten_dotState(Mp,T,instance,me)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                  intent(in) :: &
+        T
+      integer,                      intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_disloTungsten_dotState
+
+    module subroutine plastic_nonlocal_dotState(Mp,Temperature,timestep,instance,me,ip,el)
+      real(pReal), dimension(3,3), intent(in) :: &
+        Mp                                                                                          !< MandelStress
+      real(pReal), intent(in) :: &
+        Temperature, &                                                                              !< temperature
+        timestep                                                                                    !< substepped crystallite time increment
+      integer, intent(in) :: &
+        instance, &
+        me, &
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
+    end subroutine plastic_nonlocal_dotState
+
+        module subroutine plastic_dislotwin_dependentState(T,instance,me)
+      integer,       intent(in) :: &
+        instance, &
+        me
+      real(pReal),   intent(in) :: &
+        T
+    end subroutine plastic_dislotwin_dependentState
+
+    module subroutine plastic_dislotungsten_dependentState(instance,me)
+      integer,       intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_dislotungsten_dependentState
+
+    module subroutine plastic_nonlocal_dependentState(instance, me, ip, el)
+      integer, intent(in) :: &
+        instance, &
+        me, &
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
+    end subroutine plastic_nonlocal_dependentState
+
+    module subroutine plastic_kinehardening_deltaState(Mp,instance,me)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        me
+    end subroutine plastic_kinehardening_deltaState
+
+    module subroutine plastic_nonlocal_deltaState(Mp,instance,me,ip,el)
+      real(pReal), dimension(3,3), intent(in) :: &
+        Mp
+      integer, intent(in) :: &
+        instance, &
+        me, &
+        ip, &
+        el
+    end subroutine plastic_nonlocal_deltaState
+
   end interface
 
 contains
@@ -156,5 +254,147 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
   enddo; enddo
 
 end subroutine plastic_LpAndItsTangents
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+module function mech_collectDotState(subdt,co,ip,el,ph,me) result(broken)
+
+  integer, intent(in) :: &
+    co, &                                                                                           !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    ph, &
+    me
+  real(pReal),  intent(in) :: &
+    subdt                                                                                           !< timestep
+  real(pReal),              dimension(3,3) :: &
+    Mp
+  integer :: &
+    instance
+  logical :: broken
+
+
+  instance = phase_plasticityInstance(ph)
+
+  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,me)),&
+                     constitutive_mech_Fi(ph)%data(1:3,1:3,me)),constitutive_mech_S(ph)%data(1:3,1:3,me))
+
+  plasticityType: select case (phase_plasticity(ph))
+
+    case (PLASTICITY_ISOTROPIC_ID) plasticityType
+      call plastic_isotropic_dotState(Mp,instance,me)
+
+    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
+      call plastic_phenopowerlaw_dotState(Mp,instance,me)
+
+    case (PLASTICITY_KINEHARDENING_ID) plasticityType
+      call plastic_kinehardening_dotState(Mp,instance,me)
+
+    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+      call plastic_dislotwin_dotState(Mp,thermal_T(ph,me),instance,me)
+
+    case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
+      call plastic_disloTungsten_dotState(Mp,thermal_T(ph,me),instance,me)
+
+    case (PLASTICITY_NONLOCAL_ID) plasticityType
+      call plastic_nonlocal_dotState(Mp,thermal_T(ph,me),subdt,instance,me,ip,el)
+  end select plasticityType
+  broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,me)))
+
+
+end function mech_collectDotState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calls microstructure function of the different plasticity constitutive models
+!--------------------------------------------------------------------------------------------------
+module subroutine constitutive_plastic_dependentState(co, ip, el)
+
+  integer, intent(in) :: &
+    co, &                                                                                           !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+
+  integer :: &
+    ph, &
+    instance, me
+
+
+  ph = material_phaseAt(co,el)
+  me = material_phasememberAt(co,ip,el)
+  instance = phase_plasticityInstance(ph)
+
+  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
+
+    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+      call plastic_dislotwin_dependentState(thermal_T(ph,me),instance,me)
+
+    case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
+      call plastic_dislotungsten_dependentState(instance,me)
+
+    case (PLASTICITY_NONLOCAL_ID) plasticityType
+      call plastic_nonlocal_dependentState(instance,me,ip,el)
+
+  end select plasticityType
+
+end subroutine constitutive_plastic_dependentState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief for constitutive models having an instantaneous change of state
+!> will return false if delta state is not needed/supported by the constitutive model
+!--------------------------------------------------------------------------------------------------
+module function constitutive_deltaState(co, ip, el, ph, of) result(broken)
+
+  integer, intent(in) :: &
+    co, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    ph, &
+    of
+  logical :: &
+    broken
+
+  real(pReal),               dimension(3,3) :: &
+    Mp
+  integer :: &
+    instance, &
+    myOffset, &
+    mySize
+
+
+  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,of)),&
+                     constitutive_mech_Fi(ph)%data(1:3,1:3,of)),constitutive_mech_S(ph)%data(1:3,1:3,of))
+  instance = phase_plasticityInstance(ph)
+
+  plasticityType: select case (phase_plasticity(ph))
+
+    case (PLASTICITY_KINEHARDENING_ID) plasticityType
+      call plastic_kinehardening_deltaState(Mp,instance,of)
+      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,of)))
+
+    case (PLASTICITY_NONLOCAL_ID) plasticityType
+      call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
+      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,of)))
+
+    case default
+      broken = .false.
+
+  end select plasticityType
+
+  if(.not. broken) then
+    select case(phase_plasticity(ph))
+      case (PLASTICITY_NONLOCAL_ID,PLASTICITY_KINEHARDENING_ID)
+
+        myOffset = plasticState(ph)%offsetDeltaState
+        mySize   = plasticState(ph)%sizeDeltaState
+        plasticState(ph)%state(myOffset + 1:myOffset + mySize,of) = &
+        plasticState(ph)%state(myOffset + 1:myOffset + mySize,of) + plasticState(ph)%deltaState(1:mySize,of)
+    end select
+  endif
+
+end function constitutive_deltaState
 
 end submodule plastic
