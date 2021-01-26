@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_thermal
+submodule(homogenization) thermal
 
   use lattice
 
@@ -236,4 +236,4 @@ module subroutine thermal_conduction_getSource(Tdot, ip,el)
 end subroutine thermal_conduction_getSource
 
 
-end submodule homogenization_thermal
+end submodule thermal

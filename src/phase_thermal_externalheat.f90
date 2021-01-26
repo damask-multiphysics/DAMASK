@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Michigan State University
 !> @brief material subroutine for variable heat source
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_thermal) source_externalheat
+submodule(constitutive:thermal) externalheat
 
 
   integer,           dimension(:),   allocatable :: &
@@ -134,4 +134,4 @@ module subroutine thermal_externalheat_getRate(TDot, ph, me)
 
 end subroutine thermal_externalheat_getRate
 
-end submodule source_externalheat
+end submodule externalheat

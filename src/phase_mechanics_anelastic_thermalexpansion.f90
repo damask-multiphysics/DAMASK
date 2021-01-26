@@ -3,7 +3,7 @@
 !> @brief material subroutine incorporating kinematics resulting from thermal expansion
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_thermal) kinematics_thermal_expansion
+submodule(constitutive:thermal) thermalexpansion
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -116,4 +116,4 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, p
 
 end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
-end submodule kinematics_thermal_expansion
+end submodule thermalexpansion
