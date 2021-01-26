@@ -634,7 +634,7 @@ end subroutine dislotwin_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_dotState(Mp,T,instance,me)
+module subroutine dislotwin_dotState(Mp,T,instance,me)
 
   real(pReal), dimension(3,3),  intent(in):: &
     Mp                                                                                              !< Mandel stress
@@ -729,13 +729,13 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,me)
 
   end associate
 
-end subroutine plastic_dislotwin_dotState
+end subroutine dislotwin_dotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_dependentState(T,instance,me)
+module subroutine dislotwin_dependentState(T,instance,me)
 
   integer,       intent(in) :: &
     instance, &
@@ -821,7 +821,7 @@ module subroutine plastic_dislotwin_dependentState(T,instance,me)
 
   end associate
 
-end subroutine plastic_dislotwin_dependentState
+end subroutine dislotwin_dependentState
 
 
 !--------------------------------------------------------------------------------------------------

@@ -336,7 +336,7 @@ end subroutine phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_phenopowerlaw_dotState(Mp,instance,me)
+module subroutine phenopowerlaw_dotState(Mp,instance,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -386,7 +386,7 @@ module subroutine plastic_phenopowerlaw_dotState(Mp,instance,me)
                     + c_TwinTwin * matmul(prm%h_tw_tw,dot%gamma_twin(:,me))
   end associate
 
-end subroutine plastic_phenopowerlaw_dotState
+end subroutine phenopowerlaw_dotState
 
 
 !--------------------------------------------------------------------------------------------------

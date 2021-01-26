@@ -83,7 +83,7 @@ submodule(constitutive) constitutive_mech
         myPlasticity
     end function plastic_nonlocal_init
 
-    module function mech_collectDotState(subdt,co,ip,el,ph,me) result(broken)
+    module function plastic_dotState(subdt,co,ip,el,ph,me) result(broken)
 
       integer, intent(in) :: &
         co, &                                                                                           !< component-ID of integration point
@@ -94,9 +94,9 @@ submodule(constitutive) constitutive_mech
       real(pReal),  intent(in) :: &
         subdt                                                                                           !< timestep
       logical :: broken
-    end function mech_collectDotState
+    end function plastic_dotState
 
-    module function constitutive_deltaState(co, ip, el, ph, of) result(broken)
+    module function plastic_deltaState(co, ip, el, ph, of) result(broken)
 
       integer, intent(in) :: &
         co, &                                                                                          !< component-ID of integration point
@@ -107,7 +107,7 @@ submodule(constitutive) constitutive_mech
       logical :: &
         broken
 
-    end function constitutive_deltaState
+    end function plastic_deltaState
 
 
     module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
@@ -445,17 +445,6 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
 end subroutine constitutive_hooke_SandItsTangents
 
 
-
-
-
-
-
-
-
-
-
-
-
 module subroutine mech_results(group,ph)
 
   character(len=*), intent(in) :: group
@@ -562,7 +551,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  call constitutive_plastic_dependentState(co,ip,el)
+  call plastic_dependentState(co,ip,el)
 
   Lpguess = constitutive_mech_Lp(ph)%data(1:3,1:3,me)                                              ! take as first guess
   Liguess = constitutive_mech_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
@@ -738,7 +727,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
+  broken = plastic_dotState(Delta_t, co,ip,el,ph,me)
   if(broken) return
 
   sizeDotState = plasticState(ph)%sizeDotState
@@ -754,7 +743,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
     if(broken) exit iteration
 
-    broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
+    broken = plastic_dotState(Delta_t, co,ip,el,ph,me)
     if(broken) exit iteration
 
     zeta = damper(plasticState(ph)%dotState(:,me),dotState(1:sizeDotState,1),&
@@ -767,7 +756,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%state(1:sizeDotState,me) &
                                               - r(1:sizeDotState)
     if (converged(r(1:sizeDotState),plasticState(ph)%state(1:sizeDotState,me),plasticState(ph)%atol(1:sizeDotState))) then
-      broken = constitutive_deltaState(co,ip,el,ph,me)
+      broken = plastic_deltaState(co,ip,el,ph,me)
       exit iteration
     endif
 
@@ -823,14 +812,14 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) res
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
+  broken = plastic_dotState(Delta_t, co,ip,el,ph,me)
   if(broken) return
 
   sizeDotState = plasticState(ph)%sizeDotState
   plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotState(1:sizeDotState,me) * Delta_t
 
-  broken = constitutive_deltaState(co,ip,el,ph,me)
+  broken = plastic_deltaState(co,ip,el,ph,me)
   if(broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
@@ -863,7 +852,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
+  broken = plastic_dotState(Delta_t, co,ip,el,ph,me)
   if(broken) return
 
   sizeDotState = plasticState(ph)%sizeDotState
@@ -872,13 +861,13 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
   plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotstate(1:sizeDotState,me) * Delta_t
 
-  broken = constitutive_deltaState(co,ip,el,ph,me)
+  broken = plastic_deltaState(co,ip,el,ph,me)
   if(broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
   if(broken) return
 
-  broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
+  broken = plastic_dotState(Delta_t, co,ip,el,ph,me)
   if(broken) return
 
   broken = .not. converged(residuum_plastic(1:sizeDotState) + 0.5_pReal * plasticState(ph)%dotState(:,me) * Delta_t, &
@@ -981,7 +970,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  broken = mech_collectDotState(Delta_t,co,ip,el,ph,me)
+  broken = plastic_dotState(Delta_t,co,ip,el,ph,me)
   if(broken) return
 
   sizeDotState = plasticState(ph)%sizeDotState
@@ -1002,7 +991,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
     broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),co,ip,el)
     if(broken) exit
 
-    broken = mech_collectDotState(Delta_t*C(stage),co,ip,el,ph,me)
+    broken = plastic_dotState(Delta_t*C(stage),co,ip,el,ph,me)
     if(broken) exit
 
   enddo
@@ -1021,7 +1010,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
 
   if(broken) return
 
-  broken = constitutive_deltaState(co,ip,el,ph,me)
+  broken = plastic_deltaState(co,ip,el,ph,me)
   if(broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)

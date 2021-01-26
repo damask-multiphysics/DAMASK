@@ -313,12 +313,12 @@ module constitutive
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
-    module subroutine constitutive_plastic_dependentState(co,ip,el)
+    module subroutine plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
         co, &                                                                                       !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
-    end subroutine constitutive_plastic_dependentState
+    end subroutine plastic_dependentState
 
   end interface
 
@@ -630,7 +630,7 @@ subroutine crystallite_init()
         ph = material_phaseAt(co,el)
         me = material_phaseMemberAt(co,ip,el)
         call crystallite_orientations(co,ip,el)
-        call constitutive_plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
+        call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
      enddo
     enddo
   enddo

@@ -315,7 +315,7 @@ end subroutine dislotungsten_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotungsten_dotState(Mp,T,instance,me)
+module subroutine dislotungsten_dotState(Mp,T,instance,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -369,13 +369,13 @@ module subroutine plastic_dislotungsten_dotState(Mp,T,instance,me)
 
   end associate
 
-end subroutine plastic_dislotungsten_dotState
+end subroutine dislotungsten_dotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotungsten_dependentState(instance,me)
+module subroutine dislotungsten_dependentState(instance,me)
 
   integer,      intent(in) :: &
     instance, &
@@ -394,7 +394,7 @@ module subroutine plastic_dislotungsten_dependentState(instance,me)
 
   end associate
 
-end subroutine plastic_dislotungsten_dependentState
+end subroutine dislotungsten_dependentState
 
 
 !--------------------------------------------------------------------------------------------------

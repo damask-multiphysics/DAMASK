@@ -262,7 +262,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_dotState(Mp,instance,me)
+module subroutine isotropic_dotState(Mp,instance,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -305,7 +305,7 @@ module subroutine plastic_isotropic_dotState(Mp,instance,me)
 
   end associate
 
-end subroutine plastic_isotropic_dotState
+end subroutine isotropic_dotState
 
 
 !--------------------------------------------------------------------------------------------------

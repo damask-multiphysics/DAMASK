@@ -552,7 +552,7 @@ end function plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dependentState(instance, me, ip, el)
+module subroutine nonlocal_dependentState(instance, me, ip, el)
 
   integer, intent(in) :: &
     instance, &
@@ -751,7 +751,7 @@ module subroutine plastic_nonlocal_dependentState(instance, me, ip, el)
 
  end associate
 
-end subroutine plastic_nonlocal_dependentState
+end subroutine nonlocal_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -972,7 +972,7 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dotState(Mp, Temperature,timestep, &
+module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
                                             instance,me,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
@@ -1166,7 +1166,7 @@ module subroutine plastic_nonlocal_dotState(Mp, Temperature,timestep, &
 
   end associate
 
-end subroutine plastic_nonlocal_dotState
+end subroutine nonlocal_dotState
 
 
 !---------------------------------------------------------------------------------------------------
