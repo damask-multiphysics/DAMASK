@@ -283,7 +283,7 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
 
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
-  real(pReal),      intent(inout), dimension(:) :: dataset
+  real(pReal),      intent(in),    dimension(:) :: dataset
 
   integer(HID_T) :: groupHandle
 
@@ -314,7 +314,7 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
 
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
-  real(pReal),      intent(inout), dimension(:,:) :: dataset
+  real(pReal),      intent(in),    dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
@@ -397,9 +397,9 @@ end subroutine results_writeTensorDataset_real
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
 
-  character(len=*), intent(in)                :: label,group,description
-  character(len=*), intent(in), optional      :: SIunit
-  integer,      intent(inout), dimension(:,:) :: dataset
+  character(len=*), intent(in)                 :: label,group,description
+  character(len=*), intent(in), optional       :: SIunit
+  integer,          intent(in), dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
@@ -429,9 +429,9 @@ end subroutine results_writeVectorDataset_int
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
 
-  character(len=*), intent(in)                  :: label,group,description
-  character(len=*), intent(in), optional        :: SIunit
-  integer,      intent(inout), dimension(:,:,:) :: dataset
+  character(len=*), intent(in)                   :: label,group,description
+  character(len=*), intent(in), optional         :: SIunit
+  integer,          intent(in), dimension(:,:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
