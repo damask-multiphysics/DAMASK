@@ -29,7 +29,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_thermal_externalheat_init(source_length) result(mySources)
+module function externalheat_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -78,14 +78,14 @@ module function source_thermal_externalheat_init(source_length) result(mySources
     enddo
   enddo
 
-end function source_thermal_externalheat_init
+end function externalheat_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rate of change of state
 !> @details state only contains current time to linearly interpolate given heat powers
 !--------------------------------------------------------------------------------------------------
-module subroutine source_thermal_externalheat_dotState(ph, me)
+module subroutine externalheat_dotState(ph, me)
 
   integer, intent(in) :: &
     ph, &
@@ -98,7 +98,7 @@ module subroutine source_thermal_externalheat_dotState(ph, me)
 
   thermalState(ph)%p(sourceOffset)%dotState(1,me) = 1.0_pReal                                     ! state is current time
 
-end subroutine source_thermal_externalheat_dotState
+end subroutine externalheat_dotState
 
 
 !--------------------------------------------------------------------------------------------------

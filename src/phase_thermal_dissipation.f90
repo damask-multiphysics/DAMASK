@@ -25,7 +25,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_thermal_dissipation_init(source_length) result(mySources)
+module function dissipation_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -72,7 +72,7 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
   enddo
 
 
-end function source_thermal_dissipation_init
+end function dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
