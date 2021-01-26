@@ -8,7 +8,7 @@ module damage_nonlocal
   use config
   use YAML_types
   use lattice
-  use constitutive
+  use phase
   use results
 
   implicit none

@@ -4,7 +4,7 @@
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_damage) source_damage_isoBrittle
+submodule(phase:damagee) isobrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoBrittle_offset, &
@@ -180,4 +180,4 @@ module subroutine isobrittle_results(phase,group)
 
 end subroutine isobrittle_results
 
-end submodule source_damage_isoBrittle
+end submodule isobrittle

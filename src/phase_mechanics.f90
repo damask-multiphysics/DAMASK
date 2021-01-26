@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) mechanics
+submodule(phase) mechanics
 
   enum, bind(c); enumerator :: &
     ELASTICITY_UNDEFINED_ID, &
@@ -1615,7 +1615,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
         me = material_phaseMemberAt(co,ip,el)
         ph = material_phaseAt(co,el)
-        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
+        call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
       case default kinematicsType
         my_Li = 0.0_pReal
         my_dLi_dS = 0.0_pReal

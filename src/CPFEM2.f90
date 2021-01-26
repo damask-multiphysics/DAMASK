@@ -19,7 +19,7 @@ module CPFEM2
   use discretization
   use HDF5_utilities
   use homogenization
-  use constitutive
+  use phase
 #if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh

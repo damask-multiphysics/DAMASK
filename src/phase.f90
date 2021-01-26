@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief elasticity, plasticity, damage & thermal internal microstructure state
 !--------------------------------------------------------------------------------------------------
-module constitutive
+module phase
   use prec
   use math
   use rotations
@@ -16,7 +16,6 @@ module constitutive
   use parallelization
   use HDF5_utilities
   use results
-
   implicit none
   private
 
@@ -304,14 +303,14 @@ module constitutive
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
+    module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
       integer, intent(in) :: ph, me
                                                                                        !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
-    end subroutine kinematics_thermal_expansion_LiAndItsTangent
+    end subroutine thermalexpansion_LiAndItsTangent
 
     module subroutine plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
@@ -325,6 +324,21 @@ module constitutive
 
 
   type(tDebugOptions) :: debugConstitutive
+#if __INTEL_COMPILER >= 1900
+  public :: &
+    prec, &
+    math, &
+    rotations, &
+    IO, &
+    config, &
+    material, &
+    results, &
+    lattice, &
+    discretization, &
+    parallelization, &
+    HDF5_utilities, &
+    results
+#endif
 
   public :: &
     constitutive_init, &
@@ -788,4 +802,4 @@ subroutine constitutive_restartRead(fileHandle)
 end subroutine constitutive_restartRead
 
 
-end module constitutive
+end module phase

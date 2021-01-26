@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_damage)  source_damage_anisoDuctile
+submodule(phase:damagee) anisoductile
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
@@ -184,4 +184,4 @@ module subroutine anisoductile_results(phase,group)
 
 end subroutine anisoductile_results
 
-end submodule source_damage_anisoDuctile
+end submodule anisoductile

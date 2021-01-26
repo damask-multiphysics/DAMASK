@@ -19,7 +19,7 @@ module CPFEM
   use HDF5_utilities
   use results
   use lattice
-  use constitutive
+  use phase
 
   implicit none
   private

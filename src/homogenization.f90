@@ -10,7 +10,7 @@ module homogenization
   use config
   use math
   use material
-  use constitutive
+  use phase
   use discretization
   use damage_none
   use damage_nonlocal

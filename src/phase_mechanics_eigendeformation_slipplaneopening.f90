@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:eigendeformation) slipplaneopening
+submodule(phase:eigendeformation) slipplaneopening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 

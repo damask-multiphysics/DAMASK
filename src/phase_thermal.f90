@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all thermal sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) thermal
+submodule(phase) thermal
 
   enum, bind(c); enumerator :: &
     THERMAL_UNDEFINED_ID ,&

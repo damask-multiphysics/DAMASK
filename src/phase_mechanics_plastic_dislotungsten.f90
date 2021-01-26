@@ -5,7 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief crystal plasticity model for bcc metals, especially Tungsten
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:plastic) dislotungsten
+submodule(phase:plastic) dislotungsten
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin

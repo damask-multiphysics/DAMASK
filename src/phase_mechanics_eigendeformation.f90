@@ -1,2 +1,2 @@
-submodule(constitutive:mechanics) eigendeformation
+submodule(phase:mechanics) eigendeformation
 end submodule eigendeformation

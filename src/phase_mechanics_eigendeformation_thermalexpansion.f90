@@ -3,7 +3,10 @@
 !> @brief material subroutine incorporating kinematics resulting from thermal expansion
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:thermal) thermalexpansion
+submodule(phase:thermal) thermalexpansion
+  use prec
+  use YAML_types
+  use config
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -84,7 +87,7 @@ end function kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
+module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   integer, intent(in) :: ph, me
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -92,9 +95,6 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, p
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
 
-  integer :: &
-    phase, &
-    homog
   real(pReal) :: T, dot_T
 
   T     = current(ph)%T(me)
@@ -114,6 +114,6 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, p
   end associate
   dLi_dTstar = 0.0_pReal
 
-end subroutine kinematics_thermal_expansion_LiAndItsTangent
+end subroutine thermalexpansion_LiAndItsTangent
 
 end submodule thermalexpansion

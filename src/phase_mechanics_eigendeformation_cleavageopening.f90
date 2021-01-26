@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of cleavage planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:eigendeformation) cleavageopening
+submodule(phase:eigendeformation) cleavageopening
 
   integer, dimension(:), allocatable :: kinematics_cleavage_opening_instance
 

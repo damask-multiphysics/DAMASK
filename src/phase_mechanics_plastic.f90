@@ -1,4 +1,4 @@
-submodule(constitutive:mechanics) plastic
+submodule(phase:mechanics) plastic
 
   interface
 

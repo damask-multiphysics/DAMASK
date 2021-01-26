@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule (constitutive:constitutive_damage) source_damage_anisoBrittle
+submodule (phase:damagee) anisobrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
@@ -215,4 +215,4 @@ module subroutine anisobrittle_results(phase,group)
 
 end subroutine anisobrittle_results
 
-end submodule source_damage_anisoBrittle
+end submodule anisobrittle

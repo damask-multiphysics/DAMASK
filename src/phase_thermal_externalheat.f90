@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Michigan State University
 !> @brief material subroutine for variable heat source
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:thermal) externalheat
+submodule(phase:thermal) externalheat
 
 
   integer,           dimension(:),   allocatable :: &

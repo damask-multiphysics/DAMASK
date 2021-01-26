@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) constitutive_damage
+submodule(phase) damagee
   enum, bind(c); enumerator :: &
     DAMAGE_UNDEFINED_ID, &
     DAMAGE_ISOBRITTLE_ID, &
@@ -525,4 +525,4 @@ module function constitutive_damage_get_phi(co,ip,el) result(phi)
 end function constitutive_damage_get_phi
 
 
-end submodule constitutive_damage
+end submodule damagee

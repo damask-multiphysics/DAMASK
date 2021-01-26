@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating isotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule (constitutive:constitutive_damage) source_damage_isoDuctile
+submodule(phase:damagee) isoductile
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoDuctile_offset, &                                                              !< which source is my current damage mechanism?
@@ -175,4 +175,4 @@ module subroutine isoductile_results(phase,group)
 
 end subroutine isoductile_results
 
-end submodule source_damage_isoDuctile
+end submodule isoductile
