@@ -168,7 +168,7 @@ end function plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -179,7 +179,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
     Mp                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
     instance, &
-    of
+    me
 
   real(pReal), dimension(3,3) :: &
     Mp_dev                                                                                          !< deviatoric part of the Mandel stress
@@ -197,17 +197,9 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
   norm_Mp_dev = sqrt(squarenorm_Mp_dev)
 
   if (norm_Mp_dev > 0.0_pReal) then
-    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(of))) **prm%n
+    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(me))) **prm%n
 
     Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
-#ifdef DEBUG
-    if (debugConstitutive%extensive .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
-      print'(/,a,/,3(12x,3(f12.4,1x)/))', '<< CONST isotropic >> Tstar (dev) / MPa', &
-                                       transpose(Mp_dev)*1.0e-6_pReal
-      print'(/,a,/,f12.5)', '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
-      print'(/,a,/,f12.5)', '<< CONST isotropic >> gdot', dot_gamma
-    end if
-#endif
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
     forall (k=1:3,l=1:3) &
@@ -228,7 +220,7 @@ end subroutine isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate inelastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
+module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
@@ -239,7 +231,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
     Mi                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
     instance, &
-    of
+    me
 
   real(pReal) :: &
     tr                                                                                              !< trace of spherical part of Mandel stress (= 3 x pressure)
@@ -252,19 +244,10 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 
   if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                 ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
-       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
+       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(me))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
 
-#ifdef DEBUG
-    if (debugConstitutive%extensive .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
-      print'(/,a,/,f12.5)', '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
-      print'(/,a,/,f12.5)', '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
-                                                           * tr * abs(tr)**(prm%n-1.0_pReal)
-    end if
-#endif
-
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
+    forall (k=1:3,l=1:3,m=1:3,n=1:3) dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
 
   else
     Li      = 0.0_pReal
@@ -279,13 +262,13 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_dotState(Mp,instance,of)
+module subroutine plastic_isotropic_dotState(Mp,instance,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
 
   real(pReal) :: &
     dot_gamma, &                                                                                    !< strainrate
@@ -300,7 +283,7 @@ module subroutine plastic_isotropic_dotState(Mp,instance,of)
     norm_Mp = sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp)))
   endif
 
-  dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(of))) **prm%n
+  dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(me))) **prm%n
 
   if (dot_gamma > 1e-12_pReal) then
     if (dEq0(prm%c_1)) then
@@ -310,15 +293,15 @@ module subroutine plastic_isotropic_dotState(Mp,instance,of)
                   + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2))**(1.0_pReal / prm%c_3) &
                   / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
-    dot%xi(of) = dot_gamma &
+    dot%xi(me) = dot_gamma &
                * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
-               * abs( 1.0_pReal - stt%xi(of)/xi_inf_star )**prm%a &
-               * sign(1.0_pReal, 1.0_pReal - stt%xi(of)/xi_inf_star)
+               * abs( 1.0_pReal - stt%xi(me)/xi_inf_star )**prm%a &
+               * sign(1.0_pReal, 1.0_pReal - stt%xi(me)/xi_inf_star)
   else
-    dot%xi(of) = 0.0_pReal
+    dot%xi(me) = 0.0_pReal
   endif
 
-  dot%gamma(of) = dot_gamma                                                                         ! ToDo: not really used
+  dot%gamma(me) = dot_gamma                                                                         ! ToDo: not really used
 
   end associate
 

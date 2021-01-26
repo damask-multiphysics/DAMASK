@@ -521,12 +521,12 @@ end function plastic_dislotwin_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,me)
 
   real(pReal), dimension(3,3),     intent(out) :: Lp
   real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
   real(pReal), dimension(3,3),     intent(in)  :: Mp
-  integer,                         intent(in)  :: instance,of
+  integer,                         intent(in)  :: instance,me
   real(pReal),                     intent(in)  :: T
 
   integer :: i,k,l,m,n
@@ -567,13 +567,13 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
   associate(prm => param(instance), stt => state(instance))
 
   f_unrotated = 1.0_pReal &
-              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
-              - sum(stt%f_tr(1:prm%sum_N_tr,of))
+              - sum(stt%f_tw(1:prm%sum_N_tw,me)) &
+              - sum(stt%f_tr(1:prm%sum_N_tr,me))
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl,ddot_gamma_dtau_slip)
+  call kinetics_slip(Mp,T,instance,me,dot_gamma_sl,ddot_gamma_dtau_slip)
   slipContribution: do i = 1, prm%sum_N_sl
     Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -581,7 +581,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
                        + ddot_gamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
   enddo slipContribution
 
-  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin,ddot_gamma_dtau_twin)
+  call kinetics_twin(Mp,T,dot_gamma_sl,instance,me,dot_gamma_twin,ddot_gamma_dtau_twin)
   twinContibution: do i = 1, prm%sum_N_tw
     Lp = Lp + dot_gamma_twin(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -589,7 +589,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
                        + ddot_gamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
   enddo twinContibution
 
-  call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,ddot_gamma_dtau_trans)
+  call kinetics_trans(Mp,T,dot_gamma_sl,instance,me,dot_gamma_tr,ddot_gamma_dtau_trans)
   transContibution: do i = 1, prm%sum_N_tr
     Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -634,7 +634,7 @@ end subroutine dislotwin_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
+module subroutine plastic_dislotwin_dotState(Mp,T,instance,me)
 
   real(pReal), dimension(3,3),  intent(in):: &
     Mp                                                                                              !< Mandel stress
@@ -642,7 +642,7 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
     T                                                                                               !< temperature at integration point
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
 
   integer :: i
   real(pReal) :: &
@@ -667,11 +667,11 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
             dot => dotState(instance), dst => dependentState(instance))
 
   f_unrotated = 1.0_pReal &
-              - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
-              - sum(stt%f_tr(1:prm%sum_N_tr,of))
+              - sum(stt%f_tw(1:prm%sum_N_tw,me)) &
+              - sum(stt%f_tr(1:prm%sum_N_tr,me))
 
-  call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
-  dot%gamma_sl(:,of) = abs(dot_gamma_sl)
+  call kinetics_slip(Mp,T,instance,me,dot_gamma_sl)
+  dot%gamma_sl(:,me) = abs(dot_gamma_sl)
 
   rho_dip_distance_min = prm%D_a*prm%b_sl
 
@@ -683,12 +683,12 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
       dot_rho_dip_climb(i) = 0.0_pReal
     else significantSlipStress
       rho_dip_distance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
-      rho_dip_distance = math_clip(rho_dip_distance, right = dst%Lambda_sl(i,of))
+      rho_dip_distance = math_clip(rho_dip_distance, right = dst%Lambda_sl(i,me))
       rho_dip_distance = math_clip(rho_dip_distance, left  = rho_dip_distance_min(i))
 
       if (prm%dipoleFormation) then
         dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
-                                 * stt%rho_mob(i,of)*abs(dot_gamma_sl(i))
+                                 * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
       else
         dot_rho_dip_formation(i) = 0.0_pReal
       endif
@@ -707,25 +707,25 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
         v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Q_cl/(kB*T)) &
              * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
 
-        dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,of) &
+        dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,me) &
                              / (rho_dip_distance-rho_dip_distance_min(i))
       endif
     endif significantSlipStress
   enddo slipState
 
-  dot%rho_mob(:,of) = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,of)) &
+  dot%rho_mob(:,me) = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,me)) &
                     - dot_rho_dip_formation &
-                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_mob(:,of)*abs(dot_gamma_sl)
+                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_mob(:,me)*abs(dot_gamma_sl)
 
-  dot%rho_dip(:,of) = dot_rho_dip_formation &
-                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_dip(:,of)*abs(dot_gamma_sl) &
+  dot%rho_dip(:,me) = dot_rho_dip_formation &
+                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_dip(:,me)*abs(dot_gamma_sl) &
                     - dot_rho_dip_climb
 
-  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin)
-  dot%f_tw(:,of) = f_unrotated*dot_gamma_twin/prm%gamma_char
+  call kinetics_twin(Mp,T,dot_gamma_sl,instance,me,dot_gamma_twin)
+  dot%f_tw(:,me) = f_unrotated*dot_gamma_twin/prm%gamma_char
 
-  call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr)
-  dot%f_tr(:,of) = f_unrotated*dot_gamma_tr
+  call kinetics_trans(Mp,T,dot_gamma_sl,instance,me,dot_gamma_tr)
+  dot%f_tr(:,me) = f_unrotated*dot_gamma_tr
 
   end associate
 
@@ -735,11 +735,11 @@ end subroutine plastic_dislotwin_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_dependentState(T,instance,of)
+module subroutine plastic_dislotwin_dependentState(T,instance,me)
 
   integer,       intent(in) :: &
     instance, &
-    of
+    me
   real(pReal),   intent(in) :: &
     T
 
@@ -763,18 +763,18 @@ module subroutine plastic_dislotwin_dependentState(T,instance,of)
             stt => state(instance),&
             dst => dependentState(instance))
 
-  sumf_twin  = sum(stt%f_tw(1:prm%sum_N_tw,of))
-  sumf_trans = sum(stt%f_tr(1:prm%sum_N_tr,of))
+  sumf_twin  = sum(stt%f_tw(1:prm%sum_N_tw,me))
+  sumf_trans = sum(stt%f_tr(1:prm%sum_N_tr,me))
 
   Gamma = prm%Gamma_sf_0K + prm%dGamma_sf_dT * T
 
   !* rescaled volume fraction for topology
-  f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,of)/prm%t_tw                                                ! this is per system ...
+  f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,me)/prm%t_tw                                                ! this is per system ...
   f_over_t_tr = sumf_trans/prm%t_tr                                                                 ! but this not
                                                                                                     ! ToDo ...Physically correct, but naming could be adjusted
 
   inv_lambda_sl_sl = sqrt(matmul(prm%forestProjection, &
-                                 stt%rho_mob(:,of)+stt%rho_dip(:,of)))/prm%i_sl
+                                 stt%rho_mob(:,me)+stt%rho_dip(:,me)))/prm%i_sl
 
   if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
     inv_lambda_sl_tw = matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_twin)
@@ -787,37 +787,37 @@ module subroutine plastic_dislotwin_dependentState(T,instance,of)
   inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_trans)
 
   if ((prm%sum_N_tw > 0) .or. (prm%sum_N_tr > 0)) then                                              ! ToDo: better logic needed here
-    dst%Lambda_sl(:,of) = prm%D &
+    dst%Lambda_sl(:,me) = prm%D &
                         / (1.0_pReal+prm%D*(inv_lambda_sl_sl + inv_lambda_sl_tw + inv_lambda_sl_tr))
   else
-    dst%Lambda_sl(:,of) = prm%D &
+    dst%Lambda_sl(:,me) = prm%D &
                         / (1.0_pReal+prm%D*inv_lambda_sl_sl) !!!!!! correct?
   endif
 
-  dst%Lambda_tw(:,of) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
-  dst%Lambda_tr(:,of) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
+  dst%Lambda_tw(:,me) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
+  dst%Lambda_tr(:,me) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
 
   !* threshold stress for dislocation motion
-  dst%tau_pass(:,of) = prm%mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,of)+stt%rho_dip(:,of)))
+  dst%tau_pass(:,me) = prm%mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,me)+stt%rho_dip(:,me)))
 
   !* threshold stress for growing twin/martensite
   if(prm%sum_N_tw == prm%sum_N_sl) &
-    dst%tau_hat_tw(:,of) = Gamma/(3.0_pReal*prm%b_tw) &
+    dst%tau_hat_tw(:,me) = Gamma/(3.0_pReal*prm%b_tw) &
                          + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip Burgers here correct?
   if(prm%sum_N_tr == prm%sum_N_sl) &
-    dst%tau_hat_tr(:,of) = Gamma/(3.0_pReal*prm%b_tr) &
+    dst%tau_hat_tr(:,me) = Gamma/(3.0_pReal*prm%b_tr) &
                          + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip Burgers here correct?
                          + prm%h*prm%delta_G/ (3.0_pReal*prm%b_tr)
 
-  dst%V_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
-  dst%V_tr(:,of) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,of)**2.0_pReal
+  dst%V_tw(:,me) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,me)**2.0_pReal
+  dst%V_tr(:,me) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,me)**2.0_pReal
 
 
   x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the Burgers vector for slip and is the same for twin and trans
-  dst%tau_r_tw(:,of) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
+  dst%tau_r_tw(:,me) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
   x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the Burgers vector for slip
-  dst%tau_r_tr(:,of) = prm%mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
+  dst%tau_r_tr(:,me) = prm%mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
 
   end associate
 
@@ -882,7 +882,7 @@ end subroutine plastic_dislotwin_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_slip(Mp,T,instance,of, &
+pure subroutine kinetics_slip(Mp,T,instance,me, &
                               dot_gamma_sl,ddot_gamma_dtau_slip,tau_slip)
 
   real(pReal), dimension(3,3),  intent(in) :: &
@@ -891,7 +891,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
     T                                                                                               !< temperature
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
 
   real(pReal), dimension(param(instance)%sum_N_sl), intent(out) :: &
     dot_gamma_sl
@@ -920,7 +920,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
     tau(i) = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
   enddo
 
-  tau_eff = abs(tau)-dst%tau_pass(:,of)
+  tau_eff = abs(tau)-dst%tau_pass(:,me)
 
   significantStress: where(tau_eff > tol_math_check)
     stressRatio    = tau_eff/prm%tau_0
@@ -929,7 +929,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
     v_wait_inverse = prm%v_0**(-1.0_pReal) * exp(BoltzmannRatio*(1.0_pReal-StressRatio_p)** prm%q)
     v_run_inverse  = prm%B/(tau_eff*prm%b_sl)
 
-    dot_gamma_sl = sign(stt%rho_mob(:,of)*prm%b_sl/(v_wait_inverse+v_run_inverse),tau)
+    dot_gamma_sl = sign(stt%rho_mob(:,me)*prm%b_sl/(v_wait_inverse+v_run_inverse),tau)
 
     dV_wait_inverse_dTau = -1.0_pReal * v_wait_inverse * prm%p * prm%q * BoltzmannRatio &
                          * (stressRatio**(prm%p-1.0_pReal)) &
@@ -938,7 +938,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
     dV_run_inverse_dTau  = -1.0_pReal * v_run_inverse/tau_eff
     dV_dTau              = -1.0_pReal * (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
                          / (v_wait_inverse+v_run_inverse)**2.0_pReal
-    ddot_gamma_dtau = dV_dTau*stt%rho_mob(:,of)*prm%b_sl
+    ddot_gamma_dtau = dV_dTau*stt%rho_mob(:,me)*prm%b_sl
   else where significantStress
     dot_gamma_sl    = 0.0_pReal
     ddot_gamma_dtau = 0.0_pReal
@@ -959,7 +959,7 @@ end subroutine kinetics_slip
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
+pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,me,&
                               dot_gamma_twin,ddot_gamma_dtau_twin)
 
   real(pReal), dimension(3,3),  intent(in) :: &
@@ -968,7 +968,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
     T                                                                                               !< temperature
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
   real(pReal), dimension(param(instance)%sum_N_sl), intent(in) :: &
     dot_gamma_sl
 
@@ -992,11 +992,11 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
     isFCC: if (prm%fccTwinTransNucleation) then
       s1=prm%fcc_twinNucleationSlipPair(1,i)
       s2=prm%fcc_twinNucleationSlipPair(2,i)
-      if (tau(i) < dst%tau_r_tw(i,of)) then                                                         ! ToDo: correct?
-        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,of)+stt%rho_dip(s2,of))+&
-               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,of)+stt%rho_dip(s1,of)))/&                     ! ToDo: MD: it would be more consistent to use shearrates from state
+      if (tau(i) < dst%tau_r_tw(i,me)) then                                                         ! ToDo: correct?
+        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,me)+stt%rho_dip(s2,me))+&
+               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,me)+stt%rho_dip(s1,me)))/&                     ! ToDo: MD: it would be more consistent to use shearrates from state
                 (prm%L_tw*prm%b_sl(i))*&
-                (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tw(i,of)-tau(i))))                       ! P_ncs
+                (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tw(i,me)-tau(i))))                       ! P_ncs
       else
         Ndot0=0.0_pReal
       end if
@@ -1006,8 +1006,8 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
   enddo
 
   significantStress: where(tau > tol_math_check)
-    StressRatio_r   = (dst%tau_hat_tw(:,of)/tau)**prm%r
-    dot_gamma_twin  = prm%gamma_char * dst%V_tw(:,of) * Ndot0*exp(-StressRatio_r)
+    StressRatio_r   = (dst%tau_hat_tw(:,me)/tau)**prm%r
+    dot_gamma_twin  = prm%gamma_char * dst%V_tw(:,me) * Ndot0*exp(-StressRatio_r)
     ddot_gamma_dtau = (dot_gamma_twin*prm%r/tau)*StressRatio_r
   else where significantStress
     dot_gamma_twin  = 0.0_pReal
@@ -1028,7 +1028,7 @@ end subroutine kinetics_twin
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
+pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,me,&
                               dot_gamma_tr,ddot_gamma_dtau_trans)
 
   real(pReal), dimension(3,3),  intent(in) :: &
@@ -1037,7 +1037,7 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
     T                                                                                               !< temperature
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
   real(pReal), dimension(param(instance)%sum_N_sl), intent(in) :: &
     dot_gamma_sl
 
@@ -1060,11 +1060,11 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
     isFCC: if (prm%fccTwinTransNucleation) then
       s1=prm%fcc_twinNucleationSlipPair(1,i)
       s2=prm%fcc_twinNucleationSlipPair(2,i)
-      if (tau(i) < dst%tau_r_tr(i,of)) then                                                         ! ToDo: correct?
-        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,of)+stt%rho_dip(s2,of))+&
-               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,of)+stt%rho_dip(s1,of)))/&                     ! ToDo: MD: it would be more consistent to use shearrates from state
+      if (tau(i) < dst%tau_r_tr(i,me)) then                                                         ! ToDo: correct?
+        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,me)+stt%rho_dip(s2,me))+&
+               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,me)+stt%rho_dip(s1,me)))/&                     ! ToDo: MD: it would be more consistent to use shearrates from state
                 (prm%L_tr*prm%b_sl(i))*&
-                (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tr(i,of)-tau(i))))                       ! P_ncs
+                (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tr(i,me)-tau(i))))                       ! P_ncs
       else
         Ndot0=0.0_pReal
       end if
@@ -1074,8 +1074,8 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
   enddo
 
   significantStress: where(tau > tol_math_check)
-    StressRatio_s   = (dst%tau_hat_tr(:,of)/tau)**prm%s
-    dot_gamma_tr    = dst%V_tr(:,of) * Ndot0*exp(-StressRatio_s)
+    StressRatio_s   = (dst%tau_hat_tr(:,me)/tau)**prm%s
+    dot_gamma_tr    = dst%V_tr(:,me) * Ndot0*exp(-StressRatio_s)
     ddot_gamma_dtau = (dot_gamma_tr*prm%s/tau)*StressRatio_s
   else where significantStress
     dot_gamma_tr  = 0.0_pReal

@@ -266,7 +266,7 @@ module constitutive
     end subroutine plastic_nonlocal_updateCompatibility
 
 
-    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
+    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out)  :: &
@@ -275,7 +275,7 @@ module constitutive
         Mi                                                                                          !< Mandel stress
       integer,                         intent(in) :: &
         instance, &
-        of
+        me
     end subroutine plastic_isotropic_LiAndItsTangent
 
     module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)

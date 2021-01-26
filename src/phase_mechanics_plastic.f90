@@ -1,81 +1,79 @@
 submodule(constitutive:constitutive_mech) plastic
 
   interface
-    
-    module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
-      real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
 
+    module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp
       real(pReal), dimension(3,3),     intent(in) :: &
-        Mp                                                                                          !< Mandel stress
+        Mp
       integer,                         intent(in) :: &
         instance, &
-        of
+        me
     end subroutine isotropic_LpAndItsTangent
 
-    pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+    pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
       real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
+        Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+        dLp_dMp
       real(pReal), dimension(3,3),     intent(in) :: &
-        Mp                                                                                          !< Mandel stress
+        Mp
       integer,                         intent(in) :: &
         instance, &
-        of
+        me
     end subroutine phenopowerlaw_LpAndItsTangent
 
-    pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+    pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
       real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
+        Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
-
+        dLp_dMp
       real(pReal), dimension(3,3),     intent(in) :: &
-        Mp                                                                                          !< Mandel stress
+        Mp
       integer,                         intent(in) :: &
         instance, &
-        of
+        me
     end subroutine kinehardening_LpAndItsTangent
 
-    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,me)
       real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
+        Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+        dLp_dMp
 
       real(pReal), dimension(3,3),     intent(in) :: &
-        Mp                                                                                          !< Mandel stress
+        Mp
       real(pReal),                     intent(in) :: &
         T
       integer,                         intent(in) :: &
         instance, &
-        of
+        me
     end subroutine dislotwin_LpAndItsTangent
 
-    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,me)
       real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
+        Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+        dLp_dMp
 
       real(pReal), dimension(3,3),     intent(in) :: &
-        Mp                                                                                          !< Mandel stress
+        Mp
       real(pReal),                     intent(in) :: &
         T
       integer,                         intent(in) :: &
         instance, &
-        of
+        me
     end subroutine dislotungsten_LpAndItsTangent
 
     module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                       Mp,Temperature,instance,of,ip,el)
+                                                       Mp,Temperature,instance,me,ip,el)
       real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
+        Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+        dLp_dMp
 
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp                                                                                          !< Mandel stress
@@ -83,13 +81,13 @@ submodule(constitutive:constitutive_mech) plastic
         Temperature
       integer,                         intent(in) :: &
         instance, &
-        of, &
+        me, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
     end subroutine nonlocal_LpAndItsTangent
 
   end interface
-  
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -110,7 +108,7 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLp_dS, &
-    dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
+    dLp_dFi                                                                                         !< derivative me Lp with respect to Fi
 
   real(pReal), dimension(3,3,3,3) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Mandel stress
@@ -158,5 +156,5 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
   enddo; enddo
 
 end subroutine constitutive_plastic_LpAndItsTangents
- 
+
 end submodule plastic
