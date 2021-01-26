@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_phenopowerlaw
+submodule(constitutive:plastic) phenopowerlaw
 
   type :: tParameters
     real(pReal) :: &
@@ -543,4 +543,4 @@ pure subroutine kinetics_twin(Mp,instance,of,&
 
 end subroutine kinetics_twin
 
-end submodule plastic_phenopowerlaw
+end submodule phenopowerlaw

@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for plasticity including dislocation flux
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_nonlocal
+submodule(constitutive:plastic) nonlocal
   use geometry_plastic_nonlocal, only: &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
@@ -1834,4 +1834,4 @@ pure function getRho0(instance,of,ip,el)
 
 end function getRho0
 
-end submodule plastic_nonlocal
+end submodule nonlocal

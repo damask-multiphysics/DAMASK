@@ -7,7 +7,7 @@
 !! resolving the stress on the slip systems. Will give the response of phenopowerlaw for an
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_isotropic
+submodule(constitutive:plastic) isotropic
 
   type :: tParameters
     real(pReal) :: &
@@ -348,4 +348,4 @@ module subroutine plastic_isotropic_results(instance,group)
 end subroutine plastic_isotropic_results
 
 
-end submodule plastic_isotropic
+end submodule isotropic

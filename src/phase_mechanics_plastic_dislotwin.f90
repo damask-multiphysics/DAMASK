@@ -7,7 +7,7 @@
 !> @brief material subroutine incoprorating dislocation and twinning physics
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_dislotwin
+submodule(constitutive:plastic) dislotwin
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -1088,4 +1088,4 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
 
 end subroutine kinetics_trans
 
-end submodule plastic_dislotwin
+end submodule dislotwin
