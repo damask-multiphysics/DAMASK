@@ -408,7 +408,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents  = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents  = count(material_phaseAt2 == p)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl &
                  + size(['f_tw'])                           * prm%sum_N_tw &
                  + size(['f_tr'])                           * prm%sum_N_tr

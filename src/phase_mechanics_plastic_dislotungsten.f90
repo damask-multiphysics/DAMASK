@@ -103,7 +103,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   Ninstances = count(myPlasticity)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
-  
+
   print*, 'Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
@@ -222,7 +222,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == p)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 

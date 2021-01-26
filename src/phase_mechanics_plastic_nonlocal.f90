@@ -393,7 +393,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents  = count(material_phaseAt==p) * discretization_nIPs
+    Nconstituents  = count(material_phaseAt2 == p)
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &

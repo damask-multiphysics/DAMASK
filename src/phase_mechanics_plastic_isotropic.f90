@@ -131,7 +131,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == p)
     sizeDotState = size(['xi   ','gamma'])
     sizeState = sizeDotState
 
