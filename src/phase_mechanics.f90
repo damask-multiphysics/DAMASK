@@ -48,40 +48,16 @@ submodule(phase) mechanics
 
   interface
 
-    module function plastic_none_init()          result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_none_init
+    module subroutine eigendeformation_init(phases)
+      class(tNode), pointer :: phases
+    end subroutine eigendeformation_init
 
-    module function plastic_isotropic_init()     result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_isotropic_init
+    module subroutine plastic_init
 
-    module function plastic_phenopowerlaw_init() result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_phenopowerlaw_init
 
-    module function plastic_kinehardening_init() result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_kinehardening_init
+    end subroutine plastic_init
 
-    module function plastic_dislotwin_init()     result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_dislotwin_init
 
-    module function plastic_dislotungsten_init() result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_dislotungsten_init
-
-    module function plastic_nonlocal_init()      result(myPlasticity)
-      logical, dimension(:), allocatable :: &
-        myPlasticity
-    end function plastic_nonlocal_init
 
     module function plastic_dotState(subdt,co,ip,el,ph,me) result(broken)
 
@@ -124,23 +100,8 @@ submodule(phase) mechanics
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
         dLp_dS, &
         dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
-
     end subroutine plastic_LpAndItsTangents
 
-    module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
-    end function kinematics_cleavage_opening_init
-
-    module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
-    end function kinematics_slipplane_opening_init
-
-    module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
-    end function kinematics_thermal_expansion_init
 
     module subroutine plastic_isotropic_results(instance,group)
       integer,          intent(in) :: instance
@@ -319,13 +280,7 @@ module subroutine mech_init(phases)
   allocate(phase_plasticityInstance(phases%length),source = 0)
   allocate(phase_localPlasticity(phases%length),   source=.true.)
 
-  where(plastic_none_init())              phase_plasticity = PLASTICITY_NONE_ID
-  where(plastic_isotropic_init())         phase_plasticity = PLASTICITY_ISOTROPIC_ID
-  where(plastic_phenopowerlaw_init())     phase_plasticity = PLASTICITY_PHENOPOWERLAW_ID
-  where(plastic_kinehardening_init())     phase_plasticity = PLASTICITY_KINEHARDENING_ID
-  where(plastic_dislotwin_init())         phase_plasticity = PLASTICITY_DISLOTWIN_ID
-  where(plastic_dislotungsten_init())     phase_plasticity = PLASTICITY_DISLOTUNGSTEN_ID
-  where(plastic_nonlocal_init())          phase_plasticity = PLASTICITY_NONLOCAL_ID
+  call plastic_init()
 
   do ph = 1, phases%length
     phase_elasticityInstance(ph) = count(phase_elasticity(1:ph) == phase_elasticity(ph))
@@ -356,22 +311,9 @@ module subroutine mech_init(phases)
 
   end select
 
-!--------------------------------------------------------------------------------------------------
-! initialize kinematic mechanisms
-  allocate(phase_Nkinematics(phases%length),source = 0)
-  do ph = 1,phases%length
-    phase => phases%get(ph)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
-    phase_Nkinematics(ph) = kinematics%length
-  enddo
 
-  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
+  call eigendeformation_init(phases)
 
-  if(maxval(phase_Nkinematics) /= 0) then
-    where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
-    where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
-    where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_thermal_expansion_ID
-  endif
 
 end subroutine mech_init
 

@@ -2,6 +2,41 @@ submodule(phase:mechanics) plastic
 
   interface
 
+    module function plastic_none_init()          result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_none_init
+
+    module function plastic_isotropic_init()     result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_isotropic_init
+
+    module function plastic_phenopowerlaw_init() result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_phenopowerlaw_init
+
+    module function plastic_kinehardening_init() result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_kinehardening_init
+
+    module function plastic_dislotwin_init()     result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_dislotwin_init
+
+    module function plastic_dislotungsten_init() result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_dislotungsten_init
+
+    module function plastic_nonlocal_init()      result(myPlasticity)
+      logical, dimension(:), allocatable :: &
+        myPlasticity
+    end function plastic_nonlocal_init
+
     module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
@@ -187,6 +222,18 @@ submodule(phase:mechanics) plastic
   end interface
 
 contains
+
+module subroutine plastic_init
+
+  where(plastic_none_init())              phase_plasticity = PLASTICITY_NONE_ID
+  where(plastic_isotropic_init())         phase_plasticity = PLASTICITY_ISOTROPIC_ID
+  where(plastic_phenopowerlaw_init())     phase_plasticity = PLASTICITY_PHENOPOWERLAW_ID
+  where(plastic_kinehardening_init())     phase_plasticity = PLASTICITY_KINEHARDENING_ID
+  where(plastic_dislotwin_init())         phase_plasticity = PLASTICITY_DISLOTWIN_ID
+  where(plastic_dislotungsten_init())     phase_plasticity = PLASTICITY_DISLOTUNGSTEN_ID
+  where(plastic_nonlocal_init())          phase_plasticity = PLASTICITY_NONLOCAL_ID
+
+end subroutine plastic_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
