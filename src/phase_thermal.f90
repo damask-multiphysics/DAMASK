@@ -44,21 +44,21 @@ submodule(phase) thermal
         me
     end subroutine externalheat_dotState
 
-    module subroutine thermal_dissipation_getRate(TDot, ph,me)
+    module subroutine dissipation_getRate(TDot, ph,me)
       integer, intent(in) :: &
         ph, &
         me
       real(pReal),  intent(out) :: &
         TDot
-    end subroutine thermal_dissipation_getRate
+    end subroutine dissipation_getRate
 
-    module subroutine thermal_externalheat_getRate(TDot, ph,me)
+    module subroutine externalheat_getRate(TDot, ph,me)
       integer, intent(in) :: &
         ph, &
         me
       real(pReal),  intent(out) :: &
         TDot
-    end subroutine thermal_externalheat_getRate
+    end subroutine externalheat_getRate
 
  end interface
 
@@ -146,19 +146,19 @@ module subroutine constitutive_thermal_getRate(TDot, ph,me)
 
   TDot = 0.0_pReal
 
-     do so = 1, thermal_Nsources(ph)
-       select case(thermal_source(so,ph))
-         case (THERMAL_DISSIPATION_ID)
-          call thermal_dissipation_getRate(my_Tdot, ph,me)
+  do so = 1, thermal_Nsources(ph)
+   select case(thermal_source(so,ph))
+     case (THERMAL_DISSIPATION_ID)
+      call dissipation_getRate(my_Tdot, ph,me)
 
-         case (THERMAL_EXTERNALHEAT_ID)
-          call thermal_externalheat_getRate(my_Tdot, ph,me)
+     case (THERMAL_EXTERNALHEAT_ID)
+      call externalheat_getRate(my_Tdot, ph,me)
 
-         case default
-          my_Tdot = 0.0_pReal
-       end select
-       Tdot = Tdot + my_Tdot
-     enddo
+     case default
+      my_Tdot = 0.0_pReal
+   end select
+   Tdot = Tdot + my_Tdot
+  enddo
 
 
 end subroutine constitutive_thermal_getRate

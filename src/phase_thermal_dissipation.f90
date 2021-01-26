@@ -70,7 +70,7 @@ end function dissipation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_dissipation_getRate(TDot, ph,me)
+module subroutine dissipation_getRate(TDot, ph,me)
 
   integer, intent(in) :: ph, me
   real(pReal),  intent(out) :: &
@@ -81,6 +81,6 @@ module subroutine thermal_dissipation_getRate(TDot, ph,me)
     TDot = prm%kappa*sum(abs(mech_S(ph,me)*mech_L_p(ph,me)))
   end associate
 
-end subroutine thermal_dissipation_getRate
+end subroutine dissipation_getRate
 
 end submodule dissipation
