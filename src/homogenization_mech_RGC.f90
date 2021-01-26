@@ -171,7 +171,6 @@ module subroutine mech_RGC_init(num_homogMech)
 
     homogState(h)%sizeState = sizeState
     allocate(homogState(h)%state0   (sizeState,Nmaterialpoints), source=0.0_pReal)
-    allocate(homogState(h)%subState0(sizeState,Nmaterialpoints), source=0.0_pReal)
     allocate(homogState(h)%state    (sizeState,Nmaterialpoints), source=0.0_pReal)
 
     stt%relaxationVector   => homogState(h)%state(1:nIntFaceTot,:)

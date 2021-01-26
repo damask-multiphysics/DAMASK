@@ -39,16 +39,7 @@ submodule(constitutive) constitutive_mech
     constitutive_mech_F0, &
     constitutive_mech_Li0, &
     constitutive_mech_Lp0, &
-    constitutive_mech_S0, &
-    ! converged value at end of last homogenization increment (RGC only)
-    constitutive_mech_partitionedFi0, &
-    constitutive_mech_partitionedFp0, &
-    constitutive_mech_partitionedF0, &
-    constitutive_mech_partitionedLi0, &
-    constitutive_mech_partitionedLp0, &
-    constitutive_mech_partitionedS0
-
-
+    constitutive_mech_S0
 
 
   integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
@@ -361,23 +352,17 @@ module subroutine mech_init(phases)
   allocate(constitutive_mech_Fe(phases%length))
   allocate(constitutive_mech_Fi(phases%length))
   allocate(constitutive_mech_Fi0(phases%length))
-  allocate(constitutive_mech_partitionedFi0(phases%length))
   allocate(constitutive_mech_Fp(phases%length))
   allocate(constitutive_mech_Fp0(phases%length))
-  allocate(constitutive_mech_partitionedFp0(phases%length))
   allocate(constitutive_mech_F(phases%length))
   allocate(constitutive_mech_F0(phases%length))
-  allocate(constitutive_mech_partitionedF0(phases%length))
   allocate(constitutive_mech_Li(phases%length))
   allocate(constitutive_mech_Li0(phases%length))
-  allocate(constitutive_mech_partitionedLi0(phases%length))
-  allocate(constitutive_mech_partitionedLp0(phases%length))
   allocate(constitutive_mech_Lp0(phases%length))
   allocate(constitutive_mech_Lp(phases%length))
   allocate(constitutive_mech_S(phases%length))
   allocate(constitutive_mech_P(phases%length))
   allocate(constitutive_mech_S0(phases%length))
-  allocate(constitutive_mech_partitionedS0(phases%length))
 
   do ph = 1, phases%length
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
@@ -385,23 +370,17 @@ module subroutine mech_init(phases)
     allocate(constitutive_mech_Fi(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fe(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fi0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partitionedFi0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fp(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fp0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partitionedFp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Li(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Li0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partitionedLi0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partitionedLp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Lp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Lp(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     allocate(constitutive_mech_P(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     allocate(constitutive_mech_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(constitutive_mech_partitionedS0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     allocate(constitutive_mech_F(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_F0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partitionedF0(ph)%data(3,3,Nconstituents))
 
     phase   => phases%get(ph)
     mech    => phase%get('mechanics')
@@ -453,10 +432,6 @@ module subroutine mech_init(phases)
       constitutive_mech_Fp(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
       constitutive_mech_Fi(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
       constitutive_mech_F(ph)%data(1:3,1:3,me)  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
-
-      constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-      constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
-      constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
 
     enddo
   enddo; enddo
@@ -1465,26 +1440,6 @@ end subroutine crystallite_results
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Backup data for homog cutback.
-!--------------------------------------------------------------------------------------------------
-module subroutine mech_initializeRestorationPoints(ph,me)
-
-  integer, intent(in) :: ph, me
-
-
-  constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)  = constitutive_mech_S0(ph)%data(1:3,1:3,me)
-
-  plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state0(:,me)
-
-end subroutine mech_initializeRestorationPoints
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_windForward(ph,me)
@@ -1492,14 +1447,14 @@ module subroutine mech_windForward(ph,me)
   integer, intent(in) :: ph, me
 
 
-  constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)  = constitutive_mech_F(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
-  constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)  = constitutive_mech_S(ph)%data(1:3,1:3,me)
+  constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
+  constitutive_mech_Fi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+  constitutive_mech_F0(ph)%data(1:3,1:3,me)  = constitutive_mech_F(ph)%data(1:3,1:3,me)
+  constitutive_mech_Li0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
+  constitutive_mech_Lp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
+  constitutive_mech_S0(ph)%data(1:3,1:3,me)  = constitutive_mech_S(ph)%data(1:3,1:3,me)
 
-  plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
+  plasticState(ph)%State0(:,me) = plasticState(ph)%state(:,me)
 
 end subroutine mech_windForward
 
@@ -1578,17 +1533,17 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   me = material_phaseMemberAt(co,ip,el)
   sizeDotState = plasticState(ph)%sizeDotState
 
-  subLi0 = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
-  subLp0 = constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me)
-  subState0 = plasticState(ph)%partitionedState0(:,me)
+  subLi0 = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
+  subLp0 = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
+  subState0 = plasticState(ph)%State0(:,me)
 
 
   do so = 1, phase_Nsources(ph)
-    damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%partitionedState0(:,me)
+    damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state0(:,me)
   enddo
-  subFp0 = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
-  subFi0 = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
-  subF0  = constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)
+  subFp0 = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
+  subFi0 = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+  subF0  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
   subFrac = 0.0_pReal
   subStep = 1.0_pReal/num%subStepSizeCryst
   todo = .true.
@@ -1638,7 +1593,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !  prepare for integration
     if (todo) then
       subF = subF0 &
-           + subStep * (constitutive_mech_F(ph)%data(1:3,1:3,me) - constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me))
+           + subStep * (constitutive_mech_F(ph)%data(1:3,1:3,me) - constitutive_mech_F0(ph)%data(1:3,1:3,me))
       constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                                 constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
@@ -1667,15 +1622,15 @@ module subroutine mech_restore(ce,includeL)
     ph = material_phaseAt2(co,ce)
     me = material_phaseMemberAt2(co,ce)
     if (includeL) then
-      constitutive_mech_Lp(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me)
-      constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
+      constitutive_mech_Lp(ph)%data(1:3,1:3,me) = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
+      constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
 
-    constitutive_mech_Fp(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
-    constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
-    constitutive_mech_S(ph)%data(1:3,1:3,me)    = constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)
+    constitutive_mech_Fp(ph)%data(1:3,1:3,me)   = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
+    constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+    constitutive_mech_S(ph)%data(1:3,1:3,me)    = constitutive_mech_S0(ph)%data(1:3,1:3,me)
 
-    plasticState(ph)%state(:,me) = plasticState(ph)%partitionedState0(:,me)
+    plasticState(ph)%state(:,me) = plasticState(ph)%State0(:,me)
   enddo
 
 end subroutine mech_restore
@@ -1727,8 +1682,8 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
 
   invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
   invFi = math_inv33(constitutive_mech_Fi(ph)%data(1:3,1:3,me))
-  invSubFp0 = math_inv33(constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me))
-  invSubFi0 = math_inv33(constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me))
+  invSubFp0 = math_inv33(constitutive_mech_Fp0(ph)%data(1:3,1:3,me))
+  invSubFi0 = math_inv33(constitutive_mech_Fi0(ph)%data(1:3,1:3,me))
 
   if (sum(abs(dLidS)) < tol_math_check) then
     dFidS = 0.0_pReal
