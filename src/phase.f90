@@ -186,6 +186,11 @@ module phase
       real(pReal) :: T
     end function thermal_T
 
+    module function thermal_dot_T(ph,me) result(dot_T)
+      integer, intent(in) :: ph,me
+      real(pReal) :: dot_T
+    end function thermal_dot_T
+
 
     module subroutine constitutive_mech_setF(F,co,ip,el)
       real(pReal), dimension(3,3), intent(in) :: F

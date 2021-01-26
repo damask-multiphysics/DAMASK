@@ -3,7 +3,7 @@
 !> @brief material subroutine incorporating kinematics resulting from thermal expansion
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:thermal) thermalexpansion
+submodule(phase:eigendeformation) thermalexpansion
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -93,21 +93,21 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   real(pReal) :: T, dot_T
 
-  T     = current(ph)%T(me)
-  dot_T = current(ph)%dot_T(me)
+  T     = thermal_T(ph,me)
+  dot_T = thermal_dot_T(ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
-  Li = dot_T * ( &
-                prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
-              + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
-              + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient
-              ) / &
-       (1.0_pReal &
-             + prm%A(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
-             + prm%A(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
-             + prm%A(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
-       )
-  end associate
+    Li = dot_T * ( &
+                  prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
+                + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
+                + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient
+                ) / &
+         (1.0_pReal &
+               + prm%A(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
+               + prm%A(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
+               + prm%A(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
+         )
+    end associate
   dLi_dTstar = 0.0_pReal
 
 end subroutine thermalexpansion_LiAndItsTangent

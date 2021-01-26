@@ -32,10 +32,7 @@ submodule(phase) thermal
       logical, dimension(:,:), allocatable :: mySources
     end function externalheat_init
 
-    module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
-    end function kinematics_thermal_expansion_init
+
 
 
     module subroutine externalheat_dotState(ph, me)
@@ -120,11 +117,6 @@ module subroutine thermal_init(phases)
     thermal_source_maxSizeDotState  = max(thermal_source_maxSizeDotState, &
                                           maxval(thermalState(ph)%p%sizeDotState))
   enddo PhaseLoop2
-
-!--------------------------------------------------------------------------------------------------
-!initialize kinematic mechanisms
-  if(maxval(phase_Nkinematics) /= 0) where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) &
-                                           phase_kinematics = KINEMATICS_thermal_expansion_ID
 
 end subroutine thermal_init
 
@@ -255,6 +247,20 @@ module function thermal_T(ph,me) result(T)
   T = current(ph)%T(me)
 
 end function thermal_T
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief Get rate of temperature (for use by non-thermal physics)
+!----------------------------------------------------------------------------------------------
+module function thermal_dot_T(ph,me) result(dot_T)
+
+  integer, intent(in) :: ph, me
+  real(pReal) :: dot_T
+
+
+  dot_T = current(ph)%dot_T(me)
+
+end function thermal_dot_T
 
 
 !----------------------------------------------------------------------------------------------

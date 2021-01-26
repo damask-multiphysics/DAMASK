@@ -137,6 +137,11 @@ submodule(phase) mechanics
       logical, dimension(:,:), allocatable :: myKinematics
     end function kinematics_slipplane_opening_init
 
+    module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
+      integer, intent(in) :: kinematics_length
+      logical, dimension(:,:), allocatable :: myKinematics
+    end function kinematics_thermal_expansion_init
+
     module subroutine plastic_isotropic_results(instance,group)
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
@@ -365,6 +370,7 @@ module subroutine mech_init(phases)
   if(maxval(phase_Nkinematics) /= 0) then
     where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
     where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
+    where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_thermal_expansion_ID
   endif
 
 end subroutine mech_init
