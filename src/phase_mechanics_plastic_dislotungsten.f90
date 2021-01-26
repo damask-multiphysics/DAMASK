@@ -273,7 +273,7 @@ end function plastic_dislotungsten_init
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
 pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
-                                                         Mp,T,instance,me)
+                                                         Mp,T,ph,me)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -284,21 +284,21 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
   real(pReal),                 intent(in) :: &
     T                                                                                               !< temperature
   integer,                     intent(in) :: &
-    instance, &
+    ph, &
     me
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     dot_gamma_pos,dot_gamma_neg, &
     ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(instance))
+  associate(prm => param(phase_plasticityInstance(ph)))
 
-  call kinetics(Mp,T,instance,me,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
+  call kinetics(Mp,T,phase_plasticityInstance(ph),me,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
   do i = 1, prm%sum_N_sl
     Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -315,19 +315,19 @@ end subroutine dislotungsten_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine dislotungsten_dotState(Mp,T,instance,me)
+module subroutine dislotungsten_dotState(Mp,T,ph,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   real(pReal),                  intent(in) :: &
     T                                                                                               !< temperature
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
   real(pReal) :: &
     VacancyDiffusion
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     gdot_pos, gdot_neg,&
     tau_pos,&
     tau_neg, &
@@ -336,9 +336,10 @@ module subroutine dislotungsten_dotState(Mp,T,instance,me)
     dot_rho_dip_climb, &
     dip_distance
 
-  associate(prm => param(instance), stt => state(instance),dot => dotState(instance), dst => dependentState(instance))
+  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)),&
+            dot => dotState(phase_plasticityInstance(ph)), dst => dependentState(phase_plasticityInstance(ph)))
 
-  call kinetics(Mp,T,instance,me,&
+  call kinetics(Mp,T,phase_plasticityInstance(ph),me,&
                 gdot_pos,gdot_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 

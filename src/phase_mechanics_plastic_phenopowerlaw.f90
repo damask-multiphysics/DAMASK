@@ -285,7 +285,7 @@ end function plastic_phenopowerlaw_init
 !> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
-pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -295,23 +295,23 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,               intent(in) :: &
-    instance, &
+    ph, &
     me
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     gdot_slip_pos,gdot_slip_neg, &
     dgdot_dtauslip_pos,dgdot_dtauslip_neg
-  real(pReal), dimension(param(instance)%sum_N_tw) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_tw) :: &
     gdot_twin,dgdot_dtautwin
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(instance))
+  associate(prm => param(phase_plasticityInstance(ph)))
 
-  call kinetics_slip(Mp,instance,me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
   slipSystems: do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -320,7 +320,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
                        + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_twin(Mp,instance,me,gdot_twin,dgdot_dtautwin)
+  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,gdot_twin,dgdot_dtautwin)
   twinSystems: do i = 1, prm%sum_N_tw
     Lp = Lp + gdot_twin(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -336,23 +336,24 @@ end subroutine phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine phenopowerlaw_dotState(Mp,instance,me)
+module subroutine phenopowerlaw_dotState(Mp,ph,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
   real(pReal) :: &
     c_SlipSlip,c_TwinSlip,c_TwinTwin, &
     xi_slip_sat_offset,&
     sumGamma,sumF
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     left_SlipSlip,right_SlipSlip, &
     gdot_slip_pos,gdot_slip_neg
 
-  associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
+  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), &
+  dot => dotState(phase_plasticityInstance(ph)))
 
   sumGamma = sum(stt%gamma_slip(:,me))
   sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)
@@ -372,9 +373,9 @@ module subroutine phenopowerlaw_dotState(Mp,instance,me)
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
-  call kinetics_slip(Mp,instance,me,gdot_slip_pos,gdot_slip_neg)
+  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg)
   dot%gamma_slip(:,me) = abs(gdot_slip_pos+gdot_slip_neg)
-  call kinetics_twin(Mp,instance,me,dot%gamma_twin(:,me))
+  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,dot%gamma_twin(:,me))
 
 !--------------------------------------------------------------------------------------------------
 ! hardening

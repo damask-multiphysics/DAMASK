@@ -2,7 +2,7 @@ submodule(phase:mechanics) plastic
 
   interface
 
-    module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+    module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -10,11 +10,11 @@ submodule(phase:mechanics) plastic
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine isotropic_LpAndItsTangent
 
-    pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+    pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -22,11 +22,11 @@ submodule(phase:mechanics) plastic
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine phenopowerlaw_LpAndItsTangent
 
-    pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+    pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -34,11 +34,11 @@ submodule(phase:mechanics) plastic
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine kinehardening_LpAndItsTangent
 
-    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,me)
+    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -49,11 +49,11 @@ submodule(phase:mechanics) plastic
       real(pReal),                     intent(in) :: &
         T
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine dislotwin_LpAndItsTangent
 
-    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,me)
+    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -64,12 +64,12 @@ submodule(phase:mechanics) plastic
       real(pReal),                     intent(in) :: &
         T
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine dislotungsten_LpAndItsTangent
 
     module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                       Mp,Temperature,instance,me,ip,el)
+                                                       Mp,Temperature,ph,me,ip,el)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -80,71 +80,71 @@ submodule(phase:mechanics) plastic
       real(pReal),                     intent(in) :: &
         Temperature
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
     end subroutine nonlocal_LpAndItsTangent
 
 
-        module subroutine isotropic_dotState(Mp,instance,me)
+    module subroutine isotropic_dotState(Mp,ph,me)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine isotropic_dotState
 
-    module subroutine phenopowerlaw_dotState(Mp,instance,me)
+    module subroutine phenopowerlaw_dotState(Mp,ph,me)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine phenopowerlaw_dotState
 
-    module subroutine plastic_kinehardening_dotState(Mp,instance,me)
+    module subroutine plastic_kinehardening_dotState(Mp,ph,me)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine plastic_kinehardening_dotState
 
-    module subroutine dislotwin_dotState(Mp,T,instance,me)
+    module subroutine dislotwin_dotState(Mp,T,ph,me)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       real(pReal),                  intent(in) :: &
         T
       integer,                      intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine dislotwin_dotState
 
-    module subroutine dislotungsten_dotState(Mp,T,instance,me)
+    module subroutine dislotungsten_dotState(Mp,T,ph,me)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       real(pReal),                  intent(in) :: &
         T
       integer,                      intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine dislotungsten_dotState
 
-    module subroutine nonlocal_dotState(Mp,Temperature,timestep,instance,me,ip,el)
+    module subroutine nonlocal_dotState(Mp,Temperature,timestep,ph,me,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
       real(pReal), intent(in) :: &
         Temperature, &                                                                              !< temperature
         timestep                                                                                    !< substepped crystallite time increment
       integer, intent(in) :: &
-        instance, &
+        ph, &
         me, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
     end subroutine nonlocal_dotState
 
-        module subroutine dislotwin_dependentState(T,instance,me)
+    module subroutine dislotwin_dependentState(T,instance,me)
       integer,       intent(in) :: &
         instance, &
         me
@@ -213,13 +213,12 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
   real(pReal), dimension(3,3) :: &
     Mp                                                                                              !< Mandel stress work conjugate with Lp
   integer :: &
-    i, j, instance, me, ph
+    i, j, me, ph
 
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
   me = material_phasememberAt(co,ip,el)
   ph = material_phaseAt(co,el)
-  instance = phase_plasticityInstance(ph)
 
   plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
 
@@ -228,22 +227,22 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       dLp_dMp = 0.0_pReal
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      call isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      call phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      call kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me,ip,el)
+      call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),ph,me,ip,el)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
+      call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),ph,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
+      call dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),ph,me)
 
   end select plasticityType
 
@@ -271,12 +270,8 @@ module function plastic_dotState(subdt,co,ip,el,ph,me) result(broken)
     subdt                                                                                           !< timestep
   real(pReal),              dimension(3,3) :: &
     Mp
-  integer :: &
-    instance
   logical :: broken
 
-
-  instance = phase_plasticityInstance(ph)
 
   Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,me)),&
                      constitutive_mech_Fi(ph)%data(1:3,1:3,me)),constitutive_mech_S(ph)%data(1:3,1:3,me))
@@ -284,22 +279,22 @@ module function plastic_dotState(subdt,co,ip,el,ph,me) result(broken)
   plasticityType: select case (phase_plasticity(ph))
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call isotropic_dotState(Mp,instance,me)
+      call isotropic_dotState(Mp,ph,me)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call phenopowerlaw_dotState(Mp,instance,me)
+      call phenopowerlaw_dotState(Mp,ph,me)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_dotState(Mp,instance,me)
+      call plastic_kinehardening_dotState(Mp,ph,me)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call dislotwin_dotState(Mp,thermal_T(ph,me),instance,me)
+      call dislotwin_dotState(Mp,thermal_T(ph,me),ph,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call dislotungsten_dotState(Mp,thermal_T(ph,me),instance,me)
+      call dislotungsten_dotState(Mp,thermal_T(ph,me),ph,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call nonlocal_dotState(Mp,thermal_T(ph,me),subdt,instance,me,ip,el)
+      call nonlocal_dotState(Mp,thermal_T(ph,me),subdt,ph,me,ip,el)
   end select plasticityType
   broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,me)))
 

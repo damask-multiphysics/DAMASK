@@ -168,7 +168,7 @@ end function plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -178,7 +178,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
-    instance, &
+    ph, &
     me
 
   real(pReal), dimension(3,3) :: &
@@ -190,7 +190,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
   integer :: &
     k, l, m, n
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)))
 
   Mp_dev = math_deviatoric33(Mp)
   squarenorm_Mp_dev = math_tensordot(Mp_dev,Mp_dev)
@@ -262,12 +262,12 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine isotropic_dotState(Mp,instance,me)
+module subroutine isotropic_dotState(Mp,ph,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
   real(pReal) :: &
@@ -275,7 +275,8 @@ module subroutine isotropic_dotState(Mp,instance,me)
     xi_inf_star, &                                                                                  !< saturation xi
     norm_Mp                                                                                         !< norm of the (deviatoric) Mandel stress
 
-  associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
+  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), &
+   dot => dotState(phase_plasticityInstance(ph)))
 
   if (prm%dilatation) then
     norm_Mp = sqrt(math_tensordot(Mp,Mp))

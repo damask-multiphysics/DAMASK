@@ -758,13 +758,13 @@ end subroutine nonlocal_dependentState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                   Mp,Temperature,instance,me,ip,el)
+                                                   Mp,Temperature,ph,me,ip,el)
   real(pReal), dimension(3,3), intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
     dLp_dMp
   integer, intent(in) :: &
-    instance, &
+    ph, &
     me, &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
@@ -782,24 +782,25 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     l, &
     t, &                                                                                            !< dislocation type
     s                                                                                               !< index of my current slip system
-  real(pReal), dimension(param(instance)%sum_N_sl,8) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,8) :: &
     rhoSgl                                                                                          !< single dislocation densities (including blocked)
-  real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,10) :: &
     rho
-  real(pReal), dimension(param(instance)%sum_N_sl,4) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,4) :: &
     v, &                                                                                            !< velocity
     tauNS, &                                                                                        !< resolved shear stress including non Schmid and backstress terms
     dv_dtau, &                                                                                      !< velocity derivative with respect to the shear stress
     dv_dtauNS                                                                                       !< velocity derivative with respect to the shear stress
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     gdotTotal                                                                                       !< shear rate
 
-  associate(prm => param(instance),dst=>microstructure(instance),stt=>state(instance))
+  associate(prm => param(phase_plasticityInstance(ph)),dst=>microstructure(phase_plasticityInstance(ph)),&
+  stt=>state(phase_plasticityInstance(ph)))
   ns = prm%sum_N_sl
 
   !*** shortcut to state variables
-  rho = getRho(instance,me,ip,el)
+  rho = getRho(phase_plasticityInstance(ph),me,ip,el)
   rhoSgl = rho(:,sgl)
 
   do s = 1,ns
@@ -819,7 +820,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
 
   ! edges
   call kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
-                tau, tauNS(:,1), dst%tau_pass(:,me),1,Temperature, instance)
+                tau, tauNS(:,1), dst%tau_pass(:,me),1,Temperature, phase_plasticityInstance(ph))
   v(:,2)         = v(:,1)
   dv_dtau(:,2)   = dv_dtau(:,1)
   dv_dtauNS(:,2) = dv_dtauNS(:,1)
@@ -832,7 +833,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   else
     do t = 3,4
       call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
-                    tau, tauNS(:,t), dst%tau_pass(:,me),2,Temperature, instance)
+                    tau, tauNS(:,t), dst%tau_pass(:,me),2,Temperature, phase_plasticityInstance(ph))
     enddo
   endif
 
@@ -973,7 +974,7 @@ end subroutine plastic_nonlocal_deltaState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
-                                            instance,me,ip,el)
+                                            ph,me,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
@@ -981,7 +982,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     Temperature, &                                                                                  !< temperature
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
-    instance, &
+    ph, &
     me, &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
@@ -992,7 +993,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     c, &                                                                                            !< character of dislocation
     t, &                                                                                            !< type of dislocation
     s                                                                                               !< index of my current slip system
-  real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,10) :: &
     rho, &
     rho0, &                                                                                         !< dislocation density at beginning of time step
     rhoDot, &                                                                                       !< density evolution
@@ -1000,45 +1001,44 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     rhoDotSingle2DipoleGlide, &                                                                     !< density evolution by dipole formation (by glide)
     rhoDotAthermalAnnihilation, &                                                                   !< density evolution by athermal annihilation
     rhoDotThermalAnnihilation                                                                       !< density evolution by thermal annihilation
-  real(pReal), dimension(param(instance)%sum_N_sl,8) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,8) :: &
     rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
     my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
-  real(pReal), dimension(param(instance)%sum_N_sl,4) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,4) :: &
     v, &                                                                                            !< current dislocation glide velocity
     v0, &
     gdot                                                                                            !< shear rates
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
     vClimb                                                                                          !< climb velocity of edge dipoles
-  real(pReal), dimension(param(instance)%sum_N_sl,2) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl,2) :: &
     rhoDip, &                                                                                       !< current dipole dislocation densities (screw and edge dipoles)
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
   real(pReal) :: &
     selfDiffusion                                                                                   !< self diffusion
 
-  ph = material_phaseAt(1,el)
   if (timestep <= 0.0_pReal) then
     plasticState(ph)%dotState = 0.0_pReal
     return
   endif
 
-  associate(prm => param(instance), &
-            dst => microstructure(instance), &
-            dot => dotState(instance), &
-            stt => state(instance))
+  associate(prm => param(phase_plasticityInstance(ph)), &
+            dst => microstructure(phase_plasticityInstance(ph)), &
+            dot => dotState(phase_plasticityInstance(ph)), &
+            stt => state(phase_plasticityInstance(ph)))
   ns = prm%sum_N_sl
 
   tau = 0.0_pReal
   gdot = 0.0_pReal
 
-  rho  = getRho(instance,me,ip,el)
+  rho  = getRho(phase_plasticityInstance(ph),me,ip,el)
   rhoSgl = rho(:,sgl)
   rhoDip = rho(:,dip)
-  rho0 = getRho0(instance,me,ip,el)
+  rho0 = getRho0(phase_plasticityInstance(ph),me,ip,el)
   my_rhoSgl0 = rho0(:,sgl)
 
-  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),me)
+  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,phase_plasticityInstance(ph)),me)
   gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
 #ifdef DEBUG
@@ -1087,7 +1087,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
         * sqrt(stt%rho_forest(:,me)) / prm%i_sl / prm%b_sl, 2, 4)
   endif isBCC
 
-  forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,instance),me)
+  forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,phase_plasticityInstance(ph)),me)
 
 
   !****************************************************************************
@@ -1143,7 +1143,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
-  rhoDot = rhoDotFlux(timestep, instance,me,ip,el) &
+  rhoDot = rhoDotFlux(timestep, phase_plasticityInstance(ph),me,ip,el) &
          + rhoDotMultiplication &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
