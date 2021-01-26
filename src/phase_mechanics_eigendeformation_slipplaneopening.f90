@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) kinematics_slipplane_opening
+submodule(constitutive:eigendeformation) slipplaneopening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 
@@ -193,4 +193,4 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
 
 end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-end submodule kinematics_slipplane_opening
+end submodule slipplaneopening

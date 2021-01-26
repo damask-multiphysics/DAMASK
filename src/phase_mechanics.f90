@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) constitutive_mech
+submodule(constitutive) mechanics
 
   enum, bind(c); enumerator :: &
     ELASTICITY_UNDEFINED_ID, &
@@ -1637,5 +1637,5 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
 end subroutine constitutive_LiAndItsTangents
 
-end submodule constitutive_mech
+end submodule mechanics
 
