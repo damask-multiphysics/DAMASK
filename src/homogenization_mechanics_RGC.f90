@@ -6,7 +6,7 @@
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
 !> N_constituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:homogenization_mech) homogenization_mech_RGC
+submodule(homogenization:mechanics) RGC
   use rotations
   use lattice
 
@@ -947,4 +947,4 @@ pure function interface1to4(iFace1D, nGDim)
 end function interface1to4
 
 
-end submodule homogenization_mech_RGC
+end submodule RGC

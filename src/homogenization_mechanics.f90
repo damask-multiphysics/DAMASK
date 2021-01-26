@@ -2,7 +2,7 @@
 !> @author Martin Diehl, KU Leuven
 !> @brief Partition F and homogenize P/dPdF
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_mech
+submodule(homogenization) mechanics
 
 
   interface
@@ -253,4 +253,4 @@ module subroutine mech_results(group_base,h)
 end subroutine mech_results
 
 
-end submodule homogenization_mech
+end submodule mechanics

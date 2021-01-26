@@ -181,7 +181,7 @@ submodule(constitutive) constitutive_mech
         el
     end subroutine plastic_nonlocal_deltaState
 
-    module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+    module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, co, ip, el)
       integer, intent(in) :: &
         co, &                                                                                           !< component-ID of integration point
@@ -196,7 +196,7 @@ submodule(constitutive) constitutive_mech
         dLp_dS, &
         dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
 
-    end subroutine constitutive_plastic_LpAndItsTangents
+    end subroutine plastic_LpAndItsTangents
 
     module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
       integer, intent(in) :: kinematics_length
@@ -806,7 +806,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
       call constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                         Fe, Fi_new, co, ip, el)
 
-      call constitutive_plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
+      call plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
                                          S, Fi_new, co, ip, el)
 
       !* update current residuum and check for convergence of loop
@@ -1599,7 +1599,7 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
     dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
   endif
 
-  call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
+  call plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
                                              constitutive_mech_S(ph)%data(1:3,1:3,me), &
                                              constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
   dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS

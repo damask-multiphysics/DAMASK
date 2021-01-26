@@ -95,7 +95,7 @@ contains
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                      S, Fi, co, ip, el)
   integer, intent(in) :: &
     co, &                                                                                           !< component-ID of integration point
@@ -155,6 +155,6 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
   enddo; enddo
 
-end subroutine constitutive_plastic_LpAndItsTangents
+end subroutine plastic_LpAndItsTangents
 
 end submodule plastic
