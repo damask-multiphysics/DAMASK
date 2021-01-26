@@ -759,7 +759,7 @@ end subroutine plastic_nonlocal_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
+module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
                                                    Mp,Temperature,instance,of,ip,el)
   real(pReal), dimension(3,3), intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -861,7 +861,7 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
 
   end associate
 
-end subroutine plastic_nonlocal_LpAndItsTangent
+end subroutine nonlocal_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

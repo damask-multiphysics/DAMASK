@@ -272,7 +272,7 @@ end function plastic_dislotungsten_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-pure module subroutine plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
+pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
                                                          Mp,T,instance,of)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -309,7 +309,7 @@ pure module subroutine plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
 
   end associate
 
-end subroutine plastic_dislotungsten_LpAndItsTangent
+end subroutine dislotungsten_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

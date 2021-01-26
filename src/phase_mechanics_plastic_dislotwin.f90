@@ -521,7 +521,7 @@ end function plastic_dislotwin_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
 
   real(pReal), dimension(3,3),     intent(out) :: Lp
   real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
@@ -628,7 +628,7 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
 
   end associate
 
-end subroutine plastic_dislotwin_LpAndItsTangent
+end subroutine dislotwin_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

@@ -168,7 +168,7 @@ end function plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -222,7 +222,7 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
   end associate
 
-end subroutine plastic_isotropic_LpAndItsTangent
+end subroutine isotropic_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

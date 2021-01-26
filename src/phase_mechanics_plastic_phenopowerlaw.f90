@@ -285,7 +285,7 @@ end function plastic_phenopowerlaw_init
 !> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
-pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -330,7 +330,7 @@ pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,insta
 
   end associate
 
-end subroutine plastic_phenopowerlaw_LpAndItsTangent
+end subroutine phenopowerlaw_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

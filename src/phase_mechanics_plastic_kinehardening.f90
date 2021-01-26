@@ -240,7 +240,7 @@ end function plastic_kinehardening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-pure module subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -276,7 +276,7 @@ pure module subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,insta
 
   end associate
 
-end subroutine plastic_kinehardening_LpAndItsTangent
+end subroutine kinehardening_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

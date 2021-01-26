@@ -2,7 +2,7 @@ submodule(constitutive:constitutive_mech) plastic
 
   interface
     
-    module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+    module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -13,9 +13,9 @@ submodule(constitutive:constitutive_mech) plastic
       integer,                         intent(in) :: &
         instance, &
         of
-    end subroutine plastic_isotropic_LpAndItsTangent
+    end subroutine isotropic_LpAndItsTangent
 
-    pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+    pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -25,9 +25,9 @@ submodule(constitutive:constitutive_mech) plastic
       integer,                         intent(in) :: &
         instance, &
         of
-    end subroutine plastic_phenopowerlaw_LpAndItsTangent
+    end subroutine phenopowerlaw_LpAndItsTangent
 
-    pure module subroutine plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+    pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -38,24 +38,9 @@ submodule(constitutive:constitutive_mech) plastic
       integer,                         intent(in) :: &
         instance, &
         of
-    end subroutine plastic_kinehardening_LpAndItsTangent
+    end subroutine kinehardening_LpAndItsTangent
 
-    module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
-      real(pReal), dimension(3,3),     intent(out) :: &
-        Lp                                                                                          !< plastic velocity gradient
-      real(pReal), dimension(3,3,3,3), intent(out) :: &
-        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
-
-      real(pReal), dimension(3,3),     intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      real(pReal),                     intent(in) :: &
-        T
-      integer,                         intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_dislotwin_LpAndItsTangent
-
-    pure module subroutine plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -68,9 +53,24 @@ submodule(constitutive:constitutive_mech) plastic
       integer,                         intent(in) :: &
         instance, &
         of
-    end subroutine plastic_dislotungsten_LpAndItsTangent
+    end subroutine dislotwin_LpAndItsTangent
 
-    module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
+    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+      real(pReal), dimension(3,3),     intent(out) :: &
+        Lp                                                                                          !< plastic velocity gradient
+      real(pReal), dimension(3,3,3,3), intent(out) :: &
+        dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
+
+      real(pReal), dimension(3,3),     intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                     intent(in) :: &
+        T
+      integer,                         intent(in) :: &
+        instance, &
+        of
+    end subroutine dislotungsten_LpAndItsTangent
+
+    module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
                                                        Mp,Temperature,instance,of,ip,el)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
@@ -86,7 +86,7 @@ submodule(constitutive:constitutive_mech) plastic
         of, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
-    end subroutine plastic_nonlocal_LpAndItsTangent
+    end subroutine nonlocal_LpAndItsTangent
 
   end interface
   
@@ -132,22 +132,22 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       dLp_dMp = 0.0_pReal
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      call isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      call phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
+      call kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me,ip,el)
+      call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me,ip,el)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
+      call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
+      call dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
 
   end select plasticityType
 
