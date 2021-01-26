@@ -44,13 +44,10 @@ submodule(phase) thermal
         me
     end subroutine externalheat_dotState
 
-    module subroutine thermal_dissipation_getRate(TDot, Tstar,Lp,phase)
+    module subroutine thermal_dissipation_getRate(TDot, ph,me)
       integer, intent(in) :: &
-        phase                                                                                         !< phase ID of element
-      real(pReal),  intent(in), dimension(3,3) :: &
-        Tstar                                                                                         !< 2nd Piola Kirchhoff stress tensor for a given element
-      real(pReal),  intent(in), dimension(3,3) :: &
-        Lp                                                                                            !< plastic velocuty gradient for a given element
+        ph, &
+        me
       real(pReal),  intent(out) :: &
         TDot
     end subroutine thermal_dissipation_getRate
@@ -135,33 +132,24 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRate(TDot, ip, el)
+module subroutine constitutive_thermal_getRate(TDot, ph,me)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ph, me
   real(pReal), intent(out) :: &
     TDot
 
   real(pReal) :: &
     my_Tdot
   integer :: &
-    ph, &
-    homog, &
-    me, &
-    so, &
-    co
+    so
 
-   homog  = material_homogenizationAt(el)
 
   TDot = 0.0_pReal
-  do co = 1, homogenization_Nconstituents(homog)
-     ph = material_phaseAt(co,el)
-     me = material_phasememberAt(co,ip,el)
+
      do so = 1, thermal_Nsources(ph)
        select case(thermal_source(so,ph))
          case (THERMAL_DISSIPATION_ID)
-          call thermal_dissipation_getRate(my_Tdot, mech_S(ph,me),mech_L_p(ph,me),ph)
+          call thermal_dissipation_getRate(my_Tdot, ph,me)
 
          case (THERMAL_EXTERNALHEAT_ID)
           call thermal_externalheat_getRate(my_Tdot, ph,me)
@@ -171,7 +159,7 @@ module subroutine constitutive_thermal_getRate(TDot, ip, el)
        end select
        Tdot = Tdot + my_Tdot
      enddo
-   enddo
+
 
 end subroutine constitutive_thermal_getRate
 
