@@ -988,7 +988,6 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     el                                                                                              !< current element number
 
   integer ::  &
-    ph, &
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
     t, &                                                                                            !< type of dislocation

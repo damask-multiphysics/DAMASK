@@ -15,6 +15,7 @@ module phase
   use discretization
   use parallelization
   use HDF5_utilities
+
   implicit none
   private
 
@@ -255,8 +256,6 @@ module phase
         TDot
     end subroutine constitutive_thermal_getRate
 
-
-
     module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       integer, intent(in) :: &
         instance, &
@@ -265,54 +264,6 @@ module phase
       type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
         orientation                                                                                 !< crystal orientation
     end subroutine plastic_nonlocal_updateCompatibility
-
-
-    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
-      real(pReal), dimension(3,3),     intent(out) :: &
-        Li                                                                                          !< inleastic velocity gradient
-      real(pReal), dimension(3,3,3,3), intent(out)  :: &
-        dLi_dMi                                                                                     !< derivative of Li with respect to Mandel stress
-      real(pReal), dimension(3,3),     intent(in) :: &
-        Mi                                                                                          !< Mandel stress
-      integer,                         intent(in) :: &
-        instance, &
-        me
-    end subroutine plastic_isotropic_LiAndItsTangent
-
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_cleavage_opening_LiAndItsTangent
-
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_slipplane_opening_LiAndItsTangent
-
-    module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
-      integer, intent(in) :: ph, me
-                                                                                       !< element number
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Li                                                                                          !< thermal velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
-    end subroutine thermalexpansion_LiAndItsTangent
 
     module subroutine plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
@@ -350,7 +301,6 @@ module phase
     constitutive_forward, &
     constitutive_restore, &
     plastic_nonlocal_updateCompatibility, &
-    kinematics_active, &
     converged, &
     crystallite_init, &
     crystallite_stress, &
@@ -422,38 +372,6 @@ subroutine constitutive_init
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine constitutive_init
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief checks if a kinematic mechanism is active or not
-!--------------------------------------------------------------------------------------------------
-function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
-
-  character(len=*), intent(in)         :: kinematics_label                                          !< name of kinematic mechanism
-  integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
-  logical, dimension(:,:), allocatable :: active_kinematics
-
-  class(tNode), pointer :: &
-    phases, &
-    phase, &
-    kinematics, &
-    kinematics_type
-  integer :: p,k
-
-  phases => config_material%get('phase')
-  allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
-  do p = 1, phases%length
-    phase => phases%get(p)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
-    do k = 1, kinematics%length
-      kinematics_type => kinematics%get(k)
-      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
-    enddo
-  enddo
-
-
-end function kinematics_active
 
 
 !--------------------------------------------------------------------------------------------------

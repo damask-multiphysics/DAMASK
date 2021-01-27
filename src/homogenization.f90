@@ -145,8 +145,6 @@ module homogenization
     integer, intent(in) :: &
       ip, &                                                                                           !< integration point number
       el                                                                                              !< element number
-    integer :: &
-      co
     real(pReal) :: M
     end function damage_nonlocal_getMobility
 

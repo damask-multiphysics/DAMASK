@@ -187,8 +187,6 @@ module function thermal_stress(Delta_t,ph,me) result(converged_)
   integer, intent(in) :: ph, me
   logical :: converged_
 
-  integer :: so
-
 
   converged_ = .not. integrateThermalState(Delta_t,ph,me)
 

@@ -439,4 +439,31 @@ module function plastic_deltaState(co, ip, el, ph, of) result(broken)
 
 end function plastic_deltaState
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a plastic module is active or not
+!--------------------------------------------------------------------------------------------------
+function plastic_active(plastic_label)  result(active_plastic)
+
+  character(len=*), intent(in)       :: plastic_label                                               !< type of plasticity model
+  logical, dimension(:), allocatable :: active_plastic
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    mech, &
+    pl
+  integer :: ph
+
+  phases => config_material%get('phase')
+  allocate(active_plastic(phases%length), source = .false. )
+  do ph = 1, phases%length
+    phase => phases%get(ph)
+    mech  => phase%get('mechanics')
+    pl    => mech%get('plasticity')
+    if(pl%get_asString('type') == plastic_label) active_plastic(ph) = .true.
+  enddo
+
+end function plastic_active
+
 end submodule plastic
