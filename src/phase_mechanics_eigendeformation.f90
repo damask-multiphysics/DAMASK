@@ -68,7 +68,7 @@ module subroutine eigendeformation_init(phases)
     phase, &
    kinematics
 
-  print'(/,a)', ' <<<+-  phase_mechanics_eigendeformation init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
 ! initialize kinematic mechanisms

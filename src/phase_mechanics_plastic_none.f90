@@ -25,7 +25,7 @@ module function plastic_none_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_none init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:none init  -+>>>'
 
   phases => config_material%get('phase')
   allocate(myPlasticity(phases%length), source = .false.)

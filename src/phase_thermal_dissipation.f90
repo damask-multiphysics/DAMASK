@@ -33,7 +33,7 @@ module function dissipation_init(source_length) result(mySources)
     src
   integer :: Ninstances,so,Nconstituents,ph
 
-  print'(/,a)', ' <<<+-  thermal_dissipation init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
 
   mySources = thermal_active('dissipation',source_length)
 

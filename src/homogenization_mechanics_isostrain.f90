@@ -37,7 +37,7 @@ module subroutine mech_isostrain_init
     homog, &
     homogMech
 
-  print'(/,a)',   ' <<<+-  homogenization_mech_isostrain init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanics:isostrain init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)

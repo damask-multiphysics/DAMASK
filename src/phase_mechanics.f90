@@ -206,7 +206,7 @@ module subroutine mech_init(phases)
     elastic, &
     stiffDegradation
 
-  print'(/,a)', ' <<<+-  constitutive_mech init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?

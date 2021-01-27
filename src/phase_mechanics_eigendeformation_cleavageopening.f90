@@ -44,7 +44,7 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  kinematics_cleavage_opening init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:cleavageopening init  -+>>>'
 
   myKinematics = kinematics_active('cleavage_opening',kinematics_length)
   Ninstances = count(myKinematics)

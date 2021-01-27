@@ -44,7 +44,7 @@ module function anisoductile_init(source_length) result(mySources)
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  source_damage_anisoDuctile init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:damage:anisoductile init  -+>>>'
 
   mySources = source_active('damage_anisoDuctile',source_length)
   Ninstances = count(mySources)

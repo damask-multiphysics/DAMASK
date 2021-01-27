@@ -34,7 +34,9 @@ module subroutine thermal_init()
   integer :: ho
 
 
-  print'(/,a)',   ' <<<+-  homogenization_thermal init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal:isotemperature   init  -+>>>'
+
 
 
   configHomogenizations => config_material%get('homogenization')

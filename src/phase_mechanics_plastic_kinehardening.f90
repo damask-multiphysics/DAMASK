@@ -80,7 +80,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_kinehardening init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:kinehardening init  -+>>>'
 
   myPlasticity = plastic_active('kinehardening')
   Ninstances = count(myPlasticity)

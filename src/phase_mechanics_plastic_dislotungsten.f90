@@ -97,7 +97,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_dislotungsten init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:dislotungsten init  -+>>>'
 
   myPlasticity = plastic_active('dislotungsten')
   Ninstances = count(myPlasticity)

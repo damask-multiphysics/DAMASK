@@ -40,7 +40,7 @@ module function externalheat_init(source_length) result(mySources)
     src
   integer :: Ninstances,so,Nconstituents,ph
 
-  print'(/,a)', ' <<<+-  thermal_externalheat init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:thermal:externalheat init  -+>>>'
 
   mySources = thermal_active('externalheat',source_length)
 

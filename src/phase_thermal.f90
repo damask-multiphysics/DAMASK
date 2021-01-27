@@ -77,7 +77,7 @@ module subroutine thermal_init(phases)
     Nconstituents
 
 
-  print'(/,a)', ' <<<+-  constitutive_thermal init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:thermal init  -+>>>'
 
   allocate(current(phases%length))
 

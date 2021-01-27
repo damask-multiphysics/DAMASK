@@ -144,7 +144,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_dislotwin init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:dislotwin init  -+>>>'
 
   myPlasticity = plastic_active('dislotwin')
   Ninstances = count(myPlasticity)

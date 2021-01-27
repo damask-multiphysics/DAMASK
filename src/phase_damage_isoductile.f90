@@ -41,7 +41,7 @@ module function isoductile_init(source_length) result(mySources)
   integer :: Ninstances,sourceOffset,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  source_damage_isoDuctile init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:damage:isoductile init  -+>>>'
 
   mySources = source_active('damage_isoDuctile',source_length)
   Ninstances = count(mySources)

@@ -88,7 +88,7 @@ module subroutine mech_RGC_init(num_homogMech)
     homog, &
     homogMech
 
-  print'(/,a)', ' <<<+-  homogenization_mech_rgc init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanics:RGC init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_RGC_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)

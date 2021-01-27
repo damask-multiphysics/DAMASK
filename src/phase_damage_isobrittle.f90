@@ -39,7 +39,7 @@ module function isobrittle_init(source_length) result(mySources)
   integer :: Ninstances,sourceOffset,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  source_damage_isoBrittle init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
 
   mySources = source_active('damage_isoBrittle',source_length)
   Ninstances = count(mySources)

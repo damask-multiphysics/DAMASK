@@ -225,6 +225,9 @@ contains
 
 module subroutine plastic_init
 
+
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic init  -+>>>'
+
   where(plastic_none_init())              phase_plasticity = PLASTICITY_NONE_ID
   where(plastic_isotropic_init())         phase_plasticity = PLASTICITY_ISOTROPIC_ID
   where(plastic_phenopowerlaw_init())     phase_plasticity = PLASTICITY_PHENOPOWERLAW_ID

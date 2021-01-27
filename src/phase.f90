@@ -323,7 +323,7 @@ subroutine constitutive_init
     phases
 
 
-  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
+  print'(/,a)', ' <<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
   debug_constitutive => config_debug%get('constitutive', defaultVal=emptyList)
   debugConstitutive%basic      =  debug_constitutive%contains('basic')

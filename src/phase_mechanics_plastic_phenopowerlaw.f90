@@ -89,7 +89,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_phenopowerlaw init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:phenopowerlaw init  -+>>>'
 
   myPlasticity = plastic_active('phenopowerlaw')
   Ninstances = count(myPlasticity)

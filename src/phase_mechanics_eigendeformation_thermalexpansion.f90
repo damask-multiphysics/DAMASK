@@ -36,7 +36,7 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  kinematics_thermal_expansion init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:thermalexpansion init  -+>>>'
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
   Ninstances = count(myKinematics)

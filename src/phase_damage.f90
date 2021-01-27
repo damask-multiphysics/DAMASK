@@ -157,6 +157,9 @@ module subroutine damage_init
    phase, &
    sources
 
+
+  print'(/,a)', ' <<<+-  phase:damage init  -+>>>'
+
   phases => config_material%get('phase')
 
   allocate(current(phases%length))

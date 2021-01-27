@@ -49,7 +49,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  kinematics_slipplane init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:slipplaneopening init  -+>>>'
 
   myKinematics = kinematics_active('slipplane_opening',kinematics_length)
   Ninstances = count(myKinematics)

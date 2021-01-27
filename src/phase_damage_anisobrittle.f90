@@ -49,7 +49,7 @@ module function anisobrittle_init(source_length) result(mySources)
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  source_damage_anisoBrittle init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:damage:anisobrittle init  -+>>>'
 
   mySources = source_active('damage_anisoBrittle',source_length)
   Ninstances = count(mySources)

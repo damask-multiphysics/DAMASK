@@ -18,7 +18,7 @@ module subroutine mech_none_init
     h, &
     Nmaterialpoints
 
-  print'(/,a)', ' <<<+-  homogenization_mech_none init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanics:none init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_NONE_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)

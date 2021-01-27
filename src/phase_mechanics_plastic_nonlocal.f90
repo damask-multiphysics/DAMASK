@@ -187,7 +187,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_nonlocal init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:nonlocal init  -+>>>'
 
   myPlasticity = plastic_active('nonlocal')
   Ninstances = count(myPlasticity)
