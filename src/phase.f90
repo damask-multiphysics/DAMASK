@@ -19,13 +19,6 @@ module phase
   implicit none
   private
 
-  enum, bind(c); enumerator :: &
-    KINEMATICS_UNDEFINED_ID ,&
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID
-  end enum
-
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
 
@@ -63,10 +56,6 @@ module phase
   end type tDebugOptions
 
   type(tDebugOptions) :: debugCrystallite
-
-
-  integer(kind(KINEMATICS_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
-    phase_kinematics                                                                                !< active kinematic mechanisms of each phase
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
     thermal_Nsources, &
@@ -317,14 +306,9 @@ module phase
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &
-    constitutive_windForward, &
-    KINEMATICS_UNDEFINED_ID ,&
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID
+    constitutive_windForward
 
 contains
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialze constitutive models for individual physics

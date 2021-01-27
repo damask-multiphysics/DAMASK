@@ -388,14 +388,14 @@ end subroutine plastic_dependentState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-module function plastic_deltaState(co, ip, el, ph, of) result(broken)
+module function plastic_deltaState(co, ip, el, ph, me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                           !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     ph, &
-    of
+    me
   logical :: &
     broken
 
@@ -407,19 +407,19 @@ module function plastic_deltaState(co, ip, el, ph, of) result(broken)
     mySize
 
 
-  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,of)),&
-                     constitutive_mech_Fi(ph)%data(1:3,1:3,of)),constitutive_mech_S(ph)%data(1:3,1:3,of))
+  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,me)),&
+                     constitutive_mech_Fi(ph)%data(1:3,1:3,me)),constitutive_mech_S(ph)%data(1:3,1:3,me))
   instance = phase_plasticityInstance(ph)
 
   plasticityType: select case (phase_plasticity(ph))
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_deltaState(Mp,instance,of)
-      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,of)))
+      call plastic_kinehardening_deltaState(Mp,instance,me)
+      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
-      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,of)))
+      call plastic_nonlocal_deltaState(Mp,instance,me,ip,el)
+      broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case default
       broken = .false.
@@ -432,8 +432,8 @@ module function plastic_deltaState(co, ip, el, ph, of) result(broken)
 
         myOffset = plasticState(ph)%offsetDeltaState
         mySize   = plasticState(ph)%sizeDeltaState
-        plasticState(ph)%state(myOffset + 1:myOffset + mySize,of) = &
-        plasticState(ph)%state(myOffset + 1:myOffset + mySize,of) + plasticState(ph)%deltaState(1:mySize,of)
+        plasticState(ph)%state(myOffset + 1:myOffset + mySize,me) = &
+        plasticState(ph)%state(myOffset + 1:myOffset + mySize,me) + plasticState(ph)%deltaState(1:mySize,me)
     end select
   endif
 

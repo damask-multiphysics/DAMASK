@@ -15,9 +15,15 @@ submodule(phase) mechanics
     PLASTICITY_KINEHARDENING_ID, &
     PLASTICITY_DISLOTWIN_ID, &
     PLASTICITY_DISLOTUNGSTEN_ID, &
-    PLASTICITY_NONLOCAL_ID
+    PLASTICITY_NONLOCAL_ID, &
+    KINEMATICS_UNDEFINED_ID, &
+    KINEMATICS_CLEAVAGE_OPENING_ID, &
+    KINEMATICS_SLIPPLANE_OPENING_ID, &
+    KINEMATICS_THERMAL_EXPANSION_ID
   end enum
 
+  integer(kind(KINEMATICS_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
+    phase_kinematics
   integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
   integer(kind(STIFFNESS_DEGRADATION_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
@@ -53,8 +59,6 @@ submodule(phase) mechanics
     end subroutine eigendeformation_init
 
     module subroutine plastic_init
-
-
     end subroutine plastic_init
 
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
@@ -82,17 +86,15 @@ submodule(phase) mechanics
       logical :: broken
     end function plastic_dotState
 
-    module function plastic_deltaState(co, ip, el, ph, of) result(broken)
-
+    module function plastic_deltaState(co, ip, el, ph, me) result(broken)
       integer, intent(in) :: &
         co, &                                                                                          !< component-ID of integration point
         ip, &                                                                                           !< integration point
         el, &                                                                                           !< element
         ph, &
-        of
+        me
       logical :: &
         broken
-
     end function plastic_deltaState
 
     module subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
@@ -344,9 +346,6 @@ module subroutine mech_init(phases)
 
 
 end subroutine mech_init
-
-
-
 
 
 !--------------------------------------------------------------------------------------------------
