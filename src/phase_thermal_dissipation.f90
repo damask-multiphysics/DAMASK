@@ -4,11 +4,7 @@
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_thermal) source_dissipation
-
-  integer,           dimension(:),   allocatable :: &
-    source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
-    source_thermal_dissipation_instance                                                             !< instance of thermal dissipation source mechanism
+submodule(phase:thermal) dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -25,7 +21,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_thermal_dissipation_init(source_length) result(mySources)
+module function dissipation_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -35,9 +31,9 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
     phase, &
     sources, thermal, &
     src
-  integer :: Ninstances,sourceOffset,Nconstituents,p
+  integer :: Ninstances,so,Nconstituents,ph
 
-  print'(/,a)', ' <<<+-  thermal_dissipation init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
 
   mySources = thermal_active('dissipation',source_length)
 
@@ -46,25 +42,21 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstances))
-  allocate(source_thermal_dissipation_offset  (phases%length), source=0)
-  allocate(source_thermal_dissipation_instance(phases%length), source=0)
+  allocate(param(phases%length))
 
-  do p = 1, phases%length
-    phase => phases%get(p)
-    if(any(mySources(:,p))) source_thermal_dissipation_instance(p) = count(mySources(:,1:p))
-    if(count(mySources(:,p)) == 0) cycle
+  do ph = 1, phases%length
+    phase => phases%get(ph)
+    if(count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
     thermal => phase%get('thermal')
     sources => thermal%get('source')
-    do sourceOffset = 1, sources%length
-      if(mySources(sourceOffset,p)) then
-        source_thermal_dissipation_offset(p) = sourceOffset
-        associate(prm  => param(source_thermal_dissipation_instance(p)))
-        src => sources%get(sourceOffset)
+    do so = 1, sources%length
+      if(mySources(so,ph)) then
+        associate(prm  => param(ph))
+          src => sources%get(so)
 
-        prm%kappa = src%get_asFloat('kappa')
-        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
-        call constitutive_allocateState(thermalState(p)%p(sourceOffset),Nconstituents,0,0,0)
+          prm%kappa = src%get_asFloat('kappa')
+          Nconstituents = count(material_phaseAt2 == ph)
+          call constitutive_allocateState(thermalState(ph)%p(so),Nconstituents,0,0,0)
 
         end associate
       endif
@@ -72,28 +64,23 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
   enddo
 
 
-end function source_thermal_dissipation_init
+end function dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_dissipation_getRate(TDot, Tstar, Lp, phase)
+module subroutine dissipation_getRate(TDot, ph,me)
 
-  integer, intent(in) :: &
-    phase
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Tstar
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Lp
-
+  integer, intent(in) :: ph, me
   real(pReal),  intent(out) :: &
     TDot
 
-  associate(prm => param(source_thermal_dissipation_instance(phase)))
-  TDot = prm%kappa*sum(abs(Tstar*Lp))
+
+  associate(prm => param(ph))
+    TDot = prm%kappa*sum(abs(mech_S(ph,me)*mech_L_p(ph,me)))
   end associate
 
-end subroutine thermal_dissipation_getRate
+end subroutine dissipation_getRate
 
-end submodule source_dissipation
+end submodule dissipation

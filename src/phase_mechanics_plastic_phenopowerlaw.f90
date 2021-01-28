@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_phenopowerlaw
+submodule(phase:plastic) phenopowerlaw
 
   type :: tParameters
     real(pReal) :: &
@@ -89,7 +89,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_phenopowerlaw init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:phenopowerlaw init  -+>>>'
 
   myPlasticity = plastic_active('phenopowerlaw')
   Ninstances = count(myPlasticity)
@@ -225,7 +225,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == p)
     sizeDotState = size(['xi_sl   ','gamma_sl']) * prm%sum_N_sl &
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
@@ -285,7 +285,7 @@ end function plastic_phenopowerlaw_init
 !> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
-pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -295,23 +295,23 @@ pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,insta
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,               intent(in) :: &
-    instance, &
-    of
+    ph, &
+    me
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     gdot_slip_pos,gdot_slip_neg, &
     dgdot_dtauslip_pos,dgdot_dtauslip_neg
-  real(pReal), dimension(param(instance)%sum_N_tw) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_tw) :: &
     gdot_twin,dgdot_dtautwin
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(instance))
+  associate(prm => param(phase_plasticityInstance(ph)))
 
-  call kinetics_slip(Mp,instance,of,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
   slipSystems: do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -320,7 +320,7 @@ pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,insta
                        + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_twin(Mp,instance,of,gdot_twin,dgdot_dtautwin)
+  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,gdot_twin,dgdot_dtautwin)
   twinSystems: do i = 1, prm%sum_N_tw
     Lp = Lp + gdot_twin(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -330,32 +330,33 @@ pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,insta
 
   end associate
 
-end subroutine plastic_phenopowerlaw_LpAndItsTangent
+end subroutine phenopowerlaw_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
+module subroutine phenopowerlaw_dotState(Mp,ph,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
-    instance, &
-    of
+    ph, &
+    me
 
   real(pReal) :: &
     c_SlipSlip,c_TwinSlip,c_TwinTwin, &
     xi_slip_sat_offset,&
     sumGamma,sumF
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
     left_SlipSlip,right_SlipSlip, &
     gdot_slip_pos,gdot_slip_neg
 
-  associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
+  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), &
+  dot => dotState(phase_plasticityInstance(ph)))
 
-  sumGamma = sum(stt%gamma_slip(:,of))
-  sumF     = sum(stt%gamma_twin(:,of)/prm%gamma_tw_char)
+  sumGamma = sum(stt%gamma_slip(:,me))
+  sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
@@ -367,26 +368,26 @@ module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 !  calculate left and right vectors
   left_SlipSlip  = 1.0_pReal + prm%h_int
   xi_slip_sat_offset = prm%f_sl_sat_tw*sqrt(sumF)
-  right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,of) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
-                 * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,of) / (prm%xi_inf_sl+xi_slip_sat_offset))
+  right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
+                 * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset))
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
-  call kinetics_slip(Mp,instance,of,gdot_slip_pos,gdot_slip_neg)
-  dot%gamma_slip(:,of) = abs(gdot_slip_pos+gdot_slip_neg)
-  call kinetics_twin(Mp,instance,of,dot%gamma_twin(:,of))
+  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg)
+  dot%gamma_slip(:,me) = abs(gdot_slip_pos+gdot_slip_neg)
+  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,dot%gamma_twin(:,me))
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
-  dot%xi_slip(:,of) = c_SlipSlip * left_SlipSlip * &
-                      matmul(prm%h_sl_sl,dot%gamma_slip(:,of)*right_SlipSlip) &
-                    + matmul(prm%h_sl_tw,dot%gamma_twin(:,of))
+  dot%xi_slip(:,me) = c_SlipSlip * left_SlipSlip * &
+                      matmul(prm%h_sl_sl,dot%gamma_slip(:,me)*right_SlipSlip) &
+                    + matmul(prm%h_sl_tw,dot%gamma_twin(:,me))
 
-  dot%xi_twin(:,of) = c_TwinSlip * matmul(prm%h_tw_sl,dot%gamma_slip(:,of)) &
-                    + c_TwinTwin * matmul(prm%h_tw_tw,dot%gamma_twin(:,of))
+  dot%xi_twin(:,me) = c_TwinSlip * matmul(prm%h_tw_sl,dot%gamma_slip(:,me)) &
+                    + c_TwinTwin * matmul(prm%h_tw_tw,dot%gamma_twin(:,me))
   end associate
 
-end subroutine plastic_phenopowerlaw_dotState
+end subroutine phenopowerlaw_dotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -431,14 +432,14 @@ end subroutine plastic_phenopowerlaw_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_slip(Mp,instance,of, &
+pure subroutine kinetics_slip(Mp,instance,me, &
                               gdot_slip_pos,gdot_slip_neg,dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
 
   real(pReal),                  intent(out), dimension(param(instance)%sum_N_sl) :: &
     gdot_slip_pos, &
@@ -462,14 +463,14 @@ pure subroutine kinetics_slip(Mp,instance,of, &
 
   where(dNeq0(tau_slip_pos))
     gdot_slip_pos = prm%dot_gamma_0_sl * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &          ! 1/2 if non-Schmid active
-                  * sign(abs(tau_slip_pos/stt%xi_slip(:,of))**prm%n_sl,  tau_slip_pos)
+                  * sign(abs(tau_slip_pos/stt%xi_slip(:,me))**prm%n_sl,  tau_slip_pos)
   else where
     gdot_slip_pos = 0.0_pReal
   end where
 
   where(dNeq0(tau_slip_neg))
     gdot_slip_neg = prm%dot_gamma_0_sl * 0.5_pReal &                                                ! only used if non-Schmid active, always 1/2
-                  * sign(abs(tau_slip_neg/stt%xi_slip(:,of))**prm%n_sl,  tau_slip_neg)
+                  * sign(abs(tau_slip_neg/stt%xi_slip(:,me))**prm%n_sl,  tau_slip_neg)
   else where
     gdot_slip_neg = 0.0_pReal
   end where
@@ -500,14 +501,14 @@ end subroutine kinetics_slip
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_twin(Mp,instance,of,&
+pure subroutine kinetics_twin(Mp,instance,me,&
                               gdot_twin,dgdot_dtau_twin)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     instance, &
-    of
+    me
 
   real(pReal), dimension(param(instance)%sum_N_tw), intent(out) :: &
     gdot_twin
@@ -525,8 +526,8 @@ pure subroutine kinetics_twin(Mp,instance,of,&
   enddo
 
   where(tau_twin > 0.0_pReal)
-    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,of)/prm%gamma_tw_char)) &                           ! only twin in untwinned volume fraction
-              * prm%dot_gamma_0_tw*(abs(tau_twin)/stt%xi_twin(:,of))**prm%n_tw
+    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)) &                           ! only twin in untwinned volume fraction
+              * prm%dot_gamma_0_tw*(abs(tau_twin)/stt%xi_twin(:,me))**prm%n_tw
   else where
     gdot_twin = 0.0_pReal
   end where
@@ -543,4 +544,4 @@ pure subroutine kinetics_twin(Mp,instance,of,&
 
 end subroutine kinetics_twin
 
-end submodule plastic_phenopowerlaw
+end submodule phenopowerlaw

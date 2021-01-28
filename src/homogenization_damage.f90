@@ -34,8 +34,8 @@ module subroutine damage_init()
   integer :: ho
 
 
-  print'(/,a)',   ' <<<+-  homogenization_damage init  -+>>>'
-
+  print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:damage:isodamage init  -+>>>'
 
   configHomogenizations => config_material%get('homogenization')
   allocate(param(configHomogenizations%length))

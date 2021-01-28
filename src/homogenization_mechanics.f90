@@ -2,7 +2,7 @@
 !> @author Martin Diehl, KU Leuven
 !> @brief Partition F and homogenize P/dPdF
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_mech
+submodule(homogenization) mechanics
 
 
   interface
@@ -86,7 +86,7 @@ module subroutine mech_init(num_homog)
   class(tNode), pointer :: &
     num_homogMech
 
-  print'(/,a)',   ' <<<+-  homogenization_mech init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanics init  -+>>>'
 
   allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
   homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
@@ -253,4 +253,4 @@ module subroutine mech_results(group_base,h)
 end subroutine mech_results
 
 
-end submodule homogenization_mech
+end submodule mechanics

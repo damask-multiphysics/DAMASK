@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:homogenization_mech) homogenization_mech_isostrain
+submodule(homogenization:mechanics) isostrain
 
   enum, bind(c); enumerator :: &
     parallel_ID, &
@@ -37,7 +37,7 @@ module subroutine mech_isostrain_init
     homog, &
     homogMech
 
-  print'(/,a)',   ' <<<+-  homogenization_mech_isostrain init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanics:isostrain init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
@@ -114,4 +114,4 @@ module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dP
 
 end subroutine mech_isostrain_averageStressAndItsTangent
 
-end submodule homogenization_mech_isostrain
+end submodule isostrain

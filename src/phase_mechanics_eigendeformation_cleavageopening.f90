@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of cleavage planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_damage) kinematics_cleavage_opening
+submodule(phase:eigendeformation) cleavageopening
 
   integer, dimension(:), allocatable :: kinematics_cleavage_opening_instance
 
@@ -31,8 +31,8 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
- 
-  integer, intent(in)                  :: kinematics_length  
+
+  integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances,p,k
@@ -42,9 +42,9 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
     phases, &
     phase, &
     kinematics, &
-    kinematic_type 
-       
-  print'(/,a)', ' <<<+-  kinematics_cleavage_opening init  -+>>>'
+    kinematic_type
+
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:cleavageopening init  -+>>>'
 
   myKinematics = kinematics_active('cleavage_opening',kinematics_length)
   Ninstances = count(myKinematics)
@@ -63,7 +63,7 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_cleavage_opening_instance(p)))
-        kinematic_type => kinematics%get(k) 
+        kinematic_type => kinematics%get(k)
 
         N_cl = kinematic_type%get_asInts('N_cl')
         prm%sum_N_cl = sum(abs(N_cl))
@@ -162,4 +162,4 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
 
 end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
-end submodule kinematics_cleavage_opening
+end submodule cleavageopening

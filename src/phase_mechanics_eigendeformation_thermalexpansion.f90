@@ -3,7 +3,7 @@
 !> @brief material subroutine incorporating kinematics resulting from thermal expansion
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_thermal) kinematics_thermal_expansion
+submodule(phase:eigendeformation) thermalexpansion
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -15,7 +15,6 @@ submodule(constitutive:constitutive_thermal) kinematics_thermal_expansion
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param
-
 
 contains
 
@@ -37,7 +36,7 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  kinematics_thermal_expansion init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:thermalexpansion init  -+>>>'
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
   Ninstances = count(myKinematics)
@@ -84,7 +83,7 @@ end function kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
+module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   integer, intent(in) :: ph, me
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -92,28 +91,25 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, p
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
 
-  integer :: &
-    phase, &
-    homog
   real(pReal) :: T, dot_T
 
-  T     = current(ph)%T(me)
-  dot_T = current(ph)%dot_T(me)
+  T     = thermal_T(ph,me)
+  dot_T = thermal_dot_T(ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
-  Li = dot_T * ( &
-                prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
-              + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
-              + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient
-              ) / &
-       (1.0_pReal &
-             + prm%A(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
-             + prm%A(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
-             + prm%A(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
-       )
-  end associate
+    Li = dot_T * ( &
+                  prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
+                + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
+                + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient
+                ) / &
+         (1.0_pReal &
+               + prm%A(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
+               + prm%A(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
+               + prm%A(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
+         )
+    end associate
   dLi_dTstar = 0.0_pReal
 
-end subroutine kinematics_thermal_expansion_LiAndItsTangent
+end subroutine thermalexpansion_LiAndItsTangent
 
-end submodule kinematics_thermal_expansion
+end submodule thermalexpansion

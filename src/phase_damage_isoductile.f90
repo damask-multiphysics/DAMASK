@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating isotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule (constitutive:constitutive_damage) source_damage_isoDuctile
+submodule(phase:damagee) isoductile
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoDuctile_offset, &                                                              !< which source is my current damage mechanism?
@@ -28,7 +28,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_damage_isoDuctile_init(source_length) result(mySources)
+module function isoductile_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -41,7 +41,7 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
   integer :: Ninstances,sourceOffset,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  source_damage_isoDuctile init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:damage:isoductile init  -+>>>'
 
   mySources = source_active('damage_isoDuctile',source_length)
   Ninstances = count(mySources)
@@ -92,13 +92,13 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
   enddo
 
 
-end function source_damage_isoDuctile_init
+end function isoductile_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoDuctile_dotState(co, ip, el)
+module subroutine isoductile_dotState(co, ip, el)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
@@ -123,7 +123,7 @@ module subroutine source_damage_isoDuctile_dotState(co, ip, el)
     sum(plasticState(ph)%slipRate(:,me))/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit
   end associate
 
-end subroutine source_damage_isoDuctile_dotState
+end subroutine isoductile_dotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ end subroutine source_damage_isoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoDuctile_results(phase,group)
+module subroutine isoductile_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -173,6 +173,6 @@ module subroutine source_damage_isoDuctile_results(phase,group)
   enddo outputsLoop
   end associate
 
-end subroutine source_damage_isoDuctile_results
+end subroutine isoductile_results
 
-end submodule source_damage_isoDuctile
+end submodule isoductile

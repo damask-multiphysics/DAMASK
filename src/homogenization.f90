@@ -10,7 +10,7 @@ module homogenization
   use config
   use math
   use material
-  use constitutive
+  use phase
   use discretization
   use damage_none
   use damage_nonlocal
@@ -145,8 +145,6 @@ module homogenization
     integer, intent(in) :: &
       ip, &                                                                                           !< integration point number
       el                                                                                              !< element number
-    integer :: &
-      co
     real(pReal) :: M
     end function damage_nonlocal_getMobility
 

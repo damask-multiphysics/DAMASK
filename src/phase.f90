@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief elasticity, plasticity, damage & thermal internal microstructure state
 !--------------------------------------------------------------------------------------------------
-module constitutive
+module phase
   use prec
   use math
   use rotations
@@ -15,17 +15,9 @@ module constitutive
   use discretization
   use parallelization
   use HDF5_utilities
-  use results
 
   implicit none
   private
-
-  enum, bind(c); enumerator :: &
-    KINEMATICS_UNDEFINED_ID ,&
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID
-  end enum
 
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
@@ -64,10 +56,6 @@ module constitutive
   end type tDebugOptions
 
   type(tDebugOptions) :: debugCrystallite
-
-
-  integer(kind(KINEMATICS_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
-    phase_kinematics                                                                                !< active kinematic mechanisms of each phase
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
     thermal_Nsources, &
@@ -188,6 +176,11 @@ module constitutive
       real(pReal) :: T
     end function thermal_T
 
+    module function thermal_dot_T(ph,me) result(dot_T)
+      integer, intent(in) :: ph,me
+      real(pReal) :: dot_T
+    end function thermal_dot_T
+
 
     module subroutine constitutive_mech_setF(F,co,ip,el)
       real(pReal), dimension(3,3), intent(in) :: F
@@ -246,15 +239,11 @@ module constitutive
         dPhiDot_dPhi
     end subroutine constitutive_damage_getRateAndItsTangents
 
-    module subroutine constitutive_thermal_getRate(TDot, ip,el)
-      integer, intent(in) :: &
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+    module subroutine constitutive_thermal_getRate(TDot, ph,me)
+      integer, intent(in) :: ph, me
       real(pReal), intent(out) :: &
         TDot
     end subroutine constitutive_thermal_getRate
-
-
 
     module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       integer, intent(in) :: &
@@ -265,66 +254,31 @@ module constitutive
         orientation                                                                                 !< crystal orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
-
-    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
-      real(pReal), dimension(3,3),     intent(out) :: &
-        Li                                                                                          !< inleastic velocity gradient
-      real(pReal), dimension(3,3,3,3), intent(out)  :: &
-        dLi_dMi                                                                                     !< derivative of Li with respect to Mandel stress
-      real(pReal), dimension(3,3),     intent(in) :: &
-        Mi                                                                                          !< Mandel stress
-      integer,                         intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_isotropic_LiAndItsTangent
-
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_cleavage_opening_LiAndItsTangent
-
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_slipplane_opening_LiAndItsTangent
-
-    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
-      integer, intent(in) :: ph, me
-                                                                                       !< element number
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Li                                                                                          !< thermal velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
-    end subroutine kinematics_thermal_expansion_LiAndItsTangent
-
-    module subroutine constitutive_plastic_dependentState(co,ip,el)
+    module subroutine plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
         co, &                                                                                       !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
-    end subroutine constitutive_plastic_dependentState
+    end subroutine plastic_dependentState
 
   end interface
 
 
 
   type(tDebugOptions) :: debugConstitutive
+#if __INTEL_COMPILER >= 1900
+  public :: &
+    prec, &
+    math, &
+    rotations, &
+    IO, &
+    config, &
+    material, &
+    results, &
+    lattice, &
+    discretization, &
+    HDF5_utilities
+#endif
 
   public :: &
     constitutive_init, &
@@ -336,7 +290,6 @@ module constitutive
     constitutive_forward, &
     constitutive_restore, &
     plastic_nonlocal_updateCompatibility, &
-    kinematics_active, &
     converged, &
     crystallite_init, &
     crystallite_stress, &
@@ -353,14 +306,9 @@ module constitutive
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &
-    constitutive_windForward, &
-    KINEMATICS_UNDEFINED_ID ,&
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID
+    constitutive_windForward
 
 contains
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialze constitutive models for individual physics
@@ -375,7 +323,7 @@ subroutine constitutive_init
     phases
 
 
-  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
+  print'(/,a)', ' <<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
   debug_constitutive => config_debug%get('constitutive', defaultVal=emptyList)
   debugConstitutive%basic      =  debug_constitutive%contains('basic')
@@ -408,38 +356,6 @@ subroutine constitutive_init
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine constitutive_init
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief checks if a kinematic mechanism is active or not
-!--------------------------------------------------------------------------------------------------
-function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
-
-  character(len=*), intent(in)         :: kinematics_label                                          !< name of kinematic mechanism
-  integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
-  logical, dimension(:,:), allocatable :: active_kinematics
-
-  class(tNode), pointer :: &
-    phases, &
-    phase, &
-    kinematics, &
-    kinematics_type
-  integer :: p,k
-
-  phases => config_material%get('phase')
-  allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
-  do p = 1, phases%length
-    phase => phases%get(p)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
-    do k = 1, kinematics%length
-      kinematics_type => kinematics%get(k)
-      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
-    enddo
-  enddo
-
-
-end function kinematics_active
 
 
 !--------------------------------------------------------------------------------------------------
@@ -562,9 +478,7 @@ subroutine crystallite_init()
   class(tNode), pointer :: &
     num_crystallite, &
     debug_crystallite, &                                                                            ! pointer to debug options for crystallite
-    phases, &
-    phase, &
-    mech
+    phases
 
 
   print'(/,a)', ' <<<+-  crystallite init  -+>>>'
@@ -630,7 +544,7 @@ subroutine crystallite_init()
         ph = material_phaseAt(co,el)
         me = material_phaseMemberAt(co,ip,el)
         call crystallite_orientations(co,ip,el)
-        call constitutive_plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
+        call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
      enddo
     enddo
   enddo
@@ -788,4 +702,4 @@ subroutine constitutive_restartRead(fileHandle)
 end subroutine constitutive_restartRead
 
 
-end module constitutive
+end module phase

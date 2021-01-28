@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all thermal sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) constitutive_thermal
+submodule(phase) thermal
 
   enum, bind(c); enumerator :: &
     THERMAL_UNDEFINED_ID ,&
@@ -18,49 +18,44 @@ submodule(constitutive) constitutive_thermal
   type(tDataContainer), dimension(:), allocatable :: current
 
   integer :: thermal_source_maxSizeDotState
+
+
   interface
 
-  module function source_thermal_dissipation_init(source_length) result(mySources)
-    integer, intent(in) :: source_length
-    logical, dimension(:,:), allocatable :: mySources
-  end function source_thermal_dissipation_init
+    module function dissipation_init(source_length) result(mySources)
+      integer, intent(in) :: source_length
+      logical, dimension(:,:), allocatable :: mySources
+    end function dissipation_init
 
-  module function source_thermal_externalheat_init(source_length) result(mySources)
-    integer, intent(in) :: source_length
-    logical, dimension(:,:), allocatable :: mySources
-  end function source_thermal_externalheat_init
-
-  module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
-    integer, intent(in) :: kinematics_length
-    logical, dimension(:,:), allocatable :: myKinematics
-  end function kinematics_thermal_expansion_init
+    module function externalheat_init(source_length) result(mySources)
+      integer, intent(in) :: source_length
+      logical, dimension(:,:), allocatable :: mySources
+    end function externalheat_init
 
 
-    module subroutine source_thermal_externalheat_dotState(ph, me)
+
+
+    module subroutine externalheat_dotState(ph, me)
       integer, intent(in) :: &
         ph, &
         me
-    end subroutine source_thermal_externalheat_dotState
+    end subroutine externalheat_dotState
 
+    module subroutine dissipation_getRate(TDot, ph,me)
+      integer, intent(in) :: &
+        ph, &
+        me
+      real(pReal),  intent(out) :: &
+        TDot
+    end subroutine dissipation_getRate
 
-  module subroutine thermal_dissipation_getRate(TDot, Tstar,Lp,phase)
-    integer, intent(in) :: &
-      phase                                                                                         !< phase ID of element
-    real(pReal),  intent(in), dimension(3,3) :: &
-      Tstar                                                                                         !< 2nd Piola Kirchhoff stress tensor for a given element
-    real(pReal),  intent(in), dimension(3,3) :: &
-      Lp                                                                                            !< plastic velocuty gradient for a given element
-    real(pReal),  intent(out) :: &
-      TDot
-  end subroutine thermal_dissipation_getRate
-
-  module subroutine thermal_externalheat_getRate(TDot, ph,me)
-    integer, intent(in) :: &
-      ph, &
-      me
-    real(pReal),  intent(out) :: &
-      TDot
-  end subroutine thermal_externalheat_getRate
+    module subroutine externalheat_getRate(TDot, ph,me)
+      integer, intent(in) :: &
+        ph, &
+        me
+      real(pReal),  intent(out) :: &
+        TDot
+    end subroutine externalheat_getRate
 
  end interface
 
@@ -82,7 +77,7 @@ module subroutine thermal_init(phases)
     Nconstituents
 
 
-  print'(/,a)', ' <<<+-  constitutive_thermal init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:thermal init  -+>>>'
 
   allocate(current(phases%length))
 
@@ -91,7 +86,7 @@ module subroutine thermal_init(phases)
 
   do ph = 1, phases%length
 
-    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == ph)
 
     allocate(current(ph)%T(Nconstituents),source=300.0_pReal)
     allocate(current(ph)%dot_T(Nconstituents),source=0.0_pReal)
@@ -108,8 +103,8 @@ module subroutine thermal_init(phases)
   allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
 
   if(maxval(thermal_Nsources) /= 0) then
-    where(source_thermal_dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
-    where(source_thermal_externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
+    where(dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
+    where(externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
   endif
 
   thermal_source_maxSizeDotState = 0
@@ -123,54 +118,40 @@ module subroutine thermal_init(phases)
                                           maxval(thermalState(ph)%p%sizeDotState))
   enddo PhaseLoop2
 
-!--------------------------------------------------------------------------------------------------
-!initialize kinematic mechanisms
-  if(maxval(phase_Nkinematics) /= 0) where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) &
-                                           phase_kinematics = KINEMATICS_thermal_expansion_ID
-
 end subroutine thermal_init
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRate(TDot, ip, el)
+module subroutine constitutive_thermal_getRate(TDot, ph,me)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ph, me
   real(pReal), intent(out) :: &
     TDot
 
   real(pReal) :: &
     my_Tdot
   integer :: &
-    ph, &
-    homog, &
-    me, &
-    so, &
-    co
+    so
 
-   homog  = material_homogenizationAt(el)
 
   TDot = 0.0_pReal
-  do co = 1, homogenization_Nconstituents(homog)
-     ph = material_phaseAt(co,el)
-     me = material_phasememberAt(co,ip,el)
-     do so = 1, thermal_Nsources(ph)
-       select case(thermal_source(so,ph))
-         case (THERMAL_DISSIPATION_ID)
-          call thermal_dissipation_getRate(my_Tdot, mech_S(ph,me),mech_L_p(ph,me),ph)
 
-         case (THERMAL_EXTERNALHEAT_ID)
-          call thermal_externalheat_getRate(my_Tdot, ph,me)
+  do so = 1, thermal_Nsources(ph)
+   select case(thermal_source(so,ph))
+     case (THERMAL_DISSIPATION_ID)
+      call dissipation_getRate(my_Tdot, ph,me)
 
-         case default
-          my_Tdot = 0.0_pReal
-       end select
-       Tdot = Tdot + my_Tdot
-     enddo
-   enddo
+     case (THERMAL_EXTERNALHEAT_ID)
+      call externalheat_getRate(my_Tdot, ph,me)
+
+     case default
+      my_Tdot = 0.0_pReal
+   end select
+   Tdot = Tdot + my_Tdot
+  enddo
+
 
 end subroutine constitutive_thermal_getRate
 
@@ -191,7 +172,7 @@ function constitutive_thermal_collectDotState(ph,me) result(broken)
   SourceLoop: do i = 1, thermal_Nsources(ph)
 
     if (thermal_source(i,ph) == THERMAL_EXTERNALHEAT_ID) &
-      call source_thermal_externalheat_dotState(ph,me)
+      call externalheat_dotState(ph,me)
 
     broken = broken .or. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,me)))
 
@@ -205,8 +186,6 @@ module function thermal_stress(Delta_t,ph,me) result(converged_)
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: ph, me
   logical :: converged_
-
-  integer :: so
 
 
   converged_ = .not. integrateThermalState(Delta_t,ph,me)
@@ -269,6 +248,20 @@ end function thermal_T
 
 
 !----------------------------------------------------------------------------------------------
+!< @brief Get rate of temperature (for use by non-thermal physics)
+!----------------------------------------------------------------------------------------------
+module function thermal_dot_T(ph,me) result(dot_T)
+
+  integer, intent(in) :: ph, me
+  real(pReal) :: dot_T
+
+
+  dot_T = current(ph)%dot_T(me)
+
+end function thermal_dot_T
+
+
+!----------------------------------------------------------------------------------------------
 !< @brief Set temperature
 !----------------------------------------------------------------------------------------------
 module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
@@ -318,4 +311,4 @@ function thermal_active(source_label,src_length)  result(active_source)
 end function thermal_active
 
 
-end submodule constitutive_thermal
+end submodule thermal

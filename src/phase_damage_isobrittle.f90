@@ -4,7 +4,7 @@
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_damage) source_damage_isoBrittle
+submodule(phase:damagee) isobrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoBrittle_offset, &
@@ -26,7 +26,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function source_damage_isoBrittle_init(source_length) result(mySources)
+module function isobrittle_init(source_length) result(mySources)
 
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
@@ -39,7 +39,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
   integer :: Ninstances,sourceOffset,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  source_damage_isoBrittle init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
 
   mySources = source_active('damage_isoBrittle',source_length)
   Ninstances = count(mySources)
@@ -88,7 +88,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
   enddo
 
 
-end function source_damage_isoBrittle_init
+end function isobrittle_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -161,7 +161,7 @@ end subroutine source_damage_isoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoBrittle_results(phase,group)
+module subroutine isobrittle_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -178,6 +178,6 @@ module subroutine source_damage_isoBrittle_results(phase,group)
   enddo outputsLoop
   end associate
 
-end subroutine source_damage_isoBrittle_results
+end subroutine isobrittle_results
 
-end submodule source_damage_isoBrittle
+end submodule isobrittle

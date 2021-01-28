@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_thermal
+submodule(homogenization) thermal
 
   use lattice
 
@@ -34,7 +34,9 @@ module subroutine thermal_init()
   integer :: ho
 
 
-  print'(/,a)',   ' <<<+-  homogenization_thermal init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal:isotemperature   init  -+>>>'
+
 
 
   configHomogenizations => config_material%get('homogenization')
@@ -225,15 +227,21 @@ module subroutine thermal_conduction_getSource(Tdot, ip,el)
   real(pReal), intent(out) :: &
     Tdot
 
- integer :: &
-    homog
+  integer :: co, ho,ph,me
+  real(pReal) :: dot_T_temp
 
-  homog = material_homogenizationAt(el)
-  call constitutive_thermal_getRate(TDot, ip,el)
+  ho = material_homogenizationAt(el)
+  Tdot = 0.0_pReal
+  do co = 1, homogenization_Nconstituents(ho)
+     ph = material_phaseAt(co,el)
+     me = material_phasememberAt(co,ip,el)
+     call constitutive_thermal_getRate(dot_T_temp, ph,me)
+     Tdot = Tdot + dot_T_temp
+  enddo
 
-  Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
+  Tdot = Tdot/real(homogenization_Nconstituents(ho),pReal)
 
 end subroutine thermal_conduction_getSource
 
 
-end submodule homogenization_thermal
+end submodule thermal

@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Dummy plasticity for purely elastic material
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_none
+submodule(phase:plastic) none
 
 contains
 
@@ -25,7 +25,7 @@ module function plastic_none_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  plastic_none init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:none init  -+>>>'
 
   phases => config_material%get('phase')
   allocate(myPlasticity(phases%length), source = .false.)
@@ -43,11 +43,11 @@ module function plastic_none_init() result(myPlasticity)
   do p = 1, phases%length
     phase => phases%get(p)
     if(.not. myPlasticity(p)) cycle
-    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == p)
     call constitutive_allocateState(plasticState(p),Nconstituents,0,0,0)
   enddo
 
 end function plastic_none_init
 
 
-end submodule plastic_none
+end submodule none
