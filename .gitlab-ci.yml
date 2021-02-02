@@ -95,7 +95,7 @@ checkout:
     - release
 
 ###################################################################################################
-Pytest_python:
+pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
@@ -252,7 +252,7 @@ setup_mesh:
     - release
 
 ###################################################################################################
-Pytest_grid:
+pytest_fortran:
   stage: grid
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
@@ -287,14 +287,6 @@ J2_plasticBehavior:
     - master
     - release
 
-Marc_elementLib:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - Marc_elementLib/test.py
-  except:
-    - master
-    - release
 
 ###################################################################################################
 SpectralRuntime:
