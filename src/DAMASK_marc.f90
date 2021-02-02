@@ -370,8 +370,8 @@ subroutine uedinc(inc,incsub)
 
 
   if (inc > inc_written) then
-    allocate(d_n(3,size(mesh_FEM2DAMASK_node)))
-    do n = 1, size(d_n,2)
+    allocate(d_n(3,count(mesh_FEM2DAMASK_node /= -1)))
+    do n = lbound(mesh_FEM2DAMASK_node,1), ubound(mesh_FEM2DAMASK_node,1)
       if (mesh_FEM2DAMASK_node(n) /= -1) then
         call nodvar(1,n,d_n(1:3,mesh_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
         if(nqncomp == 2) d_n(3,mesh_FEM2DAMASK_node(n)) = 0.0_pReal
