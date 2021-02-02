@@ -7,20 +7,6 @@
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Interfaces DAMASK with MSC.Marc
-!> @details Usage:
-!> @details   - choose material as hypela2
-!> @details   - set statevariable 2 to index of homogenization
-!> @details   - set statevariable 3 to index of microstructure
-!> @details   - use nonsymmetric option for solver (e.g. direct profile or multifrontal sparse, the latter seems to be faster!)
-!> @details   - in case of ddm (domain decomposition) a SYMMETRIC solver has to be used, i.e uncheck "non-symmetric"
-!> @details  Marc subroutines used:
-!> @details   - hypela2
-!> @details   - uedinc
-!> @details   - flux
-!> @details   - quit
-!> @details  Marc common blocks included:
-!> @details   - concom: lovl, inc
-!> @details   - creeps: timinc
 !--------------------------------------------------------------------------------------------------
 #define QUOTE(x) #x
 #define PASTE(x,y) x ## y
@@ -65,14 +51,8 @@ subroutine DAMASK_interface_init
 
   print'(/,a)', ' Version: '//DAMASKVERSION
 
-  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-#if __INTEL_COMPILER >= 1800
-   print'(/,a)', ' Compiled with: '//compiler_version()
-   print'(a)',   ' Compiler options: '//compiler_options()
-#else
-   print'(/,a,i4.4,a,i8.8)', ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
-                                                        ', build date :', __INTEL_COMPILER_BUILD_DATE
-#endif
+  print'(/,a)', ' Compiled with: '//compiler_version()
+  print'(a)',   ' Compiler options: '//compiler_options()
 
   print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
 
@@ -239,7 +219,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   real(pReal), dimension(6) ::   stress
   real(pReal), dimension(6,6) :: ddsdde
   integer :: computationMode, i, cp_en, node, CPnodeID
-  integer(4) :: defaultNumThreadsInt                                                                !< default value set by Marc
+  integer(pI32) :: defaultNumThreadsInt                                                             !< default value set by Marc
 
   integer(pInt), save :: &
     theInc       = -1_pInt, &                                                                       !< needs description
@@ -250,13 +230,13 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   logical, save :: &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
-    CPFEM_init_done   = .false., &                                                                     !< remember whether init has been done already
+    CPFEM_init_done   = .false., &                                                                  !< remember whether init has been done already
     debug_basic       = .true.
   class(tNode), pointer :: &
     debug_Marc                                                                                      ! pointer to Marc debug options
 
   if(debug_basic) then
-    print'(a,/,i8,i8,i2)', ' MSC.MARC information on shape of element(2), IP:', m, nn
+    print'(a,/,i8,i8,i2)', ' MSC.Marc information on shape of element(2), IP:', m, nn
     print'(a,2(i1))',      ' Jacobian:                      ', ngens,ngens
     print'(a,i1)',         ' Direct stress:                 ', ndi
     print'(a,i1)',         ' Shear stress:                  ', nshear
@@ -271,7 +251,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   endif
 
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
-  call omp_set_num_threads(1)                                                                       ! no openMP
+  call omp_set_num_threads(1_pI32)                                                                  ! no openMP
 
   if (.not. CPFEM_init_done) then
     CPFEM_init_done = .true.
@@ -379,14 +359,28 @@ subroutine flux(f,ts,n,time)
 subroutine uedinc(inc,incsub)
   use prec
   use CPFEM
+  use discretization_marc
 
   implicit none
   integer, intent(in) :: inc, incsub
+  integer :: n, nqncomp, nqdatatype
   integer, save :: inc_written
+  real(pReal), allocatable, dimension(:,:) :: d_n
 #include QUOTE(PASTE(./marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
 
+
   if (inc > inc_written) then
+    allocate(d_n(3,size(mesh_FEM2DAMASK_node)))
+    do n = 1, size(d_n,2)
+      if (mesh_FEM2DAMASK_node(n) /= -1) then
+        call nodvar(1,n,d_n(1:3,mesh_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
+        if(nqncomp == 2) d_n(3,mesh_FEM2DAMASK_node(n)) = 0.0_pReal
+      endif
+    enddo
+
+    call discretization_marc_UpdateNodeAndIpCoords(d_n)
     call CPFEM_results(inc,cptim)
+
     inc_written = inc
   endif
 

@@ -9,9 +9,8 @@ module parallelization
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h>
    use petscsys
-#endif
 !$ use OMP_LIB
-
+#endif
   use prec
 
   implicit none
@@ -21,6 +20,7 @@ module parallelization
     worldrank = 0, &                                                                                !< MPI worldrank (/=0 for MPI simulations only)
     worldsize = 1                                                                                   !< MPI worldsize (/=1 for MPI simulations only)
 
+#ifdef PETSc
   public :: &
     parallelization_init
 
@@ -32,16 +32,12 @@ contains
 subroutine parallelization_init
 
   integer :: err, typeSize
-!$ integer :: got_env, OMP_NUM_THREADS, threadLevel
+!$ integer :: got_env, threadLevel
+!$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
-#ifdef PETSc
+
+
   PetscErrorCode :: petsc_err
-
-#else
-  print'(/,a)', ' <<<+-  parallelization init  -+>>>'; flush(OUTPUT_UNIT)
-#endif
-
-#ifdef PETSc
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   ! Otherwise, the first call to PETSc will do the initialization.
@@ -64,7 +60,7 @@ subroutine parallelization_init
 #endif
   CHKERRQ(petsc_err)
 
-call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
+  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
   if (err /= 0)                              error stop 'Could not determine worldrank'
 
   if (worldrank == 0) print'(/,a)',  ' <<<+-  parallelization init  -+>>>'
@@ -80,7 +76,6 @@ call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
   call MPI_Type_size(MPI_DOUBLE,typeSize,err)
   if (err /= 0)                              error stop 'Could not determine MPI real size'
   if (typeSize*8 /= storage_size(0.0_pReal)) error stop 'Mismatch between MPI and DAMASK real'
-#endif
 
   if (worldrank /= 0) then
     close(OUTPUT_UNIT)                                                                              ! disable output
@@ -102,5 +97,6 @@ call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init
+#endif
 
 end module parallelization

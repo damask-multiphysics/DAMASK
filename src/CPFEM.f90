@@ -72,7 +72,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
-  call parallelization_init
   call DAMASK_interface_init
   call prec_init
   call IO_init
