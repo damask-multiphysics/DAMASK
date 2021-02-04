@@ -74,12 +74,12 @@ class ConfigMaterial(Config):
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
-                fraction: 1.0
+                v: 1.0
                 phase: Aluminum
             homogenization: SX
           - constituents:
               - O: [0.8, 0.19, 0.24, -0.51]
-                fraction: 1.0
+                v: 1.0
                 phase: Steel
             homogenization: SX
         homogenization: {}
@@ -172,7 +172,7 @@ class ConfigMaterial(Config):
                 if 'constituents' in v:
                     f = 0.0
                     for c in v['constituents']:
-                        f+= float(c['fraction'])
+                        f+= float(c['v'])
                         if 'O' in c:
                             try:
                                 Rotation.from_quaternion(c['O'])
@@ -257,17 +257,17 @@ class ConfigMaterial(Config):
         material:
           - constituents:
               - O: [0.577764, -0.146299, -0.617669, 0.513010]
-                fraction: 1.0
+                v: 1.0
                 phase: Aluminum
             homogenization: SX
           - constituents:
               - O: [0.184176, 0.340305, 0.737247, 0.553840]
-                fraction: 1.0
+                v: 1.0
                 phase: Steel
             homogenization: SX
           - constituents:
               - O: [0.0886257, -0.144848, 0.615674, -0.769487]
-                fraction: 1.0
+                v: 1.0
                 phase: Aluminum
             homogenization: SX
         homogenization: {}
@@ -312,7 +312,7 @@ class ConfigMaterial(Config):
             if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
 
         if N == 1:
-            m = [[{'fraction':1.0}] for _ in range(N_material)]
+            m = [[{'v':1.0}] for _ in range(N_material)]
             for k,v in kwargs.items():
                 if hasattr(v,'__len__') and not isinstance(v,str):
                     if len(v) != N_material:

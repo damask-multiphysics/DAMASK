@@ -265,7 +265,7 @@ subroutine material_parseMaterial
     frac = 0.0_pReal
     do co = 1, constituents%length
       constituent => constituents%get(co)
-      frac = frac + constituent%get_asFloat('fraction')
+      frac = frac + constituent%get_asFloat('v')
 
       material_phaseAt(co,el) = phases%getIndex(constituent%get_asString('phase'))
       do ip = 1, discretization_nIPs
