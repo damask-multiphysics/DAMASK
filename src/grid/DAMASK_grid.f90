@@ -227,7 +227,7 @@ program DAMASK_grid
     loadCases(l)%f_out     = step_discretization%get_asInt  ('f_out',     defaultVal=1)
     loadCases(l)%f_restart = step_discretization%get_asInt  ('f_restart', defaultVal=huge(0))
 
-    loadCases(l)%drop_guessing = (load_step%get_asBool('drop_guessing',defaultVal=.false.) .or. &
+    loadCases(l)%drop_guessing = (.not. load_step%get_asBool('estimate_rate',defaultVal=.true.) .or. &  !ToDO: SR: simplify logic later,change name
                                                        merge(.false.,.true.,l > 1))
 
     reportAndCheck: if (worldrank == 0) then
