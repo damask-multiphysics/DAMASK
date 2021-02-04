@@ -1,7 +1,7 @@
 homogenization:
   SX:
     N_constituents: 1
-    mechanics: {type: none}
+    mechanics: {type: pass}
   Taylor:
     N_constituents: 2
     mechanics: {type: isostrain}

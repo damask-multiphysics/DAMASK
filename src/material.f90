@@ -147,7 +147,7 @@ subroutine material_parseHomogenization
     homog => material_homogenization%get(h)
     homogMech => homog%get('mechanics')
     select case (homogMech%get_asString('type'))
-      case('none')
+      case('pass')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID
       case('isostrain')
         homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
