@@ -102,6 +102,7 @@ program DAMASK_grid
     config_load, &
     load_steps, &
     load_step, &
+    step_bc, &
     step_mech, &
     step_discretization, &
     step_deformation, &
@@ -168,7 +169,7 @@ program DAMASK_grid
 ! reading information from load case file and to sanity checks
   config_load => YAML_parse_file(trim(interface_loadFile))
 
-  load_steps => config_load%get('step')
+  load_steps => config_load%get('loadstep')
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
 
   do l = 1, load_steps%length
@@ -186,8 +187,8 @@ program DAMASK_grid
     endif damageActive
 
     load_step => load_steps%get(l)
-
-    step_mech => load_step%get('mechanics')
+    step_bc   => load_step%get('boundary_conditions')
+    step_mech => step_bc%get('mechanical')
     loadCases(l)%stress%myType=''
     readMech: do m = 1, step_mech%length
       select case (step_mech%getKey(m))
@@ -224,9 +225,9 @@ program DAMASK_grid
     loadCases(l)%t         = step_discretization%get_asFloat('t')
     loadCases(l)%N         = step_discretization%get_asInt  ('N')
     loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
-    loadCases(l)%f_out     = step_discretization%get_asInt  ('f_out',     defaultVal=1)
     loadCases(l)%f_restart = step_discretization%get_asInt  ('f_restart', defaultVal=huge(0))
 
+    loadCases(l)%f_out     = load_step%get_asInt('f_out',     defaultVal=1)
     loadCases(l)%drop_guessing = (.not. load_step%get_asBool('estimate_rate',defaultVal=.true.) .or. &  !ToDO: SR: simplify logic later,change name
                                                        merge(.false.,.true.,l > 1))
 

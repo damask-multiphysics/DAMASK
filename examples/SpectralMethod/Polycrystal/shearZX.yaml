@@ -1,10 +1,18 @@
 ---
-step:
-  - mechanics:
-      dot_F: [0, 0, 1e-3,
-              0, 0,    0,
-              0, 0,    0]
+
+solver:
+  mechanical: spectral_basic
+
+initial_conditions:
+  T: 300  #in Kelvin
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        dot_F: [0, 0, 1e-3,
+                0, 0,    0,
+                0, 0,    0]
     discretization:
       t: 60
       N: 120
-      f_out: 20
+    f_out: 20
