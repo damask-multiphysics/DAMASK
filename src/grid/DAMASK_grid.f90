@@ -36,7 +36,7 @@ program DAMASK_grid
     integer ::                  N, &                                                                !< number of increments
                                 f_out, &                                                            !< frequency of result writes
                                 f_restart                                                           !< frequency of restart writes
-    logical ::                  drop_guessing                                                       !< do not follow trajectory of former loadcase
+    logical ::                  estimate_rate                                                       !< do not follow trajectory of former loadcase
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
@@ -228,13 +228,13 @@ program DAMASK_grid
     loadCases(l)%f_restart = step_discretization%get_asInt  ('f_restart', defaultVal=huge(0))
 
     loadCases(l)%f_out     = load_step%get_asInt('f_out',     defaultVal=1)
-    loadCases(l)%drop_guessing = (.not. load_step%get_asBool('estimate_rate',defaultVal=.true.) .or. &  !ToDO: SR: simplify logic later,change name
-                                                       merge(.false.,.true.,l > 1))
+    loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. & 
+                                                       merge(.true.,.false.,l > 1))
 
     reportAndCheck: if (worldrank == 0) then
       write (loadcase_string, '(i0)' ) l
       print'(/,a,i0)', ' load case: ', l
-      print*, ' drop_guessing:', loadCases(l)%drop_guessing
+      print*, ' estimate_rate:', loadCases(l)%estimate_rate
       if (loadCases(l)%deformation%myType == 'L') then
         do j = 1, 3
           if (any(loadCases(l)%deformation%mask(j,1:3) .eqv. .true.) .and. &
@@ -334,7 +334,7 @@ program DAMASK_grid
 
   loadCaseLooping: do l = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
-    guess = .not. loadCases(l)%drop_guessing                                                        ! change of load case? homogeneous guess for the first inc
+    guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
 
     incLooping: do inc = 1, loadCases(l)%N
       totalIncsCounter = totalIncsCounter + 1
