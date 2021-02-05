@@ -36,7 +36,7 @@ program DAMASK_grid
     integer ::                  N, &                                                                !< number of increments
                                 f_out, &                                                            !< frequency of result writes
                                 f_restart                                                           !< frequency of restart writes
-    logical ::                  estimate_rate                                                       !< do not follow trajectory of former loadcase
+    logical ::                  estimate_rate                                                       !< follow trajectory of former loadcase
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
