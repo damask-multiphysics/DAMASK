@@ -56,7 +56,7 @@ module function dissipation_init(source_length) result(mySources)
 
           prm%kappa = src%get_asFloat('kappa')
           Nconstituents = count(material_phaseAt2 == ph)
-          call constitutive_allocateState(thermalState(ph)%p(so),Nconstituents,0,0,0)
+          call phase_allocateState(thermalState(ph)%p(so),Nconstituents,0,0,0)
 
         end associate
       endif
@@ -78,7 +78,7 @@ module subroutine dissipation_getRate(TDot, ph,me)
 
 
   associate(prm => param(ph))
-    TDot = prm%kappa*sum(abs(mech_S(ph,me)*mech_L_p(ph,me)))
+    TDot = prm%kappa*sum(abs(mechanical_S(ph,me)*mechanical_L_p(ph,me)))
   end associate
 
 end subroutine dissipation_getRate

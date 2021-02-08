@@ -101,7 +101,7 @@ module function anisobrittle_init(source_length) result(mySources)
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
         Nconstituents = count(material_phaseAt==p) * discretization_nIPs
-        call constitutive_allocateState(damageState(p)%p(sourceOffset),Nconstituents,1,1,0)
+        call phase_allocateState(damageState(p)%p(sourceOffset),Nconstituents,1,1,0)
         damageState(p)%p(sourceOffset)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 

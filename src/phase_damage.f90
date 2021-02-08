@@ -196,7 +196,7 @@ end subroutine damage_init
 !----------------------------------------------------------------------------------------------
 !< @brief returns local part of nonlocal damage driving force
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
+module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -246,7 +246,7 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
     enddo
   enddo
 
-end subroutine constitutive_damage_getRateAndItsTangents
+end subroutine phase_damage_getRateAndItsTangents
 
 
 
@@ -272,9 +272,9 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     size_so
   real(pReal) :: &
     zeta
-  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
+  real(pReal), dimension(phase_source_maxSizeDotState) :: &
     r                                                                                               ! state residuum
-  real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
+  real(pReal), dimension(phase_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
     converged_
 
@@ -283,7 +283,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
   me = material_phaseMemberAt(co,ip,el)
 
   converged_ = .true.
-  broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
+  broken = phase_damage_collectDotState(co,ip,el,ph,me)
   if(broken) return
 
   do so = 1, phase_Nsources(ph)
@@ -300,7 +300,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
       source_dotState(1:size_so(so),1,so) = damageState(ph)%p(so)%dotState(:,me)
     enddo
 
-    broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
+    broken = phase_damage_collectDotState(co,ip,el,ph,me)
     if(broken) exit iteration
 
     do so = 1, phase_Nsources(ph)
@@ -320,7 +320,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     enddo
 
     if(converged_) then
-      broken = constitutive_damage_deltaState(mech_F_e(ph,me),ph,me)
+      broken = phase_damage_deltaState(mechanical_F_e(ph,me),ph,me)
       exit iteration
     endif
 
@@ -393,7 +393,7 @@ end subroutine damage_results
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_collectDotState(co,ip,el,ph,me) result(broken)
+function phase_damage_collectDotState(co,ip,el,ph,me) result(broken)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID me integration point
@@ -419,7 +419,7 @@ function constitutive_damage_collectDotState(co,ip,el,ph,me) result(broken)
         call anisoductile_dotState(co, ip, el)
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_dotState(mech_S(ph,me),co, ip, el) ! correct stress?
+        call anisobrittle_dotState(mechanical_S(ph,me),co, ip, el) ! correct stress?
 
     end select sourceType
 
@@ -427,7 +427,7 @@ function constitutive_damage_collectDotState(co,ip,el,ph,me) result(broken)
 
   enddo SourceLoop
 
-end function constitutive_damage_collectDotState
+end function phase_damage_collectDotState
 
 
 
@@ -435,7 +435,7 @@ end function constitutive_damage_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_deltaState(Fe, ph, me) result(broken)
+function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   integer, intent(in) :: &
     ph, &
@@ -457,7 +457,7 @@ function constitutive_damage_deltaState(Fe, ph, me) result(broken)
      sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_isoBrittle_deltaState(constitutive_homogenizedC(ph,me), Fe, ph,me)
+        call source_damage_isoBrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
         broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,me)))
         if(.not. broken) then
           myOffset = damageState(ph)%p(so)%offsetDeltaState
@@ -470,7 +470,7 @@ function constitutive_damage_deltaState(Fe, ph, me) result(broken)
 
   enddo SourceLoop
 
-end function constitutive_damage_deltaState
+end function phase_damage_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -507,7 +507,7 @@ end function source_active
 !----------------------------------------------------------------------------------------------
 !< @brief Set damage parameter
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_damage_set_phi(phi,co,ce)
+module subroutine phase_damage_set_phi(phi,co,ce)
 
   real(pReal), intent(in) :: phi
   integer, intent(in) :: ce, co
@@ -515,17 +515,17 @@ module subroutine constitutive_damage_set_phi(phi,co,ce)
 
   current(material_phaseAt2(co,ce))%phi(material_phaseMemberAt2(co,ce)) = phi
 
-end subroutine constitutive_damage_set_phi
+end subroutine phase_damage_set_phi
 
 
-module function constitutive_damage_get_phi(co,ip,el) result(phi)
+module function phase_damage_get_phi(co,ip,el) result(phi)
 
   integer, intent(in) :: co, ip, el
   real(pReal) :: phi
 
   phi = current(material_phaseAt(co,el))%phi(material_phaseMemberAt(co,ip,el))
 
-end function constitutive_damage_get_phi
+end function phase_damage_get_phi
 
 
 end submodule damagee

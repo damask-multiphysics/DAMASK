@@ -226,7 +226,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
-    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
@@ -289,16 +289,16 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
     dot_gamma_pos,dot_gamma_neg, &
     ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)))
 
-  call kinetics(Mp,T,phase_plasticityInstance(ph),me,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
+  call kinetics(Mp,T,phase_plasticInstance(ph),me,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
   do i = 1, prm%sum_N_sl
     Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -327,7 +327,7 @@ module subroutine dislotungsten_dotState(Mp,T,ph,me)
 
   real(pReal) :: &
     VacancyDiffusion
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
     gdot_pos, gdot_neg,&
     tau_pos,&
     tau_neg, &
@@ -336,10 +336,10 @@ module subroutine dislotungsten_dotState(Mp,T,ph,me)
     dot_rho_dip_climb, &
     dip_distance
 
-  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)),&
-            dot => dotState(phase_plasticityInstance(ph)), dst => dependentState(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)),&
+            dot => dotState(phase_plasticInstance(ph)), dst => dependentState(phase_plasticInstance(ph)))
 
-  call kinetics(Mp,T,phase_plasticityInstance(ph),me,&
+  call kinetics(Mp,T,phase_plasticInstance(ph),me,&
                 gdot_pos,gdot_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 

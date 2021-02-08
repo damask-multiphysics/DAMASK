@@ -45,10 +45,10 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
   interface
 
-    module subroutine mech_init(num_homog)
+    module subroutine mechanical_init(num_homog)
       class(tNode), pointer, intent(in) :: &
         num_homog                                                                                   !< pointer to mechanical homogenization numerics data
-    end subroutine mech_init
+    end subroutine mechanical_init
 
     module subroutine thermal_init
     end subroutine thermal_init
@@ -56,13 +56,13 @@ module homogenization
     module subroutine damage_init
     end subroutine damage_init
 
-    module subroutine mech_partition(subF,ip,el)
+    module subroutine mechanical_partition(subF,ip,el)
       real(pReal), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
         ip, &                                                                                       !< integration point
         el                                                                                          !< element number
-    end subroutine mech_partition
+    end subroutine mechanical_partition
 
     module subroutine thermal_partition(ce)
       integer,     intent(in) :: ce
@@ -76,19 +76,19 @@ module homogenization
       integer, intent(in) :: ip,el
     end subroutine thermal_homogenize
 
-    module subroutine mech_homogenize(dt,ip,el)
+    module subroutine mechanical_homogenize(dt,ip,el)
      real(pReal), intent(in) :: dt
      integer, intent(in) :: &
        ip, &                                                                                        !< integration point
        el                                                                                           !< element number
-    end subroutine mech_homogenize
+    end subroutine mechanical_homogenize
 
-    module subroutine mech_results(group_base,h)
+    module subroutine mechanical_results(group_base,h)
       character(len=*), intent(in) :: group_base
       integer, intent(in)          :: h
-    end subroutine mech_results
+    end subroutine mechanical_results
 
-    module function mech_updateState(subdt,subF,ip,el) result(doneAndHappy)
+    module function mechanical_updateState(subdt,subF,ip,el) result(doneAndHappy)
       real(pReal), intent(in) :: &
         subdt                                                                                           !< current time step
       real(pReal), intent(in), dimension(3,3) :: &
@@ -97,7 +97,7 @@ module homogenization
         ip, &                                                                                           !< integration point
         el                                                                                              !< element number
       logical, dimension(2) :: doneAndHappy
-    end function mech_updateState
+    end function mechanical_updateState
 
 
     module function thermal_conduction_getConductivity(ip,el) result(K)
@@ -216,7 +216,7 @@ subroutine homogenization_init()
   if (num%nMPstate < 1)                   call IO_error(301,ext_msg='nMPstate')
 
 
-  call mech_init(num_homog)
+  call mechanical_init(num_homog)
   call thermal_init()
   call damage_init()
 
@@ -253,7 +253,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       ce = (el-1)*discretization_nIPs + ip
       me = material_homogenizationMemberAt2(ce)
 
-      call constitutive_restore(ce,.false.) ! wrong name (is more a forward function)
+      call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
       if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
       if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
@@ -267,7 +267,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
 
         if (.not. doneAndHappy(1)) then
-          call mech_partition(homogenization_F(1:3,1:3,ce),ip,el)
+          call mechanical_partition(homogenization_F(1:3,1:3,ce),ip,el)
           converged = .true.
           do co = 1, myNgrains
             converged = converged .and. crystallite_stress(dt,co,ip,el)
@@ -276,7 +276,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           if (.not. converged) then
             doneAndHappy = [.true.,.false.]
           else
-            doneAndHappy = mech_updateState(dt,homogenization_F(1:3,1:3,ce),ip,el)
+            doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ip,el)
             converged = all(doneAndHappy)
           endif
         endif
@@ -338,7 +338,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         do co = 1, homogenization_Nconstituents(ho)
           call crystallite_orientations(co,ip,el)
         enddo
-        call mech_homogenize(dt,ip,el)
+        call mechanical_homogenize(dt,ip,el)
       enddo IpLooping3
     enddo elementLooping3
     !$OMP END DO
@@ -365,7 +365,7 @@ subroutine homogenization_results
     group_base = 'current/homogenization/'//trim(material_name_homogenization(ho))
     call results_closeGroup(results_addGroup(group_base))
 
-    call mech_results(group_base,ho)
+    call mechanical_results(group_base,ho)
 
     group = trim(group_base)//'/damage'
     call results_closeGroup(results_addGroup(group))
