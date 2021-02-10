@@ -1,3 +1,5 @@
+import inspect
+
 import numpy as np
 
 from . import Rotation
@@ -107,8 +109,7 @@ class Orientation(Rotation):
                  lattice = None,
                  a = None,b = None,c = None,
                  alpha = None,beta = None,gamma = None,
-                 degrees = False,
-                 **kwargs):
+                 degrees = False):
         """
         Initialize orientation object.
 
@@ -263,71 +264,111 @@ class Orientation(Rotation):
             raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
+    @staticmethod
+    def _separate_arguments(parent_dict,function):
+        """
+        Separate arguments required by Rotation and Orientation objects respectively.
+    
+        Parameters
+        ----------
+        parent_dict : Dictionary
+            Contains all **kwargs
+        function: Method
+            Function whose signature list is required
+    
+        Returns
+        -------
+        ori_dict: dictionary
+            Dictionary consisting of valid keys accepted by Orientation class
+        rot_dict: dictionary
+            Dictionary consisting of valid keys accepted by 'function' in Rotation class
+    
+        """
+        set_ori = set(inspect.signature(Orientation.__init__).parameters.keys()) & set(parent_dict.keys())
+        set_rot = set(inspect.signature(function).parameters.keys()) & set(parent_dict.keys())
+        ori_dict = {key: parent_dict[key] for key in set_ori}
+        rot_dict = {key: parent_dict[key] for key in set_rot}
+        if(set(parent_dict.keys())-(set_ori|set_rot)):
+            raise KeyError(f'Unknown key {set(parent_dict.keys())-(set_ori|set_rot)} present')
+        return rot_dict,ori_dict
+      
+
     @classmethod
     @util.extended_docstring(Rotation.from_random,_parameter_doc)
     def from_random(cls,**kwargs):
-        return cls(rotation=Rotation.from_random(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_random)
+        return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
     def from_quaternion(cls,**kwargs):
-        return cls(rotation=Rotation.from_quaternion(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_quaternion)
+        return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
     def from_Euler_angles(cls,**kwargs):
-        return cls(rotation=Rotation.from_Euler_angles(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_Euler_angles)
+        return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
     def from_axis_angle(cls,**kwargs):
-        return cls(rotation=Rotation.from_axis_angle(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_axis_angle)
+        return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_basis,_parameter_doc)
     def from_basis(cls,**kwargs):
-        return cls(rotation=Rotation.from_basis(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_basis)
+        return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
     def from_matrix(cls,**kwargs):
-        return cls(rotation=Rotation.from_matrix(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_matrix)
+        return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
     def from_Rodrigues_vector(cls,**kwargs):
-        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_Rodrigues_vector)
+        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
     def from_homochoric(cls,**kwargs):
-        return cls(rotation=Rotation.from_homochoric(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_homochoric)
+        return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
     def from_cubochoric(cls,**kwargs):
-        return cls(rotation=Rotation.from_cubochoric(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_cubochoric)
+        return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
     def from_spherical_component(cls,**kwargs):
-        return cls(rotation=Rotation.from_spherical_component(**kwargs),**kwargs)
-
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_spherical_component)
+        return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
+ 
+ 
     @classmethod
     @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
     def from_fiber_component(cls,**kwargs):
-        return cls(rotation=Rotation.from_fiber_component(**kwargs),**kwargs)
-
+        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_fiber_component)
+        return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
+ 
 
     @classmethod
     @util.extend_docstring(_parameter_doc)
