@@ -1287,7 +1287,7 @@ class Result:
                                                                                                       np.prod(shape))}
                                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
 
-        with open(self.fname.with_suffix('.xdmf').name,'w') as f:
+        with open(self.fname.with_suffix('.xdmf').name,'w',newline='\n') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 

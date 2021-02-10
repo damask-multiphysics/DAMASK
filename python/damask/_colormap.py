@@ -238,7 +238,7 @@ class Colormap(mpl.colors.ListedColormap):
             fhandle = None
         else:
             try:
-                fhandle = open(fname,'w')
+                fhandle = open(fname,'w',newline='\n')
             except TypeError:
                 fhandle = fname
 
@@ -254,7 +254,7 @@ class Colormap(mpl.colors.ListedColormap):
                 'RGBPoints':colors
                }]
 
-        with open(self.name.replace(' ','_')+'.json', 'w') if fhandle is None else fhandle as f:
+        with open(self.name.replace(' ','_')+'.json','w',newline='\n') if fhandle is None else fhandle as f:
             json.dump(out, f,indent=4)
 
 
@@ -273,14 +273,14 @@ class Colormap(mpl.colors.ListedColormap):
             fhandle = None
         else:
             try:
-                fhandle = open(fname,'w')
+                fhandle = open(fname,'w',newline='\n')
             except TypeError:
                 fhandle = fname
 
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(self.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
 
-        with open(self.name.replace(' ','_')+'.txt', 'w') if fhandle is None else fhandle as f:
+        with open(self.name.replace(' ','_')+'.txt','w',newline='\n') if fhandle is None else fhandle as f:
             t.save(f)
 
 
@@ -299,7 +299,7 @@ class Colormap(mpl.colors.ListedColormap):
             fhandle = None
         else:
             try:
-                fhandle = open(fname,'w')
+                fhandle = open(fname,'w',newline='\n')
             except TypeError:
                 fhandle = fname
         # ToDo: test in GOM
@@ -308,7 +308,7 @@ class Colormap(mpl.colors.ListedColormap):
                 + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(self.colors)}' \
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
-        with open(self.name.replace(' ','_')+'.legend', 'w') if fhandle is None else fhandle as f:
+        with open(self.name.replace(' ','_')+'.legend','w',newline='\n') if fhandle is None else fhandle as f:
             f.write(GOM_str)
 
 
@@ -327,14 +327,14 @@ class Colormap(mpl.colors.ListedColormap):
             fhandle = None
         else:
             try:
-                fhandle = open(fname,'w')
+                fhandle = open(fname,'w',newline='\n')
             except TypeError:
                 fhandle = fname
         # ToDo: test in gmsh
         gmsh_str = 'View.ColorTable = {\n' \
                  +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in self.colors[:,:3]*255]) \
                  +'\n}\n'
-        with open(self.name.replace(' ','_')+'.msh', 'w') if fhandle is None else fhandle as f:
+        with open(self.name.replace(' ','_')+'.msh','w',newline='\n') if fhandle is None else fhandle as f:
             f.write(gmsh_str)
 
 

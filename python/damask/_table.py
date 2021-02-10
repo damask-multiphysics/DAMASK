@@ -380,7 +380,7 @@ class Table:
                   [f'# {comment}' for comment in self.comments]
 
         try:
-            fhandle = open(fname,'w')
+            fhandle = open(fname,'w',newline='\n')
         except TypeError:
             fhandle = fname
 
