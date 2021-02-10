@@ -124,7 +124,9 @@ function IO_read(fileName) result(fileContent)
   integer ::  &
     fileLength, &
     fileUnit, &
-    myStat
+    myStat, &
+    firstEOL
+  character, parameter :: CR = achar(13)
 
 
   inquire(file = fileName, size=fileLength)
@@ -141,9 +143,11 @@ function IO_read(fileName) result(fileContent)
   if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
 
-  if(scan(fileContent,achar(13)) /= 0) call IO_error(115)
 
   if(fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL                ! ensure EOL@EOF
+
+  firstEOL = index(fileContent,IO_EOL)
+  if(scan(fileContent(firstEOL:firstEOL),CR) /= 0) call IO_error(115)
 
 end function IO_read
 
