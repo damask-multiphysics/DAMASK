@@ -57,8 +57,6 @@ subroutine damage_nonlocal_init
     allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
     allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
 
-    damage(h)%p => damageState_h(h)%state(1,:)
-
   enddo
 
 end subroutine damage_nonlocal_init

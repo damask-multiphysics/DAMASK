@@ -152,7 +152,7 @@ module subroutine anisobrittle_dotState(S, co, ip, el)
     traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
     traction_n    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-    traction_crit = prm%g_crit(i)*damage(homog)%p(damageOffset)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damagestate_h(homog)%state(1,damageOffset)**2.0_pReal
 
     damageState(ph)%p(sourceOffset)%dotState(1,me) &
     = damageState(ph)%p(sourceOffset)%dotState(1,me) &

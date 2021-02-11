@@ -143,7 +143,7 @@ module subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
 
   homog  = material_homogenizationAt(el)
   offset = material_homogenizationMemberAt(ip,el)
-  damage(homog)%p(offset) = phi
+  damagestate_h(homog)%state(1,offset) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
 
@@ -162,7 +162,7 @@ module subroutine damage_nonlocal_results(homog,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(prm%output(o))
       case ('phi')
-        call results_writeDataset(group,damage(homog)%p,prm%output(o),&
+        call results_writeDataset(group,damagestate_h(homog)%state(1,:),prm%output(o),&
                                   'damage indicator','-')
     end select
   enddo outputsLoop

@@ -126,7 +126,7 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
   dLd_dTstar = 0.0_pReal
   associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(co,el))))
   do i = 1,prm%sum_N_cl
-    traction_crit = prm%g_crit(i)* damage(homog)%p(damageOffset)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damagestate_h(homog)%state(1,damageOffset)**2.0_pReal
 
     traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     if (abs(traction_d) > traction_crit + tol_math_check) then
