@@ -223,25 +223,46 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
+    def _get_file_handle(self,fname,extension):
+        """
+        Provide file handle.
+
+        Parameters
+        ----------
+        fname : file, str, pathlib.Path, or None
+            Filename or filehandle, will be name of the colormap+extension if None.
+
+        extension: str
+            Extension of the filename.
+
+        Returns
+        -------
+        f
+            File handle
+
+        """
+        if fname is None:
+            fhandle = open(self.name.replace(' ','_')+'.'+extension,'w',newline='\n')
+        else:
+            try:
+                fhandle = open(fname,'w',newline='\n')
+            except TypeError:
+                fhandle = fname
+
+        return fhandle
+
+
     def save_paraview(self,fname=None):
         """
         Save as JSON file for use in Paraview.
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path, optional.
+        fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
             consist of the name of the colormap and extension '.json'.
 
         """
-        if fname is None:
-            fhandle = None
-        else:
-            try:
-                fhandle = open(fname,'w')
-            except TypeError:
-                fhandle = fname
-
         colors = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
@@ -254,8 +275,7 @@ class Colormap(mpl.colors.ListedColormap):
                 'RGBPoints':colors
                }]
 
-        with open(self.name.replace(' ','_')+'.json', 'w') if fhandle is None else fhandle as f:
-            json.dump(out, f,indent=4)
+        json.dump(out,self._get_file_handle(fname,'json'),indent=4)
 
 
     def save_ASCII(self,fname=None):
@@ -264,24 +284,14 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path, optional.
+        fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
             consist of the name of the colormap and extension '.txt'.
 
         """
-        if fname is None:
-            fhandle = None
-        else:
-            try:
-                fhandle = open(fname,'w')
-            except TypeError:
-                fhandle = fname
-
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(self.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
-
-        with open(self.name.replace(' ','_')+'.txt', 'w') if fhandle is None else fhandle as f:
-            t.save(f)
+        t.save(self._get_file_handle(fname,'txt'))
 
 
     def save_GOM(self,fname=None):
@@ -290,26 +300,19 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path, optional.
+        fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
             consist of the name of the colormap and extension '.legend'.
 
         """
-        if fname is None:
-            fhandle = None
-        else:
-            try:
-                fhandle = open(fname,'w')
-            except TypeError:
-                fhandle = fname
         # ToDo: test in GOM
         GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
                 +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
                 + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(self.colors)}' \
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
-        with open(self.name.replace(' ','_')+'.legend', 'w') if fhandle is None else fhandle as f:
-            f.write(GOM_str)
+
+        self._get_file_handle(fname,'legend').write(GOM_str)
 
 
     def save_gmsh(self,fname=None):
@@ -318,24 +321,16 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path, optional.
+        fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
             consist of the name of the colormap and extension '.msh'.
 
         """
-        if fname is None:
-            fhandle = None
-        else:
-            try:
-                fhandle = open(fname,'w')
-            except TypeError:
-                fhandle = fname
         # ToDo: test in gmsh
         gmsh_str = 'View.ColorTable = {\n' \
                  +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in self.colors[:,:3]*255]) \
                  +'\n}\n'
-        with open(self.name.replace(' ','_')+'.msh', 'w') if fhandle is None else fhandle as f:
-            f.write(gmsh_str)
+        self._get_file_handle(fname,'msh').write(gmsh_str)
 
 
     @staticmethod
