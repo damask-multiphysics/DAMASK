@@ -225,8 +225,6 @@ end function mechanical_updateState
 !> @brief Write results to file.
 !--------------------------------------------------------------------------------------------------
 module subroutine mechanical_results(group_base,h)
-  use material, only: &
-    material_homogenization_type => homogenization_type
 
   character(len=*), intent(in) :: group_base
   integer, intent(in)          :: h
@@ -236,7 +234,7 @@ module subroutine mechanical_results(group_base,h)
   group = trim(group_base)//'/mech'
   call results_closeGroup(results_addGroup(group))
 
-  select case(material_homogenization_type(h))
+  select case(homogenization_type(h))
 
     case(HOMOGENIZATION_rgc_ID)
       call mechanical_RGC_results(homogenization_typeInstance(h),group)

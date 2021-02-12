@@ -12,13 +12,43 @@ module homogenization
   use material
   use phase
   use discretization
-  use damage_nonlocal
   use HDF5_utilities
   use results
   use lattice
 
   implicit none
   private
+
+
+  enum, bind(c); enumerator :: &
+    THERMAL_ISOTHERMAL_ID, &
+    THERMAL_CONDUCTION_ID, &
+    DAMAGE_NONE_ID, &
+    DAMAGE_NONLOCAL_ID, &
+    HOMOGENIZATION_UNDEFINED_ID, &
+    HOMOGENIZATION_NONE_ID, &
+    HOMOGENIZATION_ISOSTRAIN_ID, &
+    HOMOGENIZATION_RGC_ID
+  end enum
+
+    type(tState),        allocatable, dimension(:), public :: &
+    homogState, &
+    damageState_h
+
+  integer, dimension(:), allocatable, public, protected :: &
+    homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
+    thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
+    damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
+
+  real(pReal), dimension(:), allocatable, public, protected :: &
+    thermal_initialT
+
+  integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable, public, protected :: &
+    thermal_type                                                                                    !< thermal transport model
+  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
+    damage_type                                                                                     !< nonlocal damage model
+  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
+    homogenization_type                                                                             !< type of each homogenization
 
   type, private :: tNumerics_damage
     real(pReal) :: &
@@ -202,7 +232,9 @@ module homogenization
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &
-    homogenization_restartWrite
+    homogenization_restartWrite, &
+    THERMAL_CONDUCTION_ID, &
+    DAMAGE_NONLOCAL_ID
 
   public :: &
     damage_nonlocal_init, &
@@ -222,6 +254,9 @@ subroutine homogenization_init()
 
   print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
 
+
+  allocate(homogState      (size(material_name_homogenization)))
+  allocate(damageState_h   (size(material_name_homogenization)))
     call material_parseHomogenization
   print*, 'Homogenization parsed'
 
@@ -514,6 +549,83 @@ function damage_nonlocal_getDiffusion(ip,el)
     num_damage%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(homog),pReal)
 
 end function damage_nonlocal_getDiffusion
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief parses the homogenization part from the material configuration
+! ToDo: This should be done in homogenization
+!--------------------------------------------------------------------------------------------------
+subroutine material_parseHomogenization
+
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogMech, &
+    homogThermal, &
+    homogDamage
+
+  integer :: h
+
+  material_homogenization => config_material%get('homogenization')
+
+  allocate(homogenization_type(size(material_name_homogenization)),           source=HOMOGENIZATION_undefined_ID)
+  allocate(thermal_type(size(material_name_homogenization)),                  source=THERMAL_isothermal_ID)
+  allocate(damage_type (size(material_name_homogenization)),                  source=DAMAGE_none_ID)
+  allocate(homogenization_typeInstance(size(material_name_homogenization)),   source=0)
+  allocate(thermal_typeInstance(size(material_name_homogenization)),          source=0)
+  allocate(damage_typeInstance(size(material_name_homogenization)),           source=0)
+  allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
+
+  do h=1, size(material_name_homogenization)
+    homog => material_homogenization%get(h)
+    homogMech => homog%get('mechanics')
+    select case (homogMech%get_asString('type'))
+      case('pass')
+        homogenization_type(h) = HOMOGENIZATION_NONE_ID
+      case('isostrain')
+        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+      case('RGC')
+        homogenization_type(h) = HOMOGENIZATION_RGC_ID
+      case default
+        call IO_error(500,ext_msg=homogMech%get_asString('type'))
+    end select
+
+    homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
+
+    if(homog%contains('thermal')) then
+      homogThermal => homog%get('thermal')
+        thermal_initialT(h) =  homogThermal%get_asFloat('T_0',defaultVal=300.0_pReal)
+
+        select case (homogThermal%get_asString('type'))
+          case('isothermal')
+            thermal_type(h) = THERMAL_isothermal_ID
+          case('conduction')
+            thermal_type(h) = THERMAL_conduction_ID
+          case default
+            call IO_error(500,ext_msg=homogThermal%get_asString('type'))
+        end select
+    endif
+
+    if(homog%contains('damage')) then
+      homogDamage => homog%get('damage')
+        select case (homogDamage%get_asString('type'))
+          case('none')
+            damage_type(h) = DAMAGE_none_ID
+          case('nonlocal')
+            damage_type(h) = DAMAGE_nonlocal_ID
+          case default
+            call IO_error(500,ext_msg=homogDamage%get_asString('type'))
+        end select
+    endif
+  enddo
+
+  do h=1, size(material_name_homogenization)
+    homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
+    thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
+    damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
+  enddo
+
+end subroutine material_parseHomogenization
 
 
 end module homogenization

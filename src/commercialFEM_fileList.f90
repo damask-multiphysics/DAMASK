@@ -41,7 +41,6 @@
 #include "phase_damage_isoductile.f90"
 #include "phase_damage_anisobrittle.f90"
 #include "phase_damage_anisoductile.f90"
-#include "damage_nonlocal.f90"
 #include "homogenization.f90"
 #include "homogenization_mechanical.f90"
 #include "homogenization_mechanical_pass.f90"
