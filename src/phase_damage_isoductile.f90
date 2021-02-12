@@ -43,7 +43,7 @@ module function isoductile_init(source_length) result(mySources)
 
   print'(/,a)', ' <<<+-  phase:damage:isoductile init  -+>>>'
 
-  mySources = source_active('damage_isoDuctile',source_length)
+  mySources = source_active('isoductile',source_length)
   Ninstances = count(mySources)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -57,7 +57,7 @@ module function isoductile_init(source_length) result(mySources)
     phase => phases%get(p)
     if(count(mySources(:,p)) == 0) cycle
     if(any(mySources(:,p))) source_damage_isoDuctile_instance(p) = count(mySources(:,1:p))
-    sources => phase%get('source')
+    sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
         source_damage_isoDuctile_offset(p) = sourceOffset

@@ -46,7 +46,7 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
 
   print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:cleavageopening init  -+>>>'
 
-  myKinematics = kinematics_active('cleavage_opening',kinematics_length)
+  myKinematics = kinematics_active2('anisobrittle',kinematics_length)
   Ninstances = count(myKinematics)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -59,7 +59,7 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
     if(any(myKinematics(:,p))) kinematics_cleavage_opening_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('kinematics')
+    kinematics => phase%get('damage')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_cleavage_opening_instance(p)))

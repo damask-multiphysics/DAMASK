@@ -66,7 +66,8 @@ module subroutine eigendeformation_init(phases)
     ph
   class(tNode), pointer :: &
     phase, &
-   kinematics
+    kinematics, &
+    damage
 
   print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation init  -+>>>'
 
@@ -77,6 +78,12 @@ module subroutine eigendeformation_init(phases)
     phase => phases%get(ph)
     kinematics => phase%get('kinematics',defaultVal=emptyList)
     phase_Nkinematics(ph) = kinematics%length
+    kinematics => phase%get('damage',defaultVal=emptyList)
+    if(kinematics%length >0) then
+      damage => kinematics%get(1)
+      if(damage%get_asString('type') == 'anisobrittle')  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
+      if(damage%get_asString('type') == 'isoductile')  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
+    endif
   enddo
 
   allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
@@ -88,7 +95,6 @@ module subroutine eigendeformation_init(phases)
   endif
 
 end subroutine eigendeformation_init
-
 
 
 !--------------------------------------------------------------------------------------------------
@@ -120,6 +126,38 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
 
 
 end function kinematics_active
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a kinematic mechanism is active or not
+!--------------------------------------------------------------------------------------------------
+function kinematics_active2(kinematics_label,kinematics_length)  result(active_kinematics)
+
+  character(len=*), intent(in)         :: kinematics_label                                          !< name of kinematic mechanism
+  integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
+  logical, dimension(:,:), allocatable :: active_kinematics
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    kinematics, &
+    kinematics_type
+  integer :: p,k
+
+  phases => config_material%get('phase')
+  allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    kinematics => phase%get('damage',defaultVal=emptyList)
+    do k = 1, kinematics%length
+      kinematics_type => kinematics%get(k)
+      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
+    enddo
+  enddo
+
+
+end function kinematics_active2
 
 
 !--------------------------------------------------------------------------------------------------
@@ -175,8 +213,10 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(co,el))
     kinematicsType: select case (phase_kinematics(k,material_phaseAt(co,el)))
       case (KINEMATICS_cleavage_opening_ID) kinematicsType
+        print*, 'clea'
         call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
       case (KINEMATICS_slipplane_opening_ID) kinematicsType
+        print*, 'slipp'
         call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
         me = material_phaseMemberAt(co,ip,el)

@@ -51,7 +51,7 @@ module function anisobrittle_init(source_length) result(mySources)
 
   print'(/,a)', ' <<<+-  phase:damage:anisobrittle init  -+>>>'
 
-  mySources = source_active('damage_anisoBrittle',source_length)
+  mySources = source_active('anisobrittle',source_length)
   Ninstances = count(mySources)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -65,7 +65,7 @@ module function anisobrittle_init(source_length) result(mySources)
     phase => phases%get(p)
     if(any(mySources(:,p))) source_damage_anisoBrittle_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
-    sources => phase%get('source')
+    sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
         source_damage_anisoBrittle_offset(p) = sourceOffset

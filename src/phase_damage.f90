@@ -175,7 +175,7 @@ module subroutine damage_init
     allocate(current(ph)%d_phi_d_dot_phi(Nconstituents),source=0.0_pReal)
 
     phase => phases%get(ph)
-    sources => phase%get('source',defaultVal=emptyList)
+    sources => phase%get('damage',defaultVal=emptyList)
     phase_Nsources(ph) = sources%length
     allocate(damageState(ph)%p(phase_Nsources(ph)))
   enddo
@@ -493,7 +493,7 @@ function source_active(source_label,src_length)  result(active_source)
   allocate(active_source(src_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    sources => phase%get('source',defaultVal=emptyList)
+    sources => phase%get('damage',defaultVal=emptyList)
     do s = 1, sources%length
       src => sources%get(s)
       if(src%get_asString('type') == source_label) active_source(s,p) = .true.

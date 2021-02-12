@@ -51,7 +51,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
 
   print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:slipplaneopening init  -+>>>'
 
-  myKinematics = kinematics_active('slipplane_opening',kinematics_length)
+  myKinematics = kinematics_active2('isoductile',kinematics_length)
   Ninstances = count(myKinematics)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -66,7 +66,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     mech  => phase%get('mechanics')
     pl    => mech%get('plasticity')
     if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('kinematics')
+    kinematics => phase%get('damage')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_slipplane_opening_instance(p)))

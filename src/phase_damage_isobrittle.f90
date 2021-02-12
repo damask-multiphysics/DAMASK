@@ -41,7 +41,7 @@ module function isobrittle_init(source_length) result(mySources)
 
   print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
 
-  mySources = source_active('damage_isoBrittle',source_length)
+  mySources = source_active('isobrittle',source_length)
   Ninstances = count(mySources)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -55,7 +55,7 @@ module function isobrittle_init(source_length) result(mySources)
     phase => phases%get(p)
     if(any(mySources(:,p))) source_damage_isoBrittle_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
-    sources => phase%get('source')
+    sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
         source_damage_isoBrittle_offset(p) = sourceOffset
