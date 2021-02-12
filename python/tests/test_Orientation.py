@@ -118,7 +118,7 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_cubochoric(self):
-        assert np.all(Orientation.from_cubochoric(c=np.zeros(3),lattice='triclinic').as_matrix()
+        assert np.all(Orientation.from_cubochoric(x=np.zeros(3),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_spherical_component(self):

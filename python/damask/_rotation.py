@@ -502,8 +502,8 @@ class Rotation:
 
         Returns
         -------
-        c : numpy.ndarray of shape (...,3)
-              Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
+        x : numpy.ndarray of shape (...,3)
+              Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
 
         """
         return Rotation._qu2cu(self.quaternion)
@@ -748,20 +748,20 @@ class Rotation:
         return Rotation(Rotation._ho2qu(ho))
 
     @staticmethod
-    def from_cubochoric(c,
+    def from_cubochoric(x,
                         P = -1):
         """
         Initialize from cubochoric vector.
 
         Parameters
         ----------
-        c : numpy.ndarray of shape (...,3)
-            Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
+        x : numpy.ndarray of shape (...,3)
+            Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
-        cu = np.array(c,dtype=float)
+        cu = np.array(x,dtype=float)
         if cu.shape[:-2:-1] != (3,):
             raise ValueError('Invalid shape.')
         if abs(P) != 1:
