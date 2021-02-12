@@ -219,7 +219,7 @@ subroutine homogenization_init()
   call thermal_init()
   call damage_init()
 
-  if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
+  call damage_nonlocal_init
 
 
 end subroutine homogenization_init
@@ -255,6 +255,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
       if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
+      call damage_partition(ce)
 
       doneAndHappy = [.false.,.true.]
 
@@ -375,7 +376,8 @@ subroutine homogenization_forward
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
-    damageState_h(ho)%state0 = damageState_h(ho)%state
+    if(damageState_h(ho)%sizeState > 0) &
+      damageState_h(ho)%state0 = damageState_h(ho)%state
   enddo
 
 end subroutine homogenization_forward

@@ -152,7 +152,7 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
     traction_t = math_tensordot(S,prm%P_t(1:3,1:3,i))
     traction_n = math_tensordot(S,prm%P_n(1:3,1:3,i))
 
-    traction_crit = prm%g_crit(i)* damagestate_h(homog)%state(1,damageOffset)                       ! degrading critical load carrying capacity by damage
+    traction_crit = prm%g_crit(i)* phase_damage_get_phi(co,ip,el)                       ! degrading critical load carrying capacity by damage
 
     udotd = sign(1.0_pReal,traction_d)* prm%dot_o* (  abs(traction_d)/traction_crit &
                                                     - abs(traction_d)/prm%g_crit(i))**prm%q

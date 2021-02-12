@@ -72,7 +72,8 @@ module subroutine damage_partition(ce)
   integer :: co
 
 
-  phi     = current(material_homogenizationAt2(ce))%phi(material_homogenizationMemberAt2(ce))
+  if(damageState_h(material_homogenizationAt2(ce))%sizeState < 1) return
+  phi     = damagestate_h(material_homogenizationAt2(ce))%state(1,material_homogenizationMemberAt2(ce))
   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
     call phase_damage_set_phi(phi,co,ce)
   enddo

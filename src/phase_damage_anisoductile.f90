@@ -129,7 +129,7 @@ module subroutine anisoductile_dotState(co, ip, el)
 
   associate(prm => param(source_damage_anisoDuctile_instance(ph)))
   damageState(ph)%p(sourceOffset)%dotState(1,me) &
-    = sum(plasticState(ph)%slipRate(:,me)/(damagestate_h(homog)%state(1,damageOffset)**prm%q)/prm%gamma_crit)
+    = sum(plasticState(ph)%slipRate(:,me)/(phase_damage_get_phi(co,ip,el)**prm%q)/prm%gamma_crit)
   end associate
 
 end subroutine anisoductile_dotState

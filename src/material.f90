@@ -100,7 +100,7 @@ subroutine material_init(restart)
 
 
   allocate(homogState      (size(material_name_homogenization)))
-  allocate(damageState_h     (size(material_name_homogenization)))
+  allocate(damageState_h   (size(material_name_homogenization)))
 
   if (.not. restart) then
     call results_openJobFile

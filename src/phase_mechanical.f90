@@ -381,7 +381,7 @@ subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(co,el))
     degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(co,el)))
       case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * damagestate_h(ho)%state(1,material_homogenizationMemberAt(ip,el))**2
+        C = C * phase_damage_get_phi(co,ip,el)**2
     end select degradationType
   enddo DegradationLoop
 
