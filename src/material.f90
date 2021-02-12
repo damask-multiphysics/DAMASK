@@ -78,7 +78,8 @@ module material
     DAMAGE_NONLOCAL_ID, &
     HOMOGENIZATION_NONE_ID, &
     HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_RGC_ID
+    HOMOGENIZATION_RGC_ID, &
+    material_parseHomogenization
 
 contains
 
@@ -94,10 +95,6 @@ subroutine material_init(restart)
 
   call material_parseMaterial
   print*, 'Material parsed'
-
-  call material_parseHomogenization
-  print*, 'Homogenization parsed'
-
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h   (size(material_name_homogenization)))

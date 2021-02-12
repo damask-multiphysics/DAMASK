@@ -15,9 +15,19 @@ module homogenization
   use damage_nonlocal
   use HDF5_utilities
   use results
+  use lattice
 
   implicit none
   private
+
+  type, private :: tNumerics_damage
+    real(pReal) :: &
+    charLength                                                                                      !< characteristic length scale for gradient problems
+  end type tNumerics_damage
+
+  type(tNumerics_damage), private :: &
+    num_damage
+
 
   logical, public :: &
     terminallyIll = .false.                                                                         !< at least one material point is terminally ill
@@ -194,6 +204,10 @@ module homogenization
     homogenization_restartRead, &
     homogenization_restartWrite
 
+  public :: &
+    damage_nonlocal_init, &
+    damage_nonlocal_getDiffusion
+
 contains
 
 
@@ -207,6 +221,9 @@ subroutine homogenization_init()
     num_homogGeneric
 
   print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
+
+    call material_parseHomogenization
+  print*, 'Homogenization parsed'
 
   num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
@@ -435,6 +452,68 @@ subroutine homogenization_restartRead(fileHandle)
   call HDF5_closeGroup(groupHandle(1))
 
 end subroutine homogenization_restartRead
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief module initialization
+!> @details reads in material parameters, allocates arrays, and does sanity checks
+!--------------------------------------------------------------------------------------------------
+subroutine damage_nonlocal_init
+
+  integer :: Ninstances,Nmaterialpoints,h
+  class(tNode), pointer :: &
+    num_generic, &
+    material_homogenization
+
+  print'(/,a)', ' <<<+-  damage_nonlocal init  -+>>>'; flush(6)
+
+!------------------------------------------------------------------------------------
+! read numerics parameter
+  num_generic => config_numerics%get('generic',defaultVal= emptyDict)
+  num_damage%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
+
+  Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
+
+  material_homogenization => config_material%get('homogenization')
+  do h = 1, material_homogenization%length
+    if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
+
+    Nmaterialpoints = count(material_homogenizationAt == h)
+    damageState_h(h)%sizeState = 1
+    allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
+    allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
+
+  enddo
+
+end subroutine damage_nonlocal_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns homogenized non local damage diffusion tensor in reference configuration
+!--------------------------------------------------------------------------------------------------
+function damage_nonlocal_getDiffusion(ip,el)
+
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
+  real(pReal), dimension(3,3) :: &
+    damage_nonlocal_getDiffusion
+  integer :: &
+    homog, &
+    grain
+
+  homog  = material_homogenizationAt(el)
+  damage_nonlocal_getDiffusion = 0.0_pReal
+  do grain = 1, homogenization_Nconstituents(homog)
+    damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
+      crystallite_push33ToRef(grain,ip,el,lattice_D(1:3,1:3,material_phaseAt(grain,el)))
+  enddo
+
+  damage_nonlocal_getDiffusion = &
+    num_damage%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(homog),pReal)
+
+end function damage_nonlocal_getDiffusion
 
 
 end module homogenization
