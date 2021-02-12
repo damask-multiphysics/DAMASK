@@ -60,7 +60,7 @@ subroutine CPFEM_initAll
   call discretization_grid_init(restart=interface_restartInc>0)
 #endif
   call material_init(restart=interface_restartInc>0)
-  call constitutive_init
+  call phase_init
   call homogenization_init
   call crystallite_init
   call CPFEM_init
@@ -87,7 +87,7 @@ subroutine CPFEM_init
     fileHandle = HDF5_openFile(fileName)
 
     call homogenization_restartRead(fileHandle)
-    call constitutive_restartRead(fileHandle)
+    call phase_restartRead(fileHandle)
 
     call HDF5_closeFile(fileHandle)
   endif
@@ -110,7 +110,7 @@ subroutine CPFEM_restartWrite
   fileHandle = HDF5_openFile(fileName,'a')
 
   call homogenization_restartWrite(fileHandle)
-  call constitutive_restartWrite(fileHandle)
+  call phase_restartWrite(fileHandle)
 
   call HDF5_closeFile(fileHandle)
 
@@ -123,7 +123,7 @@ end subroutine CPFEM_restartWrite
 subroutine CPFEM_forward
 
   call homogenization_forward
-  call constitutive_forward
+  call phase_forward
 
 end subroutine CPFEM_forward
 
@@ -138,7 +138,7 @@ subroutine CPFEM_results(inc,time)
 
   call results_openJobFile
   call results_addIncrement(inc,time)
-  call constitutive_results
+  call phase_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

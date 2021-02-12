@@ -44,7 +44,7 @@ module function plastic_none_init() result(myPlasticity)
     phase => phases%get(p)
     if(.not. myPlasticity(p)) cycle
     Nconstituents = count(material_phaseAt2 == p)
-    call constitutive_allocateState(plasticState(p),Nconstituents,0,0,0)
+    call phase_allocateState(plasticState(p),Nconstituents,0,0,0)
   enddo
 
 end function plastic_none_init

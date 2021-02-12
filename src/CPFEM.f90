@@ -85,7 +85,7 @@ subroutine CPFEM_initAll
   call discretization_marc_init
   call lattice_init
   call material_init(.false.)
-  call constitutive_init
+  call phase_init
   call homogenization_init
   call crystallite_init
   call CPFEM_init
@@ -257,7 +257,7 @@ end subroutine CPFEM_general
 subroutine CPFEM_forward
 
   call homogenization_forward
-  call constitutive_forward
+  call phase_forward
 
 end subroutine CPFEM_forward
 
@@ -272,7 +272,7 @@ subroutine CPFEM_results(inc,time)
 
   call results_openJobFile
   call results_addIncrement(inc,time)
-  call constitutive_results
+  call phase_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

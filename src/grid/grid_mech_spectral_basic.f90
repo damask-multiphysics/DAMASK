@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Grid solver for mechanics: Spectral basic
 !--------------------------------------------------------------------------------------------------
-module grid_mech_spectral_basic
+module grid_mechanical_spectral_basic
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
   use PETScdmda
@@ -79,18 +79,18 @@ module grid_mech_spectral_basic
     totalIter = 0                                                                                   !< total iteration in current increment
 
   public :: &
-    grid_mech_spectral_basic_init, &
-    grid_mech_spectral_basic_solution, &
-    grid_mech_spectral_basic_forward, &
-    grid_mech_spectral_basic_updateCoords, &
-    grid_mech_spectral_basic_restartWrite
+    grid_mechanical_spectral_basic_init, &
+    grid_mechanical_spectral_basic_solution, &
+    grid_mechanical_spectral_basic_forward, &
+    grid_mechanical_spectral_basic_updateCoords, &
+    grid_mechanical_spectral_basic_restartWrite
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_init
+subroutine grid_mechanical_spectral_basic_init
 
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   PetscErrorCode :: ierr
@@ -105,7 +105,7 @@ subroutine grid_mech_spectral_basic_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(IO_STDOUT)
+  print'(/,a)', ' <<<+-  grid_mechanical_spectral_basic init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
   print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
@@ -139,7 +139,7 @@ subroutine grid_mech_spectral_basic_init
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type ngmres',ierr)
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
@@ -152,7 +152,7 @@ subroutine grid_mech_spectral_basic_init
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
-  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr)
+  call SNESSetOptionsPrefix(snes,'mechanical_',ierr);CHKERRQ(ierr)
   localK            = 0
   localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
@@ -222,13 +222,13 @@ subroutine grid_mech_spectral_basic_init
   call utilities_updateGamma(C_minMaxAvg)
   call utilities_saveReferenceStiffness
 
-end subroutine grid_mech_spectral_basic_init
+end subroutine grid_mechanical_spectral_basic_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_spectral_basic_solution(incInfoIn) result(solution)
+function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -262,14 +262,14 @@ function grid_mech_spectral_basic_solution(incInfoIn) result(solution)
   terminallyIll = .false.
   P_aim = merge(P_aim,P_av,params%stress_mask)
 
-end function grid_mech_spectral_basic_solution
+end function grid_mechanical_spectral_basic_solution
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
+subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
                                             deformation_BC,stress_BC,rotation_BC)
 
   logical,                  intent(in) :: &
@@ -339,13 +339,13 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_old,t_
   params%rotation_BC = rotation_BC
   params%timeinc     = Delta_t
 
-end subroutine grid_mech_spectral_basic_forward
+end subroutine grid_mechanical_spectral_basic_forward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Update coordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_updateCoords
+subroutine grid_mechanical_spectral_basic_updateCoords
 
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
@@ -354,13 +354,13 @@ subroutine grid_mech_spectral_basic_updateCoords
   call utilities_updateCoords(F)
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-end subroutine grid_mech_spectral_basic_updateCoords
+end subroutine grid_mechanical_spectral_basic_updateCoords
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_restartWrite
+subroutine grid_mechanical_spectral_basic_restartWrite
 
   PetscErrorCode :: ierr
   integer(HID_T) :: fileHandle, groupHandle
@@ -393,7 +393,7 @@ subroutine grid_mech_spectral_basic_restartWrite
 
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-end subroutine grid_mech_spectral_basic_restartWrite
+end subroutine grid_mechanical_spectral_basic_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
@@ -506,4 +506,4 @@ subroutine formResidual(in, F, &
 end subroutine formResidual
 
 
-end module grid_mech_spectral_basic
+end module grid_mechanical_spectral_basic

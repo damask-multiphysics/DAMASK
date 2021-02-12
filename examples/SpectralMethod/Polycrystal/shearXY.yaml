@@ -3,9 +3,6 @@
 solver:
   mechanical: spectral_basic
 
-initial_conditions:
-  T: 300  #in Kelvin
-
 loadstep:
   - boundary_conditions:
       mechanical:

@@ -31,21 +31,21 @@ submodule(phase) mechanics
 
   type(tTensorContainer), dimension(:), allocatable :: &
     ! current value
-    constitutive_mech_Fe, &
-    constitutive_mech_Fi, &
-    constitutive_mech_Fp, &
-    constitutive_mech_F, &
-    constitutive_mech_Li, &
-    constitutive_mech_Lp, &
-    constitutive_mech_S, &
-    constitutive_mech_P, &
+    phase_mechanical_Fe, &
+    phase_mechanical_Fi, &
+    phase_mechanical_Fp, &
+    phase_mechanical_F, &
+    phase_mechanical_Li, &
+    phase_mechanical_Lp, &
+    phase_mechanical_S, &
+    phase_mechanical_P, &
     ! converged value at end of last solver increment
-    constitutive_mech_Fi0, &
-    constitutive_mech_Fp0, &
-    constitutive_mech_F0, &
-    constitutive_mech_Li0, &
-    constitutive_mech_Lp0, &
-    constitutive_mech_S0
+    phase_mechanical_Fi0, &
+    phase_mechanical_Fp0, &
+    phase_mechanical_F0, &
+    phase_mechanical_Li0, &
+    phase_mechanical_Lp0, &
+    phase_mechanical_S0
 
 
   integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
@@ -97,7 +97,7 @@ submodule(phase) mechanics
         broken
     end function plastic_deltaState
 
-    module subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
+    module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
                                              S, Fi, co, ip, el)
 
       integer, intent(in) :: &
@@ -114,7 +114,7 @@ submodule(phase) mechanics
         dLi_dS, &                                                                                       !< derivative of Li with respect to S
         dLi_dFi
 
-    end subroutine constitutive_LiAndItsTangents
+    end subroutine phase_LiAndItsTangents
 
 
     module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
@@ -186,7 +186,7 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_init(phases)
+module subroutine mechanical_init(phases)
 
   class(tNode), pointer :: &
     phases
@@ -215,38 +215,38 @@ module subroutine mech_init(phases)
   allocate(phase_NstiffnessDegradations(phases%length),source=0)
   allocate(output_constituent(phases%length))
 
-  allocate(constitutive_mech_Fe(phases%length))
-  allocate(constitutive_mech_Fi(phases%length))
-  allocate(constitutive_mech_Fi0(phases%length))
-  allocate(constitutive_mech_Fp(phases%length))
-  allocate(constitutive_mech_Fp0(phases%length))
-  allocate(constitutive_mech_F(phases%length))
-  allocate(constitutive_mech_F0(phases%length))
-  allocate(constitutive_mech_Li(phases%length))
-  allocate(constitutive_mech_Li0(phases%length))
-  allocate(constitutive_mech_Lp0(phases%length))
-  allocate(constitutive_mech_Lp(phases%length))
-  allocate(constitutive_mech_S(phases%length))
-  allocate(constitutive_mech_P(phases%length))
-  allocate(constitutive_mech_S0(phases%length))
+  allocate(phase_mechanical_Fe(phases%length))
+  allocate(phase_mechanical_Fi(phases%length))
+  allocate(phase_mechanical_Fi0(phases%length))
+  allocate(phase_mechanical_Fp(phases%length))
+  allocate(phase_mechanical_Fp0(phases%length))
+  allocate(phase_mechanical_F(phases%length))
+  allocate(phase_mechanical_F0(phases%length))
+  allocate(phase_mechanical_Li(phases%length))
+  allocate(phase_mechanical_Li0(phases%length))
+  allocate(phase_mechanical_Lp0(phases%length))
+  allocate(phase_mechanical_Lp(phases%length))
+  allocate(phase_mechanical_S(phases%length))
+  allocate(phase_mechanical_P(phases%length))
+  allocate(phase_mechanical_S0(phases%length))
 
   do ph = 1, phases%length
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
-    allocate(constitutive_mech_Fi(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fe(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fi0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fp(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fp0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Li(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Li0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Lp0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Lp(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(constitutive_mech_P(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(constitutive_mech_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(constitutive_mech_F(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_F0(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Fi(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Fe(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Fi0(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Fp(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Fp0(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Li(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Li0(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Lp(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
+    allocate(phase_mechanical_P(ph)%data(3,3,Nconstituents),source=0.0_pReal)
+    allocate(phase_mechanical_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
+    allocate(phase_mechanical_F(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_F0(ph)%data(3,3,Nconstituents))
 
     phase   => phases%get(ph)
     mech    => phase%get('mechanics')
@@ -287,17 +287,17 @@ module subroutine mech_init(phases)
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
 
-      constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
-      constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me) &
-                                                 / math_det33(constitutive_mech_Fp0(ph)%data(1:3,1:3,me))**(1.0_pReal/3.0_pReal)
-      constitutive_mech_Fi0(ph)%data(1:3,1:3,me) = math_I3
-      constitutive_mech_F0(ph)%data(1:3,1:3,me)  = math_I3
+      phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp0(ph)%data(1:3,1:3,me) &
+                                                / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,me))**(1.0_pReal/3.0_pReal)
+      phase_mechanical_Fi0(ph)%data(1:3,1:3,me) = math_I3
+      phase_mechanical_F0(ph)%data(1:3,1:3,me)  = math_I3
 
-      constitutive_mech_Fe(ph)%data(1:3,1:3,me) = math_inv33(matmul(constitutive_mech_Fi0(ph)%data(1:3,1:3,me), &
-                                                                    constitutive_mech_Fp0(ph)%data(1:3,1:3,me)))           ! assuming that euler angles are given in internal strain free configuration
-      constitutive_mech_Fp(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
-      constitutive_mech_Fi(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-      constitutive_mech_F(ph)%data(1:3,1:3,me)  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
+      phase_mechanical_Fe(ph)%data(1:3,1:3,me) = math_inv33(matmul(phase_mechanical_Fi0(ph)%data(1:3,1:3,me), &
+                                                                   phase_mechanical_Fp0(ph)%data(1:3,1:3,me)))           ! assuming that euler angles are given in internal strain free configuration
+      phase_mechanical_Fp(ph)%data(1:3,1:3,me) = phase_mechanical_Fp0(ph)%data(1:3,1:3,me)
+      phase_mechanical_Fi(ph)%data(1:3,1:3,me) = phase_mechanical_Fi0(ph)%data(1:3,1:3,me)
+      phase_mechanical_F(ph)%data(1:3,1:3,me)  = phase_mechanical_F0(ph)%data(1:3,1:3,me)
 
     enddo
   enddo; enddo
@@ -307,14 +307,14 @@ module subroutine mech_init(phases)
 ! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
-  allocate(phase_plasticityInstance(phases%length),source = 0)
+  allocate(phase_plasticInstance(phases%length),source = 0)
   allocate(phase_localPlasticity(phases%length),   source=.true.)
 
   call plastic_init()
 
   do ph = 1, phases%length
     phase_elasticityInstance(ph) = count(phase_elasticity(1:ph) == phase_elasticity(ph))
-    phase_plasticityInstance(ph) = count(phase_plasticity(1:ph) == phase_plasticity(ph))
+    phase_plasticInstance(ph) = count(phase_plasticity(1:ph) == phase_plasticity(ph))
   enddo
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
@@ -345,14 +345,14 @@ module subroutine mech_init(phases)
   call eigendeformation_init(phases)
 
 
-end subroutine mech_init
+end subroutine mechanical_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, co, ip, el)
 
   integer, intent(in) :: &
@@ -376,7 +376,7 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     i, j, ph, me
 
   ho = material_homogenizationAt(el)
-  C = math_66toSym3333(constitutive_homogenizedC(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))
+  C = math_66toSym3333(phase_homogenizedC(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))
 
   DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(co,el))
     degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(co,el)))
@@ -393,10 +393,10 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                             !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
   enddo; enddo
 
-end subroutine constitutive_hooke_SandItsTangents
+end subroutine phase_hooke_SandItsTangents
 
 
-module subroutine mech_results(group,ph)
+module subroutine mechanical_results(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
@@ -407,28 +407,28 @@ module subroutine mech_results(group,ph)
   select case(phase_plasticity(ph))
 
     case(PLASTICITY_ISOTROPIC_ID)
-      call plastic_isotropic_results(phase_plasticityInstance(ph),group//'plastic/')
+      call plastic_isotropic_results(phase_plasticInstance(ph),group//'plastic/')
 
     case(PLASTICITY_PHENOPOWERLAW_ID)
-      call plastic_phenopowerlaw_results(phase_plasticityInstance(ph),group//'plastic/')
+      call plastic_phenopowerlaw_results(phase_plasticInstance(ph),group//'plastic/')
 
     case(PLASTICITY_KINEHARDENING_ID)
-      call plastic_kinehardening_results(phase_plasticityInstance(ph),group//'plastic/')
+      call plastic_kinehardening_results(phase_plasticInstance(ph),group//'plastic/')
 
     case(PLASTICITY_DISLOTWIN_ID)
-      call plastic_dislotwin_results(phase_plasticityInstance(ph),group//'plastic/')
+      call plastic_dislotwin_results(phase_plasticInstance(ph),group//'plastic/')
 
     case(PLASTICITY_DISLOTUNGSTEN_ID)
-      call plastic_dislotungsten_results(phase_plasticityInstance(ph),group//'plastic/')
+      call plastic_dislotungsten_results(phase_plasticInstance(ph),group//'plastic/')
 
     case(PLASTICITY_NONLOCAL_ID)
-      call plastic_nonlocal_results(phase_plasticityInstance(ph),group//'plastic/')
+      call plastic_nonlocal_results(phase_plasticInstance(ph),group//'plastic/')
 
   end select
 
   call crystallite_results(group,ph)
 
-end subroutine mech_results
+end subroutine mechanical_results
 
 
 !--------------------------------------------------------------------------------------------------
@@ -503,8 +503,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
   call plastic_dependentState(co,ip,el)
 
-  Lpguess = constitutive_mech_Lp(ph)%data(1:3,1:3,me)                                              ! take as first guess
-  Liguess = constitutive_mech_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
+  Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,me)                                              ! take as first guess
+  Liguess = phase_mechanical_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
 
   call math_invert33(invFp_current,devNull,error,subFp0)
   if (error) return ! error
@@ -538,7 +538,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
       B  = math_I3 - Delta_t*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
-      call constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+      call phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                         Fe, Fi_new, co, ip, el)
 
       call plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
@@ -582,7 +582,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
               + deltaLp * steplengthLp
     enddo LpLoop
 
-    call constitutive_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
+    call phase_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
                                        S, Fi_new, co, ip, el)
 
     !* update current residuum and check for convergence of loop
@@ -633,13 +633,13 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return ! error
 
-  constitutive_mech_P(ph)%data(1:3,1:3,me)  = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
-  constitutive_mech_S(ph)%data(1:3,1:3,me)  = S
-  constitutive_mech_Lp(ph)%data(1:3,1:3,me) = Lpguess
-  constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
-  constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
-  constitutive_mech_Fi(ph)%data(1:3,1:3,me) = Fi_new
-  constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(matmul(F,invFp_new),invFi_new)
+  phase_mechanical_P(ph)%data(1:3,1:3,me)  = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
+  phase_mechanical_S(ph)%data(1:3,1:3,me)  = S
+  phase_mechanical_Lp(ph)%data(1:3,1:3,me) = Lpguess
+  phase_mechanical_Li(ph)%data(1:3,1:3,me) = Liguess
+  phase_mechanical_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
+  phase_mechanical_Fi(ph)%data(1:3,1:3,me) = Fi_new
+  phase_mechanical_Fe(ph)%data(1:3,1:3,me) = matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
 
 end function integrateStress
@@ -668,9 +668,9 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     sizeDotState
   real(pReal) :: &
     zeta
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
+  real(pReal), dimension(phase_plasticity_maxSizeDotState) :: &
     r                                                                                               ! state residuum
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
+  real(pReal), dimension(phase_plasticity_maxSizeDotState,2) :: &
     dotState
 
 
@@ -796,7 +796,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
     ph, &
     me, &
     sizeDotState
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: residuum_plastic
+  real(pReal), dimension(phase_plasticity_maxSizeDotState) :: residuum_plastic
 
 
   ph = material_phaseAt(co,el)
@@ -914,7 +914,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
     ph, &
     me, &
     sizeDotState
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
+  real(pReal), dimension(phase_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
 
 
   ph = material_phaseAt(co,el)
@@ -987,28 +987,28 @@ subroutine crystallite_results(group,ph)
 
       select case (output_constituent(ph)%label(ou))
         case('F')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_F(ph)%data,'F',&
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_F(ph)%data,'F',&
                                    'deformation gradient','1')
         case('F_e')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fe(ph)%data,'F_e',&
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_Fe(ph)%data,'F_e',&
                                    'elastic deformation gradient','1')
         case('F_p')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fp(ph)%data,'F_p', &
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_Fp(ph)%data,'F_p', &
                                    'plastic deformation gradient','1')
         case('F_i')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fi(ph)%data,'F_i', &
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_Fi(ph)%data,'F_i', &
                                    'inelastic deformation gradient','1')
         case('L_p')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Lp(ph)%data,'L_p', &
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_Lp(ph)%data,'L_p', &
                                    'plastic velocity gradient','1/s')
         case('L_i')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Li(ph)%data,'L_i', &
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_Li(ph)%data,'L_i', &
                                    'inelastic velocity gradient','1/s')
         case('P')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_P(ph)%data,'P', &
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_P(ph)%data,'P', &
                                    'First Piola-Kirchhoff stress','Pa')
         case('S')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_S(ph)%data,'S', &
+          call results_writeDataset(group//'/mechanics/',phase_mechanical_S(ph)%data,'S', &
                                    'Second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(ph))
@@ -1067,43 +1067,43 @@ end subroutine crystallite_results
 !--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_windForward(ph,me)
+module subroutine mechanical_windForward(ph,me)
 
   integer, intent(in) :: ph, me
 
 
-  constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-  constitutive_mech_Fi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-  constitutive_mech_F0(ph)%data(1:3,1:3,me)  = constitutive_mech_F(ph)%data(1:3,1:3,me)
-  constitutive_mech_Li0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
-  constitutive_mech_Lp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
-  constitutive_mech_S0(ph)%data(1:3,1:3,me)  = constitutive_mech_S(ph)%data(1:3,1:3,me)
+  phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
+  phase_mechanical_Fi0(ph)%data(1:3,1:3,me) = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
+  phase_mechanical_F0(ph)%data(1:3,1:3,me)  = phase_mechanical_F(ph)%data(1:3,1:3,me)
+  phase_mechanical_Li0(ph)%data(1:3,1:3,me) = phase_mechanical_Li(ph)%data(1:3,1:3,me)
+  phase_mechanical_Lp0(ph)%data(1:3,1:3,me) = phase_mechanical_Lp(ph)%data(1:3,1:3,me)
+  phase_mechanical_S0(ph)%data(1:3,1:3,me)  = phase_mechanical_S(ph)%data(1:3,1:3,me)
 
   plasticState(ph)%State0(:,me) = plasticState(ph)%state(:,me)
 
-end subroutine mech_windForward
+end subroutine mechanical_windForward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_forward()
+module subroutine mechanical_forward()
 
   integer :: ph
 
 
   do ph = 1, size(plasticState)
-    constitutive_mech_Fi0(ph) = constitutive_mech_Fi(ph)
-    constitutive_mech_Fp0(ph) = constitutive_mech_Fp(ph)
-    constitutive_mech_F0(ph)  = constitutive_mech_F(ph)
-    constitutive_mech_Li0(ph) = constitutive_mech_Li(ph)
-    constitutive_mech_Lp0(ph) = constitutive_mech_Lp(ph)
-    constitutive_mech_S0(ph)  = constitutive_mech_S(ph)
+    phase_mechanical_Fi0(ph) = phase_mechanical_Fi(ph)
+    phase_mechanical_Fp0(ph) = phase_mechanical_Fp(ph)
+    phase_mechanical_F0(ph)  = phase_mechanical_F(ph)
+    phase_mechanical_Li0(ph) = phase_mechanical_Li(ph)
+    phase_mechanical_Lp0(ph) = phase_mechanical_Lp(ph)
+    phase_mechanical_S0(ph)  = phase_mechanical_S(ph)
     plasticState(ph)%state0 = plasticState(ph)%state
   enddo
 
-end subroutine mech_forward
+end subroutine mechanical_forward
 
 
 
@@ -1111,19 +1111,19 @@ end subroutine mech_forward
 !> @brief returns the homogenize elasticity matrix
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
-module function constitutive_homogenizedC(ph,me) result(C)
+module function phase_homogenizedC(ph,me) result(C)
 
   real(pReal), dimension(6,6) :: C
   integer,      intent(in)    :: ph, me
 
-  plasticityType: select case (phase_plasticity(ph))
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+  plasticType: select case (phase_plasticity(ph))
+    case (PLASTICITY_DISLOTWIN_ID) plasticType
      C = plastic_dislotwin_homogenizedC(ph,me)
-    case default plasticityType
+    case default plasticType
      C = lattice_C66(1:6,1:6,ph)
-  end select plasticityType
+  end select plasticType
 
-end function constitutive_homogenizedC
+end function phase_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1158,17 +1158,17 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   me = material_phaseMemberAt(co,ip,el)
   sizeDotState = plasticState(ph)%sizeDotState
 
-  subLi0 = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
-  subLp0 = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
+  subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,me)
+  subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,me)
   subState0 = plasticState(ph)%State0(:,me)
 
 
   do so = 1, phase_Nsources(ph)
     damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state0(:,me)
   enddo
-  subFp0 = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
-  subFi0 = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-  subF0  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
+  subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,me)
+  subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,me)
+  subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,me)
   subFrac = 0.0_pReal
   subStep = 1.0_pReal/num%subStepSizeCryst
   todo = .true.
@@ -1186,10 +1186,10 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 
       if (todo) then
         subF0  = subF
-        subLp0 = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
-        subLi0 = constitutive_mech_Li(ph)%data(1:3,1:3,me)
-        subFp0 = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-        subFi0 = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+        subLp0 = phase_mechanical_Lp(ph)%data(1:3,1:3,me)
+        subLi0 = phase_mechanical_Li(ph)%data(1:3,1:3,me)
+        subFp0 = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
+        subFi0 = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
         subState0 = plasticState(ph)%state(:,me)
         do so = 1, phase_Nsources(ph)
           damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state(:,me)
@@ -1199,12 +1199,12 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !  cut back (reduced time and restore)
     else
       subStep       = num%subStepSizeCryst * subStep
-      constitutive_mech_Fp(ph)%data(1:3,1:3,me) = subFp0
-      constitutive_mech_Fi(ph)%data(1:3,1:3,me) = subFi0
-      constitutive_mech_S(ph)%data(1:3,1:3,me) = constitutive_mech_S0(ph)%data(1:3,1:3,me)          ! why no subS0 ? is S0 of any use?
+      phase_mechanical_Fp(ph)%data(1:3,1:3,me) = subFp0
+      phase_mechanical_Fi(ph)%data(1:3,1:3,me) = subFi0
+      phase_mechanical_S(ph)%data(1:3,1:3,me) = phase_mechanical_S0(ph)%data(1:3,1:3,me)          ! why no subS0 ? is S0 of any use?
       if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
-        constitutive_mech_Lp(ph)%data(1:3,1:3,me) = subLp0
-        constitutive_mech_Li(ph)%data(1:3,1:3,me) = subLi0
+        phase_mechanical_Lp(ph)%data(1:3,1:3,me) = subLp0
+        phase_mechanical_Li(ph)%data(1:3,1:3,me) = subLi0
       endif
       plasticState(ph)%state(:,me) = subState0
       do so = 1, phase_Nsources(ph)
@@ -1218,9 +1218,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !  prepare for integration
     if (todo) then
       subF = subF0 &
-           + subStep * (constitutive_mech_F(ph)%data(1:3,1:3,me) - constitutive_mech_F0(ph)%data(1:3,1:3,me))
-      constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
-                                                                                constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
+           + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,me) - phase_mechanical_F0(ph)%data(1:3,1:3,me))
+      phase_mechanical_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
+                                                                               phase_mechanical_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
     endif
@@ -1233,7 +1233,7 @@ end function crystallite_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_restore(ce,includeL)
+module subroutine mechanical_restore(ce,includeL)
 
   integer, intent(in) :: ce
   logical, intent(in) :: &
@@ -1247,23 +1247,23 @@ module subroutine mech_restore(ce,includeL)
     ph = material_phaseAt2(co,ce)
     me = material_phaseMemberAt2(co,ce)
     if (includeL) then
-      constitutive_mech_Lp(ph)%data(1:3,1:3,me) = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
-      constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
+      phase_mechanical_Lp(ph)%data(1:3,1:3,me) = phase_mechanical_Lp0(ph)%data(1:3,1:3,me)
+      phase_mechanical_Li(ph)%data(1:3,1:3,me) = phase_mechanical_Li0(ph)%data(1:3,1:3,me)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
 
-    constitutive_mech_Fp(ph)%data(1:3,1:3,me)   = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
-    constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-    constitutive_mech_S(ph)%data(1:3,1:3,me)    = constitutive_mech_S0(ph)%data(1:3,1:3,me)
+    phase_mechanical_Fp(ph)%data(1:3,1:3,me)   = phase_mechanical_Fp0(ph)%data(1:3,1:3,me)
+    phase_mechanical_Fi(ph)%data(1:3,1:3,me)   = phase_mechanical_Fi0(ph)%data(1:3,1:3,me)
+    phase_mechanical_S(ph)%data(1:3,1:3,me)    = phase_mechanical_S0(ph)%data(1:3,1:3,me)
 
     plasticState(ph)%state(:,me) = plasticState(ph)%State0(:,me)
   enddo
 
-end subroutine mech_restore
+end subroutine mechanical_restore
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
+module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
 
   real(pReal), intent(in) :: dt
   integer, intent(in) :: &
@@ -1297,18 +1297,18 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
-                                          constitutive_mech_Fe(ph)%data(1:3,1:3,me), &
-                                          constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
-  call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                     constitutive_mech_S(ph)%data(1:3,1:3,me), &
-                                     constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
+  call phase_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
+                                          phase_mechanical_Fe(ph)%data(1:3,1:3,me), &
+                                          phase_mechanical_Fi(ph)%data(1:3,1:3,me),co,ip,el)
+  call phase_LiAndItsTangents(devNull,dLidS,dLidFi, &
+                                     phase_mechanical_S(ph)%data(1:3,1:3,me), &
+                                     phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
                                      co,ip,el)
 
-  invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
-  invFi = math_inv33(constitutive_mech_Fi(ph)%data(1:3,1:3,me))
-  invSubFp0 = math_inv33(constitutive_mech_Fp0(ph)%data(1:3,1:3,me))
-  invSubFi0 = math_inv33(constitutive_mech_Fi0(ph)%data(1:3,1:3,me))
+  invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,me))
+  invFi = math_inv33(phase_mechanical_Fi(ph)%data(1:3,1:3,me))
+  invSubFp0 = math_inv33(phase_mechanical_Fp0(ph)%data(1:3,1:3,me))
+  invSubFi0 = math_inv33(phase_mechanical_Fi0(ph)%data(1:3,1:3,me))
 
   if (sum(abs(dLidS)) < tol_math_check) then
     dFidS = 0.0_pReal
@@ -1334,15 +1334,15 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
   endif
 
   call plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                             constitutive_mech_S(ph)%data(1:3,1:3,me), &
-                                             constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
+                                             phase_mechanical_S(ph)%data(1:3,1:3,me), &
+                                             phase_mechanical_Fi(ph)%data(1:3,1:3,me),co,ip,el)
   dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
   temp_33_1 = transpose(matmul(invFp,invFi))
-  temp_33_2 = matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),invSubFp0)
-  temp_33_3 = matmul(matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),invFp), invSubFi0)
+  temp_33_2 = matmul(phase_mechanical_F(ph)%data(1:3,1:3,me),invSubFp0)
+  temp_33_3 = matmul(matmul(phase_mechanical_F(ph)%data(1:3,1:3,me),invFp), invSubFi0)
 
   do o=1,3; do p=1,3
     rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
@@ -1370,9 +1370,9 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
 
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
-  temp_33_1 = matmul(constitutive_mech_S(ph)%data(1:3,1:3,me),transpose(invFp))
-  temp_33_2 = matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),invFp)
-  temp_33_3 = matmul(temp_33_2,constitutive_mech_S(ph)%data(1:3,1:3,me))
+  temp_33_1 = matmul(phase_mechanical_S(ph)%data(1:3,1:3,me),transpose(invFp))
+  temp_33_2 = matmul(phase_mechanical_F(ph)%data(1:3,1:3,me),invFp)
+  temp_33_3 = matmul(temp_33_2,phase_mechanical_S(ph)%data(1:3,1:3,me))
 
   dPdF = 0.0_pReal
   do p=1,3
@@ -1380,129 +1380,129 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
   enddo
   do o=1,3; do p=1,3
     dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
-                      + matmul(matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
+                      + matmul(matmul(phase_mechanical_F(ph)%data(1:3,1:3,me),dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
                       + matmul(matmul(temp_33_2,dSdF(1:3,1:3,p,o)),transpose(invFp)) &
                       + matmul(temp_33_3,transpose(dFpinvdF(1:3,1:3,p,o)))
   enddo; enddo
 
-end function constitutive_mech_dPdF
+end function phase_mechanical_dPdF
 
 
-module subroutine mech_restartWrite(groupHandle,ph)
+module subroutine mechanical_restartWrite(groupHandle,ph)
 
   integer(HID_T), intent(in) :: groupHandle
   integer, intent(in) :: ph
 
 
   call HDF5_write(groupHandle,plasticState(ph)%state,'omega')
-  call HDF5_write(groupHandle,constitutive_mech_Fi(ph)%data,'F_i')
-  call HDF5_write(groupHandle,constitutive_mech_Li(ph)%data,'L_i')
-  call HDF5_write(groupHandle,constitutive_mech_Lp(ph)%data,'L_p')
-  call HDF5_write(groupHandle,constitutive_mech_Fp(ph)%data,'F_p')
-  call HDF5_write(groupHandle,constitutive_mech_S(ph)%data,'S')
-  call HDF5_write(groupHandle,constitutive_mech_F(ph)%data,'F')
+  call HDF5_write(groupHandle,phase_mechanical_Fi(ph)%data,'F_i')
+  call HDF5_write(groupHandle,phase_mechanical_Li(ph)%data,'L_i')
+  call HDF5_write(groupHandle,phase_mechanical_Lp(ph)%data,'L_p')
+  call HDF5_write(groupHandle,phase_mechanical_Fp(ph)%data,'F_p')
+  call HDF5_write(groupHandle,phase_mechanical_S(ph)%data,'S')
+  call HDF5_write(groupHandle,phase_mechanical_F(ph)%data,'F')
 
-end subroutine mech_restartWrite
+end subroutine mechanical_restartWrite
 
 
-module subroutine mech_restartRead(groupHandle,ph)
+module subroutine mechanical_restartRead(groupHandle,ph)
 
   integer(HID_T), intent(in) :: groupHandle
   integer, intent(in) :: ph
 
 
   call HDF5_read(groupHandle,plasticState(ph)%state0,'omega')
-  call HDF5_read(groupHandle,constitutive_mech_Fi0(ph)%data,'F_i')
-  call HDF5_read(groupHandle,constitutive_mech_Li0(ph)%data,'L_i')
-  call HDF5_read(groupHandle,constitutive_mech_Lp0(ph)%data,'L_p')
-  call HDF5_read(groupHandle,constitutive_mech_Fp0(ph)%data,'F_p')
-  call HDF5_read(groupHandle,constitutive_mech_S0(ph)%data,'S')
-  call HDF5_read(groupHandle,constitutive_mech_F0(ph)%data,'F')
+  call HDF5_read(groupHandle,phase_mechanical_Fi0(ph)%data,'F_i')
+  call HDF5_read(groupHandle,phase_mechanical_Li0(ph)%data,'L_i')
+  call HDF5_read(groupHandle,phase_mechanical_Lp0(ph)%data,'L_p')
+  call HDF5_read(groupHandle,phase_mechanical_Fp0(ph)%data,'F_p')
+  call HDF5_read(groupHandle,phase_mechanical_S0(ph)%data,'S')
+  call HDF5_read(groupHandle,phase_mechanical_F0(ph)%data,'F')
 
-end subroutine mech_restartRead
+end subroutine mechanical_restartRead
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief Get first Piola-Kichhoff stress (for use by non-mech physics)
 !----------------------------------------------------------------------------------------------
-module function mech_S(ph,me) result(S)
+module function mechanical_S(ph,me) result(S)
 
   integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: S
 
 
-  S = constitutive_mech_S(ph)%data(1:3,1:3,me)
+  S = phase_mechanical_S(ph)%data(1:3,1:3,me)
 
-end function mech_S
+end function mechanical_S
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief Get plastic velocity gradient (for use by non-mech physics)
 !----------------------------------------------------------------------------------------------
-module function mech_L_p(ph,me) result(L_p)
+module function mechanical_L_p(ph,me) result(L_p)
 
   integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: L_p
 
 
-  L_p = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
+  L_p = phase_mechanical_Lp(ph)%data(1:3,1:3,me)
 
-end function mech_L_p
+end function mechanical_L_p
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief Get deformation gradient (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function constitutive_mech_getF(co,ip,el) result(F)
+module function phase_mechanical_getF(co,ip,el) result(F)
 
   integer, intent(in) :: co, ip, el
   real(pReal), dimension(3,3) :: F
 
 
-  F = constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  F = phase_mechanical_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
 
-end function constitutive_mech_getF
+end function phase_mechanical_getF
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief Get elastic deformation gradient (for use by non-mech physics)
 !----------------------------------------------------------------------------------------------
-module function mech_F_e(ph,me) result(F_e)
+module function mechanical_F_e(ph,me) result(F_e)
 
   integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: F_e
 
 
-  F_e = constitutive_mech_Fe(ph)%data(1:3,1:3,me)
+  F_e = phase_mechanical_Fe(ph)%data(1:3,1:3,me)
 
-end function mech_F_e
+end function mechanical_F_e
 
 
 
 !----------------------------------------------------------------------------------------------
 !< @brief Get second Piola-Kichhoff stress (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function constitutive_mech_getP(co,ip,el) result(P)
+module function phase_mechanical_getP(co,ip,el) result(P)
 
   integer, intent(in) :: co, ip, el
   real(pReal), dimension(3,3) :: P
 
 
-  P = constitutive_mech_P(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  P = phase_mechanical_P(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
 
-end function constitutive_mech_getP
+end function phase_mechanical_getP
 
 
 ! setter for homogenization
-module subroutine constitutive_mech_setF(F,co,ip,el)
+module subroutine phase_mechanical_setF(F,co,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: F
   integer, intent(in) :: co, ip, el
 
 
-  constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
+  phase_mechanical_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
 
-end subroutine constitutive_mech_setF
+end subroutine phase_mechanical_setF
 
 
 end submodule mechanics

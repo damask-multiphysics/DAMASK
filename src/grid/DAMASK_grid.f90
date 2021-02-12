@@ -18,9 +18,9 @@ program DAMASK_grid
   use CPFEM2
   use material
   use spectral_utilities
-  use grid_mech_spectral_basic
-  use grid_mech_spectral_polarisation
-  use grid_mech_FEM
+  use grid_mechanical_spectral_basic
+  use grid_mechanical_spectral_polarisation
+  use grid_mechanical_FEM
   use grid_damage_spectral
   use grid_thermal_spectral
   use results
@@ -83,16 +83,16 @@ program DAMASK_grid
 
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
-  procedure(grid_mech_spectral_basic_init), pointer :: &
-    mech_init
-  procedure(grid_mech_spectral_basic_forward), pointer :: &
-    mech_forward
-  procedure(grid_mech_spectral_basic_solution), pointer :: &
-    mech_solution
-  procedure(grid_mech_spectral_basic_updateCoords), pointer :: &
-    mech_updateCoords
-  procedure(grid_mech_spectral_basic_restartWrite), pointer :: &
-    mech_restartWrite
+  procedure(grid_mechanical_spectral_basic_init), pointer :: &
+    mechanical_init
+  procedure(grid_mechanical_spectral_basic_forward), pointer :: &
+    mechanical_forward
+  procedure(grid_mechanical_spectral_basic_solution), pointer :: &
+    mechanical_solution
+  procedure(grid_mechanical_spectral_basic_updateCoords), pointer :: &
+    mechanical_updateCoords
+  procedure(grid_mechanical_spectral_basic_restartWrite), pointer :: &
+    mechanical_restartWrite
 
   external :: &
     quit
@@ -139,25 +139,25 @@ program DAMASK_grid
   debug_grid => config_debug%get('grid',defaultVal=emptyList)
   select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic')))
     case ('Basic')
-      mech_init         => grid_mech_spectral_basic_init
-      mech_forward      => grid_mech_spectral_basic_forward
-      mech_solution     => grid_mech_spectral_basic_solution
-      mech_updateCoords => grid_mech_spectral_basic_updateCoords
-      mech_restartWrite => grid_mech_spectral_basic_restartWrite
+      mechanical_init         => grid_mechanical_spectral_basic_init
+      mechanical_forward      => grid_mechanical_spectral_basic_forward
+      mechanical_solution     => grid_mechanical_spectral_basic_solution
+      mechanical_updateCoords => grid_mechanical_spectral_basic_updateCoords
+      mechanical_restartWrite => grid_mechanical_spectral_basic_restartWrite
 
     case ('Polarisation')
-      mech_init         => grid_mech_spectral_polarisation_init
-      mech_forward      => grid_mech_spectral_polarisation_forward
-      mech_solution     => grid_mech_spectral_polarisation_solution
-      mech_updateCoords => grid_mech_spectral_polarisation_updateCoords
-      mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
+      mechanical_init         => grid_mechanical_spectral_polarisation_init
+      mechanical_forward      => grid_mechanical_spectral_polarisation_forward
+      mechanical_solution     => grid_mechanical_spectral_polarisation_solution
+      mechanical_updateCoords => grid_mechanical_spectral_polarisation_updateCoords
+      mechanical_restartWrite => grid_mechanical_spectral_polarisation_restartWrite
 
     case ('FEM')
-      mech_init         => grid_mech_FEM_init
-      mech_forward      => grid_mech_FEM_forward
-      mech_solution     => grid_mech_FEM_solution
-      mech_updateCoords => grid_mech_FEM_updateCoords
-      mech_restartWrite => grid_mech_FEM_restartWrite
+      mechanical_init         => grid_mechanical_FEM_init
+      mechanical_forward      => grid_mechanical_FEM_forward
+      mechanical_solution     => grid_mechanical_FEM_solution
+      mechanical_updateCoords => grid_mechanical_FEM_updateCoords
+      mechanical_restartWrite => grid_mechanical_FEM_restartWrite
 
     case default
       call IO_error(error_ID = 891, ext_msg = trim(num_grid%get_asString('solver')))
@@ -303,7 +303,7 @@ program DAMASK_grid
   do field = 1, nActiveFields
     select case (loadCases(1)%ID(field))
       case(FIELD_MECH_ID)
-        call mech_init
+        call mechanical_init
 
       case(FIELD_THERMAL_ID)
         call grid_thermal_spectral_init
@@ -379,7 +379,7 @@ program DAMASK_grid
           do field = 1, nActiveFields
             select case(loadCases(l)%ID(field))
               case(FIELD_MECH_ID)
-                call mech_forward (&
+                call mechanical_forward (&
                         cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                         deformation_BC     = loadCases(l)%deformation, &
                         stress_BC          = loadCases(l)%stress, &
@@ -399,7 +399,7 @@ program DAMASK_grid
             do field = 1, nActiveFields
               select case(loadCases(l)%ID(field))
                 case(FIELD_MECH_ID)
-                  solres(field) = mech_solution(incInfo)
+                  solres(field) = mechanical_solution(incInfo)
                 case(FIELD_THERMAL_ID)
                   solres(field) = grid_thermal_spectral_solution(timeinc)
                 case(FIELD_DAMAGE_ID)
@@ -420,7 +420,7 @@ program DAMASK_grid
 
           if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
                .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
-            call mech_updateCoords
+            call mechanical_updateCoords
             timeIncOld = timeinc
             cutBack = .false.
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
@@ -463,7 +463,7 @@ program DAMASK_grid
         call MPI_Allreduce(interface_SIGUSR2,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
-          call mech_restartWrite
+          call mechanical_restartWrite
           call CPFEM_restartWrite
         endif
         if(signal) call interface_setSIGUSR2(.false.)
