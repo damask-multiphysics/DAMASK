@@ -12,7 +12,6 @@ module homogenization
   use material
   use phase
   use discretization
-  use damage_none
   use damage_nonlocal
   use HDF5_utilities
   use results
@@ -220,7 +219,6 @@ subroutine homogenization_init()
   call thermal_init()
   call damage_init()
 
-  if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
 
 
