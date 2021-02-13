@@ -135,13 +135,13 @@ submodule(phase) mechanical
       character(len=*), intent(in) :: group
     end subroutine plastic_isotropic_results
 
-    module subroutine plastic_phenopowerlaw_results(instance,group)
-      integer,          intent(in) :: instance
+    module subroutine plastic_phenopowerlaw_results(ph,group)
+      integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
     end subroutine plastic_phenopowerlaw_results
 
-    module subroutine plastic_kinehardening_results(instance,group)
-      integer,          intent(in) :: instance
+    module subroutine plastic_kinehardening_results(ph,group)
+      integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
     end subroutine plastic_kinehardening_results
 
@@ -406,10 +406,10 @@ module subroutine mechanical_results(group,ph)
       call plastic_isotropic_results(phase_plasticInstance(ph),group//'plastic/')
 
     case(PLASTICITY_PHENOPOWERLAW_ID)
-      call plastic_phenopowerlaw_results(phase_plasticInstance(ph),group//'plastic/')
+      call plastic_phenopowerlaw_results(ph,group//'plastic/')
 
     case(PLASTICITY_KINEHARDENING_ID)
-      call plastic_kinehardening_results(phase_plasticInstance(ph),group//'plastic/')
+      call plastic_kinehardening_results(ph,group//'plastic/')
 
     case(PLASTICITY_DISLOTWIN_ID)
       call plastic_dislotwin_results(phase_plasticInstance(ph),group//'plastic/')

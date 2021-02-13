@@ -201,11 +201,11 @@ submodule(phase:mechanical) plastic
         el                                                                                          !< current element number
     end subroutine nonlocal_dependentState
 
-    module subroutine plastic_kinehardening_deltaState(Mp,instance,me)
+    module subroutine plastic_kinehardening_deltaState(Mp,ph,me)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine plastic_kinehardening_deltaState
 
@@ -417,7 +417,7 @@ module function plastic_deltaState(co, ip, el, ph, me) result(broken)
   plasticType: select case (phase_plasticity(ph))
 
     case (PLASTICITY_KINEHARDENING_ID) plasticType
-      call plastic_kinehardening_deltaState(Mp,instance,me)
+      call plastic_kinehardening_deltaState(Mp,ph,me)
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case (PLASTICITY_NONLOCAL_ID) plasticType
