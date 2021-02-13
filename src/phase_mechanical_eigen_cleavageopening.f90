@@ -28,12 +28,11 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
+module function kinematics_cleavage_opening_init() result(myKinematics)
 
-  integer, intent(in)                  :: kinematics_length
-  logical, dimension(:,:), allocatable :: myKinematics
+  logical, dimension(:), allocatable :: myKinematics
 
-  integer :: Ninstances,p,k
+  integer :: p
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
   character(len=pStringLen) :: extmsg = ''
   class(tNode), pointer :: &
@@ -42,24 +41,24 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:cleavageopening init  -+>>>'
 
-  myKinematics = kinematics_active2('anisobrittle',kinematics_length)
-  Ninstances = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  myKinematics = kinematics_active2('anisobrittle')
+  if(count(myKinematics) == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:cleavageopening init  -+>>>'
+  print'(a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
 
   do p = 1, phases%length
-    phase => phases%get(p)
-    if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('damage')
-    do k = 1, kinematics%length
-      if(myKinematics(k,p)) then
-        associate(prm  => param(p))
-        kinematic_type => kinematics%get(k)
+    if(myKinematics(p)) then
+      phase => phases%get(p)
+      kinematics => phase%get('damage')
+
+      associate(prm  => param(p))
+        kinematic_type => kinematics%get(1)
 
         N_cl = kinematic_type%get_asInts('N_cl')
         prm%sum_N_cl = sum(abs(N_cl))
@@ -83,9 +82,8 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(cleavage_opening)')
-        end associate
-      endif
-    enddo
+      end associate
+    endif
   enddo
 
 

@@ -58,12 +58,9 @@ module phase
   type(tDebugOptions) :: debugCrystallite
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
-    thermal_Nsources, &
-    phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
-    phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
+    phase_elasticityInstance, &
     phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
-    phase_plasticInstance, &                                                                     !< instance of particular plasticity of each phase
-    phase_elasticityInstance                                                                        !< instance of particular elasticity of each phase
+    phase_plasticInstance
 
   logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
@@ -351,7 +348,7 @@ subroutine phase_init
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
     plasticState(ph)%state = plasticState(ph)%state0
-    if(phase_Nsources(ph) > 0) &
+    if(damageState(ph)%sizeState > 0) &
       damageState(ph)%state  = damageState(ph)%state0
   enddo PhaseLoop2
 
@@ -365,7 +362,7 @@ end subroutine phase_init
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine phase_allocateState(state, &
-                                  Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+                               Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
@@ -406,7 +403,7 @@ subroutine phase_restore(ce,includeL)
 
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    if (phase_Nsources(material_phaseAt2(co,ce)) > 0) &
+    if (damageState(material_phaseAt2(co,ce))%sizeState > 0) &
     damageState(material_phaseAt2(co,ce))%state( :,material_phasememberAt2(co,ce)) = &
       damageState(material_phaseAt2(co,ce))%state0(:,material_phasememberAt2(co,ce))
   enddo
@@ -429,7 +426,7 @@ subroutine phase_forward()
   call thermal_forward()
 
   do ph = 1, size(damageState)
-    if (phase_Nsources(ph) > 0) &
+    if (damageState(ph)%sizeState > 0) &
       damageState(ph)%state0 = damageState(ph)%state
   enddo
 
@@ -527,7 +524,7 @@ subroutine crystallite_init()
   phases => config_material%get('phase')
 
   do ph = 1, phases%length
-    if (phase_Nsources(ph) > 0) &
+    if (damageState(ph)%sizeState > 0) &
       allocate(damageState(ph)%subState0,source=damageState(ph)%state0)                 ! ToDo: hack
   enddo
 
@@ -574,8 +571,7 @@ subroutine phase_windForward(ip,el)
 
     call mechanical_windForward(ph,me)
 
-    if (phase_Nsources(ph) > 0) &
-      damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
+    if(damageState(ph)%sizeState > 0) damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
 
 
   enddo

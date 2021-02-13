@@ -23,7 +23,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
+module function thermalexpansion_init(kinematics_length) result(myKinematics)
 
   integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
@@ -77,7 +77,7 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
   enddo
 
 
-end function kinematics_thermal_expansion_init
+end function thermalexpansion_init
 
 
 !--------------------------------------------------------------------------------------------------

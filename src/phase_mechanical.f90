@@ -3,6 +3,7 @@
 !----------------------------------------------------------------------------------------------------
 submodule(phase) mechanics
 
+
   enum, bind(c); enumerator :: &
     ELASTICITY_UNDEFINED_ID, &
     ELASTICITY_HOOKE_ID, &
@@ -22,8 +23,6 @@ submodule(phase) mechanics
     KINEMATICS_THERMAL_EXPANSION_ID
   end enum
 
-  integer(kind(KINEMATICS_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
-    phase_kinematics
   integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
   integer(kind(STIFFNESS_DEGRADATION_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
@@ -1159,7 +1158,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,me)
   subState0 = plasticState(ph)%State0(:,me)
 
-  if (phase_Nsources(ph) > 0) &
+  if (damageState(ph)%sizeState > 0) &
     damageState(ph)%subState0(:,me) = damageState(ph)%state0(:,me)
 
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,me)
@@ -1187,7 +1186,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subFp0 = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
         subFi0 = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
         subState0 = plasticState(ph)%state(:,me)
-        if (phase_Nsources(ph) > 0) &
+        if (damageState(ph)%sizeState > 0) &
           damageState(ph)%subState0(:,me) = damageState(ph)%state(:,me)
 
       endif
@@ -1203,7 +1202,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         phase_mechanical_Li(ph)%data(1:3,1:3,me) = subLi0
       endif
       plasticState(ph)%state(:,me) = subState0
-      if (phase_Nsources(ph) > 0) &
+      if (damageState(ph)%sizeState > 0) &
         damageState(ph)%state(:,me) = damageState(ph)%subState0(:,me)
 
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)

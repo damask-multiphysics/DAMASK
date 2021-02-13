@@ -31,15 +31,14 @@ module function dissipation_init(source_length) result(mySources)
     phase, &
     sources, thermal, &
     src
-  integer :: Ninstances,so,Nconstituents,ph
+  integer :: so,Nconstituents,ph
 
-  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
 
   mySources = thermal_active('dissipation',source_length)
+  if(count(mySources) == 0) return
+  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
+  print'(a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
-  Ninstances = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
   allocate(param(phases%length))

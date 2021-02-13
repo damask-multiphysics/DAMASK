@@ -1,20 +1,26 @@
 submodule(phase:mechanics) eigendeformation
 
+  integer, dimension(:), allocatable :: &
+    Nmodels
+
+  integer(kind(KINEMATICS_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
+    model
+  integer(kind(KINEMATICS_UNDEFINED_ID)),  dimension(:), allocatable :: &
+    model_damage
+
   interface
-    module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
+    module function kinematics_cleavage_opening_init() result(myKinematics)
+      logical, dimension(:), allocatable :: myKinematics
     end function kinematics_cleavage_opening_init
 
-    module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
+    module function kinematics_slipplane_opening_init() result(myKinematics)
+      logical, dimension(:), allocatable :: myKinematics
     end function kinematics_slipplane_opening_init
 
-    module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
+    module function thermalexpansion_init(kinematics_length) result(myKinematics)
       integer, intent(in) :: kinematics_length
       logical, dimension(:,:), allocatable :: myKinematics
-    end function kinematics_thermal_expansion_init
+    end function thermalexpansion_init
 
     module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
       integer, intent(in) :: ph, me
@@ -65,27 +71,26 @@ module subroutine eigendeformation_init(phases)
   print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
-! initialize kinematic mechanisms
-  allocate(phase_Nkinematics(phases%length),source = 0)
+! explicit eigen mechanisms
+  allocate(Nmodels(phases%length),source = 0)
+
   do ph = 1,phases%length
     phase => phases%get(ph)
     kinematics => phase%get('kinematics',defaultVal=emptyList)
-    phase_Nkinematics(ph) = kinematics%length
-    kinematics => phase%get('damage',defaultVal=emptyList)
-    if(kinematics%length >0) then
-      damage => kinematics%get(1)
-      if(damage%get_asString('type',defaultVal='n/a') == 'anisobrittle')  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
-      if(damage%get_asString('type',defaultVal='n/a') == 'isoductile'  )  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
-    endif
+    Nmodels(ph) = kinematics%length
   enddo
 
-  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
+  allocate(model(maxval(Nmodels),phases%length), source = KINEMATICS_undefined_ID)
 
-  if(maxval(phase_Nkinematics) /= 0) then
-    where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
-    where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
-    where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_thermal_expansion_ID
+  if(maxval(Nmodels) /= 0) then
+    where(thermalexpansion_init(maxval(Nmodels))) model = KINEMATICS_thermal_expansion_ID
   endif
+
+  allocate(model_damage(phases%length),  source = KINEMATICS_UNDEFINED_ID)
+
+  where(kinematics_cleavage_opening_init())  model_damage = KINEMATICS_cleavage_opening_ID
+  where(kinematics_slipplane_opening_init()) model_damage = KINEMATICS_slipplane_opening_ID
+
 
 end subroutine eigendeformation_init
 
@@ -125,11 +130,10 @@ end function kinematics_active
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if a kinematic mechanism is active or not
 !--------------------------------------------------------------------------------------------------
-function kinematics_active2(kinematics_label,kinematics_length)  result(active_kinematics)
+function kinematics_active2(kinematics_label)  result(active_kinematics)
 
-  character(len=*), intent(in)         :: kinematics_label                                          !< name of kinematic mechanism
-  integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
-  logical, dimension(:,:), allocatable :: active_kinematics
+  character(len=*), intent(in)       :: kinematics_label                                            !< name of kinematic mechanism
+  logical, dimension(:), allocatable :: active_kinematics
 
   class(tNode), pointer :: &
     phases, &
@@ -139,13 +143,14 @@ function kinematics_active2(kinematics_label,kinematics_length)  result(active_k
   integer :: p
 
   phases => config_material%get('phase')
-  allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
+  allocate(active_kinematics(phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
     kinematics => phase%get('damage',defaultVal=emptyList)
+    if(kinematics%length < 1) return
     kinematics_type => kinematics%get(1)
     if (.not. kinematics_type%contains('type')) continue
-    active_kinematics(1,p) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
+    active_kinematics(p) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
   enddo
 
 
@@ -181,7 +186,9 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     detFi
   integer :: &
     k, i, j
+  logical :: active
 
+  active = .false.
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
   dLi_dFi = 0.0_pReal
@@ -190,29 +197,36 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_isotropic_ID) plasticType
       call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,phase_plasticInstance(ph),me)
-    case default plasticType
-      my_Li = 0.0_pReal
-      my_dLi_dS = 0.0_pReal
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
   end select plasticType
 
-  Li = Li + my_Li
-  dLi_dS = dLi_dS + my_dLi_dS
 
-  KinematicsLoop: do k = 1, phase_Nkinematics(ph)
-    kinematicsType: select case (phase_kinematics(k,ph))
-      case (KINEMATICS_cleavage_opening_ID) kinematicsType
-        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
-      case (KINEMATICS_slipplane_opening_ID) kinematicsType
-        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+  KinematicsLoop: do k = 1, Nmodels(ph)
+    kinematicsType: select case (model(k,ph))
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
         call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
-      case default kinematicsType
-        my_Li = 0.0_pReal
-        my_dLi_dS = 0.0_pReal
+        Li = Li + my_Li
+        dLi_dS = dLi_dS + my_dLi_dS
+        active = .true.
     end select kinematicsType
-    Li = Li + my_Li
-    dLi_dS = dLi_dS + my_dLi_dS
   enddo KinematicsLoop
+
+  select case (model_damage(ph))
+    case (KINEMATICS_cleavage_opening_ID)
+      call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
+    case (KINEMATICS_slipplane_opening_ID)
+      call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
+  end select
+
+  if(.not. active) return
 
   FiInv = math_inv33(Fi)
   detFi = math_det33(Fi)

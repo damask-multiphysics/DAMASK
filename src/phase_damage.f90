@@ -18,6 +18,9 @@ submodule(phase) damagee
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
     phase_source                                                                                !< active sources mechanisms of each phase
 
+  integer, dimension(:), allocatable :: &
+    phase_Nsources
+
   type(tDataContainer), dimension(:), allocatable :: current
 
   interface
@@ -156,6 +159,7 @@ module subroutine damage_init
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
     if (sources%length > 1) error stop
+    phase_Nsources(ph) = sources%length
 
   enddo
 
@@ -192,7 +196,6 @@ module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, 
   integer :: &
     ph, &
     co, &
-    so, &
     me
 
    phiDot = 0.0_pReal
@@ -201,7 +204,7 @@ module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, 
    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
      ph = material_phaseAt(co,el)
      me = material_phasememberAt(co,ip,el)
-     do so = 1, phase_Nsources(ph)
+
        select case(phase_source(ph))
          case (DAMAGE_ISOBRITTLE_ID)
            call isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, ph, me)
@@ -222,7 +225,6 @@ module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, 
       end select
       phiDot = phiDot + localphiDot
       dPhiDot_dPhi = dPhiDot_dPhi + dLocalphiDot_dPhi
-    enddo
   enddo
 
 end subroutine phase_damage_getRateAndItsTangents
@@ -258,7 +260,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  if (phase_Nsources(ph) == 0) then
+  if (damageState(ph)%sizeState == 0) then
     broken = .false.
     return
   endif
@@ -377,7 +379,7 @@ function phase_damage_collectDotState(ph,me) result(broken)
 
   broken = .false.
 
-  if (phase_Nsources(ph)==1) then
+  if (damageState(ph)%sizeState > 0) then
 
     sourceType: select case (phase_source(ph))
 
@@ -420,7 +422,7 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   broken = .false.
 
-  if (phase_Nsources(ph) == 0) return
+  if (damageState(ph)%sizeState == 0) return
 
      sourceType: select case (phase_source(ph))
 
@@ -461,7 +463,7 @@ function source_active(source_label)  result(active_source)
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
     src => sources%get(1)
-    active_source(ph) = src%get_asString('type') == source_label
+    active_source(ph) = src%get_asString('type',defaultVal = 'x') == source_label
   enddo
 
 

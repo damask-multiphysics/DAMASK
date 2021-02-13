@@ -32,12 +32,11 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
+module function kinematics_slipplane_opening_init() result(myKinematics)
 
-  integer, intent(in)                  :: kinematics_length
-  logical, dimension(:,:), allocatable :: myKinematics
+  logical, dimension(:), allocatable :: myKinematics
 
-  integer :: Ninstances,p,i,k
+  integer :: p,i
   character(len=pStringLen) :: extmsg = ''
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
@@ -49,26 +48,26 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:slipplaneopening init  -+>>>'
 
-  myKinematics = kinematics_active2('isoductile',kinematics_length)
-  Ninstances = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  myKinematics = kinematics_active2('isoductile')
+  if(count(myKinematics) == 0) return
+  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:slipplaneopening init  -+>>>'
+  print'(a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
 
   do p = 1, phases%length
-    phase => phases%get(p)
-    mech  => phase%get('mechanics')
-    pl    => mech%get('plasticity')
-    if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('damage')
-    do k = 1, kinematics%length
-      if(myKinematics(k,p)) then
-        associate(prm  => param(p))
-        kinematic_type => kinematics%get(k)
+    if(myKinematics(p)) then
+      phase => phases%get(p)
+      mech  => phase%get('mechanics')
+      pl    => mech%get('plasticity')
+
+      kinematics => phase%get('damage')
+
+      associate(prm  => param(p))
+        kinematic_type => kinematics%get(1)
 
         prm%dot_o    = kinematic_type%get_asFloat('dot_o')
         prm%q        = kinematic_type%get_asFloat('q')
@@ -103,9 +102,8 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(slipplane_opening)')
 
-        end associate
-      endif
-    enddo
+      end associate
+    endif
   enddo
 
 
