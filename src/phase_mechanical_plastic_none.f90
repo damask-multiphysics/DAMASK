@@ -22,7 +22,7 @@ module function plastic_none_init() result(myPlasticity)
     phases
 
 
-  myPlasticity = plastic_active('nonlocal')
+  myPlasticity = plastic_active('none')
   if(count(myPlasticity) == 0) return
 
   print'(/,a)', ' <<<+-  phase:mechanics:plastic:none init  -+>>>'
