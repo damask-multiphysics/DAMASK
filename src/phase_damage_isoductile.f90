@@ -90,23 +90,16 @@ end function isoductile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine isoductile_dotState(co, ip, el)
+module subroutine isoductile_dotState(ph, me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-
-  integer :: &
     ph, &
     me
 
-  ph = material_phaseAt(co,el)
-  me = material_phasememberAt(co,ip,el)
-
 
   associate(prm => param(ph))
-    damageState(ph)%dotState(1,me) = sum(plasticState(ph)%slipRate(:,me))/(damage_phi(ph,me)**prm%q)/prm%gamma_crit
+    damageState(ph)%dotState(1,me) = sum(plasticState(ph)%slipRate(:,me)) &
+                                   / (prm%gamma_crit*damage_phi(ph,me)**prm%q)
   end associate
 
 end subroutine isoductile_dotState
@@ -115,11 +108,11 @@ end subroutine isoductile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine isoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
   integer, intent(in) :: &
-    phase, &
-    constituent
+    ph, &
+    me
   real(pReal),  intent(in) :: &
     phi
   real(pReal),  intent(out) :: &
@@ -127,12 +120,12 @@ module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLo
     dLocalphiDot_dPhi
 
 
-  dLocalphiDot_dPhi = -damageState(phase)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
 
-end subroutine source_damage_isoDuctile_getRateAndItsTangent
+end subroutine isoductile_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

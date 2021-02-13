@@ -113,28 +113,20 @@ end function anisobrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_dotState(S, co, ip, el)
+module subroutine anisobrittle_dotState(S, ph,me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph,me
   real(pReal),  intent(in), dimension(3,3) :: &
     S
 
   integer :: &
-    ph, &
-    me, &
     sourceOffset, &
     damageOffset, &
     homog, &
     i
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
-
-
-  ph = material_phaseAt(co,el)
-  me = material_phasememberAt(co,ip,el)
 
 
   associate(prm => param(ph))
@@ -144,7 +136,7 @@ module subroutine anisobrittle_dotState(S, co, ip, el)
       traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
       traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-      traction_crit = prm%g_crit(i)*phase_damage_get_phi(co,ip,el)**2.0_pReal
+      traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
 
       damageState(ph)%dotState(1,me) = damageState(ph)%dotState(1,me) &
           + prm%dot_o / prm%s_crit(i) &
@@ -160,11 +152,11 @@ end subroutine anisobrittle_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
   integer, intent(in) :: &
-    phase, &
-    constituent
+    ph, &
+    me
   real(pReal),  intent(in) :: &
     phi
   real(pReal),  intent(out) :: &
@@ -172,12 +164,12 @@ module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, d
     dLocalphiDot_dPhi
 
 
-  dLocalphiDot_dPhi = -damageState(phase)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
 
-end subroutine source_damage_anisoBrittle_getRateAndItsTangent
+end subroutine anisobrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -189,6 +181,7 @@ module subroutine anisobrittle_results(phase,group)
   character(len=*), intent(in) :: group
 
   integer :: o
+
 
   associate(prm => param(phase), stt => damageState(phase)%state)
     outputsLoop: do o = 1,size(prm%output)

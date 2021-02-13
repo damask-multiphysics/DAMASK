@@ -99,19 +99,11 @@ end function anisoductile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine anisoductile_dotState(co, ip, el)
+module subroutine anisoductile_dotState(ph,me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-
-  integer :: &
     ph, &
     me
-
-  ph = material_phaseAt(co,el)
-  me = material_phasememberAt(co,ip,el)
 
 
   associate(prm => param(ph))
@@ -124,11 +116,11 @@ end subroutine anisoductile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph,me)
 
   integer, intent(in) :: &
-    phase, &
-    constituent
+    ph, &
+    me
   real(pReal),  intent(in) :: &
     phi
   real(pReal),  intent(out) :: &
@@ -136,12 +128,12 @@ module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, d
     dLocalphiDot_dPhi
 
 
-  dLocalphiDot_dPhi = -damageState(phase)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
 
-end subroutine source_damage_anisoDuctile_getRateAndItsTangent
+end subroutine anisoductile_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -154,8 +146,8 @@ module subroutine anisoductile_results(phase,group)
 
   integer :: o
 
-  associate(prm => param(phase), &
-            stt => damageState(phase)%state)
+
+  associate(prm => param(phase), stt => damageState(phase)%state)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')

@@ -86,7 +86,7 @@ end function isobrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph,me)
+module subroutine isobrittle_deltaState(C, Fe, ph,me)
 
   integer, intent(in) :: ph,me
   real(pReal),  intent(in), dimension(3,3) :: &
@@ -106,24 +106,21 @@ module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph,me)
     strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
     ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
-    if (strainenergy > damageState(ph)%subState0(1,me)) then
-      damageState(ph)%deltaState(1,me) = strainenergy - damageState(ph)%state(1,me)
-    else
-      damageState(ph)%deltaState(1,me) = damageState(ph)%subState0(1,me) - damageState(ph)%state(1,me)
-    endif
+    damageState(ph)%deltaState(1,me) = merge(strainenergy - damageState(ph)%state(1,me), &
+                                             damageState(ph)%subState0(1,me) - damageState(ph)%state(1,me), &
+                                             strainenergy > damageState(ph)%subState0(1,me))
   end associate
 
-end subroutine source_damage_isoBrittle_deltaState
+end subroutine isobrittle_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine isobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi,  ph, me)
 
   integer, intent(in) :: &
-    phase, &
-    constituent
+    ph, me
   real(pReal),  intent(in) :: &
     phi
   real(pReal),  intent(out) :: &
@@ -131,13 +128,13 @@ module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLo
     dLocalphiDot_dPhi
 
 
-  associate(prm => param(phase))
+  associate(prm => param(ph))
     localphiDot = 1.0_pReal &
-                - phi*damageState(phase)%state(1,constituent)
-    dLocalphiDot_dPhi = - damageState(phase)%state(1,constituent)
+                - phi*damageState(ph)%state(1,me)
+    dLocalphiDot_dPhi = - damageState(ph)%state(1,me)
   end associate
 
-end subroutine source_damage_isoBrittle_getRateAndItsTangent
+end subroutine isobrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
