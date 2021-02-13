@@ -74,8 +74,8 @@ module subroutine eigendeformation_init(phases)
     kinematics => phase%get('damage',defaultVal=emptyList)
     if(kinematics%length >0) then
       damage => kinematics%get(1)
-      if(damage%get_asString('type') == 'anisobrittle')  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
-      if(damage%get_asString('type') == 'isoductile')  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
+      if(damage%get_asString('type',defaultVal='n/a') == 'anisobrittle')  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
+      if(damage%get_asString('type',defaultVal='n/a') == 'isoductile'  )  phase_Nkinematics(ph) =  phase_Nkinematics(ph) +1
     endif
   enddo
 
@@ -113,7 +113,7 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     kinematics => phase%get('kinematics',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematics_type => kinematics%get(k)
-      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
+      active_kinematics(k,p) = kinematics_type%get_asString('type') == kinematics_label
     enddo
   enddo
 
@@ -136,17 +136,16 @@ function kinematics_active2(kinematics_label,kinematics_length)  result(active_k
     phase, &
     kinematics, &
     kinematics_type
-  integer :: p,k
+  integer :: p
 
   phases => config_material%get('phase')
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
     kinematics => phase%get('damage',defaultVal=emptyList)
-    do k = 1, kinematics%length
-      kinematics_type => kinematics%get(k)
-      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
-    enddo
+    kinematics_type => kinematics%get(1)
+    if (.not. kinematics_type%contains('type')) continue
+    active_kinematics(1,p) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
   enddo
 
 

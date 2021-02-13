@@ -459,7 +459,8 @@ subroutine lattice_init
     phase, &
     mech, &
     elasticity, &
-    thermal
+    thermal, &
+    damage
 
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
@@ -535,13 +536,17 @@ subroutine lattice_init
     endif
 
 
-    lattice_D(1,1,ph) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
-    lattice_D(2,2,ph) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
-    lattice_D(3,3,ph) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
-    lattice_D(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,ph), &
+    if (phase%contains('damage')) then
+      damage => phase%get('damage')
+      damage => damage%get(1)
+      lattice_D(1,1,ph) = damage%get_asFloat('D_11',defaultVal=0.0_pReal)
+      lattice_D(2,2,ph) = damage%get_asFloat('D_22',defaultVal=0.0_pReal)
+      lattice_D(3,3,ph) = damage%get_asFloat('D_33',defaultVal=0.0_pReal)
+      lattice_D(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,ph), &
                                                           phase%get_asString('lattice'))
 
-    lattice_M(ph) = phase%get_asFloat('M',defaultVal=0.0_pReal)
+      lattice_M(ph) = damage%get_asFloat('M',defaultVal=0.0_pReal)
+    endif
     ! SHOULD NOT BE PART OF LATTICE END
 
     call selfTest
