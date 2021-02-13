@@ -6,8 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:eigendeformation) cleavageopening
 
-  integer, dimension(:), allocatable :: kinematics_cleavage_opening_instance
-
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
       sum_N_cl                                                                                      !< total number of cleavage planes
@@ -20,7 +18,7 @@ submodule(phase:eigendeformation) cleavageopening
       cleavage_systems
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters
 
 
 contains
@@ -52,17 +50,15 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstances))
-  allocate(kinematics_cleavage_opening_instance(phases%length), source=0)
+  allocate(param(phases%length))
 
   do p = 1, phases%length
-    if(any(myKinematics(:,p))) kinematics_cleavage_opening_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('damage')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
-        associate(prm  => param(kinematics_cleavage_opening_instance(p)))
+        associate(prm  => param(p))
         kinematic_type => kinematics%get(k)
 
         N_cl = kinematic_type%get_asInts('N_cl')
@@ -113,18 +109,15 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
 
   integer :: &
-    homog, damageOffset, &
     i, k, l, m, n
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit, &
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
-  homog = material_homogenizationAt(el)
-  damageOffset = material_homogenizationMemberAt(ip,el)
 
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
-  associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(co,el))))
+  associate(prm => param(material_phaseAt(co,el)))
   do i = 1,prm%sum_N_cl
     traction_crit = prm%g_crit(i)*phase_damage_get_phi(co,ip,el)**2.0_pReal
 

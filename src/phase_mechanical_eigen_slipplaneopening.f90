@@ -57,11 +57,9 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(kinematics_slipplane_opening_instance(phases%length), source=0)
-  allocate(param(Ninstances))
+  allocate(param(phases%length))
 
   do p = 1, phases%length
-    if(any(myKinematics(:,p))) kinematics_slipplane_opening_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p)
     mech  => phase%get('mechanics')
     pl    => mech%get('plasticity')
@@ -69,7 +67,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     kinematics => phase%get('damage')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
-        associate(prm  => param(kinematics_slipplane_opening_instance(p)))
+        associate(prm  => param(p))
         kinematic_type => kinematics%get(k)
 
         prm%dot_o    = kinematic_type%get_asFloat('dot_o')
@@ -131,19 +129,13 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
 
   integer :: &
-    instance, phase, &
-    homog, damageOffset, &
     i, k, l, m, n
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit, &
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
-  phase = material_phaseAt(co,el)
-  instance = kinematics_slipplane_opening_instance(phase)
-  homog = material_homogenizationAt(el)
-  damageOffset = material_homogenizationMemberAt(ip,el)
 
-  associate(prm => param(instance))
+  associate(prm => param(material_phaseAt(co,el)))
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
   do i = 1, prm%sum_N_sl

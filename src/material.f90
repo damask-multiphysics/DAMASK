@@ -48,7 +48,7 @@ module material
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief parses material configuration file
+!> @brief Parse material configuration file (material.yaml).
 !--------------------------------------------------------------------------------------------------
 subroutine material_init(restart)
 
