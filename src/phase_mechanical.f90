@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(phase) mechanics
+submodule(phase) mechanical
 
 
   enum, bind(c); enumerator :: &
@@ -202,7 +202,7 @@ module subroutine mechanical_init(phases)
     elastic, &
     stiffDegradation
 
-  print'(/,a)', ' <<<+-  phase:mechanics init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
@@ -1499,4 +1499,4 @@ module subroutine phase_mechanical_setF(F,co,ip,el)
 end subroutine phase_mechanical_setF
 
 
-end submodule mechanics
+end submodule mechanical

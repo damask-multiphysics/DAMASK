@@ -6,7 +6,7 @@
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
 !> N_constituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:mechanics) RGC
+submodule(homogenization:mechanical) RGC
   use rotations
   use lattice
 
@@ -88,7 +88,7 @@ module subroutine mechanical_RGC_init(num_homogMech)
     homog, &
     homogMech
 
-  print'(/,a)', ' <<<+-  homogenization:mechanics:RGC init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanical:RGC init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_RGC_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)

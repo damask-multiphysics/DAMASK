@@ -1,4 +1,4 @@
-submodule(phase:mechanics) eigendeformation
+submodule(phase:mechanical) eigen
 
   integer, dimension(:), allocatable :: &
     Nmodels
@@ -21,26 +21,6 @@ submodule(phase:mechanics) eigendeformation
       integer, intent(in) :: kinematics_length
       logical, dimension(:,:), allocatable :: myKinematics
     end function thermalexpansion_init
-
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_cleavage_opening_LiAndItsTangent
-
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
     module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
       integer, intent(in) :: ph, me
@@ -69,7 +49,7 @@ module subroutine eigendeformation_init(phases)
     damage, &
     mechanics
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:eigen init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
 ! explicit eigen mechanisms
@@ -246,4 +226,4 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 end subroutine phase_LiAndItsTangents
 
 
-end submodule eigendeformation
+end submodule eigen

@@ -1,4 +1,4 @@
-submodule(phase:mechanics) plastic
+submodule(phase:mechanical) plastic
 
   interface
 
@@ -226,7 +226,7 @@ contains
 module subroutine plastic_init
 
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic init  -+>>>'
 
   where(plastic_none_init())              phase_plasticity = PLASTICITY_NONE_ID
   where(plastic_isotropic_init())         phase_plasticity = PLASTICITY_ISOTROPIC_ID

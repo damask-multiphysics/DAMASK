@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:eigendeformation) slipplaneopening
+submodule(phase:eigen) slipplaneopening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 
@@ -51,7 +51,7 @@ module function kinematics_slipplane_opening_init() result(myKinematics)
 
   myKinematics = kinematics_active2('isoductile')
   if(count(myKinematics) == 0) return
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:slipplaneopening init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:eigen:slipplaneopening init  -+>>>'
   print'(a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)
 
 

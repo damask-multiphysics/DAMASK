@@ -3,7 +3,7 @@
 !> @brief material subroutine incorporating kinematics resulting from thermal expansion
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:eigendeformation) thermalexpansion
+submodule(phase:eigen) thermalexpansion
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -36,7 +36,7 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:thermalexpansion init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
   Ninstances = count(myKinematics)

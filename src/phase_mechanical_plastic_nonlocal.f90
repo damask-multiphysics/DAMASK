@@ -194,7 +194,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     return
   endif
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:nonlocal init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:nonlocal init  -+>>>'
   print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
 
   print*, 'Reuber et al., Acta Materialia 71:333–348, 2014'

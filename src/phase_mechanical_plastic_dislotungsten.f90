@@ -101,7 +101,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   Ninstances = count(myPlasticity)
   if(Ninstances == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:dislotungsten init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:dislotungsten init  -+>>>'
   print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
 
 

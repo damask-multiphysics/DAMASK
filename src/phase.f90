@@ -263,6 +263,27 @@ module phase
         el                                                                                          !< element
     end subroutine plastic_dependentState
 
+
+    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Ld                                                                                          !< damage velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+    end subroutine kinematics_cleavage_opening_LiAndItsTangent
+
+    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Ld                                                                                          !< damage velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+    end subroutine kinematics_slipplane_opening_LiAndItsTangent
+
   end interface
 
 

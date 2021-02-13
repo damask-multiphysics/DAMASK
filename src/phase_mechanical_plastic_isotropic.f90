@@ -72,7 +72,7 @@ module function plastic_isotropic_init() result(myPlasticity)
   Ninstances = count(myPlasticity)
   if(Ninstances == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:isotropic init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
   print'(a,i0)', ' # phses: ',Ninstances; flush(IO_STDOUT)
 
 

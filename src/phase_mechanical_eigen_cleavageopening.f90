@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of cleavage planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:eigendeformation) cleavageopening
+submodule(phase:eigen) cleavageopening
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
@@ -45,7 +45,7 @@ module function kinematics_cleavage_opening_init() result(myKinematics)
   myKinematics = kinematics_active2('anisobrittle')
   if(count(myKinematics) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:cleavageopening init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:eigen:cleavageopening init  -+>>>'
   print'(a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)
 
 
