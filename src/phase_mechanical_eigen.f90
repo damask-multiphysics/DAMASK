@@ -66,7 +66,8 @@ module subroutine eigendeformation_init(phases)
   class(tNode), pointer :: &
     phase, &
     kinematics, &
-    damage
+    damage, &
+    mechanics
 
   print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation init  -+>>>'
 
@@ -76,7 +77,8 @@ module subroutine eigendeformation_init(phases)
 
   do ph = 1,phases%length
     phase => phases%get(ph)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
+    mechanics => phase%get('mechanics')
+    kinematics => mechanics%get('eigen',defaultVal=emptyList)
     Nmodels(ph) = kinematics%length
   enddo
 
@@ -108,14 +110,16 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     phases, &
     phase, &
     kinematics, &
-    kinematics_type
+    kinematics_type, &
+    mechanics
   integer :: p,k
 
   phases => config_material%get('phase')
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
+    mechanics => phase%get('mechanics')
+    kinematics => mechanics%get('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematics_type => kinematics%get(k)
       active_kinematics(k,p) = kinematics_type%get_asString('type') == kinematics_label
