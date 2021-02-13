@@ -6,9 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:damagee) isobrittle
 
-  integer,                       dimension(:),           allocatable :: &
-    source_damage_isoBrittle_instance
-
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       W_crit                                                                                        !< critical elastic strain energy
@@ -46,17 +43,15 @@ module function isobrittle_init(source_length) result(mySources)
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstances))
-  allocate(source_damage_isoBrittle_instance(phases%length), source=0)
+  allocate(param(phases%length))
 
   do p = 1, phases%length
     phase => phases%get(p)
-    if(any(mySources(:,p))) source_damage_isoBrittle_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
     sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
-        associate(prm  => param(source_damage_isoBrittle_instance(p)))
+        associate(prm  => param(p))
         src => sources%get(sourceOffset)
 
         prm%W_crit = src%get_asFloat('W_crit')
@@ -107,9 +102,9 @@ module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph,me)
 
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
-  associate(prm => param(source_damage_isoBrittle_instance(ph)))
-  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
-  ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
+  associate(prm => param(ph))
+    strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
+    ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
     if (strainenergy > damageState(ph)%subState0(1,me)) then
       damageState(ph)%deltaState(1,me) = strainenergy - damageState(ph)%state(1,me)
@@ -136,7 +131,7 @@ module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLo
     dLocalphiDot_dPhi
 
 
-  associate(prm => param(source_damage_isoBrittle_instance(phase)))
+  associate(prm => param(phase))
     localphiDot = 1.0_pReal &
                 - phi*damageState(phase)%state(1,constituent)
     dLocalphiDot_dPhi = - damageState(phase)%state(1,constituent)
@@ -155,14 +150,15 @@ module subroutine isobrittle_results(phase,group)
 
   integer :: o
 
-  associate(prm => param(source_damage_isoBrittle_instance(phase)), &
+
+  associate(prm => param(phase), &
             stt => damageState(phase)%state)
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case ('f_phi')
-        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
-    end select
-  enddo outputsLoop
+    outputsLoop: do o = 1,size(prm%output)
+      select case(trim(prm%output(o)))
+        case ('f_phi')
+          call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
+      end select
+    enddo outputsLoop
   end associate
 
 end subroutine isobrittle_results

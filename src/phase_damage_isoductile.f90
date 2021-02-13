@@ -6,9 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:damagee) isoductile
 
-  integer,                       dimension(:),           allocatable :: &
-    source_damage_isoDuctile_instance                                                               !< instance of damage source mechanism
-
   type:: tParameters                                                                                !< container type for internal constitutive parameters
     real(pReal) :: &
       gamma_crit, &                                                                                 !< critical plastic strain
@@ -48,17 +45,15 @@ module function isoductile_init(source_length) result(mySources)
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstances))
-  allocate(source_damage_isoDuctile_instance(phases%length), source=0)
+  allocate(param(phases%length))
 
   do p = 1, phases%length
     phase => phases%get(p)
     if(count(mySources(:,p)) == 0) cycle
-    if(any(mySources(:,p))) source_damage_isoDuctile_instance(p) = count(mySources(:,1:p))
     sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
-        associate(prm  => param(source_damage_isoDuctile_instance(p)))
+        associate(prm  => param(p))
         src => sources%get(sourceOffset)
 
         prm%q          = src%get_asFloat('q')
@@ -110,8 +105,8 @@ module subroutine isoductile_dotState(co, ip, el)
   me = material_phasememberAt(co,ip,el)
 
 
-  associate(prm => param(source_damage_isoDuctile_instance(ph)))
-    damageState(ph)%dotState(1,me) = sum(plasticState(ph)%slipRate(:,me))/(phase_damage_get_phi(co,ip,el)**prm%q)/prm%gamma_crit
+  associate(prm => param(ph))
+    damageState(ph)%dotState(1,me) = sum(plasticState(ph)%slipRate(:,me))/(damage_phi(ph,me)**prm%q)/prm%gamma_crit
   end associate
 
 end subroutine isoductile_dotState
@@ -150,14 +145,13 @@ module subroutine isoductile_results(phase,group)
 
   integer :: o
 
-  associate(prm => param(source_damage_isoDuctile_instance(phase)), &
-            stt => damageState(phase)%state)
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case ('f_phi')
-        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
-    end select
-  enddo outputsLoop
+  associate(prm => param(phase), stt => damageState(phase)%state)
+    outputsLoop: do o = 1,size(prm%output)
+      select case(trim(prm%output(o)))
+        case ('f_phi')
+          call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
+      end select
+    enddo outputsLoop
   end associate
 
 end subroutine isoductile_results
