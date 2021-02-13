@@ -39,12 +39,13 @@ module function anisoductile_init() result(mySources)
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  phase:damage:anisoductile init  -+>>>'
 
-  mySources = source_active('damage_anisoDuctile')
-  Ninstances = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  mySources = source_active('anisoductile')
+  if(count(mySources) == 0) return
+
+  print'(/,a)', ' <<<+-  phase:damage:anisoductile init  -+>>>'
+  print'(a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
   allocate(param(phases%length))

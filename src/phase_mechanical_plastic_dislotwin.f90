@@ -144,12 +144,12 @@ module function plastic_dislotwin_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:dislotwin init  -+>>>'
-
   myPlasticity = plastic_active('dislotwin')
   Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:dislotwin init  -+>>>'
+  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
 
   print*, 'Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
   print*, 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL

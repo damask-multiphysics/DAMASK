@@ -80,12 +80,13 @@ module function plastic_kinehardening_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:kinehardening init  -+>>>'
-
   myPlasticity = plastic_active('kinehardening')
   Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanics:plastic:kinehardening init  -+>>>'
+  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
+
 
   allocate(param(Ninstances))
   allocate(state(Ninstances))

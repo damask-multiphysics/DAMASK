@@ -31,15 +31,16 @@ module function isobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Ninstances,Nconstituents,p
+  integer :: Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
 
   mySources = source_active('isobrittle')
-  Ninstances = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  if(count(mySources) == 0) return
+
+  print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
+  print'(a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
