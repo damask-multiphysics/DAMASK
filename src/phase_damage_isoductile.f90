@@ -24,22 +24,21 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function isoductile_init(source_length) result(mySources)
+module function isoductile_init() result(mySources)
 
-  integer, intent(in)                  :: source_length
-  logical, dimension(:,:), allocatable :: mySources
+  logical, dimension(:), allocatable :: mySources
 
   class(tNode), pointer :: &
     phases, &
     phase, &
     sources, &
     src
-  integer :: Ninstances,sourceOffset,Nconstituents,p
+  integer :: Ninstances,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
   print'(/,a)', ' <<<+-  phase:damage:isoductile init  -+>>>'
 
-  mySources = source_active('isoductile',source_length)
+  mySources = source_active('isoductile')
   Ninstances = count(mySources)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -48,13 +47,12 @@ module function isoductile_init(source_length) result(mySources)
   allocate(param(phases%length))
 
   do p = 1, phases%length
-    phase => phases%get(p)
-    if(count(mySources(:,p)) == 0) cycle
-    sources => phase%get('damage')
-    do sourceOffset = 1, sources%length
-      if(mySources(sourceOffset,p)) then
+    if(mySources(p)) then
+      phase => phases%get(p)
+      sources => phase%get('damage')
+
         associate(prm  => param(p))
-        src => sources%get(sourceOffset)
+        src => sources%get(1)
 
         prm%q          = src%get_asFloat('q')
         prm%gamma_crit = src%get_asFloat('gamma_crit')
@@ -69,7 +67,7 @@ module function isoductile_init(source_length) result(mySources)
         if (prm%q          <= 0.0_pReal) extmsg = trim(extmsg)//' q'
         if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
 
-        Nconstituents=count(material_phaseAt==p) * discretization_nIPs
+        Nconstituents=count(material_phaseAt2==p)
         call phase_allocateState(damageState(p),Nconstituents,1,1,0)
         damageState(p)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
@@ -80,7 +78,6 @@ module function isoductile_init(source_length) result(mySources)
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isoDuctile)')
       endif
-    enddo
   enddo
 
 

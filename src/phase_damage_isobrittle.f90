@@ -22,22 +22,21 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function isobrittle_init(source_length) result(mySources)
+module function isobrittle_init() result(mySources)
 
-  integer, intent(in)                  :: source_length
-  logical, dimension(:,:), allocatable :: mySources
+  logical, dimension(:), allocatable :: mySources
 
   class(tNode), pointer :: &
     phases, &
     phase, &
     sources, &
     src
-  integer :: Ninstances,sourceOffset,Nconstituents,p
+  integer :: Ninstances,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
   print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
 
-  mySources = source_active('isobrittle',source_length)
+  mySources = source_active('isobrittle')
   Ninstances = count(mySources)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -46,13 +45,12 @@ module function isobrittle_init(source_length) result(mySources)
   allocate(param(phases%length))
 
   do p = 1, phases%length
+    if(mySources(p)) then
     phase => phases%get(p)
-    if(count(mySources(:,p)) == 0) cycle
     sources => phase%get('damage')
-    do sourceOffset = 1, sources%length
-      if(mySources(sourceOffset,p)) then
+
         associate(prm  => param(p))
-        src => sources%get(sourceOffset)
+        src => sources%get(1)
 
         prm%W_crit = src%get_asFloat('W_crit')
 
@@ -65,7 +63,7 @@ module function isobrittle_init(source_length) result(mySources)
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
+        Nconstituents = count(material_phaseAt2==p)
         call phase_allocateState(damageState(p),Nconstituents,1,1,1)
         damageState(p)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
@@ -76,7 +74,7 @@ module function isobrittle_init(source_length) result(mySources)
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isoBrittle)')
       endif
-    enddo
+
   enddo
 
 

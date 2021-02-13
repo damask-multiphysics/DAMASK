@@ -15,31 +15,27 @@ submodule(phase) damagee
     real(pReal), dimension(:), allocatable :: phi, d_phi_d_dot_phi
   end type tDataContainer
 
-  integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
+  integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
     phase_source                                                                                !< active sources mechanisms of each phase
 
   type(tDataContainer), dimension(:), allocatable :: current
 
   interface
 
-    module function anisobrittle_init(source_length) result(mySources)
-      integer, intent(in) :: source_length
-      logical, dimension(:,:), allocatable :: mySources
+    module function anisobrittle_init() result(mySources)
+      logical, dimension(:), allocatable :: mySources
     end function anisobrittle_init
 
-    module function anisoductile_init(source_length) result(mySources)
-      integer, intent(in) :: source_length
-      logical, dimension(:,:), allocatable :: mySources
+    module function anisoductile_init() result(mySources)
+      logical, dimension(:), allocatable :: mySources
     end function anisoductile_init
 
-    module function isobrittle_init(source_length) result(mySources)
-      integer, intent(in) :: source_length
-      logical, dimension(:,:), allocatable :: mySources
+    module function isobrittle_init() result(mySources)
+      logical, dimension(:), allocatable :: mySources
     end function isobrittle_init
 
-    module function isoductile_init(source_length) result(mySources)
-      integer, intent(in) :: source_length
-      logical, dimension(:,:), allocatable :: mySources
+    module function isoductile_init() result(mySources)
+      logical, dimension(:), allocatable :: mySources
     end function isoductile_init
 
 
@@ -163,14 +159,14 @@ module subroutine damage_init
 
   enddo
 
-  allocate(phase_source(maxval(phase_Nsources),phases%length), source = DAMAGE_UNDEFINED_ID)
+  allocate(phase_source(phases%length), source = DAMAGE_UNDEFINED_ID)
 
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
-    where(isobrittle_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISOBRITTLE_ID
-    where(isoductile_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISODUCTILE_ID
-    where(anisobrittle_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISOBRITTLE_ID
-    where(anisoductile_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISODUCTILE_ID
+    where(isobrittle_init()  ) phase_source = DAMAGE_ISOBRITTLE_ID
+    where(isoductile_init()  ) phase_source = DAMAGE_ISODUCTILE_ID
+    where(anisobrittle_init()) phase_source = DAMAGE_ANISOBRITTLE_ID
+    where(anisoductile_init()) phase_source = DAMAGE_ANISODUCTILE_ID
   endif
 
 end subroutine damage_init
@@ -206,7 +202,7 @@ module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, 
      ph = material_phaseAt(co,el)
      me = material_phasememberAt(co,ip,el)
      do so = 1, phase_Nsources(ph)
-       select case(phase_source(so,ph))
+       select case(phase_source(ph))
          case (DAMAGE_ISOBRITTLE_ID)
            call isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
@@ -340,10 +336,10 @@ module subroutine damage_results(group,ph)
 
   sourceLoop: do so = 1, phase_Nsources(ph)
 
-  if (phase_source(so,ph) /= DAMAGE_UNDEFINED_ID) &
+  if (phase_source(ph) /= DAMAGE_UNDEFINED_ID) &
     call results_closeGroup(results_addGroup(group//'sources/')) ! should be 'damage'
 
-    sourceType: select case (phase_source(so,ph))
+    sourceType: select case (phase_source(ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
         call isobrittle_results(ph,group//'sources/')
@@ -379,7 +375,7 @@ function phase_damage_collectDotState(ph,me) result(broken)
 
   if (phase_Nsources(ph)==1) then
 
-    sourceType: select case (phase_source(1,ph))
+    sourceType: select case (phase_source(ph))
 
       case (DAMAGE_ISODUCTILE_ID) sourceType
         call isoductile_dotState(ph,me)
@@ -422,7 +418,7 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   if (phase_Nsources(ph) == 0) return
 
-     sourceType: select case (phase_source(1,ph))
+     sourceType: select case (phase_source(ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
         call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
@@ -443,28 +439,25 @@ end function phase_damage_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if a source mechanism is active or not
 !--------------------------------------------------------------------------------------------------
-function source_active(source_label,src_length)  result(active_source)
+function source_active(source_label)  result(active_source)
 
   character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
-  integer,          intent(in)         :: src_length                                                !< max. number of sources in system
-  logical, dimension(:,:), allocatable :: active_source
+  logical, dimension(:), allocatable  :: active_source
 
   class(tNode), pointer :: &
     phases, &
     phase, &
     sources, &
     src
-  integer :: p,s
+  integer :: ph
 
   phases => config_material%get('phase')
-  allocate(active_source(src_length,phases%length), source = .false. )
-  do p = 1, phases%length
-    phase => phases%get(p)
+  allocate(active_source(phases%length))
+  do ph = 1, phases%length
+    phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
-    do s = 1, sources%length
-      src => sources%get(s)
-      if(src%get_asString('type') == source_label) active_source(s,p) = .true.
-    enddo
+    src => sources%get(1)
+    active_source(ph) = src%get_asString('type') == source_label
   enddo
 
 

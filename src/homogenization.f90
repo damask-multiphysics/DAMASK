@@ -257,8 +257,8 @@ subroutine homogenization_init()
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h   (size(material_name_homogenization)))
-    call material_parseHomogenization
-  print*, 'Homogenization parsed'
+  call material_parseHomogenization
+
 
   num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)

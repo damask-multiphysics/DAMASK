@@ -31,23 +31,22 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function anisobrittle_init(source_length) result(mySources)
+module function anisobrittle_init() result(mySources)
 
-  integer, intent(in)                  :: source_length
-  logical, dimension(:,:), allocatable :: mySources
+  logical, dimension(:), allocatable :: mySources
 
   class(tNode), pointer :: &
     phases, &
     phase, &
     sources, &
     src
-  integer :: Ninstances,sourceOffset,Nconstituents,p
+  integer :: Ninstances,Nconstituents,p
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
   print'(/,a)', ' <<<+-  phase:damage:anisobrittle init  -+>>>'
 
-  mySources = source_active('anisobrittle',source_length)
+  mySources = source_active('anisobrittle')
   Ninstances = count(mySources)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -57,13 +56,12 @@ module function anisobrittle_init(source_length) result(mySources)
 
 
   do p = 1, phases%length
+    if(mySources(p)) then
     phase => phases%get(p)
-    if(count(mySources(:,p)) == 0) cycle
     sources => phase%get('damage')
-    do sourceOffset = 1, sources%length
-      if(mySources(sourceOffset,p)) then
+
         associate(prm  => param(p))
-        src => sources%get(sourceOffset)
+        src => sources%get(1)
 
         N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
@@ -104,7 +102,7 @@ module function anisobrittle_init(source_length) result(mySources)
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
       endif
-    enddo
+
   enddo
 
 end function anisobrittle_init
