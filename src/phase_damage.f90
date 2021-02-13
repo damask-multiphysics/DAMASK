@@ -176,8 +176,8 @@ module subroutine damage_init
 
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
-    phase_Nsources(ph) = sources%length
-    allocate(damageState(ph)%p(phase_Nsources(ph)))
+    if (sources%length > 1) error stop
+
   enddo
 
   allocate(phase_source(maxval(phase_Nsources),phases%length), source = DAMAGE_UNDEFINED_ID)
@@ -267,57 +267,48 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
     me, &
-    so
-  integer, dimension(maxval(phase_Nsources)) :: &
     size_so
   real(pReal) :: &
     zeta
   real(pReal), dimension(phase_source_maxSizeDotState) :: &
     r                                                                                               ! state residuum
-  real(pReal), dimension(phase_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
+  real(pReal), dimension(phase_source_maxSizeDotState,2) :: source_dotState
   logical :: &
     converged_
 
-
   ph = material_phaseAt(co,el)
+  if (phase_Nsources(ph) == 0)  return
   me = material_phaseMemberAt(co,ip,el)
 
   converged_ = .true.
   broken = phase_damage_collectDotState(co,ip,el,ph,me)
   if(broken) return
 
-  do so = 1, phase_Nsources(ph)
-    size_so(so) = damageState(ph)%p(so)%sizeDotState
-    damageState(ph)%p(so)%state(1:size_so(so),me) = damageState(ph)%p(so)%subState0(1:size_so(so),me) &
-                                                  + damageState(ph)%p(so)%dotState (1:size_so(so),me) * dt
-    source_dotState(1:size_so(so),2,so) = 0.0_pReal
-  enddo
+    size_so = damageState(ph)%sizeDotState
+    damageState(ph)%state(1:size_so,me) = damageState(ph)%subState0(1:size_so,me) &
+                                            + damageState(ph)%dotState (1:size_so,me) * dt
+    source_dotState(1:size_so,2) = 0.0_pReal
 
   iteration: do NiterationState = 1, num%nState
 
-    do so = 1, phase_Nsources(ph)
-      if(nIterationState > 1) source_dotState(1:size_so(so),2,so) = source_dotState(1:size_so(so),1,so)
-      source_dotState(1:size_so(so),1,so) = damageState(ph)%p(so)%dotState(:,me)
-    enddo
+    if(nIterationState > 1) source_dotState(1:size_so,2) = source_dotState(1:size_so,1)
+    source_dotState(1:size_so,1) = damageState(ph)%dotState(:,me)
 
     broken = phase_damage_collectDotState(co,ip,el,ph,me)
     if(broken) exit iteration
 
-    do so = 1, phase_Nsources(ph)
-      zeta = damper(damageState(ph)%p(so)%dotState(:,me), &
-                    source_dotState(1:size_so(so),1,so),&
-                    source_dotState(1:size_so(so),2,so))
-      damageState(ph)%p(so)%dotState(:,me) = damageState(ph)%p(so)%dotState(:,me) * zeta &
-                                        + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
-      r(1:size_so(so)) = damageState(ph)%p(so)%state    (1:size_so(so),me)  &
-                       - damageState(ph)%p(so)%subState0(1:size_so(so),me)  &
-                       - damageState(ph)%p(so)%dotState (1:size_so(so),me) * dt
-      damageState(ph)%p(so)%state(1:size_so(so),me) = damageState(ph)%p(so)%state(1:size_so(so),me) &
-                                                - r(1:size_so(so))
-      converged_ = converged_  .and. converged(r(1:size_so(so)), &
-                                               damageState(ph)%p(so)%state(1:size_so(so),me), &
-                                               damageState(ph)%p(so)%atol(1:size_so(so)))
-    enddo
+
+      zeta = damper(damageState(ph)%dotState(:,me),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
+      damageState(ph)%dotState(:,me) = damageState(ph)%dotState(:,me) * zeta &
+                                    + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
+      r(1:size_so) = damageState(ph)%state    (1:size_so,me)  &
+                   - damageState(ph)%subState0(1:size_so,me)  &
+                   - damageState(ph)%dotState (1:size_so,me) * dt
+      damageState(ph)%state(1:size_so,me) = damageState(ph)%state(1:size_so,me) - r(1:size_so)
+      converged_ = converged_  .and. converged(r(1:size_so), &
+                                               damageState(ph)%state(1:size_so,me), &
+                                               damageState(ph)%atol(1:size_so))
+
 
     if(converged_) then
       broken = phase_damage_deltaState(mechanical_F_e(ph,me),ph,me)
@@ -423,7 +414,7 @@ function phase_damage_collectDotState(co,ip,el,ph,me) result(broken)
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,me)))
+    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%dotState(:,me)))
 
   enddo SourceLoop
 
@@ -443,7 +434,6 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
   integer :: &
-    so, &
     myOffset, &
     mySize
   logical :: &
@@ -452,23 +442,22 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   broken = .false.
 
-  sourceLoop: do so = 1, phase_Nsources(ph)
+  if (phase_Nsources(ph) == 0) return
 
-     sourceType: select case (phase_source(so,ph))
+     sourceType: select case (phase_source(1,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
         call source_damage_isoBrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
-        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,me)))
+        broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,me)))
         if(.not. broken) then
-          myOffset = damageState(ph)%p(so)%offsetDeltaState
-          mySize   = damageState(ph)%p(so)%sizeDeltaState
-          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,me) = &
-          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%p(so)%deltaState(1:mySize,me)
+          myOffset = damageState(ph)%offsetDeltaState
+          mySize   = damageState(ph)%sizeDeltaState
+          damageState(ph)%state(myOffset + 1: myOffset + mySize,me) = &
+          damageState(ph)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%deltaState(1:mySize,me)
         endif
 
     end select sourceType
 
-  enddo SourceLoop
 
 end function phase_damage_deltaState
 

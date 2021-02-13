@@ -7,7 +7,6 @@
 submodule(phase:damagee) isoductile
 
   integer,                       dimension(:),           allocatable :: &
-    source_damage_isoDuctile_offset, &                                                              !< which source is my current damage mechanism?
     source_damage_isoDuctile_instance                                                               !< instance of damage source mechanism
 
   type:: tParameters                                                                                !< container type for internal constitutive parameters
@@ -50,7 +49,6 @@ module function isoductile_init(source_length) result(mySources)
 
   phases => config_material%get('phase')
   allocate(param(Ninstances))
-  allocate(source_damage_isoDuctile_offset  (phases%length), source=0)
   allocate(source_damage_isoDuctile_instance(phases%length), source=0)
 
   do p = 1, phases%length
@@ -60,7 +58,6 @@ module function isoductile_init(source_length) result(mySources)
     sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
-        source_damage_isoDuctile_offset(p) = sourceOffset
         associate(prm  => param(source_damage_isoDuctile_instance(p)))
         src => sources%get(sourceOffset)
 
@@ -78,9 +75,9 @@ module function isoductile_init(source_length) result(mySources)
         if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
 
         Nconstituents=count(material_phaseAt==p) * discretization_nIPs
-        call phase_allocateState(damageState(p)%p(sourceOffset),Nconstituents,1,1,0)
-        damageState(p)%p(sourceOffset)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
+        call phase_allocateState(damageState(p),Nconstituents,1,1,0)
+        damageState(p)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
 
         end associate
 
@@ -107,20 +104,14 @@ module subroutine isoductile_dotState(co, ip, el)
 
   integer :: &
     ph, &
-    me, &
-    sourceOffset, &
-    damageOffset, &
-    homog
+    me
 
   ph = material_phaseAt(co,el)
   me = material_phasememberAt(co,ip,el)
-  sourceOffset = source_damage_isoDuctile_offset(ph)
-  homog = material_homogenizationAt(el)
-  damageOffset = material_homogenizationMemberAt(ip,el)
+
 
   associate(prm => param(source_damage_isoDuctile_instance(ph)))
-  damageState(ph)%p(sourceOffset)%dotState(1,me) = &
-    sum(plasticState(ph)%slipRate(:,me))/(phase_damage_get_phi(co,ip,el)**prm%q)/prm%gamma_crit
+    damageState(ph)%dotState(1,me) = sum(plasticState(ph)%slipRate(:,me))/(phase_damage_get_phi(co,ip,el)**prm%q)/prm%gamma_crit
   end associate
 
 end subroutine isoductile_dotState
@@ -140,12 +131,8 @@ module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLo
     localphiDot, &
     dLocalphiDot_dPhi
 
-  integer :: &
-    sourceOffset
 
-  sourceOffset = source_damage_isoDuctile_offset(phase)
-
-  dLocalphiDot_dPhi = -damageState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(phase)%state(1,constituent)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
@@ -164,7 +151,7 @@ module subroutine isoductile_results(phase,group)
   integer :: o
 
   associate(prm => param(source_damage_isoDuctile_instance(phase)), &
-            stt => damageState(phase)%p(source_damage_isoDuctile_offset(phase))%state)
+            stt => damageState(phase)%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('f_phi')

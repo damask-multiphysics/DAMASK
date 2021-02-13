@@ -1138,7 +1138,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   real(pReal) :: &
     formerSubStep
   integer :: &
-    so, ph, me, sizeDotState
+    ph, me, sizeDotState
   logical :: todo
   real(pReal) :: subFrac,subStep
   real(pReal), dimension(3,3) :: &
@@ -1159,10 +1159,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,me)
   subState0 = plasticState(ph)%State0(:,me)
 
+  if (phase_Nsources(ph) > 0) &
+    damageState(ph)%subState0(:,me) = damageState(ph)%state0(:,me)
 
-  do so = 1, phase_Nsources(ph)
-    damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state0(:,me)
-  enddo
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,me)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,me)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,me)
@@ -1188,9 +1187,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subFp0 = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
         subFi0 = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
         subState0 = plasticState(ph)%state(:,me)
-        do so = 1, phase_Nsources(ph)
-          damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state(:,me)
-        enddo
+        if (phase_Nsources(ph) > 0) &
+          damageState(ph)%subState0(:,me) = damageState(ph)%state(:,me)
+
       endif
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
@@ -1204,9 +1203,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         phase_mechanical_Li(ph)%data(1:3,1:3,me) = subLi0
       endif
       plasticState(ph)%state(:,me) = subState0
-      do so = 1, phase_Nsources(ph)
-        damageState(ph)%p(so)%state(:,me) = damageState(ph)%p(so)%subState0(:,me)
-      enddo
+      if (phase_Nsources(ph) > 0) &
+        damageState(ph)%state(:,me) = damageState(ph)%subState0(:,me)
 
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
     endif

@@ -6,8 +6,7 @@
 !--------------------------------------------------------------------------------------------------
 submodule (phase:damagee) anisobrittle
 
-  integer,                       dimension(:),           allocatable :: &
-    source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
+  integer, dimension(:),           allocatable :: &
     source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
@@ -58,7 +57,6 @@ module function anisobrittle_init(source_length) result(mySources)
 
   phases => config_material%get('phase')
   allocate(param(Ninstances))
-  allocate(source_damage_anisoBrittle_offset  (phases%length), source=0)
   allocate(source_damage_anisoBrittle_instance(phases%length), source=0)
 
   do p = 1, phases%length
@@ -68,7 +66,6 @@ module function anisobrittle_init(source_length) result(mySources)
     sources => phase%get('damage')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
-        source_damage_anisoBrittle_offset(p) = sourceOffset
         associate(prm  => param(source_damage_anisoBrittle_instance(p)))
         src => sources%get(sourceOffset)
 
@@ -101,9 +98,9 @@ module function anisobrittle_init(source_length) result(mySources)
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
         Nconstituents = count(material_phaseAt==p) * discretization_nIPs
-        call phase_allocateState(damageState(p)%p(sourceOffset),Nconstituents,1,1,0)
-        damageState(p)%p(sourceOffset)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
+        call phase_allocateState(damageState(p),Nconstituents,1,1,0)
+        damageState(p)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 
         end associate
 
@@ -139,14 +136,13 @@ module subroutine anisobrittle_dotState(S, co, ip, el)
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
+
   ph = material_phaseAt(co,el)
   me = material_phasememberAt(co,ip,el)
-  sourceOffset = source_damage_anisoBrittle_offset(ph)
-  homog = material_homogenizationAt(el)
-  damageOffset = material_homogenizationMemberAt(ip,el)
+
 
   associate(prm => param(source_damage_anisoBrittle_instance(ph)))
-  damageState(ph)%p(sourceOffset)%dotState(1,me) = 0.0_pReal
+  damageState(ph)%dotState(1,me) = 0.0_pReal
   do i = 1, prm%sum_N_cl
     traction_d    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
@@ -154,8 +150,8 @@ module subroutine anisobrittle_dotState(S, co, ip, el)
 
     traction_crit = prm%g_crit(i)*phase_damage_get_phi(co,ip,el)**2.0_pReal
 
-    damageState(ph)%p(sourceOffset)%dotState(1,me) &
-    = damageState(ph)%p(sourceOffset)%dotState(1,me) &
+    damageState(ph)%dotState(1,me) &
+    = damageState(ph)%dotState(1,me) &
     + prm%dot_o / prm%s_crit(i) &
       * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
          (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
@@ -180,12 +176,8 @@ module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, d
     localphiDot, &
     dLocalphiDot_dPhi
 
-  integer :: &
-    sourceOffset
 
-  sourceOffset = source_damage_anisoBrittle_offset(phase)
-
-  dLocalphiDot_dPhi = -damageState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(phase)%state(1,constituent)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
@@ -204,7 +196,7 @@ module subroutine anisobrittle_results(phase,group)
   integer :: o
 
   associate(prm => param(source_damage_anisoBrittle_instance(phase)), &
-            stt => damageState(phase)%p(source_damage_anisoBrittle_offset(phase))%state)
+            stt => damageState(phase)%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('f_phi')

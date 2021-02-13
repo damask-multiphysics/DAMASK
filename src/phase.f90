@@ -70,7 +70,7 @@ module phase
 
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
-  type(tSourceState),  allocatable, dimension(:), public :: &
+  type(tState),  allocatable, dimension(:), public :: &
     damageState
 
 
@@ -350,14 +350,12 @@ subroutine phase_init
   PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(ph)%state             = plasticState(ph)%state0
-    forall(so = 1:phase_Nsources(ph))
-      damageState(ph)%p(so)%state = damageState(ph)%p(so)%state0
-    end forall
-
-    phase_source_maxSizeDotState   = max(phase_source_maxSizeDotState, &
-                                                maxval(damageState(ph)%p%sizeDotState))
+    plasticState(ph)%state = plasticState(ph)%state0
+    if(phase_Nsources(ph) > 0) &
+      damageState(ph)%state  = damageState(ph)%state0
   enddo PhaseLoop2
+
+  phase_source_maxSizeDotState     = maxval(damageState%sizeDotState)
   phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine phase_init
@@ -404,15 +402,13 @@ subroutine phase_restore(ce,includeL)
   integer, intent(in) :: ce
 
   integer :: &
-    co, &                                                                                            !< constituent number
-    so
+    co
 
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    do so = 1, phase_Nsources(material_phaseAt2(co,ce))
-      damageState(material_phaseAt2(co,ce))%p(so)%state( :,material_phasememberAt2(co,ce)) = &
-      damageState(material_phaseAt2(co,ce))%p(so)%state0(:,material_phasememberAt2(co,ce))
-    enddo
+    if (phase_Nsources(material_phaseAt2(co,ce)) > 0) &
+    damageState(material_phaseAt2(co,ce))%state( :,material_phasememberAt2(co,ce)) = &
+      damageState(material_phaseAt2(co,ce))%state0(:,material_phasememberAt2(co,ce))
   enddo
 
   call mechanical_restore(ce,includeL)
@@ -426,16 +422,16 @@ end subroutine phase_restore
 !--------------------------------------------------------------------------------------------------
 subroutine phase_forward()
 
-  integer :: ph, so
+  integer :: ph
 
 
   call mechanical_forward()
   call thermal_forward()
 
   do ph = 1, size(damageState)
-    do so = 1,phase_Nsources(ph)
-      damageState(ph)%p(so)%state0 = damageState(ph)%p(so)%state
-  enddo; enddo
+    if (phase_Nsources(ph) > 0) &
+      damageState(ph)%state0 = damageState(ph)%state
+  enddo
 
 end subroutine phase_forward
 
@@ -531,9 +527,8 @@ subroutine crystallite_init()
   phases => config_material%get('phase')
 
   do ph = 1, phases%length
-    do so = 1, phase_Nsources(ph)
-      allocate(damageState(ph)%p(so)%subState0,source=damageState(ph)%p(so)%state0)                 ! ToDo: hack
-    enddo
+    if (phase_Nsources(ph) > 0) &
+      allocate(damageState(ph)%subState0,source=damageState(ph)%state0)                 ! ToDo: hack
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -579,9 +574,9 @@ subroutine phase_windForward(ip,el)
 
     call mechanical_windForward(ph,me)
 
-    do so = 1, phase_Nsources(material_phaseAt(co,el))
-      damageState(ph)%p(so)%state0(:,me) = damageState(ph)%p(so)%state(:,me)
-    enddo
+    if (phase_Nsources(ph) > 0) &
+      damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
+
 
   enddo
 
