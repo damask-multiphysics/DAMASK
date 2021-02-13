@@ -3,6 +3,9 @@
 !----------------------------------------------------------------------------------------------------
 submodule(phase) thermal
 
+  type(tSourceState),  allocatable, dimension(:) :: &
+    thermalState
+
   enum, bind(c); enumerator :: &
     THERMAL_UNDEFINED_ID ,&
     THERMAL_DISSIPATION_ID, &

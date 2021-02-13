@@ -71,7 +71,7 @@ module phase
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tSourceState),  allocatable, dimension(:), public :: &
-    damageState, thermalState
+    damageState
 
 
   integer, public, protected :: &
