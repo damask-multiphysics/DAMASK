@@ -256,8 +256,12 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     converged_
 
   ph = material_phaseAt(co,el)
-  if (phase_Nsources(ph) == 0)  return
   me = material_phaseMemberAt(co,ip,el)
+
+  if (phase_Nsources(ph) == 0) then
+    broken = .false.
+    return
+  endif
 
   converged_ = .true.
   broken = phase_damage_collectDotState(ph,me)
@@ -265,7 +269,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
 
     size_so = damageState(ph)%sizeDotState
     damageState(ph)%state(1:size_so,me) = damageState(ph)%subState0(1:size_so,me) &
-                                            + damageState(ph)%dotState (1:size_so,me) * dt
+                                        + damageState(ph)%dotState (1:size_so,me) * dt
     source_dotState(1:size_so,2) = 0.0_pReal
 
   iteration: do NiterationState = 1, num%nState
