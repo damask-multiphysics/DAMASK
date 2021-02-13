@@ -528,4 +528,15 @@ module function phase_damage_get_phi(co,ip,el) result(phi)
 end function phase_damage_get_phi
 
 
+module function damage_phi(ph,me) result(phi)
+
+  integer, intent(in) :: ph, me
+  real(pReal) :: phi
+
+
+  phi = current(ph)%phi(me)
+
+end function damage_phi
+
+
 end submodule damagee

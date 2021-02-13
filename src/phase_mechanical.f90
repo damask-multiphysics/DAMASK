@@ -98,12 +98,9 @@ submodule(phase) mechanics
     end function plastic_deltaState
 
     module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
-                                             S, Fi, co, ip, el)
-
+                                             S, Fi, ph,me)
       integer, intent(in) :: &
-        co, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ph,me
       real(pReal),   intent(in),  dimension(3,3) :: &
         S                                                                                               !< 2nd Piola-Kirchhoff stress
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -583,7 +580,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
     enddo LpLoop
 
     call phase_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
-                                       S, Fi_new, co, ip, el)
+                                       S, Fi_new, ph,me)
 
     !* update current residuum and check for convergence of loop
     atol_Li = max(num%rtol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &        ! absolute tolerance from largest acceptable relative error
@@ -1303,7 +1300,7 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
   call phase_LiAndItsTangents(devNull,dLidS,dLidFi, &
                                      phase_mechanical_S(ph)%data(1:3,1:3,me), &
                                      phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
-                                     co,ip,el)
+                                     ph,me)
 
   invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,me))
   invFi = math_inv33(phase_mechanical_Fi(ph)%data(1:3,1:3,me))

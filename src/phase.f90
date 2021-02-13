@@ -181,6 +181,11 @@ module phase
       real(pReal) :: dot_T
     end function thermal_dot_T
 
+    module function damage_phi(ph,me) result(phi)
+      integer, intent(in) :: ph,me
+      real(pReal) :: phi
+    end function damage_phi
+
 
     module subroutine phase_mechanical_setF(F,co,ip,el)
       real(pReal), dimension(3,3), intent(in) :: F

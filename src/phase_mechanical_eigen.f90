@@ -16,11 +16,8 @@ submodule(phase:mechanics) eigendeformation
       logical, dimension(:,:), allocatable :: myKinematics
     end function kinematics_thermal_expansion_init
 
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
       real(pReal),   intent(out), dimension(3,3) :: &
@@ -29,11 +26,8 @@ submodule(phase:mechanics) eigendeformation
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
       real(pReal),   intent(out), dimension(3,3) :: &
@@ -44,7 +38,6 @@ submodule(phase:mechanics) eigendeformation
 
     module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
       integer, intent(in) :: ph, me
-                                                                                       !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
@@ -165,12 +158,10 @@ end function kinematics_active2
 ! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
-                                         S, Fi, co, ip, el)
+                                         S, Fi, ph,me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph,me
   real(pReal),   intent(in),  dimension(3,3) :: &
     S                                                                                               !< 2nd Piola-Kirchhoff stress
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -190,18 +181,16 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   real(pReal) :: &
     detFi
   integer :: &
-    k, i, j, &
-    instance, of, me, ph
+    k, i, j
 
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
   dLi_dFi = 0.0_pReal
 
-  plasticType: select case (phase_plasticity(material_phaseAt(co,el)))
+
+  plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_isotropic_ID) plasticType
-      of = material_phasememberAt(co,ip,el)
-      instance = phase_plasticInstance(material_phaseAt(co,el))
-      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,phase_plasticInstance(ph),me)
     case default plasticType
       my_Li = 0.0_pReal
       my_dLi_dS = 0.0_pReal
@@ -210,17 +199,13 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   Li = Li + my_Li
   dLi_dS = dLi_dS + my_dLi_dS
 
-  KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(co,el))
-    kinematicsType: select case (phase_kinematics(k,material_phaseAt(co,el)))
+  KinematicsLoop: do k = 1, phase_Nkinematics(ph)
+    kinematicsType: select case (phase_kinematics(k,ph))
       case (KINEMATICS_cleavage_opening_ID) kinematicsType
-        print*, 'clea'
-        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
       case (KINEMATICS_slipplane_opening_ID) kinematicsType
-        print*, 'slipp'
-        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        me = material_phaseMemberAt(co,ip,el)
-        ph = material_phaseAt(co,el)
         call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
       case default kinematicsType
         my_Li = 0.0_pReal
