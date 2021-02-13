@@ -69,7 +69,7 @@ module function externalheat_init(source_length) result(mySources)
           prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
 
           Nconstituents = count(material_phaseAt2 == ph)
-          call constitutive_allocateState(thermalState(ph)%p(so),Nconstituents,1,1,0)
+          call phase_allocateState(thermalState(ph)%p(so),Nconstituents,1,1,0)
         end associate
       endif
     enddo

@@ -180,7 +180,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names
     sizeState = sizeDotState + sizeDeltaState
 
-    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
@@ -255,16 +255,16 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
     gdot_pos,gdot_neg, &
     dgdot_dtau_pos,dgdot_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)))
 
-  call kinetics(Mp,phase_plasticityInstance(ph),me,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+  call kinetics(Mp,phase_plasticInstance(ph),me,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
 
   do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%P(1:3,1:3,i)
@@ -292,14 +292,14 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,me)
 
   real(pReal) :: &
     sumGamma
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
     gdot_pos,gdot_neg
 
 
-  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)),&
-            dot => dotState(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)),&
+            dot => dotState(phase_plasticInstance(ph)))
 
-  call kinetics(Mp,phase_plasticityInstance(ph),me,gdot_pos,gdot_neg)
+  call kinetics(Mp,phase_plasticInstance(ph),me,gdot_pos,gdot_neg)
   dot%accshear(:,me) = abs(gdot_pos+gdot_neg)
   sumGamma = sum(stt%accshear(:,me))
 

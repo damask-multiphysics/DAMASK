@@ -66,7 +66,7 @@ class Marc:
 
         if logfile is not None:
             try:
-                f = open(logfile,'w+')
+                f = open(logfile,'w+',newline='\n')
             except TypeError:
                 f = logfile
         else:

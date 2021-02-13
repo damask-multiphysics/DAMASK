@@ -124,7 +124,7 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRate(TDot, ph,me)
+module subroutine phase_thermal_getRate(TDot, ph,me)
 
   integer, intent(in) :: ph, me
   real(pReal), intent(out) :: &
@@ -153,13 +153,13 @@ module subroutine constitutive_thermal_getRate(TDot, ph,me)
   enddo
 
 
-end subroutine constitutive_thermal_getRate
+end subroutine phase_thermal_getRate
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_thermal_collectDotState(ph,me) result(broken)
+function phase_thermal_collectDotState(ph,me) result(broken)
 
   integer, intent(in) :: ph, me
   logical :: broken
@@ -178,7 +178,7 @@ function constitutive_thermal_collectDotState(ph,me) result(broken)
 
   enddo SourceLoop
 
-end function constitutive_thermal_collectDotState
+end function phase_thermal_collectDotState
 
 
 module function thermal_stress(Delta_t,ph,me) result(converged_)
@@ -207,7 +207,7 @@ function integrateThermalState(Delta_t, ph,me) result(broken)
     so, &
     sizeDotState
 
-  broken = constitutive_thermal_collectDotState(ph,me)
+  broken = phase_thermal_collectDotState(ph,me)
   if(broken) return
 
   do so = 1, thermal_Nsources(ph)
@@ -264,7 +264,7 @@ end function thermal_dot_T
 !----------------------------------------------------------------------------------------------
 !< @brief Set temperature
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
+module subroutine phase_thermal_setField(T,dot_T, co,ce)
 
   real(pReal), intent(in) :: T, dot_T
   integer, intent(in) :: ce, co
@@ -273,7 +273,7 @@ module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
   current(material_phaseAt2(co,ce))%T(material_phaseMemberAt2(co,ce)) = T
   current(material_phaseAt2(co,ce))%dot_T(material_phaseMemberAt2(co,ce)) = dot_T
 
-end subroutine constitutive_thermal_setField
+end subroutine phase_thermal_setField
 
 
 
