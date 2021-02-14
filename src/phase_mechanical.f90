@@ -155,8 +155,8 @@ submodule(phase) mechanical
       character(len=*), intent(in) :: group
     end subroutine plastic_dislotungsten_results
 
-    module subroutine plastic_nonlocal_results(instance,group)
-      integer,          intent(in) :: instance
+    module subroutine plastic_nonlocal_results(ph,group)
+      integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
     end subroutine plastic_nonlocal_results
 
@@ -418,7 +418,7 @@ module subroutine mechanical_results(group,ph)
       call plastic_dislotungsten_results(ph,group//'plastic/')
 
     case(PLASTICITY_NONLOCAL_ID)
-      call plastic_nonlocal_results(phase_plasticInstance(ph),group//'plastic/')
+      call plastic_nonlocal_results(ph,group//'plastic/')
 
   end select
 

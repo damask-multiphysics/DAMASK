@@ -193,9 +193,9 @@ submodule(phase:mechanical) plastic
         me
     end subroutine dislotungsten_dependentState
 
-    module subroutine nonlocal_dependentState(instance, me, ip, el)
+    module subroutine nonlocal_dependentState(ph, me, ip, el)
       integer, intent(in) :: &
-        instance, &
+        ph, &
         me, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
@@ -209,11 +209,11 @@ submodule(phase:mechanical) plastic
         me
     end subroutine plastic_kinehardening_deltaState
 
-    module subroutine plastic_nonlocal_deltaState(Mp,instance,me,ip,el)
+    module subroutine plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp
       integer, intent(in) :: &
-        instance, &
+        ph, &
         me, &
         ip, &
         el
@@ -380,7 +380,7 @@ module subroutine plastic_dependentState(co, ip, el)
       call dislotungsten_dependentState(ph,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticType
-      call nonlocal_dependentState(instance,me,ip,el)
+      call nonlocal_dependentState(ph,me,ip,el)
 
   end select plasticType
 
@@ -421,7 +421,7 @@ module function plastic_deltaState(co, ip, el, ph, me) result(broken)
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case (PLASTICITY_NONLOCAL_ID) plasticType
-      call plastic_nonlocal_deltaState(Mp,instance,me,ip,el)
+      call plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case default

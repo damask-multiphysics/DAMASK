@@ -247,9 +247,9 @@ module phase
         TDot
     end subroutine phase_thermal_getRate
 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
       integer, intent(in) :: &
-        instance, &
+        ph, &
         i, &
         e
       type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
@@ -616,7 +616,7 @@ subroutine crystallite_orientations(co,ip,el)
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
     call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
-                                              phase_plasticInstance(material_phaseAt(1,el)),ip,el)
+                                              material_phaseAt(1,el),ip,el)
 
 
 end subroutine crystallite_orientations
