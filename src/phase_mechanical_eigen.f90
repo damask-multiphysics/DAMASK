@@ -186,7 +186,6 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
       active = .true.
   end select plasticType
 
-
   KinematicsLoop: do k = 1, Nmodels(ph)
     kinematicsType: select case (model(k,ph))
       case (KINEMATICS_thermal_expansion_ID) kinematicsType

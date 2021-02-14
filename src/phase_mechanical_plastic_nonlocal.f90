@@ -13,6 +13,12 @@ submodule(phase:plastic) nonlocal
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0, &
     geometry_plastic_nonlocal_disable
 
+  type :: tGeometry
+    real(pReal), dimension(:), allocatable :: V_0
+  end type tGeometry
+
+  type(tGeometry), dimension(:), allocatable :: geom
+
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
 
@@ -203,6 +209,10 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print*, 'Kords, Dissertation RWTH Aachen, 2014'
   print*, 'http://publications.rwth-aachen.de/record/229993'
 
+
+  phases => config_material%get('phase')
+  allocate(geom(phases%length))
+
   allocate(param(Ninstances))
   allocate(state(Ninstances))
   allocate(state0(Ninstances))
@@ -210,7 +220,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(deltaState(Ninstances))
   allocate(microstructure(Ninstances))
 
-  phases => config_material%get('phase')
+
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
@@ -225,7 +235,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
               dst => microstructure(i))
     pl  => mech%get('plasticity')
 
-    phase_localPlasticity(p)    = .not. pl%contains('nonlocal')
+    phase_localPlasticity(p) = .not. pl%contains('nonlocal')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
@@ -408,6 +418,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     sizeDeltaState            = sizeDotState
 
     call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+
+    allocate(geom(p)%V_0(Nconstituents))
+    call storeGeometry(p)
 
     plasticState(p)%nonlocal         = pl%get_asBool('nonlocal')
     if(plasticState(p)%nonlocal .and. .not. allocated(IPneighborhood)) &
@@ -1830,5 +1843,26 @@ pure function getRho0(instance,me,ip,el)
   end associate
 
 end function getRho0
+
+
+subroutine storeGeometry(ph)
+
+  integer, intent(in) :: ph
+
+  integer :: ip, el, ce, co
+
+  ce = 0
+  do el = 1, size(material_homogenizationMemberAt,2)
+    do ip = 1, size(material_homogenizationMemberAt,1)
+      ce = ce + 1
+      do co = 1, homogenization_maxNconstituents
+        if(material_phaseAt2(co,ce) == ph) then
+           geom(ph)%V_0(material_phaseMemberAt2(co,ce)) = IPvolume(ip,el)
+        endif
+      enddo
+    enddo
+  enddo
+
+end subroutine
 
 end submodule nonlocal
