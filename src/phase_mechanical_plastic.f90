@@ -104,7 +104,7 @@ submodule(phase:mechanical) plastic
     end subroutine dislotungsten_LpAndItsTangent
 
     module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                       Mp,Temperature,ph,me,ip,el)
+                                                       Mp,Temperature,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -116,9 +116,7 @@ submodule(phase:mechanical) plastic
         Temperature
       integer,                         intent(in) :: &
         ph, &
-        me, &
-        ip, &                                                                                       !< current integration point
-        el                                                                                          !< current element number
+        me
     end subroutine nonlocal_LpAndItsTangent
 
 
@@ -209,14 +207,12 @@ submodule(phase:mechanical) plastic
         me
     end subroutine plastic_kinehardening_deltaState
 
-    module subroutine plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
+    module subroutine plastic_nonlocal_deltaState(Mp,ph,me)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp
       integer, intent(in) :: &
         ph, &
-        me, &
-        ip, &
-        el
+        me
     end subroutine plastic_nonlocal_deltaState
 
   end interface
@@ -244,11 +240,9 @@ end subroutine plastic_init
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
-                                     S, Fi, co, ip, el)
+                                           S, Fi, ph,me)
   integer, intent(in) :: &
-    co, &                                                                                           !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph,me
   real(pReal),   intent(in),  dimension(3,3) :: &
     S, &                                                                                            !< 2nd Piola-Kirchhoff stress
     Fi                                                                                              !< intermediate deformation gradient
@@ -263,14 +257,13 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
   real(pReal), dimension(3,3) :: &
     Mp                                                                                              !< Mandel stress work conjugate with Lp
   integer :: &
-    i, j, me, ph
+    i, j
 
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
-  me = material_phasememberAt(co,ip,el)
-  ph = material_phaseAt(co,el)
 
-  plasticType: select case (phase_plasticity(material_phaseAt(co,el)))
+
+  plasticType: select case (phase_plasticity(ph))
 
     case (PLASTICITY_NONE_ID) plasticType
       Lp = 0.0_pReal
@@ -286,7 +279,7 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       call kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticType
-      call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),ph,me,ip,el)
+      call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),ph,me)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticType
       call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),ph,me)
@@ -391,12 +384,9 @@ end subroutine plastic_dependentState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-module function plastic_deltaState(co, ip, el, ph, me) result(broken)
+module function plastic_deltaState(ph, me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                           !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
     ph, &
     me
   logical :: &
@@ -421,7 +411,7 @@ module function plastic_deltaState(co, ip, el, ph, me) result(broken)
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case (PLASTICITY_NONLOCAL_ID) plasticType
-      call plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
+      call plastic_nonlocal_deltaState(Mp,ph,me)
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,me)))
 
     case default

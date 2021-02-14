@@ -512,7 +512,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(dst%tau_back(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
     end associate
 
-    if (Nconstituents > 0) call stateInit(ini,p,Nconstituents)
+    if (Nconstituents > 0) call stateInit(ini,p,Nconstituents,i)
     plasticState(p)%state0 = plasticState(p)%state
 
 !--------------------------------------------------------------------------------------------------
@@ -576,7 +576,6 @@ module subroutine nonlocal_dependentState(ph, me, ip, el)
     el
 
   integer :: &
-    ph, &
     no, &                                                                                           !< neighbor offset
     neighbor_el, &                                                                                  ! element number of neighboring material point
     neighbor_ip, &                                                                                  ! integration point of neighboring material point
@@ -626,7 +625,7 @@ module subroutine nonlocal_dependentState(ph, me, ip, el)
 
   associate(prm => param(ins(ph)),dst => microstructure(ins(ph)), stt => state(ins(ph)))
 
-  rho = getRho(ph,me,ip,el)
+  rho = getRho(ph,me)
 
   stt%rho_forest(:,me) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
                        + matmul(prm%forestProjection_Screw,sum(abs(rho(:,scr)),2))
@@ -654,7 +653,7 @@ module subroutine nonlocal_dependentState(ph, me, ip, el)
   ! ToDo: MD: this is most likely only correct for F_i = I
   !#################################################################################################
 
-  rho0 = getRho0(ph,me,ip,el)
+  rho0 = getRho0(ph,me)
   if (.not. phase_localPlasticity(material_phaseAt(1,el)) .and. prm%shortRangeStressCorrection) then
     invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,me))
     invFe = math_inv33(phase_mechanical_Fe(ph)%data(1:3,1:3,me))
@@ -665,7 +664,7 @@ module subroutine nonlocal_dependentState(ph, me, ip, el)
     rhoExcess(1,:) = rho_edg_delta
     rhoExcess(2,:) = rho_scr_delta
 
-    FVsize = IPvolume(ip,el) ** (1.0_pReal/3.0_pReal)
+    FVsize = geom(ph)%V_0(me) ** (1.0_pReal/3.0_pReal)
 
     !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
 
@@ -680,7 +679,7 @@ module subroutine nonlocal_dependentState(ph, me, ip, el)
         if (neighbor_instance == ins(ph)) then
 
             nRealNeighbors = nRealNeighbors + 1.0_pReal
-            rho_neighbor0 = getRho0(ph,no,neighbor_ip,neighbor_el)
+            rho_neighbor0 = getRho0(ph,no)
 
             rho_edg_delta_neighbor(:,n) = rho_neighbor0(:,mob_edg_pos) - rho_neighbor0(:,mob_edg_neg)
             rho_scr_delta_neighbor(:,n) = rho_neighbor0(:,mob_scr_pos) - rho_neighbor0(:,mob_scr_neg)
@@ -772,16 +771,14 @@ end subroutine nonlocal_dependentState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                   Mp,Temperature,ph,me,ip,el)
+                                                   Mp,Temperature,ph,me)
   real(pReal), dimension(3,3), intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
     dLp_dMp
   integer, intent(in) :: &
     ph, &
-    me, &
-    ip, &                                                                                           !< current integration point
-    el                                                                                              !< current element number
+    me
   real(pReal), intent(in) :: &
     Temperature                                                                                     !< temperature
 
@@ -814,7 +811,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   ns = prm%sum_N_sl
 
   !*** shortcut to state variables
-  rho = getRho(ph,me,ip,el)
+  rho = getRho(ph,me)
   rhoSgl = rho(:,sgl)
 
   do s = 1,ns
@@ -880,18 +877,15 @@ end subroutine nonlocal_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
+module subroutine plastic_nonlocal_deltaState(Mp,ph,me)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
   integer, intent(in) :: &
     ph, &
-    me, &                                                                                           !< offset
-    ip, &
-    el
+    me
 
   integer :: &
-    ph, &                                                                                           !< phase
     ns, &                                                                                           ! short notation for the total number of active slip systems
     c, &                                                                                            ! character of dislocation
     t, &                                                                                            ! type of dislocation
@@ -918,7 +912,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ins(ph)),me)
   forall (s = 1:ns, c = 1:2) dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,ins(ph)),me)
 
-  rho =  getRho(ph,me,ip,el)
+  rho =  getRho(ph,me)
   rhoDip = rho(:,dip)
 
   !****************************************************************************
@@ -967,15 +961,6 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,me,ip,el)
 
   plasticState(ph)%deltaState(:,me) = 0.0_pReal
   del%rho(:,me) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*ns])
-
-#ifdef DEBUG
-  if (debugConstitutive%extensive &
-      .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip)&
-             .or. .not. debugConstitutive%selective)) then
-    print'(a,/,8(12x,12(e12.5,1x),/))',    '<< CONST >> dislocation remobilization', deltaRhoRemobilization(:,1:8)
-    print'(a,/,10(12x,12(e12.5,1x),/),/)', '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
-  endif
-#endif
 
   end associate
 
@@ -1043,10 +1028,10 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   tau = 0.0_pReal
   gdot = 0.0_pReal
 
-  rho  = getRho(ph,me,ip,el)
+  rho  = getRho(ph,me)
   rhoSgl = rho(:,sgl)
   rhoDip = rho(:,dip)
-  rho0 = getRho0(ph,me,ip,el)
+  rho0 = getRho0(ph,me)
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ins(ph)),me)
@@ -1194,7 +1179,6 @@ function rhoDotFlux(timestep,ph,me,ip,el)
     el                                                                                              !< current element number
 
   integer ::  &
-    ph, &
     neighbor_instance, &                                                                            !< instance of my neighbor's plasticity
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
@@ -1251,9 +1235,9 @@ function rhoDotFlux(timestep,ph,me,ip,el)
 
   gdot = 0.0_pReal
 
-  rho  = getRho(ph,me,ip,el)
+  rho  = getRho(ph,me)
   rhoSgl = rho(:,sgl)
-  rho0 = getRho0(ph,me,ip,el)
+  rho0 = getRho0(ph,me)
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ins(ph)),me)                   !ToDo: MD: I think we should use state0 here
@@ -1432,7 +1416,6 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     n, &                                                                                            ! neighbor index
     neighbor_e, &                                                                                   ! element index of my neighbor
     neighbor_i, &                                                                                   ! integration point index of my neighbor
-    ph, &
     neighbor_phase, &
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (me)
@@ -1604,7 +1587,7 @@ end subroutine plastic_nonlocal_results
 !--------------------------------------------------------------------------------------------------
 !> @brief populates the initial dislocation density
 !--------------------------------------------------------------------------------------------------
-subroutine stateInit(ini,phase,Nconstituents)
+subroutine stateInit(ini,phase,Nconstituents,i)
 
   type(tInitialParameters) :: &
     ini
@@ -1631,7 +1614,7 @@ subroutine stateInit(ini,phase,Nconstituents)
     volume
 
 
-  associate(stt => state(ins(phase)))
+  associate(stt => state(i))
 
   if (ini%random_rho_u > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
     do e = 1,discretization_Nelems
@@ -1794,21 +1777,22 @@ end subroutine kinetics
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-pure function getRho(ph,me,ip,el)
+pure function getRho(ph,me)
 
-  integer, intent(in) :: ph, me,ip,el
+  integer, intent(in) :: ph, me
   real(pReal), dimension(param(ins(ph))%sum_N_sl,10) :: getRho
+
 
   associate(prm => param(ins(ph)))
 
-  getRho = reshape(state(ins(ph))%rho(:,me),[prm%sum_N_sl,10])
+    getRho = reshape(state(ins(ph))%rho(:,me),[prm%sum_N_sl,10])
 
-  ! ensure positive densities (not for imm, they have a sign)
-  getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
-  getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
+    ! ensure positive densities (not for imm, they have a sign)
+    getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
+    getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
 
-  where(abs(getRho) < max(prm%rho_min/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
-    getRho = 0.0_pReal
+    where(abs(getRho) < max(prm%rho_min/geom(ph)%V_0(me)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+      getRho = 0.0_pReal
 
   end associate
 
@@ -1819,21 +1803,22 @@ end function getRho
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-pure function getRho0(ph,me,ip,el)
+pure function getRho0(ph,me)
 
-  integer, intent(in) :: ph, me,ip,el
+  integer, intent(in) :: ph, me
   real(pReal), dimension(param(ins(ph))%sum_N_sl,10) :: getRho0
+
 
   associate(prm => param(ins(ph)))
 
-  getRho0 = reshape(state0(ins(ph))%rho(:,me),[prm%sum_N_sl,10])
+    getRho0 = reshape(state0(ins(ph))%rho(:,me),[prm%sum_N_sl,10])
 
-  ! ensure positive densities (not for imm, they have a sign)
-  getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
-  getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
+    ! ensure positive densities (not for imm, they have a sign)
+    getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
+    getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
 
-  where(abs(getRho0) < max(prm%rho_min/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
-    getRho0 = 0.0_pReal
+    where(abs(getRho0) < max(prm%rho_min/geom(ph)%V_0(me)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+      getRho0 = 0.0_pReal
 
   end associate
 
