@@ -60,7 +60,7 @@ submodule(phase) mechanical
     module subroutine plastic_init
     end subroutine plastic_init
 
-    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
+    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,me)
       real(pReal), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out)  :: &
@@ -68,7 +68,7 @@ submodule(phase) mechanical
       real(pReal), dimension(3,3),     intent(in) :: &
         Mi                                                                                          !< Mandel stress
       integer,                         intent(in) :: &
-        instance, &
+        ph, &
         me
     end subroutine plastic_isotropic_LiAndItsTangent
 
@@ -130,8 +130,8 @@ submodule(phase) mechanical
     end subroutine plastic_LpAndItsTangents
 
 
-    module subroutine plastic_isotropic_results(instance,group)
-      integer,          intent(in) :: instance
+    module subroutine plastic_isotropic_results(ph,group)
+      integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
     end subroutine plastic_isotropic_results
 
@@ -145,13 +145,13 @@ submodule(phase) mechanical
       character(len=*), intent(in) :: group
     end subroutine plastic_kinehardening_results
 
-    module subroutine plastic_dislotwin_results(instance,group)
-      integer,          intent(in) :: instance
+    module subroutine plastic_dislotwin_results(ph,group)
+      integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
     end subroutine plastic_dislotwin_results
 
-    module subroutine plastic_dislotungsten_results(instance,group)
-      integer,          intent(in) :: instance
+    module subroutine plastic_dislotungsten_results(ph,group)
+      integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
     end subroutine plastic_dislotungsten_results
 
@@ -403,7 +403,7 @@ module subroutine mechanical_results(group,ph)
   select case(phase_plasticity(ph))
 
     case(PLASTICITY_ISOTROPIC_ID)
-      call plastic_isotropic_results(phase_plasticInstance(ph),group//'plastic/')
+      call plastic_isotropic_results(ph,group//'plastic/')
 
     case(PLASTICITY_PHENOPOWERLAW_ID)
       call plastic_phenopowerlaw_results(ph,group//'plastic/')
@@ -412,10 +412,10 @@ module subroutine mechanical_results(group,ph)
       call plastic_kinehardening_results(ph,group//'plastic/')
 
     case(PLASTICITY_DISLOTWIN_ID)
-      call plastic_dislotwin_results(phase_plasticInstance(ph),group//'plastic/')
+      call plastic_dislotwin_results(ph,group//'plastic/')
 
     case(PLASTICITY_DISLOTUNGSTEN_ID)
-      call plastic_dislotungsten_results(phase_plasticInstance(ph),group//'plastic/')
+      call plastic_dislotungsten_results(ph,group//'plastic/')
 
     case(PLASTICITY_NONLOCAL_ID)
       call plastic_nonlocal_results(phase_plasticInstance(ph),group//'plastic/')

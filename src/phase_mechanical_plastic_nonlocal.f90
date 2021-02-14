@@ -521,7 +521,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if(.not. myPlasticity(p)) cycle
     i = i + 1
 
-    Nconstituents  = count(material_phaseAt==p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt2 == p)
     l = 0
     do t = 1,4
       do s = 1,param(i)%sum_N_sl

@@ -53,7 +53,6 @@ module function plastic_isotropic_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstances, &
     p, &
     i, &
     Nconstituents, &
@@ -68,28 +67,26 @@ module function plastic_isotropic_init() result(myPlasticity)
     mech, &
     pl
 
+
   myPlasticity = plastic_active('isotropic')
-  Ninstances = count(myPlasticity)
-  if(Ninstances == 0) return
+  if(count(myPlasticity) == 0) return
 
   print'(/,a)', ' <<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
-  print'(a,i0)', ' # phses: ',Ninstances; flush(IO_STDOUT)
-
+  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print*, 'Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print*, 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
-  allocate(param(Ninstances))
-  allocate(state(Ninstances))
-  allocate(dotState(Ninstances))
-
   phases => config_material%get('phase')
-  i = 0
+  allocate(param(phases%length))
+  allocate(state(phases%length))
+  allocate(dotState(phases%length))
+
   do p = 1, phases%length
+    if(.not. myPlasticity(p)) cycle
     phase => phases%get(p)
     mech  => phase%get('mechanics')
-    if(.not. myPlasticity(p)) cycle
-    i = i + 1
+    i = p
     associate(prm => param(i), &
               dot => dotState(i), &
               stt => state(i))
@@ -191,7 +188,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
   integer :: &
     k, l, m, n
 
-  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)))
+  associate(prm => param(ph), stt => state(ph))
 
   Mp_dev = math_deviatoric33(Mp)
   squarenorm_Mp_dev = math_tensordot(Mp_dev,Mp_dev)
@@ -221,7 +218,7 @@ end subroutine isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate inelastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
+module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,me)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
@@ -231,7 +228,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
   real(pReal), dimension(3,3), intent(in) :: &
     Mi                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
-    instance, &
+    ph, &
     me
 
   real(pReal) :: &
@@ -239,7 +236,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,me)
   integer :: &
     k, l, m, n
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
 
   tr=math_trace33(math_spherical33(Mi))
 
@@ -276,8 +273,8 @@ module subroutine isotropic_dotState(Mp,ph,me)
     xi_inf_star, &                                                                                  !< saturation xi
     norm_Mp                                                                                         !< norm of the (deviatoric) Mandel stress
 
-  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)), &
-   dot => dotState(phase_plasticInstance(ph)))
+  associate(prm => param(ph), stt => state(ph), &
+   dot => dotState(ph))
 
   if (prm%dilatation) then
     norm_Mp = sqrt(math_tensordot(Mp,Mp))
@@ -313,14 +310,14 @@ end subroutine isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_results(instance,group)
+module subroutine plastic_isotropic_results(ph,group)
 
-  integer,          intent(in) :: instance
+  integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('xi')

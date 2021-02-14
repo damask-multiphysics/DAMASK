@@ -180,7 +180,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_isotropic_ID) plasticType
-      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,phase_plasticInstance(ph),me)
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,me)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
       active = .true.

@@ -78,7 +78,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstances, &
     p, i, &
     Nconstituents, &
     sizeState, sizeDotState, &
@@ -97,29 +96,29 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     mech, &
     pl
 
+
   myPlasticity = plastic_active('dislotungsten')
-  Ninstances = count(myPlasticity)
-  if(Ninstances == 0) return
+  if(count(myPlasticity) == 0) return
 
   print'(/,a)', ' <<<+-  phase:mechanical:plastic:dislotungsten init  -+>>>'
-  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
-
+  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print*, 'Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
-  allocate(param(Ninstances))
-  allocate(state(Ninstances))
-  allocate(dotState(Ninstances))
-  allocate(dependentState(Ninstances))
 
   phases => config_material%get('phase')
-  i = 0
+  allocate(param(phases%length))
+  allocate(state(phases%length))
+  allocate(dotState(phases%length))
+  allocate(dependentState(phases%length))
+
+
   do p = 1, phases%length
+    if(.not. myPlasticity(p)) cycle
     phase => phases%get(p)
     mech  => phase%get('mechanics')
-    if(.not. myPlasticity(p)) cycle
-    i = i + 1
+    i = p
     associate(prm => param(i), &
               dot => dotState(i), &
               stt => state(i), &
@@ -290,16 +289,16 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos,dot_gamma_neg, &
     ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(phase_plasticInstance(ph)))
+  associate(prm => param(ph))
 
-  call kinetics(Mp,T,phase_plasticInstance(ph),me,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
+  call kinetics(Mp,T,ph,me,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
   do i = 1, prm%sum_N_sl
     Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -328,7 +327,7 @@ module subroutine dislotungsten_dotState(Mp,T,ph,me)
 
   real(pReal) :: &
     VacancyDiffusion
-  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     gdot_pos, gdot_neg,&
     tau_pos,&
     tau_neg, &
@@ -337,10 +336,10 @@ module subroutine dislotungsten_dotState(Mp,T,ph,me)
     dot_rho_dip_climb, &
     dip_distance
 
-  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)),&
-            dot => dotState(phase_plasticInstance(ph)), dst => dependentState(phase_plasticInstance(ph)))
+  associate(prm => param(ph), stt => state(ph),&
+            dot => dotState(ph), dst => dependentState(ph))
 
-  call kinetics(Mp,T,phase_plasticInstance(ph),me,&
+  call kinetics(Mp,T,ph,me,&
                 gdot_pos,gdot_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
@@ -377,16 +376,16 @@ end subroutine dislotungsten_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine dislotungsten_dependentState(instance,me)
+module subroutine dislotungsten_dependentState(ph,me)
 
   integer,      intent(in) :: &
-    instance, &
+    ph, &
     me
 
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dislocationSpacing
 
-  associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
+  associate(prm => param(ph), stt => state(ph),dst => dependentState(ph))
 
   dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,me)+stt%rho_dip(:,me)))
   dst%threshold_stress(:,me) = prm%mu*prm%b_sl &
@@ -402,14 +401,14 @@ end subroutine dislotungsten_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotungsten_results(instance,group)
+module subroutine plastic_dislotungsten_results(ph,group)
 
-  integer,          intent(in) :: instance
+  integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case('rho_mob')
@@ -441,7 +440,7 @@ end subroutine plastic_dislotungsten_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(Mp,T,instance,me, &
+pure subroutine kinetics(Mp,T,ph,me, &
                  dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg,tau_pos_out,tau_neg_out)
 
   real(pReal), dimension(3,3),  intent(in) :: &
@@ -449,18 +448,18 @@ pure subroutine kinetics(Mp,T,instance,me, &
   real(pReal),                  intent(in) :: &
     T                                                                                               !< temperature
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
-  real(pReal),                  intent(out), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos, &
     dot_gamma_neg
-  real(pReal),                  intent(out), optional, dimension(param(instance)%sum_N_sl) :: &
+  real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
     ddot_gamma_dtau_pos, &
     ddot_gamma_dtau_neg, &
     tau_pos_out, &
     tau_neg_out
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     StressRatio, &
     StressRatio_p,StressRatio_pminus1, &
     dvel, vel, &
@@ -469,7 +468,7 @@ pure subroutine kinetics(Mp,T,instance,me, &
     needsGoodName                                                                                   ! ToDo: @Karo: any idea?
   integer :: j
 
-  associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
   do j = 1, prm%sum_N_sl
     tau_pos(j) = math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,j))
