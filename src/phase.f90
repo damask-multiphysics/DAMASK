@@ -59,8 +59,7 @@ module phase
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
     phase_elasticityInstance, &
-    phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
-    phase_plasticInstance
+    phase_NstiffnessDegradations
 
   logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
     phase_localPlasticity                                                                           !< flags phases with local constitutive law

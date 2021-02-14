@@ -298,14 +298,12 @@ module subroutine mechanical_init(phases)
 ! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
-  allocate(phase_plasticInstance(phases%length),source = 0)
   allocate(phase_localPlasticity(phases%length),   source=.true.)
 
   call plastic_init()
 
   do ph = 1, phases%length
     phase_elasticityInstance(ph) = count(phase_elasticity(1:ph) == phase_elasticity(ph))
-    phase_plasticInstance(ph) = count(phase_plasticity(1:ph) == phase_plasticity(ph))
   enddo
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)

@@ -357,12 +357,11 @@ module subroutine plastic_dependentState(co, ip, el)
 
   integer :: &
     ph, &
-    instance, me
+    me
 
 
   ph = material_phaseAt(co,el)
   me = material_phasememberAt(co,ip,el)
-  instance = phase_plasticInstance(ph)
 
   plasticType: select case (phase_plasticity(material_phaseAt(co,el)))
 
@@ -395,14 +394,12 @@ module function plastic_deltaState(ph, me) result(broken)
   real(pReal),               dimension(3,3) :: &
     Mp
   integer :: &
-    instance, &
     myOffset, &
     mySize
 
 
   Mp = matmul(matmul(transpose(phase_mechanical_Fi(ph)%data(1:3,1:3,me)),&
                      phase_mechanical_Fi(ph)%data(1:3,1:3,me)),phase_mechanical_S(ph)%data(1:3,1:3,me))
-  instance = phase_plasticInstance(ph)
 
   plasticType: select case (phase_plasticity(ph))
 
