@@ -221,14 +221,14 @@ class TestOrientation:
         o = Orientation.from_random(lattice=lattice,shape=shape)
         for r, theO in zip(o.reduced.flatten(),o.flatten()):
             assert r == theO.reduced
-    
+
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_reduced_corner_cases(self,lattice):
         # test whether there is always a sym-eq rotation that falls into the FZ
         N = np.random.randint(10,40)
         size = np.ones(3)*np.pi**(2./3.)
         grid = grid_filters.coordinates0_node([N+1,N+1,N+1],size,-size*.5)
-        evenly_distributed = Orientation.from_cubochoric(c=grid[:-2,:-2,:-2],lattice=lattice)
+        evenly_distributed = Orientation.from_cubochoric(x=grid[:-2,:-2,:-2],lattice=lattice)
         assert evenly_distributed.shape == evenly_distributed.reduced.shape
 
 
