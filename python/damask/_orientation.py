@@ -9,7 +9,7 @@ from . import tensor
 _parameter_doc = \
        """lattice : str
             Either a crystal family  out of [triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic]
-            or a     Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
+            or     a Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
             When specifying a Bravais lattice, additional lattice parameters might be required:
         a : float, optional
             Length of lattice parameter "a".
@@ -265,111 +265,110 @@ class Orientation(Rotation):
 
 
     @staticmethod
-    def _separate_arguments(parent_dict,function):
+    def _split_kwargs(kwargs,target):
         """
-        Separate arguments required by Rotation and Orientation objects respectively.
+        Separate keyword arguments in 'kwargs' targeted at 'target' from general keyword arguments of Orientation objects.
 
         Parameters
         ----------
-        parent_dict : Dictionary
-            Contains all **kwargs
-        function: Method
-            Function whose signature list is required
+        kwargs : dictionary
+            Contains all **kwargs.
+        target: method
+            Function to scan for kwarg signature.
 
         Returns
         -------
-        ori_dict: dictionary
-            Dictionary consisting of valid keys accepted by Orientation class
-        rot_dict: dictionary
-            Dictionary consisting of valid keys accepted by 'function' in Rotation class
+        rot_kwargs: dictionary
+            Valid keyword arguments of 'target' function of Rotation class.
+        ori_kwargs: dictionary
+            Valid keyword arguments of Orientation object.
 
         """
-        set_ori = set(inspect.signature(Orientation.__init__).parameters.keys()) & set(parent_dict.keys())
-        set_rot = set(inspect.signature(function).parameters.keys()) & set(parent_dict.keys())
-        ori_dict = {key: parent_dict[key] for key in set_ori}
-        rot_dict = {key: parent_dict[key] for key in set_rot}
+        kws = ()
+        for t in (target,Orientation.__init__):
+            kws += ({key: kwargs[key] for key in set(inspect.signature(t).parameters) & set(kwargs)},)
 
-        invalid_keys = set(parent_dict.keys())-(set_ori|set_rot)
+        invalid_keys = set(kwargs)-(set(kws[0])|set(kws[1]))
         if invalid_keys:
             raise TypeError(f"{inspect.stack()[1][3]}() got an unexpected keyword argument '{invalid_keys.pop()}'")
 
-        return rot_dict,ori_dict
+        return kws
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_random,_parameter_doc)
     def from_random(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_random)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
         return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
     def from_quaternion(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_quaternion)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
         return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
     def from_Euler_angles(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_Euler_angles)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
         return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
     def from_axis_angle(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_axis_angle)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
         return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_basis,_parameter_doc)
     def from_basis(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_basis)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
         return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
     def from_matrix(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_matrix)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
         return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
     def from_Rodrigues_vector(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_Rodrigues_vector)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
         return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
     def from_homochoric(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_homochoric)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
         return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
     def from_cubochoric(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_cubochoric)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
         return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
     def from_spherical_component(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_spherical_component)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
         return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
     def from_fiber_component(cls,**kwargs):
-        kwargs_rot,kwargs_ori = Orientation._separate_arguments(kwargs,Rotation.from_fiber_component)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
         return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
 
 
