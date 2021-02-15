@@ -95,12 +95,11 @@ module homogenization
     module subroutine damage_init
     end subroutine damage_init
 
-    module subroutine mechanical_partition(subF,ip,el)
+    module subroutine mechanical_partition(subF,ce)
       real(pReal), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element number
+        ce                                                                                        
     end subroutine mechanical_partition
 
     module subroutine thermal_partition(ce)
@@ -318,7 +317,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
 
         if (.not. doneAndHappy(1)) then
-          call mechanical_partition(homogenization_F(1:3,1:3,ce),ip,el)
+          call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
           converged = .true.
           do co = 1, myNgrains
             converged = converged .and. crystallite_stress(dt,co,ip,el)

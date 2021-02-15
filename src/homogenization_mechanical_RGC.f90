@@ -196,22 +196,22 @@ end subroutine mechanical_RGC_init
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_partitionDeformation(F,avgF,instance,of)
+module subroutine mechanical_RGC_partitionDeformation(F,avgF,ce)
 
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned F  per grain
 
   real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< averaged F
   integer,                          intent(in)  :: &
-    instance, &
-    of
+    ce
 
   real(pReal), dimension(3) :: aVect,nVect
   integer,     dimension(4) :: intFace
   integer,     dimension(3) :: iGrain3
-  integer ::  iGrain,iFace,i,j
+  integer ::  iGrain,iFace,i,j,me
 
-  associate(prm => param(instance))
-
+  associate(prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))))
+  
+  me = material_homogenizationMemberAt2(ce)
 !--------------------------------------------------------------------------------------------------
 ! compute the deformation gradient of individual grains due to relaxations
   F = 0.0_pReal
@@ -219,8 +219,8 @@ module subroutine mechanical_RGC_partitionDeformation(F,avgF,instance,of)
     iGrain3 = grain1to3(iGrain,prm%N_constituents)
     do iFace = 1,6
       intFace = getInterface(iFace,iGrain3)                                                         ! identifying 6 interfaces of each grain
-      aVect = relaxationVector(intFace,instance,of)                                                 ! get the relaxation vectors for each interface from global relaxation vector array
-      nVect = interfaceNormal(intFace,instance,of)
+      aVect = relaxationVector(intFace,ce,me)                                                       ! get the relaxation vectors for each interface from global relaxation vector array
+      nVect = interfaceNormal(intFace,ce,me)
       forall (i=1:3,j=1:3) &
         F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                           ! calculating deformation relaxations due to interface relaxation
     enddo
@@ -760,11 +760,11 @@ end subroutine mechanical_RGC_results
 !--------------------------------------------------------------------------------------------------
 !> @brief collect relaxation vectors of an interface
 !--------------------------------------------------------------------------------------------------
-pure function relaxationVector(intFace,instance,of)
+pure function relaxationVector(intFace,ce,me)
 
   real(pReal), dimension (3)            :: relaxationVector
 
-  integer,                   intent(in) :: instance,of
+  integer,                   intent(in) :: ce,me
   integer,     dimension(4), intent(in) :: intFace                                                  !< set of interface ID in 4D array (normal and position)
 
   integer :: iNum
@@ -772,12 +772,17 @@ pure function relaxationVector(intFace,instance,of)
 !--------------------------------------------------------------------------------------------------
 ! collect the interface relaxation vector from the global state array
 
-  iNum = interface4to1(intFace,param(instance)%N_constituents)                                      ! identify the position of the interface in global state array
+  associate (prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))), &
+             stt => state(homogenization_typeInstance(material_homogenizationAt2(ce))))
+
+  iNum = interface4to1(intFace,prm%N_constituents)                                                  ! identify the position of the interface in global state array
   if (iNum > 0) then
-    relaxationVector = state(instance)%relaxationVector((3*iNum-2):(3*iNum),of)
+    relaxationVector = stt%relaxationVector((3*iNum-2):(3*iNum),me)
   else
     relaxationVector = 0.0_pReal
   endif
+
+  end associate
 
 end function relaxationVector
 
@@ -785,16 +790,17 @@ end function relaxationVector
 !--------------------------------------------------------------------------------------------------
 !> @brief identify the normal of an interface
 !--------------------------------------------------------------------------------------------------
-pure function interfaceNormal(intFace,instance,of)
+pure function interfaceNormal(intFace,ce,me)
 
   real(pReal), dimension(3)             :: interfaceNormal
 
   integer,     dimension(4), intent(in) :: intFace                                                  !< interface ID in 4D array (normal and position)
   integer,                   intent(in) :: &
-    instance, &
-    of
+    ce, &
+    me
 
   integer :: nPos
+  associate (dst => dependentState(homogenization_typeInstance(material_homogenizationAt2(ce))))
 
 !--------------------------------------------------------------------------------------------------
 ! get the normal of the interface, identified from the value of intFace(1)
@@ -802,7 +808,9 @@ pure function interfaceNormal(intFace,instance,of)
   nPos = abs(intFace(1))                                                                            ! identify the position of the interface in global state array
   interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                                    ! get the normal vector w.r.t. cluster axis
 
-  interfaceNormal = matmul(dependentState(instance)%orientation(1:3,1:3,of),interfaceNormal)        ! map the normal vector into sample coordinate system (basis)
+  interfaceNormal = matmul(dst%orientation(1:3,1:3,me),interfaceNormal)                             ! map the normal vector into sample coordinate system (basis)
+  
+  end associate
 
 end function interfaceNormal
 

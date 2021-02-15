@@ -183,9 +183,9 @@ module phase
     end function damage_phi
 
 
-    module subroutine phase_mechanical_setF(F,co,ip,el)
+    module subroutine phase_mechanical_setF(F,co,ce)
       real(pReal), dimension(3,3), intent(in) :: F
-      integer, intent(in) :: co, ip, el
+      integer, intent(in) :: co, ce
     end subroutine phase_mechanical_setF
 
     module subroutine phase_thermal_setField(T,dot_T, co,ce)

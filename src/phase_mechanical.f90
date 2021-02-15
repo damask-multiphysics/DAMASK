@@ -1481,13 +1481,13 @@ end function phase_mechanical_getP
 
 
 ! setter for homogenization
-module subroutine phase_mechanical_setF(F,co,ip,el)
+module subroutine phase_mechanical_setF(F,co,ce)
 
   real(pReal), dimension(3,3), intent(in) :: F
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: co, ce
 
 
-  phase_mechanical_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
+  phase_mechanical_F(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce)) = F
 
 end subroutine phase_mechanical_setF
 

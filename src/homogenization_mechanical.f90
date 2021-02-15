@@ -24,12 +24,11 @@ submodule(homogenization) mechanical
       real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
     end subroutine mechanical_isostrain_partitionDeformation
 
-    module subroutine mechanical_RGC_partitionDeformation(F,avgF,instance,of)
+    module subroutine mechanical_RGC_partitionDeformation(F,avgF,ce)
       real(pReal),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
       real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
       integer,                          intent(in)  :: &
-        instance, &
-        of
+        ce
     end subroutine mechanical_RGC_partitionDeformation
 
 
@@ -104,19 +103,18 @@ end subroutine mechanical_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Partition F onto the individual constituents.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_partition(subF,ip,el)
+module subroutine mechanical_partition(subF,ce)
 
   real(pReal), intent(in), dimension(3,3) :: &
     subF
   integer,     intent(in) :: &
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element number
+    ce
 
   integer :: co
-  real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationAt(el))) :: Fs
+  real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationAt2(ce))) :: Fs
 
 
-  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt2(ce)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
       Fs(1:3,1:3,1) = subF
@@ -125,12 +123,12 @@ module subroutine mechanical_partition(subF,ip,el)
       call mechanical_isostrain_partitionDeformation(Fs,subF)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      call mechanical_RGC_partitionDeformation(Fs,subF,ip,el)
+      call mechanical_RGC_partitionDeformation(Fs,subF,ce)
 
   end select chosenHomogenization
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    call phase_mechanical_setF(Fs(1:3,1:3,co),co,ip,el)
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
+    call phase_mechanical_setF(Fs(1:3,1:3,co),co,ce)
   enddo
 
 
