@@ -118,7 +118,7 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_cubochoric(self):
-        assert np.all(Orientation.from_cubochoric(c=np.zeros(3),lattice='triclinic').as_matrix()
+        assert np.all(Orientation.from_cubochoric(x=np.zeros(3),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_spherical_component(self):
@@ -141,7 +141,7 @@ class TestOrientation:
                                         dict(lattice='hP',a=1.0             ),
                                         dict(lattice='cI',a=1.0,            ),
                                       ])
-    def test_from_direction(self,kwargs):
+    def test_from_directions(self,kwargs):
         for a,b in np.random.random((10,2,3)):
             c = np.cross(b,a)
             if np.all(np.isclose(c,0)): continue
@@ -151,6 +151,21 @@ class TestOrientation:
             assert np.isclose(np.dot(x/np.linalg.norm(x),np.array([1,0,0])),1) \
                and np.isclose(np.dot(z/np.linalg.norm(z),np.array([0,0,1])),1)
 
+    @pytest.mark.parametrize('function',[Orientation.from_random,
+                                         Orientation.from_quaternion,
+                                         Orientation.from_Euler_angles,
+                                         Orientation.from_axis_angle,
+                                         Orientation.from_basis,
+                                         Orientation.from_matrix,
+                                         Orientation.from_Rodrigues_vector,
+                                         Orientation.from_homochoric,
+                                         Orientation.from_cubochoric,
+                                         Orientation.from_spherical_component,
+                                         Orientation.from_fiber_component,
+                                         Orientation.from_directions])
+    def test_invalid_from(self,function):
+        with pytest.raises(TypeError):
+            function(c=.1,degrees=True,invalid=66)
 
     def test_negative_angle(self):
         with pytest.raises(ValueError):
