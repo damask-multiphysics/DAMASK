@@ -502,8 +502,8 @@ class Rotation:
 
         Returns
         -------
-        c : numpy.ndarray of shape (...,3)
-              Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
+        x : numpy.ndarray of shape (...,3)
+              Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
 
         """
         return Rotation._qu2cu(self.quaternion)
@@ -514,8 +514,7 @@ class Rotation:
     @staticmethod
     def from_quaternion(q,
                         accept_homomorph = False,
-                        P = -1,
-                        **kwargs):
+                        P = -1):
         """
         Initialize from quaternion.
 
@@ -550,8 +549,7 @@ class Rotation:
 
     @staticmethod
     def from_Euler_angles(phi,
-                          degrees = False,
-                          **kwargs):
+                          degrees = False):
         """
         Initialize from Bunge-Euler angles.
 
@@ -578,8 +576,7 @@ class Rotation:
     def from_axis_angle(axis_angle,
                         degrees = False,
                         normalize = False,
-                        P = -1,
-                        **kwargs):
+                        P = -1):
         """
         Initialize from Axis angle pair.
 
@@ -616,8 +613,7 @@ class Rotation:
     @staticmethod
     def from_basis(basis,
                    orthonormal = True,
-                   reciprocal = False,
-                   **kwargs):
+                   reciprocal = False):
         """
         Initialize from lattice basis vectors.
 
@@ -651,7 +647,7 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(R,**kwargs):
+    def from_matrix(R):
         """
         Initialize from rotation matrix.
 
@@ -695,8 +691,7 @@ class Rotation:
     @staticmethod
     def from_Rodrigues_vector(rho,
                               normalize = False,
-                              P = -1,
-                              **kwargs):
+                              P = -1):
         """
         Initialize from Rodrigues-Frank vector (angle separated from axis).
 
@@ -727,8 +722,7 @@ class Rotation:
 
     @staticmethod
     def from_homochoric(h,
-                        P = -1,
-                        **kwargs):
+                        P = -1):
         """
         Initialize from homochoric vector.
 
@@ -754,21 +748,20 @@ class Rotation:
         return Rotation(Rotation._ho2qu(ho))
 
     @staticmethod
-    def from_cubochoric(c,
-                        P = -1,
-                        **kwargs):
+    def from_cubochoric(x,
+                        P = -1):
         """
         Initialize from cubochoric vector.
 
         Parameters
         ----------
-        c : numpy.ndarray of shape (...,3)
-            Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
+        x : numpy.ndarray of shape (...,3)
+            Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
-        cu = np.array(c,dtype=float)
+        cu = np.array(x,dtype=float)
         if cu.shape[:-2:-1] != (3,):
             raise ValueError('Invalid shape.')
         if abs(P) != 1:
@@ -784,8 +777,7 @@ class Rotation:
 
     @staticmethod
     def from_random(shape = None,
-                    rng_seed = None,
-                    **kwargs):
+                    rng_seed = None):
         """
         Draw random rotation.
 
@@ -878,8 +870,7 @@ class Rotation:
                                  sigma,
                                  N = 500,
                                  degrees = True,
-                                 rng_seed = None,
-                                 **kwargs):
+                                 rng_seed = None):
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -915,8 +906,7 @@ class Rotation:
                              sigma = 0.0,
                              N = 500,
                              degrees = True,
-                             rng_seed = None,
-                             **kwargs):
+                             rng_seed = None):
         """
         Calculate set of rotations with Gaussian distribution around direction.
 

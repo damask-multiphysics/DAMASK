@@ -74,7 +74,7 @@ module subroutine damage_partition(ce)
 
   phi     = current(material_homogenizationAt2(ce))%phi(material_homogenizationMemberAt2(ce))
   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-    call constitutive_damage_set_phi(phi,co,ce)
+    call phase_damage_set_phi(phi,co,ce)
   enddo
 
 end subroutine damage_partition
@@ -120,7 +120,7 @@ module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, p
   phiDot = 0.0_pReal
   dPhiDot_dPhi = 0.0_pReal
 
-  call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
+  call phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
   phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
   dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
 

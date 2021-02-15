@@ -347,23 +347,21 @@ class VTK:
 
         See http://compilatrix.com/article/vtk-1 for further ideas.
         """
-        def screen_size():
+        try:
+            import wx
+            _ = wx.App(False)                                                                       # noqa
+            width, height = wx.GetDisplaySize()
+        except ImportError:
             try:
-                import wx
-                _ = wx.App(False)                                                                       # noqa
-                width, height = wx.GetDisplaySize()
-            except ImportError:
-                try:
-                    import tkinter
-                    tk = tkinter.Tk()
-                    width  = tk.winfo_screenwidth()
-                    height = tk.winfo_screenheight()
-                    tk.destroy()
-                except Exception as e:
-                    width  = 1024
-                    height =  768
+                import tkinter
+                tk = tkinter.Tk()
+                width  = tk.winfo_screenwidth()
+                height = tk.winfo_screenheight()
+                tk.destroy()
+            except Exception as e:
+                width  = 1024
+                height =  768
 
-            return (width,height)
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
         actor = vtk.vtkActor()
@@ -377,7 +375,7 @@ class VTK:
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        window.SetSize(screen_size[0],screen_size[1])
+        window.SetSize(width,height)
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)

@@ -127,12 +127,12 @@ subroutine FEM_utilities_init
   CHKERRQ(ierr)
   if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type newtonls &
-                               &-mech_snes_linesearch_type cp -mech_snes_ksp_ew &
-                               &-mech_snes_ksp_ew_rtol0 0.01 -mech_snes_ksp_ew_rtolmax 0.01 &
-                               &-mech_ksp_type fgmres -mech_ksp_max_it 25 &
-                               &-mech_pc_type ml -mech_mg_levels_ksp_type chebyshev &
-                               &-mech_mg_levels_pc_type sor -mech_pc_ml_nullspace user',ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
+                               &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &
+                               &-mechanical_snes_ksp_ew_rtol0 0.01 -mechanical_snes_ksp_ew_rtolmax 0.01 &
+                               &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25 &
+                               &-mechanical_pc_type ml -mechanical_mg_levels_ksp_type chebyshev &
+                               &-mechanical_mg_levels_pc_type sor -mechanical_pc_ml_nullspace user',ierr)
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)

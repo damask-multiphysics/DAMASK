@@ -168,11 +168,11 @@ class ConfigMaterial(Config):
                         ok = False
 
         if 'material' in self:
-            for i,v in enumerate(self['material']):
-                if 'constituents' in v:
-                    f = 0.0
-                    for c in v['constituents']:
-                        f+= float(c['v'])
+            for i,m in enumerate(self['material']):
+                if 'constituents' in m:
+                    v = 0.0
+                    for c in m['constituents']:
+                        v+= float(c['v'])
                         if 'O' in c:
                             try:
                                 Rotation.from_quaternion(c['O'])
@@ -180,8 +180,8 @@ class ConfigMaterial(Config):
                                 o = c['O']
                                 print(f"Invalid orientation: '{o}' in material '{i}'")
                                 ok = False
-                    if not np.isclose(f,1.0):
-                        print(f"Invalid total fraction '{f}' in material '{i}'")
+                    if not np.isclose(v,1.0):
+                        print(f"Invalid total fraction (v) '{v}' in material '{i}'")
                         ok = False
 
         return ok

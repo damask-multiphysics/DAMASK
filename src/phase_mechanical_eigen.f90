@@ -126,7 +126,7 @@ end function kinematics_active
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
+module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
                                          S, Fi, co, ip, el)
 
   integer, intent(in) :: &
@@ -159,15 +159,15 @@ module subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   dLi_dS  = 0.0_pReal
   dLi_dFi = 0.0_pReal
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
-    case (PLASTICITY_isotropic_ID) plasticityType
+  plasticType: select case (phase_plasticity(material_phaseAt(co,el)))
+    case (PLASTICITY_isotropic_ID) plasticType
       of = material_phasememberAt(co,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(co,el))
+      instance = phase_plasticInstance(material_phaseAt(co,el))
       call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
-    case default plasticityType
+    case default plasticType
       my_Li = 0.0_pReal
       my_dLi_dS = 0.0_pReal
-  end select plasticityType
+  end select plasticType
 
   Li = Li + my_Li
   dLi_dS = dLi_dS + my_dLi_dS
@@ -201,7 +201,7 @@ module subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
   enddo; enddo
 
-end subroutine constitutive_LiAndItsTangents
+end subroutine phase_LiAndItsTangents
 
 
 end submodule eigendeformation

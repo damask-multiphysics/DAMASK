@@ -135,7 +135,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     sizeDotState = size(['xi   ','gamma'])
     sizeState = sizeDotState
 
-    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
@@ -190,7 +190,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
   integer :: &
     k, l, m, n
 
-  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)))
 
   Mp_dev = math_deviatoric33(Mp)
   squarenorm_Mp_dev = math_tensordot(Mp_dev,Mp_dev)
@@ -275,8 +275,8 @@ module subroutine isotropic_dotState(Mp,ph,me)
     xi_inf_star, &                                                                                  !< saturation xi
     norm_Mp                                                                                         !< norm of the (deviatoric) Mandel stress
 
-  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), &
-   dot => dotState(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)), &
+   dot => dotState(phase_plasticInstance(ph)))
 
   if (prm%dilatation) then
     norm_Mp = sqrt(math_tensordot(Mp,Mp))

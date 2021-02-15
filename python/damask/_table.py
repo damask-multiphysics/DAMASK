@@ -26,7 +26,7 @@ class Table:
         comments_ = [comments] if isinstance(comments,str) else comments
         self.comments = [] if comments_ is None else [c for c in comments_]
         self.data = pd.DataFrame(data=data)
-        self.shapes = { k:(v,) if isinstance(v,(np.int,int)) else v for k,v in shapes.items() }
+        self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
         self._label_uniform()
 
     def __repr__(self):
@@ -380,7 +380,7 @@ class Table:
                   [f'# {comment}' for comment in self.comments]
 
         try:
-            fhandle = open(fname,'w')
+            fhandle = open(fname,'w',newline='\n')
         except TypeError:
             fhandle = fname
 

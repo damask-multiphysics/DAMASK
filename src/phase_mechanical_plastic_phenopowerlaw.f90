@@ -231,7 +231,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     sizeState = sizeDotState
 
 
-    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
@@ -300,18 +300,18 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
     gdot_slip_pos,gdot_slip_neg, &
     dgdot_dtauslip_pos,dgdot_dtauslip_neg
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_tw) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_tw) :: &
     gdot_twin,dgdot_dtautwin
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)))
 
-  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+  call kinetics_slip(Mp,phase_plasticInstance(ph),me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
   slipSystems: do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -320,7 +320,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
                        + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,gdot_twin,dgdot_dtautwin)
+  call kinetics_twin(Mp,phase_plasticInstance(ph),me,gdot_twin,dgdot_dtautwin)
   twinSystems: do i = 1, prm%sum_N_tw
     Lp = Lp + gdot_twin(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -348,12 +348,12 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
     c_SlipSlip,c_TwinSlip,c_TwinTwin, &
     xi_slip_sat_offset,&
     sumGamma,sumF
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
     left_SlipSlip,right_SlipSlip, &
     gdot_slip_pos,gdot_slip_neg
 
-  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), &
-  dot => dotState(phase_plasticityInstance(ph)))
+  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)), &
+  dot => dotState(phase_plasticInstance(ph)))
 
   sumGamma = sum(stt%gamma_slip(:,me))
   sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)
@@ -373,9 +373,9 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
-  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg)
+  call kinetics_slip(Mp,phase_plasticInstance(ph),me,gdot_slip_pos,gdot_slip_neg)
   dot%gamma_slip(:,me) = abs(gdot_slip_pos+gdot_slip_neg)
-  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,dot%gamma_twin(:,me))
+  call kinetics_twin(Mp,phase_plasticInstance(ph),me,dot%gamma_twin(:,me))
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
