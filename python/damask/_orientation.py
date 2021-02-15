@@ -524,26 +524,26 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))
+        rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))*(1.-1.e-9)
 
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
             if   self.family == 'cubic':
                 return (np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
-                                   (1. >= np.sum(rho_abs,axis=-1))).astype(np.bool)
+                                   (1. >= np.sum(rho_abs,axis=-1))).astype(bool)
             elif self.family == 'hexagonal':
                 return (np.prod(1.  >= rho_abs,axis=-1) *
                                 (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
                                 (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
-                                (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(np.bool)
+                                (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(bool)
             elif self.family == 'tetragonal':
                 return (np.prod(1.  >= rho_abs[...,:2],axis=-1) *
                         (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
-                        (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(np.bool)
+                        (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(bool)
             elif self.family == 'orthorhombic':
-                return (np.prod(1. >= rho_abs,axis=-1)).astype(np.bool)
+                return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
             elif self.family == 'monoclinic':
-                return (1. >= rho_abs[...,1]).astype(np.bool)
+                return (1. >= rho_abs[...,1]).astype(bool)
             else:
                 return np.all(np.isfinite(rho_abs),axis=-1)
 
@@ -567,28 +567,28 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho = self.as_Rodrigues_vector(compact=True)
+        rho = self.as_Rodrigues_vector(compact=True)*(1.0-1.0e-9)
 
         with np.errstate(invalid='ignore'):
             if   self.family == 'cubic':
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= rho[...,2]) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'hexagonal':
                 return ((rho[...,0] >= rho[...,1]*np.sqrt(3)) &
                         (rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'tetragonal':
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'orthorhombic':
                 return ((rho[...,0] >= 0) &
                         (rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'monoclinic':
                 return ((rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             else:
                 return np.ones_like(rho[...,0],dtype=bool)
 
