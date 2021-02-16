@@ -25,8 +25,7 @@ submodule(phase:plastic) kinehardening
       nonSchmid_pos, &
       nonSchmid_neg
     integer :: &
-      sum_N_sl, &                                                                                   !< total number of active slip system
-      of_debug = 0
+      sum_N_sl
     logical :: &
       nonSchmidActive = .false.
     character(len=pStringLen), allocatable, dimension(:) :: &
@@ -62,7 +61,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    p, i, o,  &
+    ph, o,  &
     Nconstituents, &
     sizeState, sizeDeltaState, sizeDotState, &
     startIndex, endIndex
@@ -93,27 +92,19 @@ module function plastic_kinehardening_init() result(myPlasticity)
   allocate(deltaState(phases%length))
 
 
-  do p = 1, phases%length
-    if(.not. myPlasticity(p)) cycle
-    phase => phases%get(p)
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
+
+    associate(prm => param(ph), dot => dotState(ph), dlt => deltaState(ph), stt => state(ph))
+
+    phase => phases%get(ph)
     mech  => phase%get('mechanics')
-    i = p
-    associate(prm => param(i), &
-              dot => dotState(i), &
-              dlt => deltaState(i), &
-              stt => state(i))
     pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
 #else
     prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
-#endif
-
-#ifdef DEBUG
-    if  (p==material_phaseAt(debugConstitutive%grain,debugConstitutive%element)) then
-      prm%of_debug = material_phasememberAt(debugConstitutive%grain,debugConstitutive%ip,debugConstitutive%element)
-    endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -174,55 +165,55 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == p)
-    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl!ToDo: adjust names, ask Philip
-    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names
+    Nconstituents = count(material_phaseAt2 == ph)
+    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
+    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
     sizeState = sizeDotState + sizeDeltaState
 
-    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%crss => plasticState(p)%state   (startIndex:endIndex,:)
+    stt%crss => plasticState(ph)%state   (startIndex:endIndex,:)
     stt%crss = spread(xi_0, 2, Nconstituents)
-    dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    dot%crss => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%crss_back => plasticState(p)%state   (startIndex:endIndex,:)
-    dot%crss_back => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    stt%crss_back => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%crss_back => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
-    dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    stt%accshear => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%accshear => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
-    plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%slipRate => plasticState(ph)%dotState(startIndex:endIndex,:)
 
-    o = plasticState(p)%offsetDeltaState
+    o = plasticState(ph)%offsetDeltaState
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%sense => plasticState(p)%state     (startIndex  :endIndex  ,:)
-    dlt%sense => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+    stt%sense => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%sense => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%chi0 => plasticState(p)%state     (startIndex  :endIndex  ,:)
-    dlt%chi0 => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+    stt%chi0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%chi0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%gamma0 => plasticState(p)%state     (startIndex  :endIndex  ,:)
-    dlt%gamma0 => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+    stt%gamma0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%gamma0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
-    plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
+    plasticState(ph)%state0 = plasticState(ph)%state                                                  ! ToDo: this could be done centrally
 
     end associate
 

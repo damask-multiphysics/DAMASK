@@ -176,7 +176,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     Ninstances, &
-    p, i, &
+    ph, &
     Nconstituents, &
     sizeState, sizeDotState, sizeDependentState, sizeDeltaState, &
     s1, s2, &
@@ -220,21 +220,17 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(deltaState(phases%length))
   allocate(microstructure(phases%length))
 
-  do p = 1, phases%length
-    if(.not. myPlasticity(p)) cycle
-    phase => phases%get(p)
-    mech  => phase%get('mechanics')
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
 
-    i = p
-    associate(prm => param(i), &
-              dot => dotState(i), &
-              stt => state(i), &
-              st0 => state0(i), &
-              del => deltaState(i), &
-              dst => microstructure(i))
+    associate(prm => param(ph),  dot => dotState(ph),   stt => state(ph), &
+              st0 => state0(ph), del => deltaState(ph), dst => microstructure(ph))
+
+    phase => phases%get(ph)
+    mech  => phase%get('mechanics')
     pl  => mech%get('plasticity')
 
-    phase_localPlasticity(p) = .not. pl%contains('nonlocal')
+    phase_localPlasticity(ph) = .not. pl%contains('nonlocal')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
@@ -245,8 +241,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
     prm%atol_rho   = pl%get_asFloat('atol_rho',defaultVal=1.0e4_pReal)
 
     ! This data is read in already in lattice
-    prm%mu = lattice_mu(p)
-    prm%nu = lattice_nu(p)
+    prm%mu = lattice_mu(ph)
+    prm%nu = lattice_nu(ph)
 
     ini%N_sl     = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
@@ -402,7 +398,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents  = count(material_phaseAt2 == p)
+    Nconstituents  = count(material_phaseAt2 == ph)
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -416,101 +412,101 @@ module function plastic_nonlocal_init() result(myPlasticity)
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
-    allocate(geom(p)%V_0(Nconstituents))
-    call storeGeometry(p)
+    allocate(geom(ph)%V_0(Nconstituents))
+    call storeGeometry(ph)
 
-    plasticState(p)%nonlocal         = pl%get_asBool('nonlocal')
-    if(plasticState(p)%nonlocal .and. .not. allocated(IPneighborhood)) &
+    plasticState(ph)%nonlocal         = pl%get_asBool('nonlocal')
+    if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
       call IO_error(212,ext_msg='IPneighborhood does not exist')
 
 
-    plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
+    plasticState(ph)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
 
-    st0%rho => plasticState(p)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-    stt%rho => plasticState(p)%state                              (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-    dot%rho => plasticState(p)%dotState                           (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-    del%rho => plasticState(p)%deltaState                         (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-    plasticState(p)%atol(1:10*prm%sum_N_sl) = prm%atol_rho
+    st0%rho => plasticState(ph)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+    stt%rho => plasticState(ph)%state                              (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+    dot%rho => plasticState(ph)%dotState                           (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+    del%rho => plasticState(ph)%deltaState                         (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+    plasticState(ph)%atol(1:10*prm%sum_N_sl) = prm%atol_rho
 
-      stt%rhoSgl => plasticState(p)%state                         (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-      dot%rhoSgl => plasticState(p)%dotState                      (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-      del%rhoSgl => plasticState(p)%deltaState                    (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+      stt%rhoSgl => plasticState(ph)%state                         (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+      dot%rhoSgl => plasticState(ph)%dotState                      (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+      del%rhoSgl => plasticState(ph)%deltaState                    (0*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
-        stt%rhoSglMobile => plasticState(p)%state                 (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
-        dot%rhoSglMobile => plasticState(p)%dotState              (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
-        del%rhoSglMobile => plasticState(p)%deltaState            (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+        stt%rhoSglMobile => plasticState(ph)%state                 (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+        dot%rhoSglMobile => plasticState(ph)%dotState              (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+        del%rhoSglMobile => plasticState(ph)%deltaState            (0*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
 
-            stt%rho_sgl_mob_edg_pos => plasticState(p)%state      (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
-            dot%rho_sgl_mob_edg_pos => plasticState(p)%dotState   (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
-            del%rho_sgl_mob_edg_pos => plasticState(p)%deltaState (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
+            stt%rho_sgl_mob_edg_pos => plasticState(ph)%state      (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
+            dot%rho_sgl_mob_edg_pos => plasticState(ph)%dotState   (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
+            del%rho_sgl_mob_edg_pos => plasticState(ph)%deltaState (0*prm%sum_N_sl+1: 1*prm%sum_N_sl,:)
 
-            stt%rho_sgl_mob_edg_neg => plasticState(p)%state      (1*prm%sum_N_sl+1: 2*prm%sum_N_sl,:)
-            dot%rho_sgl_mob_edg_neg => plasticState(p)%dotState   (1*prm%sum_N_sl+1: 2*prm%sum_N_sl,:)
-            del%rho_sgl_mob_edg_neg => plasticState(p)%deltaState (1*prm%sum_N_sl+1: 2*prm%sum_N_sl,:)
+            stt%rho_sgl_mob_edg_neg => plasticState(ph)%state      (1*prm%sum_N_sl+1: 2*prm%sum_N_sl,:)
+            dot%rho_sgl_mob_edg_neg => plasticState(ph)%dotState   (1*prm%sum_N_sl+1: 2*prm%sum_N_sl,:)
+            del%rho_sgl_mob_edg_neg => plasticState(ph)%deltaState (1*prm%sum_N_sl+1: 2*prm%sum_N_sl,:)
 
-            stt%rho_sgl_mob_scr_pos => plasticState(p)%state      (2*prm%sum_N_sl+1: 3*prm%sum_N_sl,:)
-            dot%rho_sgl_mob_scr_pos => plasticState(p)%dotState   (2*prm%sum_N_sl+1: 3*prm%sum_N_sl,:)
-            del%rho_sgl_mob_scr_pos => plasticState(p)%deltaState (2*prm%sum_N_sl+1: 3*prm%sum_N_sl,:)
+            stt%rho_sgl_mob_scr_pos => plasticState(ph)%state      (2*prm%sum_N_sl+1: 3*prm%sum_N_sl,:)
+            dot%rho_sgl_mob_scr_pos => plasticState(ph)%dotState   (2*prm%sum_N_sl+1: 3*prm%sum_N_sl,:)
+            del%rho_sgl_mob_scr_pos => plasticState(ph)%deltaState (2*prm%sum_N_sl+1: 3*prm%sum_N_sl,:)
 
-            stt%rho_sgl_mob_scr_neg => plasticState(p)%state      (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
-            dot%rho_sgl_mob_scr_neg => plasticState(p)%dotState   (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
-            del%rho_sgl_mob_scr_neg => plasticState(p)%deltaState (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+            stt%rho_sgl_mob_scr_neg => plasticState(ph)%state      (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+            dot%rho_sgl_mob_scr_neg => plasticState(ph)%dotState   (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
+            del%rho_sgl_mob_scr_neg => plasticState(ph)%deltaState (3*prm%sum_N_sl+1: 4*prm%sum_N_sl,:)
 
-        stt%rhoSglImmobile => plasticState(p)%state               (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-        dot%rhoSglImmobile => plasticState(p)%dotState            (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-        del%rhoSglImmobile => plasticState(p)%deltaState          (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+        stt%rhoSglImmobile => plasticState(ph)%state               (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+        dot%rhoSglImmobile => plasticState(ph)%dotState            (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+        del%rhoSglImmobile => plasticState(ph)%deltaState          (4*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
-            stt%rho_sgl_imm_edg_pos => plasticState(p)%state      (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
-            dot%rho_sgl_imm_edg_pos => plasticState(p)%dotState   (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
-            del%rho_sgl_imm_edg_pos => plasticState(p)%deltaState (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
+            stt%rho_sgl_imm_edg_pos => plasticState(ph)%state      (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
+            dot%rho_sgl_imm_edg_pos => plasticState(ph)%dotState   (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
+            del%rho_sgl_imm_edg_pos => plasticState(ph)%deltaState (4*prm%sum_N_sl+1: 5*prm%sum_N_sl,:)
 
-            stt%rho_sgl_imm_edg_neg => plasticState(p)%state      (5*prm%sum_N_sl+1: 6*prm%sum_N_sl,:)
-            dot%rho_sgl_imm_edg_neg => plasticState(p)%dotState   (5*prm%sum_N_sl+1: 6*prm%sum_N_sl,:)
-            del%rho_sgl_imm_edg_neg => plasticState(p)%deltaState (5*prm%sum_N_sl+1: 6*prm%sum_N_sl,:)
+            stt%rho_sgl_imm_edg_neg => plasticState(ph)%state      (5*prm%sum_N_sl+1: 6*prm%sum_N_sl,:)
+            dot%rho_sgl_imm_edg_neg => plasticState(ph)%dotState   (5*prm%sum_N_sl+1: 6*prm%sum_N_sl,:)
+            del%rho_sgl_imm_edg_neg => plasticState(ph)%deltaState (5*prm%sum_N_sl+1: 6*prm%sum_N_sl,:)
 
-            stt%rho_sgl_imm_scr_pos => plasticState(p)%state      (6*prm%sum_N_sl+1: 7*prm%sum_N_sl,:)
-            dot%rho_sgl_imm_scr_pos => plasticState(p)%dotState   (6*prm%sum_N_sl+1: 7*prm%sum_N_sl,:)
-            del%rho_sgl_imm_scr_pos => plasticState(p)%deltaState (6*prm%sum_N_sl+1: 7*prm%sum_N_sl,:)
+            stt%rho_sgl_imm_scr_pos => plasticState(ph)%state      (6*prm%sum_N_sl+1: 7*prm%sum_N_sl,:)
+            dot%rho_sgl_imm_scr_pos => plasticState(ph)%dotState   (6*prm%sum_N_sl+1: 7*prm%sum_N_sl,:)
+            del%rho_sgl_imm_scr_pos => plasticState(ph)%deltaState (6*prm%sum_N_sl+1: 7*prm%sum_N_sl,:)
 
-            stt%rho_sgl_imm_scr_neg => plasticState(p)%state      (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-            dot%rho_sgl_imm_scr_neg => plasticState(p)%dotState   (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
-            del%rho_sgl_imm_scr_neg => plasticState(p)%deltaState (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+            stt%rho_sgl_imm_scr_neg => plasticState(ph)%state      (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+            dot%rho_sgl_imm_scr_neg => plasticState(ph)%dotState   (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
+            del%rho_sgl_imm_scr_neg => plasticState(ph)%deltaState (7*prm%sum_N_sl+1: 8*prm%sum_N_sl,:)
 
-      stt%rhoDip => plasticState(p)%state                         (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-      dot%rhoDip => plasticState(p)%dotState                      (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-      del%rhoDip => plasticState(p)%deltaState                    (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+      stt%rhoDip => plasticState(ph)%state                         (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+      dot%rhoDip => plasticState(ph)%dotState                      (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+      del%rhoDip => plasticState(ph)%deltaState                    (8*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
 
-        stt%rho_dip_edg => plasticState(p)%state                  (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
-        dot%rho_dip_edg => plasticState(p)%dotState               (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
-        del%rho_dip_edg => plasticState(p)%deltaState             (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
+        stt%rho_dip_edg => plasticState(ph)%state                  (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
+        dot%rho_dip_edg => plasticState(ph)%dotState               (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
+        del%rho_dip_edg => plasticState(ph)%deltaState             (8*prm%sum_N_sl+1: 9*prm%sum_N_sl,:)
 
-        stt%rho_dip_scr => plasticState(p)%state                  (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-        dot%rho_dip_scr => plasticState(p)%dotState               (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
-        del%rho_dip_scr => plasticState(p)%deltaState             (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+        stt%rho_dip_scr => plasticState(ph)%state                  (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+        dot%rho_dip_scr => plasticState(ph)%dotState               (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
+        del%rho_dip_scr => plasticState(ph)%deltaState             (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
 
-    stt%gamma => plasticState(p)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
-    dot%gamma => plasticState(p)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
-    del%gamma => plasticState(p)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
-    plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
-    if(any(plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
+    stt%gamma => plasticState(ph)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
+    if(any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    plasticState(ph)%slipRate => plasticState(ph)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
 
-    stt%rho_forest => plasticState(p)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nconstituents)
-    stt%v          => plasticState(p)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
-        stt%v_edg_pos  => plasticState(p)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nconstituents)
-        stt%v_edg_neg  => plasticState(p)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nconstituents)
-        stt%v_scr_pos  => plasticState(p)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nconstituents)
-        stt%v_scr_neg  => plasticState(p)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
+    stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nconstituents)
+    stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
+        stt%v_edg_pos  => plasticState(ph)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nconstituents)
+        stt%v_edg_neg  => plasticState(ph)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nconstituents)
+        stt%v_scr_pos  => plasticState(ph)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nconstituents)
+        stt%v_scr_neg  => plasticState(ph)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
 
     allocate(dst%tau_pass(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
     allocate(dst%tau_back(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
     end associate
 
-    if (Nconstituents > 0) call stateInit(ini,p,Nconstituents)
-    plasticState(p)%state0 = plasticState(p)%state
+    if (Nconstituents > 0) call stateInit(ini,ph,Nconstituents)
+    plasticState(ph)%state0 = plasticState(ph)%state
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -526,35 +522,34 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(iV(maxval(param%sum_N_sl),4,phases%length),    source=0)
   allocate(iD(maxval(param%sum_N_sl),2,phases%length),    source=0)
 
-  do p = 1, phases%length
-    phase => phases%get(p)
+  do ph = 1, phases%length
 
-    if(.not. myPlasticity(p)) cycle
-    i = p
+    if(.not. myPlasticity(ph)) cycle
 
-    Nconstituents = count(material_phaseAt2 == p)
+    phase => phases%get(ph)
+    Nconstituents = count(material_phaseAt2 == ph)
     l = 0
     do t = 1,4
-      do s = 1,param(i)%sum_N_sl
+      do s = 1,param(ph)%sum_N_sl
         l = l + 1
-        iRhoU(s,t,i) = l
+        iRhoU(s,t,ph) = l
       enddo
     enddo
-    l = l + (4+2+1+1)*param(i)%sum_N_sl ! immobile(4), dipole(2), shear, forest
+    l = l + (4+2+1+1)*param(ph)%sum_N_sl ! immobile(4), dipole(2), shear, forest
     do t = 1,4
-      do s = 1,param(i)%sum_N_sl
+      do s = 1,param(ph)%sum_N_sl
         l = l + 1
-        iV(s,t,i) = l
+        iV(s,t,ph) = l
       enddo
     enddo
     do t = 1,2
-      do s = 1,param(i)%sum_N_sl
+      do s = 1,param(ph)%sum_N_sl
         l = l + 1
-        iD(s,t,i) = l
+        iD(s,t,ph) = l
       enddo
     enddo
-    if (iD(param(i)%sum_N_sl,2,i) /= plasticState(p)%sizeState) &
-      call IO_error(0, ext_msg = 'state indices not properly set (nonlocal)')
+    if (iD(param(ph)%sum_N_sl,2,ph) /= plasticState(ph)%sizeState) &
+      error stop 'state indices not properly set (nonlocal)'
   enddo
 
 end function plastic_nonlocal_init
