@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:eigendeformation) slipplaneopening
+submodule(phase:eigen) slipplaneopening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 
@@ -32,12 +32,11 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
+module function kinematics_slipplane_opening_init() result(myKinematics)
 
-  integer, intent(in)                  :: kinematics_length
-  logical, dimension(:,:), allocatable :: myKinematics
+  logical, dimension(:), allocatable :: myKinematics
 
-  integer :: Ninstances,p,i,k
+  integer :: p,i
   character(len=pStringLen) :: extmsg = ''
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
@@ -49,28 +48,26 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     kinematics, &
     kinematic_type
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation:slipplaneopening init  -+>>>'
 
-  myKinematics = kinematics_active('slipplane_opening',kinematics_length)
-  Ninstances = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  myKinematics = kinematics_active2('isoductile')
+  if(count(myKinematics) == 0) return
+  print'(/,a)', ' <<<+-  phase:mechanical:eigen:slipplaneopening init  -+>>>'
+  print'(a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
-  allocate(kinematics_slipplane_opening_instance(phases%length), source=0)
-  allocate(param(Ninstances))
+  allocate(param(phases%length))
 
   do p = 1, phases%length
-    if(any(myKinematics(:,p))) kinematics_slipplane_opening_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p)
-    mech  => phase%get('mechanics')
-    pl    => mech%get('plasticity')
-    if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('kinematics')
-    do k = 1, kinematics%length
-      if(myKinematics(k,p)) then
-        associate(prm  => param(kinematics_slipplane_opening_instance(p)))
-        kinematic_type => kinematics%get(k)
+    if(myKinematics(p)) then
+      phase => phases%get(p)
+      mech  => phase%get('mechanics')
+      pl    => mech%get('plasticity')
+
+      kinematics => phase%get('damage')
+
+      associate(prm  => param(p))
+        kinematic_type => kinematics%get(1)
 
         prm%dot_o    = kinematic_type%get_asFloat('dot_o')
         prm%q        = kinematic_type%get_asFloat('q')
@@ -105,9 +102,8 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(slipplane_opening)')
 
-        end associate
-      endif
-    enddo
+      end associate
+    endif
   enddo
 
 
@@ -117,12 +113,10 @@ end function kinematics_slipplane_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
+module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< grain number
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+    ph, me
   real(pReal),   intent(in),  dimension(3,3) :: &
     S
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -131,19 +125,13 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
 
   integer :: &
-    instance, phase, &
-    homog, damageOffset, &
     i, k, l, m, n
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit, &
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
-  phase = material_phaseAt(co,el)
-  instance = kinematics_slipplane_opening_instance(phase)
-  homog = material_homogenizationAt(el)
-  damageOffset = material_homogenizationMemberAt(ip,el)
 
-  associate(prm => param(instance))
+  associate(prm => param(ph))
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
   do i = 1, prm%sum_N_sl
@@ -152,7 +140,7 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
     traction_t = math_tensordot(S,prm%P_t(1:3,1:3,i))
     traction_n = math_tensordot(S,prm%P_n(1:3,1:3,i))
 
-    traction_crit = prm%g_crit(i)* damage(homog)%p(damageOffset)                                  ! degrading critical load carrying capacity by damage
+    traction_crit = prm%g_crit(i)* damage_phi(ph,me)
 
     udotd = sign(1.0_pReal,traction_d)* prm%dot_o* (  abs(traction_d)/traction_crit &
                                                     - abs(traction_d)/prm%g_crit(i))**prm%q

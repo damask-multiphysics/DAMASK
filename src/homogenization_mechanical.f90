@@ -2,7 +2,7 @@
 !> @author Martin Diehl, KU Leuven
 !> @brief Partition F and homogenize P/dPdF
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) mechanics
+submodule(homogenization) mechanical
 
 
   interface
@@ -86,7 +86,7 @@ module subroutine mechanical_init(num_homog)
   class(tNode), pointer :: &
     num_homogMech
 
-  print'(/,a)', ' <<<+-  homogenization:mechanics init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanical init  -+>>>'
 
   allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
   homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
@@ -225,8 +225,6 @@ end function mechanical_updateState
 !> @brief Write results to file.
 !--------------------------------------------------------------------------------------------------
 module subroutine mechanical_results(group_base,h)
-  use material, only: &
-    material_homogenization_type => homogenization_type
 
   character(len=*), intent(in) :: group_base
   integer, intent(in)          :: h
@@ -236,7 +234,7 @@ module subroutine mechanical_results(group_base,h)
   group = trim(group_base)//'/mech'
   call results_closeGroup(results_addGroup(group))
 
-  select case(material_homogenization_type(h))
+  select case(homogenization_type(h))
 
     case(HOMOGENIZATION_rgc_ID)
       call mechanical_RGC_results(homogenization_typeInstance(h),group)
@@ -253,4 +251,4 @@ module subroutine mechanical_results(group_base,h)
 end subroutine mechanical_results
 
 
-end submodule mechanics
+end submodule mechanical

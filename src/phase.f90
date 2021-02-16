@@ -58,20 +58,17 @@ module phase
   type(tDebugOptions) :: debugCrystallite
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
-    thermal_Nsources, &
-    phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
-    phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
+    phase_elasticityInstance, &
     phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
-    phase_plasticInstance, &                                                                     !< instance of particular plasticity of each phase
-    phase_elasticityInstance                                                                        !< instance of particular elasticity of each phase
+    phase_plasticInstance
 
   logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
 
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
-  type(tSourceState),  allocatable, dimension(:), public :: &
-    damageState, thermalState
+  type(tState),  allocatable, dimension(:), public :: &
+    damageState
 
 
   integer, public, protected :: &
@@ -181,6 +178,11 @@ module phase
       real(pReal) :: dot_T
     end function thermal_dot_T
 
+    module function damage_phi(ph,me) result(phi)
+      integer, intent(in) :: ph,me
+      real(pReal) :: phi
+    end function damage_phi
+
 
     module subroutine phase_mechanical_setF(F,co,ip,el)
       real(pReal), dimension(3,3), intent(in) :: F
@@ -260,6 +262,27 @@ module phase
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end subroutine plastic_dependentState
+
+
+    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Ld                                                                                          !< damage velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+    end subroutine kinematics_cleavage_opening_LiAndItsTangent
+
+    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Ld                                                                                          !< damage velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+    end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
   end interface
 
@@ -345,14 +368,12 @@ subroutine phase_init
   PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(ph)%state             = plasticState(ph)%state0
-    forall(so = 1:phase_Nsources(ph))
-      damageState(ph)%p(so)%state = damageState(ph)%p(so)%state0
-    end forall
-
-    phase_source_maxSizeDotState   = max(phase_source_maxSizeDotState, &
-                                                maxval(damageState(ph)%p%sizeDotState))
+    plasticState(ph)%state = plasticState(ph)%state0
+    if(damageState(ph)%sizeState > 0) &
+      damageState(ph)%state  = damageState(ph)%state0
   enddo PhaseLoop2
+
+  phase_source_maxSizeDotState     = maxval(damageState%sizeDotState)
   phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine phase_init
@@ -362,7 +383,7 @@ end subroutine phase_init
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine phase_allocateState(state, &
-                                  Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+                               Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
@@ -399,15 +420,13 @@ subroutine phase_restore(ce,includeL)
   integer, intent(in) :: ce
 
   integer :: &
-    co, &                                                                                            !< constituent number
-    so
+    co
 
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    do so = 1, phase_Nsources(material_phaseAt2(co,ce))
-      damageState(material_phaseAt2(co,ce))%p(so)%state( :,material_phasememberAt2(co,ce)) = &
-      damageState(material_phaseAt2(co,ce))%p(so)%state0(:,material_phasememberAt2(co,ce))
-    enddo
+    if (damageState(material_phaseAt2(co,ce))%sizeState > 0) &
+    damageState(material_phaseAt2(co,ce))%state( :,material_phasememberAt2(co,ce)) = &
+      damageState(material_phaseAt2(co,ce))%state0(:,material_phasememberAt2(co,ce))
   enddo
 
   call mechanical_restore(ce,includeL)
@@ -421,16 +440,16 @@ end subroutine phase_restore
 !--------------------------------------------------------------------------------------------------
 subroutine phase_forward()
 
-  integer :: ph, so
+  integer :: ph
 
 
   call mechanical_forward()
   call thermal_forward()
 
   do ph = 1, size(damageState)
-    do so = 1,phase_Nsources(ph)
-      damageState(ph)%p(so)%state0 = damageState(ph)%p(so)%state
-  enddo; enddo
+    if (damageState(ph)%sizeState > 0) &
+      damageState(ph)%state0 = damageState(ph)%state
+  enddo
 
 end subroutine phase_forward
 
@@ -526,9 +545,8 @@ subroutine crystallite_init()
   phases => config_material%get('phase')
 
   do ph = 1, phases%length
-    do so = 1, phase_Nsources(ph)
-      allocate(damageState(ph)%p(so)%subState0,source=damageState(ph)%p(so)%state0)                 ! ToDo: hack
-    enddo
+    if (damageState(ph)%sizeState > 0) &
+      allocate(damageState(ph)%subState0,source=damageState(ph)%state0)                 ! ToDo: hack
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -574,9 +592,8 @@ subroutine phase_windForward(ip,el)
 
     call mechanical_windForward(ph,me)
 
-    do so = 1, phase_Nsources(material_phaseAt(co,el))
-      damageState(ph)%p(so)%state0(:,me) = damageState(ph)%p(so)%state(:,me)
-    enddo
+    if(damageState(ph)%sizeState > 0) damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
+
 
   enddo
 

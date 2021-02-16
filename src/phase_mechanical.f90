@@ -1,7 +1,8 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(phase) mechanics
+submodule(phase) mechanical
+
 
   enum, bind(c); enumerator :: &
     ELASTICITY_UNDEFINED_ID, &
@@ -22,8 +23,6 @@ submodule(phase) mechanics
     KINEMATICS_THERMAL_EXPANSION_ID
   end enum
 
-  integer(kind(KINEMATICS_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
-    phase_kinematics
   integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
   integer(kind(STIFFNESS_DEGRADATION_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
@@ -98,12 +97,9 @@ submodule(phase) mechanics
     end function plastic_deltaState
 
     module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
-                                             S, Fi, co, ip, el)
-
+                                             S, Fi, ph,me)
       integer, intent(in) :: &
-        co, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ph,me
       real(pReal),   intent(in),  dimension(3,3) :: &
         S                                                                                               !< 2nd Piola-Kirchhoff stress
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -206,7 +202,7 @@ module subroutine mechanical_init(phases)
     elastic, &
     stiffDegradation
 
-  print'(/,a)', ' <<<+-  phase:mechanics init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
@@ -381,7 +377,7 @@ subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(co,el))
     degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(co,el)))
       case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * damage(ho)%p(material_homogenizationMemberAt(ip,el))**2
+        C = C * phase_damage_get_phi(co,ip,el)**2
     end select degradationType
   enddo DegradationLoop
 
@@ -583,7 +579,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
     enddo LpLoop
 
     call phase_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
-                                       S, Fi_new, co, ip, el)
+                                       S, Fi_new, ph,me)
 
     !* update current residuum and check for convergence of loop
     atol_Li = max(num%rtol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &        ! absolute tolerance from largest acceptable relative error
@@ -1141,7 +1137,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   real(pReal) :: &
     formerSubStep
   integer :: &
-    so, ph, me, sizeDotState
+    ph, me, sizeDotState
   logical :: todo
   real(pReal) :: subFrac,subStep
   real(pReal), dimension(3,3) :: &
@@ -1162,10 +1158,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,me)
   subState0 = plasticState(ph)%State0(:,me)
 
+  if (damageState(ph)%sizeState > 0) &
+    damageState(ph)%subState0(:,me) = damageState(ph)%state0(:,me)
 
-  do so = 1, phase_Nsources(ph)
-    damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state0(:,me)
-  enddo
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,me)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,me)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,me)
@@ -1191,9 +1186,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subFp0 = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
         subFi0 = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
         subState0 = plasticState(ph)%state(:,me)
-        do so = 1, phase_Nsources(ph)
-          damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state(:,me)
-        enddo
+        if (damageState(ph)%sizeState > 0) &
+          damageState(ph)%subState0(:,me) = damageState(ph)%state(:,me)
+
       endif
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
@@ -1207,9 +1202,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         phase_mechanical_Li(ph)%data(1:3,1:3,me) = subLi0
       endif
       plasticState(ph)%state(:,me) = subState0
-      do so = 1, phase_Nsources(ph)
-        damageState(ph)%p(so)%state(:,me) = damageState(ph)%p(so)%subState0(:,me)
-      enddo
+      if (damageState(ph)%sizeState > 0) &
+        damageState(ph)%state(:,me) = damageState(ph)%subState0(:,me)
 
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
     endif
@@ -1303,7 +1297,7 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
   call phase_LiAndItsTangents(devNull,dLidS,dLidFi, &
                                      phase_mechanical_S(ph)%data(1:3,1:3,me), &
                                      phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
-                                     co,ip,el)
+                                     ph,me)
 
   invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,me))
   invFi = math_inv33(phase_mechanical_Fi(ph)%data(1:3,1:3,me))
@@ -1505,4 +1499,4 @@ module subroutine phase_mechanical_setF(F,co,ip,el)
 end subroutine phase_mechanical_setF
 
 
-end submodule mechanics
+end submodule mechanical

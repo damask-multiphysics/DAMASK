@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:mechanics) none
+submodule(homogenization:mechanical) none
 
 contains
 
@@ -18,7 +18,7 @@ module subroutine mechanical_pass_init
     h, &
     Nmaterialpoints
 
-  print'(/,a)', ' <<<+-  homogenization:mechanics:pass init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanical:pass init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_NONE_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)

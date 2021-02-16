@@ -89,12 +89,14 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:phenopowerlaw init  -+>>>'
 
   myPlasticity = plastic_active('phenopowerlaw')
   Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:phenopowerlaw init  -+>>>'
+  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
+
 
   allocate(param(Ninstances))
   allocate(state(Ninstances))

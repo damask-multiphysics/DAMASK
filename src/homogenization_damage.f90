@@ -72,7 +72,8 @@ module subroutine damage_partition(ce)
   integer :: co
 
 
-  phi     = current(material_homogenizationAt2(ce))%phi(material_homogenizationMemberAt2(ce))
+  if(damageState_h(material_homogenizationAt2(ce))%sizeState < 1) return
+  phi     = damagestate_h(material_homogenizationAt2(ce))%state(1,material_homogenizationMemberAt2(ce))
   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
     call phase_damage_set_phi(phi,co,ce)
   enddo
@@ -143,7 +144,7 @@ module subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
 
   homog  = material_homogenizationAt(el)
   offset = material_homogenizationMemberAt(ip,el)
-  damage(homog)%p(offset) = phi
+  damagestate_h(homog)%state(1,offset) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
 
@@ -162,7 +163,7 @@ module subroutine damage_nonlocal_results(homog,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(prm%output(o))
       case ('phi')
-        call results_writeDataset(group,damage(homog)%p,prm%output(o),&
+        call results_writeDataset(group,damagestate_h(homog)%state(1,:),prm%output(o),&
                                   'damage indicator','-')
     end select
   enddo outputsLoop

@@ -187,15 +187,15 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:nonlocal init  -+>>>'
-
   myPlasticity = plastic_active('nonlocal')
   Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) then
     call geometry_plastic_nonlocal_disable
     return
   endif
+
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:nonlocal init  -+>>>'
+  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
 
   print*, 'Reuber et al., Acta Materialia 71:333–348, 2014'
   print*, 'https://doi.org/10.1016/j.actamat.2014.03.012'//IO_EOL

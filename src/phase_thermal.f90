@@ -3,6 +3,12 @@
 !----------------------------------------------------------------------------------------------------
 submodule(phase) thermal
 
+  integer, dimension(:), allocatable :: &
+    thermal_Nsources
+
+  type(tSourceState),  allocatable, dimension(:) :: &
+    thermalState
+
   enum, bind(c); enumerator :: &
     THERMAL_UNDEFINED_ID ,&
     THERMAL_DISSIPATION_ID, &
@@ -31,8 +37,6 @@ submodule(phase) thermal
       integer, intent(in) :: source_length
       logical, dimension(:,:), allocatable :: mySources
     end function externalheat_init
-
-
 
 
     module subroutine externalheat_dotState(ph, me)

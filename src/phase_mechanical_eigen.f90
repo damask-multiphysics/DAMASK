@@ -1,50 +1,29 @@
-submodule(phase:mechanics) eigendeformation
+submodule(phase:mechanical) eigen
+
+  integer, dimension(:), allocatable :: &
+    Nmodels
+
+  integer(kind(KINEMATICS_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
+    model
+  integer(kind(KINEMATICS_UNDEFINED_ID)),  dimension(:), allocatable :: &
+    model_damage
 
   interface
-    module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
+    module function kinematics_cleavage_opening_init() result(myKinematics)
+      logical, dimension(:), allocatable :: myKinematics
     end function kinematics_cleavage_opening_init
 
-    module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
-      integer, intent(in) :: kinematics_length
-      logical, dimension(:,:), allocatable :: myKinematics
+    module function kinematics_slipplane_opening_init() result(myKinematics)
+      logical, dimension(:), allocatable :: myKinematics
     end function kinematics_slipplane_opening_init
 
-    module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
+    module function thermalexpansion_init(kinematics_length) result(myKinematics)
       integer, intent(in) :: kinematics_length
       logical, dimension(:,:), allocatable :: myKinematics
-    end function kinematics_thermal_expansion_init
-
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_cleavage_opening_LiAndItsTangent
-
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< grain number
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_slipplane_opening_LiAndItsTangent
+    end function thermalexpansion_init
 
     module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
       integer, intent(in) :: ph, me
-                                                                                       !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
@@ -66,29 +45,36 @@ module subroutine eigendeformation_init(phases)
     ph
   class(tNode), pointer :: &
     phase, &
-   kinematics
+    kinematics, &
+    damage, &
+    mechanics
 
-  print'(/,a)', ' <<<+-  phase:mechanics:eigendeformation init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:eigen init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
-! initialize kinematic mechanisms
-  allocate(phase_Nkinematics(phases%length),source = 0)
+! explicit eigen mechanisms
+  allocate(Nmodels(phases%length),source = 0)
+
   do ph = 1,phases%length
     phase => phases%get(ph)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
-    phase_Nkinematics(ph) = kinematics%length
+    mechanics => phase%get('mechanics')
+    kinematics => mechanics%get('eigen',defaultVal=emptyList)
+    Nmodels(ph) = kinematics%length
   enddo
 
-  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
+  allocate(model(maxval(Nmodels),phases%length), source = KINEMATICS_undefined_ID)
 
-  if(maxval(phase_Nkinematics) /= 0) then
-    where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
-    where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
-    where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_thermal_expansion_ID
+  if(maxval(Nmodels) /= 0) then
+    where(thermalexpansion_init(maxval(Nmodels))) model = KINEMATICS_thermal_expansion_ID
   endif
 
-end subroutine eigendeformation_init
+  allocate(model_damage(phases%length),  source = KINEMATICS_UNDEFINED_ID)
 
+  where(kinematics_cleavage_opening_init())  model_damage = KINEMATICS_cleavage_opening_ID
+  where(kinematics_slipplane_opening_init()) model_damage = KINEMATICS_slipplane_opening_ID
+
+
+end subroutine eigendeformation_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -104,17 +90,19 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     phases, &
     phase, &
     kinematics, &
-    kinematics_type
+    kinematics_type, &
+    mechanics
   integer :: p,k
 
   phases => config_material%get('phase')
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    kinematics => phase%get('kinematics',defaultVal=emptyList)
+    mechanics => phase%get('mechanics')
+    kinematics => mechanics%get('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematics_type => kinematics%get(k)
-      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
+      active_kinematics(k,p) = kinematics_type%get_asString('type') == kinematics_label
     enddo
   enddo
 
@@ -122,17 +110,46 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
 end function kinematics_active
 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a kinematic mechanism is active or not
+!--------------------------------------------------------------------------------------------------
+function kinematics_active2(kinematics_label)  result(active_kinematics)
+
+  character(len=*), intent(in)       :: kinematics_label                                            !< name of kinematic mechanism
+  logical, dimension(:), allocatable :: active_kinematics
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    kinematics, &
+    kinematics_type
+  integer :: p
+
+  phases => config_material%get('phase')
+  allocate(active_kinematics(phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    kinematics => phase%get('damage',defaultVal=emptyList)
+    if(kinematics%length < 1) return
+    kinematics_type => kinematics%get(1)
+    if (.not. kinematics_type%contains('type')) continue
+    active_kinematics(p) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
+  enddo
+
+
+end function kinematics_active2
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
-                                         S, Fi, co, ip, el)
+                                         S, Fi, ph,me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph,me
   real(pReal),   intent(in),  dimension(3,3) :: &
     S                                                                                               !< 2nd Piola-Kirchhoff stress
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -152,43 +169,48 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   real(pReal) :: &
     detFi
   integer :: &
-    k, i, j, &
-    instance, of, me, ph
+    k, i, j
+  logical :: active
 
+  active = .false.
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
   dLi_dFi = 0.0_pReal
 
-  plasticType: select case (phase_plasticity(material_phaseAt(co,el)))
+
+  plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_isotropic_ID) plasticType
-      of = material_phasememberAt(co,ip,el)
-      instance = phase_plasticInstance(material_phaseAt(co,el))
-      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
-    case default plasticType
-      my_Li = 0.0_pReal
-      my_dLi_dS = 0.0_pReal
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,phase_plasticInstance(ph),me)
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
   end select plasticType
 
-  Li = Li + my_Li
-  dLi_dS = dLi_dS + my_dLi_dS
 
-  KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(co,el))
-    kinematicsType: select case (phase_kinematics(k,material_phaseAt(co,el)))
-      case (KINEMATICS_cleavage_opening_ID) kinematicsType
-        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
-      case (KINEMATICS_slipplane_opening_ID) kinematicsType
-        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+  KinematicsLoop: do k = 1, Nmodels(ph)
+    kinematicsType: select case (model(k,ph))
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        me = material_phaseMemberAt(co,ip,el)
-        ph = material_phaseAt(co,el)
         call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
-      case default kinematicsType
-        my_Li = 0.0_pReal
-        my_dLi_dS = 0.0_pReal
+        Li = Li + my_Li
+        dLi_dS = dLi_dS + my_dLi_dS
+        active = .true.
     end select kinematicsType
-    Li = Li + my_Li
-    dLi_dS = dLi_dS + my_dLi_dS
   enddo KinematicsLoop
+
+  select case (model_damage(ph))
+    case (KINEMATICS_cleavage_opening_ID)
+      call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
+    case (KINEMATICS_slipplane_opening_ID)
+      call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+      Li = Li + my_Li
+      dLi_dS = dLi_dS + my_dLi_dS
+      active = .true.
+  end select
+
+  if(.not. active) return
 
   FiInv = math_inv33(Fi)
   detFi = math_det33(Fi)
@@ -204,4 +226,4 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 end subroutine phase_LiAndItsTangents
 
 
-end submodule eigendeformation
+end submodule eigen

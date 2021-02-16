@@ -97,12 +97,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:dislotungsten init  -+>>>'
-
   myPlasticity = plastic_active('dislotungsten')
   Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:dislotungsten init  -+>>>'
+  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
+
 
   print*, 'Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'

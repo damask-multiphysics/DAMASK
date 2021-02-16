@@ -6,49 +6,25 @@
 !--------------------------------------------------------------------------------------------------
 module material
   use prec
-  use math
   use config
   use results
   use IO
   use rotations
   use discretization
+  use YAML_types
 
   implicit none
   private
 
-  enum, bind(c); enumerator :: &
-    THERMAL_ISOTHERMAL_ID, &
-    THERMAL_CONDUCTION_ID, &
-    DAMAGE_NONE_ID, &
-    DAMAGE_NONLOCAL_ID, &
-    HOMOGENIZATION_UNDEFINED_ID, &
-    HOMOGENIZATION_NONE_ID, &
-    HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_RGC_ID
-  end enum
+  integer, dimension(:), allocatable, public, protected :: &
+    homogenization_Nconstituents                                                                 !< number of grains in each homogenization
 
   character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
 
-  integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable, public, protected :: &
-    thermal_type                                                                                    !< thermal transport model
-  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
-    damage_type                                                                                     !< nonlocal damage model
-  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
-    homogenization_type                                                                             !< type of each homogenization
-
   integer, public, protected :: &
     homogenization_maxNconstituents                                                                 !< max number of grains in any USED homogenization
-
-  integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Nconstituents, &                                                                 !< number of grains in each homogenization
-    homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
-    thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
-    damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
-
-  real(pReal), dimension(:), allocatable, public, protected :: &
-    thermal_initialT                                                                                !< initial temperature per each homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt, &                                                                    !< homogenization ID of each element
@@ -63,49 +39,27 @@ module material
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
-  type(tState),        allocatable, dimension(:), public :: &
-    homogState, &
-    damageState_h
-
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
 
-  type(group_float),  allocatable, dimension(:), public :: &
-    damage                                                                                       !< damage field
-
   public :: &
-    material_init, &
-    THERMAL_ISOTHERMAL_ID, &
-    THERMAL_CONDUCTION_ID, &
-    DAMAGE_NONE_ID, &
-    DAMAGE_NONLOCAL_ID, &
-    HOMOGENIZATION_NONE_ID, &
-    HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_RGC_ID
+    material_init
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief parses material configuration file
+!> @brief Parse material configuration file (material.yaml).
 !--------------------------------------------------------------------------------------------------
 subroutine material_init(restart)
 
   logical, intent(in) :: restart
+
 
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
 
   call material_parseMaterial
   print*, 'Material parsed'
-
-  call material_parseHomogenization
-  print*, 'Homogenization parsed'
-
-
-  allocate(homogState      (size(material_name_homogenization)))
-  allocate(damageState_h     (size(material_name_homogenization)))
-
-  allocate(damage          (size(material_name_homogenization)))
 
 
   if (.not. restart) then
@@ -117,82 +71,6 @@ subroutine material_init(restart)
 
 end subroutine material_init
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief parses the homogenization part from the material configuration
-! ToDo: This should be done in homogenization
-!--------------------------------------------------------------------------------------------------
-subroutine material_parseHomogenization
-
-  class(tNode), pointer :: &
-    material_homogenization, &
-    homog, &
-    homogMech, &
-    homogThermal, &
-    homogDamage
-
-  integer :: h
-
-  material_homogenization => config_material%get('homogenization')
-
-  allocate(homogenization_type(size(material_name_homogenization)),           source=HOMOGENIZATION_undefined_ID)
-  allocate(thermal_type(size(material_name_homogenization)),                  source=THERMAL_isothermal_ID)
-  allocate(damage_type (size(material_name_homogenization)),                  source=DAMAGE_none_ID)
-  allocate(homogenization_typeInstance(size(material_name_homogenization)),   source=0)
-  allocate(thermal_typeInstance(size(material_name_homogenization)),          source=0)
-  allocate(damage_typeInstance(size(material_name_homogenization)),           source=0)
-  allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
-
-  do h=1, size(material_name_homogenization)
-    homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanics')
-    select case (homogMech%get_asString('type'))
-      case('pass')
-        homogenization_type(h) = HOMOGENIZATION_NONE_ID
-      case('isostrain')
-        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
-      case('RGC')
-        homogenization_type(h) = HOMOGENIZATION_RGC_ID
-      case default
-        call IO_error(500,ext_msg=homogMech%get_asString('type'))
-    end select
-
-    homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
-
-    if(homog%contains('thermal')) then
-      homogThermal => homog%get('thermal')
-        thermal_initialT(h) =  homogThermal%get_asFloat('T_0',defaultVal=300.0_pReal)
-
-        select case (homogThermal%get_asString('type'))
-          case('isothermal')
-            thermal_type(h) = THERMAL_isothermal_ID
-          case('conduction')
-            thermal_type(h) = THERMAL_conduction_ID
-          case default
-            call IO_error(500,ext_msg=homogThermal%get_asString('type'))
-        end select
-    endif
-
-    if(homog%contains('damage')) then
-      homogDamage => homog%get('damage')
-        select case (homogDamage%get_asString('type'))
-          case('none')
-            damage_type(h) = DAMAGE_none_ID
-          case('nonlocal')
-            damage_type(h) = DAMAGE_nonlocal_ID
-          case default
-            call IO_error(500,ext_msg=homogDamage%get_asString('type'))
-        end select
-    endif
-  enddo
-
-  do h=1, size(material_name_homogenization)
-    homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
-    thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
-    damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
-  enddo
-
-end subroutine material_parseHomogenization
 
 
 !--------------------------------------------------------------------------------------------------

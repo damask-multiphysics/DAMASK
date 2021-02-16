@@ -68,12 +68,13 @@ module function plastic_isotropic_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:isotropic init  -+>>>'
-
   myPlasticity = plastic_active('isotropic')
   Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
+  print'(a,i0)', ' # phses: ',Ninstances; flush(IO_STDOUT)
+
 
   print*, 'Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print*, 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
