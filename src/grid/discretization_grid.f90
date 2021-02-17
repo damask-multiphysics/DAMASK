@@ -68,8 +68,11 @@ subroutine discretization_grid_init(restart)
 
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
-  if(worldrank == 0) call readVTR(grid,geomSize,origin,materialAt_global)
-
+  if(worldrank == 0) then
+    call readVTR(grid,geomSize,origin,materialAt_global)
+  else
+    allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
+  endif
 
   call MPI_Bcast(grid,3,MPI_INTEGER,0,PETSC_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
