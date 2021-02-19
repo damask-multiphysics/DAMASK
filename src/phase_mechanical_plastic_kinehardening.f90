@@ -25,8 +25,7 @@ submodule(phase:plastic) kinehardening
       nonSchmid_pos, &
       nonSchmid_neg
     integer :: &
-      sum_N_sl, &                                                                                   !< total number of active slip system
-      of_debug = 0
+      sum_N_sl
     logical :: &
       nonSchmidActive = .false.
     character(len=pStringLen), allocatable, dimension(:) :: &
@@ -62,8 +61,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstances, &
-    p, i, o,  &
+    ph, o,  &
     Nconstituents, &
     sizeState, sizeDeltaState, sizeDotState, &
     startIndex, endIndex
@@ -81,41 +79,32 @@ module function plastic_kinehardening_init() result(myPlasticity)
     pl
 
   myPlasticity = plastic_active('kinehardening')
-  Ninstances = count(myPlasticity)
-  if(Ninstances == 0) return
+  if(count(myPlasticity) == 0) return
 
   print'(/,a)', ' <<<+-  phase:mechanical:plastic:kinehardening init  -+>>>'
-  print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
+  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-
-  allocate(param(Ninstances))
-  allocate(state(Ninstances))
-  allocate(dotState(Ninstances))
-  allocate(deltaState(Ninstances))
 
   phases => config_material%get('phase')
-  i = 0
-  do p = 1, phases%length
-    phase => phases%get(p)
+  allocate(param(phases%length))
+  allocate(state(phases%length))
+  allocate(dotState(phases%length))
+  allocate(deltaState(phases%length))
+
+
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
+
+    associate(prm => param(ph), dot => dotState(ph), dlt => deltaState(ph), stt => state(ph))
+
+    phase => phases%get(ph)
     mech  => phase%get('mechanics')
-    if(.not. myPlasticity(p)) cycle
-    i = i + 1
-    associate(prm => param(i), &
-              dot => dotState(i), &
-              dlt => deltaState(i), &
-              stt => state(i))
     pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
 #else
     prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
-#endif
-
-#ifdef DEBUG
-    if  (p==material_phaseAt(debugConstitutive%grain,debugConstitutive%element)) then
-      prm%of_debug = material_phasememberAt(debugConstitutive%grain,debugConstitutive%ip,debugConstitutive%element)
-    endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -176,55 +165,55 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == p)
-    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl!ToDo: adjust names, ask Philip
-    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names
+    Nconstituents = count(material_phaseAt2 == ph)
+    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
+    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
     sizeState = sizeDotState + sizeDeltaState
 
-    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%crss => plasticState(p)%state   (startIndex:endIndex,:)
+    stt%crss => plasticState(ph)%state   (startIndex:endIndex,:)
     stt%crss = spread(xi_0, 2, Nconstituents)
-    dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    dot%crss => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%crss_back => plasticState(p)%state   (startIndex:endIndex,:)
-    dot%crss_back => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    stt%crss_back => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%crss_back => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
-    dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    stt%accshear => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%accshear => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
-    plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%slipRate => plasticState(ph)%dotState(startIndex:endIndex,:)
 
-    o = plasticState(p)%offsetDeltaState
+    o = plasticState(ph)%offsetDeltaState
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%sense => plasticState(p)%state     (startIndex  :endIndex  ,:)
-    dlt%sense => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+    stt%sense => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%sense => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%chi0 => plasticState(p)%state     (startIndex  :endIndex  ,:)
-    dlt%chi0 => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+    stt%chi0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%chi0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%gamma0 => plasticState(p)%state     (startIndex  :endIndex  ,:)
-    dlt%gamma0 => plasticState(p)%deltaState(startIndex-o:endIndex-o,:)
+    stt%gamma0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%gamma0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
-    plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
+    plasticState(ph)%state0 = plasticState(ph)%state                                                  ! ToDo: this could be done centrally
 
     end associate
 
@@ -256,16 +245,16 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     gdot_pos,gdot_neg, &
     dgdot_dtau_pos,dgdot_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(phase_plasticInstance(ph)))
+  associate(prm => param(ph))
 
-  call kinetics(Mp,phase_plasticInstance(ph),me,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+  call kinetics(Mp,ph,me,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
 
   do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%P(1:3,1:3,i)
@@ -293,14 +282,14 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,me)
 
   real(pReal) :: &
     sumGamma
-  real(pReal), dimension(param(phase_plasticInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     gdot_pos,gdot_neg
 
 
-  associate(prm => param(phase_plasticInstance(ph)), stt => state(phase_plasticInstance(ph)),&
-            dot => dotState(phase_plasticInstance(ph)))
+  associate(prm => param(ph), stt => state(ph),&
+            dot => dotState(ph))
 
-  call kinetics(Mp,phase_plasticInstance(ph),me,gdot_pos,gdot_neg)
+  call kinetics(Mp,ph,me,gdot_pos,gdot_neg)
   dot%accshear(:,me) = abs(gdot_pos+gdot_neg)
   sumGamma = sum(stt%accshear(:,me))
 
@@ -326,32 +315,25 @@ end subroutine plastic_kinehardening_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate (instantaneous) incremental change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_kinehardening_deltaState(Mp,instance,me)
+module subroutine plastic_kinehardening_deltaState(Mp,ph,me)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     gdot_pos,gdot_neg, &
     sense
 
-  associate(prm => param(instance), stt => state(instance), dlt => deltaState(instance))
+  associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-  call kinetics(Mp,instance,me,gdot_pos,gdot_neg)
-  sense = merge(state(instance)%sense(:,me), &                                                      ! keep existing...
+  call kinetics(Mp,ph,me,gdot_pos,gdot_neg)
+  sense = merge(state(ph)%sense(:,me), &                                                            ! keep existing...
                 sign(1.0_pReal,gdot_pos+gdot_neg), &                                                ! ...or have a defined
                 dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                ! current sense of shear direction
 
-#ifdef DEBUG
-  if (debugConstitutive%extensive &
-             .and. (me == prm%of_debug  .or. .not. debugConstitutive%selective)) then
-    print*, '======= kinehardening delta state ======='
-    print*, sense,state(instance)%sense(:,me)
-  endif
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! switch in sense me shear?
@@ -373,14 +355,14 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_kinehardening_results(instance,group)
+module subroutine plastic_kinehardening_results(ph,group)
 
-  integer,          intent(in) :: instance
+  integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
      case('xi')
@@ -415,28 +397,28 @@ end subroutine plastic_kinehardening_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(Mp,instance,me, &
+pure subroutine kinetics(Mp,ph,me, &
                          gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                intent(in) :: &
-    instance, &
+    ph, &
     me
 
-  real(pReal),                  intent(out), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
     gdot_pos, &
     gdot_neg
-  real(pReal),                  intent(out), optional, dimension(param(instance)%sum_N_sl) :: &
+  real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
     dgdot_dtau_pos, &
     dgdot_dtau_neg
 
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau_pos, &
     tau_neg
   integer :: i
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
 
   do i = 1, prm%sum_N_sl
     tau_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,me)
