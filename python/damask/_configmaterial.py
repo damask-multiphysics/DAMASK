@@ -202,7 +202,7 @@ class ConfigMaterial(Config):
         """
         dup = self.copy()
         for i,m in enumerate(dup['material']):
-            if ID and i not in ID: continue
+            if ID is not None and i not in ID: continue
             for c in m['constituents']:
                 if constituent is not None and c not in constituent: continue
                 try:
@@ -226,7 +226,7 @@ class ConfigMaterial(Config):
         """
         dup = self.copy()
         for i,m in enumerate(dup['material']):
-            if ID and i not in ID: continue
+            if ID is not None and i not in ID: continue
             try:
                 m['homogenization'] = mapping[m['homogenization']]
             except KeyError:
