@@ -103,7 +103,6 @@ class ConfigMaterial(Config):
         """Check for completeness."""
         ok = True
         for top_level in ['homogenization','phase','material']:
-            # ToDo: With python 3.8 as prerequisite we can shorten with :=
             ok &= top_level in self
             if top_level not in self: print(f'{top_level} entry missing')
 
