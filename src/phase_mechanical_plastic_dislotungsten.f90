@@ -78,7 +78,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    p, i, &
+    ph, i, &
     Nconstituents, &
     sizeState, sizeDotState, &
     startIndex, endIndex
@@ -114,15 +114,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   allocate(dependentState(phases%length))
 
 
-  do p = 1, phases%length
-    if(.not. myPlasticity(p)) cycle
-    phase => phases%get(p)
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
+
+    associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
+
+    phase => phases%get(ph)
     mech  => phase%get('mechanics')
-    i = p
-    associate(prm => param(i), &
-              dot => dotState(i), &
-              stt => state(i), &
-              dst => dependentState(i))
     pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
@@ -132,7 +130,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 #endif
 
     ! This data is read in already in lattice
-    prm%mu = lattice_mu(p)
+    prm%mu = lattice_mu(ph)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -222,41 +220,41 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == p)
+    Nconstituents = count(material_phaseAt2 == ph)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
-    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%rho_mob => plasticState(p)%state(startIndex:endIndex,:)
+    stt%rho_mob => plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_mob =  spread(rho_mob_0,2,Nconstituents)
-    dot%rho_mob => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
-    if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
+    dot%rho_mob => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%rho_dip => plasticState(p)%state(startIndex:endIndex,:)
+    stt%rho_dip => plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_dip =  spread(rho_dip_0,2,Nconstituents)
-    dot%rho_dip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    dot%rho_dip => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%gamma_sl => plasticState(p)%state(startIndex:endIndex,:)
-    dot%gamma_sl => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = 1.0e-2_pReal
+    stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
+    dot%gamma_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = 1.0e-2_pReal
     ! global alias
-    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%slipRate        => plasticState(ph)%dotState(startIndex:endIndex,:)
 
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nconstituents),         source=0.0_pReal)
     allocate(dst%threshold_stress(prm%sum_N_sl,Nconstituents),  source=0.0_pReal)
 
-    plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
+    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
 
     end associate
 

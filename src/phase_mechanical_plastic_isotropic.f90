@@ -22,8 +22,6 @@ submodule(phase:plastic) isotropic
       c_4, &
       c_3, &
       c_2
-    integer :: &
-      of_debug = 0
     logical :: &
       dilatation
     character(len=pStringLen), allocatable, dimension(:) :: &
@@ -53,8 +51,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    p, &
-    i, &
+    ph, &
     Nconstituents, &
     sizeState, sizeDotState
   real(pReal) :: &
@@ -82,26 +79,19 @@ module function plastic_isotropic_init() result(myPlasticity)
   allocate(state(phases%length))
   allocate(dotState(phases%length))
 
-  do p = 1, phases%length
-    if(.not. myPlasticity(p)) cycle
-    phase => phases%get(p)
-    mech  => phase%get('mechanics')
-    i = p
-    associate(prm => param(i), &
-              dot => dotState(i), &
-              stt => state(i))
-    pl  => mech%get('plasticity')
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
 
+    associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
+
+    phase => phases%get(ph)
+    mech  => phase%get('mechanics')
+    pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
 #else
     prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
-#endif
-
-#ifdef DEBUG
-    if  (p==material_phaseAt(debugConstitutive%grain,debugConstitutive%element)) &
-      prm%of_debug = material_phasememberAt(debugConstitutive%grain,debugConstitutive%ip,debugConstitutive%element)
 #endif
 
     xi_0            = pl%get_asFloat('xi_0')
@@ -129,28 +119,28 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == p)
+    Nconstituents = count(material_phaseAt2 == ph)
     sizeDotState = size(['xi   ','gamma'])
     sizeState = sizeDotState
 
-    call phase_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
-    stt%xi  => plasticState(p)%state   (1,:)
+    stt%xi  => plasticState(ph)%state   (1,:)
     stt%xi  =  xi_0
-    dot%xi  => plasticState(p)%dotState(1,:)
-    plasticState(p)%atol(1) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if (plasticState(p)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
+    dot%xi  => plasticState(ph)%dotState(1,:)
+    plasticState(ph)%atol(1) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    if (plasticState(ph)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
 
-    stt%gamma  => plasticState(p)%state   (2,:)
-    dot%gamma  => plasticState(p)%dotState(2,:)
-    plasticState(p)%atol(2) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if (plasticState(p)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
+    stt%gamma  => plasticState(ph)%state   (2,:)
+    dot%gamma  => plasticState(ph)%dotState(2,:)
+    plasticState(ph)%atol(2) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if (plasticState(ph)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
-    plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
+    plasticState(ph)%slipRate => plasticState(ph)%dotState(2:2,:)
 
-    plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
+    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
 
     end associate
 
@@ -240,13 +230,11 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,me)
 
   tr=math_trace33(math_spherical33(Mi))
 
-  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                 ! no stress or J2 plasticity --> Li and its derivative are zero
+  if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
        * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(me))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
-
     forall (k=1:3,l=1:3,m=1:3,n=1:3) dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
-
   else
     Li      = 0.0_pReal
     dLi_dMi = 0.0_pReal
