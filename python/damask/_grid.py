@@ -760,7 +760,7 @@ class Grid:
 
         """
         if fill is None: fill = np.nanmax(self.material) + 1
-        dtype = float if np.isnan(fill) or int(fill) != fill or self.material.dtype==np.float else int
+        dtype = float if isinstance(fill,float) or self.material.dtype in np.sctypes['float'] else int
 
         material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')

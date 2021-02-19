@@ -15,7 +15,7 @@ setuptools.setup(
     url='https://damask.mpie.de',
     packages=setuptools.find_packages(),
     include_package_data=True,
-    python_requires = '>=3.6'
+    python_requires = '>=3.6',
     install_requires = [
         'pandas>=0.24',                                                                             # requires numpy
         'scipy>=1.2',
