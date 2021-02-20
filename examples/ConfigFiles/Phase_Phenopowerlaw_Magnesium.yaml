@@ -3,6 +3,7 @@ Magnesium:
   lattice: hP
   c/a: 1.62350
   mechanics:
+    output: [F, P, F_e, F_p, L_p, O]
     elasticity: {C_11: 59.3e9, C_12: 25.7e9, C_13: 21.4e9, C_33: 61.5e9, C_44: 16.4e9, type: hooke}
     plasticity:
       N_sl: [3, 3, 0, 6, 0, 6]

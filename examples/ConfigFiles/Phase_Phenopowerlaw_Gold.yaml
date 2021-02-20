@@ -1,6 +1,7 @@
 Gold:
   lattice: cF
   mechanics:
+    output: [F, P, F_e, F_p, L_p, O]
     elasticity: {C_11: 191.0e9, C_12: 162.0e9, C_44: 42.20e9, type: hooke}
     plasticity:
       N_sl: [12]
