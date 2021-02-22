@@ -1,3 +1,5 @@
+import inspect
+
 import numpy as np
 
 from . import Rotation
@@ -7,7 +9,7 @@ from . import tensor
 _parameter_doc = \
        """lattice : str
             Either a crystal family  out of [triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic]
-            or a     Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
+            or     a Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
             When specifying a Bravais lattice, additional lattice parameters might be required:
         a : float, optional
             Length of lattice parameter "a".
@@ -107,8 +109,7 @@ class Orientation(Rotation):
                  lattice = None,
                  a = None,b = None,c = None,
                  alpha = None,beta = None,gamma = None,
-                 degrees = False,
-                 **kwargs):
+                 degrees = False):
         """
         Initialize orientation object.
 
@@ -263,70 +264,112 @@ class Orientation(Rotation):
             raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
+    @staticmethod
+    def _split_kwargs(kwargs,target):
+        """
+        Separate keyword arguments in 'kwargs' targeted at 'target' from general keyword arguments of Orientation objects.
+
+        Parameters
+        ----------
+        kwargs : dictionary
+            Contains all **kwargs.
+        target: method
+            Function to scan for kwarg signature.
+
+        Returns
+        -------
+        rot_kwargs: dictionary
+            Valid keyword arguments of 'target' function of Rotation class.
+        ori_kwargs: dictionary
+            Valid keyword arguments of Orientation object.
+
+        """
+        kws = ()
+        for t in (target,Orientation.__init__):
+            kws += ({key: kwargs[key] for key in set(inspect.signature(t).parameters) & set(kwargs)},)
+
+        invalid_keys = set(kwargs)-(set(kws[0])|set(kws[1]))
+        if invalid_keys:
+            raise TypeError(f"{inspect.stack()[1][3]}() got an unexpected keyword argument '{invalid_keys.pop()}'")
+
+        return kws
+
+
     @classmethod
     @util.extended_docstring(Rotation.from_random,_parameter_doc)
     def from_random(cls,**kwargs):
-        return cls(rotation=Rotation.from_random(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
+        return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
     def from_quaternion(cls,**kwargs):
-        return cls(rotation=Rotation.from_quaternion(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
+        return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
     def from_Euler_angles(cls,**kwargs):
-        return cls(rotation=Rotation.from_Euler_angles(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
+        return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
     def from_axis_angle(cls,**kwargs):
-        return cls(rotation=Rotation.from_axis_angle(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
+        return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_basis,_parameter_doc)
     def from_basis(cls,**kwargs):
-        return cls(rotation=Rotation.from_basis(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
+        return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
     def from_matrix(cls,**kwargs):
-        return cls(rotation=Rotation.from_matrix(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
+        return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
     def from_Rodrigues_vector(cls,**kwargs):
-        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
+        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
     def from_homochoric(cls,**kwargs):
-        return cls(rotation=Rotation.from_homochoric(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
+        return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
     def from_cubochoric(cls,**kwargs):
-        return cls(rotation=Rotation.from_cubochoric(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
+        return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
     def from_spherical_component(cls,**kwargs):
-        return cls(rotation=Rotation.from_spherical_component(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
+        return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
     def from_fiber_component(cls,**kwargs):
-        return cls(rotation=Rotation.from_fiber_component(**kwargs),**kwargs)
+        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
+        return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
@@ -481,26 +524,26 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))
+        rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))*(1.-1.e-9)
 
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
             if   self.family == 'cubic':
                 return (np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
-                                   (1. >= np.sum(rho_abs,axis=-1))).astype(np.bool)
+                                   (1. >= np.sum(rho_abs,axis=-1))).astype(bool)
             elif self.family == 'hexagonal':
                 return (np.prod(1.  >= rho_abs,axis=-1) *
                                 (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
                                 (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
-                                (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(np.bool)
+                                (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(bool)
             elif self.family == 'tetragonal':
                 return (np.prod(1.  >= rho_abs[...,:2],axis=-1) *
                         (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
-                        (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(np.bool)
+                        (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(bool)
             elif self.family == 'orthorhombic':
-                return (np.prod(1. >= rho_abs,axis=-1)).astype(np.bool)
+                return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
             elif self.family == 'monoclinic':
-                return (1. >= rho_abs[...,1]).astype(np.bool)
+                return (1. >= rho_abs[...,1]).astype(bool)
             else:
                 return np.all(np.isfinite(rho_abs),axis=-1)
 
@@ -524,28 +567,28 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho = self.as_Rodrigues_vector(compact=True)
+        rho = self.as_Rodrigues_vector(compact=True)*(1.0-1.0e-9)
 
         with np.errstate(invalid='ignore'):
             if   self.family == 'cubic':
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= rho[...,2]) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'hexagonal':
                 return ((rho[...,0] >= rho[...,1]*np.sqrt(3)) &
                         (rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'tetragonal':
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'orthorhombic':
                 return ((rho[...,0] >= 0) &
                         (rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             elif self.family == 'monoclinic':
                 return ((rho[...,1] >= 0) &
-                        (rho[...,2] >= 0)).astype(np.bool)
+                        (rho[...,2] >= 0)).astype(bool)
             else:
                 return np.ones_like(rho[...,0],dtype=bool)
 

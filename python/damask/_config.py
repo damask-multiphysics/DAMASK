@@ -75,7 +75,7 @@ class Config(dict):
 
         """
         try:
-            fhandle = open(fname,'w')
+            fhandle = open(fname,'w',newline='\n')
         except TypeError:
             fhandle = fname
 

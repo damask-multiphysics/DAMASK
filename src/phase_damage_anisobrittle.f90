@@ -6,10 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule (phase:damagee) anisobrittle
 
-  integer,                       dimension(:),           allocatable :: &
-    source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
-    source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
-
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       dot_o, &                                                                                      !< opening rate of cleavage planes
@@ -35,42 +31,38 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function anisobrittle_init(source_length) result(mySources)
+module function anisobrittle_init() result(mySources)
 
-  integer, intent(in)                  :: source_length
-  logical, dimension(:,:), allocatable :: mySources
+  logical, dimension(:), allocatable :: mySources
 
   class(tNode), pointer :: &
     phases, &
     phase, &
     sources, &
     src
-  integer :: Ninstances,sourceOffset,Nconstituents,p
+  integer :: Nconstituents,p
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
-  print'(/,a)', ' <<<+-  phase:damage:anisobrittle init  -+>>>'
 
-  mySources = source_active('damage_anisoBrittle',source_length)
-  Ninstances = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  mySources = source_active('anisobrittle')
+  if(count(mySources) == 0) return
+
+  print'(/,a)', ' <<<+-  phase:damage:anisobrittle init  -+>>>'
+  print'(a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
-  allocate(param(Ninstances))
-  allocate(source_damage_anisoBrittle_offset  (phases%length), source=0)
-  allocate(source_damage_anisoBrittle_instance(phases%length), source=0)
+  allocate(param(phases%length))
+
 
   do p = 1, phases%length
+    if(mySources(p)) then
     phase => phases%get(p)
-    if(any(mySources(:,p))) source_damage_anisoBrittle_instance(p) = count(mySources(:,1:p))
-    if(count(mySources(:,p)) == 0) cycle
-    sources => phase%get('source')
-    do sourceOffset = 1, sources%length
-      if(mySources(sourceOffset,p)) then
-        source_damage_anisoBrittle_offset(p) = sourceOffset
-        associate(prm  => param(source_damage_anisoBrittle_instance(p)))
-        src => sources%get(sourceOffset)
+    sources => phase%get('damage')
+
+        associate(prm  => param(p))
+        src => sources%get(1)
 
         N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
@@ -101,9 +93,9 @@ module function anisobrittle_init(source_length) result(mySources)
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
         Nconstituents = count(material_phaseAt==p) * discretization_nIPs
-        call constitutive_allocateState(damageState(p)%p(sourceOffset),Nconstituents,1,1,0)
-        damageState(p)%p(sourceOffset)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
+        call phase_allocateState(damageState(p),Nconstituents,1,1,0)
+        damageState(p)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 
         end associate
 
@@ -111,7 +103,7 @@ module function anisobrittle_init(source_length) result(mySources)
 !  exit if any parameter is out of range
         if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
       endif
-    enddo
+
   enddo
 
 end function anisobrittle_init
@@ -120,18 +112,14 @@ end function anisobrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_dotState(S, co, ip, el)
+module subroutine anisobrittle_dotState(S, ph,me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph,me
   real(pReal),  intent(in), dimension(3,3) :: &
     S
 
   integer :: &
-    ph, &
-    me, &
     sourceOffset, &
     damageOffset, &
     homog, &
@@ -139,28 +127,22 @@ module subroutine anisobrittle_dotState(S, co, ip, el)
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
-  ph = material_phaseAt(co,el)
-  me = material_phasememberAt(co,ip,el)
-  sourceOffset = source_damage_anisoBrittle_offset(ph)
-  homog = material_homogenizationAt(el)
-  damageOffset = material_homogenizationMemberAt(ip,el)
 
-  associate(prm => param(source_damage_anisoBrittle_instance(ph)))
-  damageState(ph)%p(sourceOffset)%dotState(1,me) = 0.0_pReal
-  do i = 1, prm%sum_N_cl
-    traction_d    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
-    traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
-    traction_n    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
+  associate(prm => param(ph))
+    damageState(ph)%dotState(1,me) = 0.0_pReal
+    do i = 1, prm%sum_N_cl
+      traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
+      traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
+      traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-    traction_crit = prm%g_crit(i)*damage(homog)%p(damageOffset)**2.0_pReal
+      traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
 
-    damageState(ph)%p(sourceOffset)%dotState(1,me) &
-    = damageState(ph)%p(sourceOffset)%dotState(1,me) &
-    + prm%dot_o / prm%s_crit(i) &
-      * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
-         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
-         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%q)
-  enddo
+      damageState(ph)%dotState(1,me) = damageState(ph)%dotState(1,me) &
+          + prm%dot_o / prm%s_crit(i) &
+            * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
+               (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
+               (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%q)
+    enddo
   end associate
 
 end subroutine anisobrittle_dotState
@@ -169,28 +151,24 @@ end subroutine anisobrittle_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
 
   integer, intent(in) :: &
-    phase, &
-    constituent
+    ph, &
+    me
   real(pReal),  intent(in) :: &
     phi
   real(pReal),  intent(out) :: &
     localphiDot, &
     dLocalphiDot_dPhi
 
-  integer :: &
-    sourceOffset
 
-  sourceOffset = source_damage_anisoBrittle_offset(phase)
-
-  dLocalphiDot_dPhi = -damageState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
 
-end subroutine source_damage_anisoBrittle_getRateAndItsTangent
+end subroutine anisobrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -203,16 +181,78 @@ module subroutine anisobrittle_results(phase,group)
 
   integer :: o
 
-  associate(prm => param(source_damage_anisoBrittle_instance(phase)), &
-            stt => damageState(phase)%p(source_damage_anisoBrittle_offset(phase))%state)
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case ('f_phi')
-        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
-    end select
-  enddo outputsLoop
+
+  associate(prm => param(phase), stt => damageState(phase)%state)
+    outputsLoop: do o = 1,size(prm%output)
+      select case(trim(prm%output(o)))
+        case ('f_phi')
+          call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
+      end select
+    enddo outputsLoop
   end associate
 
 end subroutine anisobrittle_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the velocity gradient
+!--------------------------------------------------------------------------------------------------
+module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+
+  integer, intent(in) :: &
+    ph,me
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    S
+  real(pReal),   intent(out), dimension(3,3) :: &
+    Ld                                                                                              !< damage velocity gradient
+  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+    dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
+
+  integer :: &
+    i, k, l, m, n
+  real(pReal) :: &
+    traction_d, traction_t, traction_n, traction_crit, &
+    udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
+
+
+  Ld = 0.0_pReal
+  dLd_dTstar = 0.0_pReal
+  associate(prm => param(ph))
+  do i = 1,prm%sum_N_cl
+    traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
+
+    traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
+    if (abs(traction_d) > traction_crit + tol_math_check) then
+      udotd = sign(1.0_pReal,traction_d)* prm%dot_o * ((abs(traction_d) - traction_crit)/traction_crit)**prm%q
+      Ld = Ld + udotd*prm%cleavage_systems(1:3,1:3,1,i)
+      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%q / (abs(traction_d) - traction_crit)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                            + dudotd_dt*prm%cleavage_systems(k,l,1,i) * prm%cleavage_systems(m,n,1,i)
+    endif
+
+    traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
+    if (abs(traction_t) > traction_crit + tol_math_check) then
+      udott = sign(1.0_pReal,traction_t)* prm%dot_o * ((abs(traction_t) - traction_crit)/traction_crit)**prm%q
+      Ld = Ld + udott*prm%cleavage_systems(1:3,1:3,2,i)
+      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%q / (abs(traction_t) - traction_crit)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                            + dudott_dt*prm%cleavage_systems(k,l,2,i) * prm%cleavage_systems(m,n,2,i)
+    endif
+
+    traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
+    if (abs(traction_n) > traction_crit + tol_math_check) then
+      udotn = sign(1.0_pReal,traction_n)* prm%dot_o * ((abs(traction_n) - traction_crit)/traction_crit)**prm%q
+      Ld = Ld + udotn*prm%cleavage_systems(1:3,1:3,3,i)
+      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%q / (abs(traction_n) - traction_crit)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                            + dudotn_dt*prm%cleavage_systems(k,l,3,i) * prm%cleavage_systems(m,n,3,i)
+    endif
+  enddo
+  end associate
+
+end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
 end submodule anisobrittle

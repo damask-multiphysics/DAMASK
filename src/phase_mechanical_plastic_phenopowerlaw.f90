@@ -70,8 +70,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstances, &
-    p, i, &
+    ph, i, &
     Nconstituents, &
     sizeState, sizeDotState, &
     startIndex, endIndex
@@ -89,27 +88,26 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     mech, &
     pl
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:phenopowerlaw init  -+>>>'
 
   myPlasticity = plastic_active('phenopowerlaw')
-  Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
+  if(count(myPlasticity) == 0) return
 
-  allocate(param(Ninstances))
-  allocate(state(Ninstances))
-  allocate(dotState(Ninstances))
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:phenopowerlaw init  -+>>>'
+  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+
 
   phases => config_material%get('phase')
-  i = 0
-  do p = 1, phases%length
-    phase => phases%get(p)
+  allocate(param(phases%length))
+  allocate(state(phases%length))
+  allocate(dotState(phases%length))
+
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
+
+    associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
+
+    phase => phases%get(ph)
     mech  => phase%get('mechanics')
-    if(.not. myPlasticity(p)) cycle
-    i = i + 1
-    associate(prm => param(i), &
-              dot => dotState(i), &
-              stt => state(i))
     pl  => mech%get('plasticity')
 
 !--------------------------------------------------------------------------------------------------
@@ -136,7 +134,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       xi_0_sl             = pl%get_asFloats('xi_0_sl',   requiredSize=size(N_sl))
       prm%xi_inf_sl       = pl%get_asFloats('xi_inf_sl', requiredSize=size(N_sl))
       prm%h_int           = pl%get_asFloats('h_int',     requiredSize=size(N_sl), &
-                                               defaultVal=[(0.0_pReal,i=1,size(N_sl))])
+                                            defaultVal=[(0.0_pReal,i=1,size(N_sl))])
 
       prm%dot_gamma_0_sl  = pl%get_asFloat('dot_gamma_0_sl')
       prm%n_sl            = pl%get_asFloat('n_sl')
@@ -225,49 +223,49 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == p)
+    Nconstituents = count(material_phaseAt2 == ph)
     sizeDotState = size(['xi_sl   ','gamma_sl']) * prm%sum_N_sl &
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
 
-    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%xi_slip => plasticState(p)%state   (startIndex:endIndex,:)
+    stt%xi_slip => plasticState(ph)%state   (startIndex:endIndex,:)
     stt%xi_slip =  spread(xi_0_sl, 2, Nconstituents)
-    dot%xi_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    dot%xi_slip => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
-    stt%xi_twin => plasticState(p)%state   (startIndex:endIndex,:)
+    stt%xi_twin => plasticState(ph)%state   (startIndex:endIndex,:)
     stt%xi_twin =  spread(xi_0_tw, 2, Nconstituents)
-    dot%xi_twin => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    dot%xi_twin => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%gamma_slip => plasticState(p)%state   (startIndex:endIndex,:)
-    dot%gamma_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    stt%gamma_slip => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%gamma_slip => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
-    plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%slipRate => plasticState(ph)%dotState(startIndex:endIndex,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
-    stt%gamma_twin => plasticState(p)%state   (startIndex:endIndex,:)
-    dot%gamma_twin => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    stt%gamma_twin => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%gamma_twin => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
-    plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
+    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
 
     end associate
 
@@ -300,18 +298,18 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     gdot_slip_pos,gdot_slip_neg, &
     dgdot_dtauslip_pos,dgdot_dtauslip_neg
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_tw) :: &
+  real(pReal), dimension(param(ph)%sum_N_tw) :: &
     gdot_twin,dgdot_dtautwin
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  associate(prm => param(phase_plasticityInstance(ph)))
+  associate(prm => param(ph))
 
-  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+  call kinetics_slip(Mp,ph,me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
   slipSystems: do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -320,7 +318,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
                        + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,gdot_twin,dgdot_dtautwin)
+  call kinetics_twin(Mp,ph,me,gdot_twin,dgdot_dtautwin)
   twinSystems: do i = 1, prm%sum_N_tw
     Lp = Lp + gdot_twin(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -348,12 +346,12 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
     c_SlipSlip,c_TwinSlip,c_TwinTwin, &
     xi_slip_sat_offset,&
     sumGamma,sumF
-  real(pReal), dimension(param(phase_plasticityInstance(ph))%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     left_SlipSlip,right_SlipSlip, &
     gdot_slip_pos,gdot_slip_neg
 
-  associate(prm => param(phase_plasticityInstance(ph)), stt => state(phase_plasticityInstance(ph)), &
-  dot => dotState(phase_plasticityInstance(ph)))
+  associate(prm => param(ph), stt => state(ph), &
+  dot => dotState(ph))
 
   sumGamma = sum(stt%gamma_slip(:,me))
   sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)
@@ -373,9 +371,9 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
-  call kinetics_slip(Mp,phase_plasticityInstance(ph),me,gdot_slip_pos,gdot_slip_neg)
+  call kinetics_slip(Mp,ph,me,gdot_slip_pos,gdot_slip_neg)
   dot%gamma_slip(:,me) = abs(gdot_slip_pos+gdot_slip_neg)
-  call kinetics_twin(Mp,phase_plasticityInstance(ph),me,dot%gamma_twin(:,me))
+  call kinetics_twin(Mp,ph,me,dot%gamma_twin(:,me))
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
@@ -393,14 +391,14 @@ end subroutine phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_phenopowerlaw_results(instance,group)
+module subroutine plastic_phenopowerlaw_results(ph,group)
 
-  integer,          intent(in) :: instance
+  integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
   integer :: o
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
 
@@ -432,28 +430,28 @@ end subroutine plastic_phenopowerlaw_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_slip(Mp,instance,me, &
+pure subroutine kinetics_slip(Mp,ph,me, &
                               gdot_slip_pos,gdot_slip_neg,dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
-  real(pReal),                  intent(out), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
     gdot_slip_pos, &
     gdot_slip_neg
-  real(pReal),                  intent(out), optional, dimension(param(instance)%sum_N_sl) :: &
+  real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
     dgdot_dtau_slip_pos, &
     dgdot_dtau_slip_neg
 
-  real(pReal), dimension(param(instance)%sum_N_sl) :: &
+  real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau_slip_pos, &
     tau_slip_neg
   integer :: i
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
 
   do i = 1, prm%sum_N_sl
     tau_slip_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i))
@@ -501,25 +499,25 @@ end subroutine kinetics_slip
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_twin(Mp,instance,me,&
+pure subroutine kinetics_twin(Mp,ph,me,&
                               gdot_twin,dgdot_dtau_twin)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
-    instance, &
+    ph, &
     me
 
-  real(pReal), dimension(param(instance)%sum_N_tw), intent(out) :: &
+  real(pReal), dimension(param(ph)%sum_N_tw), intent(out) :: &
     gdot_twin
-  real(pReal), dimension(param(instance)%sum_N_tw), intent(out), optional :: &
+  real(pReal), dimension(param(ph)%sum_N_tw), intent(out), optional :: &
     dgdot_dtau_twin
 
-  real(pReal), dimension(param(instance)%sum_N_tw) :: &
+  real(pReal), dimension(param(ph)%sum_N_tw) :: &
     tau_twin
   integer :: i
 
-  associate(prm => param(instance), stt => state(instance))
+  associate(prm => param(ph), stt => state(ph))
 
   do i = 1, prm%sum_N_tw
     tau_twin(i)  = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))

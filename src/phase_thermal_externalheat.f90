@@ -8,7 +8,7 @@ submodule(phase:thermal) externalheat
 
 
   integer,           dimension(:),   allocatable :: &
-    source_thermal_externalheat_offset                                                           !< which source is my current thermal dissipation mechanism?
+    source_thermal_externalheat_offset                                                              !< which source is my current thermal dissipation mechanism?
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal), dimension(:), allocatable :: &
@@ -38,15 +38,14 @@ module function externalheat_init(source_length) result(mySources)
     phase, &
     sources, thermal, &
     src
-  integer :: Ninstances,so,Nconstituents,ph
+  integer :: so,Nconstituents,ph
 
-  print'(/,a)', ' <<<+-  phase:thermal:externalheat init  -+>>>'
 
   mySources = thermal_active('externalheat',source_length)
+  if(count(mySources) == 0) return
+  print'(/,a)', ' <<<+-  phase:thermal:externalheat init  -+>>>'
+  print'(a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
-  Ninstances = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
@@ -69,7 +68,7 @@ module function externalheat_init(source_length) result(mySources)
           prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
 
           Nconstituents = count(material_phaseAt2 == ph)
-          call constitutive_allocateState(thermalState(ph)%p(so),Nconstituents,1,1,0)
+          call phase_allocateState(thermalState(ph)%p(so),Nconstituents,1,1,0)
         end associate
       endif
     enddo

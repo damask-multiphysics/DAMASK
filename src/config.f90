@@ -5,16 +5,10 @@
 !! precedence over material.yaml.
 !--------------------------------------------------------------------------------------------------
 module config
-  use prec
-  use DAMASK_interface
   use IO
   use YAML_parse
   use YAML_types
 
-#ifdef PETSc
-#include <petsc/finclude/petscsys.h>
-   use petscsys
-#endif
 
   implicit none
   private
@@ -50,17 +44,12 @@ end subroutine config_init
 subroutine parse_material
 
   logical :: fileExists
-  character(len=:), allocatable :: fname
 
-  fname = getSolverJobName()//'.yaml'
-  inquire(file=fname,exist=fileExists)
-  if(.not. fileExists) then
-    fname = 'material.yaml'
-    inquire(file=fname,exist=fileExists)
-    if(.not. fileExists) call IO_error(100,ext_msg=fname)
-  endif
-  print*, 'reading '//fname; flush(IO_STDOUT)
-  config_material => YAML_parse_file(fname)
+
+  inquire(file='material.yaml',exist=fileExists)
+  if(.not. fileExists) call IO_error(100,ext_msg='material.yaml')
+  print*, 'reading material.yaml'; flush(IO_STDOUT)
+  config_material => YAML_parse_file('material.yaml')
 
 end subroutine parse_material
 
@@ -71,6 +60,7 @@ end subroutine parse_material
 subroutine parse_numerics
 
   logical :: fexist
+
 
   config_numerics => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
@@ -88,6 +78,7 @@ end subroutine parse_numerics
 subroutine parse_debug
 
   logical :: fexist
+
 
   config_debug => emptyDict
   inquire(file='debug.yaml', exist=fexist)

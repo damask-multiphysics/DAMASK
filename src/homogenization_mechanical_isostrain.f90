@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:mechanics) isostrain
+submodule(homogenization:mechanical) isostrain
 
   enum, bind(c); enumerator :: &
     parallel_ID, &
@@ -26,7 +26,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_isostrain_init
+module subroutine mechanical_isostrain_init
 
   integer :: &
     Ninstances, &
@@ -37,7 +37,7 @@ module subroutine mech_isostrain_init
     homog, &
     homogMech
 
-  print'(/,a)', ' <<<+-  homogenization:mechanics:isostrain init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanical:isostrain init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
@@ -58,7 +58,7 @@ module subroutine mech_isostrain_init
       case ('avg')
         prm%mapping = average_ID
       case default
-        call IO_error(211,ext_msg='sum'//' (mech_isostrain)')
+        call IO_error(211,ext_msg='sum'//' (mechanical_isostrain)')
     end select
 
     Nmaterialpoints = count(material_homogenizationAt == h)
@@ -70,13 +70,13 @@ module subroutine mech_isostrain_init
 
   enddo
 
-end subroutine mech_isostrain_init
+end subroutine mechanical_isostrain_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_isostrain_partitionDeformation(F,avgF)
+module subroutine mechanical_isostrain_partitionDeformation(F,avgF)
 
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
 
@@ -84,13 +84,13 @@ module subroutine mech_isostrain_partitionDeformation(F,avgF)
 
   F = spread(avgF,3,size(F,3))
 
-end subroutine mech_isostrain_partitionDeformation
+end subroutine mechanical_isostrain_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
 
   real(pReal),   dimension (3,3),       intent(out) :: avgP                                         !< average stress at material point
   real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                   !< average stiffness at material point
@@ -112,6 +112,6 @@ module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dP
 
   end associate
 
-end subroutine mech_isostrain_averageStressAndItsTangent
+end subroutine mechanical_isostrain_averageStressAndItsTangent
 
 end submodule isostrain

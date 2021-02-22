@@ -42,7 +42,7 @@ class TestConfigMaterial:
 
     def test_invalid_fraction(self,ref_path):
         material_config = ConfigMaterial.load(ref_path/'material.yaml')
-        material_config['material'][0]['constituents'][0]['fraction']=.9
+        material_config['material'][0]['constituents'][0]['v']=.9
         assert not material_config.is_valid
 
     @pytest.mark.parametrize('item',['homogenization','phase','material'])

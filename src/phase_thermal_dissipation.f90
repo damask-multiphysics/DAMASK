@@ -31,15 +31,14 @@ module function dissipation_init(source_length) result(mySources)
     phase, &
     sources, thermal, &
     src
-  integer :: Ninstances,so,Nconstituents,ph
+  integer :: so,Nconstituents,ph
 
-  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
 
   mySources = thermal_active('dissipation',source_length)
+  if(count(mySources) == 0) return
+  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
+  print'(a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
-  Ninstances = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
@@ -56,7 +55,7 @@ module function dissipation_init(source_length) result(mySources)
 
           prm%kappa = src%get_asFloat('kappa')
           Nconstituents = count(material_phaseAt2 == ph)
-          call constitutive_allocateState(thermalState(ph)%p(so),Nconstituents,0,0,0)
+          call phase_allocateState(thermalState(ph)%p(so),Nconstituents,0,0,0)
 
         end associate
       endif
@@ -78,7 +77,7 @@ module subroutine dissipation_getRate(TDot, ph,me)
 
 
   associate(prm => param(ph))
-    TDot = prm%kappa*sum(abs(mech_S(ph,me)*mech_L_p(ph,me)))
+    TDot = prm%kappa*sum(abs(mechanical_S(ph,me)*mechanical_L_p(ph,me)))
   end associate
 
 end subroutine dissipation_getRate

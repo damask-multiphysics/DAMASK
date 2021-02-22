@@ -58,32 +58,28 @@ module phase
   type(tDebugOptions) :: debugCrystallite
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
-    thermal_Nsources, &
-    phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
-    phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
-    phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
-    phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
-    phase_elasticityInstance                                                                        !< instance of particular elasticity of each phase
+    phase_elasticityInstance, &
+    phase_NstiffnessDegradations
 
   logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
 
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
-  type(tSourceState),  allocatable, dimension(:), public :: &
-    damageState, thermalState
+  type(tState),  allocatable, dimension(:), public :: &
+    damageState
 
 
   integer, public, protected :: &
-    constitutive_plasticity_maxSizeDotState, &
-    constitutive_source_maxSizeDotState
+    phase_plasticity_maxSizeDotState, &
+    phase_source_maxSizeDotState
 
   interface
 
 ! == cleaned:begin =================================================================================
-    module subroutine mech_init(phases)
+    module subroutine mechanical_init(phases)
       class(tNode), pointer :: phases
-    end subroutine mech_init
+    end subroutine mechanical_init
 
     module subroutine damage_init
     end subroutine damage_init
@@ -93,83 +89,83 @@ module phase
     end subroutine thermal_init
 
 
-    module subroutine mech_results(group,ph)
+    module subroutine mechanical_results(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine mech_results
+    end subroutine mechanical_results
 
     module subroutine damage_results(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
     end subroutine damage_results
 
-    module subroutine mech_windForward(ph,me)
+    module subroutine mechanical_windForward(ph,me)
       integer, intent(in) :: ph, me
-    end subroutine mech_windForward
+    end subroutine mechanical_windForward
 
 
-    module subroutine mech_forward()
-    end subroutine mech_forward
+    module subroutine mechanical_forward()
+    end subroutine mechanical_forward
 
     module subroutine thermal_forward()
     end subroutine thermal_forward
 
 
-    module subroutine mech_restore(ce,includeL)
+    module subroutine mechanical_restore(ce,includeL)
       integer, intent(in) :: ce
       logical, intent(in) :: includeL
-    end subroutine mech_restore
+    end subroutine mechanical_restore
 
 
-    module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
+    module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
       real(pReal), intent(in) :: dt
       integer, intent(in) :: &
         co, &                                                                                       !< counter in constituent loop
         ip, &                                                                                       !< counter in integration point loop
         el                                                                                          !< counter in element loop
       real(pReal), dimension(3,3,3,3) :: dPdF
-    end function constitutive_mech_dPdF
+    end function phase_mechanical_dPdF
 
-    module subroutine mech_restartWrite(groupHandle,ph)
+    module subroutine mechanical_restartWrite(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
-    end subroutine mech_restartWrite
+    end subroutine mechanical_restartWrite
 
-    module subroutine mech_restartRead(groupHandle,ph)
+    module subroutine mechanical_restartRead(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
-    end subroutine mech_restartRead
+    end subroutine mechanical_restartRead
 
 
-    module function mech_S(ph,me) result(S)
+    module function mechanical_S(ph,me) result(S)
       integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: S
-    end function mech_S
+    end function mechanical_S
 
-    module function mech_L_p(ph,me) result(L_p)
+    module function mechanical_L_p(ph,me) result(L_p)
       integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: L_p
-    end function mech_L_p
+    end function mechanical_L_p
 
-    module function constitutive_mech_getF(co,ip,el) result(F)
+    module function phase_mechanical_getF(co,ip,el) result(F)
       integer, intent(in) :: co, ip, el
       real(pReal), dimension(3,3) :: F
-    end function constitutive_mech_getF
+    end function phase_mechanical_getF
 
-    module function mech_F_e(ph,me) result(F_e)
+    module function mechanical_F_e(ph,me) result(F_e)
       integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: F_e
-    end function mech_F_e
+    end function mechanical_F_e
 
-    module function constitutive_mech_getP(co,ip,el) result(P)
+    module function phase_mechanical_getP(co,ip,el) result(P)
       integer, intent(in) :: co, ip, el
       real(pReal), dimension(3,3) :: P
-    end function constitutive_mech_getP
+    end function phase_mechanical_getP
 
-    module function constitutive_damage_get_phi(co,ip,el) result(phi)
+    module function phase_damage_get_phi(co,ip,el) result(phi)
       integer, intent(in) :: co, ip, el
       real(pReal) :: phi
-    end function constitutive_damage_get_phi
+    end function phase_damage_get_phi
 
     module function thermal_T(ph,me) result(T)
       integer, intent(in) :: ph,me
@@ -181,21 +177,26 @@ module phase
       real(pReal) :: dot_T
     end function thermal_dot_T
 
+    module function damage_phi(ph,me) result(phi)
+      integer, intent(in) :: ph,me
+      real(pReal) :: phi
+    end function damage_phi
 
-    module subroutine constitutive_mech_setF(F,co,ip,el)
+
+    module subroutine phase_mechanical_setF(F,co,ip,el)
       real(pReal), dimension(3,3), intent(in) :: F
       integer, intent(in) :: co, ip, el
-    end subroutine constitutive_mech_setF
+    end subroutine phase_mechanical_setF
 
-    module subroutine constitutive_thermal_setField(T,dot_T, co,ce)
+    module subroutine phase_thermal_setField(T,dot_T, co,ce)
       real(pReal), intent(in) :: T, dot_T
       integer, intent(in) :: ce, co
-    end subroutine constitutive_thermal_setField
+    end subroutine phase_thermal_setField
 
-    module subroutine constitutive_damage_set_phi(phi,co,ce)
+    module subroutine phase_damage_set_phi(phi,co,ce)
       real(pReal), intent(in) :: phi
       integer, intent(in) :: co, ce
-    end subroutine constitutive_damage_set_phi
+    end subroutine phase_damage_set_phi
 
 ! == cleaned:end ===================================================================================
 
@@ -222,13 +223,13 @@ module phase
       logical :: converged_
     end function crystallite_stress
 
-    module function constitutive_homogenizedC(ph,me) result(C)
+    module function phase_homogenizedC(ph,me) result(C)
       integer, intent(in) :: ph, me
       real(pReal), dimension(6,6) :: C
-    end function constitutive_homogenizedC
+    end function phase_homogenizedC
 
 
-    module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
+    module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
       integer, intent(in) :: &
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
@@ -237,17 +238,17 @@ module phase
       real(pReal), intent(inout) :: &
         phiDot, &
         dPhiDot_dPhi
-    end subroutine constitutive_damage_getRateAndItsTangents
+    end subroutine phase_damage_getRateAndItsTangents
 
-    module subroutine constitutive_thermal_getRate(TDot, ph,me)
+    module subroutine phase_thermal_getRate(TDot, ph,me)
       integer, intent(in) :: ph, me
       real(pReal), intent(out) :: &
         TDot
-    end subroutine constitutive_thermal_getRate
+    end subroutine phase_thermal_getRate
 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
       integer, intent(in) :: &
-        instance, &
+        ph, &
         i, &
         e
       type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
@@ -260,6 +261,27 @@ module phase
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end subroutine plastic_dependentState
+
+
+    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Ld                                                                                          !< damage velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+    end subroutine kinematics_cleavage_opening_LiAndItsTangent
+
+    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+      integer, intent(in) :: ph, me
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Ld                                                                                          !< damage velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+    end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
   end interface
 
@@ -281,39 +303,39 @@ module phase
 #endif
 
   public :: &
-    constitutive_init, &
-    constitutive_homogenizedC, &
-    constitutive_damage_getRateAndItsTangents, &
-    constitutive_thermal_getRate, &
-    constitutive_results, &
-    constitutive_allocateState, &
-    constitutive_forward, &
-    constitutive_restore, &
+    phase_init, &
+    phase_homogenizedC, &
+    phase_damage_getRateAndItsTangents, &
+    phase_thermal_getRate, &
+    phase_results, &
+    phase_allocateState, &
+    phase_forward, &
+    phase_restore, &
     plastic_nonlocal_updateCompatibility, &
     converged, &
     crystallite_init, &
     crystallite_stress, &
     thermal_stress, &
-    constitutive_mech_dPdF, &
+    phase_mechanical_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    constitutive_restartWrite, &
-    constitutive_restartRead, &
+    phase_restartWrite, &
+    phase_restartRead, &
     integrateDamageState, &
-    constitutive_thermal_setField, &
-    constitutive_damage_set_phi, &
-    constitutive_damage_get_phi, &
-    constitutive_mech_getP, &
-    constitutive_mech_setF, &
-    constitutive_mech_getF, &
-    constitutive_windForward
+    phase_thermal_setField, &
+    phase_damage_set_phi, &
+    phase_damage_get_phi, &
+    phase_mechanical_getP, &
+    phase_mechanical_setF, &
+    phase_mechanical_getF, &
+    phase_windForward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialze constitutive models for individual physics
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_init
+subroutine phase_init
 
   integer :: &
     ph, &                                                                                            !< counter in phase loop
@@ -336,33 +358,31 @@ subroutine constitutive_init
 
   phases => config_material%get('phase')
 
-  call mech_init(phases)
+  call mechanical_init(phases)
   call damage_init
   call thermal_init(phases)
 
 
-  constitutive_source_maxSizeDotState = 0
+  phase_source_maxSizeDotState = 0
   PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(ph)%state             = plasticState(ph)%state0
-    forall(so = 1:phase_Nsources(ph))
-      damageState(ph)%p(so)%state = damageState(ph)%p(so)%state0
-    end forall
-
-    constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
-                                                maxval(damageState(ph)%p%sizeDotState))
+    plasticState(ph)%state = plasticState(ph)%state0
+    if(damageState(ph)%sizeState > 0) &
+      damageState(ph)%state  = damageState(ph)%state0
   enddo PhaseLoop2
-  constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
-end subroutine constitutive_init
+  phase_source_maxSizeDotState     = maxval(damageState%sizeDotState)
+  phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
+
+end subroutine phase_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_allocateState(state, &
-                                  Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+subroutine phase_allocateState(state, &
+                               Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
@@ -387,58 +407,56 @@ subroutine constitutive_allocateState(state, &
   allocate(state%deltaState  (sizeDeltaState,Nconstituents), source=0.0_pReal)
 
 
-end subroutine constitutive_allocateState
+end subroutine phase_allocateState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_restore(ce,includeL)
+subroutine phase_restore(ce,includeL)
 
   logical, intent(in) :: includeL
   integer, intent(in) :: ce
 
   integer :: &
-    co, &                                                                                            !< constituent number
-    so
+    co
 
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    do so = 1, phase_Nsources(material_phaseAt2(co,ce))
-      damageState(material_phaseAt2(co,ce))%p(so)%state( :,material_phasememberAt2(co,ce)) = &
-      damageState(material_phaseAt2(co,ce))%p(so)%state0(:,material_phasememberAt2(co,ce))
-    enddo
+    if (damageState(material_phaseAt2(co,ce))%sizeState > 0) &
+    damageState(material_phaseAt2(co,ce))%state( :,material_phasememberAt2(co,ce)) = &
+      damageState(material_phaseAt2(co,ce))%state0(:,material_phasememberAt2(co,ce))
   enddo
 
-  call mech_restore(ce,includeL)
+  call mechanical_restore(ce,includeL)
 
-end subroutine constitutive_restore
+end subroutine phase_restore
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_forward()
+subroutine phase_forward()
 
-  integer :: ph, so
+  integer :: ph
 
 
-  call mech_forward()
+  call mechanical_forward()
   call thermal_forward()
 
   do ph = 1, size(damageState)
-    do so = 1,phase_Nsources(ph)
-      damageState(ph)%p(so)%state0 = damageState(ph)%p(so)%state
-  enddo; enddo
+    if (damageState(ph)%sizeState > 0) &
+      damageState(ph)%state0 = damageState(ph)%state
+  enddo
 
-end subroutine constitutive_forward
+end subroutine phase_forward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_results()
+subroutine phase_results()
 
   integer :: ph
   character(len=:), allocatable :: group
@@ -451,12 +469,12 @@ subroutine constitutive_results()
     group = '/current/phase/'//trim(material_name_phase(ph))//'/'
     call results_closeGroup(results_addGroup(group))
 
-    call mech_results(group,ph)
+    call mechanical_results(group,ph)
     call damage_results(group,ph)
 
   enddo
 
-end subroutine constitutive_results
+end subroutine phase_results
 
 
 !--------------------------------------------------------------------------------------------------
@@ -526,9 +544,8 @@ subroutine crystallite_init()
   phases => config_material%get('phase')
 
   do ph = 1, phases%length
-    do so = 1, phase_Nsources(ph)
-      allocate(damageState(ph)%p(so)%subState0,source=damageState(ph)%p(so)%state0)                 ! ToDo: hack
-    enddo
+    if (damageState(ph)%sizeState > 0) &
+      allocate(damageState(ph)%subState0,source=damageState(ph)%state0)                 ! ToDo: hack
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -557,7 +574,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_windForward(ip,el)
+subroutine phase_windForward(ip,el)
 
   integer, intent(in) :: &
     ip, &                                                                                            !< integration point number
@@ -572,15 +589,14 @@ subroutine constitutive_windForward(ip,el)
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
 
-    call mech_windForward(ph,me)
+    call mechanical_windForward(ph,me)
 
-    do so = 1, phase_Nsources(material_phaseAt(co,el))
-      damageState(ph)%p(so)%state0(:,me) = damageState(ph)%p(so)%state(:,me)
-    enddo
+    if(damageState(ph)%sizeState > 0) damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
+
 
   enddo
 
-end subroutine constitutive_windForward
+end subroutine phase_windForward
 
 
 !--------------------------------------------------------------------------------------------------
@@ -595,11 +611,11 @@ subroutine crystallite_orientations(co,ip,el)
 
 
   call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(&
-    mech_F_e(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))))
+    mechanical_F_e(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))))
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
     call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
-                                              phase_plasticityInstance(material_phaseAt(1,el)),ip,el)
+                                              material_phaseAt(1,el),ip,el)
 
 
 end subroutine crystallite_orientations
@@ -620,7 +636,7 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
   real(pReal), dimension(3,3)             :: T
 
 
-  T = matmul(material_orientation0(co,ip,el)%asMatrix(),transpose(math_inv33(constitutive_mech_getF(co,ip,el)))) ! ToDo: initial orientation correct?
+  T = matmul(material_orientation0(co,ip,el)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ip,el)))) ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
@@ -648,7 +664,7 @@ end function converged
 !> @brief Write current  restart information (Field and constitutive data) to file.
 ! ToDo: Merge data into one file for MPI
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_restartWrite(fileHandle)
+subroutine phase_restartWrite(fileHandle)
 
   integer(HID_T), intent(in) :: fileHandle
 
@@ -662,7 +678,7 @@ subroutine constitutive_restartWrite(fileHandle)
 
     groupHandle(2) = HDF5_addGroup(groupHandle(1),material_name_phase(ph))
 
-    call mech_restartWrite(groupHandle(2),ph)
+    call mechanical_restartWrite(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -670,14 +686,14 @@ subroutine constitutive_restartWrite(fileHandle)
 
   call HDF5_closeGroup(groupHandle(1))
 
-end subroutine constitutive_restartWrite
+end subroutine phase_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read data for restart
 ! ToDo: Merge data into one file for MPI
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_restartRead(fileHandle)
+subroutine phase_restartRead(fileHandle)
 
   integer(HID_T), intent(in) :: fileHandle
 
@@ -691,7 +707,7 @@ subroutine constitutive_restartRead(fileHandle)
 
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_phase(ph))
 
-    call mech_restartRead(groupHandle(2),ph)
+    call mechanical_restartRead(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -699,7 +715,7 @@ subroutine constitutive_restartRead(fileHandle)
 
   call HDF5_closeGroup(groupHandle(1))
 
-end subroutine constitutive_restartRead
+end subroutine phase_restartRead
 
 
 end module phase

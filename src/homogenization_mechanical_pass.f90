@@ -4,21 +4,21 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief dummy homogenization homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:mechanics) none
+submodule(homogenization:mechanical) none
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_none_init
+module subroutine mechanical_pass_init
 
   integer :: &
     Ninstances, &
     h, &
     Nmaterialpoints
 
-  print'(/,a)', ' <<<+-  homogenization:mechanics:none init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:mechanical:pass init  -+>>>'
 
   Ninstances = count(homogenization_type == HOMOGENIZATION_NONE_ID)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
@@ -27,7 +27,7 @@ module subroutine mech_none_init
     if(homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
 
     if(homogenization_Nconstituents(h) /= 1) &
-      call IO_error(211,ext_msg='N_constituents (mech_none)')
+      call IO_error(211,ext_msg='N_constituents (mechanical_pass)')
 
     Nmaterialpoints = count(material_homogenizationAt == h)
     homogState(h)%sizeState = 0
@@ -36,6 +36,6 @@ module subroutine mech_none_init
 
   enddo
 
-end subroutine mech_none_init
+end subroutine mechanical_pass_init
 
 end submodule none

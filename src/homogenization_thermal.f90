@@ -78,7 +78,7 @@ module subroutine thermal_partition(ce)
   T     = current(material_homogenizationAt2(ce))%T(material_homogenizationMemberAt2(ce))
   dot_T = current(material_homogenizationAt2(ce))%dot_T(material_homogenizationMemberAt2(ce))
   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-    call constitutive_thermal_setField(T,dot_T,co,ce)
+    call phase_thermal_setField(T,dot_T,co,ce)
   enddo
 
 end subroutine thermal_partition
@@ -91,7 +91,7 @@ module subroutine thermal_homogenize(ip,el)
 
   integer, intent(in) :: ip,el
 
-  !call constitutive_thermal_getRate(homogenization_dot_T((el-1)*discretization_nIPs+ip), ip,el)
+  !call phase_thermal_getRate(homogenization_dot_T((el-1)*discretization_nIPs+ip), ip,el)
 
 end subroutine thermal_homogenize
 
@@ -235,7 +235,7 @@ module subroutine thermal_conduction_getSource(Tdot, ip,el)
   do co = 1, homogenization_Nconstituents(ho)
      ph = material_phaseAt(co,el)
      me = material_phasememberAt(co,ip,el)
-     call constitutive_thermal_getRate(dot_T_temp, ph,me)
+     call phase_thermal_getRate(dot_T_temp, ph,me)
      Tdot = Tdot + dot_T_temp
   enddo
 

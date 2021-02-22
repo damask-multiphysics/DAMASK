@@ -16,35 +16,21 @@ module function plastic_none_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstances, &
-    p, &
-    Nconstituents
+    ph
   class(tNode), pointer :: &
-    phases, &
-    phase, &
-    mech, &
-    pl
+    phases
 
-  print'(/,a)', ' <<<+-  phase:mechanics:plastic:none init  -+>>>'
+
+  myPlasticity = plastic_active('none')
+  if(count(myPlasticity) == 0) return
+
+  print'(/,a)', ' <<<+-  phase:mechanical:plastic:none init  -+>>>'
+  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   phases => config_material%get('phase')
-  allocate(myPlasticity(phases%length), source = .false.)
-  do p = 1, phases%length
-    phase => phases%get(p)
-    mech  => phase%get('mechanics')
-    pl    => mech%get ('plasticity')
-    if(pl%get_asString('type') == 'none') myPlasticity(p) = .true.
-  enddo
-
-  Ninstances = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-  if(Ninstances == 0) return
-
-  do p = 1, phases%length
-    phase => phases%get(p)
-    if(.not. myPlasticity(p)) cycle
-    Nconstituents = count(material_phaseAt2 == p)
-    call constitutive_allocateState(plasticState(p),Nconstituents,0,0,0)
+  do ph = 1, phases%length
+    if(.not. myPlasticity(ph)) cycle
+    call phase_allocateState(plasticState(ph),count(material_phaseAt2 == ph),0,0,0)
   enddo
 
 end function plastic_none_init
