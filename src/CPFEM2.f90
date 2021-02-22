@@ -75,7 +75,6 @@ end subroutine CPFEM_initAll
 subroutine CPFEM_init
 
   integer(HID_T) :: fileHandle
-  character(len=pStringLen) :: fileName
 
 
   print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
@@ -83,8 +82,8 @@ subroutine CPFEM_init
 
   if (interface_restartInc > 0) then
     print'(/,a,i0,a)', ' reading restart information of increment from file'; flush(IO_STDOUT)
-    write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
-    fileHandle = HDF5_openFile(fileName)
+
+    fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
 
     call homogenization_restartRead(fileHandle)
     call phase_restartRead(fileHandle)
@@ -101,13 +100,11 @@ end subroutine CPFEM_init
 subroutine CPFEM_restartWrite
 
   integer(HID_T) :: fileHandle
-  character(len=pStringLen) :: fileName
 
 
   print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
 
-  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
-  fileHandle = HDF5_openFile(fileName,'a')
+  fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
 
   call homogenization_restartWrite(fileHandle)
   call phase_restartWrite(fileHandle)
