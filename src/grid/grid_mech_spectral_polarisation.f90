@@ -112,8 +112,6 @@ subroutine grid_mechanical_spectral_polarisation_init
   PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
-  character(len=pStringLen) :: &
-    fileName
   class (tNode), pointer :: &
     num_grid, &
     debug_grid
@@ -204,8 +202,7 @@ subroutine grid_mechanical_spectral_polarisation_init
   restartRead: if (interface_restartInc > 0) then
     print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
 
-    write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
-    fileHandle  = HDF5_openFile(fileName)
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(groupHandle,P_aim,        'P_aim')
@@ -419,7 +416,6 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
   PetscErrorCode :: ierr
   integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
-  character(len=pStringLen) :: fileName
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)
@@ -427,8 +423,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
-  write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
-  fileHandle  = HDF5_openFile(fileName,'w')
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
   call HDF5_write(groupHandle,F_aim,        'P_aim')
