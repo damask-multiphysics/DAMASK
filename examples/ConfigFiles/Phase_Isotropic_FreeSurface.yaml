@@ -1,7 +1,7 @@
 Air:
   lattice: aP
   mechanics:
-    output: [F, P, Fe, Fp, Lp]
+    output: [F, P, F_e, F_p, L_p]
     elasticity: {type: hooke, C_11: 1e8, C_12: 1e6}
     plasticity:
       type: isotropic

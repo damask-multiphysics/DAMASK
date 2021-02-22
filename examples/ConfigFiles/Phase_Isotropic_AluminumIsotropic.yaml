@@ -2,7 +2,7 @@
 Aluminum:
   lattice: aP
   mechanics:
-    output: [F, P, Fe, Fp, Lp]
+    output: [F, P, F_e, F_p, L_p]
     elasticity: {type: hooke, C_11: 110.9e9, C_12: 58.34e9}
     plasticity:
       type: isotropic
