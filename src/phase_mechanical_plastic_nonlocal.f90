@@ -1403,8 +1403,10 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
   integer :: &
     n, &                                                                                            ! neighbor index
+    me, &
     neighbor_e, &                                                                                   ! element index of my neighbor
     neighbor_i, &                                                                                   ! integration point index of my neighbor
+    neighbor_me, &                                                                                   
     neighbor_phase, &
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (me)
@@ -1422,6 +1424,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
   associate(prm => param(ph))
   ns = prm%sum_N_sl
 
+  me = material_phaseMemberAt(1,i,e)
   !*** start out fully compatible
   my_compatibility = 0.0_pReal
   forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
@@ -1429,7 +1432,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
   neighbors: do n = 1,nIPneighbors
     neighbor_e = IPneighborhood(1,n,i,e)
     neighbor_i = IPneighborhood(2,n,i,e)
-
+    neighbor_me = material_phaseMemberAt(1,neighbor_i,neighbor_e)
     neighbor_phase = material_phaseAt(1,neighbor_e)
 
     if (neighbor_e <= 0 .or. neighbor_i <= 0) then
@@ -1447,8 +1450,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     elseif (prm%chi_GB >= 0.0_pReal) then
       !* GRAIN BOUNDARY !
       !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
-      if (any(dNeq(material_orientation0(1,i,e)%asQuaternion(), &
-                   material_orientation0(1,neighbor_i,neighbor_e)%asQuaternion())) .and. &
+      if (any(dNeq(material_orientation0(1,ph,me)%asQuaternion(), &
+                   material_orientation0(1,neighbor_phase,neighbor_me)%asQuaternion())) .and. &
           (.not. phase_localPlasticity(neighbor_phase))) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else

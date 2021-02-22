@@ -177,21 +177,26 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_init(phases)
+module subroutine mechanical_init(materials,phases)
 
   class(tNode), pointer :: &
+    materials, &
     phases
 
   integer :: &
     el, &
     ip, &
     co, &
+    ce, &
     ph, &
     me, &
     stiffDegradationCtr, &
     Nconstituents
   class(tNode), pointer :: &
     num_crystallite, &
+    material, &
+    constituents, &
+    constituent, &
     phase, &
     mech, &
     elastic, &
@@ -220,6 +225,8 @@ module subroutine mechanical_init(phases)
   allocate(phase_mechanical_S(phases%length))
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
+
+  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxval(material_phaseMemberAt)))
 
   do ph = 1, phases%length
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
@@ -271,14 +278,20 @@ module subroutine mechanical_init(phases)
     enddo
   endif
 
+  
   !$OMP PARALLEL DO PRIVATE(ph,me)
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
     do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+      material     => materials%get(discretization_materialAt(el))
+      constituents => material%get('constituents')
+      constituent => constituents%get(co)
 
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
 
-      phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      call material_orientation0(co,ph,me)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
+
+      phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ph,me)%asMatrix()                         ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp0(ph)%data(1:3,1:3,me) &
                                                 / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,me))**(1.0_pReal/3.0_pReal)
       phase_mechanical_Fi0(ph)%data(1:3,1:3,me) = math_I3
@@ -1440,13 +1453,13 @@ end function mechanical_L_p
 !----------------------------------------------------------------------------------------------
 !< @brief Get deformation gradient (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function phase_mechanical_getF(co,ip,el) result(F)
+module function phase_mechanical_getF(co,ce) result(F)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: F
 
 
-  F = phase_mechanical_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  F = phase_mechanical_F(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce))
 
 end function phase_mechanical_getF
 
@@ -1469,13 +1482,13 @@ end function mechanical_F_e
 !----------------------------------------------------------------------------------------------
 !< @brief Get second Piola-Kichhoff stress (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function phase_mechanical_getP(co,ip,el) result(P)
+module function phase_mechanical_getP(co,ce) result(P)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: P
 
 
-  P = phase_mechanical_P(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  P = phase_mechanical_P(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce))
 
 end function phase_mechanical_getP
 

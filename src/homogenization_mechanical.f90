@@ -153,13 +153,13 @@ module subroutine mechanical_homogenize(dt,ip,el)
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-        homogenization_P(1:3,1:3,ce)            = phase_mechanical_getP(1,ip,el)
+        homogenization_P(1:3,1:3,ce)            = phase_mechanical_getP(1,ce)
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ip,el)
-        Ps(:,:,co) = phase_mechanical_getP(co,ip,el)
+        Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
       call mechanical_isostrain_averageStressAndItsTangent(&
         homogenization_P(1:3,1:3,ce), &
@@ -170,7 +170,7 @@ module subroutine mechanical_homogenize(dt,ip,el)
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ip,el)
-        Ps(:,:,co) = phase_mechanical_getP(co,ip,el)
+        Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
       call mechanical_RGC_averageStressAndItsTangent(&
         homogenization_P(1:3,1:3,ce), &
@@ -208,8 +208,8 @@ module function mechanical_updateState(subdt,subF,ce,ip,el) result(doneAndHappy)
   if (homogenization_type(material_homogenizationAt2(ce)) == HOMOGENIZATION_RGC_ID) then
       do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ip,el)
-        Fs(:,:,co)        = phase_mechanical_getF(co,ip,el)
-        Ps(:,:,co)        = phase_mechanical_getP(co,ip,el)
+        Fs(:,:,co)        = phase_mechanical_getF(co,ce)
+        Ps(:,:,co)        = phase_mechanical_getP(co,ce)
       enddo
       doneAndHappy = mechanical_RGC_updateState(Ps,Fs,subF,subdt,dPdFs,ce)
   else

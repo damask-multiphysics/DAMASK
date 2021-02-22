@@ -19,6 +19,9 @@ module phase
   implicit none
   private
 
+  type(Rotation), dimension(:,:,:), allocatable, protected :: &
+    material_orientation0                                                                           !< initial orientation of each grain,IP,element
+
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
 
@@ -77,8 +80,8 @@ module phase
   interface
 
 ! == cleaned:begin =================================================================================
-    module subroutine mechanical_init(phases)
-      class(tNode), pointer :: phases
+    module subroutine mechanical_init(materials,phases)
+      class(tNode), pointer :: materials,phases
     end subroutine mechanical_init
 
     module subroutine damage_init
@@ -147,8 +150,8 @@ module phase
       real(pReal), dimension(3,3) :: L_p
     end function mechanical_L_p
 
-    module function phase_mechanical_getF(co,ip,el) result(F)
-      integer, intent(in) :: co, ip, el
+    module function phase_mechanical_getF(co,ce) result(F)
+      integer, intent(in) :: co, ce
       real(pReal), dimension(3,3) :: F
     end function phase_mechanical_getF
 
@@ -157,8 +160,8 @@ module phase
       real(pReal), dimension(3,3) :: F_e
     end function mechanical_F_e
 
-    module function phase_mechanical_getP(co,ip,el) result(P)
-      integer, intent(in) :: co, ip, el
+    module function phase_mechanical_getP(co,ce) result(P)
+      integer, intent(in) :: co, ce
       real(pReal), dimension(3,3) :: P
     end function phase_mechanical_getP
 
@@ -342,6 +345,7 @@ subroutine phase_init
     so                                                                                               !< counter in source loop
   class (tNode), pointer :: &
     debug_constitutive, &
+    materials, &
     phases
 
 
@@ -356,9 +360,10 @@ subroutine phase_init
   debugConstitutive%grain      =  config_debug%get_asInt('grain',defaultVal = 1)
 
 
+  materials => config_material%get('material')
   phases => config_material%get('phase')
 
-  call mechanical_init(phases)
+  call mechanical_init(materials,phases)
   call damage_init
   call thermal_init(phases)
 
@@ -624,19 +629,20 @@ end subroutine crystallite_orientations
 !--------------------------------------------------------------------------------------------------
 !> @brief Map 2nd order tensor to reference config
 !--------------------------------------------------------------------------------------------------
-function crystallite_push33ToRef(co,ip,el, tensor33)
+function crystallite_push33ToRef(co,ce, tensor33)
 
   real(pReal), dimension(3,3), intent(in) :: tensor33
   integer, intent(in):: &
-    el, &
-    ip, &
-    co
+    co, &
+    ce
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
   real(pReal), dimension(3,3)             :: T
+  integer :: ph, me
 
-
-  T = matmul(material_orientation0(co,ip,el)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ip,el)))) ! ToDo: initial orientation correct?
+  ph = material_phaseAt2(co,ce)
+  me = material_phaseMemberAt2(co,ce)
+  T = matmul(material_orientation0(co,ph,me)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ce)))) ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 

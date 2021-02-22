@@ -107,16 +107,17 @@ module function thermal_conduction_getConductivity(ip,el) result(K)
   real(pReal), dimension(3,3) :: K
 
   integer :: &
-    co
-
+    co, &
+    ce
 
   K = 0.0_pReal
 
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    K = K + crystallite_push33ToRef(co,ip,el,lattice_K(:,:,material_phaseAt(co,el)))
+  ce = (el-1)*discretization_nIPs + ip
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+    K = K + crystallite_push33ToRef(co,ce,lattice_K(:,:,material_phaseAt2(co,ce)))
   enddo
 
-  K = K / real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+  K = K / real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
 
 end function thermal_conduction_getConductivity
 

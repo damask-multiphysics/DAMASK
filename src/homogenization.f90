@@ -536,13 +536,15 @@ function damage_nonlocal_getDiffusion(ip,el)
     damage_nonlocal_getDiffusion
   integer :: &
     homog, &
-    grain
+    grain, &
+    ce
 
   homog  = material_homogenizationAt(el)
   damage_nonlocal_getDiffusion = 0.0_pReal
+  ce = (el-1)*discretization_nIPs + ip
   do grain = 1, homogenization_Nconstituents(homog)
     damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
-      crystallite_push33ToRef(grain,ip,el,lattice_D(1:3,1:3,material_phaseAt(grain,el)))
+      crystallite_push33ToRef(grain,ce,lattice_D(1:3,1:3,material_phaseAt2(grain,ce)))
   enddo
 
   damage_nonlocal_getDiffusion = &
