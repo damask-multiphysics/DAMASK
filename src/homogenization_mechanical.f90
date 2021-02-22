@@ -51,7 +51,7 @@ submodule(homogenization) mechanical
     end subroutine mechanical_RGC_averageStressAndItsTangent
 
 
-    module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+    module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
       real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
@@ -60,8 +60,7 @@ submodule(homogenization) mechanical
       real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
       real(pReal),                       intent(in) :: dt                                           !< time increment
       integer,                           intent(in) :: &
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+        ce                                                                                          !< cell
     end function mechanical_RGC_updateState
 
 
@@ -188,30 +187,31 @@ end subroutine mechanical_homogenize
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
-module function mechanical_updateState(subdt,subF,ip,el) result(doneAndHappy)
+module function mechanical_updateState(subdt,subF,ce,ip,el) result(doneAndHappy)
 
   real(pReal), intent(in) :: &
     subdt                                                                                           !< current time step
   real(pReal), intent(in), dimension(3,3) :: &
     subF
   integer,     intent(in) :: &
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element number
+    ce, &
+    ip, &
+    el
   logical, dimension(2) :: doneAndHappy
 
   integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
-  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
+  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
+  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
 
 
-  if (homogenization_type(material_homogenizationAt(el)) == HOMOGENIZATION_RGC_ID) then
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+  if (homogenization_type(material_homogenizationAt2(ce)) == HOMOGENIZATION_RGC_ID) then
+      do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ip,el)
         Fs(:,:,co)        = phase_mechanical_getF(co,ip,el)
         Ps(:,:,co)        = phase_mechanical_getP(co,ip,el)
       enddo
-      doneAndHappy = mechanical_RGC_updateState(Ps,Fs,subF,subdt,dPdFs,ip,el)
+      doneAndHappy = mechanical_RGC_updateState(Ps,Fs,subF,subdt,dPdFs,ce)
   else
     doneAndHappy = .true.
   endif

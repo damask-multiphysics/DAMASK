@@ -236,7 +236,7 @@ end subroutine mechanical_RGC_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
       real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
@@ -245,12 +245,11 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
       real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
       real(pReal),                       intent(in) :: dt                                           !< time increment
       integer,                           intent(in) :: &
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+        ce                                                                                          !< cell
 
   integer, dimension(4) :: intFaceN,intFaceP,faceID
   integer, dimension(3) :: nGDim,iGr3N,iGr3P
-  integer :: instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, of
+  integer :: instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, me
   real(pReal), dimension(3,3,size(P,3)) :: R,pF,pR,D,pD
   real(pReal), dimension(3,size(P,3))   :: NN,devNull
   real(pReal), dimension(3)             :: normP,normN,mornP,mornN
@@ -264,9 +263,9 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     return
   endif zeroTimeStep
 
-  instance  = homogenization_typeInstance(material_homogenizationAt(el))
-  of = material_homogenizationMemberAt(ip,el)
+  instance  = homogenization_typeInstance(material_homogenizationAt2(ce))
 
+  me = material_homogenizationMemberAt2(ce)
   associate(stt => state(instance), st0 => state0(instance), dst => dependentState(instance), prm => param(instance))
 
 !--------------------------------------------------------------------------------------------------
@@ -281,16 +280,16 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
   allocate(resid(3*nIntFaceTot), source=0.0_pReal)
   allocate(tract(nIntFaceTot,3), source=0.0_pReal)
-  relax  = stt%relaxationVector(:,of)
-  drelax = stt%relaxationVector(:,of) - st0%relaxationVector(:,of)
+  relax  = stt%relaxationVector(:,me)
+  drelax = stt%relaxationVector(:,me) - st0%relaxationVector(:,me)
 
 !--------------------------------------------------------------------------------------------------
 ! computing interface mismatch and stress penalty tensor for all interfaces of all grains
-  call stressPenalty(R,NN,avgF,F,ip,el,instance,of)
+  call stressPenalty(R,NN,avgF,F,ce,me)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating volume discrepancy and stress penalty related to overall volume discrepancy
-  call volumePenalty(D,dst%volumeDiscrepancy(of),avgF,F,nGrain,instance,of)
+  call volumePenalty(D,dst%volumeDiscrepancy(me),avgF,F,nGrain,ce,me)
 
 !------------------------------------------------------------------------------------------------
 ! computing the residual stress from the balance of traction at all (interior) interfaces
@@ -302,7 +301,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     iGr3N = faceID(2:4)                                                                             ! identifying the grain ID in local coordinate system (3-dimensional index)
     iGrN = grain3to1(iGr3N,param(instance)%N_constituents)                                          ! translate the local grain ID into global coordinate system (1-dimensional index)
     intFaceN = getInterface(2*faceID(1),iGr3N)
-    normN = interfaceNormal(intFaceN,instance,of)
+    normN = interfaceNormal(intFaceN,ce,me)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the right/up/front grain (+|P)
@@ -310,7 +309,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     iGr3P(faceID(1)) = iGr3N(faceID(1))+1                                                           ! identifying the grain ID in local coordinate system (3-dimensional index)
     iGrP = grain3to1(iGr3P,param(instance)%N_constituents)                                          ! translate the local grain ID into global coordinate system (1-dimensional index)
     intFaceP = getInterface(2*faceID(1)-1,iGr3P)
-    normP = interfaceNormal(intFaceP,instance,of)
+    normP = interfaceNormal(intFaceP,ce,me)
 
 !--------------------------------------------------------------------------------------------------
 ! compute the residual of traction at the interface (in local system, 4-dimensional index)
@@ -338,9 +337,9 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
     doneAndHappy = .true.
 
-    dst%mismatch(1:3,of)       = sum(NN,2)/real(nGrain,pReal)
-    dst%relaxationRate_avg(of) = sum(abs(drelax))/dt/real(3*nIntFaceTot,pReal)
-    dst%relaxationRate_max(of) = maxval(abs(drelax))/dt
+    dst%mismatch(1:3,me)       = sum(NN,2)/real(nGrain,pReal)
+    dst%relaxationRate_avg(me) = sum(abs(drelax))/dt/real(3*nIntFaceTot,pReal)
+    dst%relaxationRate_max(me) = maxval(abs(drelax))/dt
 
     return
 
@@ -366,10 +365,10 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     iGr3N = faceID(2:4)                                                                             ! identifying the grain ID in local coordinate sytem
     iGrN = grain3to1(iGr3N,param(instance)%N_constituents)                                          ! translate into global grain ID
     intFaceN = getInterface(2*faceID(1),iGr3N)                                                      ! identifying the connecting interface in local coordinate system
-    normN = interfaceNormal(intFaceN,instance,of)
+    normN = interfaceNormal(intFaceN,ce,me)
     do iFace = 1,6
       intFaceN = getInterface(iFace,iGr3N)                                                          ! identifying all interfaces that influence relaxation of the above interface
-      mornN = interfaceNormal(intFaceN,instance,of)
+      mornN = interfaceNormal(intFaceN,ce,me)
       iMun = interface4to1(intFaceN,param(instance)%N_constituents)                                 ! translate the interfaces ID into local 4-dimensional index
       if (iMun > 0) then                                                                            ! get the corresponding tangent
         do i=1,3; do j=1,3; do k=1,3; do l=1,3
@@ -387,10 +386,10 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     iGr3P(faceID(1)) = iGr3N(faceID(1))+1                                                           ! identifying the grain ID in local coordinate sytem
     iGrP = grain3to1(iGr3P,param(instance)%N_constituents)                                          ! translate into global grain ID
     intFaceP = getInterface(2*faceID(1)-1,iGr3P)                                                    ! identifying the connecting interface in local coordinate system
-    normP = interfaceNormal(intFaceP,instance,of)
+    normP = interfaceNormal(intFaceP,ce,me)
     do iFace = 1,6
       intFaceP = getInterface(iFace,iGr3P)                                                          ! identifying all interfaces that influence relaxation of the above interface
-      mornP = interfaceNormal(intFaceP,instance,of)
+      mornP = interfaceNormal(intFaceP,ce,me)
       iMun = interface4to1(intFaceP,param(instance)%N_constituents)                                 ! translate the interfaces ID into local 4-dimensional index
       if (iMun > 0) then                                                                            ! get the corresponding tangent
         do i=1,3; do j=1,3; do k=1,3; do l=1,3
@@ -411,10 +410,10 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   do ipert = 1,3*nIntFaceTot
     p_relax = relax
     p_relax(ipert) = relax(ipert) + num%pPert                                                       ! perturb the relaxation vector
-    stt%relaxationVector(:,of) = p_relax
-    call grainDeformation(pF,avgF,instance,of)                                                      ! rain deformation from perturbed state
-    call stressPenalty(pR,DevNull,      avgF,pF,ip,el,instance,of)                                  ! stress penalty due to interface mismatch from perturbed state
-    call volumePenalty(pD,devNull(1,1), avgF,pF,nGrain,instance,of)                                 ! stress penalty due to volume discrepancy from perturbed state
+    stt%relaxationVector(:,me) = p_relax
+    call grainDeformation(pF,avgF,ce,me)                                                            ! rain deformation from perturbed state
+    call stressPenalty(pR,DevNull,      avgF,pF,ce,me)                                              ! stress penalty due to interface mismatch from perturbed state
+    call volumePenalty(pD,devNull(1,1), avgF,pF,nGrain,ce,me)                                       ! stress penalty due to volume discrepancy from perturbed state
 
 !--------------------------------------------------------------------------------------------------
 ! computing the global stress residual array from the perturbed state
@@ -427,7 +426,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
       iGr3N = faceID(2:4)                                                                           ! identify the grain ID in local coordinate system (3-dimensional index)
       iGrN = grain3to1(iGr3N,param(instance)%N_constituents)                                        ! translate the local grain ID into global coordinate system (1-dimensional index)
       intFaceN = getInterface(2*faceID(1),iGr3N)                                                    ! identify the interface ID of the grain
-      normN = interfaceNormal(intFaceN,instance,of)
+      normN = interfaceNormal(intFaceN,ce,me)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the right/up/front grain (+|P)
@@ -435,7 +434,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
       iGr3P(faceID(1)) = iGr3N(faceID(1))+1                                                         ! identify the grain ID in local coordinate system (3-dimensional index)
       iGrP = grain3to1(iGr3P,param(instance)%N_constituents)                                        ! translate the local grain ID into global coordinate system (1-dimensional index)
       intFaceP = getInterface(2*faceID(1)-1,iGr3P)                                                  ! identify the interface ID of the grain
-      normP = interfaceNormal(intFaceP,instance,of)
+      normP = interfaceNormal(intFaceP,ce,me)
 
 !--------------------------------------------------------------------------------------------------
 ! compute the residual stress (contribution of mismatch and volume penalties) from perturbed state
@@ -475,11 +474,11 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   do i = 1,3*nIntFaceTot;do j = 1,3*nIntFaceTot
     drelax(i) = drelax(i) - jnverse(i,j)*resid(j)                                                   ! Calculate the correction for the state variable
   enddo; enddo
-  stt%relaxationVector(:,of) = relax + drelax                                                       ! Updateing the state variable for the next iteration
+  stt%relaxationVector(:,me) = relax + drelax                                                       ! Updateing the state variable for the next iteration
   if (any(abs(drelax) > num%maxdRelax)) then                                                        ! Forcing cutback when the incremental change of relaxation vector becomes too large
     doneAndHappy = [.true.,.false.]
     !$OMP CRITICAL (write2out)
-    print'(a,i3,a,i3,a)',' RGC_updateState: ip ',ip,' | el ',el,' enforces cutback'
+   ! print'(a,i3,a,i3,a)',' RGC_updateState: ip ',ip,' | el ',el,' enforces cutback'
     print'(a,e15.8)',' due to large relaxation change = ',maxval(abs(drelax))
     flush(IO_STDOUT)
     !$OMP END CRITICAL (write2out)
@@ -491,14 +490,14 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   !------------------------------------------------------------------------------------------------
   !> @brief calculate stress-like penalty due to deformation mismatch
   !------------------------------------------------------------------------------------------------
-  subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance,of)
+  subroutine stressPenalty(rPen,nMis,avgF,fDef,ce,me)
 
     real(pReal),   dimension (:,:,:), intent(out) :: rPen                                           !< stress-like penalty
     real(pReal),   dimension (:,:),   intent(out) :: nMis                                           !< total amount of mismatch
 
     real(pReal),   dimension (:,:,:), intent(in)  :: fDef                                           !< deformation gradients
     real(pReal),   dimension (3,3),   intent(in)  :: avgF                                           !< initial effective stretch tensor
-    integer,                          intent(in)  :: ip,el,instance,of
+    integer,                          intent(in)  :: ce, me
 
     integer, dimension (4)   :: intFace
     integer, dimension (3)   :: iGrain3,iGNghb3,nGDim
@@ -518,27 +517,27 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     ! get the correction factor the modulus of penalty stress representing the evolution of area of
     ! the interfaces due to deformations
 
-    surfCorr = surfaceCorrection(avgF,instance,of)
+    surfCorr = surfaceCorrection(avgF,ce,me)
 
-    associate(prm => param(instance))
+    associate(prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))))
 
 
    !-----------------------------------------------------------------------------------------------
    ! computing the mismatch and penalty stress tensor of all grains
    grainLoop: do iGrain = 1,product(prm%N_constituents)
-     muGrain = equivalentMu(iGrain,ip,el)
+     muGrain = equivalentMu(iGrain,ce)
      iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (x,y,z)-position
 
      interfaceLoop: do iFace = 1,6
        intFace = getInterface(iFace,iGrain3)                                                        ! get the 4-dimensional index of the interface in local numbering system of the grain
-       nVect = interfaceNormal(intFace,instance,of)
+       nVect = interfaceNormal(intFace,ce,me)
        iGNghb3 = iGrain3                                                                            ! identify the neighboring grain across the interface
        iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) &
                                 + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal))
        where(iGNghb3 < 1)    iGNghb3 = nGDim
        where(iGNghb3 >nGDim) iGNghb3 = 1
        iGNghb  = grain3to1(iGNghb3,prm%N_constituents)                                              ! get the ID of the neighboring grain
-       muGNghb = equivalentMu(iGNghb,ip,el)
+       muGNghb = equivalentMu(iGNghb,ce)
        gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                               ! difference/jump in deformation gradeint across the neighbor
 
        !-------------------------------------------------------------------------------------------
@@ -577,7 +576,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   !------------------------------------------------------------------------------------------------
   !> @brief calculate stress-like penalty due to volume discrepancy
   !------------------------------------------------------------------------------------------------
-  subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain,instance,of)
+  subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain,ce,me)
 
     real(pReal), dimension (:,:,:), intent(out) :: vPen                                             ! stress-like penalty due to volume
     real(pReal),                    intent(out) :: vDiscrep                                         ! total volume discrepancy
@@ -586,8 +585,8 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     real(pReal), dimension (3,3),   intent(in)  :: fAvg                                             ! overall deformation gradient
     integer,                        intent(in) :: &
       Ngrain, &
-      instance, &
-      of
+      ce, &
+      me
 
     real(pReal), dimension(size(vPen,3)) :: gVol
     integer :: i
@@ -617,14 +616,14 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   !> @brief compute the correction factor accouted for surface evolution (area change) due to
   ! deformation
   !--------------------------------------------------------------------------------------------------
-  function surfaceCorrection(avgF,instance,of)
+  function surfaceCorrection(avgF,ce,me)
 
     real(pReal), dimension(3)               :: surfaceCorrection
 
     real(pReal), dimension(3,3), intent(in) :: avgF                                                 !< average F
     integer,                     intent(in) :: &
-      instance, &
-      of
+      ce, &
+      me
     real(pReal), dimension(3,3)             :: invC
     real(pReal), dimension(3)               :: nVect
     real(pReal)  :: detF
@@ -635,7 +634,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
 
     surfaceCorrection = 0.0_pReal
     do iBase = 1,3
-      nVect = interfaceNormal([iBase,1,1,1],instance,of)
+      nVect = interfaceNormal([iBase,1,1,1],ce,me)
       do i = 1,3; do j = 1,3
         surfaceCorrection(iBase) = surfaceCorrection(iBase) + invC(i,j)*nVect(i)*nVect(j)           ! compute the component of (the inverse of) the stretch in the direction of the normal
       enddo; enddo
@@ -648,17 +647,16 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   !-------------------------------------------------------------------------------------------------
   !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
   !-------------------------------------------------------------------------------------------------
-  real(pReal) function equivalentMu(grainID,ip,el)
+  real(pReal) function equivalentMu(grainID,ce)
 
     integer, intent(in)    :: &
       grainID,&
-      ip, &                                                                                         !< integration point number
-      el                                                                                            !< element number
+      ce                                                                                            !< cell
 
     real(pReal), dimension(6,6) :: C
 
 
-    C = phase_homogenizedC(material_phaseAt(grainID,el),material_phaseMemberAt(grainID,ip,el))
+    C = phase_homogenizedC(material_phaseAt2(grainID,ce),material_phaseMemberAt2(grainID,ce))
     equivalentMu = lattice_equivalent_mu(C,'voigt')
 
   end function equivalentMu
@@ -668,14 +666,14 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
   !> @brief calculating the grain deformation gradient (the same with
   ! homogenization_RGC_partitionDeformation, but used only for perturbation scheme)
   !-------------------------------------------------------------------------------------------------
-  subroutine grainDeformation(F, avgF, instance, of)
+  subroutine grainDeformation(F, avgF, ce, me)
 
     real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
 
     real(pReal),   dimension(:,:),   intent(in)  :: avgF                                            !< averaged F
     integer,                          intent(in)  :: &
-      instance, &
-      of
+      ce, &
+      me
 
     real(pReal),   dimension(3) :: aVect,nVect
     integer,       dimension(4) :: intFace
@@ -685,15 +683,15 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAn
     !-----------------------------------------------------------------------------------------------
     ! compute the deformation gradient of individual grains due to relaxations
 
-    associate(prm => param(instance))
+    associate (prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))))
 
     F = 0.0_pReal
     do iGrain = 1,product(prm%N_constituents)
       iGrain3 = grain1to3(iGrain,prm%N_constituents)
       do iFace = 1,6
         intFace = getInterface(iFace,iGrain3)
-        aVect   = relaxationVector(intFace,instance,of)
-        nVect   = interfaceNormal(intFace,instance,of)
+        aVect   = relaxationVector(intFace,ce,me)
+        nVect   = interfaceNormal(intFace,ce,me)
         forall (i=1:3,j=1:3) &
           F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                         ! effective relaxations
       enddo

@@ -126,14 +126,15 @@ module homogenization
       integer, intent(in)          :: h
     end subroutine mechanical_results
 
-    module function mechanical_updateState(subdt,subF,ip,el) result(doneAndHappy)
+    module function mechanical_updateState(subdt,subF,ce,ip,el) result(doneAndHappy)
       real(pReal), intent(in) :: &
-        subdt                                                                                           !< current time step
+        subdt                                                                                       !< current time step
       real(pReal), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element number
+        ce, &                                                                                       !< cell
+        ip, &
+        el
       logical, dimension(2) :: doneAndHappy
     end function mechanical_updateState
 
@@ -326,7 +327,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           if (.not. converged) then
             doneAndHappy = [.true.,.false.]
           else
-            doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ip,el)
+            doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce,ip,el)
             converged = all(doneAndHappy)
           endif
         endif
