@@ -1,9 +1,9 @@
 # Kuo, J. C., Mikrostrukturmechanik von Bikristallen mit Kippkorngrenzen. Shaker-Verlag 2004. http://edoc.mpg.de/204079
 Aluminum:
+  lattice: aP
   mechanics:
-    lattice: aP
-    elasticity: {C_11: 110.9e9, C_12: 58.34e9, type: hooke}
     output: [F, P, Fe, Fp, Lp]
+    elasticity: {type: hooke, C_11: 110.9e9, C_12: 58.34e9}
     plasticity:
       type: isotropic
       output: [xi]

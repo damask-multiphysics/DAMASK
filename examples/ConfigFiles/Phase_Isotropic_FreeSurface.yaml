@@ -1,9 +1,9 @@
 # Maiti and Eisenlohr 2018 Scripta Materialia
 Air:
+  lattice: aP
   mechanics:
-    lattice: aP
-    elasticity: {C_11: 10e9, C_12: 0.0, type: hooke}
     output: [F, P, Fe, Fp, Lp]
+    elasticity: {type: hooke, C_11: 10e9, C_12: 0.0}
     plasticity:
       type: isotropic
       output: [xi]
