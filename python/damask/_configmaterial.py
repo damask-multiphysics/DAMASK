@@ -248,7 +248,7 @@ class ConfigMaterial(Config):
         Examples
         --------
         >>> import damask
-        >>> O = damask.Rotation.from_random(3).as_quaternion()
+        >>> O = damask.Rotation.from_random(3)
         >>> phase = ['Aluminum','Steel','Aluminum']
         >>> m = damask.ConfigMaterial().material_add(constituents={'phase':phase,'O':O},
         ...                                          homogenization='SX')
