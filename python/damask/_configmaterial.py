@@ -103,7 +103,6 @@ class ConfigMaterial(Config):
         """Check for completeness."""
         ok = True
         for top_level in ['homogenization','phase','material']:
-            # ToDo: With python 3.8 as prerequisite we can shorten with :=
             ok &= top_level in self
             if top_level not in self: print(f'{top_level} entry missing')
 
@@ -203,7 +202,7 @@ class ConfigMaterial(Config):
         """
         dup = self.copy()
         for i,m in enumerate(dup['material']):
-            if ID and i not in ID: continue
+            if ID is not None and i not in ID: continue
             for c in m['constituents']:
                 if constituent is not None and c not in constituent: continue
                 try:
@@ -227,7 +226,7 @@ class ConfigMaterial(Config):
         """
         dup = self.copy()
         for i,m in enumerate(dup['material']):
-            if ID and i not in ID: continue
+            if ID is not None and i not in ID: continue
             try:
                 m['homogenization'] = mapping[m['homogenization']]
             except KeyError:
