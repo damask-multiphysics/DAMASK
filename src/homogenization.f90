@@ -305,8 +305,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
-      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
+      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,me) = homogState(ho)%state0(:,me)
+      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,me) = damageState_h(ho)%state0(:,me)
       call damage_partition(ce)
 
       doneAndHappy = [.false.,.true.]
