@@ -77,7 +77,6 @@ module subroutine mechanical_RGC_init(num_homogMech)
     num_homogMech                                                                                   !< pointer to mechanical homogenization numerics data
 
   integer :: &
-    Ninstances, &
     h, &
     Nmaterialpoints, &
     sizeState, nIntFaceTot
@@ -90,8 +89,7 @@ module subroutine mechanical_RGC_init(num_homogMech)
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:RGC init  -+>>>'
 
-  Ninstances = count(homogenization_type == HOMOGENIZATION_RGC_ID)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_RGC_ID); flush(IO_STDOUT)
 
   print*, 'Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
   print*, 'https://doi.org/10.1007/s12289-009-0619-1'//IO_EOL
@@ -101,10 +99,11 @@ module subroutine mechanical_RGC_init(num_homogMech)
 
 
 
-  allocate(param(Ninstances))
-  allocate(state(Ninstances))
-  allocate(state0(Ninstances))
-  allocate(dependentState(Ninstances))
+  material_homogenization => config_material%get('homogenization')
+  allocate(param(material_homogenization%length))
+  allocate(state(material_homogenization%length))
+  allocate(state0(material_homogenization%length))
+  allocate(dependentState(material_homogenization%length))
 
   num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
 
@@ -137,15 +136,14 @@ module subroutine mechanical_RGC_init(num_homogMech)
   if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
 
-  material_homogenization => config_material%get('homogenization')
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
     homog => material_homogenization%get(h)
     homogMech => homog%get('mechanics')
-    associate(prm => param(homogenization_typeInstance(h)), &
-              stt => state(homogenization_typeInstance(h)), &
-              st0 => state0(homogenization_typeInstance(h)), &
-              dst => dependentState(homogenization_typeInstance(h)))
+    associate(prm => param(h), &
+              stt => state(h), &
+              st0 => state0(h), &
+              dst => dependentState(h))
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(homogMech)
@@ -183,7 +181,7 @@ module subroutine mechanical_RGC_init(num_homogMech)
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
-    dependentState(homogenization_typeInstance(h))%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints)
+    dependentState(h)%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints)
     !dst%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints) ifort version 18.0.1 crashes (for whatever reason)
 
     end associate
@@ -209,7 +207,7 @@ module subroutine mechanical_RGC_partitionDeformation(F,avgF,ce)
   integer,     dimension(3) :: iGrain3
   integer ::  iGrain,iFace,i,j,me
 
-  associate(prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))))
+  associate(prm => param(material_homogenizationAt2(ce)))
   
   me = material_homogenizationMemberAt2(ce)
 !--------------------------------------------------------------------------------------------------
@@ -249,7 +247,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 
   integer, dimension(4) :: intFaceN,intFaceP,faceID
   integer, dimension(3) :: nGDim,iGr3N,iGr3P
-  integer :: instance,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, me
+  integer :: ho,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain, me
   real(pReal), dimension(3,3,size(P,3)) :: R,pF,pR,D,pD
   real(pReal), dimension(3,size(P,3))   :: NN,devNull
   real(pReal), dimension(3)             :: normP,normN,mornP,mornN
@@ -263,10 +261,10 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
     return
   endif zeroTimeStep
 
-  instance  = homogenization_typeInstance(material_homogenizationAt2(ce))
+  ho  = material_homogenizationAt2(ce)
 
   me = material_homogenizationMemberAt2(ce)
-  associate(stt => state(instance), st0 => state0(instance), dst => dependentState(instance), prm => param(instance))
+  associate(stt => state(ho), st0 => state0(ho), dst => dependentState(ho), prm => param(ho))
 
 !--------------------------------------------------------------------------------------------------
 ! get the dimension of the cluster (grains and interfaces)
@@ -294,12 +292,12 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 !------------------------------------------------------------------------------------------------
 ! computing the residual stress from the balance of traction at all (interior) interfaces
   do iNum = 1,nIntFaceTot
-    faceID = interface1to4(iNum,param(instance)%N_constituents)                                     ! identifying the interface ID in local coordinate system (4-dimensional index)
+    faceID = interface1to4(iNum,param(ho)%N_constituents)                                           ! identifying the interface ID in local coordinate system (4-dimensional index)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
     iGr3N = faceID(2:4)                                                                             ! identifying the grain ID in local coordinate system (3-dimensional index)
-    iGrN = grain3to1(iGr3N,param(instance)%N_constituents)                                          ! translate the local grain ID into global coordinate system (1-dimensional index)
+    iGrN = grain3to1(iGr3N,param(ho)%N_constituents)                                                ! translate the local grain ID into global coordinate system (1-dimensional index)
     intFaceN = getInterface(2*faceID(1),iGr3N)
     normN = interfaceNormal(intFaceN,ce,me)
 
@@ -307,7 +305,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 ! identify the right/up/front grain (+|P)
     iGr3P = iGr3N
     iGr3P(faceID(1)) = iGr3N(faceID(1))+1                                                           ! identifying the grain ID in local coordinate system (3-dimensional index)
-    iGrP = grain3to1(iGr3P,param(instance)%N_constituents)                                          ! translate the local grain ID into global coordinate system (1-dimensional index)
+    iGrP = grain3to1(iGr3P,param(ho)%N_constituents)                                                ! translate the local grain ID into global coordinate system (1-dimensional index)
     intFaceP = getInterface(2*faceID(1)-1,iGr3P)
     normP = interfaceNormal(intFaceP,ce,me)
 
@@ -358,18 +356,18 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 ! ... of the constitutive stress tangent, assembled from dPdF or material constitutive model "smatrix"
   allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
   do iNum = 1,nIntFaceTot
-    faceID = interface1to4(iNum,param(instance)%N_constituents)                                     ! assembling of local dPdF into global Jacobian matrix
+    faceID = interface1to4(iNum,param(ho)%N_constituents)                                           ! assembling of local dPdF into global Jacobian matrix
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
     iGr3N = faceID(2:4)                                                                             ! identifying the grain ID in local coordinate sytem
-    iGrN = grain3to1(iGr3N,param(instance)%N_constituents)                                          ! translate into global grain ID
+    iGrN = grain3to1(iGr3N,param(ho)%N_constituents)                                                ! translate into global grain ID
     intFaceN = getInterface(2*faceID(1),iGr3N)                                                      ! identifying the connecting interface in local coordinate system
     normN = interfaceNormal(intFaceN,ce,me)
     do iFace = 1,6
       intFaceN = getInterface(iFace,iGr3N)                                                          ! identifying all interfaces that influence relaxation of the above interface
       mornN = interfaceNormal(intFaceN,ce,me)
-      iMun = interface4to1(intFaceN,param(instance)%N_constituents)                                 ! translate the interfaces ID into local 4-dimensional index
+      iMun = interface4to1(intFaceN,param(ho)%N_constituents)                                       ! translate the interfaces ID into local 4-dimensional index
       if (iMun > 0) then                                                                            ! get the corresponding tangent
         do i=1,3; do j=1,3; do k=1,3; do l=1,3
           smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) &
@@ -384,13 +382,13 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 ! identify the right/up/front grain (+|P)
     iGr3P = iGr3N
     iGr3P(faceID(1)) = iGr3N(faceID(1))+1                                                           ! identifying the grain ID in local coordinate sytem
-    iGrP = grain3to1(iGr3P,param(instance)%N_constituents)                                          ! translate into global grain ID
+    iGrP = grain3to1(iGr3P,param(ho)%N_constituents)                                                ! translate into global grain ID
     intFaceP = getInterface(2*faceID(1)-1,iGr3P)                                                    ! identifying the connecting interface in local coordinate system
     normP = interfaceNormal(intFaceP,ce,me)
     do iFace = 1,6
       intFaceP = getInterface(iFace,iGr3P)                                                          ! identifying all interfaces that influence relaxation of the above interface
       mornP = interfaceNormal(intFaceP,ce,me)
-      iMun = interface4to1(intFaceP,param(instance)%N_constituents)                                 ! translate the interfaces ID into local 4-dimensional index
+      iMun = interface4to1(intFaceP,param(ho)%N_constituents)                                       ! translate the interfaces ID into local 4-dimensional index
       if (iMun > 0) then                                                                            ! get the corresponding tangent
         do i=1,3; do j=1,3; do k=1,3; do l=1,3
           smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) &
@@ -419,12 +417,12 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 ! computing the global stress residual array from the perturbed state
     p_resid = 0.0_pReal
     do iNum = 1,nIntFaceTot
-      faceID = interface1to4(iNum,param(instance)%N_constituents)                                   ! identifying the interface ID in local coordinate system (4-dimensional index)
+      faceID = interface1to4(iNum,param(ho)%N_constituents)                                         ! identifying the interface ID in local coordinate system (4-dimensional index)
 
 !--------------------------------------------------------------------------------------------------
 ! identify the left/bottom/back grain (-|N)
       iGr3N = faceID(2:4)                                                                           ! identify the grain ID in local coordinate system (3-dimensional index)
-      iGrN = grain3to1(iGr3N,param(instance)%N_constituents)                                        ! translate the local grain ID into global coordinate system (1-dimensional index)
+      iGrN = grain3to1(iGr3N,param(ho)%N_constituents)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
       intFaceN = getInterface(2*faceID(1),iGr3N)                                                    ! identify the interface ID of the grain
       normN = interfaceNormal(intFaceN,ce,me)
 
@@ -432,7 +430,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 ! identify the right/up/front grain (+|P)
       iGr3P = iGr3N
       iGr3P(faceID(1)) = iGr3N(faceID(1))+1                                                         ! identify the grain ID in local coordinate system (3-dimensional index)
-      iGrP = grain3to1(iGr3P,param(instance)%N_constituents)                                        ! translate the local grain ID into global coordinate system (1-dimensional index)
+      iGrP = grain3to1(iGr3P,param(ho)%N_constituents)                                              ! translate the local grain ID into global coordinate system (1-dimensional index)
       intFaceP = getInterface(2*faceID(1)-1,iGr3P)                                                  ! identify the interface ID of the grain
       normP = interfaceNormal(intFaceP,ce,me)
 
@@ -509,7 +507,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
       nDefToler = 1.0e-10_pReal, &
       b = 2.5e-10_pReal                                                                             ! Length of Burgers vector
 
-    nGDim = param(instance)%N_constituents
+    nGDim = param(ho)%N_constituents
     rPen = 0.0_pReal
     nMis = 0.0_pReal
 
@@ -519,7 +517,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 
     surfCorr = surfaceCorrection(avgF,ce,me)
 
-    associate(prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))))
+    associate(prm => param(material_homogenizationAt2(ce)))
 
 
    !-----------------------------------------------------------------------------------------------
@@ -683,7 +681,7 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
     !-----------------------------------------------------------------------------------------------
     ! compute the deformation gradient of individual grains due to relaxations
 
-    associate (prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))))
+    associate (prm => param(material_homogenizationAt2(ce)))
 
     F = 0.0_pReal
     do iGrain = 1,product(prm%N_constituents)
@@ -708,17 +706,17 @@ end function mechanical_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+module subroutine mechanical_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
 
   real(pReal), dimension (3,3),        intent(out) :: avgP                                          !< average stress at material point
   real(pReal), dimension (3,3,3,3),    intent(out) :: dAvgPdAvgF                                    !< average stiffness at material point
 
   real(pReal), dimension (:,:,:),      intent(in)  :: P                                             !< partitioned stresses
   real(pReal), dimension (:,:,:,:,:),  intent(in)  :: dPdF                                          !< partitioned stiffnesses
-  integer,                             intent(in)  :: instance
+  integer,                             intent(in)  :: ho
 
-  avgP       = sum(P,3)   /real(product(param(instance)%N_constituents),pReal)
-  dAvgPdAvgF = sum(dPdF,5)/real(product(param(instance)%N_constituents),pReal)
+  avgP       = sum(P,3)   /real(product(param(ho)%N_constituents),pReal)
+  dAvgPdAvgF = sum(dPdF,5)/real(product(param(ho)%N_constituents),pReal)
 
 end subroutine mechanical_RGC_averageStressAndItsTangent
 
@@ -726,14 +724,14 @@ end subroutine mechanical_RGC_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_results(instance,group)
+module subroutine mechanical_RGC_results(ho,group)
 
-  integer,          intent(in) :: instance
+  integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
 
   integer :: o
 
-  associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
+  associate(stt => state(ho), dst => dependentState(ho), prm => param(ho))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case('M')
@@ -770,8 +768,8 @@ pure function relaxationVector(intFace,ce,me)
 !--------------------------------------------------------------------------------------------------
 ! collect the interface relaxation vector from the global state array
 
-  associate (prm => param(homogenization_typeInstance(material_homogenizationAt2(ce))), &
-             stt => state(homogenization_typeInstance(material_homogenizationAt2(ce))))
+  associate (prm => param(material_homogenizationAt2(ce)), &
+             stt => state(material_homogenizationAt2(ce)))
 
   iNum = interface4to1(intFace,prm%N_constituents)                                                  ! identify the position of the interface in global state array
   if (iNum > 0) then
@@ -798,7 +796,7 @@ pure function interfaceNormal(intFace,ce,me)
     me
 
   integer :: nPos
-  associate (dst => dependentState(homogenization_typeInstance(material_homogenizationAt2(ce))))
+  associate (dst => dependentState(material_homogenizationAt2(ce)))
 
 !--------------------------------------------------------------------------------------------------
 ! get the normal of the interface, identified from the value of intFace(1)

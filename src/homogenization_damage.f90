@@ -152,18 +152,18 @@ end subroutine damage_nonlocal_putNonLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_results(homog,group)
+module subroutine damage_nonlocal_results(ho,group)
 
-  integer,          intent(in) :: homog
+  integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
 
   integer :: o
 
-  associate(prm => param(damage_typeInstance(homog)))
+  associate(prm => param(ho))
   outputsLoop: do o = 1,size(prm%output)
     select case(prm%output(o))
       case ('phi')
-        call results_writeDataset(group,damagestate_h(homog)%state(1,:),prm%output(o),&
+        call results_writeDataset(group,damagestate_h(ho)%state(1,:),prm%output(o),&
                                   'damage indicator','-')
     end select
   enddo outputsLoop

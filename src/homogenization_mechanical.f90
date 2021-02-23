@@ -32,22 +32,22 @@ submodule(homogenization) mechanical
     end subroutine mechanical_RGC_partitionDeformation
 
 
-    module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+    module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
       real(pReal),   dimension (3,3),       intent(out) :: avgP                                     !< average stress at material point
       real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                               !< average stiffness at material point
 
       real(pReal),   dimension (:,:,:),     intent(in)  :: P                                        !< partitioned stresses
       real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                     !< partitioned stiffnesses
-      integer,                              intent(in)  :: instance
+      integer,                              intent(in)  :: ho
     end subroutine mechanical_isostrain_averageStressAndItsTangent
 
-    module subroutine mechanical_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+    module subroutine mechanical_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
       real(pReal),   dimension (3,3),       intent(out) :: avgP                                     !< average stress at material point
       real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                               !< average stiffness at material point
 
       real(pReal),   dimension (:,:,:),     intent(in)  :: P                                        !< partitioned stresses
       real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                     !< partitioned stiffnesses
-      integer,                              intent(in)  :: instance
+      integer,                              intent(in)  :: ho
     end subroutine mechanical_RGC_averageStressAndItsTangent
 
 
@@ -64,8 +64,8 @@ submodule(homogenization) mechanical
     end function mechanical_RGC_updateState
 
 
-    module subroutine mechanical_RGC_results(instance,group)
-      integer,          intent(in) :: instance                                                      !< homogenization instance
+    module subroutine mechanical_RGC_results(ho,group)
+      integer,          intent(in) :: ho                                                            !< homogenization type
       character(len=*), intent(in) :: group                                                         !< group name in HDF5 file
     end subroutine mechanical_RGC_results
 
@@ -165,7 +165,7 @@ module subroutine mechanical_homogenize(dt,ip,el)
         homogenization_P(1:3,1:3,ce), &
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         Ps,dPdFs, &
-        homogenization_typeInstance(material_homogenizationAt(el)))
+        material_homogenizationAt(el))
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
@@ -176,7 +176,7 @@ module subroutine mechanical_homogenize(dt,ip,el)
         homogenization_P(1:3,1:3,ce), &
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         Ps,dPdFs, &
-        homogenization_typeInstance(material_homogenizationAt(el)))
+        material_homogenizationAt(el))
 
   end select chosenHomogenization
 
@@ -220,20 +220,20 @@ end function mechanical_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to file.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_results(group_base,h)
+module subroutine mechanical_results(group_base,ho)
 
   character(len=*), intent(in) :: group_base
-  integer, intent(in)          :: h
+  integer, intent(in)          :: ho
 
   character(len=:), allocatable :: group
 
   group = trim(group_base)//'/mech'
   call results_closeGroup(results_addGroup(group))
 
-  select case(homogenization_type(h))
+  select case(homogenization_type(ho))
 
     case(HOMOGENIZATION_rgc_ID)
-      call mechanical_RGC_results(homogenization_typeInstance(h),group)
+      call mechanical_RGC_results(ho,group)
 
   end select
 

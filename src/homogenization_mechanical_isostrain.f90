@@ -29,7 +29,6 @@ contains
 module subroutine mechanical_isostrain_init
 
   integer :: &
-    Ninstances, &
     h, &
     Nmaterialpoints
   class(tNode), pointer :: &
@@ -39,17 +38,16 @@ module subroutine mechanical_isostrain_init
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:isostrain init  -+>>>'
 
-  Ninstances = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
-
-  allocate(param(Ninstances))                                                                        ! one container of parameters per instance
+  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID); flush(IO_STDOUT)
 
   material_homogenization => config_material%get('homogenization')
+  allocate(param(material_homogenization%length))                                                   ! one container of parameters per homog
+
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
     homog => material_homogenization%get(h)
     homogMech => homog%get('mechanics')
-    associate(prm => param(homogenization_typeInstance(h)))
+    associate(prm => param(h))
 
     prm%N_constituents = homogenization_Nconstituents(h)
     select case(homogMech%get_asString('mapping',defaultVal = 'sum'))
@@ -90,16 +88,16 @@ end subroutine mechanical_isostrain_partitionDeformation
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
+module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
 
   real(pReal),   dimension (3,3),       intent(out) :: avgP                                         !< average stress at material point
   real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                   !< average stiffness at material point
 
   real(pReal),   dimension (:,:,:),     intent(in)  :: P                                            !< partitioned stresses
   real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                         !< partitioned stiffnesses
-  integer,                              intent(in)  :: instance
+  integer,                              intent(in)  :: ho
 
-  associate(prm => param(instance))
+  associate(prm => param(ho))
 
   select case (prm%mapping)
     case (parallel_ID)

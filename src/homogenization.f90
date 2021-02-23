@@ -35,10 +35,6 @@ module homogenization
     homogState, &
     damageState_h
 
-  integer, dimension(:), allocatable, public, protected :: &
-    homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
-    thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
-    damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
 
   real(pReal), dimension(:), allocatable, public, protected :: &
     thermal_initialT
@@ -121,9 +117,9 @@ module homogenization
        el                                                                                           !< element number
     end subroutine mechanical_homogenize
 
-    module subroutine mechanical_results(group_base,h)
+    module subroutine mechanical_results(group_base,ho)
       character(len=*), intent(in) :: group_base
-      integer, intent(in)          :: h
+      integer, intent(in)          :: ho
     end subroutine mechanical_results
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
@@ -207,9 +203,9 @@ module homogenization
 
     end subroutine damage_nonlocal_putNonLocalDamage
 
-    module subroutine damage_nonlocal_results(homog,group)
+    module subroutine damage_nonlocal_results(ho,group)
 
-      integer,          intent(in) :: homog
+      integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
 
     end subroutine damage_nonlocal_results
@@ -571,9 +567,6 @@ subroutine material_parseHomogenization
   allocate(homogenization_type(size(material_name_homogenization)),           source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(material_name_homogenization)),                  source=THERMAL_isothermal_ID)
   allocate(damage_type (size(material_name_homogenization)),                  source=DAMAGE_none_ID)
-  allocate(homogenization_typeInstance(size(material_name_homogenization)),   source=0)
-  allocate(thermal_typeInstance(size(material_name_homogenization)),          source=0)
-  allocate(damage_typeInstance(size(material_name_homogenization)),           source=0)
   allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
 
   do h=1, size(material_name_homogenization)
@@ -590,7 +583,6 @@ subroutine material_parseHomogenization
         call IO_error(500,ext_msg=homogMech%get_asString('type'))
     end select
 
-    homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
 
     if(homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
@@ -619,11 +611,6 @@ subroutine material_parseHomogenization
     endif
   enddo
 
-  do h=1, size(material_name_homogenization)
-    homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
-    thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
-    damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
-  enddo
 
 end subroutine material_parseHomogenization
 
