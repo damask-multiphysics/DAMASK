@@ -122,7 +122,7 @@ class Grid:
 
     @size.setter
     def size(self,size):
-        if len(size) != 3 or any(np.array(size) <= 0):
+        if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
         else:
             self._size = np.array(size)
@@ -303,7 +303,7 @@ class Grid:
             Need to be ordered (1./x fast, 3./z slow).
         labels : str or list of str
             Label(s) of the columns containing the material definition.
-            Each unique combintation of values results in one material ID.
+            Each unique combination of values results in one material ID.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))

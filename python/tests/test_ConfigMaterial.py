@@ -89,12 +89,10 @@ class TestConfigMaterial:
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2))).T
         print(a)
         t = Table(a,{'varying':1,'constant':4})
-        c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant'})
+        c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'4_constant'})
         assert len(c['material']) == N
-        print(c)
-        # for i,m in enumerate(c['material']):
-        #     c = m['constituents'][0]
-        #     assert m['c'] == 1 and c['b'] == 0 and (c['a'] == [i,1]).all()
+        for i,m in enumerate(c['material']):
+            assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
 
     @pytest.mark.parametrize('N,n,kw',[
                                         (1,1,{'phase':'Gold',

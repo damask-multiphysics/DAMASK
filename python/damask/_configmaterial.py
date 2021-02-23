@@ -68,6 +68,7 @@ class ConfigMaterial(Config):
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
+        1    1    1    0  0.8   0.19  0.24 -0.51  Steel    SX
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
         material:
           - constituents:
@@ -84,15 +85,11 @@ class ConfigMaterial(Config):
         phase: {}
 
         """
-        # constituents_ = {k:table.get(v) for k,v in constituents.items()}
         kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
 
-        _,idx = np.unique(kwargs_.values(),return_index=True,axis=0)
-        # _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
-
+        _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
-        # constituents_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in constituents_.items()}
-        kwargs_       = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
 
         return ConfigMaterial().material_add(**kwargs_)
 
