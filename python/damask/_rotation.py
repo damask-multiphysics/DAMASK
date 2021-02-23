@@ -125,9 +125,18 @@ class Rotation:
         return np.logical_not(self==other)
 
 
+    def __array__(self):
+        """Initializer for numpy."""
+        return self.quaternion
+
+
+    @property
+    def size(self):
+        return self.quaternion[...,0].size
+
     @property
     def shape(self):
-        return self.quaternion.shape[:-1]
+        return self.quaternion[...,0].shape
 
 
     def __len__(self):

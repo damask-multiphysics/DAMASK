@@ -689,6 +689,10 @@ class TestRotation:
         with pytest.raises(TypeError):
             Rotation(np.ones(3))
 
+    def test_to_numpy(self):
+        r = Rotation.from_random(np.random.randint(0,10,4))
+        assert np.all(r.as_quaternion() == np.array(r))
+
     @pytest.mark.parametrize('degrees',[True,False])
     def test_Eulers(self,set_of_rotations,degrees):
         for rot in set_of_rotations:
@@ -804,7 +808,11 @@ class TestRotation:
         r = Rotation.from_random()
         assert r == ~~r
 
-    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1)])
+    @pytest.mark.parametrize('shape',[1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
+    def test_size(self,shape):
+        assert Rotation.from_random(shape).size == np.prod(shape)
+
+    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1),tuple(np.random.randint(0,10,4))])
     def test_shape(self,shape):
         r = Rotation.from_random(shape=shape)
         assert r.shape == (shape if isinstance(shape,tuple) else (shape,) if shape else ())
