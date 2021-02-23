@@ -355,12 +355,11 @@ end subroutine mechanical_init
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
 subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
-                                              Fe, Fi, co, ip, el)
+                                              Fe, Fi, ph, me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph, &
+    me
   real(pReal),   intent(in),  dimension(3,3) :: &
     Fe, &                                                                                           !< elastic deformation gradient
     Fi                                                                                              !< intermediate deformation gradient
@@ -373,17 +372,15 @@ subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   real(pReal), dimension(3,3) :: E
   real(pReal), dimension(3,3,3,3) :: C
   integer :: &
-    ho, &                                                                                           !< homogenization
-    d, &                                                                                               !< counter in degradation loop
-    i, j, ph, me
+    d, &                                                                                            !< counter in degradation loop
+    i, j
 
-  ho = material_homogenizationAt(el)
-  C = math_66toSym3333(phase_homogenizedC(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))
+  C = math_66toSym3333(phase_homogenizedC(ph,me))
 
-  DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(co,el))
-    degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(co,el)))
+  DegradationLoop: do d = 1, phase_NstiffnessDegradations(ph)
+    degradationType: select case(phase_stiffnessDegradation(d,ph))
       case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * phase_damage_get_phi(co,ip,el)**2
+        C = C * damage_phi(ph,me)**2
     end select degradationType
   enddo DegradationLoop
 
@@ -541,7 +538,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
       B  = math_I3 - Delta_t*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
       call phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
-                                        Fe, Fi_new, co, ip, el)
+                                        Fe, Fi_new, ph, me)
 
       call plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
                                          S, Fi_new, ph,me)
@@ -1263,13 +1260,12 @@ end subroutine mechanical_restore
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
+module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
 
   real(pReal), intent(in) :: dt
   integer, intent(in) :: &
     co, &                                                                                            !< counter in constituent loop
-    ip, &                                                                                            !< counter in integration point loop
-    el                                                                                               !< counter in element loop
+    ce
   real(pReal), dimension(3,3,3,3) :: dPdF
 
   integer :: &
@@ -1294,12 +1290,12 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
   logical :: error
 
 
-  ph = material_phaseAt(co,el)
-  me = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseAt2(co,ce)
+  me = material_phaseMemberAt2(co,ce)
 
   call phase_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
                                           phase_mechanical_Fe(ph)%data(1:3,1:3,me), &
-                                          phase_mechanical_Fi(ph)%data(1:3,1:3,me),co,ip,el)
+                                          phase_mechanical_Fi(ph)%data(1:3,1:3,me),ph,me)
   call phase_LiAndItsTangents(devNull,dLidS,dLidFi, &
                                      phase_mechanical_S(ph)%data(1:3,1:3,me), &
                                      phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
@@ -1324,7 +1320,7 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
-      call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
+      call IO_warning(warning_ID=600, &
                       ext_msg='inversion error in analytic tangent calculation')
       dFidS = 0.0_pReal
     else
@@ -1354,7 +1350,7 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
   if (error) then
-    call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
+    call IO_warning(warning_ID=600, &
                     ext_msg='inversion error in analytic tangent calculation')
     dSdF = rhs_3333
   else

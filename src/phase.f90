@@ -120,12 +120,11 @@ module phase
     end subroutine mechanical_restore
 
 
-    module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
+    module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
       real(pReal), intent(in) :: dt
       integer, intent(in) :: &
         co, &                                                                                       !< counter in constituent loop
-        ip, &                                                                                       !< counter in integration point loop
-        el                                                                                          !< counter in element loop
+        ce
       real(pReal), dimension(3,3,3,3) :: dPdF
     end function phase_mechanical_dPdF
 

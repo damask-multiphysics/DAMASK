@@ -154,11 +154,11 @@ module subroutine mechanical_homogenize(dt,ip,el)
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
         homogenization_P(1:3,1:3,ce)            = phase_mechanical_getP(1,ce)
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ip,el)
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ce)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ip,el)
+        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
         Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
       call mechanical_isostrain_averageStressAndItsTangent(&
@@ -169,7 +169,7 @@ module subroutine mechanical_homogenize(dt,ip,el)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ip,el)
+        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
         Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
       call mechanical_RGC_averageStressAndItsTangent(&
@@ -187,16 +187,14 @@ end subroutine mechanical_homogenize
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
-module function mechanical_updateState(subdt,subF,ce,ip,el) result(doneAndHappy)
+module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
 
   real(pReal), intent(in) :: &
     subdt                                                                                           !< current time step
   real(pReal), intent(in), dimension(3,3) :: &
     subF
   integer,     intent(in) :: &
-    ce, &
-    ip, &
-    el
+    ce
   logical, dimension(2) :: doneAndHappy
 
   integer :: co
@@ -207,7 +205,7 @@ module function mechanical_updateState(subdt,subF,ce,ip,el) result(doneAndHappy)
 
   if (homogenization_type(material_homogenizationAt2(ce)) == HOMOGENIZATION_RGC_ID) then
       do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ip,el)
+        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ce)
         Fs(:,:,co)        = phase_mechanical_getF(co,ce)
         Ps(:,:,co)        = phase_mechanical_getP(co,ce)
       enddo
