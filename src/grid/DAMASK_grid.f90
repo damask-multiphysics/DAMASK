@@ -225,8 +225,8 @@ program DAMASK_grid
     loadCases(l)%t         = step_discretization%get_asFloat('t')
     loadCases(l)%N         = step_discretization%get_asInt  ('N')
     loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
-    loadCases(l)%f_restart = step_discretization%get_asInt  ('f_restart', defaultVal=huge(0))
 
+    loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
     loadCases(l)%f_out     = load_step%get_asInt('f_out',     defaultVal=1)
     loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. & 
                                                        merge(.true.,.false.,l > 1))

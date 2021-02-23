@@ -347,7 +347,7 @@ class TestGrid:
     @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
     def test_tessellate_bicrystal(self,approach):
         cells = np.random.randint(5,10,3)*2
-        size  = cells.astype(np.float)
+        size  = cells.astype(float)
         seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
         material = np.zeros(cells)
         material[:,cells[1]//2:,:] = 1
