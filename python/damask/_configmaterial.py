@@ -149,7 +149,7 @@ class ConfigMaterial(Config):
 
     @property
     def is_valid(self):
-        """Check for valid file layout."""
+        """Check for valid content."""
         ok = True
 
         if 'phase' in self:
@@ -158,8 +158,7 @@ class ConfigMaterial(Config):
                     try:
                         Orientation(lattice=v['lattice'])
                     except KeyError:
-                        s = v['lattice']
-                        print(f"Invalid lattice: '{s}' in phase '{k}'")
+                        print(f"Invalid lattice '{v['lattice']}' in phase '{k}'")
                         ok = False
 
         if 'material' in self:
@@ -167,16 +166,15 @@ class ConfigMaterial(Config):
                 if 'constituents' in m:
                     v = 0.0
                     for c in m['constituents']:
-                        v+= float(c['v'])
+                        v += float(c['v'])
                         if 'O' in c:
                             try:
                                 Rotation.from_quaternion(c['O'])
                             except ValueError:
-                                o = c['O']
-                                print(f"Invalid orientation: '{o}' in material '{i}'")
+                                print(f"Invalid orientation '{c['O']}' in material '{i}'")
                                 ok = False
                     if not np.isclose(v,1.0):
-                        print(f"Invalid total fraction (v) '{v}' in material '{i}'")
+                        print(f"Total fraction v = {v} ≠ 1 in material '{i}'")
                         ok = False
 
         return ok
@@ -194,6 +192,11 @@ class ConfigMaterial(Config):
             Limit renaming to selected material IDs.
         constituent: list of ints, optional
             Limit renaming to selected constituents.
+
+        Returns
+        -------
+        cfg : damask.ConfigMaterial
+            Updated material configuration.
 
         """
         dup = self.copy()
@@ -218,6 +221,11 @@ class ConfigMaterial(Config):
             Mapping from old name to new name
         ID: list of ints, optional
             Limit renaming to selected homogenization IDs.
+
+        Returns
+        -------
+        cfg : damask.ConfigMaterial
+            Updated material configuration.
 
         """
         dup = self.copy()
