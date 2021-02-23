@@ -226,7 +226,7 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
 
-  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxval(material_phaseMemberAt)))
+  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseMemberAt)))
 
   do ph = 1, phases%length
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
@@ -279,7 +279,7 @@ module subroutine mechanical_init(materials,phases)
   endif
 
   
-  !$OMP PARALLEL DO PRIVATE(ph,me)
+  !$OMP PARALLEL DO PRIVATE(ph,me,material,constituents,constituent) 
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
     do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
       material     => materials%get(discretization_materialAt(el))

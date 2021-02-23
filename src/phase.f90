@@ -19,7 +19,7 @@ module phase
   implicit none
   private
 
-  type(Rotation), dimension(:,:,:), allocatable, protected :: &
+  type(Rotation), dimension(:,:,:), allocatable :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
 
   type(rotation),            dimension(:,:,:),        allocatable :: &
