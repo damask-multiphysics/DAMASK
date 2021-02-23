@@ -268,7 +268,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(thermal_conduction_getConductivity(1,ce) - K_ref, &
+    vectorField_real(1:3,i,j,k) = matmul(thermal_conduction_getConductivity(ce) - K_ref, &
                                          vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
@@ -277,7 +277,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call thermal_conduction_getSource(Tdot, 1,ce)
+    call thermal_conduction_getSource(Tdot,1,ce)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + Tdot) &
                             + thermal_conduction_getMassDensity (ce)* &
                               thermal_conduction_getSpecificHeat(ce)*(T_lastInc(i,j,k)  - &
@@ -310,7 +310,7 @@ subroutine updateReference
   mu_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    K_ref  = K_ref  + thermal_conduction_getConductivity(1,ce)
+    K_ref  = K_ref  + thermal_conduction_getConductivity(ce)
     mu_ref = mu_ref + thermal_conduction_getMassDensity(ce)* thermal_conduction_getSpecificHeat(ce)
   enddo; enddo; enddo
   K_ref = K_ref*wgt

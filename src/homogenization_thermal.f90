@@ -99,20 +99,16 @@ end subroutine thermal_homogenize
 !--------------------------------------------------------------------------------------------------
 !> @brief return homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
-module function thermal_conduction_getConductivity(ip,el) result(K)
+module function thermal_conduction_getConductivity(ce) result(K)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ce
   real(pReal), dimension(3,3) :: K
 
   integer :: &
-    co, &
-    ce
+    co
 
   K = 0.0_pReal
 
-  ce = (el-1)*discretization_nIPs + ip
   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
     K = K + crystallite_push33ToRef(co,ce,lattice_K(:,:,material_phaseAt2(co,ce)))
   enddo
@@ -220,11 +216,11 @@ end function homogenization_thermal_T
 !--------------------------------------------------------------------------------------------------
 !> @brief return heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_conduction_getSource(Tdot, ip,el)
+module subroutine thermal_conduction_getSource(Tdot, ip, el)
 
   integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+    ip, &
+    el
   real(pReal), intent(out) :: &
     Tdot
 

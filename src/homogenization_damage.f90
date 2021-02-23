@@ -85,22 +85,20 @@ end subroutine damage_partition
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns homogenized nonlocal damage mobility
 !--------------------------------------------------------------------------------------------------
-module function damage_nonlocal_getMobility(ip,el) result(M)
+module function damage_nonlocal_getMobility(ce) result(M)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ce
   integer :: &
     co
   real(pReal) :: M
 
   M = 0.0_pReal
 
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    M = M + lattice_M(material_phaseAt(co,el))
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+    M = M + lattice_M(material_phaseAt2(co,ce))
   enddo
 
-  M = M/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+  M = M/real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
 
 end function damage_nonlocal_getMobility
 
@@ -108,11 +106,9 @@ end function damage_nonlocal_getMobility
 !--------------------------------------------------------------------------------------------------
 !> @brief  calculates homogenized damage driving forces
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
+module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ce)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ce
   real(pReal),   intent(in) :: &
     phi
   real(pReal) :: &
@@ -121,9 +117,9 @@ module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, p
   phiDot = 0.0_pReal
   dPhiDot_dPhi = 0.0_pReal
 
-  call phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+  call phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
+  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
+  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -131,20 +127,18 @@ end subroutine damage_nonlocal_getSourceAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief updated nonlocal damage field with solution from damage phase field PDE
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
+module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ce
   real(pReal),   intent(in) :: &
     phi
   integer :: &
-    homog, &
-    offset
+    ho, &
+    me
 
-  homog  = material_homogenizationAt(el)
-  offset = material_homogenizationMemberAt(ip,el)
-  damagestate_h(homog)%state(1,offset) = phi
+  ho = material_homogenizationAt2(ce)
+  me = material_homogenizationMemberAt2(ce)
+  damagestate_h(ho)%state(1,me) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
 

@@ -133,11 +133,9 @@ module homogenization
     end function mechanical_updateState
 
 
-    module function thermal_conduction_getConductivity(ip,el) result(K)
+    module function thermal_conduction_getConductivity(ce) result(K)
 
-      integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+      integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
 
     end function thermal_conduction_getConductivity
@@ -167,25 +165,21 @@ module homogenization
       real(pReal) :: T
     end function homogenization_thermal_T
 
-    module subroutine thermal_conduction_getSource(Tdot, ip,el)
+    module subroutine thermal_conduction_getSource(Tdot, ip, el)
       integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+        ip, &
+        el
       real(pReal), intent(out) :: Tdot
     end subroutine thermal_conduction_getSource
 
-   module function damage_nonlocal_getMobility(ip,el) result(M)
-    integer, intent(in) :: &
-      ip, &                                                                                           !< integration point number
-      el                                                                                              !< element number
+   module function damage_nonlocal_getMobility(ce) result(M)
+    integer, intent(in) :: ce
     real(pReal) :: M
     end function damage_nonlocal_getMobility
 
-    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
+    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ce)
 
-      integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+      integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
       real(pReal) :: &
@@ -193,11 +187,9 @@ module homogenization
     end subroutine damage_nonlocal_getSourceAndItsTangent
 
 
-    module subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
+    module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
 
-      integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+      integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
 
@@ -521,28 +513,25 @@ end subroutine damage_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized non local damage diffusion tensor in reference configuration
 !--------------------------------------------------------------------------------------------------
-function damage_nonlocal_getDiffusion(ip,el)
+function damage_nonlocal_getDiffusion(ce)
 
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
+  integer, intent(in) :: ce
   real(pReal), dimension(3,3) :: &
     damage_nonlocal_getDiffusion
   integer :: &
-    homog, &
-    grain, &
-    ce
+    ho, &
+    grain
 
-  homog  = material_homogenizationAt(el)
+  ho  = material_homogenizationAt2(ce)
   damage_nonlocal_getDiffusion = 0.0_pReal
-  ce = (el-1)*discretization_nIPs + ip
-  do grain = 1, homogenization_Nconstituents(homog)
+
+  do grain = 1, homogenization_Nconstituents(ho)
     damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
       crystallite_push33ToRef(grain,ce,lattice_D(1:3,1:3,material_phaseAt2(grain,ce)))
   enddo
 
   damage_nonlocal_getDiffusion = &
-    num_damage%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(homog),pReal)
+    num_damage%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(ho),pReal)
 
 end function damage_nonlocal_getDiffusion
 

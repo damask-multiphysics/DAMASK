@@ -160,7 +160,7 @@ function grid_damage_spectral_solution(timeinc) result(solution)
 
   real(pReal), intent(in) :: &
     timeinc                                                                                         !< increment in time for current solution
-  integer :: i, j, k, cell
+  integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
   PetscReal :: phi_min, phi_max, stagNorm, solnNorm
@@ -193,10 +193,10 @@ function grid_damage_spectral_solution(timeinc) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state
-  cell = 0
+  ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-    cell = cell + 1
-    call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),1,cell)
+    ce = ce + 1
+    call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),ce)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
@@ -216,7 +216,7 @@ end function grid_damage_spectral_solution
 subroutine grid_damage_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
-  integer                               :: i, j, k, cell
+  integer                               :: i, j, k, ce
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer     :: x_scal
   PetscErrorCode                              :: ierr
@@ -226,14 +226,14 @@ subroutine grid_damage_spectral_forward(cutBack)
     phi_stagInc = phi_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state
-    cell = 0
+    ce = 0
     call SNESGetDM(damage_snes,dm_local,ierr); CHKERRQ(ierr)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                       !< get the data out of PETSc to work with
     x_scal(xstart:xend,ystart:yend,zstart:zend) = phi_current
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-      cell = cell + 1
-      call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),1,cell)
+      ce = ce + 1
+      call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),ce)
     enddo; enddo; enddo
   else
     phi_lastInc = phi_current
@@ -258,7 +258,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
     f_scal
   PetscObject :: dummy
   PetscErrorCode :: ierr
-  integer :: i, j, k, cell
+  integer :: i, j, k, ce
   real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
 
   phi_current = x_scal
@@ -269,20 +269,20 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   call utilities_FFTscalarForward
   call utilities_fourierScalarGradient                                                              !< calculate gradient of damage field
   call utilities_FFTvectorBackward
-  cell = 0
+  ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-    cell = cell + 1
-    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion(1,cell) - K_ref, &
+    ce = ce + 1
+    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion(ce) - K_ref, &
                                          vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate damage divergence in fourier field
   call utilities_FFTscalarBackward
-  cell = 0
+  ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-    cell = cell + 1
-    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi_current(i,j,k), 1, cell)
-    mobility = damage_nonlocal_getMobility(1,cell)
+    ce = ce + 1
+    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi_current(i,j,k),ce)
+    mobility = damage_nonlocal_getMobility(ce)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + phiDot) &
                             + mobility*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
                             + mu_ref*phi_current(i,j,k)
@@ -310,15 +310,15 @@ end subroutine formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine updateReference
 
-  integer :: i,j,k,cell,ierr
+  integer :: i,j,k,ce,ierr
 
-  cell = 0
+  ce = 0
   K_ref = 0.0_pReal
   mu_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-    cell = cell + 1
-    K_ref  = K_ref  + damage_nonlocal_getDiffusion(1,cell)
-    mu_ref = mu_ref + damage_nonlocal_getMobility(1,cell)
+    ce = ce + 1
+    K_ref  = K_ref  + damage_nonlocal_getDiffusion(ce)
+    mu_ref = mu_ref + damage_nonlocal_getMobility(ce)
   enddo; enddo; enddo
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)

@@ -231,10 +231,8 @@ module phase
     end function phase_homogenizedC
 
 
-    module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-      integer, intent(in) :: &
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
+    module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
+      integer, intent(in) :: ce
       real(pReal), intent(in) :: &
         phi                                                                                         !< damage parameter
       real(pReal), intent(inout) :: &
