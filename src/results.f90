@@ -65,7 +65,7 @@ subroutine results_init(restart)
   print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
 
   if(.not. restart) then
-    resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
+    resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
     call results_addAttribute('DADF5_version_minor',11)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
@@ -83,7 +83,7 @@ end subroutine results_init
 !--------------------------------------------------------------------------------------------------
 subroutine results_openJobFile
 
-  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
+  resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','a')
 
 end subroutine results_openJobFile
 
@@ -289,11 +289,7 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
 
   groupHandle = results_openGroup(group)
 
-#ifdef PETSc
-  call HDF5_write(groupHandle,dataset,label,.true.)
-#else
-  call HDF5_write(groupHandle,dataset,label,.false.)
-#endif
+  call HDF5_write(groupHandle,dataset,label)
 
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
@@ -320,11 +316,7 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
 
   groupHandle = results_openGroup(group)
 
-#ifdef PETSc
-  call HDF5_write(groupHandle,dataset,label,.true.)
-#else
-  call HDF5_write(groupHandle,dataset,label,.false.)
-#endif
+  call HDF5_write(groupHandle,dataset,label)
 
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
@@ -362,7 +354,7 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   endif
 
   if(transposed_) then
-    if(size(dataset,1) /= size(dataset,2)) call IO_error(0,ext_msg='transpose non-symmetric tensor')
+    if(size(dataset,1) /= size(dataset,2)) error stop 'transpose non-symmetric tensor'
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
@@ -373,11 +365,7 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
 
   groupHandle = results_openGroup(group)
 
-#ifdef PETSc
-  call HDF5_write(groupHandle,dataset_transposed,label,.true.)
-#else
-  call HDF5_write(groupHandle,dataset_transposed,label,.false.)
-#endif
+  call HDF5_write(groupHandle,dataset_transposed,label)
 
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
@@ -405,11 +393,7 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
 
   groupHandle = results_openGroup(group)
 
-#ifdef PETSc
-  call HDF5_write(groupHandle,dataset,label,.true.)
-#else
-  call HDF5_write(groupHandle,dataset,label,.false.)
-#endif
+  call HDF5_write(groupHandle,dataset,label)
 
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
@@ -437,11 +421,7 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
 
   groupHandle = results_openGroup(group)
 
-#ifdef PETSc
-  call HDF5_write(groupHandle,dataset,label,.true.)
-#else
-  call HDF5_write(groupHandle,dataset,label,.false.)
-#endif
+  call HDF5_write(groupHandle,dataset,label)
 
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
@@ -577,7 +557,7 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
-  call h5pset_preserve_f(plist_id, .TRUE., hdferr)
+  call h5pset_preserve_f(plist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   loc_id = results_openGroup('/mapping')
@@ -733,7 +713,8 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
-  call h5pset_preserve_f(plist_id, .TRUE., hdferr)
+  call h5pset_preserve_f(plist_id, .true., hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
 
   loc_id = results_openGroup('/mapping')
   call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, hdferr)
