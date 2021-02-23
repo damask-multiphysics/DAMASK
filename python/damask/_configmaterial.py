@@ -236,16 +236,20 @@ class ConfigMaterial(Config):
 
         Parameters
         ----------
-        constituents : dict, optional
-            Entries for 'constituents' as key-value pair.
         **kwargs
             Key-value pairs.
 
+        Returns
+        -------
+        cfg : damask.ConfigMaterial
+            Updated material configuration.
+
         Examples
         --------
+        >>> import numpy as np
         >>> import damask
-        >>> m = damask.ConfigMaterial().material_add(phase          = ['Aluminum','Steel','Aluminum'],
-        ...                                          O              = damask.Rotation.from_random(3)},
+        >>> m = damask.ConfigMaterial().material_add(phase          = ['Aluminum','Steel'],
+        ...                                          O              = damask.Rotation.from_random(2),
         ...                                          homogenization = 'SX')
         >>> m
         material:
@@ -259,11 +263,31 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: SX
+        homogenization: {}
+        phase: {}
+
+        >>> m = damask.ConfigMaterial().material_add(phase          = np.array(['Austenite','Martensite']).reshape(1,2),
+        ...                                          O              = damask.Rotation.from_random((2,2)),
+        ...                                          v              = np.array([0.2,0.8]).reshape(1,2),
+        ...                                          homogenization = ['A','B'])
+        >>> m
+        material:
           - constituents:
-              - O: [0.0886257, -0.144848, 0.615674, -0.769487]
-                v: 1.0
-                phase: Aluminum
-            homogenization: SX
+              - phase: Austenite
+                O: [0.659802978293224, 0.6953785848195171, 0.22426295326327111, -0.17554139512785227]
+                v: 0.2
+              - phase: Martensite
+                O: [0.49356745891301596, 0.2841806579193434, -0.7487679215072818, -0.339085707289975]
+                v: 0.8
+            homogenization: A
+          - constituents:
+              - phase: Austenite
+                O: [0.26542221365204055, 0.7268854930702071, 0.4474726435701472, -0.44828201137283735]
+                v: 0.2
+              - phase: Martensite
+                O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
+                v: 0.8
+            homogenization: B
         homogenization: {}
         phase: {}
 
@@ -282,8 +306,8 @@ class ConfigMaterial(Config):
             shaped['v'] = np.broadcast_to(1/n,(N,n))
 
         for k,v in shaped.items():
-            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n,4))),(N,n,4)) if k=='O' else \
-                  np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n  ))),(N,n))
+            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n,4),mode='right')),(N,n,4)) if k=='O' else \
+                  np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n  ),mode='right')),(N,n))
             for i in range(N):
                 if k in ['phase','O','v']:
                     for j in range(n):
