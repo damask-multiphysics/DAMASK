@@ -3,6 +3,7 @@ import numpy as np
 from . import Config
 from . import Rotation
 from . import Orientation
+from . import util
 
 class ConfigMaterial(Config):
     """Material configuration."""
@@ -46,7 +47,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table,constituents={},**kwargs):
+    def from_table(table,**kwargs):
         """
         Load from an ASCII table.
 
@@ -54,12 +55,9 @@ class ConfigMaterial(Config):
         ----------
         table : damask.Table
             Table that contains material information.
-        constituents : dict, optional
-            Entries for 'constituents'. The key is the name and the value specifies
-            the label of the data column in the table
         **kwargs
-            Keyword arguments where the key is the name and  the value specifies
-            the label of the data column in the table
+            Keyword arguments where the key is the name and the value specifies
+            the label of the data column in the table.
 
         Examples
         --------
@@ -70,7 +68,7 @@ class ConfigMaterial(Config):
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.from_table(t,{'O':'qu','phase':'phase'},homogenization='homog')
+        >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
@@ -86,16 +84,17 @@ class ConfigMaterial(Config):
         phase: {}
 
         """
-        constituents_ = {k:table.get(v) for k,v in constituents.items()}
+        # constituents_ = {k:table.get(v) for k,v in constituents.items()}
         kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
 
-        _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
+        _,idx = np.unique(kwargs_.values(),return_index=True,axis=0)
+        # _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
 
         idx = np.sort(idx)
-        constituents_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in constituents_.items()}
+        # constituents_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in constituents_.items()}
         kwargs_       = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
 
-        return ConfigMaterial().material_add(constituents_,**kwargs_)
+        return ConfigMaterial().material_add(**kwargs_)
 
 
     @property
@@ -234,7 +233,7 @@ class ConfigMaterial(Config):
         return dup
 
 
-    def material_add(self,constituents=None,**kwargs):
+    def material_add(self,**kwargs):
         """
         Add material entries.
 
@@ -248,10 +247,9 @@ class ConfigMaterial(Config):
         Examples
         --------
         >>> import damask
-        >>> O = damask.Rotation.from_random(3)
-        >>> phase = ['Aluminum','Steel','Aluminum']
-        >>> m = damask.ConfigMaterial().material_add(constituents={'phase':phase,'O':O},
-        ...                                          homogenization='SX')
+        >>> m = damask.ConfigMaterial().material_add(phase          = ['Aluminum','Steel','Aluminum'],
+        ...                                          O              = damask.Rotation.from_random(3)},
+        ...                                          homogenization = 'SX')
         >>> m
         material:
           - constituents:
@@ -273,54 +271,30 @@ class ConfigMaterial(Config):
         phase: {}
 
         """
-        length = -1
-        for v in kwargs.values():
-            if hasattr(v,'__len__') and not isinstance(v,str):
-                if length != -1 and len(v) != length:
-                    raise ValueError('Cannot add entries of different length')
-                else:
-                    length = len(v)
-        length = max(1,length)
-
-        c = [{} for _ in range(length)] if constituents is None else \
-            [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
-
-        if len(c) == 1: c = [c[0] for _ in range(length)]
-
-        if length != 1 and length != len(c):
-            raise ValueError('Cannot add entries of different length')
+        N,n,shaped = 1,1,{}
 
         for k,v in kwargs.items():
-            if hasattr(v,'__len__') and not isinstance(v,str):
-                for i,vv in enumerate(v):
-                    c[i][k] = vv.item() if isinstance(vv,np.generic) else vv
-            else:
-                for i in range(len(c)):
-                    c[i][k] = v
+            shaped[k] = np.array(v)
+            s = shaped[k].shape[:-1] if k=='O' else shaped[k].shape
+            N = max(N,s[0]) if len(s)>0 else N
+            n = max(n,s[1]) if len(s)>1 else n
+
+        mat = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
+
+        if 'v' not in kwargs:
+            shaped['v'] = np.broadcast_to(1/n,(N,n))
+
+        for k,v in shaped.items():
+            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n,4))),(N,n,4)) if k=='O' else \
+                  np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n  ))),(N,n))
+            for i in range(N):
+                if k in ['phase','O','v']:
+                    for j in range(n):
+                        mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
+                else:
+                    mat[i][k] = obj[i,0].item() if isinstance(obj[i,0],np.generic) else obj[i,0]
+
         dup = self.copy()
-        dup['material'] = dup['material'] + c if 'material' in dup else c
+        dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
         return dup
-
-
-    @staticmethod
-    def _constituents(N=1,**kwargs):
-        """Construct list of constituents."""
-        N_material=1
-        for v in kwargs.values():
-            if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
-
-        if N == 1:
-            m = [[{'v':1.0}] for _ in range(N_material)]
-            for k,v in kwargs.items():
-                if hasattr(v,'__len__') and not isinstance(v,str):
-                    if len(v) != N_material:
-                        raise ValueError('Cannot add entries of different length')
-                    for i,vv in enumerate(np.array(v)):
-                        m[i][0][k] = vv.item() if isinstance(vv,np.generic) else vv
-                else:
-                    for i in range(N_material):
-                        m[i][0][k] = v
-            return m
-        else:
-            raise NotImplementedError
