@@ -478,7 +478,7 @@ subroutine homogenization_restartRead(fileHandle)
 
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
 
-    call HDF5_read(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+    call HDF5_read(groupHandle(2),homogState(ho)%state0,'omega') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
 
