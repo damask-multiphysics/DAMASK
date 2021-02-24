@@ -24,7 +24,6 @@ submodule(phase:plastic) dislotwin
       q_sb                = 1.0_pReal, &                                                            !< q-exponent in shear band velocity
       D_a                 = 1.0_pReal, &                                                            !< adjustment parameter to calculate minimum dipole distance
       i_tw                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for twinning
-      tau_0               = 1.0_pReal, &                                                            !< strength due to elements in solid solution
       L_tw                = 1.0_pReal, &                                                            !< Length of twin nuclei in Burgers vectors
       L_tr                = 1.0_pReal, &                                                            !< Length of trans nuclei in Burgers vectors
       x_c_tw              = 1.0_pReal, &                                                            !< critical distance for formation of twin nucleus
@@ -53,6 +52,7 @@ submodule(phase:plastic) dislotwin
       q, &                                                                                          !< q-exponent in glide velocity
       r, &                                                                                          !< r-exponent in twin nucleation rate
       s, &                                                                                          !< s-exponent in trans nucleation rate
+      tau_0, &                                                                                      !< strength due to elements in solid solution
       gamma_char, &                                                                                 !< characteristic shear for twins
       B                                                                                             !< drag coefficient
     real(pReal),               allocatable, dimension(:,:) :: &
@@ -213,10 +213,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%i_sl                 = pl%get_asFloats('i_sl',        requiredSize=size(N_sl))
       prm%p                    = pl%get_asFloats('p_sl',        requiredSize=size(N_sl))
       prm%q                    = pl%get_asFloats('q_sl',        requiredSize=size(N_sl))
+      prm%tau_0                = pl%get_asFloats('tau_0',       requiredSize=size(N_sl))
       prm%B                    = pl%get_asFloats('B',           requiredSize=size(N_sl), &
                                                   defaultVal=[(0.0_pReal, i=1,size(N_sl))])
 
-      prm%tau_0                = pl%get_asFloat('tau_0')
       prm%D_a                  = pl%get_asFloat('D_a')
       prm%D_0                  = pl%get_asFloat('D_0')
       prm%Q_cl                 = pl%get_asFloat('Q_cl')
@@ -242,6 +242,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%i_sl         = math_expand(prm%i_sl,        N_sl)
       prm%p            = math_expand(prm%p,           N_sl)
       prm%q            = math_expand(prm%q,           N_sl)
+      prm%tau_0        = math_expand(prm%tau_0,       N_sl)
       prm%B            = math_expand(prm%B,           N_sl)
 
       ! sanity checks
