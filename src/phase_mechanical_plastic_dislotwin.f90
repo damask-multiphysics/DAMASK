@@ -81,7 +81,7 @@ submodule(phase:plastic) dislotwin
     logical :: &
       ExtendedDislocations, &                                                                       !< consider split into partials for climb calculation
       fccTwinTransNucleation, &                                                                     !< twinning and transformation models are for fcc
-      dipoleFormation                                                                               !< flag indicating consideration of dipole formation
+      omitDipoles                                                                                   !< flag controlling consideration of dipole formation
   end type                                                                                          !< container type for internal constitutive parameters
 
   type :: tDislotwinState
@@ -226,7 +226,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
         prm%dGamma_sf_dT       = pl%get_asFloat('dGamma_sf_dT')
       endif
 
-      prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation',defaultVal = .false.)
+      prm%omitDipoles = pl%get_asBool('omit_dipoles',defaultVal = .false.)
 
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
       ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
@@ -676,20 +676,16 @@ module subroutine dislotwin_dotState(Mp,T,ph,me)
   slipState: do i = 1, prm%sum_N_sl
     tau = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
 
-    significantSlipStress: if (dEq0(tau)) then
+    significantSlipStress: if (dEq0(tau) .or. prm%omitDipoles) then
       dot_rho_dip_formation(i) = 0.0_pReal
       dot_rho_dip_climb(i) = 0.0_pReal
     else significantSlipStress
-      rho_dip_distance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
-      rho_dip_distance = math_clip(rho_dip_distance, right = dst%Lambda_sl(i,me))
-      rho_dip_distance = math_clip(rho_dip_distance, left  = rho_dip_distance_min(i))
+      rho_dip_distance = math_clip(3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau)), &
+                                   left  = rho_dip_distance_min(i), &
+                                   right = dst%Lambda_sl(i,me))
 
-      if (prm%dipoleFormation) then
-        dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
-                                 * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
-      else
-        dot_rho_dip_formation(i) = 0.0_pReal
-      endif
+      dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
+                               * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
 
       if (dEq(rho_dip_distance,rho_dip_distance_min(i))) then
         dot_rho_dip_climb(i) = 0.0_pReal
