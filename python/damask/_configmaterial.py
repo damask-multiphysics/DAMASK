@@ -314,8 +314,8 @@ class ConfigMaterial(Config):
             shaped['v'] = np.broadcast_to(1/n,(N,n))
 
         for k,v in shaped.items():
-            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n,4),mode='right')),(N,n,4)) if k=='O' else \
-                  np.broadcast_to(v.reshape(util.shapeshifter(v.shape,(N,n  ),mode='right')),(N,n))
+            target = (N,n,4) if k=='O' else (N,n)
+            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,target,mode='right')),target)
             for i in range(N):
                 if k in ['phase','O','v']:
                     for j in range(n):
