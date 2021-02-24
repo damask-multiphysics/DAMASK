@@ -87,7 +87,6 @@ class TestConfigMaterial:
     def test_from_table(self):
         N = np.random.randint(3,10)
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2))).T
-        print(a)
         t = Table(a,{'varying':1,'constant':4})
         c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'4_constant'})
         assert len(c['material']) == N
