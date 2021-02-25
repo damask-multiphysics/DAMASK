@@ -246,8 +246,8 @@ class VTK:
                 raise ValueError('No label defined for numpy.ndarray')
 
             N_data = data.shape[0]
-            d = np_to_vtk((data.astype(np.float32) if data.dtype in [np.float64, np.float128]
-                      else data).reshape(N_data,-1),deep=True)                               # avoid large files
+            d = np_to_vtk((data.astype(np.single) if data.dtype in [np.double, np.longdouble] else
+                           data).reshape(N_data,-1),deep=True)                                      # avoid large files
             d.SetName(label)
 
             if   N_data == N_points:

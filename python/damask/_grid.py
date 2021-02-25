@@ -122,7 +122,7 @@ class Grid:
 
     @size.setter
     def size(self,size):
-        if len(size) != 3 or any(np.array(size) <= 0):
+        if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
         else:
             self._size = np.array(size)
@@ -202,7 +202,7 @@ class Grid:
             Geometry file to read.
 
         """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
         try:
             f = open(fname)
         except TypeError:
@@ -303,7 +303,7 @@ class Grid:
             Need to be ordered (1./x fast, 3./z slow).
         labels : str or list of str
             Label(s) of the columns containing the material definition.
-            Each unique combintation of values results in one material ID.
+            Each unique combination of values results in one material ID.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -541,7 +541,7 @@ class Grid:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
         header =  [f'{len(self.comments)+4} header'] + self.comments \
                 + ['grid   a {} b {} c {}'.format(*self.cells),
                    'size   x {} y {} z {}'.format(*self.size),
@@ -760,7 +760,7 @@ class Grid:
 
         """
         if fill is None: fill = np.nanmax(self.material) + 1
-        dtype = float if np.isnan(fill) or int(fill) != fill or self.material.dtype==np.float else int
+        dtype = float if isinstance(fill,float) or self.material.dtype in np.sctypes['float'] else int
 
         material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
