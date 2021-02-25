@@ -680,12 +680,12 @@ module subroutine dislotwin_dotState(Mp,T,ph,me)
       dot_rho_dip_formation(i) = 0.0_pReal
       dot_rho_dip_climb(i) = 0.0_pReal
     else significantSlipStress
-      rho_dip_distance = math_clip(3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau)), &
-                                   left  = rho_dip_distance_min(i), &
-                                   right = dst%Lambda_sl(i,me))
+      rho_dip_distance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
+      rho_dip_distance = math_clip(rho_dip_distance, right = dst%Lambda_sl(i,me))
+      rho_dip_distance = math_clip(rho_dip_distance, left  = rho_dip_distance_min(i))
 
       dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
-                               * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
+                              * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
 
       if (dEq(rho_dip_distance,rho_dip_distance_min(i))) then
         dot_rho_dip_climb(i) = 0.0_pReal
