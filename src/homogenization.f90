@@ -110,11 +110,10 @@ module homogenization
       integer, intent(in) :: ip,el
     end subroutine thermal_homogenize
 
-    module subroutine mechanical_homogenize(dt,ip,el)
+    module subroutine mechanical_homogenize(dt,ce)
      real(pReal), intent(in) :: dt
      integer, intent(in) :: &
-       ip, &                                                                                        !< integration point
-       el                                                                                           !< element number
+       ce                                                                                           !< cell
     end subroutine mechanical_homogenize
 
     module subroutine mechanical_results(group_base,ho)
@@ -348,14 +347,15 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     enddo
     !$OMP END DO
 
-    !$OMP DO PRIVATE(ho)
+    !$OMP DO PRIVATE(ho,ce)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       ho = material_homogenizationAt(el)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+        ce = (el-1)*discretization_nIPs + ip
         do co = 1, homogenization_Nconstituents(ho)
           call crystallite_orientations(co,ip,el)
         enddo
-        call mechanical_homogenize(dt,ip,el)
+        call mechanical_homogenize(dt,ce)
       enddo IpLooping3
     enddo elementLooping3
     !$OMP END DO

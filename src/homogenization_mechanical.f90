@@ -137,27 +137,24 @@ end subroutine mechanical_partition
 !--------------------------------------------------------------------------------------------------
 !> @brief Average P and dPdF from the individual constituents.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_homogenize(dt,ip,el)
+module subroutine mechanical_homogenize(dt,ce)
 
   real(pReal), intent(in) :: dt
-  integer, intent(in) :: &
-       ip, &                                                                                        !< integration point
-       el                                                                                           !< element number
+  integer, intent(in) :: ce
 
-  integer :: co,ce
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
+  integer :: co
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
+  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
 
 
-  ce = (el-1)* discretization_nIPs + ip
-  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt2(ce)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
         homogenization_P(1:3,1:3,ce)            = phase_mechanical_getP(1,ce)
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ce)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+      do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
         Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
@@ -165,10 +162,10 @@ module subroutine mechanical_homogenize(dt,ip,el)
         homogenization_P(1:3,1:3,ce), &
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         Ps,dPdFs, &
-        material_homogenizationAt(el))
+        material_homogenizationAt2(ce))
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+      do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
         Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
@@ -176,7 +173,7 @@ module subroutine mechanical_homogenize(dt,ip,el)
         homogenization_P(1:3,1:3,ce), &
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         Ps,dPdFs, &
-        material_homogenizationAt(el))
+        material_homogenizationAt2(ce))
 
   end select chosenHomogenization
 
