@@ -647,7 +647,6 @@ module subroutine dislotwin_dotState(Mp,T,ph,me)
     f_unrotated, &
     rho_dip_distance, &
     v_cl, &                                                                                         !< climb velocity
-    Gamma, &                                                                                        !< stacking fault energy
     tau, &
     sigma_cl, &                                                                                     !< climb stress
     b_d                                                                                             !< ratio of Burgers vector to stacking fault width
@@ -685,19 +684,17 @@ module subroutine dislotwin_dotState(Mp,T,ph,me)
       rho_dip_distance = math_clip(rho_dip_distance, left  = rho_dip_distance_min(i))
 
       dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
-                              * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
+                               * stt%rho_mob(i,me)*abs(dot_gamma_sl(i))
 
       if (dEq(rho_dip_distance,rho_dip_distance_min(i))) then
         dot_rho_dip_climb(i) = 0.0_pReal
       else
-      !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
+        ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
         sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
-        if (prm%ExtendedDislocations) then
-          Gamma = prm%Gamma_sf_0K + prm%dGamma_sf_dT * T
-          b_d = 24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu)* Gamma/(prm%mu*prm%b_sl(i))
-        else
-          b_d = 1.0_pReal
-        endif
+        b_d = merge(24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu) &
+                      * (prm%Gamma_sf_0K + prm%dGamma_sf_dT * T) / (prm%mu*prm%b_sl(i)), &
+                    1.0_pReal, &
+                    prm%ExtendedDislocations)
         v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Q_cl/(kB*T)) &
              * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
 
