@@ -2,8 +2,8 @@
 # Tasan et.al. 2015 International Journal of Plasticity
 # Diehl et.al. 2015 Meccanica
 Ferrite:
+  lattice: cI
   mechanics:
-    lattice: cI
     elasticity: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: hooke}
     plasticity:
       N_sl: [12, 12]
