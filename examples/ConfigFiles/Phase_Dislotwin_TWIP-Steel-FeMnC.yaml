@@ -10,7 +10,7 @@ TWIP_Steel_FeMnC:
       b_sl: [2.56e-10]
       rho_mob_0: [1.0e12]
       rho_dip_0: [1.0]
-      v_0: [1.0e-4]
+      v_0: [1.0e4]
       Q_s: [3.7e-19]
       p_sl: [1.0]
       q_sl: [1.0]

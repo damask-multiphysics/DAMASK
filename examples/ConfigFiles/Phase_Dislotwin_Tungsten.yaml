@@ -9,7 +9,7 @@ Tungsten:
       b_sl: [2.72e-10]       # Burgers vector length of slip families / m
       rho_mob_0: [1.0e12]
       rho_dip_0: [1.0]
-      v_0: [1.0e-4]          # Initial glide velocity / m/s
+      v_0: [1.0e4]           # Initial glide velocity / m/s
       Q_s: [2.725e-19]       # Activation energy for dislocation glide / J
       p_sl: [0.78]           # p-exponent in glide velocity
       q_sl: [1.58]           # q-exponent in glide velocity
