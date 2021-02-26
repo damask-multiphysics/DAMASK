@@ -444,14 +444,14 @@ module function plastic_dislotwin_init() result(myPlasticity)
     endIndex   = endIndex + prm%sum_N_tw
     stt%f_tw=>plasticState(ph)%state(startIndex:endIndex,:)
     dot%f_tw=>plasticState(ph)%dotState(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('f_twin',defaultVal=1.0e-7_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_f_tw',defaultVal=1.0e-7_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' f_twin'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tr
     stt%f_tr=>plasticState(ph)%state(startIndex:endIndex,:)
     dot%f_tr=>plasticState(ph)%dotState(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('f_trans',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_f_tr',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' f_trans'
 
     allocate(dst%Lambda_sl             (prm%sum_N_sl,Nconstituents),source=0.0_pReal)
