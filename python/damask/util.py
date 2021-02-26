@@ -133,6 +133,8 @@ def execute(cmd,
     stdout = stdout.decode('utf-8').replace('\x08','')
     stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
+        print(stdout)
+        print(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
     return stdout, stderr
 
@@ -418,7 +420,7 @@ class _ProgressBar:
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
             delta_time = datetime.datetime.now() - self.start_time
             remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
-            remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)           # remove μs
+            remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)          # remove μs
             sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
             sys.stderr.flush()
 
