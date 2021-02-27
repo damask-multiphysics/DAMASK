@@ -67,9 +67,9 @@ module YAML_types
     procedure :: &
       tNode_get_byKey_asStrings   => tNode_get_byKey_asStrings
     procedure :: &
-      getIndex                    => tNode_get_byKey_asIndex
+      getKey                      => tNode_get_byIndex_asKey
     procedure :: &
-      getKey                      => tNode_getKey_byIndex
+      getIndex                    => tNode_get_byKey_asIndex
     procedure :: &
       contains                    => tNode_contains
 
@@ -602,7 +602,7 @@ end function tNode_get_byIndex_asStrings
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the key in a dictionary as a string
 !--------------------------------------------------------------------------------------------------
-function tNode_getKey_byIndex(self,i)  result(key)
+function tNode_get_byIndex_asKey(self,i)  result(key)
 
   class(tNode),     intent(in), target  :: self
   integer,          intent(in)          :: i
@@ -619,7 +619,7 @@ function tNode_getKey_byIndex(self,i)  result(key)
   enddo
   key = item%key
 
-end function tNode_getKey_byIndex
+end function tNode_get_byIndex_asKey
 
 
 !-------------------------------------------------------------------------------------------------
