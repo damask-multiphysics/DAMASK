@@ -737,9 +737,7 @@ module subroutine dislotwin_dependentState(T,ph,me)
   real(pReal) :: &
     sumf_tw,Gamma,sumf_tr
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    inv_lambda_sl_sl, &                                                                             !< 1/mean free distance between 2 forest dislocations seen by a moving dislocation
-    inv_lambda_sl_tw, &                                                                             !< 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
-    inv_lambda_sl_tr                                                                                !< 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
+    inv_lambda_sl
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
     inv_lambda_tw_tw, &                                                                             !< 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
     f_over_t_tw
@@ -764,28 +762,17 @@ module subroutine dislotwin_dependentState(T,ph,me)
   f_over_t_tr = sumf_tr/prm%t_tr                                                                    ! but this not
                                                                                                     ! ToDo ...Physically correct, but naming could be adjusted
 
-  inv_lambda_sl_sl = sqrt(matmul(prm%forestProjection, &
-                                 stt%rho_mob(:,me)+stt%rho_dip(:,me)))/prm%i_sl
-
+  inv_lambda_sl = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,me)+stt%rho_dip(:,me)))/prm%i_sl
   if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
-    inv_lambda_sl_tw = matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
+    inv_lambda_sl = inv_lambda_sl + matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
+  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
+    inv_lambda_sl = inv_lambda_sl + matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
+  dst%Lambda_sl(:,me) = prm%D / (1.0_pReal+prm%D*inv_lambda_sl)
 
   inv_lambda_tw_tw = matmul(prm%h_tw_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
-
-  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
-    inv_lambda_sl_tr = matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
+  dst%Lambda_tw(:,me) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
 
   inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
-
-  if ((prm%sum_N_tw > 0) .or. (prm%sum_N_tr > 0)) then                                              ! ToDo: better logic needed here
-    dst%Lambda_sl(:,me) = prm%D &
-                        / (1.0_pReal+prm%D*(inv_lambda_sl_sl + inv_lambda_sl_tw + inv_lambda_sl_tr))
-  else
-    dst%Lambda_sl(:,me) = prm%D &
-                        / (1.0_pReal+prm%D*inv_lambda_sl_sl) !!!!!! correct?
-  endif
-
-  dst%Lambda_tw(:,me) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
   dst%Lambda_tr(:,me) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
 
   !* threshold stress for dislocation motion
