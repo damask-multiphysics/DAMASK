@@ -72,7 +72,7 @@ module YAML_types
       getKey                      => tNode_getKey_byIndex
     procedure :: &
       contains                    => tNode_contains
- 
+
     generic :: &
       get           => tNode_get_byIndex, &
                        tNode_get_byKey
@@ -157,7 +157,7 @@ module YAML_types
     emptyDict
   type(tList), target, public :: &
     emptyList
-  
+
   abstract interface
 
     recursive function asFormattedString(self,indent)
@@ -179,7 +179,7 @@ module YAML_types
 
   public :: &
     YAML_types_init, &
-    output_asStrings, &                                        !ToDo: Hack for GNU. Remove later 
+    output_asStrings, &                                        !ToDo: Hack for GNU. Remove later
     assignment(=)
 
 contains
@@ -435,13 +435,12 @@ function tNode_get_byIndex(self,i) result(node)
   integer :: j
 
   self_ => self%asList()
+  item => self_%first
+
   if(i < 1 .or. i > self_%length) call IO_error(150,ext_msg='tNode_get_byIndex')
 
-  j = 1
-  item => self_%first
-  do while(j<i)
+  do j = 2,i
     item => item%next
-    j = j + 1
   enddo
   node => item%node
 
@@ -615,14 +614,10 @@ function tNode_getKey_byIndex(self,i)  result(key)
 
   dict => self%asDict()
   item => dict%first
-  do j = 1, dict%length
-    if(j == i) then
-      key = item%key
-      exit
-    else
-      item => item%next
-    endif
+  do j = 1, min(i,dict%length)-1
+    item => item%next
   enddo
+  key = item%key
 
 end function tNode_getKey_byIndex
 
@@ -630,7 +625,7 @@ end function tNode_getKey_byIndex
 !-------------------------------------------------------------------------------------------------
 !> @brief Checks if a given key/item is present in the dict/list
 !-------------------------------------------------------------------------------------------------
-function tNode_contains(self,k)  result(exists)   
+function tNode_contains(self,k)  result(exists)
 
   class(tNode),     intent(in), target  :: self
   character(len=*), intent(in)          :: k
@@ -641,18 +636,18 @@ function tNode_contains(self,k)  result(exists)
   type(tDict), pointer :: dict
 
   exists = .false.
-  if(self%isDict()) then
+  if (self%isDict()) then
     dict => self%asDict()
     do j=1, dict%length
-      if(dict%getKey(j) == k) then
+      if (dict%getKey(j) == k) then
         exists = .true.
         return
       endif
     enddo
-  elseif(self%isList()) then
+  elseif (self%isList()) then
     list => self%asList()
-    do j =1, list%length
-      if(list%get_asString(j) == k) then
+    do j=1, list%length
+      if (list%get_asString(j) == k) then
         exists = .true.
         return
       endif
@@ -681,7 +676,7 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
 
   found = present(defaultVal)
   if(found) node => defaultVal
-  
+
   self_ => self%asDict()
 
   j = 1
@@ -694,7 +689,7 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
     item => item%next
     j = j + 1
   enddo
-  
+
   if (.not. found) then
     call IO_error(143,ext_msg=k)
   else
@@ -911,11 +906,11 @@ function tNode_get_byKey_asStrings(self,k,defaultVal) result(nodeAsStrings)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
     list => node%asList(self)
     nodeAsStrings = list%asStrings()
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsStrings = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -943,7 +938,7 @@ function output_asStrings(self)  result(output)                   !ToDo: SR: Rem
 
 
 end function output_asStrings
- 
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the index of a key in a dictionary
@@ -954,25 +949,20 @@ function tNode_get_byKey_asIndex(self,key)  result(keyIndex)
   character(len=*), intent(in)          :: key
 
   integer              :: keyIndex
-  integer              :: i
   type(tDict), pointer :: dict
   type(tItem), pointer :: item
 
   dict => self%asDict()
   item => dict%first
-  keyIndex = -1
-  do i = 1, dict%length
-    if(key == item%key) then
-      keyIndex = i
-      exit
-    else
-      item => item%next
-    endif
+  keyIndex = 1
+  do while (associated(item%next) .and. item%key /= key)
+    item => item%next
+    keyIndex = keyIndex+1
   enddo
 
-  if(keyIndex == -1) call IO_error(140,ext_msg=key)
+  if (item%key /= key) call IO_error(140,ext_msg=key)
 
- 
+
 end function tNode_get_byKey_asIndex
 
 
@@ -1003,7 +993,7 @@ recursive function tList_asFormattedString(self,indent) result(str)
   integer :: i, indent_
 
   str = ''
-  if(present(indent)) then
+  if (present(indent)) then
     indent_ = indent
   else
     indent_ = 0
@@ -1011,7 +1001,7 @@ recursive function tList_asFormattedString(self,indent) result(str)
 
   item => self%first
   do i = 1, self%length
-    if(i /= 1) str = str//repeat(' ',indent_)
+    if (i /= 1) str = str//repeat(' ',indent_)
     str = str//'- '//item%node%asFormattedString(indent_+2)
     item => item%next
   end do
@@ -1032,7 +1022,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
   integer :: i, indent_
 
   str = ''
-  if(present(indent)) then
+  if (present(indent)) then
     indent_ = indent
   else
     indent_ = 0
@@ -1040,7 +1030,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
 
   item => self%first
   do i = 1, self%length
-    if(i /= 1) str = str//repeat(' ',indent_)
+    if (i /= 1) str = str//repeat(' ',indent_)
     select type(node_1 =>item%node)
       class is(tScalar)
         str = str//trim(item%key)//': '//item%node%asFormattedString(indent_+len_trim(item%key)+2)
@@ -1254,7 +1244,7 @@ subroutine tDict_set(self,key,node)
       if (item%key == key) exit
       item => item%next
     end do searchExisting
-    if (.not. item%key == key) then
+    if (item%key /= key) then
       allocate(item%next)
       item => item%next
       self%length = self%length + 1
@@ -1288,7 +1278,7 @@ recursive subroutine tItem_finalize(self)
   type(tItem),intent(inout) :: self
 
   deallocate(self%node)
-  if(associated(self%next)) deallocate(self%next)
+  if (associated(self%next)) deallocate(self%next)
 
 end subroutine tItem_finalize
 
