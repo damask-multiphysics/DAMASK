@@ -201,8 +201,8 @@ def project_stereographic(vector,direction='z',normalize=True,keepdims=False):
     ----------
     vector : numpy.ndarray of shape (...,3)
         Vector coordinates to be projected.
-    direction : str or int
-        Projection direction 'x' | 0, 'y' | 1, or 'z' | 2.
+    direction : str
+        Projection direction 'x', 'y', or 'z'.
         Defaults to 'z'.
     normalize : bool
         Ensure unit length of input vector. Defaults to True.
@@ -227,7 +227,7 @@ def project_stereographic(vector,direction='z',normalize=True,keepdims=False):
         [0.41421356, 0]
 
     """
-    shift = 2-('xyzXYZ'.index(direction)%3 if isinstance(direction,str) else int(direction))
+    shift = 'zyx'.index(direction)
     v_ = np.roll(vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
                  shift,axis=-1)
     return np.roll(np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),np.zeros_like(v_[...,2:3])]),
