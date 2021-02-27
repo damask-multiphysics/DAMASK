@@ -105,7 +105,7 @@ class Result:
         self.view('increments',visible_increments)
 
         in_between = '' if len(visible_increments) < 3 else \
-                     ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-2]])
+                     ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-1]])
 
         return util.srepr(first + in_between + last)
 
@@ -119,10 +119,10 @@ class Result:
         action : str
             Select from 'set', 'add', and 'del'.
         what : str
-            Attribute to change (must be in self.visible).
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            Name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         def natural_sort(key):
@@ -200,7 +200,7 @@ class Result:
         self._allow_modification = True
 
     def disallow_modification(self):
-        """Disllow to overwrite existing data (default case)."""
+        """Disallow to overwrite existing data (default case)."""
         self._allow_modification = False
 
 
@@ -272,10 +272,10 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.visible)
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         self._manage_view('set',what,datasets)
@@ -288,10 +288,10 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.visible)
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         self._manage_view('add',what,datasets)
@@ -304,10 +304,10 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.visible)
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         self._manage_view('del',what,datasets)
@@ -315,14 +315,14 @@ class Result:
 
     def rename(self,name_old,name_new):
         """
-        Rename datasets.
+        Rename dataset.
 
         Parameters
         ----------
         name_old : str
-            name of the datasets to be renamed
+            Name of the dataset to be renamed.
         name_new : str
-            new name of the datasets
+            New name of the dataset.
 
         """
         if self._allow_modification:
@@ -353,13 +353,13 @@ class Result:
         ----------
           datasets : iterable or str
           constituent : int
-              Constituent to consider for phase data
+              Constituent to consider for phase data.
           tagged : bool
-              tag Table.column name with '#constituent'
-              defaults to False
+              Tag Table.column name with '#constituent'.
+              Defaults to False.
           split : bool
-              split Table by increment and return dictionary of Tables
-              defaults to True
+              Split Table by increment and return dictionary of Tables.
+              Defaults to True.
 
         """
         sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
@@ -415,7 +415,7 @@ class Result:
         are considered as they contain user-relevant data.
         Single strings will be treated as list with one entry.
 
-        Wild card matching is allowed, but the number of arguments need to fit.
+        Wild card matching is allowed, but the number of arguments needs to fit.
 
         Parameters
         ----------
