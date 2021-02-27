@@ -193,7 +193,7 @@ def scale_to_coprime(v):
     return m
 
 
-def project_stereographic(vector,normalize=False):
+def project_stereographic(vector,normalize=False,direction='z'):
     """
     Apply stereographic projection to vector.
 
@@ -203,16 +203,21 @@ def project_stereographic(vector,normalize=False):
         Vector coordinates to be projected.
     normalize : bool
         Ensure unit length for vector. Defaults to False.
+    direction : str or int
+        Projection direction 'x'|0, 'y'|1, or 'z'|2.
+        Defaults to 'z'.
 
     Returns
     -------
-    coordinates : numpy.ndarray of shape (...,2)
+    coordinates : numpy.ndarray of shape (...,3)
         Projected coordinates.
 
     """
-    v_ = vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector
-    return np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),
-                     np.zeros_like(v_[...,2:3])])
+    shift = 2-('xyzXYZ'.index(direction)%3 if isinstance(direction,str) else int(direction))
+    v_ = np.roll(vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
+                 shift,axis=-1)
+    return np.roll(np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),np.zeros_like(v_[...,2:3])]),
+                   -shift,axis=-1)
 
 
 def execution_stamp(class_name,function_name=None):

@@ -49,17 +49,17 @@ class TestUtil:
         dist_sampled = np.histogram(centers[selected],bins)[0]/N_samples*np.sum(dist)
         assert np.sqrt(((dist - dist_sampled) ** 2).mean()) < .025 and selected.shape[0]==N_samples
 
-    @pytest.mark.parametrize('point,normalize,answer',
+    @pytest.mark.parametrize('point,normalize,direction,answer',
                              [
-                              ([1,0,0],False,[1,0,0]),
-                              ([1,0,0],True, [1,0,0]),
-                              ([0,1,1],False,[0,0.5,0]),
-                              ([0,1,1],True, [0,0.41421356,0]),
-                              ([1,1,1],False,[0.5,0.5,0]),
-                              ([1,1,1],True, [0.3660254, 0.3660254, 0]),
+                              ([1,0,0],False,'z',[1,0,0]),
+                              ([1,0,0],True, 'z',[1,0,0]),
+                              ([0,1,1],False,'z',[0,0.5,0]),
+                              ([0,1,1],True, 'y',[0,0,0.41421356]),
+                              ([1,1,1],False,'x',[0,0.5,0.5]),
+                              ([1,1,1],True, 'y',[0.3660254, 0,0.3660254]),
                              ])
-    def test_project_stereographic(self,point,normalize,answer):
-        assert np.allclose(util.project_stereographic(np.array(point),normalize=normalize),answer)
+    def test_project_stereographic(self,point,normalize,direction,answer):
+        assert np.allclose(util.project_stereographic(np.array(point),normalize=normalize,direction=direction),answer)
 
     @pytest.mark.parametrize('fro,to,mode,answer',
                              [
