@@ -78,8 +78,7 @@ program DAMASK_grid
     maxCutBack, &                                                                                   !< max number of cut backs
     stagItMax                                                                                       !< max number of field level staggered iterations
   character(len=pStringLen) :: &
-    incInfo, &
-    loadcase_string
+    incInfo
 
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
@@ -98,10 +97,10 @@ program DAMASK_grid
     quit
   class (tNode), pointer :: &
     num_grid, &
-    debug_grid, &                                                                                   ! pointer to grid debug options
     config_load, &
     load_steps, &
     load_step, &
+    solver, &
     step_bc, &
     step_mech, &
     step_discretization, &
@@ -117,12 +116,6 @@ program DAMASK_grid
   print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
-!--------------------------------------------------------------------------------------------------
-! initialize field solver information
-  nActiveFields = 1
-  if (any(thermal_type  == THERMAL_conduction_ID  )) nActiveFields = nActiveFields + 1
-  if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
-  allocate(solres(nActiveFields))
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
@@ -132,20 +125,23 @@ program DAMASK_grid
 
   if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  
+  config_load => YAML_parse_file(trim(interface_loadFile))
+  solver => config_load%get('solver')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
 
-  debug_grid => config_debug%get('grid',defaultVal=emptyList)
-  select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic')))
-    case ('Basic')
+  nActiveFields = 1
+  select case (solver%get_asString('mechanical'))
+    case ('spectral_basic')
       mechanical_init         => grid_mechanical_spectral_basic_init
       mechanical_forward      => grid_mechanical_spectral_basic_forward
       mechanical_solution     => grid_mechanical_spectral_basic_solution
       mechanical_updateCoords => grid_mechanical_spectral_basic_updateCoords
       mechanical_restartWrite => grid_mechanical_spectral_basic_restartWrite
 
-    case ('Polarisation')
+    case ('spectral_polarization')
       mechanical_init         => grid_mechanical_spectral_polarisation_init
       mechanical_forward      => grid_mechanical_spectral_polarisation_forward
       mechanical_solution     => grid_mechanical_spectral_polarisation_solution
@@ -160,14 +156,17 @@ program DAMASK_grid
       mechanical_restartWrite => grid_mechanical_FEM_restartWrite
 
     case default
-      call IO_error(error_ID = 891, ext_msg = trim(num_grid%get_asString('solver')))
+      call IO_error(error_ID = 891, ext_msg = trim(solver%get_asString('mechanical')))
 
   end select
 
+!--------------------------------------------------------------------------------------------------
+! initialize field solver information
+  if (any(thermal_type  == THERMAL_conduction_ID  )) nActiveFields = nActiveFields + 1
+  if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
+  allocate(solres(nActiveFields))
 
 !--------------------------------------------------------------------------------------------------
-! reading information from load case file and to sanity checks
-  config_load => YAML_parse_file(trim(interface_loadFile))
 
   load_steps => config_load%get('loadstep')
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
@@ -232,7 +231,6 @@ program DAMASK_grid
                                                        merge(.true.,.false.,l > 1))
 
     reportAndCheck: if (worldrank == 0) then
-      write (loadcase_string, '(i0)' ) l
       print'(/,a,i0)', ' load case: ', l
       print*, ' estimate_rate:', loadCases(l)%estimate_rate
       if (loadCases(l)%deformation%myType == 'L') then
@@ -292,7 +290,7 @@ program DAMASK_grid
       if (loadCases(l)%f_restart < huge(0)) &
         print'(a,i0)', '  f_restart: ', loadCases(l)%f_restart
 
-      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
+      if (errorID > 0) call IO_error(error_ID = errorID, el = l)
 
     endif reportAndCheck
   enddo
