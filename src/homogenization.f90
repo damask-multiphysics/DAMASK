@@ -35,10 +35,6 @@ module homogenization
     homogState, &
     damageState_h
 
-
-  real(pReal), dimension(:), allocatable, public, protected :: &
-    thermal_initialT
-
   integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable :: &
     thermal_type                                                                                    !< thermal transport model
   integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
@@ -556,7 +552,6 @@ subroutine material_parseHomogenization
   allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(material_name_homogenization)),        source=THERMAL_isothermal_ID)
   allocate(damage_type (size(material_name_homogenization)),        source=DAMAGE_none_ID)
-  allocate(thermal_initialT(size(material_name_homogenization)),    source=300.0_pReal)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
@@ -575,7 +570,6 @@ subroutine material_parseHomogenization
 
     if(homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
-        thermal_initialT(h) =  homogThermal%get_asFloat('T_0',defaultVal=300.0_pReal)
 
         select case (homogThermal%get_asString('type'))
           case('pass')

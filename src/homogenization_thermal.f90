@@ -44,7 +44,7 @@ module subroutine thermal_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    allocate(current(ho)%T(count(material_homogenizationAt2==ho)), source=thermal_initialT(ho))
+    allocate(current(ho)%T(count(material_homogenizationAt2==ho)), source=300.0_pReal)
     allocate(current(ho)%dot_T(count(material_homogenizationAt2==ho)), source=0.0_pReal)
     configHomogenization => configHomogenizations%get(ho)
     associate(prm => param(ho))

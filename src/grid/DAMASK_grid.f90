@@ -54,7 +54,7 @@ program DAMASK_grid
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pReal) :: &
-    T_0 = 273.0_pReal, &
+    T_0 = 300.0_pReal, &
     time = 0.0_pReal, &                                                                             !< elapsed time
     time0 = 0.0_pReal, &                                                                            !< begin of interval
     timeinc = 1.0_pReal, &                                                                          !< current time interval
@@ -309,11 +309,11 @@ program DAMASK_grid
         call mechanical_init
 
       case(FIELD_THERMAL_ID)
-        if (solver%contains('initial_conditions')) then
-          initial_conditions => solver%get('initial_conditions')
+        if (config_load%contains('initial_conditions')) then
+          initial_conditions => config_load%get('initial_conditions')
           if (initial_conditions%contains('thermal')) then
-            thermal => solver%get('thermal')
-            T_0 = thermal%get_asFloat('thermal',defaultVal = T_0)
+            thermal => initial_conditions%get('thermal')
+            T_0 = thermal%get_asFloat('T',defaultVal = T_0)
           endif
         endif
         call grid_thermal_spectral_init(T_0)

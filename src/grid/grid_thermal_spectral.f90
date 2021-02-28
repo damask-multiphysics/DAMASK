@@ -133,9 +133,10 @@ subroutine grid_thermal_spectral_init(T_0)
   ce = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     ce = ce + 1
-    T_current(i,j,k) = homogenization_thermal_T(ce)
+    T_current(i,j,k) = T_0
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
+    call homogenization_thermal_setField(T_0,0.0_pReal,ce)
   enddo; enddo; enddo
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,x_scal,ierr); CHKERRQ(ierr)                     !< get the data out of PETSc to work with
   x_scal(xstart:xend,ystart:yend,zstart:zend) = T_current
