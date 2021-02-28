@@ -37,8 +37,9 @@ program DAMASK_grid
                                 f_out, &                                                            !< frequency of result writes
                                 f_restart                                                           !< frequency of restart writes
     logical ::                  estimate_rate                                                       !< follow trajectory of former loadcase
-    integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
+  
+  integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
@@ -165,6 +166,19 @@ program DAMASK_grid
   if (any(thermal_type  == THERMAL_conduction_ID  )) nActiveFields = nActiveFields + 1
   if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
   allocate(solres(nActiveFields))
+  
+  allocate(ID(nActiveFields))
+  field = 1
+  ID(field) = FIELD_MECH_ID                                                                         ! mechanical active by default
+  thermalActive: if (any(thermal_type == THERMAL_conduction_ID)) then
+    field = field + 1
+    ID(field) = FIELD_THERMAL_ID
+  endif thermalActive
+  damageActive: if (any(damage_type == DAMAGE_nonlocal_ID)) then
+    field = field + 1
+    ID(field) = FIELD_DAMAGE_ID
+  endif damageActive
+
 
 !--------------------------------------------------------------------------------------------------
 
@@ -172,18 +186,6 @@ program DAMASK_grid
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
 
   do l = 1, load_steps%length
-
-    allocate(loadCases(l)%ID(nActiveFields))
-    field = 1
-    loadCases(l)%ID(field) = FIELD_MECH_ID                                                          ! mechanical active by default
-    thermalActive: if (any(thermal_type == THERMAL_conduction_ID)) then
-      field = field + 1
-      loadCases(l)%ID(field) = FIELD_THERMAL_ID
-    endif thermalActive
-    damageActive: if (any(damage_type == DAMAGE_nonlocal_ID)) then
-      field = field + 1
-      loadCases(l)%ID(field) = FIELD_DAMAGE_ID
-    endif damageActive
 
     load_step => load_steps%get(l)
     step_bc   => load_step%get('boundary_conditions')
@@ -299,7 +301,7 @@ program DAMASK_grid
 ! doing initialization depending on active solvers
   call spectral_Utilities_init
   do field = 1, nActiveFields
-    select case (loadCases(1)%ID(field))
+    select case (ID(field))
       case(FIELD_MECH_ID)
         call mechanical_init
 
@@ -375,7 +377,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! forward fields
           do field = 1, nActiveFields
-            select case(loadCases(l)%ID(field))
+            select case(ID(field))
               case(FIELD_MECH_ID)
                 call mechanical_forward (&
                         cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
@@ -395,7 +397,7 @@ program DAMASK_grid
           stagIterate = .true.
           do while (stagIterate)
             do field = 1, nActiveFields
-              select case(loadCases(l)%ID(field))
+              select case(ID(field))
                 case(FIELD_MECH_ID)
                   solres(field) = mechanical_solution(incInfo)
                 case(FIELD_THERMAL_ID)
