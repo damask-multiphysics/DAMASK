@@ -279,7 +279,6 @@ module subroutine mechanical_init(materials,phases)
   endif
 
   
-  !$OMP PARALLEL DO PRIVATE(ph,me,material,constituents,constituent) 
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
     do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
       material     => materials%get(discretization_materialAt(el))
@@ -305,7 +304,6 @@ module subroutine mechanical_init(materials,phases)
 
     enddo
   enddo; enddo
-  !$OMP END PARALLEL DO
 
 
 ! initialize plasticity
