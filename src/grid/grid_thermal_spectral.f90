@@ -61,7 +61,9 @@ contains
 !> @brief allocates all neccessary fields and fills them with data
 ! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_init
+subroutine grid_thermal_spectral_init(T_0)
+
+  real(pReal), intent(in) :: T_0
 
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce

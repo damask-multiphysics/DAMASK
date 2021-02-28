@@ -578,7 +578,7 @@ subroutine material_parseHomogenization
         thermal_initialT(h) =  homogThermal%get_asFloat('T_0',defaultVal=300.0_pReal)
 
         select case (homogThermal%get_asString('type'))
-          case('conduction')
+          case('pass')
             thermal_type(h) = THERMAL_conduction_ID
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))

@@ -54,6 +54,7 @@ program DAMASK_grid
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pReal) :: &
+    T_0 = 273.0_pReal, &
     time = 0.0_pReal, &                                                                             !< elapsed time
     time0 = 0.0_pReal, &                                                                            !< begin of interval
     timeinc = 1.0_pReal, &                                                                          !< current time interval
@@ -102,6 +103,9 @@ program DAMASK_grid
     load_steps, &
     load_step, &
     solver, &
+    initial_conditions, &
+    ic_thermal, &
+    thermal, &
     step_bc, &
     step_mech, &
     step_discretization, &
@@ -181,7 +185,6 @@ program DAMASK_grid
 
 
 !--------------------------------------------------------------------------------------------------
-
   load_steps => config_load%get('loadstep')
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
 
@@ -306,7 +309,14 @@ program DAMASK_grid
         call mechanical_init
 
       case(FIELD_THERMAL_ID)
-        call grid_thermal_spectral_init
+        if (solver%contains('initial_conditions')) then
+          initial_conditions => solver%get('initial_conditions')
+          if (initial_conditions%contains('thermal')) then
+            thermal => solver%get('thermal')
+            T_0 = thermal%get_asFloat('thermal',defaultVal = T_0)
+          endif
+        endif
+        call grid_thermal_spectral_init(T_0)
 
       case(FIELD_DAMAGE_ID)
         call grid_damage_spectral_init
