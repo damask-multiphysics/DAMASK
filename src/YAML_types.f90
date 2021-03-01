@@ -72,6 +72,8 @@ module YAML_types
       getKey                      => tNode_getKey_byIndex
     procedure :: &
       contains                    => tNode_contains
+    procedure :: &
+      get_table_asFloats          => tNode_get_byKey_as2dFloats
  
     generic :: &
       get           => tNode_get_byIndex, &
@@ -821,6 +823,45 @@ function tNode_get_byKey_asFloats(self,k,defaultVal,requiredSize) result(nodeAsF
   endif
 
 end function tNode_get_byKey_asFloats
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Access by key and convert to float array
+!--------------------------------------------------------------------------------------------------
+function tNode_get_byKey_as2dFloats(self,k) result(nodeAs2dFloats)
+
+  class(tNode),     intent(in), target                 :: self
+  character(len=*), intent(in)                         :: k
+
+  real(pReal), dimension(:,:), allocatable :: nodeAs2dFloats
+
+  class(tNode), pointer :: node,node_
+  type(tList),  pointer :: row_list,column_list
+  integer :: i,j
+
+
+  if(self%contains(k)) then
+    node => self%get(k)
+    row_list => node%asList()
+    node_ => row_list%get(1)
+    column_list => node_%asList()
+    allocate(nodeAs2dFloats(row_list%length,column_list%length),source=0.0_pReal)
+  else
+    call IO_error(143,ext_msg=k)
+  endif
+  
+  node => self%get(k)
+  row_list => node%asList()
+  do i=1,row_list%length
+    node_ => row_list%get(i)
+    column_list => node_%asList()
+    do j=1,column_list%length
+      nodeAs2dFloats(i,j) = column_list%get_asFloat(j)  
+    enddo
+  enddo
+ 
+
+end function tNode_get_byKey_as2dFloats
 
 
 !--------------------------------------------------------------------------------------------------
