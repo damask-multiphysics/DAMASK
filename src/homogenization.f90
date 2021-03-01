@@ -37,7 +37,7 @@ module homogenization
 
   integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable :: &
     thermal_type                                                                                    !< thermal transport model
-  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
+  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable :: &
     damage_type                                                                                     !< nonlocal damage model
   integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
     homogenization_type                                                                             !< type of each homogenization
@@ -582,9 +582,7 @@ subroutine material_parseHomogenization
     if(homog%contains('damage')) then
       homogDamage => homog%get('damage')
         select case (homogDamage%get_asString('type'))
-          case('none')
-            damage_type(h) = DAMAGE_none_ID
-          case('nonlocal')
+          case('pass')
             damage_type(h) = DAMAGE_nonlocal_ID
           case default
             call IO_error(500,ext_msg=homogDamage%get_asString('type'))

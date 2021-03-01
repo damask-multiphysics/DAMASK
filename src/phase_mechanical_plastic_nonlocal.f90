@@ -1822,16 +1822,13 @@ subroutine storeGeometry(ph)
   integer, intent(in) :: ph
 
   integer :: ip, el, ce, co
+  real(pReal), dimension(:), allocatable :: V
+  
 
-  ce = 0
-  do el = 1, size(material_homogenizationMemberAt,2)
-    do ip = 1, size(material_homogenizationMemberAt,1)
-      ce = ce + 1
-      do co = 1, homogenization_maxNconstituents
-        if(material_phaseAt2(co,ce) == ph) then
-           geom(ph)%V_0(material_phaseMemberAt2(co,ce)) = IPvolume(ip,el)
-        endif
-      enddo
+  V = reshape(IPvolume,[product(shape(IPvolume))])
+  do ce = 1, size(material_homogenizationMemberAt2,1)
+    do co = 1, homogenization_maxNconstituents
+      if(material_phaseAt2(co,ce) == ph) geom(ph)%V_0(material_phaseMemberAt2(co,ce)) = V(ce)
     enddo
   enddo
 

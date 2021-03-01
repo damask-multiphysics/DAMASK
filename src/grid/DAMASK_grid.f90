@@ -168,7 +168,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
   if (solver%get_asString('thermal',defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
-  if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
+  if (solver%get_asString('damage', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
   allocate(solres(nActiveFields))
   
   allocate(ID(nActiveFields))
@@ -178,7 +178,7 @@ program DAMASK_grid
     field = field + 1
     ID(field) = FIELD_THERMAL_ID
   endif thermalActive
-  damageActive: if (any(damage_type == DAMAGE_nonlocal_ID)) then
+  damageActive: if (solver%get_asString('damage',defaultVal = 'n/a') == 'spectral') then
     field = field + 1
     ID(field) = FIELD_DAMAGE_ID
   endif damageActive
