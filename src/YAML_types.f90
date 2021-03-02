@@ -310,8 +310,6 @@ function tNode_asScalar(self) result(scalar)
   select type(self)
     class is(tScalar)
       scalar => self
-    class default
-      call IO_error(706,ext_msg='Expected "scalar"')
   end select
 
 end function tNode_asScalar
@@ -328,8 +326,6 @@ function tNode_asList(self) result(list)
   select type(self)
     class is(tList)
       list => self
-    class default
-      call IO_error(706,ext_msg='Expected "list"')
   end select
 
 end function tNode_asList
@@ -346,8 +342,6 @@ function tNode_asDict(self) result(dict)
   select type(self)
     class is(tDict)
       dict => self
-    class default
-      call IO_error(706,ext_msg='Expected "dict"')
   end select
 
 end function tNode_asDict
@@ -417,7 +411,12 @@ function tNode_get_byIndex(self,i) result(node)
   class(tItem),  pointer :: item
   integer :: j
 
-  self_ => self%asList()
+  if(self%isList()) then
+    self_ => self%asList()
+  else
+    call IO_error(706,ext_msg='Expected List')
+  endif
+
   if(i < 1 .or. i > self_%length) call IO_error(150,ext_msg='tNode_get_byIndex')
 
   j = 1
@@ -444,8 +443,12 @@ function tNode_get_byIndex_asFloat(self,i) result(nodeAsFloat)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  scalar => node%asScalar()
-  nodeAsFloat = scalar%asFloat()
+  if(node%isScalar()) then
+    scalar => node%asScalar()
+    nodeAsFloat = scalar%asFloat()
+  else
+    call IO_error(706,ext_msg='Expected Scalar')
+  endif
 
 end function tNode_get_byIndex_asFloat
 
@@ -463,8 +466,12 @@ function tNode_get_byIndex_asInt(self,i) result(nodeAsInt)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  scalar => node%asScalar()
-  nodeAsInt = scalar%asInt()
+  if(node%isScalar()) then
+    scalar => node%asScalar()
+    nodeAsInt = scalar%asInt()
+  else
+    call IO_error(706,ext_msg='Expected Scalar')
+  endif
 
 end function tNode_get_byIndex_asInt
 
@@ -482,8 +489,12 @@ function tNode_get_byIndex_asBool(self,i) result(nodeAsBool)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  scalar => node%asScalar()
-  nodeAsBool = scalar%asBool()
+  if(node%isScalar()) then
+    scalar => node%asScalar()
+    nodeAsBool = scalar%asBool()
+  else
+    call IO_error(706,ext_msg='Expected Scalar')
+  endif
 
 end function tNode_get_byIndex_asBool
 
@@ -501,8 +512,12 @@ function tNode_get_byIndex_asString(self,i) result(nodeAsString)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  scalar => node%asScalar()
-  nodeAsString = scalar%asString()
+  if(node%isScalar()) then
+    scalar => node%asScalar()
+    nodeAsString = scalar%asString()
+  else
+    call IO_error(706,ext_msg='Expected Scalar')
+  endif
 
 end function tNode_get_byIndex_asString
 
@@ -520,8 +535,12 @@ function tNode_get_byIndex_asFloats(self,i) result(nodeAsFloats)
   class(tList),  pointer :: list
 
   node => self%get(i)
-  list => node%asList()
-  nodeAsFloats = list%asFloats()
+  if(node%isList()) then
+    list => node%asList()
+    nodeAsFloats = list%asFloats()
+  else
+    call IO_error(706,ext_msg='Expected list')
+  endif
 
 end function tNode_get_byIndex_asFloats
 
@@ -539,8 +558,12 @@ function tNode_get_byIndex_asInts(self,i) result(nodeAsInts)
   class(tList), pointer :: list
 
   node => self%get(i)
-  list => node%asList()
-  nodeAsInts = list%asInts()
+  if(node%isList()) then
+    list => node%asList()
+    nodeAsInts = list%asInts()
+  else
+    call IO_error(706,ext_msg='Expected list')
+  endif
 
 end function tNode_get_byIndex_asInts
 
@@ -558,8 +581,12 @@ function tNode_get_byIndex_asBools(self,i) result(nodeAsBools)
   class(tList), pointer :: list
 
   node => self%get(i)
-  list => node%asList()
-  nodeAsBools = list%asBools()
+  if(node%isList()) then
+    list => node%asList()
+    nodeAsBools = list%asBools()
+  else
+    call IO_error(706,ext_msg='Expected list')
+  endif
 
 end function tNode_get_byIndex_asBools
 
@@ -577,8 +604,12 @@ function tNode_get_byIndex_asStrings(self,i) result(nodeAsStrings)
   type(tList),  pointer :: list
 
   node => self%get(i)
-  list => node%asList()
-  nodeAsStrings = list%asStrings()
+  if(node%isList()) then
+    list => node%asList()
+    nodeAsStrings = list%asStrings()
+  else
+    call IO_error(706,ext_msg='Expected list')
+  endif
 
 end function tNode_get_byIndex_asStrings
 
@@ -596,16 +627,20 @@ function tNode_getKey_byIndex(self,i)  result(key)
   type(tDict), pointer :: dict
   type(tItem), pointer :: item
 
-  dict => self%asDict()
-  item => dict%first
-  do j = 1, dict%length
-    if(j == i) then
-      key = item%key
-      exit
-    else
-      item => item%next
-    endif
-  enddo
+  if(self%isDict()) then
+    dict => self%asDict()
+    item => dict%first
+    do j = 1, dict%length
+      if(j == i) then
+        key = item%key
+        exit
+      else
+        item => item%next
+      endif
+    enddo
+  else
+    call IO_error(706,ext_msg='Expected dict')
+  endif
 
 end function tNode_getKey_byIndex
 
@@ -641,7 +676,7 @@ function tNode_contains(self,k)  result(exists)
       endif
     enddo
   else
-     call IO_error(706,ext_msg='Expected "list" or "dict"')
+    call IO_error(706,ext_msg='Expected "list" or "dict"')
   endif
 
 end function tNode_contains
@@ -664,8 +699,12 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
 
   found = present(defaultVal)
   if(found) node => defaultVal
-  
-  self_ => self%asDict()
+
+  if(self%isDict()) then 
+    self_ => self%asDict()
+  else
+    call IO_error(706,ext_msg='Expected Dict for key '//k)
+  endif
 
   j = 1
   item => self_%first
@@ -702,8 +741,12 @@ function tNode_get_byKey_asFloat(self,k,defaultVal) result(nodeAsFloat)
 
   if(self%contains(k)) then
     node => self%get(k)
-    scalar => node%asScalar()
-    nodeAsFloat = scalar%asFloat()
+    if(node%isScalar()) then
+      scalar => node%asScalar()
+      nodeAsFloat = scalar%asFloat()
+    else
+      call IO_error(706,ext_msg='Expected Scalar for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsFloat = defaultVal
   else
@@ -728,8 +771,12 @@ function tNode_get_byKey_asInt(self,k,defaultVal) result(nodeAsInt)
 
   if(self%contains(k)) then
     node => self%get(k)
-    scalar => node%asScalar()
-    nodeAsInt = scalar%asInt()
+    if(node%isScalar()) then
+      scalar => node%asScalar()
+      nodeAsInt = scalar%asInt()
+    else
+      call IO_error(706,ext_msg='Expected Scalar for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsInt = defaultVal
   else
@@ -754,8 +801,12 @@ function tNode_get_byKey_asBool(self,k,defaultVal) result(nodeAsBool)
 
   if(self%contains(k)) then
     node => self%get(k)
-    scalar => node%asScalar()
-    nodeAsBool = scalar%asBool()
+    if(node%isScalar()) then
+      scalar => node%asScalar()
+      nodeAsBool = scalar%asBool()
+    else
+      call IO_error(706,ext_msg='Expected Scalar for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsBool = defaultVal
   else
@@ -780,8 +831,12 @@ function tNode_get_byKey_asString(self,k,defaultVal) result(nodeAsString)
 
   if(self%contains(k)) then
     node => self%get(k)
-    scalar => node%asScalar()
-    nodeAsString = scalar%asString()
+    if(node%isScalar()) then
+      scalar => node%asScalar()
+      nodeAsString = scalar%asString()
+    else
+      call IO_error(706,ext_msg='Expected Scalar for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsString = defaultVal
   else
@@ -808,8 +863,12 @@ function tNode_get_byKey_asFloats(self,k,defaultVal,requiredSize) result(nodeAsF
 
   if(self%contains(k)) then
     node => self%get(k)
-    list => node%asList()
-    nodeAsFloats = list%asFloats()
+    if(node%isList()) then
+      list => node%asList()
+      nodeAsFloats = list%asFloats()
+    else
+      call IO_error(706,ext_msg='Expected list for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsFloats = defaultVal
   else
@@ -839,8 +898,12 @@ function tNode_get_byKey_asInts(self,k,defaultVal,requiredSize) result(nodeAsInt
 
   if(self%contains(k)) then
     node => self%get(k)
-    list => node%asList()
-    nodeAsInts = list%asInts()
+    if(node%isList()) then
+      list => node%asList()
+      nodeAsInts = list%asInts()
+    else
+      call IO_error(706,ext_msg='Expected list for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsInts = defaultVal
   else
@@ -869,8 +932,12 @@ function tNode_get_byKey_asBools(self,k,defaultVal) result(nodeAsBools)
 
   if(self%contains(k)) then
     node => self%get(k)
-    list => node%asList()
-    nodeAsBools = list%asBools()
+    if(node%isList())then
+      list => node%asList()
+      nodeAsBools = list%asBools()
+    else
+      call IO_error(706,ext_msg='Expected list for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsBools = defaultVal
   else
@@ -895,8 +962,12 @@ function tNode_get_byKey_asStrings(self,k,defaultVal) result(nodeAsStrings)
 
   if(self%contains(k)) then
     node => self%get(k)
-    list => node%asList()
-    nodeAsStrings = list%asStrings()
+    if(node%isList()) then
+      list => node%asList()
+      nodeAsStrings = list%asStrings()
+    else
+      call IO_error(706,ext_msg='Expected list for key '//k)
+    endif
   elseif(present(defaultVal)) then
     nodeAsStrings = defaultVal
   else
