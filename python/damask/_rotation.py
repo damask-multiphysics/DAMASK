@@ -475,15 +475,17 @@ class Rotation:
 
         Parameters
         ----------
-        vector : bool, optional
-            Return as actual Rodrigues-Frank vector, i.e. axis
-            and angle argument are not separated.
+        compact : bool, optional
+            Return as actual Rodrigues-Frank vector,
+            i.e. axis and angle argument are not separated.
 
         Returns
         -------
-        rho : numpy.ndarray of shape (...,4) unless vector == True:
-            numpy.ndarray of shape (...,3)
-            Rodrigues-Frank vector: [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π].
+        rho : numpy.ndarray of shape (...,4) containing 
+            [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π]
+            unless compact == True:
+            numpy.ndarray of shape (...,3) containing 
+            tan(ω/2) [n_1, n_2, n_3], ω ∈ [0,π].
 
         """
         ro = Rotation._qu2ro(self.quaternion)
