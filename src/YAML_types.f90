@@ -73,7 +73,7 @@ module YAML_types
     procedure :: &
       contains                    => tNode_contains
     procedure :: &
-      get_table_asFloats          => tNode_get_byKey_as2dFloats
+      get_table_asFloats          => tNode_get_byKey_as2dFloats     !SR: Name needs to change
  
     generic :: &
       get           => tNode_get_byIndex, &
@@ -129,7 +129,9 @@ module YAML_types
     procedure :: asFormattedString => tList_asFormattedString
     procedure :: append            => tList_append
     procedure :: &
-      asFloats  => tList_asFloats
+      asFloats    => tList_asFloats
+    procedure :: &
+      as2dFloats  => tList_as2dFloats
     procedure :: &
       asInts    => tList_asInts
     procedure :: &
@@ -203,9 +205,11 @@ end subroutine YAML_types_init
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
-  class(tNode), pointer  :: s1,s2
+  class(tNode), pointer  :: s1,s2,s3,s4
   allocate(tScalar::s1)
   allocate(tScalar::s2)
+  allocate(tScalar::s3)
+  allocate(tScalar::s4)
   select type(s1)
     class is(tScalar)
       s1 = '1'
@@ -217,7 +221,9 @@ subroutine selfTest
   end select
 
   block
-    class(tNode), pointer :: l1, l2, n
+    class(tNode), pointer :: l1, l2, l3, n
+    real(pReal), allocatable, dimension(:,:) :: x
+
     select type(s1)
       class is(tScalar)
         s1 = '2'
@@ -227,6 +233,17 @@ subroutine selfTest
       class is(tScalar)
         s2 = '3'
     endselect
+
+    select type(s3)
+      class is(tScalar)
+        s3 = '4'
+    endselect
+
+    select type(s4)
+      class is(tScalar)
+        s4 = '5'
+    endselect
+
 
     allocate(tList::l1)
     select type(l1)
@@ -240,12 +257,24 @@ subroutine selfTest
         if(dNeq(n%get_asFloat(2),3.0_pReal))               error stop 'byIndex_asFloat'
     endselect
 
+    allocate(tList::l3)
+    select type(l3)
+      class is(tList)
+        call l3%append(s3) 
+        call l3%append(s4)
+    endselect 
+   
     allocate(tList::l2)
     select type(l2)
       class is(tList)
         call l2%append(l1)
         if(any(l2%get_asInts(1) /= [2,3]))                      error stop 'byIndex_asInts'
         if(any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal]))) error stop 'byIndex_asFloats'
+        call l2%append(l3)
+        x = l2%as2dFloats()
+        if(x(2,1)/= 4.0_pReal)                                  error stop 'byKey_as2dFloats'
+        if(any(dNeq(pack(l2%as2dFloats(),.true.),&
+               [2.0_pReal,4.0_pReal,3.0_pReal,5.0_pReal])))     error stop 'byKey_as2dFloats'
         n => l2
     end select
     deallocate(n)
@@ -826,40 +855,28 @@ end function tNode_get_byKey_asFloats
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by key and convert to float array
+!> @brief Access by key and convert to 2D float array
 !--------------------------------------------------------------------------------------------------
-function tNode_get_byKey_as2dFloats(self,k) result(nodeAs2dFloats)
+function tNode_get_byKey_as2dFloats(self,k,defaultVal) result(nodeAs2dFloats)
 
-  class(tNode),     intent(in), target                 :: self
-  character(len=*), intent(in)                         :: k
+  class(tNode),     intent(in), target                   :: self
+  character(len=*), intent(in)                           :: k
+  real(pReal),      intent(in), dimension(:,:), optional :: defaultVal
 
   real(pReal), dimension(:,:), allocatable :: nodeAs2dFloats
 
-  class(tNode), pointer :: node,node_
-  type(tList),  pointer :: row_list,column_list
-  integer :: i,j
-
+  class(tNode), pointer :: node
+  type(tList),  pointer :: rows
 
   if(self%contains(k)) then
     node => self%get(k)
-    row_list => node%asList()
-    node_ => row_list%get(1)
-    column_list => node_%asList()
-    allocate(nodeAs2dFloats(row_list%length,column_list%length),source=0.0_pReal)
+    rows => node%asList()
+    nodeAs2dFloats = rows%as2dFloats()
+  elseif(present(defaultVal)) then
+    nodeAs2dFloats = defaultVal
   else
     call IO_error(143,ext_msg=k)
   endif
-  
-  node => self%get(k)
-  row_list => node%asList()
-  do i=1,row_list%length
-    node_ => row_list%get(i)
-    column_list => node_%asList()
-    do j=1,column_list%length
-      nodeAs2dFloats(i,j) = column_list%get_asFloat(j)  
-    enddo
-  enddo
- 
 
 end function tNode_get_byKey_as2dFloats
 
@@ -1149,6 +1166,29 @@ function tList_asFloats(self)
   enddo
 
 end function tList_asFloats
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert to 2D float array
+!--------------------------------------------------------------------------------------------------
+function tList_as2dFloats(self)
+
+  class(tList), intent(in), target :: self
+  real(pReal), dimension(:,:), allocatable :: tList_as2dFloats
+
+  integer :: i
+  class(tNode), pointer :: row
+  type(tList),  pointer :: row_data
+
+  row => self%get(1)                                !SR: some interface called 'shape' may be used?
+  row_data => row%asList()
+  allocate(tList_as2dFloats(row%length,row_data%length),source=0.0_pReal)
+
+  do i=1,self%length
+    tList_as2dFloats(i,:) = self%get_asFloats(i)  
+  enddo
+
+end function tList_as2dFloats
 
 
 !--------------------------------------------------------------------------------------------------
