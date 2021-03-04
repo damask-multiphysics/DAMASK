@@ -62,7 +62,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, o,  &
-    Nconstituents, &
+    Nmembers, &
     sizeState, sizeDeltaState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
@@ -165,19 +165,19 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseAt2 == ph)
     sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
     sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
     sizeState = sizeDotState + sizeDeltaState
 
-    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%crss => plasticState(ph)%state   (startIndex:endIndex,:)
-    stt%crss = spread(xi_0, 2, Nconstituents)
+    stt%crss = spread(xi_0, 2, Nmembers)
     dot%crss => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'

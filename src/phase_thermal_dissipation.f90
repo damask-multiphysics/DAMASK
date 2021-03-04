@@ -31,7 +31,7 @@ module function dissipation_init(source_length) result(mySources)
     phase, &
     sources, thermal, &
     src
-  integer :: so,Nconstituents,ph
+  integer :: so,Nmembers,ph
 
 
   mySources = thermal_active('dissipation',source_length)
@@ -54,8 +54,8 @@ module function dissipation_init(source_length) result(mySources)
           src => sources%get(so)
 
           prm%kappa = src%get_asFloat('kappa')
-          Nconstituents = count(material_phaseAt2 == ph)
-          call phase_allocateState(thermalState(ph)%p(so),Nconstituents,0,0,0)
+          Nmembers = count(material_phaseAt2 == ph)
+          call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
         end associate
       endif

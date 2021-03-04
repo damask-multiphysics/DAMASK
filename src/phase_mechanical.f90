@@ -191,7 +191,7 @@ module subroutine mechanical_init(materials,phases)
     ph, &
     me, &
     stiffDegradationCtr, &
-    Nconstituents
+    Nmembers
   class(tNode), pointer :: &
     num_crystallite, &
     material, &
@@ -229,22 +229,22 @@ module subroutine mechanical_init(materials,phases)
   allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseMemberAt)))
 
   do ph = 1, phases%length
-    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+    Nmembers = count(material_phaseAt == ph) * discretization_nIPs
 
-    allocate(phase_mechanical_Fi(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fe(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fi0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fp(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fp0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Li(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Li0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Lp(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(phase_mechanical_P(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(phase_mechanical_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(phase_mechanical_F(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_F0(ph)%data(3,3,Nconstituents))
+    allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fe(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fi0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fp(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fp0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_S(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_F(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_F0(ph)%data(3,3,Nmembers))
 
     phase   => phases%get(ph)
     mech    => phase%get('mechanics')
@@ -278,8 +278,7 @@ module subroutine mechanical_init(materials,phases)
     enddo
   endif
 
-  
-  !$OMP PARALLEL DO PRIVATE(ph,me,material,constituents,constituent) 
+
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
     do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
       material     => materials%get(discretization_materialAt(el))
@@ -305,7 +304,6 @@ module subroutine mechanical_init(materials,phases)
 
     enddo
   enddo; enddo
-  !$OMP END PARALLEL DO
 
 
 ! initialize plasticity

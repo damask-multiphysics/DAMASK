@@ -31,7 +31,7 @@ module function isobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Nconstituents,p
+  integer :: Nmembers,p
   character(len=pStringLen) :: extmsg = ''
 
 
@@ -64,8 +64,8 @@ module function isobrittle_init() result(mySources)
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        Nconstituents = count(material_phaseAt2==p)
-        call phase_allocateState(damageState(p),Nconstituents,1,1,1)
+        Nmembers = count(material_phaseAt2==p)
+        call phase_allocateState(damageState(p),Nmembers,1,1,1)
         damageState(p)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 

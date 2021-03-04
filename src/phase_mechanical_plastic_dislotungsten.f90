@@ -79,7 +79,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, i, &
-    Nconstituents, &
+    Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,    dimension(:), allocatable :: &
@@ -220,18 +220,18 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseAt2 == ph)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
-    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_mob =  spread(rho_mob_0,2,Nconstituents)
+    stt%rho_mob =  spread(rho_mob_0,2,Nmembers)
     dot%rho_mob => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
@@ -239,7 +239,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_dip =  spread(rho_dip_0,2,Nconstituents)
+    stt%rho_dip =  spread(rho_dip_0,2,Nmembers)
     dot%rho_dip => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
@@ -251,8 +251,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     ! global alias
     plasticState(ph)%slipRate        => plasticState(ph)%dotState(startIndex:endIndex,:)
 
-    allocate(dst%Lambda_sl(prm%sum_N_sl,Nconstituents),         source=0.0_pReal)
-    allocate(dst%threshold_stress(prm%sum_N_sl,Nconstituents),  source=0.0_pReal)
+    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
+    allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
 
     plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
 
