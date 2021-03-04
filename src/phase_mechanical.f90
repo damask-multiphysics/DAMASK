@@ -280,7 +280,7 @@ module subroutine mechanical_init(materials,phases)
 
 
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
-    do co = 1, homogenization_Nmembers(material_homogenizationAt(el))
+    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
       material     => materials%get(discretization_materialAt(el))
       constituents => material%get('constituents')
       constituent => constituents%get(co)
@@ -1238,7 +1238,7 @@ module subroutine mechanical_restore(ce,includeL)
     co, ph, me
 
 
-  do co = 1,homogenization_Nmembers(material_homogenizationAt2(ce))
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
     ph = material_phaseAt2(co,ce)
     me = material_phaseMemberAt2(co,ce)
     if (includeL) then

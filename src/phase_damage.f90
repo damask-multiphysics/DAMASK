@@ -199,7 +199,7 @@ module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, 
    phiDot = 0.0_pReal
    dPhiDot_dPhi = 0.0_pReal
 
-   do co = 1, homogenization_Nmembers(material_homogenizationAt2(ce))
+   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
      ph = material_phaseAt2(co,ce)
      me = material_phasememberAt2(co,ce)
 
