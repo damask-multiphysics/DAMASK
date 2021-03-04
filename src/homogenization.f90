@@ -91,7 +91,7 @@ module homogenization
       real(pReal), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
-        ce                                                                                        
+        ce
     end subroutine mechanical_partition
 
     module subroutine thermal_partition(ce)
@@ -129,10 +129,8 @@ module homogenization
 
 
     module function thermal_conduction_getConductivity(ce) result(K)
-
       integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
-
     end function thermal_conduction_getConductivity
 
     module function thermal_conduction_getSpecificHeat(ce) result(c_P)
@@ -167,13 +165,12 @@ module homogenization
       real(pReal), intent(out) :: Tdot
     end subroutine thermal_conduction_getSource
 
-   module function damage_nonlocal_getMobility(ce) result(M)
-    integer, intent(in) :: ce
-    real(pReal) :: M
+    module function damage_nonlocal_getMobility(ce) result(M)
+      integer, intent(in) :: ce
+      real(pReal) :: M
     end function damage_nonlocal_getMobility
 
     module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ce)
-
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
@@ -181,21 +178,17 @@ module homogenization
         phiDot, dPhiDot_dPhi
     end subroutine damage_nonlocal_getSourceAndItsTangent
 
-
     module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
-
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
-
     end subroutine damage_nonlocal_putNonLocalDamage
 
     module subroutine damage_nonlocal_results(ho,group)
-
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-
     end subroutine damage_nonlocal_results
+
   end interface
 
   public ::  &
@@ -238,21 +231,18 @@ subroutine homogenization_init()
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h   (size(material_name_homogenization)))
-  call material_parseHomogenization
-
+  call material_parseHomogenization()
 
   num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
-  num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
-  if (num%nMPstate < 1)                   call IO_error(301,ext_msg='nMPstate')
-
+  num%nMPstate  = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
+  if (num%nMPstate < 1) call IO_error(301,ext_msg='nMPstate')
 
   call mechanical_init(num_homog)
   call thermal_init()
   call damage_init()
-
-  call damage_nonlocal_init
+  call damage_nonlocal_init()
 
 
 end subroutine homogenization_init
@@ -322,7 +312,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   enddo
   !$OMP END DO
 
-  if (.not. terminallyIll ) then
+  if (.not. terminallyIll) then
     !$OMP DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
@@ -336,9 +326,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
             terminallyIll = .true.                                                                  ! ...and kills all others
-         endif
-         call thermal_homogenize(ip,el)
+          endif
         enddo
+        call thermal_homogenize(ip,el)
       enddo
     enddo
     !$OMP END DO
@@ -567,10 +557,8 @@ subroutine material_parseHomogenization
         call IO_error(500,ext_msg=homogMech%get_asString('type'))
     end select
 
-
-    if(homog%contains('thermal')) then
+    if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
-
         select case (homogThermal%get_asString('type'))
           case('pass')
             thermal_type(h) = THERMAL_conduction_ID
@@ -579,7 +567,7 @@ subroutine material_parseHomogenization
         end select
     endif
 
-    if(homog%contains('damage')) then
+    if (homog%contains('damage')) then
       homogDamage => homog%get('damage')
         select case (homogDamage%get_asString('type'))
           case('pass')
@@ -589,7 +577,6 @@ subroutine material_parseHomogenization
         end select
     endif
   enddo
-
 
 end subroutine material_parseHomogenization
 
