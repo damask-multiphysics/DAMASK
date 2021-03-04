@@ -127,7 +127,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, i, &
-    Nconstituents, &
+    Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
@@ -406,21 +406,21 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents  = count(material_phaseAt2 == ph)
+    Nmembers  = count(material_phaseAt2 == ph)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl &
                  + size(['f_tw'])                           * prm%sum_N_tw &
                  + size(['f_tr'])                           * prm%sum_N_tr
     sizeState = sizeDotState
 
 
-    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and atol
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_mob= spread(rho_mob_0,2,Nconstituents)
+    stt%rho_mob= spread(rho_mob_0,2,Nmembers)
     dot%rho_mob=>plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
@@ -428,7 +428,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip=>plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_dip= spread(rho_dip_0,2,Nconstituents)
+    stt%rho_dip= spread(rho_dip_0,2,Nmembers)
     dot%rho_dip=>plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
@@ -454,18 +454,18 @@ module function plastic_dislotwin_init() result(myPlasticity)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_f_tr',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_f_tr'
 
-    allocate(dst%Lambda_sl             (prm%sum_N_sl,Nconstituents),source=0.0_pReal)
-    allocate(dst%tau_pass              (prm%sum_N_sl,Nconstituents),source=0.0_pReal)
+    allocate(dst%Lambda_sl             (prm%sum_N_sl,Nmembers),source=0.0_pReal)
+    allocate(dst%tau_pass              (prm%sum_N_sl,Nmembers),source=0.0_pReal)
 
-    allocate(dst%Lambda_tw             (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
-    allocate(dst%tau_hat_tw            (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
-    allocate(dst%tau_r_tw              (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
-    allocate(dst%V_tw                  (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
+    allocate(dst%Lambda_tw             (prm%sum_N_tw,Nmembers),source=0.0_pReal)
+    allocate(dst%tau_hat_tw            (prm%sum_N_tw,Nmembers),source=0.0_pReal)
+    allocate(dst%tau_r_tw              (prm%sum_N_tw,Nmembers),source=0.0_pReal)
+    allocate(dst%V_tw                  (prm%sum_N_tw,Nmembers),source=0.0_pReal)
 
-    allocate(dst%Lambda_tr             (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
-    allocate(dst%tau_hat_tr            (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
-    allocate(dst%tau_r_tr              (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
-    allocate(dst%V_tr                  (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
+    allocate(dst%Lambda_tr             (prm%sum_N_tr,Nmembers),source=0.0_pReal)
+    allocate(dst%tau_hat_tr            (prm%sum_N_tr,Nmembers),source=0.0_pReal)
+    allocate(dst%tau_r_tr              (prm%sum_N_tr,Nmembers),source=0.0_pReal)
+    allocate(dst%V_tr                  (prm%sum_N_tr,Nmembers),source=0.0_pReal)
 
     plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
 

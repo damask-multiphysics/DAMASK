@@ -40,7 +40,7 @@ module function anisobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Nconstituents,p
+  integer :: Nmembers,p
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
@@ -92,8 +92,8 @@ module function anisobrittle_init() result(mySources)
         if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
-        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
-        call phase_allocateState(damageState(p),Nconstituents,1,1,0)
+        Nmembers = count(material_phaseAt==p) * discretization_nIPs
+        call phase_allocateState(damageState(p),Nmembers,1,1,0)
         damageState(p)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 
