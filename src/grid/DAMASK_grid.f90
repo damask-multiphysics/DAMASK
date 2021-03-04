@@ -38,7 +38,7 @@ program DAMASK_grid
                                 f_restart                                                           !< frequency of restart writes
     logical ::                  estimate_rate                                                       !< follow trajectory of former loadcase
   end type tLoadCase
-  
+
   integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
 
 !--------------------------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ program DAMASK_grid
 ! init DAMASK (all modules)
 
   call CPFEM_initAll
-  print'(/,a)',   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(IO_STDOUT)
+  print'(/,a)',   ' <<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
@@ -130,7 +130,7 @@ program DAMASK_grid
 
   if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
-  
+
   config_load => YAML_parse_file(trim(interface_loadFile))
   solver => config_load%get('solver')
 
@@ -169,9 +169,10 @@ program DAMASK_grid
 ! initialize field solver information
   if (solver%get_asString('thermal',defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
   if (solver%get_asString('damage', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
+
   allocate(solres(nActiveFields))
-  
-  allocate(ID(nActiveFields))
+  allocate(    ID(nActiveFields))
+
   field = 1
   ID(field) = FIELD_MECH_ID                                                                         ! mechanical active by default
   thermalActive: if (solver%get_asString('thermal',defaultVal = 'n/a') == 'spectral') then
@@ -224,16 +225,15 @@ program DAMASK_grid
     if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
 
     step_discretization => load_step%get('discretization')
-    if(.not. step_discretization%contains('t')) call IO_error(error_ID=837,ext_msg = 't missing')
-    if(.not. step_discretization%contains('N')) call IO_error(error_ID=837,ext_msg = 'N missing')
+    if (.not. step_discretization%contains('t')) call IO_error(error_ID=837,ext_msg = 't missing')
+    if (.not. step_discretization%contains('N')) call IO_error(error_ID=837,ext_msg = 'N missing')
     loadCases(l)%t         = step_discretization%get_asFloat('t')
     loadCases(l)%N         = step_discretization%get_asInt  ('N')
     loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
     loadCases(l)%f_out     = load_step%get_asInt('f_out',     defaultVal=1)
-    loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. & 
-                                                       merge(.true.,.false.,l > 1))
+    loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
 
     reportAndCheck: if (worldrank == 0) then
       print'(/,a,i0)', ' load case: ', l
@@ -289,11 +289,11 @@ program DAMASK_grid
       else
         print'(a,f0.3)', '  r: ', loadCases(l)%r
       endif
-      print'(a,f0.3)', '  t: ', loadCases(l)%t
-      print'(a,i0)',   '  N: ', loadCases(l)%N
-      print'(a,i0)',   '  f_out: ', loadCases(l)%f_out
+      print'(a,f0.3)',   '  t: ', loadCases(l)%t
+      print'(a,i0)',     '  N: ', loadCases(l)%N
+      print'(a,i0)',     '  f_out: ', loadCases(l)%f_out
       if (loadCases(l)%f_restart < huge(0)) &
-        print'(a,i0)', '  f_restart: ', loadCases(l)%f_restart
+        print'(a,i0)',   '  f_restart: ', loadCases(l)%f_restart
 
       if (errorID > 0) call IO_error(error_ID = errorID, el = l)
 
@@ -309,14 +309,9 @@ program DAMASK_grid
         call mechanical_init
 
       case(FIELD_THERMAL_ID)
-        if (config_load%contains('initial_conditions')) then
-          initial_conditions => config_load%get('initial_conditions')
-          if (initial_conditions%contains('thermal')) then
-            thermal => initial_conditions%get('thermal')
-            T_0 = thermal%get_asFloat('T',defaultVal = T_0)
-          endif
-        endif
-        call grid_thermal_spectral_init(T_0)
+        initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
+        thermal => initial_conditions%get('thermal',defaultVal=emptyDict)
+        call grid_thermal_spectral_init(thermal%get_asFloat('T',defaultVal = T_0))
 
       case(FIELD_DAMAGE_ID)
         call grid_damage_spectral_init
