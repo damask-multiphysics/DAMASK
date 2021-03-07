@@ -370,17 +370,17 @@ subroutine homogenization_results
 
     call mechanical_results(group_base,ho)
 
-    group = trim(group_base)//'/damage'
-    call results_closeGroup(results_addGroup(group))
     select case(damage_type(ho))
       case(DAMAGE_NONLOCAL_ID)
+        group = trim(group_base)//'/damage'
+        call results_closeGroup(results_addGroup(group))
         call damage_nonlocal_results(ho,group)
     end select
 
-    group = trim(group_base)//'/thermal'
-    call results_closeGroup(results_addGroup(group))
     select case(thermal_type(ho))
       case(THERMAL_CONDUCTION_ID)
+        group = trim(group_base)//'/thermal'
+        call results_closeGroup(results_addGroup(group))
         call thermal_conduction_results(ho,group)
     end select
 

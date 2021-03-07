@@ -224,7 +224,7 @@ module subroutine mechanical_results(group_base,ho)
 
   character(len=:), allocatable :: group
 
-  group = trim(group_base)//'/mech'
+  group = trim(group_base)//'/mechanical'
   call results_closeGroup(results_addGroup(group))
 
   select case(homogenization_type(ho))
