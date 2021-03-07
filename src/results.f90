@@ -70,7 +70,7 @@ subroutine results_init(restart)
     call results_addAttribute('DADF5_version_minor',12)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
     call get_command(commandLine)
-    call results_addAttribute('Call',trim(commandLine))
+    call results_addAttribute('call',trim(commandLine))
     call results_closeGroup(results_addGroup('mapping'))
     call results_closeJobFile
   endif
@@ -107,6 +107,7 @@ subroutine results_addIncrement(inc,time)
   real(pReal),   intent(in) :: time
   character(len=pStringLen) :: incChar
 
+
   write(incChar,'(i10)') inc
   call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
@@ -133,6 +134,7 @@ integer(HID_T) function results_openGroup(groupName)
 
   character(len=*), intent(in) :: groupName
 
+
   results_openGroup = HDF5_openGroup(resultsFile,groupName)
 
 end function results_openGroup
@@ -144,6 +146,7 @@ end function results_openGroup
 integer(HID_T) function results_addGroup(groupName)
 
   character(len=*), intent(in) :: groupName
+
 
   results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
@@ -157,6 +160,7 @@ subroutine results_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
 
+
   call HDF5_closeGroup(group_id)
 
 end subroutine results_closeGroup
@@ -169,6 +173,7 @@ subroutine results_setLink(path,link)
 
   character(len=*), intent(in) :: path, link
 
+
   call HDF5_setLink(resultsFile,path,link)
 
 end subroutine results_setLink
@@ -180,6 +185,7 @@ subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
+
 
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
@@ -199,6 +205,7 @@ subroutine results_addAttribute_int(attrLabel,attrValue,path)
   integer,          intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
 
+
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
@@ -216,6 +223,7 @@ subroutine results_addAttribute_real(attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel
   real(pReal),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
+
 
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
@@ -235,6 +243,7 @@ subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
   integer,          intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
+
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
@@ -253,6 +262,7 @@ subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
   real(pReal),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
+
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
@@ -270,6 +280,7 @@ subroutine results_removeLink(link)
   character(len=*), intent(in) :: link
   integer                      :: hdferr
 
+
   call h5ldelete_f(resultsFile,link, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
 
@@ -277,7 +288,7 @@ end subroutine results_removeLink
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a scalar dataset in a group
+!> @brief Store real scalar dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeScalarDataset_real(group,dataset,label,description,SIunit)
 
@@ -287,24 +298,17 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_real
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_real(group,dataset,label,description,SIunit)
 
@@ -314,25 +318,18 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a tensor dataset in a group
+!> @brief Store real tensor dataset with associated metadata.
+!> @details Data is transposed to compenstate transposed storage order.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit,transposed)
 
@@ -364,24 +361,15 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   endif
 
   groupHandle = results_openGroup(group)
-
-  call HDF5_write(groupHandle,dataset_transposed,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call HDF5_write(groupHandle,dataset,label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
 
@@ -391,25 +379,17 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a tensor dataset in a group
+!> @brief Store integer tensor dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
 
@@ -419,19 +399,12 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
+
 
 end subroutine results_writeTensorDataset_int
 
@@ -749,17 +722,42 @@ end subroutine results_mapping_homogenization
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief current date and time (including time zone information)
+!> @brief Add default information to a dataset.
+!--------------------------------------------------------------------------------------------------
+subroutine executionStamp(path,description,SIunit)
+
+
+  character(len=*), intent(in)           :: path,description
+  character(len=*), intent(in), optional :: SIunit
+
+
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'Description',description,path)
+  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
+    call HDF5_addAttribute(resultsFile,'Unit',SIunit,path)
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'Creator','DAMASK '//DAMASKVERSION,path)
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'Created',now(),path)
+
+end subroutine executionStamp
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return current date and time (including time zone information).
 !--------------------------------------------------------------------------------------------------
 character(len=24) function now()
 
   character(len=5)      :: zone
   integer, dimension(8) :: values
 
+
   call date_and_time(values=values,zone=zone)
   write(now,'(i4.4,5(a,i2.2),a)') &
     values(1),'-',values(2),'-',values(3),' ',values(5),':',values(6),':',values(7),zone
 
 end function now
+
+
 
 end module results
