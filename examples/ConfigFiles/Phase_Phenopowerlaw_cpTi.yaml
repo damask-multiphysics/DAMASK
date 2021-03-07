@@ -1,6 +1,6 @@
 # M. Levy, Handbook of Elastic Properties of Solids, Liquids, and Gases (2001)
 # C. Zambaldi, "Orientation informed nanoindentation of a-titanium: Indentation pileup in hexagonal metals deforming by prismatic slip", J. Mater. Res., Vol. 27, No. 1, Jan 14, 2012
-Ti-alpha:
+cpTi:
   lattice: hP
   c/a: 1.587
   mechanics:
