@@ -67,7 +67,7 @@ subroutine results_init(restart)
   if(.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',11)
+    call results_addAttribute('DADF5_version_minor',12)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
     call get_command(commandLine)
     call results_addAttribute('Call',trim(commandLine))
@@ -524,21 +524,21 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,hdferr)
+  call h5tinsert_f(dtype_id, 'name', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'member', type_size_string, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, hdferr)
+  call h5tinsert_f(name_id, 'name', 0_SIZE_T, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(position_id, 'member', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -680,21 +680,21 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,hdferr)
+  call h5tinsert_f(dtype_id, 'name', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'member', type_size_string, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, hdferr)
+  call h5tinsert_f(name_id, 'name', 0_SIZE_T, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(position_id, 'member', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)

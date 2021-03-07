@@ -46,7 +46,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 11:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 12:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys() or \
@@ -67,8 +67,10 @@ class Result:
 
             self.N_materialpoints, self.N_constituents = np.shape(f['mapping/phase'])
 
-            self.homogenizations  = [m.decode() for m in np.unique(f['mapping/homogenization']['Name'])]
-            self.phases           = [c.decode() for c in np.unique(f['mapping/phase']['Name'])]
+            self.homogenizations  = [m.decode() for m in np.unique(f['mapping/homogenization']
+                                                                    ['Name' if self.version_minor < 12 else 'name'])]
+            self.phases           = [c.decode() for c in np.unique(f['mapping/phase']
+                                                                    ['Name' if self.version_minor < 12 else 'name'])]
 
             self.out_type_ph = []
             for c in self.phases:
@@ -368,6 +370,9 @@ class Result:
         tbl = {} if split else None
         inGeom = {}
         inData = {}
+        # compatibility hack
+        name   = 'Name' if self.version_minor < 12 else 'name'
+        member = 'Position' if self.version_minor < 12 else 'member'
         with h5py.File(self.fname,'r') as f:
             for dataset in sets:
                 for group in self.groups_with_datasets(dataset):
@@ -378,11 +383,11 @@ class Result:
                         if prop == 'geometry':
                             inGeom[key] = inData[key] = np.arange(self.N_materialpoints)
                         elif prop == 'phase':
-                            inGeom[key] = np.where(f['mapping/phase'][:,constituent]['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/phase'][inGeom[key],constituent]['Position']
+                            inGeom[key] = np.where(f['mapping/phase'][:,constituent][name] == str.encode(name))[0]
+                            inData[key] =          f['mapping/phase'][inGeom[key],constituent][member]
                         elif prop == 'homogenization':
-                            inGeom[key] = np.where(f['mapping/homogenization']['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/homogenization'][inGeom[key].tolist()]['Position']
+                            inGeom[key] = np.where(f['mapping/homogenization'][name] == str.encode(name))[0]
+                            inData[key] =          f['mapping/homogenization'][inGeom[key].tolist()][member]
                     shape = np.shape(f[path])
                     data = np.full((self.N_materialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
                                    np.nan,
@@ -529,6 +534,9 @@ class Result:
             Defaults to False.
 
         """
+        # compatibility hack
+        name   = 'Name' if self.version_minor < 12 else 'name'
+        member = 'Position' if self.version_minor < 12 else 'member'
         with h5py.File(self.fname,'r') as f:
             shape = (self.N_materialpoints,) + np.shape(f[path[0]])[1:]
             if len(shape) == 1: shape = shape +(1,)
@@ -540,17 +548,17 @@ class Result:
                     dataset = np.array(f[pa])
                     continue
 
-                p = np.where(f['mapping/phase'][:,c]['Name'] == str.encode(label))[0]
+                p = np.where(f['mapping/phase'][:,c][name] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/phase']['Position'][p,c])
+                    u = (f['mapping/phase'][member][p,c])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
                     dataset[p,:] = a[u,:]
 
-                p = np.where(f['mapping/homogenization']['Name'] == str.encode(label))[0]
+                p = np.where(f['mapping/homogenization'][name] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/homogenization']['Position'][p.tolist()])
+                    u = (f['mapping/homogenization'][member][p.tolist()])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
