@@ -67,12 +67,12 @@ module YAML_types
     procedure :: &
       tNode_get_byKey_asStrings   => tNode_get_byKey_asStrings
     procedure :: &
+      getKey                      => tNode_get_byIndex_asKey
+    procedure :: &
       getIndex                    => tNode_get_byKey_asIndex
     procedure :: &
-      getKey                      => tNode_getKey_byIndex
-    procedure :: &
       contains                    => tNode_contains
- 
+
     generic :: &
       get           => tNode_get_byIndex, &
                        tNode_get_byKey
@@ -157,7 +157,7 @@ module YAML_types
     emptyDict
   type(tList), target, public :: &
     emptyList
-  
+
   abstract interface
 
     recursive function asFormattedString(self,indent)
@@ -179,7 +179,7 @@ module YAML_types
 
   public :: &
     YAML_types_init, &
-    output_asStrings, &                                        !ToDo: Hack for GNU. Remove later 
+    output_asStrings, &                                        !ToDo: Hack for GNU. Remove later
     assignment(=)
 
 contains
@@ -207,11 +207,11 @@ subroutine selfTest
   select type(s1)
     class is(tScalar)
       s1 = '1'
-      if(s1%asInt() /= 1)              error stop 'tScalar_asInt'
-      if(dNeq(s1%asFloat(),1.0_pReal)) error stop 'tScalar_asFloat'
+      if (s1%asInt() /= 1)              error stop 'tScalar_asInt'
+      if (dNeq(s1%asFloat(),1.0_pReal)) error stop 'tScalar_asFloat'
       s1 = 'true'
-      if(.not. s1%asBool())            error stop 'tScalar_asBool'
-      if(s1%asString() /= 'true')      error stop 'tScalar_asString'
+      if (.not. s1%asBool())            error stop 'tScalar_asBool'
+      if (s1%asString() /= 'true')      error stop 'tScalar_asString'
   end select
 
   block
@@ -232,18 +232,18 @@ subroutine selfTest
         call l1%append(s1)
         call l1%append(s2)
         n => l1
-        if(any(l1%asInts() /= [2,3]))                      error stop 'tList_asInts'
-        if(any(dNeq(l1%asFloats(),[2.0_pReal,3.0_pReal]))) error stop 'tList_asFloats'
-        if(n%get_asInt(1) /= 2)                            error stop 'byIndex_asInt'
-        if(dNeq(n%get_asFloat(2),3.0_pReal))               error stop 'byIndex_asFloat'
+        if (any(l1%asInts() /= [2,3]))                      error stop 'tList_asInts'
+        if (any(dNeq(l1%asFloats(),[2.0_pReal,3.0_pReal]))) error stop 'tList_asFloats'
+        if (n%get_asInt(1) /= 2)                            error stop 'byIndex_asInt'
+        if (dNeq(n%get_asFloat(2),3.0_pReal))               error stop 'byIndex_asFloat'
     endselect
 
     allocate(tList::l2)
     select type(l2)
       class is(tList)
         call l2%append(l1)
-        if(any(l2%get_asInts(1) /= [2,3]))                      error stop 'byIndex_asInts'
-        if(any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal]))) error stop 'byIndex_asFloats'
+        if (any(l2%get_asInts(1) /= [2,3]))                      error stop 'byIndex_asInts'
+        if (any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal]))) error stop 'byIndex_asFloats'
         n => l2
     end select
     deallocate(n)
@@ -265,10 +265,10 @@ subroutine selfTest
      call l1%append(s2)
      n => l1
 
-     if(any(l1%asBools() .neqv. [.true., .false.])) error stop 'tList_asBools'
-     if(any(l1%asStrings() /=   ['true ','False'])) error stop 'tList_asStrings'
-     if(n%get_asBool(2))                            error stop 'byIndex_asBool'
-     if(n%get_asString(1) /= 'true')                error stop 'byIndex_asString'
+     if (any(l1%asBools() .neqv. [.true., .false.])) error stop 'tList_asBools'
+     if (any(l1%asStrings() /=   ['true ','False'])) error stop 'tList_asStrings'
+     if (n%get_asBool(2))                            error stop 'byIndex_asBool'
+     if (n%get_asString(1) /= 'true')                error stop 'byIndex_asString'
   end block
 
 end subroutine selfTest
@@ -304,8 +304,8 @@ end subroutine tScalar_assign__
 !--------------------------------------------------------------------------------------------------
 function tNode_asScalar(self) result(scalar)
 
-  class(tNode),   intent(in), target :: self
-  class(tScalar), pointer            :: scalar
+  class(tNode),   intent(in), target     :: self
+  class(tScalar), pointer                :: scalar
 
   select type(self)
     class is(tScalar)
@@ -320,8 +320,8 @@ end function tNode_asScalar
 !--------------------------------------------------------------------------------------------------
 function tNode_asList(self) result(list)
 
-  class(tNode), intent(in), target :: self
-  class(tList), pointer            :: list
+  class(tNode), intent(in), target     :: self
+  class(tList), pointer                :: list
 
   select type(self)
     class is(tList)
@@ -336,8 +336,8 @@ end function tNode_asList
 !--------------------------------------------------------------------------------------------------
 function tNode_asDict(self) result(dict)
 
-  class(tNode), intent(in), target :: self
-  class(tDict), pointer            :: dict
+  class(tNode), intent(in), target    :: self
+  class(tDict), pointer               :: dict
 
   select type(self)
     class is(tDict)
@@ -411,19 +411,18 @@ function tNode_get_byIndex(self,i) result(node)
   class(tItem),  pointer :: item
   integer :: j
 
-  if(self%isList()) then
+  if (self%isList()) then
     self_ => self%asList()
   else
     call IO_error(706,ext_msg='Expected List')
   endif
 
-  if(i < 1 .or. i > self_%length) call IO_error(150,ext_msg='tNode_get_byIndex')
-
-  j = 1
   item => self_%first
-  do while(j<i)
+
+  if (i < 1 .or. i > self_%length) call IO_error(150,ext_msg='tNode_get_byIndex')
+
+  do j = 2,i
     item => item%next
-    j = j + 1
   enddo
   node => item%node
 
@@ -443,7 +442,7 @@ function tNode_get_byIndex_asFloat(self,i) result(nodeAsFloat)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  if(node%isScalar()) then
+  if (node%isScalar()) then
     scalar => node%asScalar()
     nodeAsFloat = scalar%asFloat()
   else
@@ -466,7 +465,7 @@ function tNode_get_byIndex_asInt(self,i) result(nodeAsInt)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  if(node%isScalar()) then
+  if (node%isScalar()) then
     scalar => node%asScalar()
     nodeAsInt = scalar%asInt()
   else
@@ -489,7 +488,7 @@ function tNode_get_byIndex_asBool(self,i) result(nodeAsBool)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  if(node%isScalar()) then
+  if (node%isScalar()) then
     scalar => node%asScalar()
     nodeAsBool = scalar%asBool()
   else
@@ -512,7 +511,7 @@ function tNode_get_byIndex_asString(self,i) result(nodeAsString)
   type(tScalar), pointer :: scalar
 
   node   => self%get(i)
-  if(node%isScalar()) then
+  if (node%isScalar()) then
     scalar => node%asScalar()
     nodeAsString = scalar%asString()
   else
@@ -535,7 +534,7 @@ function tNode_get_byIndex_asFloats(self,i) result(nodeAsFloats)
   class(tList),  pointer :: list
 
   node => self%get(i)
-  if(node%isList()) then
+  if (node%isList()) then
     list => node%asList()
     nodeAsFloats = list%asFloats()
   else
@@ -558,7 +557,7 @@ function tNode_get_byIndex_asInts(self,i) result(nodeAsInts)
   class(tList), pointer :: list
 
   node => self%get(i)
-  if(node%isList()) then
+  if (node%isList()) then
     list => node%asList()
     nodeAsInts = list%asInts()
   else
@@ -581,7 +580,7 @@ function tNode_get_byIndex_asBools(self,i) result(nodeAsBools)
   class(tList), pointer :: list
 
   node => self%get(i)
-  if(node%isList()) then
+  if (node%isList()) then
     list => node%asList()
     nodeAsBools = list%asBools()
   else
@@ -604,7 +603,7 @@ function tNode_get_byIndex_asStrings(self,i) result(nodeAsStrings)
   type(tList),  pointer :: list
 
   node => self%get(i)
-  if(node%isList()) then
+  if (node%isList()) then
     list => node%asList()
     nodeAsStrings = list%asStrings()
   else
@@ -617,7 +616,7 @@ end function tNode_get_byIndex_asStrings
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the key in a dictionary as a string
 !--------------------------------------------------------------------------------------------------
-function tNode_getKey_byIndex(self,i)  result(key)
+function tNode_get_byIndex_asKey(self,i)  result(key)
 
   class(tNode),     intent(in), target  :: self
   integer,          intent(in)          :: i
@@ -627,28 +626,25 @@ function tNode_getKey_byIndex(self,i)  result(key)
   type(tDict), pointer :: dict
   type(tItem), pointer :: item
 
-  if(self%isDict()) then
+  if (self%isDict()) then
     dict => self%asDict()
     item => dict%first
-    do j = 1, dict%length
-      if(j == i) then
-        key = item%key
-        exit
-      else
-        item => item%next
-      endif
+    do j = 1, min(i,dict%length)-1
+      item => item%next
     enddo
   else
     call IO_error(706,ext_msg='Expected dict')
   endif
+  
+  key = item%key
 
-end function tNode_getKey_byIndex
+end function tNode_get_byIndex_asKey
 
 
 !-------------------------------------------------------------------------------------------------
 !> @brief Checks if a given key/item is present in the dict/list
 !-------------------------------------------------------------------------------------------------
-function tNode_contains(self,k)  result(exists)   
+function tNode_contains(self,k)  result(exists)
 
   class(tNode),     intent(in), target  :: self
   character(len=*), intent(in)          :: k
@@ -659,18 +655,18 @@ function tNode_contains(self,k)  result(exists)
   type(tDict), pointer :: dict
 
   exists = .false.
-  if(self%isDict()) then
+  if (self%isDict()) then
     dict => self%asDict()
     do j=1, dict%length
-      if(dict%getKey(j) == k) then
+      if (dict%getKey(j) == k) then
         exists = .true.
         return
       endif
     enddo
-  elseif(self%isList()) then
+  elseif (self%isList()) then
     list => self%asList()
-    do j =1, list%length
-      if(list%get_asString(j) == k) then
+    do j=1, list%length
+      if (list%get_asString(j) == k) then
         exists = .true.
         return
       endif
@@ -698,9 +694,9 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
   logical :: found
 
   found = present(defaultVal)
-  if(found) node => defaultVal
+  if (found) node => defaultVal
 
-  if(self%isDict()) then 
+  if (self%isDict()) then 
     self_ => self%asDict()
   else
     call IO_error(706,ext_msg='Expected Dict for key '//k)
@@ -716,11 +712,11 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
     item => item%next
     j = j + 1
   enddo
-  
+
   if (.not. found) then
     call IO_error(143,ext_msg=k)
   else
-    if(associated(item)) node => item%node
+    if (associated(item)) node => item%node
   endif
 
 end function tNode_get_byKey
@@ -738,16 +734,17 @@ function tNode_get_byKey_asFloat(self,k,defaultVal) result(nodeAsFloat)
 
   class(tNode),  pointer :: node
   type(tScalar), pointer :: scalar
+  character(len=:), allocatable :: str
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isScalar()) then
+    if (node%isScalar()) then
       scalar => node%asScalar()
       nodeAsFloat = scalar%asFloat()
     else
       call IO_error(706,ext_msg='Expected Scalar for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsFloat = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -769,15 +766,15 @@ function tNode_get_byKey_asInt(self,k,defaultVal) result(nodeAsInt)
   class(tNode),  pointer :: node
   type(tScalar), pointer :: scalar
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isScalar()) then
+    if (node%isScalar()) then
       scalar => node%asScalar()
       nodeAsInt = scalar%asInt()
     else
       call IO_error(706,ext_msg='Expected Scalar for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsInt = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -799,15 +796,15 @@ function tNode_get_byKey_asBool(self,k,defaultVal) result(nodeAsBool)
   class(tNode),  pointer :: node
   type(tScalar), pointer :: scalar
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isScalar()) then
+    if (node%isScalar()) then
       scalar => node%asScalar()
       nodeAsBool = scalar%asBool()
     else
       call IO_error(706,ext_msg='Expected Scalar for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsBool = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -829,15 +826,15 @@ function tNode_get_byKey_asString(self,k,defaultVal) result(nodeAsString)
   class(tNode),  pointer :: node
   type(tScalar), pointer :: scalar
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isScalar()) then
+    if (node%isScalar()) then
       scalar => node%asScalar()
       nodeAsString = scalar%asString()
     else
       call IO_error(706,ext_msg='Expected Scalar for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsString = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -861,22 +858,22 @@ function tNode_get_byKey_asFloats(self,k,defaultVal,requiredSize) result(nodeAsF
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isList()) then
+    if (node%isList()) then
       list => node%asList()
       nodeAsFloats = list%asFloats()
     else
       call IO_error(706,ext_msg='Expected list for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsFloats = defaultVal
   else
     call IO_error(143,ext_msg=k)
   endif
 
-  if(present(requiredSize)) then
-    if(requiredSize /= size(nodeAsFloats)) call IO_error(146,ext_msg=k)
+  if (present(requiredSize)) then
+    if (requiredSize /= size(nodeAsFloats)) call IO_error(146,ext_msg=k)
   endif
 
 end function tNode_get_byKey_asFloats
@@ -896,22 +893,22 @@ function tNode_get_byKey_asInts(self,k,defaultVal,requiredSize) result(nodeAsInt
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isList()) then
+    if (node%isList()) then
       list => node%asList()
       nodeAsInts = list%asInts()
     else
       call IO_error(706,ext_msg='Expected list for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsInts = defaultVal
   else
     call IO_error(143,ext_msg=k)
   endif
 
-  if(present(requiredSize)) then
-    if(requiredSize /= size(nodeAsInts)) call IO_error(146,ext_msg=k)
+  if (present(requiredSize)) then
+    if (requiredSize /= size(nodeAsInts)) call IO_error(146,ext_msg=k)
   endif
 
 end function tNode_get_byKey_asInts
@@ -930,15 +927,15 @@ function tNode_get_byKey_asBools(self,k,defaultVal) result(nodeAsBools)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isList())then
+    if (node%isList())then
       list => node%asList()
       nodeAsBools = list%asBools()
     else
       call IO_error(706,ext_msg='Expected list for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsBools = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -960,15 +957,15 @@ function tNode_get_byKey_asStrings(self,k,defaultVal) result(nodeAsStrings)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  if(self%contains(k)) then
+  if (self%contains(k)) then
     node => self%get(k)
-    if(node%isList()) then
+    if (node%isList()) then
       list => node%asList()
       nodeAsStrings = list%asStrings()
     else
       call IO_error(706,ext_msg='Expected list for key '//k)
     endif
-  elseif(present(defaultVal)) then
+  elseif (present(defaultVal)) then
     nodeAsStrings = defaultVal
   else
     call IO_error(143,ext_msg=k)
@@ -996,7 +993,7 @@ function output_asStrings(self)  result(output)                   !ToDo: SR: Rem
 
 
 end function output_asStrings
- 
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the index of a key in a dictionary
@@ -1007,25 +1004,20 @@ function tNode_get_byKey_asIndex(self,key)  result(keyIndex)
   character(len=*), intent(in)          :: key
 
   integer              :: keyIndex
-  integer              :: i
   type(tDict), pointer :: dict
   type(tItem), pointer :: item
 
   dict => self%asDict()
   item => dict%first
-  keyIndex = -1
-  do i = 1, dict%length
-    if(key == item%key) then
-      keyIndex = i
-      exit
-    else
-      item => item%next
-    endif
+  keyIndex = 1
+  do while (associated(item%next) .and. item%key /= key)
+    item => item%next
+    keyIndex = keyIndex+1
   enddo
 
-  if(keyIndex == -1) call IO_error(140,ext_msg=key)
+  if (item%key /= key) call IO_error(140,ext_msg=key)
 
- 
+
 end function tNode_get_byKey_asIndex
 
 
@@ -1056,7 +1048,7 @@ recursive function tList_asFormattedString(self,indent) result(str)
   integer :: i, indent_
 
   str = ''
-  if(present(indent)) then
+  if (present(indent)) then
     indent_ = indent
   else
     indent_ = 0
@@ -1064,7 +1056,7 @@ recursive function tList_asFormattedString(self,indent) result(str)
 
   item => self%first
   do i = 1, self%length
-    if(i /= 1) str = str//repeat(' ',indent_)
+    if (i /= 1) str = str//repeat(' ',indent_)
     str = str//'- '//item%node%asFormattedString(indent_+2)
     item => item%next
   end do
@@ -1085,7 +1077,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
   integer :: i, indent_
 
   str = ''
-  if(present(indent)) then
+  if (present(indent)) then
     indent_ = indent
   else
     indent_ = 0
@@ -1093,7 +1085,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
 
   item => self%first
   do i = 1, self%length
-    if(i /= 1) str = str//repeat(' ',indent_)
+    if (i /= 1) str = str//repeat(' ',indent_)
     select type(node_1 =>item%node)
       class is(tScalar)
         str = str//trim(item%key)//': '//item%node%asFormattedString(indent_+len_trim(item%key)+2)
@@ -1307,7 +1299,7 @@ subroutine tDict_set(self,key,node)
       if (item%key == key) exit
       item => item%next
     end do searchExisting
-    if (.not. item%key == key) then
+    if (item%key /= key) then
       allocate(item%next)
       item => item%next
       self%length = self%length + 1
@@ -1341,7 +1333,7 @@ recursive subroutine tItem_finalize(self)
   type(tItem),intent(inout) :: self
 
   deallocate(self%node)
-  if(associated(self%next)) deallocate(self%next)
+  if (associated(self%next)) deallocate(self%next)
 
 end subroutine tItem_finalize
 
