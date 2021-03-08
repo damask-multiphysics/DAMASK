@@ -391,12 +391,12 @@ class Result:
                     path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
                     if split:
                         try:
-                            tbl[inc].add(path,data)
+                            tbl[inc] = tbl[inc].add(path,data)
                         except KeyError:
                             tbl[inc] = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
                     else:
                         try:
-                            tbl.add(path,data)
+                            tbl = tbl.add(path,data)
                         except AttributeError:
                             tbl = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
 

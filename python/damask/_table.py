@@ -379,6 +379,7 @@ class Table:
         -------
         table : Table
             Joined table.
+
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('Dublicated keys or row count mismatch')
