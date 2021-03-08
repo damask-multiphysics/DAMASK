@@ -189,6 +189,11 @@ class Table:
         label : str
             Column label.
 
+        Returns
+        -------
+        data : numpy.ndarray
+            Array of column data.
+
         """
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
@@ -211,6 +216,11 @@ class Table:
             New data.
         info : str, optional
             Human-readable information about the new data.
+
+        Returns
+        -------
+        table : Table
+            Updated table.
 
         """
         dup = self.copy()
@@ -238,6 +248,11 @@ class Table:
         info : str, optional
             Human-readable information about the modified data.
 
+        Returns
+        -------
+        table : Table
+            Updated table.
+
         """
         dup = self.copy()
         dup._add_comment(label,data.shape[1:],info)
@@ -261,6 +276,11 @@ class Table:
         label : str
             Column label.
 
+        Returns
+        -------
+        table : Table
+            Updated table.
+
         """
         dup = self.copy()
         dup.data.drop(columns=label,inplace=True)
@@ -278,6 +298,11 @@ class Table:
             Old column label(s).
         label_new : str or iterable of str
             New column label(s).
+
+        Returns
+        -------
+        table : Table
+            Updated table.
 
         """
         dup = self.copy()
@@ -300,6 +325,11 @@ class Table:
         ascending : bool or list, optional
             Set sort order.
 
+        Returns
+        -------
+        table : Table
+            Updated table.
+
         """
         dup = self.copy()
         dup._label_discrete()
@@ -319,6 +349,11 @@ class Table:
         ----------
         other : Table
             Table to append.
+
+        Returns
+        -------
+        table : Table
+            Concatenated table.
 
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
@@ -340,6 +375,10 @@ class Table:
         other : Table
             Table to join.
 
+        Returns
+        -------
+        table : Table
+            Joined table.
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('Dublicated keys or row count mismatch')
