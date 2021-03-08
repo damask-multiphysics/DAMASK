@@ -60,10 +60,11 @@ class Result:
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
 
-            r=re.compile('inc[0-9]+')
-            increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
+            r=re.compile('inc[0-9]+' if self.version_minor < 12 else 'increment_[0-9]+')
+            increments_unsorted = {int(i[10:]):i for i in f.keys() if r.match(i)}
             self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
-            self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
+            self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments] if self.version_minor < 12 else \
+                                  [round(f[i].attrs['t/s'],12) for i in self.increments]
 
             self.N_materialpoints, self.N_constituents = np.shape(f['mapping/phase'])
 
@@ -139,9 +140,10 @@ class Result:
         choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
 
+        inc = 'inc' if self.version_minor < 12 else 'increment_' # compatibility hack
         if   what == 'increments':
-            choice = [c if isinstance(c,str) and c.startswith('inc') else
-                      f'inc{c}' for c in choice]
+            choice = [c if isinstance(c,str) and c.startswith(inc) else
+                      f'{inc}{c}' for c in choice]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
@@ -206,7 +208,7 @@ class Result:
         self._allow_modification = False
 
 
-    def incs_in_range(self,start,end):
+    def increments_in_range(self,start,end):
         """
         Select all increments within a given range.
 
@@ -218,9 +220,11 @@ class Result:
             End increment.
 
         """
+        # compatibility hack
+        ln = 3 if self.version_minor < 12 else 10
         selected = []
-        for i,inc in enumerate([int(i[3:]) for i in self.increments]):
-            s,e = map(lambda x: int(x[3:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
+        for i,inc in enumerate([int(i[ln:]) for i in self.increments]):
+            s,e = map(lambda x: int(x[ln:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
             if s <= inc <= e:
                 selected.append(self.increments[i])
         return selected
@@ -461,6 +465,9 @@ class Result:
 
     def list_data(self):
         """Return information on all active datasets in the file."""
+        # compatibility hack
+        de = 'Description' if self.version_minor < 12 else 'description'
+        un = 'Unit'        if self.version_minor < 12 else 'unit'
         message = ''
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
@@ -475,13 +482,13 @@ class Result:
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    if 'Unit' in dataset.attrs:
-                                        unit = f" / {dataset.attrs['Unit']}" if h5py3 else \
-                                               f" / {dataset.attrs['Unit'].decode()}"
+                                    if un in dataset.attrs:
+                                        unit = f" / {dataset.attrs[un]}" if h5py3 else \
+                                               f" / {dataset.attrs[un].decode()}"
                                     else:
                                         unit = ''
-                                    description = dataset.attrs['Description'] if h5py3 else \
-                                                  dataset.attrs['Description'].decode()
+                                    description = dataset.attrs[de] if h5py3 else \
+                                                  dataset.attrs[de].decode()
                                     message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
@@ -594,9 +601,9 @@ class Result:
                 'data':  np.abs(x['data']),
                 'label': f'|{x["label"]}|',
                 'meta':  {
-                          'Unit':        x['meta']['Unit'],
-                          'Description': f"Absolute value of {x['label']} ({x['meta']['Description']})",
-                          'Creator':     'add_absolute'
+                          'unit':        x['meta']['unit'],
+                          'description': f"absolute value of {x['label']} ({x['meta']['description']})",
+                          'creator':     'add_absolute'
                           }
                  }
     def add_absolute(self,x):
@@ -622,9 +629,9 @@ class Result:
                 'data':  eval(formula),
                 'label': kwargs['label'],
                 'meta':  {
-                          'Unit':        kwargs['unit'],
-                          'Description': f"{kwargs['description']} (formula: {kwargs['formula']})",
-                          'Creator':     'add_calculation'
+                          'unit':        kwargs['unit'],
+                          'description': f"{kwargs['description']} (formula: {kwargs['formula']})",
+                          'creator':     'add_calculation'
                           }
                  }
     def add_calculation(self,label,formula,unit='n/a',description=None):
@@ -654,11 +661,11 @@ class Result:
                 'data':  mechanics.stress_Cauchy(P['data'],F['data']),
                 'label': 'sigma',
                 'meta':  {
-                          'Unit':        P['meta']['Unit'],
-                          'Description': "Cauchy stress calculated "
-                                         f"from {P['label']} ({P['meta']['Description']})"
-                                         f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_stress_Cauchy'
+                          'unit':        P['meta']['unit'],
+                          'description': "Cauchy stress calculated "
+                                         f"from {P['label']} ({P['meta']['description']})"
+                                         f" and {F['label']} ({F['meta']['description']})",
+                          'creator':     'add_stress_Cauchy'
                           }
                 }
     def add_stress_Cauchy(self,P='P',F='F'):
@@ -682,9 +689,9 @@ class Result:
                 'data':  np.linalg.det(T['data']),
                 'label': f"det({T['label']})",
                 'meta':  {
-                          'Unit':        T['meta']['Unit'],
-                          'Description': f"Determinant of tensor {T['label']} ({T['meta']['Description']})",
-                          'Creator':     'add_determinant'
+                          'unit':        T['meta']['unit'],
+                          'description': f"determinant of tensor {T['label']} ({T['meta']['description']})",
+                          'creator':     'add_determinant'
                           }
                 }
     def add_determinant(self,T):
@@ -706,9 +713,9 @@ class Result:
                 'data':  tensor.deviatoric(T['data']),
                 'label': f"s_{T['label']}",
                 'meta':  {
-                          'Unit':        T['meta']['Unit'],
-                          'Description': f"Deviator of tensor {T['label']} ({T['meta']['Description']})",
-                          'Creator':     'add_deviator'
+                          'unit':        T['meta']['unit'],
+                          'description': f"deviator of tensor {T['label']} ({T['meta']['description']})",
+                          'creator':     'add_deviator'
                           }
                  }
     def add_deviator(self,T):
@@ -727,19 +734,19 @@ class Result:
     @staticmethod
     def _add_eigenvalue(T_sym,eigenvalue):
         if   eigenvalue == 'max':
-            label,p = 'Maximum',2
+            label,p = 'maximum',2
         elif eigenvalue == 'mid':
-            label,p = 'Intermediate',1
+            label,p = 'intermediate',1
         elif eigenvalue == 'min':
-            label,p = 'Minimum',0
+            label,p = 'minimum',0
 
         return {
                 'data': tensor.eigenvalues(T_sym['data'])[:,p],
                 'label': f"lambda_{eigenvalue}({T_sym['label']})",
                 'meta' : {
-                          'Unit':         T_sym['meta']['Unit'],
-                          'Description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     'add_eigenvalue'
+                          'unit':        T_sym['meta']['unit'],
+                          'description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['description']})",
+                          'creator':     'add_eigenvalue'
                          }
                 }
     def add_eigenvalue(self,T_sym,eigenvalue='max'):
@@ -769,10 +776,10 @@ class Result:
                 'data': tensor.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
                 'meta' : {
-                          'Unit':        '1',
-                          'Description': f"Eigenvector corresponding to {label} eigenvalue"
-                                         f" of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     'add_eigenvector'
+                          'unit':        '1',
+                          'description': f"eigenvector corresponding to {label} eigenvalue"
+                                         f" of {T_sym['label']} ({T_sym['meta']['description']})",
+                          'creator':     'add_eigenvector'
                          }
                }
     def add_eigenvector(self,T_sym,eigenvalue='max'):
@@ -795,9 +802,9 @@ class Result:
     def _add_IPF_color(l,q):
         m = util.scale_to_coprime(np.array(l))
         try:
-            lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
+            lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['lattice']]
         except KeyError:
-            lattice =  q['meta']['Lattice']
+            lattice =  q['meta']['lattice']
         try:
             o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
         except ValueError:
@@ -807,10 +814,10 @@ class Result:
                 'data': np.uint8(o.IPF_color(l)*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
-                          'Unit':        '8-bit RGB',
-                          'Lattice':     q['meta']['Lattice'],
-                          'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
-                          'Creator':     'add_IPF_color'
+                          'unit':        '8-bit RGB',
+                          'lattice':     q['meta']['lattice'],
+                          'description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
+                          'creator':     'add_IPF_color'
                          }
                }
     def add_IPF_color(self,l,q='O'):
@@ -835,9 +842,9 @@ class Result:
                 'data':  mechanics.maximum_shear(T_sym['data']),
                 'label': f"max_shear({T_sym['label']})",
                 'meta':  {
-                          'Unit':        T_sym['meta']['Unit'],
-                          'Description': f"Maximum shear component of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     'add_maximum_shear'
+                          'unit':        T_sym['meta']['unit'],
+                          'description': f"maximum shear component of {T_sym['label']} ({T_sym['meta']['description']})",
+                          'creator':     'add_maximum_shear'
                           }
                  }
     def add_maximum_shear(self,T_sym):
@@ -857,9 +864,9 @@ class Result:
     def _add_equivalent_Mises(T_sym,kind):
         k = kind
         if k is None:
-            if T_sym['meta']['Unit'] == '1':
+            if T_sym['meta']['unit'] == '1':
                 k = 'strain'
-            elif T_sym['meta']['Unit'] == 'Pa':
+            elif T_sym['meta']['unit'] == 'Pa':
                 k = 'stress'
         if k not in ['stress', 'strain']:
             raise ValueError('invalid von Mises kind {kind}')
@@ -869,9 +876,9 @@ class Result:
                           mechanics.equivalent_stress_Mises)(T_sym['data']),
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
-                          'Unit':        T_sym['meta']['Unit'],
-                          'Description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     'add_Mises'
+                          'unit':        T_sym['meta']['unit'],
+                          'description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['description']})",
+                          'creator':     'add_Mises'
                           }
                 }
     def add_equivalent_Mises(self,T_sym,kind=None):
@@ -908,9 +915,9 @@ class Result:
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
                 'label': f"|{x['label']}|_{o}",
                 'meta':  {
-                          'Unit':        x['meta']['Unit'],
-                          'Description': f"{o}-norm of {t} {x['label']} ({x['meta']['Description']})",
-                          'Creator':     'add_norm'
+                          'unit':        x['meta']['unit'],
+                          'description': f"{o}-norm of {t} {x['label']} ({x['meta']['description']})",
+                          'creator':     'add_norm'
                           }
                  }
     def add_norm(self,x,ord=None):
@@ -934,11 +941,11 @@ class Result:
                 'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
                 'label': 'S',
                 'meta':  {
-                          'Unit':        P['meta']['Unit'],
-                          'Description': "2. Piola-Kirchhoff stress calculated "
-                                         f"from {P['label']} ({P['meta']['Description']})"
-                                         f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_stress_second_Piola_Kirchhoff'
+                          'unit':        P['meta']['unit'],
+                          'description': "second Piola-Kirchhoff stress calculated "
+                                         f"from {P['label']} ({P['meta']['description']})"
+                                         f" and {F['label']} ({F['meta']['description']})",
+                          'creator':     'add_stress_second_Piola_Kirchhoff'
                           }
                 }
     def add_stress_second_Piola_Kirchhoff(self,P='P',F='F'):
@@ -976,10 +983,10 @@ class Result:
     #             'data': coords,
     #             'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
     #             'meta' : {
-    #                       'Unit':        '1',
-    #                       'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
+    #                       'unit':        '1',
+    #                       'description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
     #                                      .format('Polar' if polar else 'Cartesian'),
-    #                       'Creator':     'add_pole'
+    #                       'creator':     'add_pole'
     #                      }
     #            }
     # def add_pole(self,q,p,polar=False):
@@ -1005,9 +1012,9 @@ class Result:
                 'data':  mechanics.rotation(F['data']).as_matrix(),
                 'label': f"R({F['label']})",
                 'meta':  {
-                          'Unit':        F['meta']['Unit'],
-                          'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_rotation'
+                          'unit':        F['meta']['unit'],
+                          'description': f"rotational part of {F['label']} ({F['meta']['description']})",
+                          'creator':     'add_rotation'
                           }
                  }
     def add_rotation(self,F):
@@ -1029,9 +1036,9 @@ class Result:
                 'data':  tensor.spherical(T['data'],False),
                 'label': f"p_{T['label']}",
                 'meta':  {
-                          'Unit':        T['meta']['Unit'],
-                          'Description': f"Spherical component of tensor {T['label']} ({T['meta']['Description']})",
-                          'Creator':     'add_spherical'
+                          'unit':        T['meta']['unit'],
+                          'description': f"spherical component of tensor {T['label']} ({T['meta']['description']})",
+                          'creator':     'add_spherical'
                           }
                  }
     def add_spherical(self,T):
@@ -1053,9 +1060,9 @@ class Result:
                 'data':  mechanics.strain(F['data'],t,m),
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
-                          'Unit':        F['meta']['Unit'],
-                          'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_strain'
+                          'unit':        F['meta']['unit'],
+                          'description': f"strain tensor of {F['label']} ({F['meta']['description']})",
+                          'creator':     'add_strain'
                           }
                  }
     def add_strain(self,F='F',t='V',m=0.0):
@@ -1084,10 +1091,10 @@ class Result:
                 'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
                 'label': f"{t}({F['label']})",
                 'meta':  {
-                          'Unit':        F['meta']['Unit'],
-                          'Description': '{} stretch tensor of {} ({})'.format('Left' if t.upper() == 'V' else 'Right',
-                                                                               F['label'],F['meta']['Description']),
-                          'Creator':     'add_stretch_tensor'
+                          'unit':        F['meta']['unit'],
+                          'description': '{} stretch tensor of {} ({})'.format('left' if t.upper() == 'V' else 'right',
+                                                                               F['label'],F['meta']['description']),
+                          'creator':     'add_stretch_tensor'
                           }
                  }
     def add_stretch_tensor(self,F='F',t='V'):
@@ -1161,8 +1168,7 @@ class Result:
                     if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
                         dataset = f[result[0]+'/'+result[1]['label']]
                         dataset[...] = result[1]['data']
-                        dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
-                                                       'Yes'.encode()
+                        dataset.attrs['overwritten'] = True
                     else:
                         if result[1]['data'].size >= chunk_size*2:
                             shape  = result[1]['data'].shape
@@ -1175,14 +1181,14 @@ class Result:
                             dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
-                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
+                    dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
                                                now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                     for l,v in result[1]['meta'].items():
-                        dataset.attrs[l]=v if h5py3 else v.encode()
-                    creator = dataset.attrs['Creator'] if h5py3 else \
-                              dataset.attrs['Creator'].decode()
-                    dataset.attrs['Creator'] = f"damask.Result.{creator} v{damask.version}" if h5py3 else \
+                        dataset.attrs[l.lower()]=v if h5py3 else v.encode()
+                    creator = dataset.attrs['creator'] if h5py3 else \
+                              dataset.attrs['creator'].decode()
+                    dataset.attrs['creator'] = f"damask.Result.{creator} v{damask.version}" if h5py3 else \
                                                f"damask.Result.{creator} v{damask.version}".encode()
 
                 except (OSError,RuntimeError) as err:
@@ -1200,6 +1206,8 @@ class Result:
         The view is not taken into account, i.e. the content of the
         whole file will be included.
         """
+        # compatibility hack
+        u = 'Unit' if self.version_minor < 12 else 'unit'
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise TypeError('XDMF output requires homogeneous grid')
 
@@ -1281,7 +1289,7 @@ class Result:
                                 dtype = f[name].dtype
 
                                 if dtype not in np.sctypes['int']+np.sctypes['uint']+np.sctypes['float']: continue
-                                unit = f[name].attrs['Unit'] if h5py3 else f[name].attrs['Unit'].decode()
+                                unit = f[name].attrs[u] if h5py3 else f[name].attrs[u].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
                                 attributes[-1].attrib={'Name':          name.split('/',2)[2]+f' / {unit}',
@@ -1325,7 +1333,10 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
 
-        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
+        # compatibility hack
+        ln = 3 if self.version_minor < 12 else 10
+
+        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][ln:])))))+1
 
         for inc in util.show_progress(self.iterate('increments'),len(self.visible['increments'])):
 
@@ -1335,21 +1346,24 @@ class Result:
                 for o in self.iterate('out_type_ph'):
                     for c in range(self.N_constituents):
                         prefix = '' if self.N_constituents == 1 else f'constituent{c}/'
-                        if o != 'mechanics':
+                        if o not in ['mechanics', 'mechanical']:                                    # compatitbility hack
                             for _ in self.iterate('phases'):
                                 path = self.get_dataset_location(label)
                                 if len(path) == 0:
                                     continue
                                 array = self.read_dataset(path,c)
-                                v.add(array,prefix+path[0].split('/',1)[1]+f' / {self._get_attribute(path[0],"Unit")}')
+                                v.add(array,prefix+path[0].split('/',1)[1]+f' / {self._get_attribute(path[0],"unit")}')
                         else:
                             paths = self.get_dataset_location(label)
                             if len(paths) == 0:
                                 continue
                             array = self.read_dataset(paths,c)
-                            ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')              # identify  phase name
-                            dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])          # remove phase name
-                            v.add(array,dset_name+f' / {self._get_attribute(paths[0],"Unit")}')
+                            if self.version_minor < 12:
+                                ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')         # identify  phase name
+                            else:
+                                ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanical))')        # identify  phase name
+                            dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])         # remove phase name
+                            v.add(array,dset_name+f' / {self._get_attribute(paths[0],"unit")}')
             self.view('homogenizations',viewed_backup_ho)
 
             viewed_backup_ph = self.visible['phases'].copy()
@@ -1360,10 +1374,10 @@ class Result:
                     if len(paths) == 0:
                         continue
                     array = self.read_dataset(paths)
-                    v.add(array,paths[0].split('/',1)[1]+f' / {self._get_attribute(paths[0],"Unit")}')
+                    v.add(array,paths[0].split('/',1)[1]+f' / {self._get_attribute(paths[0],"unit")}')
             self.view('phases',viewed_backup_ph)
 
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            v.save(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
+            v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')

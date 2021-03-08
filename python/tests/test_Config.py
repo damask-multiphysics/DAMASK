@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 
 from damask import Config
+from damask import Rotation
+from damask import Orientation
 
 class TestConfig:
 
@@ -42,3 +44,7 @@ class TestConfig:
 
     def test_abstract_is_complete(self):
         assert Config().is_complete is None
+    
+    @pytest.mark.parametrize('data',[Rotation.from_random(),Orientation.from_random()])
+    def test_rotation_orientation(self,data):
+        assert str(Config(a=data)) == str(Config(a=data.as_quaternion()))

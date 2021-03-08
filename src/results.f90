@@ -105,13 +105,14 @@ subroutine results_addIncrement(inc,time)
 
   integer,       intent(in) :: inc
   real(pReal),   intent(in) :: time
+
   character(len=pStringLen) :: incChar
 
 
   write(incChar,'(i10)') inc
-  call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
-  call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
-  call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
+  call results_closeGroup(results_addGroup(trim('increment_'//trim(adjustl(incChar)))))
+  call results_setLink(trim('increment_'//trim(adjustl(incChar))),'current')
+  call results_addAttribute('t/s',time,trim('increment_'//trim(adjustl(incChar))))
 
 end subroutine results_addIncrement
 
@@ -350,18 +351,17 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
     transposed_ = .true.
   endif
 
+  groupHandle = results_openGroup(group)
   if(transposed_) then
     if(size(dataset,1) /= size(dataset,2)) error stop 'transpose non-symmetric tensor'
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
     enddo
+    call HDF5_write(groupHandle,dataset_transposed,label)
   else
-    allocate(dataset_transposed,source=dataset)
+    call HDF5_write(groupHandle,dataset,label)
   endif
-
-  groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -732,13 +732,13 @@ subroutine executionStamp(path,description,SIunit)
 
 
   if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'Description',description,path)
+    call HDF5_addAttribute(resultsFile,'description',description,path)
   if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
-    call HDF5_addAttribute(resultsFile,'Unit',SIunit,path)
+    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
   if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'Creator','DAMASK '//DAMASKVERSION,path)
+    call HDF5_addAttribute(resultsFile,'creator','DAMASK '//DAMASKVERSION,path)
   if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'Created',now(),path)
+    call HDF5_addAttribute(resultsFile,'created',now(),path)
 
 end subroutine executionStamp
 
@@ -757,7 +757,6 @@ character(len=24) function now()
     values(1),'-',values(2),'-',values(3),' ',values(5),':',values(6),':',values(7),zone
 
 end function now
-
 
 
 end module results

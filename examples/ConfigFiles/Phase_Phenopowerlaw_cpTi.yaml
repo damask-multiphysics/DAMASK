@@ -3,10 +3,10 @@
 Ti-alpha:
   lattice: hP
   c/a: 1.587
-  mechanics:
+  mechanical:
     output: [F, P, F_e, F_p, L_p, O]
-    elasticity: {C_11: 160.0e9, C_12: 90.0e9, C_13: 66.0e9, C_33: 181.7e9, C_44: 46.5e9, type: hooke}
-    plasticity:
+    elastic: {C_11: 160.0e9, C_12: 90.0e9, C_13: 66.0e9, C_33: 181.7e9, C_44: 46.5e9, type: hooke}
+    plastic:
       N_sl: [3, 3, 0, 0, 12]
       a_sl: 2.0
       dot_gamma_0_sl: 0.001

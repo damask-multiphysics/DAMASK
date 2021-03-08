@@ -35,10 +35,10 @@ for filename in options.filenames:
     if not results.structured: continue
     coords = damask.grid_filters.coordinates0_point(results.cells,results.size,results.origin).reshape(-1,3,order='F')
 
-    N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
+    N_digits = int(np.floor(np.log10(int(results.increments[-1][10:]))))+1
     N_digits = 5 # hack to keep test intact
     for inc in damask.util.show_progress(results.iterate('increments'),len(results.increments)):
-        table = damask.Table(np.ones(np.product(results.cells),dtype=int)*int(inc[3:]),{'inc':(1,)})\
+        table = damask.Table(np.ones(np.product(results.cells),dtype=int)*int(inc[10:]),{'inc':(1,)})\
                       .add('pos',coords.reshape(-1,3))
 
         results.view('homogenizations',False)
@@ -59,5 +59,5 @@ for filename in options.filenames:
         if not os.path.isdir(dirname):
             os.mkdir(dirname,0o755)
         file_out = '{}_inc{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],
-                                         inc[3:].zfill(N_digits))
+                                         inc[10:].zfill(N_digits))
         table.save(os.path.join(dirname,file_out),legacy=True)

@@ -107,8 +107,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
