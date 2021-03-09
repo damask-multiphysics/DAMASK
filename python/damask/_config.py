@@ -1,5 +1,6 @@
 import copy
 from io import StringIO
+from collections.abc import Iterable
 import abc
 
 import numpy as np
@@ -42,6 +43,42 @@ class Config(dict):
         return copy.deepcopy(self)
 
     copy = __copy__
+
+
+    def __or__(self,other):
+        """
+        Update configuration with contents of other.
+
+        Parameters
+        ----------
+        other : damask.Config or dict
+            Key-value pairs that update self.
+
+        """
+        duplicate = self.copy()
+        duplicate.update(other)
+        return duplicate
+
+
+    def __ior__(self,other):
+        """Update configuration with contents of other."""
+        return self.__or__(other)
+
+
+    def delete(self,keys):
+        """
+        Remove configuration keys.
+
+        Parameters
+        ----------
+        keys : iterable or scalar
+            Label of the key(s) to remove.
+
+        """
+        duplicate = self.copy()
+        for k in keys if isinstance(keys, Iterable) and not isinstance(keys, str) else [keys]:
+            del duplicate[k]
+        return duplicate
 
 
     @classmethod
@@ -97,30 +134,6 @@ class Config(dict):
         except TypeError:                                                                           # compatibility with old pyyaml
             del kwargs['sort_keys']
             fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
-
-
-    def add(self,d):
-        """
-        Add dictionary.
-
-        d : dict
-            Dictionary to append.
-        """
-        duplicate = self.copy()
-        duplicate.update(d)
-        return duplicate
-
-
-    def delete(self,key):
-        """
-        Delete item.
-
-        key : str or scalar
-            Label of the key to remove.
-        """
-        duplicate = self.copy()
-        del duplicate[key]
-        return duplicate
 
 
     @property
