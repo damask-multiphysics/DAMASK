@@ -205,10 +205,18 @@ subroutine grid_mechanical_spectral_polarisation_init
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(groupHandle,P_aim,        'P_aim')
-    call HDF5_read(groupHandle,F_aim,        'F_aim')
-    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
-    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(groupHandle,P_aim,        'P_aim',.false.)
+    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,F_aim,        'F_aim',.false.)
+    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
+    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot',.false.)
+    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
     call HDF5_read(groupHandle,F,            'F')
     call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
     call HDF5_read(groupHandle,F_tau,        'F_tau')
@@ -231,7 +239,11 @@ subroutine grid_mechanical_spectral_polarisation_init
   restartRead2: if (interface_restartInc > 0) then
     print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
+    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
