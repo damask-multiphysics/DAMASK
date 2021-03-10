@@ -370,16 +370,16 @@ subroutine grid_mechanical_spectral_basic_restartWrite
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
-  call HDF5_write(groupHandle,P_aim,        'P_aim')
-  call HDF5_write(groupHandle,F_aim,        'F_aim')
-  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
-  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
+  call HDF5_write(groupHandle,P_aim,        'P_aim',.false.)
+  call HDF5_write(groupHandle,F_aim,        'F_aim',.false.)
+  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
+  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot',.false.)
   call HDF5_write(groupHandle,F,            'F')
   call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
 
-  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg')
-  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
-  call HDF5_write(groupHandle,C_minMaxAvg,    'C_minMaxAvg')
+  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg',.false.)
+  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
+  call HDF5_write(groupHandle,C_minMaxAvg,    'C_minMaxAvg',.false.)
 
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
