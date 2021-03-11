@@ -371,7 +371,7 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for dataset in sets:
                 for group in self.groups_with_datasets(dataset):
-                    path = os.path.join(group,dataset)
+                    path = '/'.join([group,dataset])
                     inc,prop,name,cat,item = (path.split('/') + ['']*5)[:5]
                     key = '/'.join([prop,name+tag])
                     if key not in inGeom:
@@ -388,15 +388,15 @@ class Result:
                                    np.nan,
                                    dtype=np.dtype(f[path]))
                     data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
-                    path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
+                    path = ('/'.join([prop,name]+([cat] if cat else [])+([item] if item else [])) if split else path)+tag
                     if split:
                         try:
-                            tbl[inc].add(path,data)
+                            tbl[inc] = tbl[inc].add(path,data)
                         except KeyError:
                             tbl[inc] = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
                     else:
                         try:
-                            tbl.add(path,data)
+                            tbl = tbl.add(path,data)
                         except AttributeError:
                             tbl = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
 

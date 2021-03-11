@@ -177,7 +177,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   integer :: &
     Ninstances, &
     ph, &
-    Nconstituents, &
+    Nmembers, &
     sizeState, sizeDotState, sizeDependentState, sizeDeltaState, &
     s1, s2, &
     s, t, l
@@ -398,7 +398,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents  = count(material_phaseAt2 == ph)
+    Nmembers  = count(material_phaseAt2 == ph)
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -412,9 +412,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState)
 
-    allocate(geom(ph)%V_0(Nconstituents))
+    allocate(geom(ph)%V_0(Nmembers))
     call storeGeometry(ph)
 
     plasticState(ph)%nonlocal         = pl%get_asBool('nonlocal')
@@ -486,26 +486,26 @@ module function plastic_nonlocal_init() result(myPlasticity)
         dot%rho_dip_scr => plasticState(ph)%dotState               (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
         del%rho_dip_scr => plasticState(ph)%deltaState             (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
 
-    stt%gamma => plasticState(ph)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
-    dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
-    del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    stt%gamma => plasticState(ph)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
+    dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
+    del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
     if(any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    plasticState(ph)%slipRate => plasticState(ph)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    plasticState(ph)%slipRate => plasticState(ph)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
 
-    stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nconstituents)
-    stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
-        stt%v_edg_pos  => plasticState(ph)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nconstituents)
-        stt%v_edg_neg  => plasticState(ph)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nconstituents)
-        stt%v_scr_pos  => plasticState(ph)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nconstituents)
-        stt%v_scr_neg  => plasticState(ph)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
+    stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
+    stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)
+        stt%v_edg_pos  => plasticState(ph)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nmembers)
+        stt%v_edg_neg  => plasticState(ph)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nmembers)
+        stt%v_scr_pos  => plasticState(ph)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nmembers)
+        stt%v_scr_neg  => plasticState(ph)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)
 
-    allocate(dst%tau_pass(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
-    allocate(dst%tau_back(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),source=0.0_pReal)
+    allocate(dst%tau_back(prm%sum_N_sl,Nmembers),source=0.0_pReal)
     end associate
 
-    if (Nconstituents > 0) call stateInit(ini,ph,Nconstituents)
+    if (Nmembers > 0) call stateInit(ini,ph,Nmembers)
     plasticState(ph)%state0 = plasticState(ph)%state
 
 !--------------------------------------------------------------------------------------------------
@@ -527,7 +527,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if(.not. myPlasticity(ph)) cycle
 
     phase => phases%get(ph)
-    Nconstituents = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseAt2 == ph)
     l = 0
     do t = 1,4
       do s = 1,param(ph)%sum_N_sl
@@ -1406,7 +1406,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     me, &
     neighbor_e, &                                                                                   ! element index of my neighbor
     neighbor_i, &                                                                                   ! integration point index of my neighbor
-    neighbor_me, &                                                                                   
+    neighbor_me, &
     neighbor_phase, &
     ns, &                                                                                           ! number of active slip systems
     s1, &                                                                                           ! slip system index (me)
@@ -1579,13 +1579,13 @@ end subroutine plastic_nonlocal_results
 !--------------------------------------------------------------------------------------------------
 !> @brief populates the initial dislocation density
 !--------------------------------------------------------------------------------------------------
-subroutine stateInit(ini,phase,Nconstituents)
+subroutine stateInit(ini,phase,Nmembers)
 
   type(tInitialParameters) :: &
     ini
   integer,intent(in) :: &
     phase, &
-    Nconstituents
+    Nmembers
   integer :: &
     i, &
     e, &
@@ -1602,7 +1602,7 @@ subroutine stateInit(ini,phase,Nconstituents)
     totalVolume, &
     densityBinning, &
     minimumIpVolume
-  real(pReal), dimension(Nconstituents) :: &
+  real(pReal), dimension(Nmembers) :: &
     volume
 
 
@@ -1622,13 +1622,13 @@ subroutine stateInit(ini,phase,Nconstituents)
     meanDensity = 0.0_pReal
     do while(meanDensity < ini%random_rho_u)
       call random_number(rnd)
-      phasemember = nint(rnd(1)*real(Nconstituents,pReal) + 0.5_pReal)
+      phasemember = nint(rnd(1)*real(Nmembers,pReal) + 0.5_pReal)
       s           = nint(rnd(2)*real(sum(ini%N_sl),pReal)*4.0_pReal + 0.5_pReal)
       meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
       stt%rhoSglMobile(s,phasemember) = densityBinning
     enddo
   else                                ! homogeneous distribution with noise
-    do e = 1, Nconstituents
+    do e = 1, Nmembers
       do f = 1,size(ini%N_sl,1)
         from = 1 + sum(ini%N_sl(1:f-1))
         upto = sum(ini%N_sl(1:f))
@@ -1809,7 +1809,7 @@ pure function getRho0(ph,me)
     getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
     getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
 
-    where(abs(getRho0) < max(prm%rho_min/geom(ph)%V_0(me)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+    where (abs(getRho0) < max(prm%rho_min/geom(ph)%V_0(me)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
       getRho0 = 0.0_pReal
 
   end associate
@@ -1822,16 +1822,13 @@ subroutine storeGeometry(ph)
   integer, intent(in) :: ph
 
   integer :: ip, el, ce, co
+  real(pReal), dimension(:), allocatable :: V
 
-  ce = 0
-  do el = 1, size(material_homogenizationMemberAt,2)
-    do ip = 1, size(material_homogenizationMemberAt,1)
-      ce = ce + 1
-      do co = 1, homogenization_maxNconstituents
-        if(material_phaseAt2(co,ce) == ph) then
-           geom(ph)%V_0(material_phaseMemberAt2(co,ce)) = IPvolume(ip,el)
-        endif
-      enddo
+
+  V = reshape(IPvolume,[product(shape(IPvolume))])
+  do ce = 1, size(material_homogenizationMemberAt2,1)
+    do co = 1, homogenization_maxNconstituents
+      if (material_phaseAt2(co,ce) == ph) geom(ph)%V_0(material_phaseMemberAt2(co,ce)) = V(ce)
     enddo
   enddo
 

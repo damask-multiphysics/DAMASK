@@ -35,7 +35,7 @@ module function anisoductile_init() result(mySources)
     pl, &
     sources, &
     src
-  integer :: Ninstances,Nconstituents,p
+  integer :: Ninstances,Nmembers,p
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
@@ -78,8 +78,8 @@ module function anisoductile_init() result(mySources)
         if (prm%q              <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (any(prm%gamma_crit <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
 
-        Nconstituents=count(material_phaseAt2==p)
-        call phase_allocateState(damageState(p),Nconstituents,1,1,0)
+        Nmembers=count(material_phaseAt2==p)
+        call phase_allocateState(damageState(p),Nmembers,1,1,0)
         damageState(p)%atol = src%get_asFloat('anisoDuctile_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
 

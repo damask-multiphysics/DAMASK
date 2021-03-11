@@ -52,7 +52,7 @@ module function plastic_isotropic_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, &
-    Nconstituents, &
+    Nmembers, &
     sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
@@ -119,11 +119,11 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseAt2 == ph)
     sizeDotState = size(['xi   ','gamma'])
     sizeState = sizeDotState
 
-    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization

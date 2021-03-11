@@ -15,13 +15,13 @@ submodule(phase) thermal
     THERMAL_EXTERNALHEAT_ID
   end enum
 
-  type :: tDataContainer
+  type :: tDataContainer             ! ?? not very telling name. Better: "fieldQuantities" ??
     real(pReal), dimension(:), allocatable :: T, dot_T
   end type tDataContainer
   integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
-  type(tDataContainer), dimension(:), allocatable :: current
+  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ??
 
   integer :: thermal_source_maxSizeDotState
 
@@ -78,41 +78,36 @@ module subroutine thermal_init(phases)
 
   integer :: &
     ph, so, &
-    Nconstituents
+    Nmembers
 
 
   print'(/,a)', ' <<<+-  phase:thermal init  -+>>>'
 
   allocate(current(phases%length))
 
-  allocate(thermalState (phases%length))
+  allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
 
   do ph = 1, phases%length
-
-    Nconstituents = count(material_phaseAt2 == ph)
-
-    allocate(current(ph)%T(Nconstituents),source=300.0_pReal)
-    allocate(current(ph)%dot_T(Nconstituents),source=0.0_pReal)
+    Nmembers = count(material_phaseAt2 == ph)
+    allocate(current(ph)%T(Nmembers),source=300.0_pReal)
+    allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
     phase => phases%get(ph)
-    if(phase%contains('thermal')) then
-      thermal => phase%get('thermal')
-      sources => thermal%get('source',defaultVal=emptyList)
-
-      thermal_Nsources(ph) = sources%length
-    endif
+    thermal => phase%get('thermal',defaultVal=emptyDict)
+    sources => thermal%get('source',defaultVal=emptyList)
+    thermal_Nsources(ph) = sources%length
     allocate(thermalstate(ph)%p(thermal_Nsources(ph)))
   enddo
 
   allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
 
-  if(maxval(thermal_Nsources) /= 0) then
+  if (maxval(thermal_Nsources) /= 0) then
     where(dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
     where(externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
   endif
 
   thermal_source_maxSizeDotState = 0
-  PhaseLoop2:do ph = 1,phases%length
+  do ph = 1,phases%length
 
     do so = 1,thermal_Nsources(ph)
       thermalState(ph)%p(so)%state  = thermalState(ph)%p(so)%state0
@@ -120,7 +115,7 @@ module subroutine thermal_init(phases)
 
     thermal_source_maxSizeDotState  = max(thermal_source_maxSizeDotState, &
                                           maxval(thermalState(ph)%p%sizeDotState))
-  enddo PhaseLoop2
+  enddo
 
 end subroutine thermal_init
 
@@ -145,17 +140,16 @@ module subroutine phase_thermal_getRate(TDot, ph,me)
   do so = 1, thermal_Nsources(ph)
    select case(thermal_source(so,ph))
      case (THERMAL_DISSIPATION_ID)
-      call dissipation_getRate(my_Tdot, ph,me)
+       call dissipation_getRate(my_Tdot, ph,me)
 
      case (THERMAL_EXTERNALHEAT_ID)
-      call externalheat_getRate(my_Tdot, ph,me)
+       call externalheat_getRate(my_Tdot, ph,me)
 
      case default
-      my_Tdot = 0.0_pReal
+       my_Tdot = 0.0_pReal
    end select
    Tdot = Tdot + my_Tdot
   enddo
-
 
 end subroutine phase_thermal_getRate
 
@@ -185,7 +179,7 @@ function phase_thermal_collectDotState(ph,me) result(broken)
 end function phase_thermal_collectDotState
 
 
-module function thermal_stress(Delta_t,ph,me) result(converged_)
+module function thermal_stress(Delta_t,ph,me) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: ph, me
@@ -212,7 +206,7 @@ function integrateThermalState(Delta_t, ph,me) result(broken)
     sizeDotState
 
   broken = phase_thermal_collectDotState(ph,me)
-  if(broken) return
+  if (broken) return
 
   do so = 1, thermal_Nsources(ph)
     sizeDotState = thermalState(ph)%p(so)%sizeDotState
@@ -301,14 +295,12 @@ function thermal_active(source_label,src_length)  result(active_source)
   allocate(active_source(src_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    if (phase%contains('thermal')) then
-      thermal =>  phase%get('thermal',defaultVal=emptyList)
-      sources =>  thermal%get('source',defaultVal=emptyList)
-      do s = 1, sources%length
-        src => sources%get(s)
-        if(src%get_asString('type') == source_label) active_source(s,p) = .true.
-      enddo
-    endif
+    thermal =>  phase%get('thermal',defaultVal=emptyDict)
+    sources =>  thermal%get('source',defaultVal=emptyList)
+    do s = 1, sources%length
+      src => sources%get(s)
+      active_source(s,p) = src%get_asString('type') == source_label
+    enddo
   enddo
 
 
