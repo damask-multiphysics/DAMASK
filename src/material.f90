@@ -17,7 +17,7 @@ module material
   private
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Nconstituents                                                                 !< number of grains in each homogenization
+    homogenization_Nconstituents                                                                    !< number of grains in each homogenization
 
   character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
@@ -30,7 +30,7 @@ module material
     material_homogenizationAt, &                                                                    !< homogenization ID of each element
     material_homogenizationAt2, &                                                                   !< per cell
     material_homogenizationMemberAt2                                                                !< cell
-  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
+  integer, dimension(:,:),   allocatable :: &                                                       ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt, &                                                                             !< phase ID of each element
