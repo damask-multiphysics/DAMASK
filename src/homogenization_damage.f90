@@ -48,9 +48,9 @@ module subroutine damage_init()
       if (configHomogenization%contains('damage')) then
         configHomogenizationDamage => configHomogenization%get('damage')
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(configHomogenizationDamage)
+        prm%output = output_as1dString(configHomogenizationDamage)
 #else
-        prm%output = configHomogenizationDamage%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = configHomogenizationDamage%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
       else
         prm%output = emptyStringArray

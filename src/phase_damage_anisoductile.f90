@@ -61,17 +61,17 @@ module function anisoductile_init() result(mySources)
         associate(prm  => param(p))
         src => sources%get(1)
 
-        N_sl           = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+        N_sl           = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
         prm%q          = src%get_asFloat('q')
-        prm%gamma_crit = src%get_asFloats('gamma_crit',requiredSize=size(N_sl))
+        prm%gamma_crit = src%get_as1dFloat('gamma_crit',requiredSize=size(N_sl))
 
         ! expand: family => system
         prm%gamma_crit = math_expand(prm%gamma_crit,N_sl)
 
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(src)
+        prm%output = output_as1dString(src)
 #else
-        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
         ! sanity checks

@@ -51,9 +51,9 @@ module subroutine thermal_init()
       if (configHomogenization%contains('thermal')) then
         configHomogenizationThermal => configHomogenization%get('thermal')
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(configHomogenizationThermal)
+        prm%output = output_as1dString(configHomogenizationThermal)
 #else
-        prm%output = configHomogenizationThermal%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = configHomogenizationThermal%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
       else
         prm%output = emptyStringArray

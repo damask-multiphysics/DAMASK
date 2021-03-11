@@ -60,11 +60,11 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
         prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=0.0_pReal)
 
         ! read up to three parameters (constant, linear, quadratic with T)
-        temp = kinematic_type%get_asFloats('A_11')
+        temp = kinematic_type%get_as1dFloat('A_11')
         prm%A(1,1,1:size(temp)) = temp
-        temp = kinematic_type%get_asFloats('A_22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+        temp = kinematic_type%get_as1dFloat('A_22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
         prm%A(2,2,1:size(temp)) = temp
-        temp = kinematic_type%get_asFloats('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+        temp = kinematic_type%get_as1dFloat('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
         prm%A(3,3,1:size(temp)) = temp
         do i=1, size(prm%A,3)
           prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),&

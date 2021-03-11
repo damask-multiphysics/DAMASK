@@ -89,9 +89,9 @@ module function plastic_isotropic_init() result(myPlasticity)
     pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
-    prm%output = output_asStrings(pl)
+    prm%output = output_as1dString(pl)
 #else
-    prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
     xi_0            = pl%get_asFloat('xi_0')

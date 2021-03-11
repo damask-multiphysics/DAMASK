@@ -177,9 +177,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
     pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
-    prm%output = output_asStrings(pl)
+    prm%output = output_as1dString(pl)
 #else
-    prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
     ! This data is read in already in lattice
@@ -189,12 +189,12 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+    N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%P_sl    = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
                                               phase%get_asFloat('c/a',defaultVal=0.0_pReal))
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_asFloats('h_sl_sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl_sl'), &
                                                    phase%get_asString('lattice'))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
                                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
@@ -205,16 +205,16 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%fccTwinTransNucleation = lattice_structure(ph) == lattice_FCC_ID .and. (N_sl(1) == 12)
       if(prm%fccTwinTransNucleation) prm%fcc_twinNucleationSlipPair = lattice_FCC_TWINNUCLEATIONSLIPPAIR
 
-      rho_mob_0                = pl%get_asFloats('rho_mob_0',   requiredSize=size(N_sl))
-      rho_dip_0                = pl%get_asFloats('rho_dip_0',   requiredSize=size(N_sl))
-      prm%v_0                  = pl%get_asFloats('v_0',         requiredSize=size(N_sl))
-      prm%b_sl                 = pl%get_asFloats('b_sl',        requiredSize=size(N_sl))
-      prm%Q_s                  = pl%get_asFloats('Q_s',         requiredSize=size(N_sl))
-      prm%i_sl                 = pl%get_asFloats('i_sl',        requiredSize=size(N_sl))
-      prm%p                    = pl%get_asFloats('p_sl',        requiredSize=size(N_sl))
-      prm%q                    = pl%get_asFloats('q_sl',        requiredSize=size(N_sl))
-      prm%tau_0                = pl%get_asFloats('tau_0',       requiredSize=size(N_sl))
-      prm%B                    = pl%get_asFloats('B',           requiredSize=size(N_sl), &
+      rho_mob_0                = pl%get_as1dFloat('rho_mob_0',   requiredSize=size(N_sl))
+      rho_dip_0                = pl%get_as1dFloat('rho_dip_0',   requiredSize=size(N_sl))
+      prm%v_0                  = pl%get_as1dFloat('v_0',         requiredSize=size(N_sl))
+      prm%b_sl                 = pl%get_as1dFloat('b_sl',        requiredSize=size(N_sl))
+      prm%Q_s                  = pl%get_as1dFloat('Q_s',         requiredSize=size(N_sl))
+      prm%i_sl                 = pl%get_as1dFloat('i_sl',        requiredSize=size(N_sl))
+      prm%p                    = pl%get_as1dFloat('p_sl',        requiredSize=size(N_sl))
+      prm%q                    = pl%get_as1dFloat('q_sl',        requiredSize=size(N_sl))
+      prm%tau_0                = pl%get_as1dFloat('tau_0',       requiredSize=size(N_sl))
+      prm%B                    = pl%get_as1dFloat('B',           requiredSize=size(N_sl), &
                                                   defaultVal=[(0.0_pReal, i=1,size(N_sl))])
 
       prm%D_a                  = pl%get_asFloat('D_a')
@@ -265,18 +265,18 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
-    N_tw         = pl%get_asInts('N_tw', defaultVal=emptyIntArray)
+    N_tw         = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
       prm%P_tw  = lattice_SchmidMatrix_twin(N_tw,phase%get_asString('lattice'),&
                                                    phase%get_asFloat('c/a',defaultVal=0.0_pReal))
       prm%h_tw_tw   = lattice_interaction_TwinByTwin(N_tw,&
-                                                     pl%get_asFloats('h_tw_tw'), &
+                                                     pl%get_as1dFloat('h_tw_tw'), &
                                                      phase%get_asString('lattice'))
 
-      prm%b_tw      = pl%get_asFloats('b_tw',     requiredSize=size(N_tw))
-      prm%t_tw      = pl%get_asFloats('t_tw',     requiredSize=size(N_tw))
-      prm%r         = pl%get_asFloats('p_tw',     requiredSize=size(N_tw))
+      prm%b_tw      = pl%get_as1dFloat('b_tw',     requiredSize=size(N_tw))
+      prm%t_tw      = pl%get_as1dFloat('t_tw',     requiredSize=size(N_tw))
+      prm%r         = pl%get_as1dFloat('p_tw',     requiredSize=size(N_tw))
 
       prm%x_c_tw    = pl%get_asFloat('x_c_tw')
       prm%L_tw      = pl%get_asFloat('L_tw')
@@ -289,7 +289,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                        phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if (.not. prm%fccTwinTransNucleation) then
-        prm%dot_N_0_tw = pl%get_asFloats('dot_N_0_tw')
+        prm%dot_N_0_tw = pl%get_as1dFloat('dot_N_0_tw')
         prm%dot_N_0_tw = math_expand(prm%dot_N_0_tw,N_tw)
       endif
 
@@ -315,10 +315,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
-    N_tr         = pl%get_asInts('N_tr', defaultVal=emptyIntArray)
+    N_tr         = pl%get_as1dInt('N_tr', defaultVal=emptyIntArray)
     prm%sum_N_tr = sum(abs(N_tr))
     transActive: if (prm%sum_N_tr > 0) then
-      prm%b_tr = pl%get_asFloats('b_tr')
+      prm%b_tr = pl%get_as1dFloat('b_tr')
       prm%b_tr = math_expand(prm%b_tr,N_tr)
 
       prm%h             = pl%get_asFloat('h',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
@@ -327,7 +327,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%x_c_tr        = pl%get_asFloat('x_c_tr',  defaultVal=0.0_pReal) ! ToDo: How to handle that???
       prm%L_tr          = pl%get_asFloat('L_tr')
 
-      prm%h_tr_tr = lattice_interaction_TransByTrans(N_tr,pl%get_asFloats('h_tr_tr'), &
+      prm%h_tr_tr = lattice_interaction_TransByTrans(N_tr,pl%get_as1dFloat('h_tr_tr'), &
                                                      phase%get_asString('lattice'))
 
       prm%C66_tr  = lattice_C66_trans(N_tr,prm%C66,pl%get_asString('lattice_tr'), &
@@ -341,12 +341,12 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                                pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
       if (lattice_structure(ph) /= lattice_FCC_ID) then
-        prm%dot_N_0_tr = pl%get_asFloats('dot_N_0_tr')
+        prm%dot_N_0_tr = pl%get_as1dFloat('dot_N_0_tr')
         prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,N_tr)
       endif
-      prm%t_tr = pl%get_asFloats('t_tr')
+      prm%t_tr = pl%get_as1dFloat('t_tr')
       prm%t_tr = math_expand(prm%t_tr,N_tr)
-      prm%s    = pl%get_asFloats('p_tr',defaultVal=[0.0_pReal])
+      prm%s    = pl%get_as1dFloat('p_tr',defaultVal=[0.0_pReal])
       prm%s    = math_expand(prm%s,N_tr)
 
       ! sanity checks
@@ -392,14 +392,14 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,N_tw,&
-                                                   pl%get_asFloats('h_sl_tw'), &
+                                                   pl%get_as1dFloat('h_sl_tw'), &
                                                    phase%get_asString('lattice'))
       if (prm%fccTwinTransNucleation .and. size(N_tw) /= 1) extmsg = trim(extmsg)//' interaction_sliptwin'
     endif slipAndTwinActive
 
     slipAndTransActive: if (prm%sum_N_sl * prm%sum_N_tr > 0) then
       prm%h_sl_tr = lattice_interaction_SlipByTrans(N_sl,N_tr,&
-                                                    pl%get_asFloats('h_sl_tr'), &
+                                                    pl%get_as1dFloat('h_sl_tr'), &
                                                     phase%get_asString('lattice'))
       if (prm%fccTwinTransNucleation .and. size(N_tr) /= 1) extmsg = trim(extmsg)//' interaction_sliptrans'
     endif slipAndTransActive
