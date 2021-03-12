@@ -275,16 +275,15 @@ class Grid:
             Defaults to 'FeatureIds'.
 
         """
-        root_dir ='DataContainers'
         f = h5py.File(fname, 'r')
-        g = os.path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
+        g = os.path.join('DataContainers',base_group,'_SIMPL_GEOMETRY')
         cells  = f[os.path.join(g,'DIMENSIONS')][()]
         size   = f[os.path.join(g,'SPACING')][()] * cells
         origin = f[os.path.join(g,'ORIGIN')][()]
 
         ma = np.arange(cells.prod(),dtype=int) \
              if point_data is None else \
-             np.reshape(f[os.path.join(root_dir,base_group,point_data,material)],cells.prod())
+             np.reshape(f[os.path.join('DataContainers',base_group,point_data,material)],cells.prod())
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 

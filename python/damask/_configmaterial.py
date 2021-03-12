@@ -98,8 +98,8 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_from_Dream3D(fname,base_group,data_group,ori_data,phase_id,phase_name):
-        r"""
+    def load_DREAM3D(fname,base_group,data_group,ori_data,phase_id,phase_name):
+        """
         Load material data from DREAM3D file.
 
         The parts of homogenization and phase need to be added by the user.
@@ -128,37 +128,34 @@ class ConfigMaterial(Config):
         for grain based data with single phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data'\
-                                  'EulerAngles','Phases',['Ferrite'])
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data',
+        ...                      'EulerAngles','Phases',['Ferrite'])
 
         for point based data with single phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData'\
-                                  'EulerAngles','Phases',['Ferrite'])
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData',
+        ...                       'EulerAngles','Phases',['Ferrite'])
 
         for grain based data with dual phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data'\
-                                  'EulerAngles','Phases',['Ferrite','Martensite'])
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data',
+        ...                       'EulerAngles','Phases',['Ferrite','Martensite'])
 
         for point based data with dual phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData'\
-                                  'EulerAngles','Phases',['Ferrite','Martensite'])
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData',
+        ...                       'EulerAngles','Phases',['Ferrite','Martensite'])
 
         """
         root_dir = 'DataContainers'
         hdf = h5py.File(fname,'r')
-        cells  = hdf[path.join(root_dir,base_group,'_SIMPL_GEOMETRY/DIMENSIONS')][()]
-
-        config_info = ConfigMaterial()   # empty yaml dictionary
 
         orientation_path = path.join(root_dir,base_group,data_group,ori_data)
         if hdf[orientation_path].attrs['TupleDimensions'].shape == (3,):
-           grain_orientations = np.array(hdf[orientation_path]).reshape(cells.prod(),3,order='F')
+           grain_orientations = np.array(hdf[orientation_path]).reshape(-1,3,order='F')
         else:
            grain_orientations = np.array(hdf[orientation_path])[1:]
 
@@ -166,15 +163,15 @@ class ConfigMaterial(Config):
 
         phase_path  = path.join(root_dir,base_group,data_group,phase_id)
         if hdf[phase_path].attrs['TupleDimensions'].shape == (3,):
-           grain_phase = np.array(hdf[phase_path]).reshape(cells.prod(),order='F')
+           grain_phase = np.array(hdf[phase_path]).reshape(-1,order='F')
         else:
            grain_phase = np.array(hdf[phase_path])[1:]
 
         grain_phase = grain_phase.reshape(len(grain_phase),)
         phase_name_list = [phase_name[i - 1] for i in grain_phase]
 
-        material_dict = config_info.material_add(constituents={'phase':phase_name_list,'O':grain_quats},homogenization='SX')
-        material_dict.save()
+        return ConfigMaterial().material_add(phase=phase_name_list, O = grain_quats)                # noqa
+
 
     @property
     def is_complete(self):
