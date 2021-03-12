@@ -1,4 +1,3 @@
-import copy
 from os import path
 
 import numpy as np
@@ -7,6 +6,7 @@ import h5py
 from . import Config
 from . import Rotation
 from . import Orientation
+from . import util
 
 class ConfigMaterial(Config):
     """Material configuration."""
@@ -15,11 +15,10 @@ class ConfigMaterial(Config):
                  'homogenization': {},
                  'phase': {}}
 
-    def __init__(self,d={}):
+    def __init__(self,d=_defaults):
         """Initialize object with default dictionary keys."""
         super().__init__(d)
-        for k,v in self._defaults.items():
-            if k not in self: self[k] = v
+
 
     def save(self,fname='material.yaml',**kwargs):
         """
@@ -51,7 +50,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table,constituents={},**kwargs):
+    def from_table(table,**kwargs):
         """
         Load from an ASCII table.
 
@@ -59,12 +58,9 @@ class ConfigMaterial(Config):
         ----------
         table : damask.Table
             Table that contains material information.
-        constituents : dict, optional
-            Entries for 'constituents'. The key is the name and the value specifies
-            the label of the data column in the table
         **kwargs
-            Keyword arguments where the key is the name and  the value specifies
-            the label of the data column in the table
+            Keyword arguments where the key is the name and the value specifies
+            the label of the data column in the table.
 
         Examples
         --------
@@ -75,32 +71,30 @@ class ConfigMaterial(Config):
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.from_table(t,{'O':'qu','phase':'phase'},homogenization='homog')
+        1    1    1    0  0.8   0.19  0.24 -0.51  Steel    SX
+        >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
-                fraction: 1.0
+                v: 1.0
                 phase: Aluminum
             homogenization: SX
           - constituents:
               - O: [0.8, 0.19, 0.24, -0.51]
-                fraction: 1.0
+                v: 1.0
                 phase: Steel
             homogenization: SX
         homogenization: {}
         phase: {}
 
         """
-        constituents_ = {k:table.get(v) for k,v in constituents.items()}
         kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
 
-        _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
-
+        _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
-        constituents_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in constituents_.items()}
-        kwargs_       = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
 
-        return ConfigMaterial().material_add(constituents_,**kwargs_)
+        return ConfigMaterial().material_add(**kwargs_)
 
 
     @staticmethod
@@ -108,11 +102,11 @@ class ConfigMaterial(Config):
         r"""
         Load material data from DREAM3D file.
 
-        The parts of homogenization and phase need to be added by the user. 
+        The parts of homogenization and phase need to be added by the user.
 
         Parameters
         ----------
-        fname : str 
+        fname : str
             path to the DREAM3D file.
         base_group : str
             Name of the group (folder) below 'DataContainers',
@@ -126,7 +120,7 @@ class ConfigMaterial(Config):
         phase_id : str
             Name of the dataset containing phase IDs for each grain,
             for example 'Phases'.
-        phase_name : list 
+        phase_name : list
             List with name of the phases.
 
         Examples
@@ -135,25 +129,25 @@ class ConfigMaterial(Config):
         >>> import damask
         >>> import damask.ConfigMaterial as cm
         >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data'\
-                                  'EulerAngles','Phases',['Ferrite']) 
+                                  'EulerAngles','Phases',['Ferrite'])
 
         for point based data with single phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
         >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData'\
-                                  'EulerAngles','Phases',['Ferrite']) 
+                                  'EulerAngles','Phases',['Ferrite'])
 
         for grain based data with dual phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
         >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data'\
-                                  'EulerAngles','Phases',['Ferrite','Martensite']) 
+                                  'EulerAngles','Phases',['Ferrite','Martensite'])
 
         for point based data with dual phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
         >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData'\
-                                  'EulerAngles','Phases',['Ferrite','Martensite']) 
+                                  'EulerAngles','Phases',['Ferrite','Martensite'])
 
         """
         root_dir = 'DataContainers'
@@ -162,13 +156,13 @@ class ConfigMaterial(Config):
 
         config_info = ConfigMaterial()   # empty yaml dictionary
 
-        orientation_path = path.join(root_dir,base_group,data_group,ori_data) 
+        orientation_path = path.join(root_dir,base_group,data_group,ori_data)
         if hdf[orientation_path].attrs['TupleDimensions'].shape == (3,):
            grain_orientations = np.array(hdf[orientation_path]).reshape(cells.prod(),3,order='F')
         else:
            grain_orientations = np.array(hdf[orientation_path])[1:]
-           
-        grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion() 
+
+        grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion()
 
         phase_path  = path.join(root_dir,base_group,data_group,phase_id)
         if hdf[phase_path].attrs['TupleDimensions'].shape == (3,):
@@ -181,13 +175,12 @@ class ConfigMaterial(Config):
 
         material_dict = config_info.material_add(constituents={'phase':phase_name_list,'O':grain_quats},homogenization='SX')
         material_dict.save()
-        
+
     @property
     def is_complete(self):
         """Check for completeness."""
         ok = True
         for top_level in ['homogenization','phase','material']:
-            # ToDo: With python 3.8 as prerequisite we can shorten with :=
             ok &= top_level in self
             if top_level not in self: print(f'{top_level} entry missing')
 
@@ -238,7 +231,7 @@ class ConfigMaterial(Config):
 
     @property
     def is_valid(self):
-        """Check for valid file layout."""
+        """Check for valid content."""
         ok = True
 
         if 'phase' in self:
@@ -247,25 +240,23 @@ class ConfigMaterial(Config):
                     try:
                         Orientation(lattice=v['lattice'])
                     except KeyError:
-                        s = v['lattice']
-                        print(f"Invalid lattice: '{s}' in phase '{k}'")
+                        print(f"Invalid lattice '{v['lattice']}' in phase '{k}'")
                         ok = False
 
         if 'material' in self:
-            for i,v in enumerate(self['material']):
-                if 'constituents' in v:
-                    f = 0.0
-                    for c in v['constituents']:
-                        f+= float(c['fraction'])
+            for i,m in enumerate(self['material']):
+                if 'constituents' in m:
+                    v = 0.0
+                    for c in m['constituents']:
+                        v += float(c['v'])
                         if 'O' in c:
                             try:
                                 Rotation.from_quaternion(c['O'])
                             except ValueError:
-                                o = c['O']
-                                print(f"Invalid orientation: '{o}' in material '{i}'")
+                                print(f"Invalid orientation '{c['O']}' in material '{i}'")
                                 ok = False
-                    if not np.isclose(f,1.0):
-                        print(f"Invalid total fraction '{f}' in material '{i}'")
+                    if not np.isclose(v,1.0):
+                        print(f"Total fraction v = {v} ≠ 1 in material '{i}'")
                         ok = False
 
         return ok
@@ -284,10 +275,15 @@ class ConfigMaterial(Config):
         constituent: list of ints, optional
             Limit renaming to selected constituents.
 
+        Returns
+        -------
+        cfg : damask.ConfigMaterial
+            Updated material configuration.
+
         """
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         for i,m in enumerate(dup['material']):
-            if ID and i not in ID: continue
+            if ID is not None and i not in ID: continue
             for c in m['constituents']:
                 if constituent is not None and c not in constituent: continue
                 try:
@@ -308,10 +304,15 @@ class ConfigMaterial(Config):
         ID: list of ints, optional
             Limit renaming to selected homogenization IDs.
 
+        Returns
+        -------
+        cfg : damask.ConfigMaterial
+            Updated material configuration.
+
         """
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         for i,m in enumerate(dup['material']):
-            if ID and i not in ID: continue
+            if ID is not None and i not in ID: continue
             try:
                 m['homogenization'] = mapping[m['homogenization']]
             except KeyError:
@@ -319,93 +320,92 @@ class ConfigMaterial(Config):
         return dup
 
 
-    def material_add(self,constituents=None,**kwargs):
+    def material_add(self,**kwargs):
         """
         Add material entries.
 
         Parameters
         ----------
-        constituents : dict, optional
-            Entries for 'constituents' as key-value pair.
         **kwargs
             Key-value pairs.
 
+        Returns
+        -------
+        cfg : damask.ConfigMaterial
+            Updated material configuration.
+
         Examples
         --------
+        >>> import numpy as np
         >>> import damask
-        >>> O = damask.Rotation.from_random(3).as_quaternion()
-        >>> phase = ['Aluminum','Steel','Aluminum']
-        >>> m = damask.ConfigMaterial().material_add(constituents={'phase':phase,'O':O},
-        ...                                          homogenization='SX')
+        >>> m = damask.ConfigMaterial().material_add(phase          = ['Aluminum','Steel'],
+        ...                                          O              = damask.Rotation.from_random(2),
+        ...                                          homogenization = 'SX')
         >>> m
         material:
           - constituents:
               - O: [0.577764, -0.146299, -0.617669, 0.513010]
-                fraction: 1.0
+                v: 1.0
                 phase: Aluminum
             homogenization: SX
           - constituents:
               - O: [0.184176, 0.340305, 0.737247, 0.553840]
-                fraction: 1.0
+                v: 1.0
                 phase: Steel
-            homogenization: SX
-          - constituents:
-              - O: [0.0886257, -0.144848, 0.615674, -0.769487]
-                fraction: 1.0
-                phase: Aluminum
             homogenization: SX
         homogenization: {}
         phase: {}
 
+        >>> m = damask.ConfigMaterial().material_add(phase          = np.array(['Austenite','Martensite']).reshape(1,2),
+        ...                                          O              = damask.Rotation.from_random((2,2)),
+        ...                                          v              = np.array([0.2,0.8]).reshape(1,2),
+        ...                                          homogenization = ['A','B'])
+        >>> m
+        material:
+          - constituents:
+              - phase: Austenite
+                O: [0.659802978293224, 0.6953785848195171, 0.22426295326327111, -0.17554139512785227]
+                v: 0.2
+              - phase: Martensite
+                O: [0.49356745891301596, 0.2841806579193434, -0.7487679215072818, -0.339085707289975]
+                v: 0.8
+            homogenization: A
+          - constituents:
+              - phase: Austenite
+                O: [0.26542221365204055, 0.7268854930702071, 0.4474726435701472, -0.44828201137283735]
+                v: 0.2
+              - phase: Martensite
+                O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
+                v: 0.8
+            homogenization: B
+        homogenization: {}
+        phase: {}
+
         """
-        length = -1
-        for v in kwargs.values():
-            if hasattr(v,'__len__') and not isinstance(v,str):
-                if length != -1 and len(v) != length:
-                    raise ValueError('Cannot add entries of different length')
-                else:
-                    length = len(v)
-        length = max(1,length)
-
-        c = [{} for _ in range(length)] if constituents is None else \
-            [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
-
-        if len(c) == 1: c = [copy.deepcopy(c[0]) for _ in range(length)]
-
-        if length != 1 and length != len(c):
-            raise ValueError('Cannot add entries of different length')
+        N,n,shaped = 1,1,{}
 
         for k,v in kwargs.items():
-            if hasattr(v,'__len__') and not isinstance(v,str):
-                for i,vv in enumerate(v):
-                    c[i][k] = vv.item() if isinstance(vv,np.generic) else vv
-            else:
-                for i in range(len(c)):
-                    c[i][k] = v
-        dup = copy.deepcopy(self)
-        dup['material'] = dup['material'] + c if 'material' in dup else c
+            shaped[k] = np.array(v)
+            s = shaped[k].shape[:-1] if k=='O' else shaped[k].shape
+            N = max(N,s[0]) if len(s)>0 else N
+            n = max(n,s[1]) if len(s)>1 else n
+
+        mat = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
+
+        if 'v' not in kwargs:
+            shaped['v'] = np.broadcast_to(1/n,(N,n))
+
+        for k,v in shaped.items():
+            target = (N,n,4) if k=='O' else (N,n)
+            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,target,mode='right')),target)
+            for i in range(N):
+                if k in ['phase','O','v']:
+                    for j in range(n):
+                        mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
+                else:
+                    mat[i][k] = obj[i,0].item() if isinstance(obj[i,0],np.generic) else obj[i,0]
+
+        dup = self.copy()
+        dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
         return dup
-
-
-    @staticmethod
-    def _constituents(N=1,**kwargs):
-        """Construct list of constituents."""
-        N_material=1
-        for v in kwargs.values():
-            if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
-
-        if N == 1:
-            m = [[{'fraction':1.0}] for _ in range(N_material)]
-            for k,v in kwargs.items():
-                if hasattr(v,'__len__') and not isinstance(v,str):
-                    if len(v) != N_material:
-                        raise ValueError('Cannot add entries of different length')
-                    for i,vv in enumerate(np.array(v)):
-                        m[i][0][k] = vv.item() if isinstance(vv,np.generic) else vv
-                else:
-                    for i in range(N_material):
-                        m[i][0][k] = v
-            return m
-        else:
-            raise NotImplementedError

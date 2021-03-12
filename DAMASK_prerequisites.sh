@@ -84,7 +84,7 @@ for executable in python python3; do
 done
 secondLevel "Details on $DEFAULT_PYTHON:"
 echo $(ls -la $(which $DEFAULT_PYTHON))
-for module in numpy scipy pandas;do
+for module in numpy scipy pandas matplotlib yaml h5py;do
   thirdLevel $module
   $DEFAULT_PYTHON -c "import $module; \
                       print('Version: {}'.format($module.__version__)); \
@@ -94,10 +94,6 @@ thirdLevel vtk
 $DEFAULT_PYTHON -c "import vtk; \
                     print('Version: {}'.format(vtk.vtkVersion.GetVTKVersion())); \
                     print('Location: {}'.format(vtk.__file__))"
-thirdLevel h5py
-$DEFAULT_PYTHON -c "import h5py; \
-                    print('Version: {}'.format(h5py.version.version)); \
-                    print('Location: {}'.format(h5py.__file__))"
 
 firstLevel "GNU Compiler Collection"
 for executable in gcc g++ gfortran ;do

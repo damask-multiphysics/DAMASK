@@ -1,32 +1,32 @@
 homogenization:
   SX:
     N_constituents: 1
-    mechanics: {type: none}
+    mechanics: {type: pass}
   Taylor:
     N_constituents: 2
     mechanics: {type: isostrain}
 
 material:
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [1.0, 0.0, 0.0, 0.0]
         phase: Aluminum
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.7936696712125002, -0.28765777461664166, -0.3436487135089419, 0.4113964260949434]
         phase: Aluminum
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.3986143167493579, -0.7014883552495493, 0.2154871765709027, 0.5500781677772945]
         phase: Aluminum
     homogenization: SX
   - constituents:
-      - fraction: 0.5
+      - v: 0.5
         O: [0.28645844315788244, -0.022571491243423537, -0.467933059311115, -0.8357456192708106]
         phase: Aluminum
-      - fraction: 0.5
+      - v: 0.5
         O: [0.3986143167493579, -0.7014883552495493, 0.2154871765709027, 0.5500781677772945]
         phase: Steel
     homogenization: Taylor

@@ -1133,6 +1133,7 @@ real(pReal) pure function math_areaTriangle(v1,v2,v3)
 
   real(pReal), dimension (3), intent(in) :: v1,v2,v3
 
+
   math_areaTriangle = 0.5_pReal * norm2(math_cross(v1-v2,v1-v3))
 
 end function math_areaTriangle
@@ -1147,11 +1148,13 @@ real(pReal) pure elemental function math_clip(a, left, right)
   real(pReal), intent(in) :: a
   real(pReal), intent(in), optional :: left, right
 
+
   math_clip = a
   if (present(left))  math_clip = max(left,math_clip)
   if (present(right)) math_clip = min(right,math_clip)
-  if (present(left) .and. present(right)) &
-    math_clip = merge (IEEE_value(1.0_pReal,IEEE_quiet_NaN),math_clip, left>right)
+  if (present(left) .and. present(right)) then
+    if(left>right) error stop 'left > right'
+  endif
 
 end function math_clip
 
@@ -1181,6 +1184,7 @@ subroutine selfTest
   real(pReal)                 :: r
   integer                     :: d
   logical                     :: e
+
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &

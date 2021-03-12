@@ -1,7 +1,7 @@
 import copy
 import multiprocessing as mp
 from functools import partial
-from os import path
+import os
 import warnings
 
 import numpy as np
@@ -10,7 +10,6 @@ import h5py
 from scipy import ndimage, spatial
 from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
-from . import environment
 from . import VTK
 from . import util
 from . import grid_filters
@@ -57,13 +56,10 @@ class Grid:
 
 
     def __copy__(self):
-        """Copy grid."""
+        """Create deep copy."""
         return copy.deepcopy(self)
 
-
-    def copy(self):
-        """Copy grid."""
-        return self.__copy__()
+    copy = __copy__
 
 
     def diff(self,other):
@@ -126,7 +122,7 @@ class Grid:
 
     @size.setter
     def size(self,size):
-        if len(size) != 3 or any(np.array(size) <= 0):
+        if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
         else:
             self._size = np.array(size)
@@ -206,7 +202,7 @@ class Grid:
             Geometry file to read.
 
         """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
         try:
             f = open(fname)
         except TypeError:
@@ -281,14 +277,14 @@ class Grid:
         """
         root_dir ='DataContainers'
         f = h5py.File(fname, 'r')
-        g = path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
-        cells  = f[path.join(g,'DIMENSIONS')][()]
-        size   = f[path.join(g,'SPACING')][()] * cells
-        origin = f[path.join(g,'ORIGIN')][()]
+        g = os.path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
+        cells  = f[os.path.join(g,'DIMENSIONS')][()]
+        size   = f[os.path.join(g,'SPACING')][()] * cells
+        origin = f[os.path.join(g,'ORIGIN')][()]
 
         ma = np.arange(cells.prod(),dtype=int) \
              if point_data is None else \
-             np.reshape(f[path.join(root_dir,base_group,point_data,material)],cells.prod())
+             np.reshape(f[os.path.join(root_dir,base_group,point_data,material)],cells.prod())
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 
@@ -307,7 +303,7 @@ class Grid:
             Need to be ordered (1./x fast, 3./z slow).
         labels : str or list of str
             Label(s) of the columns containing the material definition.
-            Each unique combintation of values results in one material ID.
+            Each unique combination of values results in one material ID.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -358,7 +354,7 @@ class Grid:
             seeds_p   = seeds
             coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
-        pool = mp.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
+        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
         result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
@@ -545,7 +541,7 @@ class Grid:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
         header =  [f'{len(self.comments)+4} header'] + self.comments \
                 + ['grid   a {} b {} c {}'.format(*self.cells),
                    'size   x {} y {} z {}'.format(*self.size),
@@ -764,26 +760,21 @@ class Grid:
 
         """
         if fill is None: fill = np.nanmax(self.material) + 1
-        dtype = float if np.isnan(fill) or int(fill) != fill or self.material.dtype==np.float else int
+        dtype = float if isinstance(fill,float) or self.material.dtype in np.sctypes['float'] else int
 
-        Eulers = R.as_Euler_angles(degrees=True)
-        material_in = self.material.copy()
-
+        material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-        for angle,axes in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
-            material_out = ndimage.rotate(material_in,angle,axes,order=0,
-                                                prefilter=False,output=dtype,cval=fill)
-            if np.prod(material_in.shape) == np.prod(material_out.shape):
-                # avoid scipy interpolation errors for rotations close to multiples of 90°
-                material_in = np.rot90(material_in,k=np.rint(angle/90.).astype(int),axes=axes)
-            else:
-                material_in = material_out
+        for angle,axes in zip(R.as_Euler_angles(degrees=True)[::-1], [(0,1),(1,2),(0,1)]):
+            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,output=dtype,cval=fill)
+            # avoid scipy interpolation errors for rotations close to multiples of 90°
+            material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
+                       np.rot90(material,k=np.rint(angle/90.).astype(int),axes=axes)
 
-        origin = self.origin-(np.asarray(material_in.shape)-self.cells)*.5 * self.size/self.cells
+        origin = self.origin-(np.asarray(material.shape)-self.cells)*.5 * self.size/self.cells
 
-        return Grid(material = material_in,
-                    size     = self.size/self.cells*np.asarray(material_in.shape),
+        return Grid(material = material,
+                    size     = self.size/self.cells*np.asarray(material.shape),
                     origin   = origin,
                     comments = self.comments+[util.execution_stamp('Grid','rotate')],
                    )

@@ -10,7 +10,6 @@ from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArr
 from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 
 from . import util
-from . import environment
 from . import Table
 
 
@@ -247,8 +246,8 @@ class VTK:
                 raise ValueError('No label defined for numpy.ndarray')
 
             N_data = data.shape[0]
-            d = np_to_vtk((data.astype(np.float32) if data.dtype in [np.float64, np.float128]
-                      else data).reshape(N_data,-1),deep=True)                               # avoid large files
+            d = np_to_vtk((data.astype(np.single) if data.dtype in [np.double, np.longdouble] else
+                           data).reshape(N_data,-1),deep=True)                                      # avoid large files
             d.SetName(label)
 
             if   N_data == N_points:
@@ -348,6 +347,21 @@ class VTK:
 
         See http://compilatrix.com/article/vtk-1 for further ideas.
         """
+        try:
+            import wx
+            _ = wx.App(False)                                                                       # noqa
+            width, height = wx.GetDisplaySize()
+        except ImportError:
+            try:
+                import tkinter
+                tk = tkinter.Tk()
+                width  = tk.winfo_screenwidth()
+                height = tk.winfo_screenheight()
+                tk.destroy()
+            except Exception as e:
+                width  = 1024
+                height =  768
+
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
         actor = vtk.vtkActor()
@@ -361,7 +375,7 @@ class VTK:
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        window.SetSize(environment.screen_size[0],environment.screen_size[1])
+        window.SetSize(width,height)
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)

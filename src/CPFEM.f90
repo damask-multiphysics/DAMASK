@@ -19,7 +19,7 @@ module CPFEM
   use HDF5_utilities
   use results
   use lattice
-  use constitutive
+  use phase
 
   implicit none
   private
@@ -72,7 +72,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
-  call parallelization_init
   call DAMASK_interface_init
   call prec_init
   call IO_init
@@ -86,7 +85,7 @@ subroutine CPFEM_initAll
   call discretization_marc_init
   call lattice_init
   call material_init(.false.)
-  call constitutive_init
+  call phase_init
   call homogenization_init
   call crystallite_init
   call CPFEM_init
@@ -179,11 +178,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) call CPFEM_forward
 
-    chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
-      case (THERMAL_conduction_ID) chosenThermal1
-        temperature(material_homogenizationAt(elCP))%p(material_homogenizationMemberAt(ip,elCP)) = &
-          temperature_inp
-      end select chosenThermal1
+    !chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
+    !  case (THERMAL_conduction_ID) chosenThermal1
+    !    temperature(material_homogenizationAt(elCP))%p(material_homogenizationMemberAt(ip,elCP)) = &
+    !      temperature_inp
+    !end select chosenThermal1
     homogenization_F0(1:3,1:3,ma) = ffn
     homogenization_F(1:3,1:3,ma) = ffn1
 
@@ -258,7 +257,7 @@ end subroutine CPFEM_general
 subroutine CPFEM_forward
 
   call homogenization_forward
-  call constitutive_forward
+  call phase_forward
 
 end subroutine CPFEM_forward
 
@@ -273,7 +272,7 @@ subroutine CPFEM_results(inc,time)
 
   call results_openJobFile
   call results_addIncrement(inc,time)
-  call constitutive_results
+  call phase_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

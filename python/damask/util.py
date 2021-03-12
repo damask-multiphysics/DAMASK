@@ -133,6 +133,8 @@ def execute(cmd,
     stdout = stdout.decode('utf-8').replace('\x08','')
     stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
+        print(stdout)
+        print(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
     return stdout, stderr
 
@@ -183,7 +185,7 @@ def scale_to_coprime(v):
         # Python 3.9 provides math.lcm, see https://stackoverflow.com/questions/51716916.
         return a * b // np.gcd(a, b)
 
-    m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
+    m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(int)
     m = m//reduce(np.gcd,m)
 
     with np.errstate(invalid='ignore'):
@@ -193,7 +195,7 @@ def scale_to_coprime(v):
     return m
 
 
-def project_stereographic(vector,normalize=False):
+def project_stereographic(vector,direction='z',normalize=True,keepdims=False):
     """
     Apply stereographic projection to vector.
 
@@ -201,18 +203,37 @@ def project_stereographic(vector,normalize=False):
     ----------
     vector : numpy.ndarray of shape (...,3)
         Vector coordinates to be projected.
+    direction : str
+        Projection direction 'x', 'y', or 'z'.
+        Defaults to 'z'.
     normalize : bool
-        Ensure unit length for vector. Defaults to False.
+        Ensure unit length of input vector. Defaults to True.
+    keepdims : bool
+        Maintain three-dimensional output coordinates.
+        Default two-dimensional output uses right-handed frame spanned by
+        the next and next-next axis relative to the projection direction,
+        e.g. x-y when projecting along z and z-x when projecting along y.
 
     Returns
     -------
-    coordinates : numpy.ndarray of shape (...,2)
+    coordinates : numpy.ndarray of shape (...,2 | 3)
         Projected coordinates.
 
+    Examples
+    --------
+    >>> project_stereographic(np.ones(3))
+        [0.3660254, 0.3660254]
+    >>> project_stereographic(np.ones(3),direction='x',normalize=False,keepdims=True)
+        [0, 0.5, 0.5]
+    >>> project_stereographic([0,1,1],direction='y',normalize=True,keepdims=False)
+        [0.41421356, 0]
+
     """
-    v_ = vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector
-    return np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),
-                     np.zeros_like(v_[...,2:3])])
+    shift = 'zyx'.index(direction)
+    v_ = np.roll(vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
+                 shift,axis=-1)
+    return np.roll(np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),np.zeros_like(v_[...,2:3])]),
+                   -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
 
 def execution_stamp(class_name,function_name=None):
@@ -418,7 +439,7 @@ class _ProgressBar:
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
             delta_time = datetime.datetime.now() - self.start_time
             remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
-            remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)           # remove μs
+            remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)          # remove μs
             sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
             sys.stderr.flush()
 

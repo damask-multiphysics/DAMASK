@@ -41,15 +41,15 @@ for filename in options.filenames:
         table = damask.Table(np.ones(np.product(results.cells),dtype=int)*int(inc[3:]),{'inc':(1,)})\
                       .add('pos',coords.reshape(-1,3))
 
-        results.pick('homogenizations',False)
-        results.pick('phases',True)
+        results.view('homogenizations',False)
+        results.view('phases',True)
         for label in options.con:
             x = results.get_dataset_location(label)
             if len(x) != 0:
                 table = table.add(label,results.read_dataset(x,0,plain=True).reshape(results.cells.prod(),-1))
 
-        results.pick('phases',False)
-        results.pick('homogenizations',True)
+        results.view('phases',False)
+        results.view('homogenizations',True)
         for label in options.mat:
             x = results.get_dataset_location(label)
             if len(x) != 0:

@@ -19,7 +19,7 @@ module CPFEM2
   use discretization
   use HDF5_utilities
   use homogenization
-  use constitutive
+  use phase
 #if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh
@@ -60,7 +60,7 @@ subroutine CPFEM_initAll
   call discretization_grid_init(restart=interface_restartInc>0)
 #endif
   call material_init(restart=interface_restartInc>0)
-  call constitutive_init
+  call phase_init
   call homogenization_init
   call crystallite_init
   call CPFEM_init
@@ -74,9 +74,22 @@ end subroutine CPFEM_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
+  integer(HID_T) :: fileHandle
+
+
   print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
-  if (interface_restartInc > 0) call crystallite_restartRead
+
+  if (interface_restartInc > 0) then
+    print'(/,a,i0,a)', ' reading restart information of increment from file'; flush(IO_STDOUT)
+
+    fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+
+    call homogenization_restartRead(fileHandle)
+    call phase_restartRead(fileHandle)
+
+    call HDF5_closeFile(fileHandle)
+  endif
 
 end subroutine CPFEM_init
 
@@ -86,7 +99,17 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_restartWrite
 
-  call crystallite_restartWrite
+  integer(HID_T) :: fileHandle
+
+
+  print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
+
+  fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+
+  call homogenization_restartWrite(fileHandle)
+  call phase_restartWrite(fileHandle)
+
+  call HDF5_closeFile(fileHandle)
 
 end subroutine CPFEM_restartWrite
 
@@ -97,7 +120,7 @@ end subroutine CPFEM_restartWrite
 subroutine CPFEM_forward
 
   call homogenization_forward
-  call constitutive_forward
+  call phase_forward
 
 end subroutine CPFEM_forward
 
@@ -112,7 +135,7 @@ subroutine CPFEM_results(inc,time)
 
   call results_openJobFile
   call results_addIncrement(inc,time)
-  call constitutive_results
+  call phase_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

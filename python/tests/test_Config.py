@@ -22,6 +22,19 @@ class TestConfig:
         with open(tmp_path/'config.yaml') as f:
             assert Config.load(f) == config
 
+    def test_add_remove(self):
+        dummy = {'hello':'world','foo':'bar'}
+        config = Config()
+        config |= dummy
+        assert config == Config() | dummy
+        config = config.delete(dummy)
+        assert config == Config()
+        assert (config |        dummy ).delete(        'hello'            ) == config | {'foo':'bar'}
+        assert (config |        dummy ).delete([       'hello',  'foo'   ]) == config
+        assert (config | Config(dummy)).delete({       'hello':1,'foo':2 }) == config
+        assert (config | Config(dummy)).delete(Config({'hello':1        })) == config | {'foo':'bar'}
+
+
     def test_repr(self,tmp_path):
         config = Config()
         config['A'] = 1

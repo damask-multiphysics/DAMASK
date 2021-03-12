@@ -71,6 +71,12 @@ module HDF5_utilities
     module procedure HDF5_addAttribute_real_array
   end interface HDF5_addAttribute
 
+#ifdef PETSc
+  logical, parameter, private :: parallel_default = .true.
+#else
+  logical, parameter, private :: parallel_default = .false.
+#endif
+
 contains
 
 
@@ -105,15 +111,15 @@ end subroutine HDF5_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
+integer(HID_T) function HDF5_openFile(fileName,mode)
 
   character(len=*), intent(in)           :: fileName
   character,        intent(in), optional :: mode
-  logical,          intent(in), optional :: parallel
 
   character                              :: m
   integer(HID_T)                         :: plist_id
   integer                 :: hdferr
+
 
   if (present(mode)) then
     m = mode
@@ -125,10 +131,8 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   if(hdferr < 0) error stop 'HDF5 error'
 
 #ifdef PETSc
-  if (present(parallel)) then; if (parallel) then
-    call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
-  endif; endif
+  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
 #endif
 
   if    (m == 'w') then
@@ -547,7 +551,7 @@ subroutine HDF5_read_real1(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -587,7 +591,7 @@ subroutine HDF5_read_real2(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -627,7 +631,7 @@ subroutine HDF5_read_real3(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -667,7 +671,7 @@ subroutine HDF5_read_real4(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -707,7 +711,7 @@ subroutine HDF5_read_real5(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -747,7 +751,7 @@ subroutine HDF5_read_real6(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -787,7 +791,7 @@ subroutine HDF5_read_real7(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
@@ -829,7 +833,7 @@ subroutine HDF5_read_int1(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -869,7 +873,7 @@ subroutine HDF5_read_int2(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -909,7 +913,7 @@ subroutine HDF5_read_int3(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                        myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                        myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -949,7 +953,7 @@ subroutine HDF5_read_int4(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -989,7 +993,7 @@ subroutine HDF5_read_int5(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -1029,7 +1033,7 @@ subroutine HDF5_read_int6(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -1069,7 +1073,7 @@ subroutine HDF5_read_int7(loc_id,dataset,datasetName,parallel)
                          myStart, totalShape, loc_id,myShape,datasetName,parallel)
   else
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
-                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
+                         myStart, totalShape, loc_id,myShape,datasetName,parallel_default)
   endif
 
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
@@ -1086,9 +1090,9 @@ end subroutine HDF5_read_int7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real1(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:) :: dataset                                          !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:) :: dataset                                             !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1109,7 +1113,7 @@ subroutine HDF5_write_real1(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1127,9 +1131,9 @@ end subroutine HDF5_write_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real2(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:) :: dataset                                        !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:,:) :: dataset                                           !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1150,7 +1154,7 @@ subroutine HDF5_write_real2(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1168,9 +1172,9 @@ end subroutine HDF5_write_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real3(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:) :: dataset                                      !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1191,7 +1195,7 @@ subroutine HDF5_write_real3(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1209,9 +1213,9 @@ end subroutine HDF5_write_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real4(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:) :: dataset                                    !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1232,7 +1236,7 @@ subroutine HDF5_write_real4(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1251,9 +1255,9 @@ end subroutine HDF5_write_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real5(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:) :: dataset                                  !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1274,7 +1278,7 @@ subroutine HDF5_write_real5(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1292,9 +1296,9 @@ end subroutine HDF5_write_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real6(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:,:) :: dataset                                !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1315,7 +1319,7 @@ subroutine HDF5_write_real6(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1333,9 +1337,9 @@ end subroutine HDF5_write_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real7(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:,:,:) :: dataset                              !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  real(pReal),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1356,7 +1360,7 @@ subroutine HDF5_write_real7(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1375,9 +1379,9 @@ end subroutine HDF5_write_real7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int1(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:) :: dataset                                          !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:) :: dataset                                             !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1398,7 +1402,7 @@ subroutine HDF5_write_int1(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1416,9 +1420,9 @@ end subroutine HDF5_write_int1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int2(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:) :: dataset                                        !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:,:) :: dataset                                           !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1439,7 +1443,7 @@ subroutine HDF5_write_int2(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1457,9 +1461,9 @@ end subroutine HDF5_write_int2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int3(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:) :: dataset                                      !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1480,7 +1484,7 @@ subroutine HDF5_write_int3(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1498,9 +1502,9 @@ end subroutine HDF5_write_int3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int4(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:) :: dataset                                    !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1521,7 +1525,7 @@ subroutine HDF5_write_int4(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1539,9 +1543,9 @@ end subroutine HDF5_write_int4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int5(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:) :: dataset                                  !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1562,7 +1566,7 @@ subroutine HDF5_write_int5(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1580,9 +1584,9 @@ end subroutine HDF5_write_int5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int6(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:,:) :: dataset                                !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1603,7 +1607,7 @@ subroutine HDF5_write_int6(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then
@@ -1621,9 +1625,9 @@ end subroutine HDF5_write_int6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int7(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:,:,:) :: dataset                              !< data written to file
-  integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
-  character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
+  integer,          intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
@@ -1644,7 +1648,7 @@ subroutine HDF5_write_int7(loc_id,dataset,datasetName,parallel)
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
   else
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,.false.)
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
   endif
 
   if (product(totalShape) /= 0) then

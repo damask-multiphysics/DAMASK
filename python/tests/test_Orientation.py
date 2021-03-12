@@ -7,6 +7,7 @@ from damask import Orientation
 from damask import Table
 from damask import lattice
 from damask import util
+from damask import grid_filters
 
 
 @pytest.fixture
@@ -25,13 +26,16 @@ class TestOrientation:
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_equal(self,lattice,shape):
         R = Rotation.from_random(shape)
-        assert Orientation(R,lattice) == Orientation(R,lattice)
+        assert Orientation(R,lattice) == Orientation(R,lattice) if shape is None else \
+              (Orientation(R,lattice) == Orientation(R,lattice)).all()
+
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_unequal(self,lattice,shape):
         R = Rotation.from_random(shape)
-        assert not(Orientation(R,lattice) != Orientation(R,lattice))
+        assert not ( Orientation(R,lattice) != Orientation(R,lattice) if shape is None else \
+                    (Orientation(R,lattice) != Orientation(R,lattice)).any())
 
     @pytest.mark.parametrize('a,b',[
                                     (dict(rotation=[1,0,0,0]),
@@ -115,7 +119,7 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_cubochoric(self):
-        assert np.all(Orientation.from_cubochoric(c=np.zeros(3),lattice='triclinic').as_matrix()
+        assert np.all(Orientation.from_cubochoric(x=np.zeros(3),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_spherical_component(self):
@@ -138,7 +142,7 @@ class TestOrientation:
                                         dict(lattice='hP',a=1.0             ),
                                         dict(lattice='cI',a=1.0,            ),
                                       ])
-    def test_from_direction(self,kwargs):
+    def test_from_directions(self,kwargs):
         for a,b in np.random.random((10,2,3)):
             c = np.cross(b,a)
             if np.all(np.isclose(c,0)): continue
@@ -148,6 +152,21 @@ class TestOrientation:
             assert np.isclose(np.dot(x/np.linalg.norm(x),np.array([1,0,0])),1) \
                and np.isclose(np.dot(z/np.linalg.norm(z),np.array([0,0,1])),1)
 
+    @pytest.mark.parametrize('function',[Orientation.from_random,
+                                         Orientation.from_quaternion,
+                                         Orientation.from_Euler_angles,
+                                         Orientation.from_axis_angle,
+                                         Orientation.from_basis,
+                                         Orientation.from_matrix,
+                                         Orientation.from_Rodrigues_vector,
+                                         Orientation.from_homochoric,
+                                         Orientation.from_cubochoric,
+                                         Orientation.from_spherical_component,
+                                         Orientation.from_fiber_component,
+                                         Orientation.from_directions])
+    def test_invalid_from(self,function):
+        with pytest.raises(TypeError):
+            function(c=.1,degrees=True,invalid=66)
 
     def test_negative_angle(self):
         with pytest.raises(ValueError):
@@ -217,6 +236,16 @@ class TestOrientation:
         o = Orientation.from_random(lattice=lattice,shape=shape)
         for r, theO in zip(o.reduced.flatten(),o.flatten()):
             assert r == theO.reduced
+
+    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    def test_reduced_corner_cases(self,lattice):
+        # test whether there is always a sym-eq rotation that falls into the FZ
+        N = np.random.randint(10,40)
+        size = np.ones(3)*np.pi**(2./3.)
+        grid = grid_filters.coordinates0_node([N+1,N+1,N+1],size,-size*.5)
+        evenly_distributed = Orientation.from_cubochoric(x=grid[:-2,:-2,:-2],lattice=lattice)
+        assert evenly_distributed.shape == evenly_distributed.reduced.shape
+
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
@@ -403,7 +432,7 @@ class TestOrientation:
     def test_relationship_vectorize(self,set_of_quaternions,lattice,model):
         r = Orientation(rotation=set_of_quaternions[:200].reshape((50,4,4)),lattice=lattice).related(model)
         for i in range(200):
-            assert r.reshape((-1,200))[:,i] == Orientation(set_of_quaternions[i],lattice).related(model)
+            assert (r.reshape((-1,200))[:,i] == Orientation(set_of_quaternions[i],lattice).related(model)).all()
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])

@@ -1,4 +1,6 @@
+import copy
 from io import StringIO
+from collections.abc import Iterable
 import abc
 
 import numpy as np
@@ -35,6 +37,50 @@ class Config(dict):
         output.seek(0)
         return ''.join(output.readlines())
 
+
+    def __copy__(self):
+        """Create deep copy."""
+        return copy.deepcopy(self)
+
+    copy = __copy__
+
+
+    def __or__(self,other):
+        """
+        Update configuration with contents of other.
+
+        Parameters
+        ----------
+        other : damask.Config or dict
+            Key-value pairs that update self.
+
+        """
+        duplicate = self.copy()
+        duplicate.update(other)
+        return duplicate
+
+
+    def __ior__(self,other):
+        """Update configuration with contents of other."""
+        return self.__or__(other)
+
+
+    def delete(self,keys):
+        """
+        Remove configuration keys.
+
+        Parameters
+        ----------
+        keys : iterable or scalar
+            Label of the key(s) to remove.
+
+        """
+        duplicate = self.copy()
+        for k in keys if isinstance(keys, Iterable) and not isinstance(keys, str) else [keys]:
+            del duplicate[k]
+        return duplicate
+
+
     @classmethod
     def load(cls,fname):
         """
@@ -52,6 +98,7 @@ class Config(dict):
             fhandle = fname
         return cls(yaml.safe_load(fhandle))
 
+
     def save(self,fname,**kwargs):
         """
         Save to yaml file.
@@ -65,7 +112,7 @@ class Config(dict):
 
         """
         try:
-            fhandle = open(fname,'w')
+            fhandle = open(fname,'w',newline='\n')
         except TypeError:
             fhandle = fname
 
@@ -94,6 +141,7 @@ class Config(dict):
     def is_complete(self):
         """Check for completeness."""
         pass
+
 
     @property
     @abc.abstractmethod

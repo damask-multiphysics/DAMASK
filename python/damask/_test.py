@@ -5,6 +5,7 @@ import logging
 import logging.config
 from collections.abc import Iterable
 from optparse import OptionParser
+from pathlib import Path
 
 import numpy as np
 
@@ -180,7 +181,7 @@ class Test:
 
   def fileInRoot(self,dir,file):
     """Path to a file in the root directory of DAMASK."""
-    return str(damask.environment.root_dir/dir/file)
+    return str(Path(os.environ['DAMASK_ROOT'])/dir/file)
 
 
   def fileInReference(self,file):
@@ -280,40 +281,6 @@ class Test:
     logging.debug(out)
 
     return out,error
-
-
-
-  def compare_Array(self,File1,File2):
-
-    import numpy as np
-    logging.info('\n '.join(['comparing',File1,File2]))
-    table = damask.Table.load(File1)
-    len1 = len(table.comments)+2
-    table = damask.Table.load(File2)
-    len2 = len(table.comments)+2
-
-    refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
-    curArray = np.nan_to_num(np.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
-
-    if len(curArray) == len(refArray):
-      refArrayNonZero = refArray[refArray.nonzero()]
-      curArray        = curArray[refArray.nonzero()]
-      max_err = np.   max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
-      max_loc = np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
-      refArrayNonZero = refArrayNonZero[curArray.nonzero()]
-      curArray        = curArray[curArray.nonzero()]
-      print(f' ********\n * maximum relative error {max_err} between {refArrayNonZero[max_loc]} and {curArray[max_loc]}\n ********')
-      return max_err
-    else:
-       raise Exception(f'mismatch in array sizes ({len(refArray)} and {len(curArray)}) to compare')
-
-
-  def compare_ArrayRefCur(self,ref,cur=''):
-
-    if cur == '': cur = ref
-    refName = self.fileInReference(ref)
-    curName = self.fileInCurrent(cur)
-    return self.compare_Array(refName,curName)
 
 
   def compare_Table(self,headings0,file0,
@@ -466,101 +433,6 @@ class Test:
       logging.info(f'std:  {std:f}')
 
     return (mean < meanTol) & (std < stdTol)
-
-
-  def compare_Tables(self,
-                     files   = [None,None],                                    # list of file names
-                     columns = [None],                                         # list of list of column labels (per file)
-                     rtol    = 1e-5,
-                     atol    = 1e-8,
-                     debug   = False):
-    """Compare multiple tables with np.allclose."""
-    if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
-      files = [str(files)]
-
-    if len(files) < 2: return True                                             # single table is always close to itself...
-
-    tables = [damask.Table.load(filename) for filename in files]
-
-    columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
-    columns = columns[:len(files)]                                             # truncate to same length as files
-
-    for i,column in enumerate(columns):
-      if column is None: columns[i] = list(tables[i].shapes.keys())           # if no column is given, use all
-
-    logging.info('comparing ASCIItables')
-    for i in range(len(columns)):
-      columns[i] = columns[0]  if not columns[i] else \
-                 ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
-                   columns[i]
-                 )
-      logging.info(files[i]+': '+','.join(columns[i]))
-
-    dimensions = [np.prod(tables[0].shapes[c]) for c in columns[0]]            # width of each requested column
-    maximum = np.zeros_like(columns[0],dtype=float)                            # one magnitude per column entry
-    data = []                                                                  # list of feature table extracted from each file (ASCII table)
-
-    for i,(table,labels) in enumerate(zip(tables,columns)):
-      if np.any(dimensions != [np.prod(table.shapes[c]) for c in labels]):     # check data object consistency
-        logging.critical(f'Table {files[i]} differs in data layout.')
-        return False
-      data.append(np.hstack(list(table.get(label) for label in labels)).astype(np.float))           # store
-
-      for j,label in enumerate(labels):                                        # iterate over object labels
-        maximum[j] = np.maximum(
-                       maximum[j],
-                       np.amax(np.linalg.norm(table.get(label),
-                                              axis=1))
-                      )                                                        # find maximum Euclidean norm across rows
-
-    maximum = np.where(maximum > 0.0, maximum, 1.0)                            # avoid div by zero for zero columns
-    maximum = np.repeat(maximum,dimensions)                                    # spread maximum over columns of each object
-
-    for i in range(len(data)):
-      data[i] /= maximum                                                       # normalize each table
-      logging.info(f'shape of data {i}: {data[i].shape}')
-
-    if debug:
-      violators = np.absolute(data[0]-data[1]) > atol + rtol*np.absolute(data[1])
-      logging.info(f'shape of violators: {violators.shape}')
-      for j,culprits in enumerate(violators):
-        goodguys = np.logical_not(culprits)
-        if culprits.any():
-          logging.info(f'{j} has {np.sum(culprits)}')
-          logging.info(f'deviation: {np.absolute(data[0][j]-data[1][j])[culprits]}')
-          logging.info(f'data     : {np.absolute(data[1][j])[culprits]}')
-          logging.info(f'deviation: {np.absolute(data[0][j]-data[1][j])[goodguys]}')
-          logging.info(f'data     : {np.absolute(data[1][j])[goodguys]}')
-
-    allclose = True                                                            # start optimistic
-    for i in range(1,len(data)):
-      allclose &= np.allclose(data[i-1],data[i],rtol,atol)                     # accumulate "pessimism"
-
-    return allclose
-
-
-  def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',
-                               normHeadings='',normType=None,
-                               absoluteTolerance=False,perLine=False,skipLines=[]):
-
-    return self.compare_Table(headingsRef,
-                              self.fileInReference(ref),
-                              headingsRef if headingsCur == '' else headingsCur,
-                              self.fileInCurrent(ref if cur == '' else cur),
-                              normHeadings,normType,
-                              absoluteTolerance,perLine,skipLines)
-
-
-  def compare_TableCurCur(self,headingsCur0,Cur0,Cur1,
-                               headingsCur1='',
-                               normHeadings='',normType=None,
-                               absoluteTolerance=False,perLine=False,skipLines=[]):
-
-    return self.compare_Table(headingsCur0,
-                              self.fileInCurrent(Cur0),
-                              headingsCur0 if headingsCur1 == '' else headingsCur1,
-                              self.fileInCurrent(Cur1),
-                              normHeadings,normType,absoluteTolerance,perLine,skipLines)
 
 
   def report_Success(self,culprit):

@@ -18,7 +18,7 @@ program DAMASK_mesh
   use config
   use discretization_mesh
   use FEM_Utilities
-  use mesh_mech_FEM
+  use mesh_mechanical_FEM
 
   implicit none
 
@@ -242,7 +242,7 @@ program DAMASK_mesh
   do field = 1, nActiveFields
     select case (loadCases(1)%fieldBC(field)%ID)
       case(FIELD_MECH_ID)
-        call FEM_mech_init(loadCases(1)%fieldBC(field))
+        call FEM_mechanical_init(loadCases(1)%fieldBC(field))
     end select
   enddo
 
@@ -306,7 +306,7 @@ program DAMASK_mesh
         do field = 1, nActiveFields
           select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
             case(FIELD_MECH_ID)
-              call FEM_mech_forward (&
+              call FEM_mechanical_forward (&
                   guess,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
 
          end select
@@ -320,7 +320,7 @@ program DAMASK_mesh
           do field = 1, nActiveFields
             select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
               case(FIELD_MECH_ID)
-                solres(field) = FEM_mech_solution (&
+                solres(field) = FEM_mechanical_solution (&
                       incInfo,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
 
             end select

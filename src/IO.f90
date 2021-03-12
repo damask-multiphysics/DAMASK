@@ -65,8 +65,8 @@ end subroutine IO_init
 function IO_readlines(fileName) result(fileContent)
 
   character(len=*),          intent(in)                :: fileName
-
   character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
+
   character(len=pStringLen)                            :: line
   character(len=:),                        allocatable :: rawData
   integer ::  &
@@ -74,6 +74,7 @@ function IO_readlines(fileName) result(fileContent)
     N_lines, &                                                                                      !< # lines in file
     l
   logical :: warned
+
 
   rawData = IO_read(fileName)
 
@@ -112,16 +113,21 @@ end function IO_readlines
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read whole file.
-!> @details ensures that the string ends with a new line (expected UNIX behavior)
+!> @details ensures that the string ends with a new line (expected UNIX behavior) and rejects
+! windows (CRLF) line endings
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileName) result(fileContent)
 
   character(len=*),  intent(in) :: fileName
   character(len=:), allocatable :: fileContent
+
   integer ::  &
     fileLength, &
     fileUnit, &
-    myStat
+    myStat, &
+    firstEOL
+  character, parameter :: CR = achar(13)
+
 
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
@@ -137,7 +143,11 @@ function IO_read(fileName) result(fileContent)
   if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
 
+
   if(fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL                ! ensure EOL@EOF
+
+  firstEOL = index(fileContent,IO_EOL)
+  if(scan(fileContent(firstEOL:firstEOL),CR) /= 0) call IO_error(115)
 
 end function IO_read
 
@@ -150,6 +160,7 @@ logical pure function IO_isBlank(string)
   character(len=*), intent(in) :: string                                                            !< string to check for content
 
   integer :: posNonBlank
+
 
   posNonBlank = verify(string,IO_WHITESPACE)
   IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(string,IO_COMMENT)
@@ -169,6 +180,7 @@ pure function IO_stringPos(string)
   integer, dimension(:), allocatable            :: IO_stringPos
 
   integer                      :: left, right
+
 
   allocate(IO_stringPos(1), source=0)
   right = 0
@@ -249,6 +261,7 @@ pure function IO_lc(string)
 
   integer :: i,n
 
+
   do i=1,len(string)
     n = index(UPPER,string(i:i))
     if(n/=0) then
@@ -271,6 +284,7 @@ function IO_rmComment(line)
   character(len=:), allocatable :: IO_rmComment
   integer :: split
 
+
   split = index(line,IO_COMMENT)
 
   if (split == 0) then
@@ -291,6 +305,7 @@ integer function IO_stringAsInt(string)
 
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
+
 
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) IO_stringAsInt
@@ -313,6 +328,7 @@ real(pReal) function IO_stringAsFloat(string)
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
 
+
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) IO_stringAsFloat
     if (readStatus /= 0) call IO_error(112,ext_msg=string)
@@ -330,6 +346,7 @@ end function IO_stringAsFloat
 logical function IO_stringAsBool(string)
 
   character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+
 
   if     (trim(adjustl(string)) == 'True' .or.  trim(adjustl(string)) == 'true') then
     IO_stringAsBool = .true.
@@ -355,6 +372,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   external                      :: quit
   character(len=:), allocatable :: msg
   character(len=pStringLen)     :: formatString
+
 
   select case (error_ID)
 
@@ -382,6 +400,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for logical:'
     case (114)
       msg = 'cannot decode base64 string:'
+    case (115)
+      msg = 'found CR. Windows file endings (CRLF) are not supported.'
+
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages

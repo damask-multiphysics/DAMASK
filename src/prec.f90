@@ -32,13 +32,13 @@ module prec
     real(pReal), dimension(:), pointer :: p
   end type group_float
 
-  ! http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
   type :: tState
     integer :: &
       sizeState        = 0, &                                                                       !< size of state
       sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
       offsetDeltaState = 0, &                                                                       !< index offset of delta state
       sizeDeltaState   = 0                                                                          !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
+    ! http://stackoverflow.com/questions/3948210
     real(pReal), pointer,     dimension(:), contiguous :: &
       atol
     real(pReal), pointer,     dimension(:,:), contiguous :: &                                       ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous
@@ -47,7 +47,6 @@ module prec
       dotState, &                                                                                   !< rate of state change
       deltaState                                                                                    !< increment of state change
     real(pReal), allocatable, dimension(:,:) :: &
-      partitionedState0, &
       subState0
   end type
 

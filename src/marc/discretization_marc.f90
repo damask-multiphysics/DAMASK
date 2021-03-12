@@ -20,6 +20,14 @@ module discretization_marc
   implicit none
   private
 
+  real(pReal),                         public, protected :: &
+    mesh_unitlength                                                                                 !< physical length of one unit in mesh MD: needs systematic_name
+
+  integer,  dimension(:), allocatable, public, protected :: &
+    mesh_FEM2DAMASK_elem, &                                                                         !< DAMASK element ID for Marc element ID MD: Needs systematic name
+    mesh_FEM2DAMASK_node                                                                            !< DAMASK node ID for Marc node ID MD: needs systematic_name
+
+
   type tCellNodeDefinition
     integer, dimension(:,:), allocatable :: parents
     integer, dimension(:,:), allocatable :: weights
@@ -27,15 +35,12 @@ module discretization_marc
 
   type(tCellNodeDefinition), dimension(:), allocatable :: cellNodeDefinition
 
-  real(pReal), public, protected :: &
-    mesh_unitlength                                                                                 !< physical length of one unit in mesh
-
-  integer, dimension(:),   allocatable, public :: &
-    mesh_FEM2DAMASK_elem, &                                                                         !< DAMASK element ID for Marc element ID
-    mesh_FEM2DAMASK_node                                                                            !< DAMASK node ID for Marc node ID
+  integer, dimension(:,:,:), allocatable :: &
+    connectivity_cell                                                                               !< cell connectivity for each element,ip/cell
 
   public :: &
-    discretization_marc_init
+    discretization_marc_init, &
+    discretization_marc_UpdateNodeAndIpCoords
 
 contains
 
@@ -45,25 +50,22 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_marc_init
 
-  real(pReal), dimension(:,:), allocatable :: &
+  real(pReal), dimension(:,:),     allocatable :: &
    node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
    node0_cell
   type(tElement) :: elem
 
-  integer,     dimension(:),   allocatable :: &
+  integer,     dimension(:),       allocatable :: &
     materialAt
   integer:: &
-    Nnodes, &                                                                                       !< total number of nodes in the mesh
     Nelems, &                                                                                       !< total number of elements in the mesh
     debug_e, debug_i
 
-  real(pReal), dimension(:,:), allocatable :: &
+  real(pReal), dimension(:,:),     allocatable :: &
     IP_reshaped
-  integer,dimension(:,:,:), allocatable :: &
-    connectivity_cell                                                                               !< cell connectivity for each element,ip/cell
-  integer, dimension(:,:), allocatable :: &
+  integer,     dimension(:,:),     allocatable :: &
     connectivity_elem
-  real(pReal), dimension(:,:,:,:),allocatable :: &
+  real(pReal), dimension(:,:,:,:), allocatable :: &
     unscaledNormals
 
   class(tNode), pointer :: &
@@ -90,18 +92,14 @@ subroutine discretization_marc_init
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
+
   call buildCells(connectivity_cell,cellNodeDefinition,&
                   elem,connectivity_elem)
-  allocate(node0_cell(3,maxval(connectivity_cell)))
-  call buildCellNodes(node0_cell,&
-                      cellNodeDefinition,node0_elem)
-  allocate(IP_reshaped(3,elem%nIPs*nElems),source=0.0_pReal)
-  call buildIPcoordinates(IP_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
-                          elem%nIPs*nElems]),node0_cell)
+  node0_cell  = buildCellNodes(node0_elem)
+  
+  IP_reshaped = buildIPcoordinates(node0_cell)
 
-  call discretization_init(materialAt,&
-                           IP_reshaped,&
-                           node0_cell)
+  call discretization_init(materialAt, IP_reshaped, node0_cell)
 
   call writeGeometry(elem,connectivity_elem,&
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
@@ -109,55 +107,65 @@ subroutine discretization_marc_init
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
-  call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell,connectivity_cell))
-  unscaledNormals = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
+  call geometry_plastic_nonlocal_setIPvolume(IPvolume(elem,node0_cell))
+  unscaledNormals = IPareaNormal(elem,nElems,node0_cell)
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
-  call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem,connectivity_cell))
+  call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem))
   call geometry_plastic_nonlocal_results
 
 end subroutine discretization_marc_init
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Calculate and set current nodal and IP positions (including cell nodes)
+!--------------------------------------------------------------------------------------------------
+subroutine discretization_marc_UpdateNodeAndIpCoords(d_n)
+ 
+  real(pReal), dimension(:,:), intent(in)  :: d_n
+
+  real(pReal), dimension(:,:), allocatable :: node_cell
+
+ 
+  node_cell = buildCellNodes(discretization_NodeCoords0(1:3,1:maxval(mesh_FEM2DAMASK_node)) + d_n)
+
+  call discretization_setNodeCoords(node_cell)
+  call discretization_setIPcoords(buildIPcoordinates(node_cell))
+
+end subroutine discretization_marc_UpdateNodeAndIpCoords
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Write all information needed for the DADF5 geometry
 !--------------------------------------------------------------------------------------------------
 subroutine writeGeometry(elem, &
-                         connectivity_elem,connectivity_cell, &
+                         connectivity_elem,connectivity_cell_reshaped, &
                          coordinates_nodes,coordinates_points)
 
   type(tElement),              intent(in) :: &
     elem
   integer, dimension(:,:),     intent(in) :: &
     connectivity_elem, &
-    connectivity_cell
+    connectivity_cell_reshaped
   real(pReal), dimension(:,:), intent(in) :: &
     coordinates_nodes, &
     coordinates_points
 
-  integer,     dimension(:,:), allocatable :: &
-    connectivity_temp
-  real(pReal), dimension(:,:), allocatable :: &
-    coordinates_temp
 
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
 
-  connectivity_temp = connectivity_elem
-  call results_writeDataset('geometry',connectivity_temp,'T_e',&
+  call results_writeDataset('geometry',connectivity_elem,'T_e',&
                             'connectivity of the elements','-')
 
-  connectivity_temp = connectivity_cell
-  call results_writeDataset('geometry',connectivity_temp,'T_c', &
+  call results_writeDataset('geometry',connectivity_cell_reshaped,'T_c', &
                             'connectivity of the cells','-')
   call results_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
 
-  coordinates_temp = coordinates_nodes
-  call results_writeDataset('geometry',coordinates_temp,'x_n', &
+  call results_writeDataset('geometry',coordinates_nodes,'x_n', &
                             'initial coordinates of the nodes','m')
 
-  coordinates_temp = coordinates_points
-  call results_writeDataset('geometry',coordinates_temp,'x_p', &
+  call results_writeDataset('geometry',coordinates_points,'x_p', &
                             'initial coordinates of the materialpoints (cell centers)','m')
 
   call results_closeJobFile
@@ -186,12 +194,12 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
     nElems
   integer, dimension(:), allocatable :: &
     matNumber                                                                                       !< material numbers for hypoelastic material
-  character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
-
   character(len=pStringLen), dimension(:), allocatable :: &
+    inputFile, &                                                                                    !< file content, separated per lines
     nameElemSet
   integer, dimension(:,:), allocatable :: &
     mapElemSet                                                                                      !< list of elements in elementSet
+
 
   inputFile = IO_readlines(trim(getSolverJobName())//trim(InputFileExtension))
   call inputRead_fileFormat(fileFormatVersion, &
@@ -588,20 +596,20 @@ subroutine inputRead_elemType(elem, &
         mapElemtype = 1            ! Two-dimensional Plane Strain Triangle
       case ( '125')                ! 155, 128 (need test)
         mapElemtype = 2            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
-      !case ( '11')                ! need test
-      !  mapElemtype = 3           ! Arbitrary Quadrilateral Plane-strain
+      case ( '11')
+        mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
       case ( '27')
         mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
       case ( '54')
         mapElemtype = 5            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
-      !case ( '134')               ! need test
-      !  mapElemtype = 6           ! Three-dimensional Four-node Tetrahedron
+      case ( '134')
+        mapElemtype = 6            ! Three-dimensional Four-node Tetrahedron
       !case ( '157')               ! need test
       !  mapElemtype = 7           ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-      !case ( '127')               ! need test
-      !  mapElemtype = 8           ! Three-dimensional Ten-node Tetrahedron
-      !case ( '136')               ! need test
-      !  mapElemtype = 9           ! Three-dimensional Arbitrarily Distorted Pentahedral
+      case ( '127')
+        mapElemtype = 8            ! Three-dimensional Ten-node Tetrahedron
+      case ( '136')
+        mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted Pentahedral
       case ( '117')                ! 123 (need test)
         mapElemtype = 10           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
       case ( '7')
@@ -727,11 +735,11 @@ end subroutine inputRead_material
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates cell node coordinates from element node coordinates
 !--------------------------------------------------------------------------------------------------
-pure subroutine buildCells(connectivity_cell,cellNodeDefinition, &
+pure subroutine buildCells(connectivity,definition, &
                            elem,connectivity_elem)
 
-  type(tCellNodeDefinition), dimension(:),    intent(out) :: cellNodeDefinition                     ! definition of cell nodes for increasing number of parents
-  integer,                   dimension(:,:,:),intent(out) :: connectivity_cell
+  type(tCellNodeDefinition), dimension(:),    intent(out) :: definition                             ! definition of cell nodes for increasing number of parents
+  integer,                   dimension(:,:,:),intent(out) :: connectivity
 
   type(tElement),                             intent(in)  :: elem                                   ! element definition
   integer,                   dimension(:,:),  intent(in)  :: connectivity_elem                      ! connectivity of the elements
@@ -745,7 +753,7 @@ pure subroutine buildCells(connectivity_cell,cellNodeDefinition, &
 
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
-  connectivity_cell = -spread(elem%cell,3,Nelem)                                                    ! local cell node ID
+  connectivity = -spread(elem%cell,3,Nelem)                                                         ! local cell node ID
 
 !---------------------------------------------------------------------------------------------------
 ! set connectivity of cell nodes that coincide with FE nodes (defined by 1 parent node)
@@ -753,9 +761,7 @@ pure subroutine buildCells(connectivity_cell,cellNodeDefinition, &
   do e = 1, Nelem
     do c = 1, elem%NcellNodes
       realNode: if (count(elem%cellNodeParentNodeWeights(:,c) /= 0) == 1) then
-        where(connectivity_cell(:,:,e) == -c)
-          connectivity_cell(:,:,e) = connectivity_elem(c,e)
-        end where
+        where(connectivity(:,:,e) == -c) connectivity(:,:,e) = connectivity_elem(c,e)
       endif realNode
     enddo
   enddo
@@ -821,8 +827,8 @@ pure subroutine buildCells(connectivity_cell,cellNodeDefinition, &
     enddo
 
     i = uniqueRows(candidates_global(1:2*nParentNodes,:))
-    allocate(cellNodeDefinition(nParentNodes-1)%parents(i,nParentNodes))
-    allocate(cellNodeDefinition(nParentNodes-1)%weights(i,nParentNodes))
+    allocate(definition(nParentNodes-1)%parents(i,nParentNodes))
+    allocate(definition(nParentNodes-1)%weights(i,nParentNodes))
 
     i = 1
     n = 1
@@ -836,15 +842,15 @@ pure subroutine buildCells(connectivity_cell,cellNodeDefinition, &
 
       do while (n+j<= size(candidates_local)*Nelem)
         if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
-        where (connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
-          connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + 1                                   ! gets current new cell node id
+        where (connectivity(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
+          connectivity(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + 1                                   ! gets current new cell node id
         end where
 
         j = j+1
       enddo
       nCellNode = nCellNode + 1
-      cellNodeDefinition(nParentNodes-1)%parents(i,:) = parentsAndWeights(:,1)
-      cellNodeDefinition(nParentNodes-1)%weights(i,:) = parentsAndWeights(:,2)
+      definition(nParentNodes-1)%parents(i,:) = parentsAndWeights(:,1)
+      definition(nParentNodes-1)%weights(i,:) = parentsAndWeights(:,2)
       i = i + 1
       n = n+j
     enddo
@@ -884,55 +890,62 @@ end subroutine buildCells
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates cell node coordinates from element node coordinates
 !--------------------------------------------------------------------------------------------------
-pure subroutine buildCellNodes(node_cell, &
-                               definition,node_elem)
+pure function buildCellNodes(node_elem)
 
-  real(pReal),               dimension(:,:), intent(out) :: node_cell                               !< cell node coordinates
-  type(tCellNodeDefinition), dimension(:),   intent(in)  :: definition                              !< cell node definition (weights and parents)
   real(pReal),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
+  real(pReal),               dimension(:,:), allocatable :: buildCellNodes                          !< cell node coordinates
 
   integer :: i, j, k, n
 
-  n = size(node_elem,2)
-  node_cell(:,1:n) = node_elem                                                                      !< initial nodes coincide with element nodes
 
-  do i = 1, size(cellNodeDefinition,1)
+  allocate(buildCellNodes(3,maxval(connectivity_cell)))
+  n = size(node_elem,2)
+  buildCellNodes(:,1:n) = node_elem                                                                 !< initial nodes coincide with element nodes
+
+  do i = 1, size(cellNodeDefinition)
     do j = 1, size(cellNodeDefinition(i)%parents,1)
       n = n+1
-      node_cell(:,n) = 0.0_pReal
+      buildCellNodes(:,n) = 0.0_pReal
       do k = 1, size(cellNodeDefinition(i)%parents,2)
-        node_cell(:,n) = node_cell(:,n) &
-                       + node_cell(:,definition(i)%parents(j,k)) * real(definition(i)%weights(j,k),pReal)
+        buildCellNodes(:,n) = buildCellNodes(:,n) &
+                            + buildCellNodes(:,cellNodeDefinition(i)%parents(j,k)) &
+                            * real(cellNodeDefinition(i)%weights(j,k),pReal)
       enddo
-      node_cell(:,n) = node_cell(:,n)/real(sum(definition(i)%weights(j,:)),pReal)
+      buildCellNodes(:,n) = buildCellNodes(:,n)/real(sum(cellNodeDefinition(i)%weights(j,:)),pReal)
     enddo
   enddo
 
-end subroutine buildCellNodes
+end function buildCellNodes
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculates IP coordinates as center of cell
 !--------------------------------------------------------------------------------------------------
-pure subroutine buildIPcoordinates(IPcoordinates, &
-                                   connectivity_cell,node_cell)
+pure function buildIPcoordinates(node_cell)
 
-  real(pReal), dimension(:,:), intent(out):: IPcoordinates                                          !< cell-center/IP coordinates
-  integer,     dimension(:,:), intent(in) :: connectivity_cell                                      !< connectivity for each cell
-  real(pReal), dimension(:,:), intent(in) :: node_cell                                              !< cell node coordinates
+  real(pReal), dimension(:,:), intent(in)  :: node_cell                                             !< cell node coordinates
+  real(pReal), dimension(:,:), allocatable :: buildIPcoordinates                                    !< cell-center/IP coordinates
 
-  integer :: i, n
+  integer, dimension(:,:), allocatable :: connectivity_cell_reshaped
+  integer :: i, n, NcellNodesPerCell,Ncells
 
-  do i = 1, size(connectivity_cell,2)
-    IPcoordinates(:,i) = 0.0_pReal
-    do n = 1, size(connectivity_cell,1)
-      IPcoordinates(:,i) = IPcoordinates(:,i) &
-                         + node_cell(:,connectivity_cell(n,i))
+
+  NcellNodesPerCell = size(connectivity_cell,1)
+  Ncells = size(connectivity_cell,2)*size(connectivity_cell,3)
+  connectivity_cell_reshaped = reshape(connectivity_cell,[NcellNodesPerCell,Ncells])
+
+  allocate(buildIPcoordinates(3,Ncells))
+
+  do i = 1, size(connectivity_cell_reshaped,2)
+    buildIPcoordinates(:,i) = 0.0_pReal
+    do n = 1, size(connectivity_cell_reshaped,1)
+      buildIPcoordinates(:,i) = buildIPcoordinates(:,i) &
+                              + node_cell(:,connectivity_cell_reshaped(n,i))
     enddo
-    IPcoordinates(:,i) = IPcoordinates(:,i)/real(size(connectivity_cell,1),pReal)
+    buildIPcoordinates(:,i) = buildIPcoordinates(:,i)/real(size(connectivity_cell_reshaped,1),pReal)
   enddo
 
-end subroutine buildIPcoordinates
+end function buildIPcoordinates
 
 
 !---------------------------------------------------------------------------------------------------
@@ -940,50 +953,50 @@ end subroutine buildIPcoordinates
 !> @details The IP volume is calculated differently depending on the cell type.
 !> 2D cells assume an element depth of 1.0
 !---------------------------------------------------------------------------------------------------
-pure function IPvolume(elem,node,connectivity)
+pure function IPvolume(elem,node)
 
   type(tElement),                intent(in) :: elem
   real(pReal), dimension(:,:),   intent(in) :: node
-  integer,     dimension(:,:,:), intent(in) :: connectivity
 
-  real(pReal), dimension(elem%nIPs,size(connectivity,3)) :: IPvolume
+  real(pReal), dimension(elem%nIPs,size(connectivity_cell,3)) :: IPvolume
   real(pReal), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
 
   integer :: e,i
 
-  do e = 1,size(connectivity,3)
+
+  do e = 1,size(connectivity_cell,3)
     do i = 1,elem%nIPs
 
       select case (elem%cellType)
         case (1)                                                                                    ! 2D 3node
-          IPvolume(i,e) = math_areaTriangle(node(1:3,connectivity(1,i,e)), &
-                                            node(1:3,connectivity(2,i,e)), &
-                                            node(1:3,connectivity(3,i,e)))
+          IPvolume(i,e) = math_areaTriangle(node(1:3,connectivity_cell(1,i,e)), &
+                                            node(1:3,connectivity_cell(2,i,e)), &
+                                            node(1:3,connectivity_cell(3,i,e)))
 
         case (2)                                                                                    ! 2D 4node
-          IPvolume(i,e) = math_areaTriangle(node(1:3,connectivity(1,i,e)), &                        ! assume planar shape, division in two triangles suffices
-                                            node(1:3,connectivity(2,i,e)), &
-                                            node(1:3,connectivity(3,i,e))) &
-                        + math_areaTriangle(node(1:3,connectivity(3,i,e)), &
-                                            node(1:3,connectivity(4,i,e)), &
-                                            node(1:3,connectivity(1,i,e)))
+          IPvolume(i,e) = math_areaTriangle(node(1:3,connectivity_cell(1,i,e)), &                   ! assume planar shape, division in two triangles suffices
+                                            node(1:3,connectivity_cell(2,i,e)), &
+                                            node(1:3,connectivity_cell(3,i,e))) &
+                        + math_areaTriangle(node(1:3,connectivity_cell(3,i,e)), &
+                                            node(1:3,connectivity_cell(4,i,e)), &
+                                            node(1:3,connectivity_cell(1,i,e)))
         case (3)                                                                                    ! 3D 4node
-          IPvolume(i,e) = math_volTetrahedron(node(1:3,connectivity(1,i,e)), &
-                                              node(1:3,connectivity(2,i,e)), &
-                                              node(1:3,connectivity(3,i,e)), &
-                                              node(1:3,connectivity(4,i,e)))
+          IPvolume(i,e) = math_volTetrahedron(node(1:3,connectivity_cell(1,i,e)), &
+                                              node(1:3,connectivity_cell(2,i,e)), &
+                                              node(1:3,connectivity_cell(3,i,e)), &
+                                              node(1:3,connectivity_cell(4,i,e)))
         case (4)                                                                                    ! 3D 8node
           ! J. Grandy, Efficient Calculation of Volume of Hexahedral Cells
           ! Lawrence Livermore National Laboratory
           ! https://www.osti.gov/servlets/purl/632793
-          x0 = node(1:3,connectivity(1,i,e))
-          x1 = node(1:3,connectivity(2,i,e))
-          x2 = node(1:3,connectivity(4,i,e))
-          x3 = node(1:3,connectivity(3,i,e))
-          x4 = node(1:3,connectivity(5,i,e))
-          x5 = node(1:3,connectivity(6,i,e))
-          x6 = node(1:3,connectivity(8,i,e))
-          x7 = node(1:3,connectivity(7,i,e))
+          x0 = node(1:3,connectivity_cell(1,i,e))
+          x1 = node(1:3,connectivity_cell(2,i,e))
+          x2 = node(1:3,connectivity_cell(4,i,e))
+          x3 = node(1:3,connectivity_cell(3,i,e))
+          x4 = node(1:3,connectivity_cell(5,i,e))
+          x5 = node(1:3,connectivity_cell(6,i,e))
+          x6 = node(1:3,connectivity_cell(8,i,e))
+          x7 = node(1:3,connectivity_cell(7,i,e))
           IPvolume(i,e) = dot_product((x7-x1)+(x6-x0),math_cross((x7-x2),        (x3-x0))) &
                         + dot_product((x6-x0),        math_cross((x7-x2)+(x5-x0),(x7-x4))) &
                         + dot_product((x7-x1),        math_cross((x5-x0),        (x7-x4)+(x3-x0)))
@@ -998,11 +1011,10 @@ end function IPvolume
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of IP interface areas
 !--------------------------------------------------------------------------------------------------
-pure function IPareaNormal(elem,nElem,connectivity,node)
+pure function IPareaNormal(elem,nElem,node)
 
   type(tElement),                intent(in) :: elem
   integer,                       intent(in) :: nElem
-  integer,     dimension(:,:,:), intent(in) :: connectivity
   real(pReal), dimension(:,:),   intent(in) :: node
 
   real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
@@ -1015,7 +1027,7 @@ pure function IPareaNormal(elem,nElem,connectivity,node)
   do e = 1,nElem
     do i = 1,elem%nIPs
       do f = 1,elem%nIPneighbors
-        nodePos = node(1:3,connectivity(elem%cellface(1:m,f),i,e))
+        nodePos = node(1:3,connectivity_cell(elem%cellface(1:m,f),i,e))
 
         select case (elem%cellType)
           case (1,2)                                                                                ! 2D 3 or 4 node
@@ -1046,23 +1058,22 @@ end function IPareaNormal
 !--------------------------------------------------------------------------------------------------
 !> @brief IP neighborhood
 !--------------------------------------------------------------------------------------------------
-function IPneighborhood(elem,connectivity)
+function IPneighborhood(elem)
 
   type(tElement),            intent(in) :: elem                                                     ! definition of the element in use
-  integer, dimension(:,:,:), intent(in) :: connectivity                                             ! cell connectivity
   integer, dimension(3,size(elem%cellFace,2), &
-                     size(connectivity,2),size(connectivity,3)) :: IPneighborhood                   ! neighboring IPs as [element ID, IP ID, face ID]
+                     size(connectivity_cell,2),size(connectivity_cell,3)) :: IPneighborhood                   ! neighboring IPs as [element ID, IP ID, face ID]
 
   integer, dimension(size(elem%cellFace,1)+3,&
-                     size(elem%cellFace,2)*size(connectivity,2)*size(connectivity,3)) :: face
-  integer, dimension(size(connectivity,1))  :: myConnectivity
-  integer, dimension(size(elem%cellFace,1)) :: face_unordered
+                     size(elem%cellFace,2)*size(connectivity_cell,2)*size(connectivity_cell,3)) :: face
+  integer, dimension(size(connectivity_cell,1))  :: myConnectivity
+  integer, dimension(size(elem%cellFace,1))      :: face_unordered
   integer :: e,i,f,n,c,s
 
   c = 0
-  do e = 1, size(connectivity,3)
-    do i = 1, size(connectivity,2)
-      myConnectivity = connectivity(:,i,e)
+  do e = 1, size(connectivity_cell,3)
+    do i = 1, size(connectivity_cell,2)
+      myConnectivity = connectivity_cell(:,i,e)
       do f = 1, size(elem%cellFace,2)
         c = c + 1
         face_unordered = myConnectivity(elem%cellFace(:,f))
