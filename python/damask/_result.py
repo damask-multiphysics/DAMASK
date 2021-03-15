@@ -105,7 +105,7 @@ class Result:
         self.view('increments',visible_increments)
 
         in_between = '' if len(visible_increments) < 3 else \
-                     ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-2]])
+                     ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-1]])
 
         return util.srepr(first + in_between + last)
 
@@ -119,10 +119,10 @@ class Result:
         action : str
             Select from 'set', 'add', and 'del'.
         what : str
-            Attribute to change (must be in self.visible).
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            Name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         def natural_sort(key):
@@ -200,7 +200,7 @@ class Result:
         self._allow_modification = True
 
     def disallow_modification(self):
-        """Disllow to overwrite existing data (default case)."""
+        """Disallow to overwrite existing data (default case)."""
         self._allow_modification = False
 
 
@@ -272,10 +272,10 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.visible)
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         self._manage_view('set',what,datasets)
@@ -288,10 +288,10 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.visible)
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         self._manage_view('add',what,datasets)
@@ -304,10 +304,10 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.visible)
+            Attribute to change (must be from self.visible).
         datasets : list of str or bool
-            name of datasets as list, supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to []
+            Name of datasets as list; supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to [].
 
         """
         self._manage_view('del',what,datasets)
@@ -315,14 +315,14 @@ class Result:
 
     def rename(self,name_old,name_new):
         """
-        Rename datasets.
+        Rename dataset.
 
         Parameters
         ----------
         name_old : str
-            name of the datasets to be renamed
+            Name of the dataset to be renamed.
         name_new : str
-            new name of the datasets
+            New name of the dataset.
 
         """
         if self._allow_modification:
@@ -353,13 +353,13 @@ class Result:
         ----------
           datasets : iterable or str
           constituent : int
-              Constituent to consider for phase data
+              Constituent to consider for phase data.
           tagged : bool
-              tag Table.column name with '#constituent'
-              defaults to False
+              Tag Table.column name with '#constituent'.
+              Defaults to False.
           split : bool
-              split Table by increment and return dictionary of Tables
-              defaults to True
+              Split Table by increment and return dictionary of Tables.
+              Defaults to True.
 
         """
         sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
@@ -371,7 +371,7 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for dataset in sets:
                 for group in self.groups_with_datasets(dataset):
-                    path = os.path.join(group,dataset)
+                    path = '/'.join([group,dataset])
                     inc,prop,name,cat,item = (path.split('/') + ['']*5)[:5]
                     key = '/'.join([prop,name+tag])
                     if key not in inGeom:
@@ -388,15 +388,15 @@ class Result:
                                    np.nan,
                                    dtype=np.dtype(f[path]))
                     data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
-                    path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
+                    path = ('/'.join([prop,name]+([cat] if cat else [])+([item] if item else [])) if split else path)+tag
                     if split:
                         try:
-                            tbl[inc].add(path,data)
+                            tbl[inc] = tbl[inc].add(path,data)
                         except KeyError:
                             tbl[inc] = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
                     else:
                         try:
-                            tbl.add(path,data)
+                            tbl = tbl.add(path,data)
                         except AttributeError:
                             tbl = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
 
@@ -415,7 +415,7 @@ class Result:
         are considered as they contain user-relevant data.
         Single strings will be treated as list with one entry.
 
-        Wild card matching is allowed, but the number of arguments need to fit.
+        Wild card matching is allowed, but the number of arguments needs to fit.
 
         Parameters
         ----------

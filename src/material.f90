@@ -17,7 +17,7 @@ module material
   private
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Nconstituents                                                                 !< number of grains in each homogenization
+    homogenization_Nconstituents                                                                    !< number of grains in each homogenization
 
   character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
@@ -30,7 +30,7 @@ module material
     material_homogenizationAt, &                                                                    !< homogenization ID of each element
     material_homogenizationAt2, &                                                                   !< per cell
     material_homogenizationMemberAt2                                                                !< cell
-  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
+  integer, dimension(:,:),   allocatable :: &                                                       ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt, &                                                                             !< phase ID of each element
@@ -38,9 +38,6 @@ module material
     material_phaseMemberAt2                                                                         !< per constituent, cell
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
-
-  type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
-    material_orientation0                                                                           !< initial orientation of each grain,IP,element
 
   public :: &
     material_init
@@ -125,8 +122,6 @@ subroutine material_parseMaterial
   allocate(material_phaseAt2(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
   allocate(material_phaseMemberAt2(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
 
-  allocate(material_orientation0(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems))
-
   do el = 1, discretization_Nelems
     material     => materials%get(discretization_materialAt(el))
     constituents => material%get('constituents')
@@ -135,7 +130,7 @@ subroutine material_parseMaterial
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
       counterHomogenization(material_homogenizationAt(el)) = counterHomogenization(material_homogenizationAt(el)) + 1
-      material_homogenizationMemberAt(ip,el)                = counterHomogenization(material_homogenizationAt(el))
+      material_homogenizationMemberAt(ip,el)               = counterHomogenization(material_homogenizationAt(el))
       material_homogenizationAt2(ce)       = material_homogenizationAt(el)
       material_homogenizationMemberAt2(ce) = material_homogenizationMemberAt(ip,el)
     enddo
@@ -153,7 +148,6 @@ subroutine material_parseMaterial
 
         material_phaseAt2(co,ce)       = material_phaseAt(co,el)
         material_phaseMemberAt2(co,ce) = material_phaseMemberAt(co,ip,el)
-        call material_orientation0(co,ip,el)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4)) ! should be done in crystallite
       enddo
 
     enddo

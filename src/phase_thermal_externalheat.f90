@@ -38,7 +38,7 @@ module function externalheat_init(source_length) result(mySources)
     phase, &
     sources, thermal, &
     src
-  integer :: so,Nconstituents,ph
+  integer :: so,Nmembers,ph
 
 
   mySources = thermal_active('externalheat',source_length)
@@ -67,8 +67,8 @@ module function externalheat_init(source_length) result(mySources)
 
           prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
 
-          Nconstituents = count(material_phaseAt2 == ph)
-          call phase_allocateState(thermalState(ph)%p(so),Nconstituents,1,1,0)
+          Nmembers = count(material_phaseAt2 == ph)
+          call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
         end associate
       endif
     enddo

@@ -116,7 +116,7 @@ subroutine grid_mechanical_spectral_polarisation_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mechanical_spectral_polarisation init  -+>>>'; flush(IO_STDOUT)
+  print'(/,a)', ' <<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'

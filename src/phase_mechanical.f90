@@ -177,21 +177,26 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_init(phases)
+module subroutine mechanical_init(materials,phases)
 
   class(tNode), pointer :: &
+    materials, &
     phases
 
   integer :: &
     el, &
     ip, &
     co, &
+    ce, &
     ph, &
     me, &
     stiffDegradationCtr, &
-    Nconstituents
+    Nmembers
   class(tNode), pointer :: &
     num_crystallite, &
+    material, &
+    constituents, &
+    constituent, &
     phase, &
     mech, &
     elastic, &
@@ -221,23 +226,25 @@ module subroutine mechanical_init(phases)
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
 
-  do ph = 1, phases%length
-    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseMemberAt)))
 
-    allocate(phase_mechanical_Fi(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fe(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fi0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fp(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Fp0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Li(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Li0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_Lp(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(phase_mechanical_P(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(phase_mechanical_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
-    allocate(phase_mechanical_F(ph)%data(3,3,Nconstituents))
-    allocate(phase_mechanical_F0(ph)%data(3,3,Nconstituents))
+  do ph = 1, phases%length
+    Nmembers = count(material_phaseAt == ph) * discretization_nIPs
+
+    allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fe(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fi0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fp(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fp0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_S(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_F(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_F0(ph)%data(3,3,Nmembers))
 
     phase   => phases%get(ph)
     mech    => phase%get('mechanics')
@@ -271,14 +278,19 @@ module subroutine mechanical_init(phases)
     enddo
   endif
 
-  !$OMP PARALLEL DO PRIVATE(ph,me)
+
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
     do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+      material     => materials%get(discretization_materialAt(el))
+      constituents => material%get('constituents')
+      constituent => constituents%get(co)
 
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
 
-      phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      call material_orientation0(co,ph,me)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
+
+      phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ph,me)%asMatrix()                         ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp0(ph)%data(1:3,1:3,me) &
                                                 / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,me))**(1.0_pReal/3.0_pReal)
       phase_mechanical_Fi0(ph)%data(1:3,1:3,me) = math_I3
@@ -292,7 +304,6 @@ module subroutine mechanical_init(phases)
 
     enddo
   enddo; enddo
-  !$OMP END PARALLEL DO
 
 
 ! initialize plasticity
@@ -342,12 +353,11 @@ end subroutine mechanical_init
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
 subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
-                                              Fe, Fi, co, ip, el)
+                                              Fe, Fi, ph, me)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    ph, &
+    me
   real(pReal),   intent(in),  dimension(3,3) :: &
     Fe, &                                                                                           !< elastic deformation gradient
     Fi                                                                                              !< intermediate deformation gradient
@@ -360,17 +370,15 @@ subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   real(pReal), dimension(3,3) :: E
   real(pReal), dimension(3,3,3,3) :: C
   integer :: &
-    ho, &                                                                                           !< homogenization
-    d, &                                                                                               !< counter in degradation loop
-    i, j, ph, me
+    d, &                                                                                            !< counter in degradation loop
+    i, j
 
-  ho = material_homogenizationAt(el)
-  C = math_66toSym3333(phase_homogenizedC(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))
+  C = math_66toSym3333(phase_homogenizedC(ph,me))
 
-  DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(co,el))
-    degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(co,el)))
+  DegradationLoop: do d = 1, phase_NstiffnessDegradations(ph)
+    degradationType: select case(phase_stiffnessDegradation(d,ph))
       case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * phase_damage_get_phi(co,ip,el)**2
+        C = C * damage_phi(ph,me)**2
     end select degradationType
   enddo DegradationLoop
 
@@ -528,7 +536,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
       B  = math_I3 - Delta_t*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
       call phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
-                                        Fe, Fi_new, co, ip, el)
+                                        Fe, Fi_new, ph, me)
 
       call plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
                                          S, Fi_new, ph,me)
@@ -1250,13 +1258,12 @@ end subroutine mechanical_restore
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
+module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
 
   real(pReal), intent(in) :: dt
   integer, intent(in) :: &
     co, &                                                                                            !< counter in constituent loop
-    ip, &                                                                                            !< counter in integration point loop
-    el                                                                                               !< counter in element loop
+    ce
   real(pReal), dimension(3,3,3,3) :: dPdF
 
   integer :: &
@@ -1281,12 +1288,12 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
   logical :: error
 
 
-  ph = material_phaseAt(co,el)
-  me = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseAt2(co,ce)
+  me = material_phaseMemberAt2(co,ce)
 
   call phase_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
                                           phase_mechanical_Fe(ph)%data(1:3,1:3,me), &
-                                          phase_mechanical_Fi(ph)%data(1:3,1:3,me),co,ip,el)
+                                          phase_mechanical_Fi(ph)%data(1:3,1:3,me),ph,me)
   call phase_LiAndItsTangents(devNull,dLidS,dLidFi, &
                                      phase_mechanical_S(ph)%data(1:3,1:3,me), &
                                      phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
@@ -1311,7 +1318,7 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
-      call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
+      call IO_warning(warning_ID=600, &
                       ext_msg='inversion error in analytic tangent calculation')
       dFidS = 0.0_pReal
     else
@@ -1341,7 +1348,7 @@ module function phase_mechanical_dPdF(dt,co,ip,el) result(dPdF)
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
   if (error) then
-    call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
+    call IO_warning(warning_ID=600, &
                     ext_msg='inversion error in analytic tangent calculation')
     dSdF = rhs_3333
   else
@@ -1440,13 +1447,13 @@ end function mechanical_L_p
 !----------------------------------------------------------------------------------------------
 !< @brief Get deformation gradient (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function phase_mechanical_getF(co,ip,el) result(F)
+module function phase_mechanical_getF(co,ce) result(F)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: F
 
 
-  F = phase_mechanical_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  F = phase_mechanical_F(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce))
 
 end function phase_mechanical_getF
 
@@ -1469,25 +1476,25 @@ end function mechanical_F_e
 !----------------------------------------------------------------------------------------------
 !< @brief Get second Piola-Kichhoff stress (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function phase_mechanical_getP(co,ip,el) result(P)
+module function phase_mechanical_getP(co,ce) result(P)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: P
 
 
-  P = phase_mechanical_P(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  P = phase_mechanical_P(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce))
 
 end function phase_mechanical_getP
 
 
 ! setter for homogenization
-module subroutine phase_mechanical_setF(F,co,ip,el)
+module subroutine phase_mechanical_setF(F,co,ce)
 
   real(pReal), dimension(3,3), intent(in) :: F
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: co, ce
 
 
-  phase_mechanical_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
+  phase_mechanical_F(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce)) = F
 
 end subroutine phase_mechanical_setF
 
