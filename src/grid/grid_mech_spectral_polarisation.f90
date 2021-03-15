@@ -238,10 +238,10 @@ subroutine grid_mechanical_spectral_polarisation_init
 
   restartRead2: if (interface_restartInc > 0) then
     print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
-    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
+    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
 
