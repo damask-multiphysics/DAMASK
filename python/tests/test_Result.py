@@ -48,7 +48,7 @@ class TestResult:
         a = default.get_dataset_location('F')
         default.view('increments','*')
         b = default.get_dataset_location('F')
-        default.view('increments',default.incs_in_range(0,np.iinfo(int).max))
+        default.view('increments',default.increments_in_range(0,np.iinfo(int).max))
         c = default.get_dataset_location('F')
 
         default.view('times',True)
@@ -173,7 +173,7 @@ class TestResult:
         loc = {'O':     default.get_dataset_location('O'),
                'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
         qu = default.read_dataset(loc['O']).view(np.double).squeeze()
-        crystal_structure = default._get_attribute(default.get_dataset_location('O')[0],'Lattice')
+        crystal_structure = default._get_attribute(default.get_dataset_location('O')[0],'lattice')
         c = Orientation(rotation=qu,lattice=crystal_structure)
         in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
@@ -314,9 +314,9 @@ class TestResult:
         with h5py.File(default.fname,'r') as f:
             # h5py3 compatibility
             try:
-                created_first = f[loc[0]].attrs['Created'].decode()
+                created_first = f[loc[0]].attrs['created'].decode()
             except AttributeError:
-                created_first = f[loc[0]].attrs['Created']
+                created_first = f[loc[0]].attrs['created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -332,9 +332,9 @@ class TestResult:
         with h5py.File(default.fname,'r') as f:
             # h5py3 compatibility
             try:
-                created_second = f[loc[0]].attrs['Created'].decode()
+                created_second = f[loc[0]].attrs['created'].decode()
             except AttributeError:
-                created_second = f[loc[0]].attrs['Created']
+                created_second = f[loc[0]].attrs['created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
         if overwrite == 'on':
             assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
