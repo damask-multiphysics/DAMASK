@@ -21,6 +21,7 @@
 #include "lattice.f90"
 #include "phase.f90"
 #include "phase_mechanical.f90"
+#include "phase_mechanical_elastic.f90"
 #include "phase_mechanical_plastic.f90"
 #include "phase_mechanical_plastic_none.f90"
 #include "phase_mechanical_plastic_isotropic.f90"
