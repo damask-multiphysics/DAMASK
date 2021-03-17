@@ -27,12 +27,14 @@ class Colormap(mpl.colors.ListedColormap):
 
     References
     ----------
-    [1] DAMASK colormap theory
-      https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
-    [2] DAMASK colormaps first use
-      https://doi.org/10.1016/j.ijplas.2012.09.012
-    [3] Matplotlib colormaps overview
-      https://matplotlib.org/tutorials/colors/colormaps.html
+    K. Moreland, Proceedings of the 5th International Symposium on Advances in Visual Computing, 2009
+    http://dx.doi.org/10.1007/978-3-642-10520-3_9
+
+    P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013
+    https://doi.org/10.1016/j.ijplas.2012.09.012
+
+    Matplotlib colormaps overview
+    https://matplotlib.org/tutorials/colors/colormaps.html
 
     """
 
