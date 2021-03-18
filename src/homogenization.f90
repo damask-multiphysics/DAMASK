@@ -287,18 +287,17 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
                                     .and. NiterationMPstate < num%nMPstate)
         NiterationMPstate = NiterationMPstate + 1
 
-
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
         converged = .true.
         do co = 1, myNgrains
           converged = converged .and. crystallite_stress(dt,co,ip,el)
         enddo
 
-        if (.not. converged) then
-          doneAndHappy = [.true.,.false.]
-        else
+        if (converged) then
           doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
           converged = all(doneAndHappy)
+        else
+          doneAndHappy = [.true.,.false.]
         endif
 
       enddo convergenceLooping
