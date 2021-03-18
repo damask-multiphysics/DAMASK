@@ -203,10 +203,10 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print'(/,a)', ' <<<+-  phase:mechanical:plastic:nonlocal init  -+>>>'
   print'(a,i0)', ' # phases: ',Ninstances; flush(IO_STDOUT)
 
-  print*, 'Reuber et al., Acta Materialia 71:333–348, 2014'
+  print*, 'C. Reuber et al., Acta Materialia 71:333–348, 2014'
   print*, 'https://doi.org/10.1016/j.actamat.2014.03.012'//IO_EOL
 
-  print*, 'Kords, Dissertation RWTH Aachen, 2014'
+  print*, 'C. Kords, Dissertation RWTH Aachen, 2014'
   print*, 'http://publications.rwth-aachen.de/record/229993'
 
 

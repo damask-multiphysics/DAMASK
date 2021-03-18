@@ -75,7 +75,7 @@ subroutine grid_damage_spectral_init
 
   print'(/,a)', ' <<<+-  grid_spectral_damage init  -+>>>'
 
-  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !-------------------------------------------------------------------------------------------------
