@@ -561,7 +561,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
         cycle LpLoop
       endif
 
-      calculateJacobiLi: if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
+      calculateJacobiLp: if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
         jacoCounterLp = jacoCounterLp + 1
 
         do o=1,3; do p=1,3
@@ -573,7 +573,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
         call dgesv(9,1,dRLp_dLp,9,devNull_9,temp_9,9,ierr)                                          ! solve dRLp/dLp * delta Lp = -res for delta Lp
         if (ierr /= 0) return ! error
         deltaLp = - math_9to33(temp_9)
-      endif calculateJacobiLi
+      endif calculateJacobiLp
 
       Lpguess = Lpguess &
               + deltaLp * steplengthLp
@@ -601,7 +601,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
       cycle LiLoop
     endif
 
-    calculateJacobiLp: if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
+    calculateJacobiLi: if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
       jacoCounterLi = jacoCounterLi + 1
 
       temp_33 = matmul(matmul(A,B),invFi_current)
@@ -620,7 +620,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
       call dgesv(9,1,dRLi_dLi,9,devNull_9,temp_9,9,ierr)                                            ! solve dRLi/dLp * delta Li = -res for delta Li
       if (ierr /= 0) return ! error
       deltaLi = - math_9to33(temp_9)
-    endif calculateJacobiLp
+    endif calculateJacobiLi
 
     Liguess = Liguess &
             + deltaLi * steplengthLi
