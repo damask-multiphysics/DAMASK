@@ -7,7 +7,7 @@ submodule(phase:mechanical) elastic
     STIFFNESS_DEGRADATION_DAMAGE_ID
   end enum
 
-  integer, dimension(:), allocatable :: &                                                           !< ToDo: should be protected (bug in Intel compiler)
+  integer, dimension(:), allocatable :: &
     phase_NstiffnessDegradations
  
   integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
@@ -16,6 +16,7 @@ submodule(phase:mechanical) elastic
     phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
 
 contains
+
 
 module subroutine elastic_init(phases)
 
@@ -34,7 +35,6 @@ module subroutine elastic_init(phases)
  
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
 
-! initialize elasticity (hooke)                         
   allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
   allocate(phase_NstiffnessDegradations(phases%length),source=0)
   
