@@ -9,6 +9,7 @@ from functools import reduce
 from optparse import Option
 
 import numpy as np
+import h5py
 
 from . import version
 
@@ -27,7 +28,8 @@ __all__=[
          'extendableOption',
          'execution_stamp',
          'shapeshifter', 'shapeblender',
-         'extend_docstring', 'extended_docstring'
+         'extend_docstring', 'extended_docstring',
+         'DREAM3D_base_group'
         ]
 
 ####################################################################################################
@@ -375,6 +377,15 @@ def extended_docstring(f,extra_docstring):
         return func
     return _decorator
 
+
+def DREAM3D_base_group(fname):
+    with h5py.File(fname,'r') as f:
+        base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
+    
+    if base_group is None:
+        raise ValueError
+    
+    return base_group
 
 ####################################################################################################
 # Classes

@@ -98,7 +98,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_DREAM3D(fname,base_group,data_group,ori_data,phase_id,phase_name):
+    def load_DREAM3D(fname,data_group,ori_data,phase_id,phase_name,base_group=None):
         """
         Load material data from DREAM3D file.
 
@@ -150,10 +150,10 @@ class ConfigMaterial(Config):
         ...                       'EulerAngles','Phases',['Ferrite','Martensite'])
 
         """
-        root_dir = 'DataContainers'
+        b = util.DREAM3D_base_group(fname) if base_group is None else base_group
         hdf = h5py.File(fname,'r')
 
-        orientation_path = path.join(root_dir,base_group,data_group,ori_data)
+        orientation_path = path.join(b,data_group,ori_data)
         if hdf[orientation_path].attrs['TupleDimensions'].shape == (3,):
            grain_orientations = np.array(hdf[orientation_path]).reshape(-1,3,order='F')
         else:
@@ -161,7 +161,7 @@ class ConfigMaterial(Config):
 
         grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion()
 
-        phase_path  = path.join(root_dir,base_group,data_group,phase_id)
+        phase_path  = path.join(b,data_group,phase_id)
         if hdf[phase_path].attrs['TupleDimensions'].shape == (3,):
            grain_phase = np.array(hdf[phase_path]).reshape(-1,order='F')
         else:

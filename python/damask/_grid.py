@@ -256,7 +256,7 @@ class Grid:
 
 
     @staticmethod
-    def load_DREAM3D(fname,base_group,point_data=None,material='FeatureIds'):
+    def load_DREAM3D(fname,cell_data=None,material='FeatureIds',base_group=None):
         """
         Load from DREAM.3D file.
 
@@ -264,26 +264,26 @@ class Grid:
         ----------
         fname : str
             Filename of the DREAM.3D file
-        base_group : str
-            Name of the group (folder) below 'DataContainers',
-            for example 'SyntheticVolumeDataContainer'.
-        point_data : str, optional
+        cell_data : str, optional
             Name of the group (folder) containing the pointwise material data,
             for example 'CellData'. Defaults to None, in which case points are consecutively numbered.
         material : str, optional
             Name of the dataset containing the material ID.
             Defaults to 'FeatureIds'.
-
+        base_group : str
+            Path to the group (folder) that contains the geometry (_SIMPL_GEOMETRY),
+            and, optionally, the cell data. Defaults to None, in which case
+            it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
+ 
         """
+        b = util.DREAM3D_base_group(fname) if base_group is None else base_group
         f = h5py.File(fname, 'r')
-        g = os.path.join('DataContainers',base_group,'_SIMPL_GEOMETRY')
-        cells  = f[os.path.join(g,'DIMENSIONS')][()]
-        size   = f[os.path.join(g,'SPACING')][()] * cells
-        origin = f[os.path.join(g,'ORIGIN')][()]
+        cells  = f[os.path.join(b,'_SIMPL_GEOMETRY','DIMENSIONS')][()]
+        size   = f[os.path.join(b,'_SIMPL_GEOMETRY','SPACING')][()] * cells
+        origin = f[os.path.join(b,'_SIMPL_GEOMETRY','ORIGIN')][()]
 
-        ma = np.arange(cells.prod(),dtype=int) \
-             if point_data is None else \
-             np.reshape(f[os.path.join('DataContainers',base_group,point_data,material)],cells.prod())
+        ma = np.arange(cells.prod(),dtype=int) if cell_data is None else \
+             np.reshape(f[os.path.join(b,cell_data,material)],cells.prod())
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 
