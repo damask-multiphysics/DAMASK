@@ -526,7 +526,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         References
         ----------
-        http://www.ryanjuckett.com/programming/rgb-color-space-conversion
+        https://www.easyrgb.com/en/math.php
 
         """
         rgb_lin = np.dot(np.array([
@@ -546,7 +546,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         References
         ----------
-        http://www.ryanjuckett.com/programming/rgb-color-space-conversion
+        https://www.easyrgb.com/en/math.php
 
         """
         rgb_lin = np.where(rgb>0.04045,((rgb+0.0555)/1.0555)**2.4,rgb/12.92)
