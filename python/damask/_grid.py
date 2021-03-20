@@ -261,22 +261,38 @@ class Grid:
                      phases='Phases',Euler_angles='EulerAngles',
                      base_group=None):
         """
-        Load from DREAM.3D file.
+        Load DREAM.3D (HDF5) file.
+
+        Data in DREAM.3D files can be stored per cell ('CellData')
+        and/or per grain ('Grain Data'). Per default, cell-wise data
+        is assumed.
+
+        damask.ConfigMaterial.load_DREAM3D allows to get the
+        corresponding material definition.
 
         Parameters
         ----------
         fname : str
             Filename of the DREAM.3D (HDF5) file.
-        cell_data : str, optional
-            Name of the group (folder) containing the pointwise material data,
-            for example 'CellData'. Defaults to None, in which case points are consecutively numbered.
-        material : str, optional
-            Name of the dataset containing the material ID.
-            Defaults to 'FeatureIds'.
+        feature_IDs : str
+            Name of the dataset containing the mapping between cells and
+            grain-wise data. Defaults to 'None', in which case cell-wise
+            data is used.
+        cell_data : str
+            Name of the group (folder) containing cell-wise data. Defaults to 'CellData'.
+        phases : str
+            Name of the dataset containing the phase ID. It is not used for
+            grain-wise data, i.e. when feature_IDs is not None.
+            Defaults to 'Phases'.
+        Euler_angles : str
+            Name of the dataset containing the crystallographic orientation as
+            Euler angles in radians It is not used for grain-wise data, i.e.
+            when feature_IDs is not None. Defaults to 'EulerAngles'.
         base_group : str
-            Path to the group (folder) that contains the geometry (_SIMPL_GEOMETRY),
-            and, optionally, the cell data. Defaults to None, in which case
+            Path to the group (folder) that contains geometry (_SIMPL_GEOMETRY),
+            and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
+
 
         """
         b = util.DREAM3D_base_group(fname) if base_group is None else base_group

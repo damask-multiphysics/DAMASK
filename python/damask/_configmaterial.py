@@ -52,7 +52,7 @@ class ConfigMaterial(Config):
     @staticmethod
     def from_table(table,**kwargs):
         """
-        Load from an ASCII table.
+        Generate from an ASCII table.
 
         Parameters
         ----------
@@ -103,17 +103,40 @@ class ConfigMaterial(Config):
                      phases='Phases',Euler_angles='EulerAngles',phase_names='PhaseName',
                      base_group=None):
         """
-        Load material data from DREAM3D file.
+        Load DREAM.3D (HDF5) file.
 
-        The parts of homogenization and phase need to be added by the user.
+        Data in DREAM.3D files can be stored per cell ('CellData')
+        and/or per grain ('Grain Data'). Per default, cell-wise data
+        is assumed.
+
+        damask.Grid.load_DREAM3D allows to get the corresponding geometry
+        for the grid solver.
 
         Parameters
         ----------
         fname : str
             Filename of the DREAM.3D (HDF5) file.
+        grain_data : str
+            Name of the group (folder) containing grain-wise data. Defaults
+            to None, in which case cell-wise data is used.
+        cell_data : str
+            Name of the group (folder) containing cell-wise data. Defaults to 'CellData'.
+        cell_ensemble_data : str
+            Name of the group (folder) containing data of cell ensembles.
+            This group is used to inquire the name of the phases. If set to
+            'None', phases get numeric IDs. Defaults to 'CellEnsembleData'.
+        phases : str
+            Name of the dataset containing the phase ID (cell-wise or grain-wise).
+            Defaults to 'Phases'.
+        Euler_angles : str
+            Name of the dataset containing the crystallographic orientation as
+            Euler angles in radians (cell-wise or grain-wise). Defaults to 'EulerAngles'.
+        phase_names : str
+            Name of the dataset containing the phase names. It is not used if
+            cell_ensemble_data is set to 'None. Defaults to 'PhaseName'.
         base_group : str
-            Path to the group (folder) that contains the geometry (_SIMPL_GEOMETRY),
-            and, optionally, the cell data. Defaults to None, in which case
+            Path to the group (folder) that contains geometry (_SIMPL_GEOMETRY),
+            and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
         """
@@ -135,7 +158,7 @@ class ConfigMaterial(Config):
             phase = names[phase]
 
         material = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
-        return ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'tbd' for k in np.unique(phase)},
+        return ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
                                'homogenization':{'direct':{'N_constituents':1}}}).material_add(**material)
 
 
