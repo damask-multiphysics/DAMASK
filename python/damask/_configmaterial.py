@@ -1,4 +1,4 @@
-from os import path
+import os.path
 
 import numpy as np
 import h5py
@@ -88,7 +88,7 @@ class ConfigMaterial(Config):
         phase: {}
 
         """
-        kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
+        kwargs_ = {k:table.get(v) for k,v in kwargs.items()}
 
         _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
@@ -98,7 +98,10 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_DREAM3D(fname,data_group,ori_data,phase_id,phase_name,base_group=None):
+    def load_DREAM3D(fname,
+                     grain_data=None,cell_data='CellData',cell_ensemble_data='CellEnsembleData',
+                     phases='Phases',Euler_angles='EulerAngles',phase_names='PhaseName',
+                     base_group=None):
         """
         Load material data from DREAM3D file.
 
@@ -107,70 +110,33 @@ class ConfigMaterial(Config):
         Parameters
         ----------
         fname : str
-            path to the DREAM3D file.
+            Filename of the DREAM.3D (HDF5) file.
         base_group : str
-            Name of the group (folder) below 'DataContainers',
-            for example 'SyntheticVolumeDataContainer'.
-        data_group : str
-            Name of the group (folder) having relevant data for conversion,
-            for example 'Grain Data' or 'CellData'.
-        ori_data : str
-            Name of the dataset having orientation data (working with Euler Angles in dream3D file),
-            For example 'EulerAngles'.
-        phase_id : str
-            Name of the dataset containing phase IDs for each grain,
-            for example 'Phases'.
-        phase_name : list
-            List with name of the phases.
-
-        Examples
-        --------
-        for grain based data with single phase
-        >>> import damask
-        >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data',
-        ...                      'EulerAngles','Phases',['Ferrite'])
-
-        for point based data with single phase
-        >>> import damask
-        >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData',
-        ...                       'EulerAngles','Phases',['Ferrite'])
-
-        for grain based data with dual phase
-        >>> import damask
-        >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data',
-        ...                       'EulerAngles','Phases',['Ferrite','Martensite'])
-
-        for point based data with dual phase
-        >>> import damask
-        >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData',
-        ...                       'EulerAngles','Phases',['Ferrite','Martensite'])
+            Path to the group (folder) that contains the geometry (_SIMPL_GEOMETRY),
+            and, optionally, the cell data. Defaults to None, in which case
+            it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
         """
         b = util.DREAM3D_base_group(fname) if base_group is None else base_group
-        hdf = h5py.File(fname,'r')
+        f = h5py.File(fname,'r')
 
-        orientation_path = path.join(b,data_group,ori_data)
-        if hdf[orientation_path].attrs['TupleDimensions'].shape == (3,):
-           grain_orientations = np.array(hdf[orientation_path]).reshape(-1,3,order='F')
+        if grain_data is None:
+            phase = f[os.path.join(b,cell_data,phases)][()].flatten()
+            O = Rotation.from_Euler_angles(f[os.path.join(b,cell_data,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
+            _,idx = np.unique(np.hstack([O,phase.reshape(-1,1)]),return_index=True,axis=0)
+            idx = np.sort(idx)
         else:
-           grain_orientations = np.array(hdf[orientation_path])[1:]
+            phase = f[os.path.join(b,grain_data,phases)][()]
+            O = Rotation.from_Euler_angles(f[os.path.join(b,grain_data,Euler_angles)]).as_quaternion() # noqa
+            idx = np.arange(phase.size)
 
-        grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion()
+        if cell_ensemble_data is not None:
+            names = np.array([s.decode() for s in f[os.path.join(b,cell_ensemble_data,phase_names)]])
+            phase = names[phase]
 
-        phase_path  = path.join(b,data_group,phase_id)
-        if hdf[phase_path].attrs['TupleDimensions'].shape == (3,):
-           grain_phase = np.array(hdf[phase_path]).reshape(-1,order='F')
-        else:
-           grain_phase = np.array(hdf[phase_path])[1:]
-
-        grain_phase = grain_phase.reshape(len(grain_phase),)
-        phase_name_list = [phase_name[i - 1] for i in grain_phase]
-
-        return ConfigMaterial().material_add(phase=phase_name_list, O = grain_quats)                # noqa
+        material = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
+        return ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'tbd' for k in np.unique(phase)},
+                               'homogenization':{'direct':{'N_constituents':1}}}).material_add(**material)
 
 
     @property

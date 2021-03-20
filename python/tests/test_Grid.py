@@ -420,12 +420,22 @@ class TestGrid:
         t = Table(np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))),{'c':3,'m':1})
         assert grid_equal(grid.sort().renumber(),Grid.from_table(t,'c',['m']))
 
+
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
     def test_get_grain_boundaries(self,update,ref_path,periodic,direction):
-        grid=Grid.load(ref_path/'get_grain_boundaries_8g12x15x20.vtr')
-        current=grid.get_grain_boundaries(periodic,direction)
+        grid = Grid.load(ref_path/'get_grain_boundaries_8g12x15x20.vtr')
+        current = grid.get_grain_boundaries(periodic,direction)
         if update:
             current.save(ref_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
-        reference=VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
+        reference = VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
         assert current.__repr__() == reference.__repr__()
+
+
+    def test_load_DREAM3D(self,ref_path):
+        grain = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','FeatureIds')
+        point = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d')
+
+        assert np.allclose(grain.origin,point.origin) and \
+               np.allclose(grain.size,point.size) and \
+               (grain.sort().material == point.material+1).all()

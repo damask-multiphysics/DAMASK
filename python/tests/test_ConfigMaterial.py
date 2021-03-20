@@ -6,6 +6,7 @@ import numpy as np
 from damask import ConfigMaterial
 from damask import Table
 from damask import Rotation
+from damask import Grid
 
 @pytest.fixture
 def ref_path(ref_path_base):
@@ -108,3 +109,24 @@ class TestConfigMaterial:
         m = ConfigMaterial().material_add(**kw)
         assert len(m['material']) == N
         assert len(m['material'][0]['constituents']) == n
+
+
+    @pytest.mark.parametrize('cell_ensemble_data',[None,'CellEnsembleData'])
+    def test_load_DREAM3D(self,ref_path,cell_ensemble_data):
+        grain_c = ConfigMaterial.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','Grain Data',
+                  cell_ensemble_data = cell_ensemble_data)
+        point_c = ConfigMaterial.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d',
+                  cell_ensemble_data = cell_ensemble_data)
+
+        assert point_c.is_valid and grain_c.is_valid
+        assert len(point_c['material'])+1 == len(grain_c['material'])
+
+        grain_m = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','FeatureIds').material.flatten()
+        point_m = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d').material.flatten()
+
+        for i in np.unique(point_m):
+            j = int(grain_m[(point_m==i).nonzero()[0][0]])
+            assert np.allclose(point_c['material'][i]['constituents'][0]['O'],
+                               grain_c['material'][j]['constituents'][0]['O'])
+            assert point_c['material'][i]['constituents'][0]['phase'] == \
+                   grain_c['material'][j]['constituents'][0]['phase']
