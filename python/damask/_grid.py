@@ -257,7 +257,7 @@ class Grid:
 
     @staticmethod
     def load_DREAM3D(fname,
-                     feature_IDs=None,cell_data='CellData',
+                     feature_IDs=None,cell_data=None,
                      phases='Phases',Euler_angles='EulerAngles',
                      base_group=None):
         """
@@ -279,7 +279,8 @@ class Grid:
             grain-wise data. Defaults to 'None', in which case cell-wise
             data is used.
         cell_data : str
-            Name of the group (folder) containing cell-wise data. Defaults to 'CellData'.
+            Name of the group (folder) containing cell-wise data. Defaults to
+            None in wich case it is automatically detected.
         phases : str
             Name of the dataset containing the phase ID. It is not used for
             grain-wise data, i.e. when feature_IDs is not None.
@@ -296,19 +297,21 @@ class Grid:
 
         """
         b = util.DREAM3D_base_group(fname) if base_group is None else base_group
+        c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
         f = h5py.File(fname, 'r')
+
         cells  = f[os.path.join(b,'_SIMPL_GEOMETRY','DIMENSIONS')][()]
         size   = f[os.path.join(b,'_SIMPL_GEOMETRY','SPACING')] * cells
         origin = f[os.path.join(b,'_SIMPL_GEOMETRY','ORIGIN')][()]
 
         if feature_IDs is None:
-            phase = f[os.path.join(b,cell_data,phases)][()].reshape(-1,1)
-            O = Rotation.from_Euler_angles(f[os.path.join(b,cell_data,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
+            phase = f[os.path.join(b,c,phases)][()].reshape(-1,1)
+            O = Rotation.from_Euler_angles(f[os.path.join(b,c,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
             unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
             ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
                  np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
         else:
-            ma = f[os.path.join(b,cell_data,feature_IDs)][()].flatten()
+            ma = f[os.path.join(b,c,feature_IDs)][()].flatten()
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 

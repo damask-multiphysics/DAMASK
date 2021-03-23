@@ -99,7 +99,7 @@ class ConfigMaterial(Config):
 
     @staticmethod
     def load_DREAM3D(fname,
-                     grain_data=None,cell_data='CellData',cell_ensemble_data='CellEnsembleData',
+                     grain_data=None,cell_data=None,cell_ensemble_data='CellEnsembleData',
                      phases='Phases',Euler_angles='EulerAngles',phase_names='PhaseName',
                      base_group=None):
         """
@@ -120,7 +120,8 @@ class ConfigMaterial(Config):
             Name of the group (folder) containing grain-wise data. Defaults
             to None, in which case cell-wise data is used.
         cell_data : str
-            Name of the group (folder) containing cell-wise data. Defaults to 'CellData'.
+            Name of the group (folder) containing cell-wise data. Defaults to
+            None in wich case it is automatically detected.
         cell_ensemble_data : str
             Name of the group (folder) containing data of cell ensembles. This
             group is used to inquire the name of the phases. Phases will get
@@ -141,11 +142,12 @@ class ConfigMaterial(Config):
 
         """
         b = util.DREAM3D_base_group(fname) if base_group is None else base_group
+        c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
         f = h5py.File(fname,'r')
 
         if grain_data is None:
-            phase = f[os.path.join(b,cell_data,phases)][()].flatten()
-            O = Rotation.from_Euler_angles(f[os.path.join(b,cell_data,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
+            phase = f[os.path.join(b,c,phases)][()].flatten()
+            O = Rotation.from_Euler_angles(f[os.path.join(b,c,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
             _,idx = np.unique(np.hstack([O,phase.reshape(-1,1)]),return_index=True,axis=0)
             idx = np.sort(idx)
         else:

@@ -133,7 +133,7 @@ class TestConfigMaterial:
 
 
     def test_load_DREAM3D_reference(self,tmp_path,ref_path,update):
-        config = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d',cell_data='EBSD Scan Data')
+        config = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d')
         config.save(tmp_path/'material.yaml')
         if update:
             config.save(ref_path/'measured.material_yaml')

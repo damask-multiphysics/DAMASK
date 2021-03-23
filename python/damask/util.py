@@ -29,7 +29,7 @@ __all__=[
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
-         'DREAM3D_base_group'
+         'DREAM3D_base_group', 'DREAM3D_cell_data_group'
         ]
 
 ####################################################################################################
@@ -379,13 +379,51 @@ def extended_docstring(f,extra_docstring):
 
 
 def DREAM3D_base_group(fname):
+    """
+    Determine the base group of a DREAM.3D file.
+
+    The base group is defined as the group (folder) that contains
+    a 'SPACING' dataset in a '_SIMPL_GEOMETRY' group.
+
+    Parameters
+    ----------
+    fname : str
+        Filename of the DREAM.3D (HDF5) file.
+
+    """
     with h5py.File(fname,'r') as f:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
-    
+
     if base_group is None:
-        raise ValueError
-    
+        raise ValueError('Could not determine base group in file {fname}.')
+
     return base_group
+
+def DREAM3D_cell_data_group(fname):
+    """
+    Determine the cell data group of a DREAM.3D file.
+
+    The cell data group is defined as the group (folder) that contains
+    a dataset in the base group whose length matches the total number
+    of points as specified in '_SIMPL_GEOMETRY/DIMENSIONS'.
+
+    Parameters
+    ----------
+    fname : str
+        Filename of the DREAM.3D (HDF5) file.
+
+    """
+    base_group = DREAM3D_base_group(fname)
+    with h5py.File(fname,'r') as f:
+        N_points = np.prod(f[os.path.join(base_group,'_SIMPL_GEOMETRY','DIMENSIONS')])
+        cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
+                                                   if isinstance(obj,h5py._hl.dataset.Dataset) and np.prod(np.shape(obj)) == N_points \
+                                                   else None)
+
+    if cell_data_group is None:
+        raise ValueError('Could not determine cell data group in file {fname}.')
+
+    return cell_data_group
 
 ####################################################################################################
 # Classes

@@ -442,7 +442,7 @@ class TestGrid:
 
 
     def test_load_DREAM3D_reference(self,ref_path,update):
-        current   = Grid.load_DREAM3D(ref_path/'measured.dream3d',cell_data='EBSD Scan Data')
+        current   = Grid.load_DREAM3D(ref_path/'measured.dream3d')
         reference = Grid.load(ref_path/'measured')
         if update:
             current.save(ref_path/'measured.vtr')
