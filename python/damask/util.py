@@ -395,7 +395,7 @@ def DREAM3D_base_group(fname):
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
 
     if base_group is None:
-        raise ValueError('Could not determine base group in file {fname}.')
+        raise ValueError(f'Could not determine base group in file {fname}.')
 
     return base_group
 
@@ -415,13 +415,13 @@ def DREAM3D_cell_data_group(fname):
     """
     base_group = DREAM3D_base_group(fname)
     with h5py.File(fname,'r') as f:
-        N_points = np.prod(f[os.path.join(base_group,'_SIMPL_GEOMETRY','DIMENSIONS')])
+        cells = tuple(f[os.path.join(base_group,'_SIMPL_GEOMETRY','DIMENSIONS')][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
-                                                   if isinstance(obj,h5py._hl.dataset.Dataset) and np.prod(np.shape(obj)) == N_points \
+                                                   if isinstance(obj,h5py._hl.dataset.Dataset) and np.shape(obj)[:-1] == cells \
                                                    else None)
 
     if cell_data_group is None:
-        raise ValueError('Could not determine cell data group in file {fname}.')
+        raise ValueError(f'Could not determine cell data group in file {fname}/{base_group}.')
 
     return cell_data_group
 
