@@ -157,9 +157,11 @@ class ConfigMaterial(Config):
             names = np.array([s.decode() for s in f[os.path.join(b,cell_ensemble_data,phase_names)]])
             phase = names[phase]
 
-        material = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
-        return ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
-                               'homogenization':{'direct':{'N_constituents':1}}}).material_add(**material,homogenization='direct')
+        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
+                                      'homogenization':{'direct':{'N_constituents':1}}})
+        constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
+
+        return base_config.material_add(**constituent,homogenization='direct')
 
 
     @property
