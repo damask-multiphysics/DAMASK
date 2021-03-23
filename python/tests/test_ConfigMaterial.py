@@ -1,5 +1,5 @@
 import os
-
+import filecmp
 import pytest
 import numpy as np
 
@@ -118,8 +118,8 @@ class TestConfigMaterial:
         point_c = ConfigMaterial.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d',
                   cell_ensemble_data = cell_ensemble_data)
 
-        assert point_c.is_valid and grain_c.is_valid
-        assert len(point_c['material'])+1 == len(grain_c['material'])
+        assert point_c.is_valid and grain_c.is_valid and \
+               len(point_c['material'])+1 == len(grain_c['material'])
 
         grain_m = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','FeatureIds').material.flatten()
         point_m = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d').material.flatten()
@@ -130,3 +130,11 @@ class TestConfigMaterial:
                                grain_c['material'][j]['constituents'][0]['O'])
             assert point_c['material'][i]['constituents'][0]['phase'] == \
                    grain_c['material'][j]['constituents'][0]['phase']
+
+
+    def test_load_DREAM3D_reference(self,tmp_path,ref_path,update):
+        config = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d',cell_data='EBSD Scan Data')
+        config.save(tmp_path/'material.yaml')
+        if update:
+            config.save(ref_path/'measured.material_yaml')
+        assert config.is_valid and filecmp.cmp(tmp_path/'material.yaml',ref_path/'measured.material_yaml')

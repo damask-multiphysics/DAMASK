@@ -439,3 +439,12 @@ class TestGrid:
         assert np.allclose(grain.origin,point.origin) and \
                np.allclose(grain.size,point.size) and \
                (grain.sort().material == point.material+1).all()
+
+
+    def test_load_DREAM3D_reference(self,ref_path,update):
+        current   = Grid.load_DREAM3D(ref_path/'measured.dream3d',cell_data='EBSD Scan Data')
+        reference = Grid.load(ref_path/'measured')
+        if update:
+            current.save(ref_path/'measured.vtr')
+
+        assert grid_equal(current,reference)

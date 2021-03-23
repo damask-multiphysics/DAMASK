@@ -122,9 +122,9 @@ class ConfigMaterial(Config):
         cell_data : str
             Name of the group (folder) containing cell-wise data. Defaults to 'CellData'.
         cell_ensemble_data : str
-            Name of the group (folder) containing data of cell ensembles.
-            This group is used to inquire the name of the phases. If set to
-            'None', phases get numeric IDs. Defaults to 'CellEnsembleData'.
+            Name of the group (folder) containing data of cell ensembles. This
+            group is used to inquire the name of the phases. Phases will get
+            numeric IDs if this group is not found. Defaults to 'CellEnsembleData'.
         phases : str
             Name of the dataset containing the phase ID (cell-wise or grain-wise).
             Defaults to 'Phases'.
@@ -132,8 +132,8 @@ class ConfigMaterial(Config):
             Name of the dataset containing the crystallographic orientation as
             Euler angles in radians (cell-wise or grain-wise). Defaults to 'EulerAngles'.
         phase_names : str
-            Name of the dataset containing the phase names. It is not used if
-            cell_ensemble_data is set to 'None. Defaults to 'PhaseName'.
+            Name of the dataset containing the phase names. Phases will get
+            numeric IDs if this dataset is not found. Defaults to 'PhaseName'.
         base_group : str
             Path to the group (folder) that contains geometry (_SIMPL_GEOMETRY),
             and grain- or cell-wise data. Defaults to None, in which case
@@ -153,9 +153,13 @@ class ConfigMaterial(Config):
             O = Rotation.from_Euler_angles(f[os.path.join(b,grain_data,Euler_angles)]).as_quaternion() # noqa
             idx = np.arange(phase.size)
 
-        if cell_ensemble_data is not None:
-            names = np.array([s.decode() for s in f[os.path.join(b,cell_ensemble_data,phase_names)]])
-            phase = names[phase]
+        if cell_ensemble_data is not None and phase_names is not None:
+            try:
+                names = np.array([s.decode() for s in f[os.path.join(b,cell_ensemble_data,phase_names)]])
+                phase = names[phase]
+            except KeyError:
+                pass
+
 
         base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
                                       'homogenization':{'direct':{'N_constituents':1}}})
