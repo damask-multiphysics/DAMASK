@@ -1,4 +1,7 @@
+import os.path
+
 import numpy as np
+import h5py
 
 from . import Config
 from . import Rotation
@@ -49,7 +52,7 @@ class ConfigMaterial(Config):
     @staticmethod
     def from_table(table,**kwargs):
         """
-        Load from an ASCII table.
+        Generate from an ASCII table.
 
         Parameters
         ----------
@@ -85,13 +88,86 @@ class ConfigMaterial(Config):
         phase: {}
 
         """
-        kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
+        kwargs_ = {k:table.get(v) for k,v in kwargs.items()}
 
         _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
         kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
 
         return ConfigMaterial().material_add(**kwargs_)
+
+
+    @staticmethod
+    def load_DREAM3D(fname,
+                     grain_data=None,cell_data=None,cell_ensemble_data='CellEnsembleData',
+                     phases='Phases',Euler_angles='EulerAngles',phase_names='PhaseName',
+                     base_group=None):
+        """
+        Load DREAM.3D (HDF5) file.
+
+        Data in DREAM.3D files can be stored per cell ('CellData')
+        and/or per grain ('Grain Data'). Per default, cell-wise data
+        is assumed.
+
+        damask.Grid.load_DREAM3D allows to get the corresponding geometry
+        for the grid solver.
+
+        Parameters
+        ----------
+        fname : str
+            Filename of the DREAM.3D (HDF5) file.
+        grain_data : str
+            Name of the group (folder) containing grain-wise data. Defaults
+            to None, in which case cell-wise data is used.
+        cell_data : str
+            Name of the group (folder) containing cell-wise data. Defaults to
+            None in wich case it is automatically detected.
+        cell_ensemble_data : str
+            Name of the group (folder) containing data of cell ensembles. This
+            group is used to inquire the name of the phases. Phases will get
+            numeric IDs if this group is not found. Defaults to 'CellEnsembleData'.
+        phases : str
+            Name of the dataset containing the phase ID (cell-wise or grain-wise).
+            Defaults to 'Phases'.
+        Euler_angles : str
+            Name of the dataset containing the crystallographic orientation as
+            Euler angles in radians (cell-wise or grain-wise). Defaults to 'EulerAngles'.
+        phase_names : str
+            Name of the dataset containing the phase names. Phases will get
+            numeric IDs if this dataset is not found. Defaults to 'PhaseName'.
+        base_group : str
+            Path to the group (folder) that contains geometry (_SIMPL_GEOMETRY),
+            and grain- or cell-wise data. Defaults to None, in which case
+            it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
+
+        """
+        b = util.DREAM3D_base_group(fname) if base_group is None else base_group
+        c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
+        f = h5py.File(fname,'r')
+
+        if grain_data is None:
+            phase = f[os.path.join(b,c,phases)][()].flatten()
+            O = Rotation.from_Euler_angles(f[os.path.join(b,c,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
+            _,idx = np.unique(np.hstack([O,phase.reshape(-1,1)]),return_index=True,axis=0)
+            idx = np.sort(idx)
+        else:
+            phase = f[os.path.join(b,grain_data,phases)][()]
+            O = Rotation.from_Euler_angles(f[os.path.join(b,grain_data,Euler_angles)]).as_quaternion() # noqa
+            idx = np.arange(phase.size)
+
+        if cell_ensemble_data is not None and phase_names is not None:
+            try:
+                names = np.array([s.decode() for s in f[os.path.join(b,cell_ensemble_data,phase_names)]])
+                phase = names[phase]
+            except KeyError:
+                pass
+
+
+        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
+                                      'homogenization':{'direct':{'N_constituents':1}}})
+        constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
+
+        return base_config.material_add(**constituent,homogenization='direct')
 
 
     @property
