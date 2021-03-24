@@ -59,21 +59,21 @@ module YAML_types
     procedure :: &
       tNode_get_byKey_as1dInt      => tNode_get_byKey_as1dInt
     procedure :: &
-      tNode_get_byKey_asBool      => tNode_get_byKey_asBool
+      tNode_get_byKey_asBool       => tNode_get_byKey_asBool
     procedure :: &
       tNode_get_byKey_as1dBool     => tNode_get_byKey_as1dBool
     procedure :: &
-      tNode_get_byKey_asString    => tNode_get_byKey_asString
+      tNode_get_byKey_asString     => tNode_get_byKey_asString
     procedure :: &
       tNode_get_byKey_as1dString   => tNode_get_byKey_as1dString
     procedure :: &
-      getIndex                    => tNode_get_byKey_asIndex
+      getIndex                     => tNode_get_byKey_asIndex
     procedure :: &
-      getKey                      => tNode_getKey_byIndex
+      getKey                       => tNode_getKey_byIndex
     procedure :: &
-      contains                    => tNode_contains
+      contains                     => tNode_contains
     procedure :: &
-      get_as2dFloat               => tNode_get_byKey_as2dFloat
+      get_as2dFloat                => tNode_get_byKey_as2dFloat
 
     generic :: &
       get            => tNode_get_byIndex, &
@@ -1182,9 +1182,12 @@ function tList_as2dFloat(self)
 
   row => self%get(1)                                !SR: some interface called 'shape' may be used?
   row_data => row%asList()
-  allocate(tList_as2dFloat(row%length,row_data%length),source=0.0_pReal)
+  allocate(tList_as2dFloat(self%length,row_data%length),source=0.0_pReal)
 
   do i=1,self%length
+    row => self%get(i)
+    row_data => row%asList()
+    if(row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='Varying number of columns')
     tList_as2dFloat(i,:) = self%get_as1dFloat(i)  
   enddo
 
