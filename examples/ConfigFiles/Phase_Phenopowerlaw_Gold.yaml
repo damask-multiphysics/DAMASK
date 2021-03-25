@@ -5,10 +5,10 @@
 
 Gold:
   lattice: cF
-  mechanics:
+  mechanical:
     output: [F, P, F_e, F_p, L_p, O]
-    elasticity: {type: hooke, C_11: 191e9, C_12: 162e9, C_44: 42.2e9}
-    plasticity:
+    elastic: {type: hooke, C_11: 191e9, C_12: 162e9, C_44: 42.2e9}
+    plastic:
       type: phenopowerlaw
       output: [xi_sl]
       N_sl: [12]
