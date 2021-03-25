@@ -6,6 +6,9 @@ import abc
 import numpy as np
 import yaml
 
+from . import Rotation
+from . import Orientation
+
 class NiceDumper(yaml.SafeDumper):
     """Make YAML readable for humans."""
 
@@ -20,8 +23,12 @@ class NiceDumper(yaml.SafeDumper):
 
     def represent_data(self, data):
         """Cast Config objects and its subclasses to dict."""
-        return self.represent_data(dict(data)) if isinstance(data, dict) and type(data) != dict else \
-               super().represent_data(data)
+        if isinstance(data, dict) and type(data) != dict:
+            return self.represent_data(dict(data))
+        if isinstance(data, (Rotation, Orientation)):
+            return self.represent_data(data.as_quaternion())
+        else:
+            return super().represent_data(data)
 
     def ignore_aliases(self, data):
         """No references."""
