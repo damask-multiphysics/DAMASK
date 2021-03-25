@@ -104,7 +104,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print*, 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
-  print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
+  print*, 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
 
   phases => config_material%get('phase')
