@@ -67,11 +67,11 @@ subroutine results_init(restart)
   if(.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',11)
+    call results_addAttribute('DADF5_version_minor',12)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
     call get_command(commandLine)
-    call results_addAttribute('Call',trim(commandLine))
-    call results_closeGroup(results_addGroup('mapping'))
+    call results_addAttribute('call',trim(commandLine))
+    call results_closeGroup(results_addGroup('cell_to'))
     call results_closeJobFile
   endif
 
@@ -105,12 +105,14 @@ subroutine results_addIncrement(inc,time)
 
   integer,       intent(in) :: inc
   real(pReal),   intent(in) :: time
+
   character(len=pStringLen) :: incChar
 
+
   write(incChar,'(i10)') inc
-  call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
-  call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
-  call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
+  call results_closeGroup(results_addGroup(trim('increment_'//trim(adjustl(incChar)))))
+  call results_setLink(trim('increment_'//trim(adjustl(incChar))),'current')
+  call results_addAttribute('t/s',time,trim('increment_'//trim(adjustl(incChar))))
 
 end subroutine results_addIncrement
 
@@ -133,6 +135,7 @@ integer(HID_T) function results_openGroup(groupName)
 
   character(len=*), intent(in) :: groupName
 
+
   results_openGroup = HDF5_openGroup(resultsFile,groupName)
 
 end function results_openGroup
@@ -144,6 +147,7 @@ end function results_openGroup
 integer(HID_T) function results_addGroup(groupName)
 
   character(len=*), intent(in) :: groupName
+
 
   results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
@@ -157,6 +161,7 @@ subroutine results_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
 
+
   call HDF5_closeGroup(group_id)
 
 end subroutine results_closeGroup
@@ -169,6 +174,7 @@ subroutine results_setLink(path,link)
 
   character(len=*), intent(in) :: path, link
 
+
   call HDF5_setLink(resultsFile,path,link)
 
 end subroutine results_setLink
@@ -180,6 +186,7 @@ subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
+
 
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
@@ -199,6 +206,7 @@ subroutine results_addAttribute_int(attrLabel,attrValue,path)
   integer,          intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
 
+
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
@@ -216,6 +224,7 @@ subroutine results_addAttribute_real(attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel
   real(pReal),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
+
 
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
@@ -235,6 +244,7 @@ subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
   integer,          intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
+
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
@@ -253,6 +263,7 @@ subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
   real(pReal),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
+
   if (present(path)) then
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
@@ -270,6 +281,7 @@ subroutine results_removeLink(link)
   character(len=*), intent(in) :: link
   integer                      :: hdferr
 
+
   call h5ldelete_f(resultsFile,link, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
 
@@ -277,7 +289,7 @@ end subroutine results_removeLink
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a scalar dataset in a group
+!> @brief Store real scalar dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeScalarDataset_real(group,dataset,label,description,SIunit)
 
@@ -287,24 +299,17 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_real
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_real(group,dataset,label,description,SIunit)
 
@@ -314,25 +319,18 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a tensor dataset in a group
+!> @brief Store real tensor dataset with associated metadata.
+!> @details Data is transposed to compenstate transposed storage order.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit,transposed)
 
@@ -353,35 +351,25 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
     transposed_ = .true.
   endif
 
+  groupHandle = results_openGroup(group)
   if(transposed_) then
     if(size(dataset,1) /= size(dataset,2)) error stop 'transpose non-symmetric tensor'
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
     enddo
+    call HDF5_write(groupHandle,dataset_transposed,label)
   else
-    allocate(dataset_transposed,source=dataset)
+    call HDF5_write(groupHandle,dataset,label)
   endif
-
-  groupHandle = results_openGroup(group)
-
-  call HDF5_write(groupHandle,dataset_transposed,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a vector dataset in a group
+!> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
 
@@ -391,25 +379,17 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a tensor dataset in a group
+!> @brief Store integer tensor dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
 subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
 
@@ -419,19 +399,12 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
 
   integer(HID_T) :: groupHandle
 
+
   groupHandle = results_openGroup(group)
-
   call HDF5_write(groupHandle,dataset,label)
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
-    call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
+  call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
+
 
 end subroutine results_writeTensorDataset_int
 
@@ -458,8 +431,8 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   integer(HID_T) :: &
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
-    name_id, &                                                                                      !< identifier of name (string) in compound data type
-    position_id, &                                                                                  !< identifier of position/index (integer) in compound data type
+    label_id, &                                                                                     !< identifier of label (string) in compound data type
+    entry_id, &                                                                                     !< identifier of entry (integer) in compound data type
     dset_id, &
     memspace_id, &
     filespace_id, &
@@ -524,21 +497,21 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,hdferr)
+  call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, hdferr)
+  call h5tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -560,14 +533,14 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   call h5pset_preserve_f(plist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  loc_id = results_openGroup('/mapping')
+  loc_id = results_openGroup('/cell_to')
   call h5dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
+  call h5dwrite_f(dset_id, label_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
+  call h5dwrite_f(dset_id, entry_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -584,9 +557,9 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(name_id, hdferr)
+  call h5tclose_f(label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(position_id, hdferr)
+  call h5tclose_f(entry_id, hdferr)
 
 end subroutine results_mapping_phase
 
@@ -613,8 +586,8 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   integer(HID_T) :: &
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
-    name_id, &                                                                                      !< identifier of name (string) in compound data type
-    position_id, &                                                                                  !< identifier of position/index (integer) in compound data type
+    label_id, &                                                                                     !< identifier of label (string) in compound data type
+    entry_id, &                                                                                     !< identifier of entry (integer) in compound data type
     dset_id, &
     memspace_id, &
     filespace_id, &
@@ -680,21 +653,21 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,hdferr)
+  call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, hdferr)
+  call h5tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -716,14 +689,14 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   call h5pset_preserve_f(plist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  loc_id = results_openGroup('/mapping')
+  loc_id = results_openGroup('/cell_to')
   call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
+  call h5dwrite_f(dset_id, label_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
+  call h5dwrite_f(dset_id, entry_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -740,26 +713,50 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(name_id, hdferr)
+  call h5tclose_f(label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(position_id, hdferr)
+  call h5tclose_f(entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 end subroutine results_mapping_homogenization
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief current date and time (including time zone information)
+!> @brief Add default information to a dataset.
+!--------------------------------------------------------------------------------------------------
+subroutine executionStamp(path,description,SIunit)
+
+
+  character(len=*), intent(in)           :: path,description
+  character(len=*), intent(in), optional :: SIunit
+
+
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'description',description,path)
+  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
+    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'creator','DAMASK '//DAMASKVERSION,path)
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'created',now(),path)
+
+end subroutine executionStamp
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return current date and time (including time zone information).
 !--------------------------------------------------------------------------------------------------
 character(len=24) function now()
 
   character(len=5)      :: zone
   integer, dimension(8) :: values
 
+
   call date_and_time(values=values,zone=zone)
   write(now,'(i4.4,5(a,i2.2),a)') &
     values(1),'-',values(2),'-',values(3),' ',values(5),':',values(6),':',values(7),zone
 
 end function now
+
 
 end module results

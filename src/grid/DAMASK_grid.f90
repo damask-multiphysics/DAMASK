@@ -104,7 +104,6 @@ program DAMASK_grid
     load_step, &
     solver, &
     initial_conditions, &
-    ic_thermal, &
     thermal, &
     step_bc, &
     step_mech, &
@@ -310,7 +309,7 @@ program DAMASK_grid
 
       case(FIELD_THERMAL_ID)
         initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
-        thermal => initial_conditions%get('thermal',defaultVal=emptyDict)
+        thermal            => initial_conditions%get('thermal',defaultVal=emptyDict)
         call grid_thermal_spectral_init(thermal%get_asFloat('T',defaultVal = T_0))
 
       case(FIELD_DAMAGE_ID)

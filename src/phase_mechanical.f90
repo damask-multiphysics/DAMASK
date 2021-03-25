@@ -247,13 +247,13 @@ module subroutine mechanical_init(materials,phases)
     allocate(phase_mechanical_F0(ph)%data(3,3,Nmembers))
 
     phase   => phases%get(ph)
-    mech    => phase%get('mechanics')
+    mech    => phase%get('mechanical')
 #if defined(__GFORTRAN__)
     output_constituent(ph)%label  = output_asStrings(mech)
 #else
     output_constituent(ph)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
-    elastic => mech%get('elasticity')
+    elastic => mech%get('elastic')
     if(elastic%get_asString('type') == 'hooke') then
       phase_elasticity(ph) = ELASTICITY_HOOKE_ID
     else
@@ -269,7 +269,7 @@ module subroutine mechanical_init(materials,phases)
   if(maxVal(phase_NstiffnessDegradations)/=0) then
     do ph = 1, phases%length
       phase => phases%get(ph)
-      mech    => phase%get('mechanics')
+      mech    => phase%get('mechanical')
       stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)
       do stiffDegradationCtr = 1, stiffDegradation%length
         if(stiffDegradation%get_asString(stiffDegradationCtr) == 'damage') &
@@ -398,32 +398,31 @@ module subroutine mechanical_results(group,ph)
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
-  if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) &
-    call results_closeGroup(results_addGroup(group//'plastic/'))
+
+  call crystallite_results(group,ph)
 
   select case(phase_plasticity(ph))
 
     case(PLASTICITY_ISOTROPIC_ID)
-      call plastic_isotropic_results(ph,group//'plastic/')
+      call plastic_isotropic_results(ph,group//'mechanical/')
 
     case(PLASTICITY_PHENOPOWERLAW_ID)
-      call plastic_phenopowerlaw_results(ph,group//'plastic/')
+      call plastic_phenopowerlaw_results(ph,group//'mechanical/')
 
     case(PLASTICITY_KINEHARDENING_ID)
-      call plastic_kinehardening_results(ph,group//'plastic/')
+      call plastic_kinehardening_results(ph,group//'mechanical/')
 
     case(PLASTICITY_DISLOTWIN_ID)
-      call plastic_dislotwin_results(ph,group//'plastic/')
+      call plastic_dislotwin_results(ph,group//'mechanical/')
 
     case(PLASTICITY_DISLOTUNGSTEN_ID)
-      call plastic_dislotungsten_results(ph,group//'plastic/')
+      call plastic_dislotungsten_results(ph,group//'mechanical/')
 
     case(PLASTICITY_NONLOCAL_ID)
-      call plastic_nonlocal_results(ph,group//'plastic/')
+      call plastic_nonlocal_results(ph,group//'mechanical/')
 
   end select
 
-  call crystallite_results(group,ph)
 
 end subroutine mechanical_results
 
@@ -978,35 +977,35 @@ subroutine crystallite_results(group,ph)
   character(len=:), allocatable              :: structureLabel
 
 
-    call results_closeGroup(results_addGroup(group//'/mechanics/'))
+    call results_closeGroup(results_addGroup(group//'/mechanical'))
 
     do ou = 1, size(output_constituent(ph)%label)
 
       select case (output_constituent(ph)%label(ou))
         case('F')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_F(ph)%data,'F',&
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_F(ph)%data,'F',&
                                    'deformation gradient','1')
         case('F_e')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_Fe(ph)%data,'F_e',&
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fe(ph)%data,'F_e',&
                                    'elastic deformation gradient','1')
         case('F_p')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_Fp(ph)%data,'F_p', &
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fp(ph)%data,'F_p', &
                                    'plastic deformation gradient','1')
         case('F_i')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_Fi(ph)%data,'F_i', &
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fi(ph)%data,'F_i', &
                                    'inelastic deformation gradient','1')
         case('L_p')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_Lp(ph)%data,'L_p', &
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_Lp(ph)%data,'L_p', &
                                    'plastic velocity gradient','1/s')
         case('L_i')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_Li(ph)%data,'L_i', &
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_Li(ph)%data,'L_i', &
                                    'inelastic velocity gradient','1/s')
         case('P')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_P(ph)%data,'P', &
-                                   'First Piola-Kirchhoff stress','Pa')
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_P(ph)%data,'P', &
+                                   'first Piola-Kirchhoff stress','Pa')
         case('S')
-          call results_writeDataset(group//'/mechanics/',phase_mechanical_S(ph)%data,'S', &
-                                   'Second Piola-Kirchhoff stress','Pa')
+          call results_writeDataset(group//'/mechanical/',phase_mechanical_S(ph)%data,'S', &
+                                   'second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(ph))
             case(lattice_ISO_ID)
@@ -1023,9 +1022,9 @@ subroutine crystallite_results(group,ph)
               structureLabel = 'oP'
           end select
           selected_rotations = select_rotations(crystallite_orientation,ph)
-          call results_writeDataset(group//'/mechanics/',selected_rotations,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanical',selected_rotations,output_constituent(ph)%label(ou),&
                                    'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
-          call results_addAttribute('Lattice',structureLabel,group//'/mechanics/'//output_constituent(ph)%label(ou))
+          call results_addAttribute('lattice',structureLabel,group//'/mechanical/'//output_constituent(ph)%label(ou))
       end select
     enddo
 

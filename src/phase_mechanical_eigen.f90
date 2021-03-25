@@ -57,7 +57,7 @@ module subroutine eigendeformation_init(phases)
 
   do ph = 1,phases%length
     phase => phases%get(ph)
-    mechanics => phase%get('mechanics')
+    mechanics => phase%get('mechanical')
     kinematics => mechanics%get('eigen',defaultVal=emptyList)
     Nmodels(ph) = kinematics%length
   enddo
@@ -98,7 +98,7 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    mechanics => phase%get('mechanics')
+    mechanics => phase%get('mechanical')
     kinematics => mechanics%get('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematics_type => kinematics%get(k)

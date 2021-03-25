@@ -227,8 +227,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
               st0 => state0(ph), del => deltaState(ph), dst => microstructure(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
     phase_localPlasticity(ph) = .not. pl%contains('nonlocal')
 

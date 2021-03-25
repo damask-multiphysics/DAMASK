@@ -480,8 +480,8 @@ subroutine lattice_init
 
   do ph = 1, phases%length
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    elasticity => mech%get('elasticity')
+    mech  => phase%get('mechanical')
+    elasticity => mech%get('elastic')
     lattice_C66(1,1,ph) = elasticity%get_asFloat('C_11')
     lattice_C66(1,2,ph) = elasticity%get_asFloat('C_12')
 

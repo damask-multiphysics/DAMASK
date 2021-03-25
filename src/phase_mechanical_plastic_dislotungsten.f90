@@ -120,8 +120,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
