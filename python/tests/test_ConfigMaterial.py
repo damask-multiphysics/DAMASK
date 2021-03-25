@@ -1,5 +1,4 @@
 import os
-import filecmp
 import pytest
 import numpy as np
 
@@ -133,8 +132,11 @@ class TestConfigMaterial:
 
 
     def test_load_DREAM3D_reference(self,tmp_path,ref_path,update):
-        config = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d')
-        config.save(tmp_path/'material.yaml')
+        cur = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d')
+        ref = ConfigMaterial.load(ref_path/'measured.material_yaml')
         if update:
-            config.save(ref_path/'measured.material_yaml')
-        assert config.is_valid and filecmp.cmp(tmp_path/'material.yaml',ref_path/'measured.material_yaml')
+            cur.save(ref_path/'measured.material_yaml')
+        for i,m in enumerate(ref['material']):
+            assert Rotation(m['constituents'][0]['O']) == \
+                   Rotation(cur['material'][i]['constituents'][0]['O'])
+        assert cur.is_valid and cur['phase'] == ref['phase'] and cur['homogenization'] == ref['homogenization']
