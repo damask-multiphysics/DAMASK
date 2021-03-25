@@ -509,18 +509,13 @@ class Grid:
 
         References
         ----------
-        Sébastien B G Blanquer, Maike Werner, Markus Hannula, Shahriar Sharifi,
-        Guillaume P R Lajoinie, David Eglin, Jari Hyttinen, André A Poot, and Dirk W Grijpma
-        Surface curvature in triply-periodic minimal surface architectures as
-        a distinct design parameter in preparing advanced tissue engineering scaffolds
+        S.B.G. Blanquer et al., Biofabrication 9(2):025001, 2017
         https://doi.org/10.1088/1758-5090/aa6553
 
-        Meinhard Wohlgemuth, Nataliya Yufa, James Hoffman, and Edwin L. Thomas
-        Triply Periodic Bicontinuous Cubic Microdomain Morphologies by Symmetries
+        M. Wohlgemuth et al., Macromolecules 34(17):6083-6089, 2001
         https://doi.org/10.1021/ma0019499
 
-        Meng-Ting Hsieh, Lorenzo Valdevit
-        Minisurf – A minimal surface generator for finite element modeling and additive manufacturing
+        M.-T. Hsieh and L. Valdevit, Software Impacts 6:100026, 2020
         https://doi.org/10.1016/j.simpa.2020.100026
 
         """
