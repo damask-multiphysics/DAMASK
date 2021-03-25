@@ -105,10 +105,10 @@ subroutine grid_mechanical_spectral_basic_init
 
   print'(/,a)', ' <<<+-  grid_mechanical_spectral_basic init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print*, 'P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
   print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print*, 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !-------------------------------------------------------------------------------------------------

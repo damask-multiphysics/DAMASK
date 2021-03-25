@@ -357,10 +357,8 @@ class Rotation:
 
         References
         ----------
-        Quaternion averaging
-        F. Landis Markley, Yang Cheng, John L. Crassidis, Yaakov Oshman
-        Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
-        10.2514/1.28949
+        F. Landis Markley et al., Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
+        https://doi.org/10.2514/1.28949
 
         """
         def _M(quat):
@@ -859,7 +857,7 @@ class Rotation:
 
         References
         ----------
-        P. Eisenlohr, F. Roters, Computational Materials Science 42(4), 670-678, 2008
+        P. Eisenlohr and F. Roters, Computational Materials Science 42(4):670-678, 2008
         https://doi.org/10.1016/j.commatsci.2007.09.015
 
         """
