@@ -28,7 +28,7 @@ class Colormap(mpl.colors.ListedColormap):
     References
     ----------
     K. Moreland, Proceedings of the 5th International Symposium on Advances in Visual Computing, 2009
-    http://dx.doi.org/10.1007/978-3-642-10520-3_9
+    https://doi.org/10.1007/978-3-642-10520-3_9
 
     P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013
     https://doi.org/10.1016/j.ijplas.2012.09.012
