@@ -190,25 +190,25 @@ subroutine spectral_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
+  num_grid        => config_numerics%get('grid',defaultVal=emptyDict)
+
   debug_grid      => config_debug%get('grid',defaultVal=emptyList)
   debugGeneral    =  debug_grid%contains('basic')
   debugRotation   =  debug_grid%contains('rotation')
-  debugPETSc      =  debug_grid%contains('petsc')
-
+  debugPETSc      =  debug_grid%contains('PETSc')
 
   if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the PETSc_Options keyword in numerics.yaml '; flush(IO_STDOUT)
-
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+                 ' add more using the "PETSc_options" keyword in numerics.yaml'
+  flush(IO_STDOUT)
 
   call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
-                                num_grid%get_asString('petsc_options',defaultVal=''),ierr)
+                                num_grid%get_asString('PETSc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
   grid1Red = grid(1)/2 + 1

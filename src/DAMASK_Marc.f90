@@ -256,7 +256,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   if (.not. CPFEM_init_done) then
     CPFEM_init_done = .true.
     call CPFEM_initAll
-    debug_Marc => config_debug%get('marc',defaultVal=emptyList)
+    debug_Marc => config_debug%get('Marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
   endif
 
