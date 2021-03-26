@@ -58,8 +58,6 @@ module phase
       grain
   end type tDebugOptions
 
-  type(tDebugOptions) :: debugCrystallite
-
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
     phase_elasticityInstance, &
     phase_NstiffnessDegradations
@@ -497,14 +495,10 @@ subroutine crystallite_init()
 
   class(tNode), pointer :: &
     num_crystallite, &
-    debug_crystallite, &                                                                            ! pointer to debug options for crystallite
     phases
 
 
   print'(/,a)', ' <<<+-  crystallite init  -+>>>'
-
-  debug_crystallite => config_debug%get('crystallite', defaultVal=emptyList)
-  debugCrystallite%extensive = debug_crystallite%contains('extensive')
 
   cMax = homogenization_maxNconstituents
   iMax = discretization_nIPs

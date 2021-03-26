@@ -1,13 +1,11 @@
 material:       [basic, extensive]                  # material.f90,        possible values: basic, extensive
 constitutive:   [basic, extensive, selective]       # constitutive_*.f90   possible values: basic, extensive, selective
-crystallite:    [basic, extensive, selective]       # crystallite.f90      possible values: basic, extensive, selective
-homogenization: [basic, extensive, selective]       # homogenization_*.f90 possible values: basic, extensive, selective
 cpfem:          [basic, extensive, selective]       # CPFEM.f90            possible values: basic, extensive, selective
-#
-# Parameters for selective
-element:          1                    # selected element for debugging 
-integrationpoint: 1                    # selected integration point for debugging 
-grain:            1                    # selected grain at ip for debugging
+
+# options for selective debugging
+element:          1
+integrationpoint: 1
+grain:            1
 
 # solver-specific
 mesh: [basic]
