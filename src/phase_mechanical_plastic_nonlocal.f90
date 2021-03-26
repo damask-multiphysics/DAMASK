@@ -1671,7 +1671,6 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
     dv_dtauNS                                                                                       !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
 
   integer :: &
-    ns, &                                                                                           !< short notation for the total number of active slip systems
     s                                                                                               !< index of my current slip system
   real(pReal) :: &
     tauRel_P, &
@@ -1697,12 +1696,11 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
     mobility                                                                                        !< dislocation mobility
 
   associate(prm => param(ph))
-  ns = prm%sum_N_sl
   v = 0.0_pReal
   dv_dtau = 0.0_pReal
   dv_dtauNS = 0.0_pReal
 
-  do s = 1,ns
+  do s = 1,prm%sum_N_sl
     if (abs(tau(s)) > tauThreshold(s)) then
 
       !* Peierls contribution
