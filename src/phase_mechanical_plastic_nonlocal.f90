@@ -253,11 +253,11 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if(trim(phase%get_asString('lattice')) == 'cI') then
         a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
+        prm%nonSchmid_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
+        prm%nonSchmid_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
       else
-        prm%nonSchmid_pos  = prm%Schmid
-        prm%nonSchmid_neg  = prm%Schmid
+        prm%nonSchmid_pos = prm%Schmid
+        prm%nonSchmid_neg = prm%Schmid
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl, &
@@ -827,14 +827,14 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
 
   !screws
   if (prm%nonSchmidActive) then
-    v(:,3:4)         = spread(v(:,1),2,2)
-    dv_dtau(:,3:4)   = spread(dv_dtau(:,1),2,2)
-    dv_dtauNS(:,3:4) = spread(dv_dtauNS(:,1),2,2)
-  else
     do t = 3,4
       call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
                     tau, tauNS(:,t), dst%tau_pass(:,me),2,Temperature, ph)
     enddo
+  else
+    v(:,3:4)         = spread(v(:,1),2,2)
+    dv_dtau(:,3:4)   = spread(dv_dtau(:,1),2,2)
+    dv_dtauNS(:,3:4) = spread(dv_dtauNS(:,1),2,2)
   endif
 
   stt%v(:,me) = pack(v,.true.)
@@ -854,8 +854,8 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
           + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
           * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
           + prm%Schmid(i,j,s) &
-          * ( prm%nonSchmid_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
-            - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
+          * (+ prm%nonSchmid_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
+             - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
   enddo
 
   end associate
