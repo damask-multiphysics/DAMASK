@@ -76,10 +76,10 @@ def asMFD(mfd_data):
           elif type(num) == float:
             result += '{:20.12e}'.format(num)
           else:
-            damask.util.croak('WARNING: encountered unknown type: ' + str(type(el)))
+            print(f'WARNING: encountered unknown type: {type(el)}')
         result += '\n'
       else:
-        damask.util.croak('WARNING: encountered unknown type: ' + str(type(el)))
+        print(f'WARNING: encountered unknown type: {type(el)}')
     if section['uid'] > 0:
       result += '=end=\n'
   return result.strip()
@@ -244,9 +244,9 @@ if remote:
     py_mentat.py_send('*save_as_model "{}" yes'.format(filenames[0]))
     py_mentat.py_get_int("nnodes()")
   except py_mentat.InputError as err:
-    damask.util.croak('{}. Try Tools/Python/"Run as Separate Process" & "Initiate".'.format(err))
+    print(f'{err}. Try Tools/Python/"Run as Separate Process" & "Initiate".')
     sys.exit(-1)
-  damask.util.croak( 'connected...')
+  print( 'connected...')
 
 for name in filenames:
   while remote and not os.path.exists(name): time.sleep(0.5)

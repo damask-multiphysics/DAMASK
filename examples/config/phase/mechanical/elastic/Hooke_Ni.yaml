@@ -3,7 +3,7 @@ Ni:
   mechanical:
     elastic:
       type: Hooke
-      references: 
+      references:
         - J.P. Hirth and J. Lothe,
           Theory of Dislocations, 1982,
           John Wiley & Sons

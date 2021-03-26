@@ -23,9 +23,6 @@ class TestUtil:
         with pytest.raises(RuntimeError):
             util.execute('/bin/false')
 
-    def test_croak(self):
-        util.croak('Burp!')
-
     @pytest.mark.parametrize('input,output',
                             [
                             ([0,-2],[0,-1]),

@@ -6,7 +6,6 @@ import shlex
 import re
 import fractions
 from functools import reduce
-from optparse import Option
 
 import numpy as np
 import h5py
@@ -16,7 +15,6 @@ from . import version
 # limit visibility
 __all__=[
          'srepr',
-         'croak',
          'report',
          'emph','deemph','warn','strikeout',
          'execute',
@@ -25,7 +23,6 @@ __all__=[
          'project_stereographic',
          'hybrid_IA',
          'return_message',
-         'extendableOption',
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
@@ -54,25 +51,6 @@ def srepr(arg,glue = '\n'):
     return arg if isinstance(arg,str) else repr(arg)
 
 
-def croak(what, newline = True):
-    """
-    Write formated to stderr.
-
-    DEPRECATED
-
-    Parameters
-    ----------
-    what : str or iterable
-        Content to be displayed.
-    newline : bool, optional
-        Separate items of what by newline. Defaults to True.
-
-    """
-    if what is not None:
-        sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
-    sys.stderr.flush()
-
-
 def report(who = None,
            what = None):
     """
@@ -81,7 +59,7 @@ def report(who = None,
     DEPRECATED
 
     """
-    croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
+    print( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
 
 
 def emph(what):
@@ -428,27 +406,6 @@ def DREAM3D_cell_data_group(fname):
 ####################################################################################################
 # Classes
 ####################################################################################################
-class extendableOption(Option):
-    """
-    Used for definition of new option parser action 'extend', which enables to take multiple option arguments.
-
-    Adopted from online tutorial http://docs.python.org/library/optparse.html
-    DEPRECATED
-    """
-
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 class _ProgressBar:
     """
     Report progress of an interation as a status bar.

@@ -53,8 +53,7 @@ class Test:
 
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
 
-    self.parser = OptionParser(option_class=damask.extendableOption,
-                               description = f'{self.description} (Test class version: {damask.version})',
+    self.parser = OptionParser(description = f'{self.description} (Test class version: {damask.version})',
                                usage = './test.py [options]')
     self.parser.add_option("-k", "--keep",
                            action = "store_true",
@@ -70,7 +69,6 @@ class Test:
                            help   = "show all test variants without actual calculation")
     self.parser.add_option("-s",   "--select",
                            dest   = "select",
-                           action = 'extend', metavar = '<string LIST>',
                            help   = "run test(s) of given name only")
     self.parser.set_defaults(keep   = self.keep,
                              accept = self.accept,
