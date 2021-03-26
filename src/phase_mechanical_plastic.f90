@@ -450,8 +450,8 @@ function plastic_active(plastic_label)  result(active_plastic)
   do ph = 1, phases%length
     phase => phases%get(ph)
     mech  => phase%get('mechanical')
-    pl    => mech%get('plastic')
-    if(pl%get_asString('type') == plastic_label) active_plastic(ph) = .true.
+    pl    => mech%get('plastic',defaultVal = emptyDict)
+    if(pl%get_asString('type',defaultVal='none') == plastic_label) active_plastic(ph) = .true.
   enddo
 
 end function plastic_active
