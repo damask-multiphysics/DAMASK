@@ -105,65 +105,17 @@ pytest_python:
     - release
 
 ###################################################################################################
-Pre_SeedGeneration:
-  stage: deprecated
-  script: PreProcessing_SeedGeneration/test.py
-  except:
-    - master
-    - release
-
-Pre_GeomGeneration:
-  stage: deprecated
-  script: PreProcessing_GeomGeneration/test.py
-  except:
-    - master
-    - release
-
-Pre_GeomModification:
-  stage: deprecated
-  script: PreProcessing_GeomModification/test.py
-  except:
-    - master
-    - release
-
 Pre_General:
   stage: deprecated
   script: PreProcessing/test.py
   except:
     - master
     - release
-
-Post_General:
-  stage: deprecated
-  script: PostProcessing/test.py
-  except:
-    - master
     - release
 
 Post_GeometryReconstruction:
   stage: deprecated
   script: spectral_geometryReconstruction/test.py
-  except:
-    - master
-    - release
-
-Post_addCurl:
-  stage: deprecated
-  script: addCurl/test.py
-  except:
-    - master
-    - release
-
-Post_addDivergence:
-  stage: deprecated
-  script: addDivergence/test.py
-  except:
-    - master
-    - release
-
-Post_addGradient:
-  stage: deprecated
-  script: addGradient/test.py
   except:
     - master
     - release
@@ -258,13 +210,6 @@ pytest_fortran:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
-  except:
-    - master
-    - release
-
-Plasticity_DetectChanges:
-  stage: grid
-  script: Plasticity_DetectChanges/test.py
   except:
     - master
     - release
