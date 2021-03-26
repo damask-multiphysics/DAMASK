@@ -1,17 +1,15 @@
 ---
 stages:
-  - prepareAll
+  - prepare
   - python
-  - deprecated
   - compile
   - fortran
   - performance
-  - createPackage
-  - createDocumentation
-  - saveDocumentation
-  - updateMaster
+  - deploy
+  - backup
+  - update_master
+  - distclean
   - clean
-  - releaseLock
 
 ###################################################################################################
 before_script:
@@ -73,7 +71,7 @@ variables:
 
 ###################################################################################################
 checkout:
-  stage: prepareAll
+  stage: prepare
   before_script:
     - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
     - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
@@ -94,7 +92,7 @@ checkout:
     - release
 
 ###################################################################################################
-pytest_python:
+processing:
   stage: python
   script:
     - cd $DAMASKROOT/python
@@ -104,8 +102,8 @@ pytest_python:
     - release
 
 ###################################################################################################
-Pre_General:
-  stage: deprecated
+preprocessing_deprecated:
+  stage: python
   script: PreProcessing/test.py
   except:
     - master
@@ -153,7 +151,7 @@ compile_mesh_GNU:
     - master
     - release
 
-compile_MARC:
+compile_Marc:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
@@ -188,7 +186,7 @@ setup_mesh:
     - release
 
 ###################################################################################################
-pytest_fortran:
+core:
   stage: fortran
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
@@ -231,8 +229,8 @@ SpectralRuntime:
     - release
 
 ###################################################################################################
-createTar:
-  stage: createPackage
+source_distribution:
+  stage: deploy
   script:
     - cd $(mktemp -d)
     - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
@@ -240,9 +238,8 @@ createTar:
     - master
     - release
 
-###################################################################################################
-Python:
-  stage: createDocumentation
+library_documentation:
+  stage: deploy
   script:
     - echo 'tbd one matesting1'
   except:
@@ -250,8 +247,8 @@ Python:
     - release
 
 ##################################################################################################
-backupData:
-  stage: saveDocumentation
+backup_runtime_measurement:
+  stage: backup
   script:
     - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
@@ -262,8 +259,8 @@ backupData:
     - development
 
 ##################################################################################################
-mergeIntoMaster:
-  stage: updateMaster
+merge_into_master:
+  stage: update_master
   script:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
@@ -281,8 +278,8 @@ mergeIntoMaster:
     - development
 
 ###################################################################################################
-removeData:
-  stage: clean
+remove_data:
+  stage: distclean
   before_script:
     - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
@@ -293,8 +290,8 @@ removeData:
     - release
 
 ###################################################################################################
-removeLock:
-  stage: releaseLock
+remove_lock:
+  stage: clean
   before_script:
     - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
