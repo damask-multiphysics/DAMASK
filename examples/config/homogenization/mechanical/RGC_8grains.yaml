@@ -1,4 +1,5 @@
 8Grains:
+  N_constituents: 8
   mechanical:
     type: RGC
     D_alpha: [4.0e-06, 4.0e-06, 2.0e-06]

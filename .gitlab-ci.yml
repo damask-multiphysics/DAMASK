@@ -113,21 +113,6 @@ Pre_General:
     - release
     - release
 
-Post_GeometryReconstruction:
-  stage: deprecated
-  script: spectral_geometryReconstruction/test.py
-  except:
-    - master
-    - release
-
-Post_OrientationAverageMisorientation:
-  stage: deprecated
-  script:
-    - OrientationAverageMisorientation/test.py
-  except:
-    - master
-    - release
-
 ###################################################################################################
 compile_grid_Intel:
   stage: compile
