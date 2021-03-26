@@ -3,7 +3,7 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: grid mesh processing
+all: grid mesh
 
 .PHONY: grid
 grid:
@@ -20,7 +20,3 @@ mesh:
 .PHONY: clean
 clean:
 	@rm -rf build
-
-.PHONY: processing
-processing:
-	@./installation/symlink_Processing.py ${MAKEFLAGS}

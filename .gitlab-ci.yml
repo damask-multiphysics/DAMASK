@@ -89,7 +89,7 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
-    - make processing
+    - ./installation/symlink_Processing.py
   except:
     - master
     - release
@@ -224,7 +224,7 @@ SpectralRuntime:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $DAMASKROOT
-    - make clean grid processing OPTIMIZATION=AGGRESSIVE
+    - make clean grid OPTIMIZATION=AGGRESSIVE
     - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
