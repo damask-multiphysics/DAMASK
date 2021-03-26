@@ -49,7 +49,7 @@ class Marc:
                    optimization = '',
                   ):
 
-        usersub = Path(os.environ['DAMASK_ROOT'])/'src/DAMASK_marc'
+        usersub = Path(os.environ['DAMASK_ROOT'])/'src/DAMASK_Marc'
         usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
         if not usersub.is_file():
             raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
