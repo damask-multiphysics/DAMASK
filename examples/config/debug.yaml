@@ -1,13 +1,12 @@
-material:       [basic, extensive]                  # material.f90,        possible values: basic, extensive
-constitutive:   [basic, extensive, selective]       # constitutive_*.f90   possible values: basic, extensive, selective
-cpfem:          [basic, extensive, selective]       # CPFEM.f90            possible values: basic, extensive, selective
+phase: [basic, extensive, selective]
+CPFEM: [basic, extensive, selective]
 
 # options for selective debugging
-element:          1
+element: 1
 integrationpoint: 1
-grain:            1
+constituent: 1
 
 # solver-specific
-mesh: [basic]
+mesh: [PETSc]
 grid: [basic, rotation, PETSc]
 Marc: [basic]

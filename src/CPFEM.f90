@@ -111,7 +111,7 @@ subroutine CPFEM_init
 !------------------------------------------------------------------------------
 ! read debug options
 
-  debug_CPFEM => config_debug%get('cpfem',defaultVal=emptyList)
+  debug_CPFEM => config_debug%get('CPFEM',defaultVal=emptyList)
   debugCPFEM%basic     = debug_CPFEM%contains('basic')
   debugCPFEM%extensive = debug_CPFEM%contains('extensive')
   debugCPFEM%selective = debug_CPFEM%contains('selective')
