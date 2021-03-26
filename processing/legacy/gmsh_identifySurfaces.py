@@ -1,8 +1,9 @@
-#!/usr/bin/env python2.7
-# -*- coding: UTF-8 no BOM -*-
+#!/usr/bin/env python3
 
-import os,re
+import os
+import re
 from optparse import OptionParser
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -11,6 +12,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 def all_same(items,a):
   return all(x == a for x in items)
 
+
 def func(seq):
   for x in seq:
     try:
@@ -18,14 +20,14 @@ def func(seq):
     except ValueError:
       yield x
 
+
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]',
+                      description =' Recognize bounding surfaces and append them as physical sufaces in the geo file.',
+                      version = scriptID)
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Recognize bounding surfaces and append them as physical sufaces in the geo file. 
-
-""", version = scriptID)
 
 parser.add_option('-n','--numvol', dest = 'N', type='int', metavar='int',
                                    help='number of physical volumes' )

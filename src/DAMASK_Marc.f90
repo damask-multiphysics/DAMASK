@@ -366,7 +366,7 @@ subroutine uedinc(inc,incsub)
   integer :: n, nqncomp, nqdatatype
   integer, save :: inc_written
   real(pReal), allocatable, dimension(:,:) :: d_n
-#include QUOTE(PASTE(./marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(./Marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
 
 
   if (inc > inc_written) then
