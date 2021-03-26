@@ -4,8 +4,7 @@ stages:
   - python
   - deprecated
   - compile
-  - grid
-  - marc
+  - fortran
   - performance
   - createPackage
   - createDocumentation
@@ -190,7 +189,7 @@ setup_mesh:
 
 ###################################################################################################
 pytest_fortran:
-  stage: grid
+  stage: fortran
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
@@ -200,16 +199,14 @@ pytest_fortran:
     - release
 
 Phenopowerlaw_singleSlip:
-  stage: grid
+  stage: fortran
   script: Phenopowerlaw_singleSlip/test.py
   except:
     - master
     - release
 
-
-###################################################################################################
 J2_plasticBehavior:
-  stage: marc
+  stage: fortran
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - J2_plasticBehavior/test.py
