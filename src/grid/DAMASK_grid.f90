@@ -118,7 +118,7 @@ program DAMASK_grid
   call CPFEM_initAll
   print'(/,a)',   ' <<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 
