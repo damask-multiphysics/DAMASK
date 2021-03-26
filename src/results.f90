@@ -72,6 +72,7 @@ subroutine results_init(restart)
     call get_command(commandLine)
     call results_addAttribute('call',trim(commandLine))
     call results_closeGroup(results_addGroup('cell_to'))
+    call results_addAttribute('description','mappings to place data in space','cell_to')
     call results_closeJobFile
   endif
 
@@ -561,6 +562,8 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(entry_id, hdferr)
 
+  call executionStamp('cell_to/phase','cell ID and constituent ID to phase results')
+
 end subroutine results_mapping_phase
 
 
@@ -717,6 +720,8 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
+
+  call executionStamp('cell_to/homogenization','cell ID to homogenization results')
 
 end subroutine results_mapping_homogenization
 
