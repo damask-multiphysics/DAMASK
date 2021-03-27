@@ -1819,7 +1819,7 @@ subroutine storeGeometry(ph)
 
   integer, intent(in) :: ph
 
-  integer :: ip, el, ce, co
+  integer :: ce, co
   real(pReal), dimension(:), allocatable :: V
 
 

@@ -131,8 +131,10 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fstack-protector-all")
 # Inserts a guard variable onto the stack frame for all functions
 
-# Detect memory leaks
-# -fsanitize=address
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=undefined")
+# detect undefined behavior
+# Additional options
+# -fsanitize=address,leak,thread
 
 #------------------------------------------------------------------------------------------------
 #  precision settings
