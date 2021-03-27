@@ -26,14 +26,14 @@ h5py3 = h5py.__version__[0] == '3'
 
 class Result:
     """
-    Read and write to DADF5 files.
+    Manipulate and read DADF5 files.
 
     DADF5 (DAMASK HDF5) files contain DAMASK results.
     """
 
     def __init__(self,fname):
         """
-        Open an existing DADF5 file.
+        New result view bound to a HDF5 file.
 
         Parameters
         ----------

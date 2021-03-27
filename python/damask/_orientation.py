@@ -47,19 +47,30 @@ class Orientation(Rotation):
 
     The Bravais lattice is one of Orientation.lattice_symmetries:
 
-    - aP : triclinic    primitive
-    - mP : monoclinic   primitive
-    - mS : ...          base-centered
-    - oP : orthorhombic primitive
-    - oS : ...          base-centered
-    - oI : ...          body-centered
-    - oF : ...          face-centered
-    - tP : tetragonal   primitive
-    - tI : ...          body-centered
-    - hP : hexagonal    primitive
-    - cP : cubic        primitive
-    - cI : ...          body-centered
-    - cF : ...          face-centered
+    - triclinic
+       - aP : primitive
+
+    - monoclininic
+       - mP : primitive
+       - mS : base-centered
+
+    - orthorhombic
+       - oP : primitive
+       - oS : base-centered
+       - oI : body-centered
+       - oF : face-centered
+
+    - tetragonal
+       - tP : primitive
+       - tI : body-centered
+
+    - hexagonal
+       - hP : primitive
+
+    - cubic
+       - cP : primitive
+       - cI : body-centered
+       - cF : face-centered
 
     and inherits the corresponding crystal family.
     Specifying a Bravais lattice, compared to just the crystal family,
@@ -111,7 +122,7 @@ class Orientation(Rotation):
                  alpha = None,beta = None,gamma = None,
                  degrees = False):
         """
-        Initialize orientation object.
+        New orientation.
 
         Parameters
         ----------

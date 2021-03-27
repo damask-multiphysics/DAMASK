@@ -60,13 +60,6 @@ class TestTable:
             new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
-    def test_write_read_legacy_style(self,default,tmp_path):
-        with open(tmp_path/'legacy.txt','w') as f:
-            default.save(f,legacy=True)
-        with open(tmp_path/'legacy.txt') as f:
-            new = Table.load(f)
-        assert all(default.data==new.data) and default.shapes == new.shapes
-
     def test_write_invalid_format(self,default,tmp_path):
         with pytest.raises(TypeError):
             default.save(tmp_path/'shouldnotbethere.txt',format='invalid')

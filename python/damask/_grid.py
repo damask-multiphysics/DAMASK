@@ -17,11 +17,18 @@ from . import Rotation
 
 
 class Grid:
-    """Geometry definition for grid solvers."""
+    """
+    Geometry definition for grid solvers.
+
+    Create and manipulate geometry definitions for storage as VTK
+    rectiliear grid files ('.vtr' extension). A grid contains the
+    material ID (referring to the entry in 'material.yaml') and
+    the physical size.
+    """
 
     def __init__(self,material,size,origin=[0.0,0.0,0.0],comments=[]):
         """
-        New grid definition from array of materials, size, and origin.
+        New geometry definition for grid solvers.
 
         Parameters
         ----------

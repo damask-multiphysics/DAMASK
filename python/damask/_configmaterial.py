@@ -9,14 +9,29 @@ from . import Orientation
 from . import util
 
 class ConfigMaterial(Config):
-    """Material configuration."""
+    """
+    Material configuration.
+
+    Manipulate material configurations for storage in YAML format.
+    A complete material configuration file has the entries 'material',
+    'phase', and 'homogenization'. For use in DAMASK, it needs to be
+    stored as 'material.yaml'.
+    """
 
     _defaults = {'material': [],
                  'homogenization': {},
                  'phase': {}}
 
     def __init__(self,d=_defaults):
-        """Initialize object with default dictionary keys."""
+        """
+        New material configuration.
+
+        Parameters
+        ----------
+        d : dictionary, optional
+            Initial content. Defaults to empty material, homogenization, and phase entries.
+
+        """
         super().__init__(d)
 
 

@@ -153,10 +153,12 @@ def scale_to_coprime(v):
         """Denominator of the square of a number."""
         return fractions.Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
 
-    def lcm(a, b):
+    def lcm(a,b):
         """Least common multiple."""
-        # Python 3.9 provides math.lcm, see https://stackoverflow.com/questions/51716916.
-        return a * b // np.gcd(a, b)
+        try:
+            return np.lcm(a,b)                                                                      # numpy > 1.18
+        except AttributeError:
+            return a * b // np.gcd(a, b)
 
     m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(int)
     m = m//reduce(np.gcd,m)
@@ -405,7 +407,7 @@ class return_message:
 
     def __init__(self,message):
         """
-        Sets return message.
+        Set return message.
 
         Parameters
         ----------
@@ -429,7 +431,7 @@ class _ProgressBar:
 
     def __init__(self,total,prefix,bar_length):
         """
-        Inititalize a progress bar to current time as basis for ETA estimation.
+        Set current time as basis for ETA estimation.
 
         Parameters
         ----------
