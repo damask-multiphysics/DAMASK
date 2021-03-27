@@ -31,7 +31,6 @@ module subroutine elastic_init(phases)
     mech, &
     elastic, &
     stiffDegradation
-
  
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
 
@@ -115,9 +114,3 @@ end subroutine phase_hooke_SandItsTangents
 
 
 end submodule elastic
-
-
-
-
-
-
