@@ -241,7 +241,8 @@ source_distribution:
 library_documentation:
   stage: deploy
   script:
-    - echo 'tbd one matesting1'
+    - cd $DAMASKROOT/PRIVATE/documenting/sphinx
+    - make html
   except:
     - master
     - release
