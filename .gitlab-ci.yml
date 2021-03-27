@@ -96,7 +96,8 @@ processing:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=${TESTROOT}/python -v
+    - pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
+    - coverage report --fail-under=90
   except:
     - master
     - release
@@ -107,7 +108,6 @@ preprocessing_deprecated:
   script: PreProcessing/test.py
   except:
     - master
-    - release
     - release
 
 ###################################################################################################
