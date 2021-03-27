@@ -190,11 +190,11 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(ierr)
   call DMSNESSetJacobianLocal(mechanical_grid,formJacobian,PETSC_NULL_SNES,ierr)
   CHKERRQ(ierr)
-  call SNESSetConvergenceTest(mechanical_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)         ! specify custom convergence check function "_converged"
+  call SNESSetConvergenceTest(mechanical_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)   ! specify custom convergence check function "_converged"
   CHKERRQ(ierr)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1), ierr)                                      ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1), ierr)                                ! ignore linear solve failures
   CHKERRQ(ierr)
-  call SNESSetFromOptions(mechanical_snes,ierr)                                                           ! pull it all together with additional cli arguments
+  call SNESSetFromOptions(mechanical_snes,ierr)                                                     ! pull it all together with additional cli arguments
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -489,10 +489,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol,num%eps_stress_atol)
 
-  if (terminallyIll .or. &
-      (totalIter >= num%itmin .and. &
-       all([ err_div/divTol, &
-             err_BC /BCTol   ] < 1.0_pReal))) then
+  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pReal)) &
+       .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1

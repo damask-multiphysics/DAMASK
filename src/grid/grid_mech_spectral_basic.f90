@@ -424,10 +424,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
   BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol,num%eps_stress_atol)
 
-  if ((totalIter >= num%itmin .and. &
-                            all([ err_div/divTol, &
-                                  err_BC /BCTol       ] < 1.0_pReal)) &
-              .or.    terminallyIll) then
+  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pReal)) &
+       .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1
