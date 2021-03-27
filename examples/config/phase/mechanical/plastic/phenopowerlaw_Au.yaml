@@ -2,12 +2,9 @@
 # On the mathematical description of the tensile stress-strain curves of polycrystalline face centered cubic metals
 # International Journal of Plasticity, Volume 12, Issue 1, 1996, Pages 35-43
 # DOI: 10.1016/S0749-6419(95)00043-7
-
-Gold:
+Au:
   lattice: cF
   mechanical:
-    output: [F, P, F_e, F_p, L_p, O]
-    elastic: {type: hooke, C_11: 191e9, C_12: 162e9, C_44: 42.2e9}
     plastic:
       type: phenopowerlaw
       output: [xi_sl]
