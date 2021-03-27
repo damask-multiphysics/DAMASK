@@ -34,5 +34,4 @@ from ._grid            import Grid             # noqa
 from ._result          import Result           # noqa
 
 # deprecated
-from ._asciitable  import ASCIItable       # noqa
 from ._test        import Test             # noqa
