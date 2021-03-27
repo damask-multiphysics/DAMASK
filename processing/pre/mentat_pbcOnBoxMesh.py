@@ -236,7 +236,7 @@ if remote:
   sys.path.append(str(damask.solver.Marc().library_path))
   import py_mentat
 
-  damask.util.report(scriptName, 'waiting to connect...')
+  print(scriptName+': waiting to connect...')
   filenames = [os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + '.mfd')]
   try:
     py_mentat.py_connect('',options.port)
@@ -251,7 +251,7 @@ if remote:
 for name in filenames:
   while remote and not os.path.exists(name): time.sleep(0.5)
   with  open( name,'r') if name is not None else sys.stdin as fileIn:
-    damask.util.report(scriptName, name)
+    print(scriptName+': '+name)
     mfd = parseMFD(fileIn)
 
   add_servoLinks(mfd,[options.x,options.y,options.z])

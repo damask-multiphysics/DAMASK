@@ -431,6 +431,10 @@ class TestGrid:
         reference = VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
         assert current.__repr__() == reference.__repr__()
 
+    @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
+    def test_get_grain_boundaries_invalid(self,default,directions):
+        with pytest.raises(ValueError):
+            default.get_grain_boundaries(directions=directions)
 
     def test_load_DREAM3D(self,ref_path):
         grain = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','FeatureIds')

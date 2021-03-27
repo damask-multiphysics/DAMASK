@@ -270,10 +270,10 @@ class Test:
         raise FileNotFoundError
 
 
-  def execute_inCurrentDir(self,cmd,streamIn=None,env=None):
+  def execute_inCurrentDir(self,cmd,env=None):
 
     logging.info(cmd)
-    out,error = damask.util.execute(cmd,streamIn,self.dirCurrent())
+    out,error = damask.util.execute(cmd,self.dirCurrent())
 
     logging.info(error)
     logging.debug(out)
