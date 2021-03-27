@@ -742,8 +742,7 @@ class Orientation(Rotation):
 
         References
         ----------
-        C.T. Young and J.L. Lytton, J. Appl. Phys. 43:1408–1417, 1972
-        "Computer Generation and Identification of Kikuchi Projections"
+        C.T. Young and J.L. Lytton, Journal of Applied Physics 43:1408–1417, 1972
         https://doi.org/10.1063/1.1661333
 
         """
@@ -1070,8 +1069,7 @@ class Orientation(Rotation):
 
         References
         ----------
-        J.C. Glez and J. Driver, J. Appl. Cryst. 34:280-288, 2001
-        "Orientation distribution analysis in deformed grains"
+        J.C. Glez and J. Driver, Journal of Applied Crystallography 34:280-288, 2001
         https://doi.org/10.1107/S0021889801003077
 
         """

@@ -66,12 +66,14 @@ class Result:
             self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments] if self.version_minor < 12 else \
                                   [round(f[i].attrs['t/s'],12) for i in self.increments]
 
-            self.N_materialpoints, self.N_constituents = np.shape(f['mapping/phase'])
+            grp = 'mapping' if self.version_minor < 12 else 'cell_to'
 
-            self.homogenizations  = [m.decode() for m in np.unique(f['mapping/homogenization']
-                                                                    ['Name' if self.version_minor < 12 else 'name'])]
-            self.phases           = [c.decode() for c in np.unique(f['mapping/phase']
-                                                                    ['Name' if self.version_minor < 12 else 'name'])]
+            self.N_materialpoints, self.N_constituents = np.shape(f[f'{grp}/phase'])
+
+            self.homogenizations  = [m.decode() for m in np.unique(f[f'{grp}/homogenization']
+                                                                    ['Name' if self.version_minor < 12 else 'label'])]
+            self.phases           = [c.decode() for c in np.unique(f[f'{grp}/phase']
+                                                                    ['Name' if self.version_minor < 12 else 'label'])]
 
             self.out_type_ph = []
             for c in self.phases:
@@ -375,8 +377,9 @@ class Result:
         inGeom = {}
         inData = {}
         # compatibility hack
-        name   = 'Name' if self.version_minor < 12 else 'name'
-        member = 'Position' if self.version_minor < 12 else 'member'
+        name   = 'Name' if self.version_minor < 12 else 'label'
+        member = 'Position' if self.version_minor < 12 else 'entry'
+        grp    = 'mapping' if self.version_minor < 12 else 'cell_to'
         with h5py.File(self.fname,'r') as f:
             for dataset in sets:
                 for group in self.groups_with_datasets(dataset):
@@ -387,11 +390,11 @@ class Result:
                         if prop == 'geometry':
                             inGeom[key] = inData[key] = np.arange(self.N_materialpoints)
                         elif prop == 'phase':
-                            inGeom[key] = np.where(f['mapping/phase'][:,constituent][name] == str.encode(name))[0]
-                            inData[key] =          f['mapping/phase'][inGeom[key],constituent][member]
+                            inGeom[key] = np.where(f[f'{grp}/phase'][:,constituent][name] == str.encode(name))[0]
+                            inData[key] =          f[f'{grp}/phase'][inGeom[key],constituent][member]
                         elif prop == 'homogenization':
-                            inGeom[key] = np.where(f['mapping/homogenization'][name] == str.encode(name))[0]
-                            inData[key] =          f['mapping/homogenization'][inGeom[key].tolist()][member]
+                            inGeom[key] = np.where(f[f'{grp}/homogenization'][name] == str.encode(name))[0]
+                            inData[key] =          f[f'{grp}/homogenization'][inGeom[key].tolist()][member]
                     shape = np.shape(f[path])
                     data = np.full((self.N_materialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
                                    np.nan,
@@ -542,8 +545,9 @@ class Result:
 
         """
         # compatibility hack
-        name   = 'Name' if self.version_minor < 12 else 'name'
-        member = 'Position' if self.version_minor < 12 else 'member'
+        name   = 'Name' if self.version_minor < 12 else 'label'
+        member = 'Position' if self.version_minor < 12 else 'entry'
+        grp    = 'mapping' if self.version_minor < 12 else 'cell_to'
         with h5py.File(self.fname,'r') as f:
             shape = (self.N_materialpoints,) + np.shape(f[path[0]])[1:]
             if len(shape) == 1: shape = shape +(1,)
@@ -555,17 +559,17 @@ class Result:
                     dataset = np.array(f[pa])
                     continue
 
-                p = np.where(f['mapping/phase'][:,c][name] == str.encode(label))[0]
+                p = np.where(f[f'{grp}/phase'][:,c][name] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/phase'][member][p,c])
+                    u = (f[f'{grp}/phase'][member][p,c])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
                     dataset[p,:] = a[u,:]
 
-                p = np.where(f['mapping/homogenization'][name] == str.encode(label))[0]
+                p = np.where(f[f'{grp}/homogenization'][name] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/homogenization'][member][p.tolist()])
+                    u = (f[f'{grp}/homogenization'][member][p.tolist()])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
@@ -1346,7 +1350,7 @@ class Result:
                 for o in self.iterate('out_type_ph'):
                     for c in range(self.N_constituents):
                         prefix = '' if self.N_constituents == 1 else f'constituent{c}/'
-                        if o not in ['mechanics', 'mechanical']:                                    # compatitbility hack
+                        if o not in ['mechanics', 'mechanical']:                                    # compatibility hack
                             for _ in self.iterate('phases'):
                                 path = self.get_dataset_location(label)
                                 if len(path) == 0:

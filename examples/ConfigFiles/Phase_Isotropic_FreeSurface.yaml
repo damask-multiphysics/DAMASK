@@ -1,4 +1,4 @@
-Air:
+FreeSurface:
   lattice: aP
   mechanical:
     output: [F, P, F_e, F_p, L_p]

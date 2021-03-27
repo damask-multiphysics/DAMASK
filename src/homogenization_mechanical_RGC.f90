@@ -91,12 +91,11 @@ module subroutine mechanical_RGC_init(num_homogMech)
 
   print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_RGC_ID); flush(IO_STDOUT)
 
-  print*, 'Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
+  print*, 'D.D. Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
   print*, 'https://doi.org/10.1007/s12289-009-0619-1'//IO_EOL
 
-  print*, 'Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering 18:015006, 2010'
-  print*,   'https://doi.org/10.1088/0965-0393/18/1/015006'//IO_EOL
-
+  print*, 'D.D. Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering 18:015006, 2010'
+  print*, 'https://doi.org/10.1088/0965-0393/18/1/015006'//IO_EOL
 
 
   material_homogenization => config_material%get('homogenization')

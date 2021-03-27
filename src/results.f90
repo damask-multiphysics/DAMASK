@@ -61,7 +61,7 @@ subroutine results_init(restart)
 
   print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
+  print*, 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
 
   if(.not. restart) then
@@ -71,7 +71,8 @@ subroutine results_init(restart)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
     call get_command(commandLine)
     call results_addAttribute('call',trim(commandLine))
-    call results_closeGroup(results_addGroup('mapping'))
+    call results_closeGroup(results_addGroup('cell_to'))
+    call results_addAttribute('description','mappings to place data in space','cell_to')
     call results_closeJobFile
   endif
 
@@ -431,8 +432,8 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   integer(HID_T) :: &
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
-    name_id, &                                                                                      !< identifier of name (string) in compound data type
-    position_id, &                                                                                  !< identifier of position/index (integer) in compound data type
+    label_id, &                                                                                     !< identifier of label (string) in compound data type
+    entry_id, &                                                                                     !< identifier of entry (integer) in compound data type
     dset_id, &
     memspace_id, &
     filespace_id, &
@@ -497,21 +498,21 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'name', 0_SIZE_T, dt_id,hdferr)
+  call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'member', type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(name_id, 'name', 0_SIZE_T, dt_id, hdferr)
+  call h5tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(position_id, 'member', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -533,14 +534,14 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   call h5pset_preserve_f(plist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  loc_id = results_openGroup('/mapping')
+  loc_id = results_openGroup('/cell_to')
   call h5dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
+  call h5dwrite_f(dset_id, label_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
+  call h5dwrite_f(dset_id, entry_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -557,9 +558,11 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(name_id, hdferr)
+  call h5tclose_f(label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(position_id, hdferr)
+  call h5tclose_f(entry_id, hdferr)
+
+  call executionStamp('cell_to/phase','cell ID and constituent ID to phase results')
 
 end subroutine results_mapping_phase
 
@@ -586,8 +589,8 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   integer(HID_T) :: &
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
-    name_id, &                                                                                      !< identifier of name (string) in compound data type
-    position_id, &                                                                                  !< identifier of position/index (integer) in compound data type
+    label_id, &                                                                                     !< identifier of label (string) in compound data type
+    entry_id, &                                                                                     !< identifier of entry (integer) in compound data type
     dset_id, &
     memspace_id, &
     filespace_id, &
@@ -653,21 +656,21 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'name', 0_SIZE_T, dt_id,hdferr)
+  call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'member', type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(name_id, 'name', 0_SIZE_T, dt_id, hdferr)
+  call h5tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, hdferr)
+  call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(position_id, 'member', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -689,14 +692,14 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   call h5pset_preserve_f(plist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  loc_id = results_openGroup('/mapping')
+  loc_id = results_openGroup('/cell_to')
   call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
+  call h5dwrite_f(dset_id, label_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
+  call h5dwrite_f(dset_id, entry_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -713,10 +716,12 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(name_id, hdferr)
+  call h5tclose_f(label_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(position_id, hdferr)
+  call h5tclose_f(entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
+
+  call executionStamp('cell_to/homogenization','cell ID to homogenization results')
 
 end subroutine results_mapping_homogenization
 

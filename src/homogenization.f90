@@ -276,8 +276,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
-      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
+      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,me) = homogState(ho)%state0(:,me)
+      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,me) = damageState_h(ho)%state0(:,me)
       call damage_partition(ce)
 
       doneAndHappy = [.false.,.true.]
@@ -287,20 +287,17 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
                                     .and. NiterationMPstate < num%nMPstate)
         NiterationMPstate = NiterationMPstate + 1
 
+        call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
+        converged = .true.
+        do co = 1, myNgrains
+          converged = converged .and. crystallite_stress(dt,co,ip,el)
+        enddo
 
-        if (.not. doneAndHappy(1)) then
-          call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-          converged = .true.
-          do co = 1, myNgrains
-            converged = converged .and. crystallite_stress(dt,co,ip,el)
-          enddo
-
-          if (.not. converged) then
-            doneAndHappy = [.true.,.false.]
-          else
-            doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
-            converged = all(doneAndHappy)
-          endif
+        if (converged) then
+          doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
+          converged = all(doneAndHappy)
+        else
+          doneAndHappy = [.true.,.false.]
         endif
 
       enddo convergenceLooping
@@ -450,7 +447,7 @@ subroutine homogenization_restartRead(fileHandle)
 
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
 
-    call HDF5_read(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+    call HDF5_read(groupHandle(2),homogState(ho)%state0,'omega') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
 
