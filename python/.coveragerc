@@ -1,4 +1,2 @@
 [run]
-omit = tests/*
-       damask/_asciitable.py
-       damask/_test.py
+source = damask
