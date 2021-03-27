@@ -1,0 +1,11 @@
+adiabatic:
+  rho: 1
+  thermal:
+    c_p: 1
+    K_11: 0
+    K_22: 0
+    K_33: 0
+    source:
+      - type: externalheat
+        f_T: [1, 1, 0, 0]
+        t_n: [0, 500, 500.001, 1000]
