@@ -71,7 +71,7 @@ class Rotation:
 
     def __repr__(self):
         """Represent rotation as unit quaternion(s)."""
-        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape)+chr(10)}'\
+        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
 
