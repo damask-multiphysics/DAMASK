@@ -29,16 +29,26 @@ class Rotation:
 
     Examples
     --------
-    Rotate vector "a" (defined in coordinate system "A") to
-    coordinates "b" expressed in system "B":
+    Rotate vector 'a' (defined in coordinate system 'A') to
+    coordinates 'b' expressed in system 'B':
 
-    - b = Q @ a
-    - b = np.dot(Q.as_matrix(),a)
+    >>> import damask
+    >>> import numpy as np
+    >>> Q = damask.Rotation.from_random()
+    >>> a = np.random.rand(3)
+    >>> b = R @ a
+    >>> np.allclose(np.dot(Q.as_matrix(),a),b)
+    True
 
     Compound rotations R1 (first) and R2 (second):
 
-    - R = R2 * R1
-    - R = Rotation.from_matrix(np.dot(R2.as_matrix(),R1.as_matrix())
+    >>> import damask
+    >>> import numpy as np
+    >>> R1 = damask.Rotation.from_random()
+    >>> R2 = damask.Rotation.from_random()
+    >>> R = R2 * R1
+    >>> np.allclose(R.as_matrix(), np.dot(R2.as_matrix(),R1.as_matrix()))
+    True
 
     References
     ----------

@@ -126,13 +126,14 @@ class Table:
         Load from ang file.
 
         A valid TSL ang file needs to contains the following columns:
-        * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
-        * Spatial position in meters, 2 floats, label 'pos'.
-        * Image quality, 1 float, label 'IQ'.
-        * Confidence index, 1 float, label 'CI'.
-        * Phase ID, 1 int, label 'ID'.
-        * SEM signal, 1 float, label 'intensity'.
-        * Fit, 1 float, label 'fit'.
+
+        - Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
+        - Spatial position in meters, 2 floats, label 'pos'.
+        - Image quality, 1 float, label 'IQ'.
+        - Confidence index, 1 float, label 'CI'.
+        - Phase ID, 1 int, label 'ID'.
+        - SEM signal, 1 float, label 'intensity'.
+        - Fit, 1 float, label 'fit'.
 
         Parameters
         ----------

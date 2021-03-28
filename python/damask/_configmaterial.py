@@ -18,21 +18,19 @@ class ConfigMaterial(Config):
     stored as 'material.yaml'.
     """
 
-    _defaults = {'material': [],
-                 'homogenization': {},
-                 'phase': {}}
 
-    def __init__(self,d=_defaults):
+    def __init__(self,d=None):
         """
         New material configuration.
 
         Parameters
         ----------
         d : dictionary, optional
-            Initial content. Defaults to empty material, homogenization, and phase entries.
+            Initial content. Defaults to None, in which case empty entries for
+            material, homogenization, and phase are created.
 
         """
-        super().__init__(d)
+        super().__init__({'material': [], 'homogenization': {}, 'phase': {}} if d is None else d)
 
 
     def save(self,fname='material.yaml',**kwargs):
