@@ -2,7 +2,7 @@
 homogenization:
   SX:
     N_constituents: 1
-    mechanics: {type: pass}
+    mechanical: {type: pass}
 
 material:
   - homogenization: SX
@@ -109,10 +109,10 @@ material:
 phase:
   Aluminum:
     lattice: cF
-    mechanics:
+    mechanical:
       output: [F, P, F_e, F_p, L_p, O]
-      elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
-      plasticity:
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      plastic:
         N_sl: [12]
         a_sl: 2.25
         atol_xi: 1.0

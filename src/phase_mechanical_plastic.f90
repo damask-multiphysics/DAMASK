@@ -449,8 +449,8 @@ function plastic_active(plastic_label)  result(active_plastic)
   allocate(active_plastic(phases%length), source = .false. )
   do ph = 1, phases%length
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl    => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl    => mech%get('plastic')
     if(pl%get_asString('type') == plastic_label) active_plastic(ph) = .true.
   enddo
 

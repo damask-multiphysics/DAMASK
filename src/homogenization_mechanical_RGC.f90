@@ -138,7 +138,7 @@ module subroutine mechanical_RGC_init(num_homogMech)
   do ho = 1, size(homogenization_type)
     if (homogenization_type(ho) /= HOMOGENIZATION_RGC_ID) cycle
     homog => material_homogenization%get(ho)
-    homogMech => homog%get('mechanics')
+    homogMech => homog%get('mechanical')
     associate(prm => param(ho), &
               stt => state(ho), &
               st0 => state0(ho), &

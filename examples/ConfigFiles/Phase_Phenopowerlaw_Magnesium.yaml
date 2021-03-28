@@ -2,10 +2,10 @@
 Magnesium:
   lattice: hP
   c/a: 1.62350
-  mechanics:
+  mechanical:
     output: [F, P, F_e, F_p, L_p, O]
-    elasticity: {C_11: 59.3e9, C_12: 25.7e9, C_13: 21.4e9, C_33: 61.5e9, C_44: 16.4e9, type: hooke}
-    plasticity:
+    elastic: {C_11: 59.3e9, C_12: 25.7e9, C_13: 21.4e9, C_33: 61.5e9, C_44: 16.4e9, type: hooke}
+    plastic:
       N_sl: [3, 3, 0, 6, 0, 6]
       N_tw: [6, 0, 0, 6]
       h_0_tw_tw: 50.0e6
@@ -20,9 +20,6 @@ Magnesium:
       xi_0_sl: [10.0e6, 55.0e6, 0, 60.0e6, 0.0, 60.0e6]
       xi_inf_sl: [40.0e6, 135.0e6, 0, 150.0e6, 0.0, 150.0e6]
       xi_0_tw: [40e6, 0.0, 0.0, 60.0e6]
-####################################################
-# open for discussion
-####################################################
       a_sl: 2.25
       dot_gamma_0_sl: 0.001
       dot_gamma_0_tw: 0.001

@@ -104,7 +104,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print*, 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
-  print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
+  print*, 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
 
   phases => config_material%get('phase')
@@ -120,8 +120,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
