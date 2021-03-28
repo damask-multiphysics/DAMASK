@@ -16,8 +16,8 @@ class ConfigMaterial(Config):
     A complete material configuration file has the entries 'material',
     'phase', and 'homogenization'. For use in DAMASK, it needs to be
     stored as 'material.yaml'.
+    
     """
-
 
     def __init__(self,d=None):
         """
