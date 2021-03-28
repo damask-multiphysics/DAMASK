@@ -3,11 +3,8 @@ import sys
 import shutil
 import logging
 import logging.config
-from collections.abc import Iterable
 from optparse import OptionParser
 from pathlib import Path
-
-import numpy as np
 
 import damask
 
