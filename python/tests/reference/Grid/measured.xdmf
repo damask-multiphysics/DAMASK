@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd"[]>
+<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">
+ <Domain>
+  <!-- *************** START OF Small IN100 *************** -->
+  <Grid Name="Small IN100" GridType="Uniform">
+    <Topology TopologyType="3DCoRectMesh" Dimensions="2 102 202 "></Topology>
+    <Geometry Type="ORIGIN_DXDYDZ">
+      <!-- Origin  Z, Y, X -->
+      <DataItem Format="XML" Dimensions="3">0 35 -294.7</DataItem>
+      <!-- DxDyDz (Spacing/Resolution) Z, Y, X -->
+      <DataItem Format="XML" Dimensions="3">0.35 0.35 0.35</DataItem>
+    </Geometry>
+    <Attribute Name="Confidence Index" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/Confidence Index
+      </DataItem>
+    </Attribute>
+    <Attribute Name="EulerAngles" AttributeType="Vector" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 3" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/EulerAngles
+      </DataItem>
+    </Attribute>
+    <Attribute Name="FeatureIds" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Int" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/FeatureIds
+      </DataItem>
+    </Attribute>
+    <Attribute Name="Fit" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/Fit
+      </DataItem>
+    </Attribute>
+    <Attribute Name="IPFColor" AttributeType="Vector" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 3" NumberType="UChar" Precision="1" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/IPFColor
+      </DataItem>
+    </Attribute>
+    <Attribute Name="Image Quality" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/Image Quality
+      </DataItem>
+    </Attribute>
+    <Attribute Name="Mask" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="uchar" Precision="1" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/Mask
+      </DataItem>
+    </Attribute>
+    <Attribute Name="ParentIds" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Int" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/ParentIds
+      </DataItem>
+    </Attribute>
+    <Attribute Name="Phases" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Int" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/Phases
+      </DataItem>
+    </Attribute>
+    <Attribute Name="SEM Signal" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/SEM Signal
+      </DataItem>
+    </Attribute>
+    <Attribute Name="X Position" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/X Position
+      </DataItem>
+    </Attribute>
+    <Attribute Name="Y Position" AttributeType="Scalar" Center="Cell">
+      <DataItem Format="HDF" Dimensions="1 101 201 1" NumberType="Float" Precision="4" >
+        measured.dream3d:/DataContainers/Small IN100/EBSD Scan Data/Y Position
+      </DataItem>
+    </Attribute>
+  </Grid>
+  <!-- *************** END OF Small IN100 *************** -->
+ </Domain>
+</Xdmf>

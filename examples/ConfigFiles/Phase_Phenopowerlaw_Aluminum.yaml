@@ -1,9 +1,9 @@
 Aluminum:
   lattice: cF
-  mechanics:
+  mechanical:
     output: [F, P, F_e, F_p, L_p, O]
-    elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
-    plasticity:
+    elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+    plastic:
       N_sl: [12]
       a_sl: 2.25
       dot_gamma_0_sl: 0.001

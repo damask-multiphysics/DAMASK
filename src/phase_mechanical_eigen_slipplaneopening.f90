@@ -61,8 +61,8 @@ module function kinematics_slipplane_opening_init() result(myKinematics)
   do p = 1, phases%length
     if(myKinematics(p)) then
       phase => phases%get(p)
-      mech  => phase%get('mechanics')
-      pl    => mech%get('plasticity')
+      mech  => phase%get('mechanical')
+      pl    => mech%get('plastic')
 
       kinematics => phase%get('damage')
 

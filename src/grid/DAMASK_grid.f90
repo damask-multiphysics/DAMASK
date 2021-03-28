@@ -104,7 +104,6 @@ program DAMASK_grid
     load_step, &
     solver, &
     initial_conditions, &
-    ic_thermal, &
     thermal, &
     step_bc, &
     step_mech, &
@@ -118,7 +117,7 @@ program DAMASK_grid
   call CPFEM_initAll
   print'(/,a)',   ' <<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 
@@ -310,7 +309,7 @@ program DAMASK_grid
 
       case(FIELD_THERMAL_ID)
         initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
-        thermal => initial_conditions%get('thermal',defaultVal=emptyDict)
+        thermal            => initial_conditions%get('thermal',defaultVal=emptyDict)
         call grid_thermal_spectral_init(thermal%get_asFloat('T',defaultVal = T_0))
 
       case(FIELD_DAMAGE_ID)

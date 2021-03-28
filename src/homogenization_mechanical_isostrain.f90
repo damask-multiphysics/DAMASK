@@ -46,7 +46,7 @@ module subroutine mechanical_isostrain_init
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
     homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanics')
+    homogMech => homog%get('mechanical')
     associate(prm => param(h))
 
     prm%N_constituents = homogenization_Nconstituents(h)

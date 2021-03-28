@@ -276,8 +276,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
-      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
+      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,me) = homogState(ho)%state0(:,me)
+      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,me) = damageState_h(ho)%state0(:,me)
       call damage_partition(ce)
 
       doneAndHappy = [.false.,.true.]
@@ -287,20 +287,17 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
                                     .and. NiterationMPstate < num%nMPstate)
         NiterationMPstate = NiterationMPstate + 1
 
+        call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
+        converged = .true.
+        do co = 1, myNgrains
+          converged = converged .and. crystallite_stress(dt,co,ip,el)
+        enddo
 
-        if (.not. doneAndHappy(1)) then
-          call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-          converged = .true.
-          do co = 1, myNgrains
-            converged = converged .and. crystallite_stress(dt,co,ip,el)
-          enddo
-
-          if (.not. converged) then
-            doneAndHappy = [.true.,.false.]
-          else
-            doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
-            converged = all(doneAndHappy)
-          endif
+        if (converged) then
+          doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
+          converged = all(doneAndHappy)
+        else
+          doneAndHappy = [.true.,.false.]
         endif
 
       enddo convergenceLooping
@@ -370,17 +367,17 @@ subroutine homogenization_results
 
     call mechanical_results(group_base,ho)
 
-    group = trim(group_base)//'/damage'
-    call results_closeGroup(results_addGroup(group))
     select case(damage_type(ho))
       case(DAMAGE_NONLOCAL_ID)
+        group = trim(group_base)//'/damage'
+        call results_closeGroup(results_addGroup(group))
         call damage_nonlocal_results(ho,group)
     end select
 
-    group = trim(group_base)//'/thermal'
-    call results_closeGroup(results_addGroup(group))
     select case(thermal_type(ho))
       case(THERMAL_CONDUCTION_ID)
+        group = trim(group_base)//'/thermal'
+        call results_closeGroup(results_addGroup(group))
         call thermal_conduction_results(ho,group)
     end select
 
@@ -450,7 +447,7 @@ subroutine homogenization_restartRead(fileHandle)
 
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
 
-    call HDF5_read(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+    call HDF5_read(groupHandle(2),homogState(ho)%state0,'omega') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -545,7 +542,7 @@ subroutine material_parseHomogenization
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanics')
+    homogMech => homog%get('mechanical')
     select case (homogMech%get_asString('type'))
       case('pass')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID

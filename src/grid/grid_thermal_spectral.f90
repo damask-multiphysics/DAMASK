@@ -75,7 +75,7 @@ subroutine grid_thermal_spectral_init(T_0)
 
   print'(/,a)', ' <<<+-  grid_thermal_spectral init  -+>>>'
 
-  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !-------------------------------------------------------------------------------------------------

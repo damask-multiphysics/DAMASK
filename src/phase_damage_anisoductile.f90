@@ -53,8 +53,8 @@ module function anisoductile_init() result(mySources)
   do p = 1, phases%length
     if(mySources(p)) then
       phase => phases%get(p)
-      mech  => phase%get('mechanics')
-      pl    => mech%get('plasticity')
+      mech  => phase%get('mechanical')
+      pl    => mech%get('plastic')
       sources => phase%get('damage')
 
 

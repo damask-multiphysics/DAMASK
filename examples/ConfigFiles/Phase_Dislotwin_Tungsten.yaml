@@ -1,8 +1,8 @@
 Tungsten:
   lattice: cI
-  mechanics:
-    elasticity: {type: hooke, C_11: 523.0e9, C_12: 202.0e9, C_44: 161.0e9} # Marinica et al. Journal of Physics: Condensed Matter(2013)
-    plasticity:
+  mechanical:
+    elastic: {type: hooke, C_11: 523.0e9, C_12: 202.0e9, C_44: 161.0e9} # Marinica et al. Journal of Physics: Condensed Matter(2013)
+    plastic:
       type: dislotwin
       D: 2.0e-5              # Average grain size / m
       N_sl: [12]

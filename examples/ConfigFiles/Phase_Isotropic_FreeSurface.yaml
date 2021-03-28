@@ -1,9 +1,9 @@
-Air:
+FreeSurface:
   lattice: aP
-  mechanics:
+  mechanical:
     output: [F, P, F_e, F_p, L_p]
-    elasticity: {type: hooke, C_11: 1e8, C_12: 1e6}
-    plasticity:
+    elastic: {type: hooke, C_11: 1e8, C_12: 1e6}
+    plastic:
       type: isotropic
       output: [xi]
       xi_0: 0.3e6

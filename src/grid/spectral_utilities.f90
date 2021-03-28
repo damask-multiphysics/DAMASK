@@ -176,16 +176,16 @@ subroutine spectral_utilities_init
 
   print'(/,a)', ' <<<+-  spectral_utilities init  -+>>>'
 
-  print*, 'Diehl, Diploma Thesis TU München, 2010'
+  print*, 'M. Diehl, Diploma Thesis TU München, 2010'
   print*, 'https://doi.org/10.13140/2.1.3234.3840'//IO_EOL
 
-  print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print*, 'P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
   print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print*, 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'//IO_EOL
 
-  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !--------------------------------------------------------------------------------------------------

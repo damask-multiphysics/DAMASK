@@ -27,6 +27,4 @@ module function kinematics_cleavage_opening_init() result(myKinematics)
 end function kinematics_cleavage_opening_init
 
 
-
-
 end submodule cleavageopening

@@ -2,15 +2,15 @@
 homogenization:
   SX:
     N_constituents: 1
-    mechanics: {type: none}
+    mechanical: {type: pass}
 
 phase:
   pheno_fcc:
     lattice: cF
-    mechanics:
+    mechanical:
       output: [F, P, F_e, F_p, L_p, O]
-      elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
-      plasticity:
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      plastic:
         N_sl: [12]
         a_sl: 2.25
         atol_xi: 1.0
@@ -24,10 +24,10 @@ phase:
         xi_inf_sl: [63e6]
   pheno_bcc:
     lattice: cI
-    mechanics:
+    mechanical:
       output: [F, P, F_e, F_p, L_p, O]
-      elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
-      plasticity:
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      plastic:
         N_sl: [12]
         a_sl: 2.25
         atol_xi: 1.0
@@ -42,62 +42,62 @@ phase:
 
 material:
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.8229200444892315, 0.5284940239127993, -0.11958598847729246, 0.17086795611292308]
         phase: pheno_fcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.029934934533052786, -0.0463822071939717, 0.9983440440417412, 0.01617900728410769]
         phase: pheno_fcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.5285808688806949, 0.7326575088838098, 0.4051997815944012, 0.1401013087924221]
         phase: pheno_fcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.1839974517790312, 0.49550065903084944, -0.1541415483910751, -0.8347840545305227]
         phase: pheno_fcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.8055693100147384, -0.22778497057116814, -0.028331746016454287, 0.5462320075864553]
         phase: pheno_fcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.8025842700117737, -0.33640019337884963, -0.3847408071640489, 0.3076815085881779]
         phase: pheno_fcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.6048933483394416, 0.7565005822419409, -0.08545681892422426, -0.2334695661144201]
         phase: pheno_bcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.2012339360745425, -0.3580127491130033, -0.7798091137625135, 0.47247171400774884]
         phase: pheno_bcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.7949688202267222, 0.3623793306926909, -0.18836147613310203, -0.4485819321629098]
         phase: pheno_bcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.19733162113429173, -0.06559103894055797, -0.40230149937129567, 0.8915781236183501]
         phase: pheno_bcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.8659916384140512, -0.2761459420825848, 0.38479354764225004, -0.1604238964779258]
         phase: pheno_bcc
     homogenization: SX
   - constituents:
-      - fraction: 1.0
+      - v: 1.0
         O: [0.5951846978175659, 0.4476701545571293, -0.6038886363266418, -0.2840160613735736]
         phase: pheno_bcc
     homogenization: SX

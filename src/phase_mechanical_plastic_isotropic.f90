@@ -71,7 +71,7 @@ module function plastic_isotropic_init() result(myPlasticity)
   print'(/,a)', ' <<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
   print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  print*, 'Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
+  print*, 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print*, 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
   phases => config_material%get('phase')
@@ -85,8 +85,8 @@ module function plastic_isotropic_init() result(myPlasticity)
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)

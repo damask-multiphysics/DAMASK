@@ -150,13 +150,13 @@ module function plastic_dislotwin_init() result(myPlasticity)
   print'(/,a)', ' <<<+-  phase:mechanical:plastic:dislotwin init  -+>>>'
   print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  print*, 'Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
+  print*, 'A. Ma and F. Roters, Acta Materialia 52(12):3603–3612, 2004'
   print*, 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
 
-  print*, 'Roters et al., Computational Materials Science 39:91–95, 2007'
+  print*, 'F. Roters et al., Computational Materials Science 39:91–95, 2007'
   print*, 'https://doi.org/10.1016/j.commatsci.2006.04.014'//IO_EOL
 
-  print*, 'Wong et al., Acta Materialia 118:140–151, 2016'
+  print*, 'S.L. Wong et al., Acta Materialia 118:140–151, 2016'
   print*, 'https://doi.org/10.1016/j.actamat.2016.07.032'
 
 
@@ -173,8 +173,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
