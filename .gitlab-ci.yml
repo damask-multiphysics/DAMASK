@@ -97,7 +97,7 @@ processing:
   script:
     - cd $DAMASKROOT/python
     - pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
-    - coverage report --fail-under=85
+    - coverage report --fail-under=90
   except:
     - master
     - release

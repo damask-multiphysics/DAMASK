@@ -85,7 +85,6 @@ class Test:
   def execute(self):
     """Run all variants and report first failure."""
     if not self.options.keep:
-      if not self.feasible(): return -1
       self.clean()
       self.prepareAll()
 
@@ -113,10 +112,6 @@ class Test:
           logging.critical(f'exception during variant execution: "{e}"')
           return variant+1                                                                            # return culprit
     return 0
-
-  def feasible(self):
-    """Check whether test is possible or not (e.g. no license available)."""
-    return True
 
   def clean(self):
     """Delete directory tree containing current results."""
@@ -172,11 +167,6 @@ class Test:
     return os.path.normpath(os.path.join(self.dirBase,'current/'))
 
 
-  def dirProof(self):
-    """Directory containing human readable proof of correctness for the test."""
-    return os.path.normpath(os.path.join(self.dirBase,'proof/'))
-
-
   def fileInRoot(self,dir,file):
     """Path to a file in the root directory of DAMASK."""
     return str(Path(os.environ['DAMASK_ROOT'])/dir/file)
@@ -190,11 +180,6 @@ class Test:
   def fileInCurrent(self,file):
     """Path to a file in the current results directory for the test."""
     return os.path.join(self.dirCurrent(),file)
-
-
-  def fileInProof(self,file):
-    """Path to a file in the proof directory for the test."""
-    return os.path.join(self.dirProof(),file)
 
 
   def copy(self, mapA, mapB,
@@ -249,17 +234,6 @@ class Test:
         raise FileNotFoundError
 
 
-  def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
-
-    if len(targetfiles) == 0: targetfiles = sourcefiles
-    for i,f in enumerate(sourcefiles):
-      try:
-        shutil.copy2(self.fileInProof(f),self.fileInCurrent(targetfiles[i]))
-      except FileNotFoundError:
-        logging.critical(f'Proof2Current: Unable to copy file "{f}"')
-        raise FileNotFoundError
-
-
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
 
     for i,f in enumerate(sourcefiles):
@@ -279,158 +253,6 @@ class Test:
     logging.debug(out)
 
     return out,error
-
-
-  def compare_Table(self,headings0,file0,
-                         headings1,file1,
-                         normHeadings='',normType=None,
-                         absoluteTolerance=False,perLine=False,skipLines=[]):
-
-    import numpy as np
-    logging.info('\n '.join(['comparing ASCII Tables',file0,file1]))
-    if normHeadings == '': normHeadings = headings0
-
-# check if comparison is possible and determine length of columns
-    if len(headings0) == len(headings1) == len(normHeadings):
-      dataLength = len(headings0)
-      length       = [1   for i in range(dataLength)]
-      shape        = [[]  for i in range(dataLength)]
-      data         = [[]  for i in range(dataLength)]
-      maxError     = [0.0 for i in range(dataLength)]
-      absTol       = [absoluteTolerance for i in range(dataLength)]
-      column       = [[1  for i in range(dataLength)] for j in range(2)]
-
-      norm         = [[]  for i in range(dataLength)]
-      normLength   = [1   for i in range(dataLength)]
-      normShape    = [[]  for i in range(dataLength)]
-      normColumn   = [1   for i in range(dataLength)]
-
-      for i in range(dataLength):
-        if headings0[i]['shape'] != headings1[i]['shape']:
-          raise Exception(f"shape mismatch between {headings0[i]['label']} and {headings1[i]['label']}")
-        shape[i] = headings0[i]['shape']
-        for j in range(np.shape(shape[i])[0]):
-          length[i] *= shape[i][j]
-        normShape[i] = normHeadings[i]['shape']
-        for j in range(np.shape(normShape[i])[0]):
-          normLength[i] *= normShape[i][j]
-    else:
-      raise Exception(f'trying to compare {len(headings0)} with {len(headings1)} normed by {len(normHeadings)} data sets')
-
-    table0 = damask.ASCIItable(name=file0,readonly=True)
-    table0.head_read()
-    table1 = damask.ASCIItable(name=file1,readonly=True)
-    table1.head_read()
-
-    for i in range(dataLength):
-      key0    = ('1_' if     length[i]>1 else '') +    headings0[i]['label']
-      key1    = ('1_' if     length[i]>1 else '') +    headings1[i]['label']
-      normKey = ('1_' if normLength[i]>1 else '') + normHeadings[i]['label']
-      if key0 not in table0.labels(raw = True):
-        raise Exception(f'column "{key0}" not found in first table...')
-      elif key1 not in table1.labels(raw = True):
-        raise Exception(f'column "{key1}" not found in second table...')
-      elif normKey not in table0.labels(raw = True):
-        raise Exception(f'column "{normKey}" not found in first table...')
-      else:
-        column[0][i]  = table0.label_index(key0)
-        column[1][i]  = table1.label_index(key1)
-        normColumn[i] = table0.label_index(normKey)
-
-    line0 = 0
-    while table0.data_read():                                                  # read next data line of ASCII table
-      if line0 not in skipLines:
-        for i in range(dataLength):
-          myData = np.array(list(map(float,table0.data[column[0][i]:\
-                                                       column[0][i]+length[i]])),'d')
-          normData = np.array(list(map(float,table0.data[normColumn[i]:\
-                                                         normColumn[i]+normLength[i]])),'d')
-          data[i] = np.append(data[i],np.reshape(myData,shape[i]))
-          if normType == 'pInf':
-            norm[i] = np.append(norm[i],np.max(np.abs(normData)))
-          else:
-            norm[i] = np.append(norm[i],np.linalg.norm(np.reshape(normData,normShape[i]),normType))
-      line0 += 1
-
-    for i in range(dataLength):
-      if not perLine: norm[i] = [np.max(norm[i]) for j in range(line0-len(skipLines))]
-      data[i] = np.reshape(data[i],[line0-len(skipLines),length[i]])
-      if any(norm[i]) == 0.0 or absTol[i]:
-        norm[i] = [1.0 for j in range(line0-len(skipLines))]
-        absTol[i] = True
-        logging.warning(f'''{"At least one" if perLine else "Maximum"} norm of
-                            "{headings0[i]['label']}" in first table is 0.0, using absolute tolerance''')
-
-    line1 = 0
-    while table1.data_read():                                                  # read next data line of ASCII table
-      if line1 not in skipLines:
-        for i in range(dataLength):
-          myData = np.array(list(map(float,table1.data[column[1][i]:\
-                                                       column[1][i]+length[i]])),'d')
-          maxError[i] = max(maxError[i],np.linalg.norm(np.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/
-                                                                                   norm[i][line1-len(skipLines)])
-      line1 +=1
-
-    if (line0 != line1): raise Exception(f'found {line0} lines in first table but {line1} in second table')
-
-    logging.info(' ********')
-    for i in range(dataLength):
-      logging.info(f''' * maximum {'absolute' if absTol[i] else 'relative'} error {maxError[i]}
-                       between {headings0[i]['label']} and {headings1[i]['label']}''')
-    logging.info(' ********')
-    return maxError
-
-
-  def compare_TablesStatistically(self,
-                                  files = [None,None],                                      # list of file names
-                                  columns = [None],                                         # list of list of column labels (per file)
-                                  meanTol = 1.0e-4,
-                                  stdTol = 1.0e-6,
-                                  preFilter = 1.0e-9):
-    """
-    Calculate statistics of tables.
-
-    threshold can be used to ignore small values (a negative number disables this feature)
-    """
-    if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
-      files = [str(files)]
-
-    tables = [damask.Table.load(filename) for filename in files]
-    for table in tables:
-      table._label_discrete()
-
-    columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
-    columns = columns[:len(files)]                                             # truncate to same length as files
-
-    for i,column in enumerate(columns):
-      if column is None: columns[i] = list(tables[i].data.columns)             # if no column is given, read all
-
-    logging.info('comparing ASCIItables statistically')
-    for i in range(len(columns)):
-      columns[i] = columns[0]  if not columns[i] else \
-                 ([columns[i]] if not (isinstance(columns[i], Iterable) and not isinstance(columns[i], str)) else \
-                   columns[i]
-                 )
-      logging.info(files[i]+':'+','.join(columns[i]))
-
-    if len(files) < 2: return True                                             # single table is always close to itself...
-
-    data = []
-    for table,labels in zip(tables,columns):
-      table._label_uniform()
-      data.append(np.hstack(list(table.get(label) for label in labels)))
-
-
-    for i in range(1,len(data)):
-      delta = data[i]-data[i-1]
-      normBy = (np.abs(data[i]) + np.abs(data[i-1]))*0.5
-      normedDelta = np.where(normBy>preFilter,delta/normBy,0.0)
-      mean = np.amax(np.abs(np.mean(normedDelta,0)))
-      std  = np.amax(np.std(normedDelta,0))
-      logging.info(f'mean: {mean:f}')
-      logging.info(f'std:  {std:f}')
-
-    return (mean < meanTol) & (std < stdTol)
 
 
   def report_Success(self,culprit):
