@@ -133,7 +133,7 @@ module subroutine damage_init
 
   integer :: &
     ph, &                                                                                           !< counter in phase loop
-    Nconstituents
+    Nmembers
   class(tNode), pointer :: &
    phases, &
    phase, &
@@ -151,10 +151,10 @@ module subroutine damage_init
 
   do ph = 1,phases%length
 
-    Nconstituents = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseAt2 == ph)
 
-    allocate(current(ph)%phi(Nconstituents),source=1.0_pReal)
-    allocate(current(ph)%d_phi_d_dot_phi(Nconstituents),source=0.0_pReal)
+    allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
+    allocate(current(ph)%d_phi_d_dot_phi(Nmembers),source=0.0_pReal)
 
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
@@ -341,21 +341,21 @@ module subroutine damage_results(group,ph)
   sourceLoop: do so = 1, phase_Nsources(ph)
 
   if (phase_source(ph) /= DAMAGE_UNDEFINED_ID) &
-    call results_closeGroup(results_addGroup(group//'sources/')) ! should be 'damage'
+    call results_closeGroup(results_addGroup(group//'damage'))
 
     sourceType: select case (phase_source(ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call isobrittle_results(ph,group//'sources/')
+        call isobrittle_results(ph,group//'damage/')
 
       case (DAMAGE_ISODUCTILE_ID) sourceType
-        call isoductile_results(ph,group//'sources/')
+        call isoductile_results(ph,group//'damage/')
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_results(ph,group//'sources/')
+        call anisobrittle_results(ph,group//'damage/')
 
       case (DAMAGE_ANISODUCTILE_ID) sourceType
-        call anisoductile_results(ph,group//'sources/')
+        call anisoductile_results(ph,group//'damage/')
 
     end select sourceType
 

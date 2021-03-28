@@ -105,7 +105,7 @@ subroutine rotations_init
 
   print'(/,a)', ' <<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
+  print*, 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
   print*, 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
   call selfTest

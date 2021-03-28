@@ -991,7 +991,6 @@ function output_asStrings(self)  result(output)                   !ToDo: SR: Rem
     output(o) = output_list%get_asString(o)
   enddo
 
-
 end function output_asStrings
 
 
@@ -1016,7 +1015,6 @@ function tNode_get_byKey_asIndex(self,key)  result(keyIndex)
   enddo
 
   if (item%key /= key) call IO_error(140,ext_msg=key)
-
 
 end function tNode_get_byKey_asIndex
 

@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 
 from damask import Config
+from damask import Rotation
+from damask import Orientation
 
 class TestConfig:
 
@@ -23,8 +25,17 @@ class TestConfig:
             assert Config.load(f) == config
 
     def test_add_remove(self):
+        dummy = {'hello':'world','foo':'bar'}
         config = Config()
-        assert config.add({'hello':'world'}).delete('hello') == config
+        config |= dummy
+        assert config == Config() | dummy
+        config = config.delete(dummy)
+        assert config == Config()
+        assert (config |        dummy ).delete(        'hello'            ) == config | {'foo':'bar'}
+        assert (config |        dummy ).delete([       'hello',  'foo'   ]) == config
+        assert (config | Config(dummy)).delete({       'hello':1,'foo':2 }) == config
+        assert (config | Config(dummy)).delete(Config({'hello':1        })) == config | {'foo':'bar'}
+
 
     def test_repr(self,tmp_path):
         config = Config()
@@ -42,3 +53,7 @@ class TestConfig:
 
     def test_abstract_is_complete(self):
         assert Config().is_complete is None
+    
+    @pytest.mark.parametrize('data',[Rotation.from_random(),Orientation.from_random()])
+    def test_rotation_orientation(self,data):
+        assert str(Config(a=data)) == str(Config(a=data.as_quaternion()))

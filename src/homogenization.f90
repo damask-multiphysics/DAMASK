@@ -35,15 +35,11 @@ module homogenization
     homogState, &
     damageState_h
 
-
-  real(pReal), dimension(:), allocatable, public, protected :: &
-    thermal_initialT
-
-  integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable, public, protected :: &
+  integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable :: &
     thermal_type                                                                                    !< thermal transport model
-  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
+  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable :: &
     damage_type                                                                                     !< nonlocal damage model
-  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
+  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
     homogenization_type                                                                             !< type of each homogenization
 
   type, private :: tNumerics_damage
@@ -95,7 +91,7 @@ module homogenization
       real(pReal), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
-        ce                                                                                        
+        ce
     end subroutine mechanical_partition
 
     module subroutine thermal_partition(ce)
@@ -133,10 +129,8 @@ module homogenization
 
 
     module function thermal_conduction_getConductivity(ce) result(K)
-
       integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
-
     end function thermal_conduction_getConductivity
 
     module function thermal_conduction_getSpecificHeat(ce) result(c_P)
@@ -171,13 +165,12 @@ module homogenization
       real(pReal), intent(out) :: Tdot
     end subroutine thermal_conduction_getSource
 
-   module function damage_nonlocal_getMobility(ce) result(M)
-    integer, intent(in) :: ce
-    real(pReal) :: M
+    module function damage_nonlocal_getMobility(ce) result(M)
+      integer, intent(in) :: ce
+      real(pReal) :: M
     end function damage_nonlocal_getMobility
 
     module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ce)
-
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
@@ -185,21 +178,17 @@ module homogenization
         phiDot, dPhiDot_dPhi
     end subroutine damage_nonlocal_getSourceAndItsTangent
 
-
     module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
-
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
-
     end subroutine damage_nonlocal_putNonLocalDamage
 
     module subroutine damage_nonlocal_results(ho,group)
-
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-
     end subroutine damage_nonlocal_results
+
   end interface
 
   public ::  &
@@ -242,21 +231,18 @@ subroutine homogenization_init()
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h   (size(material_name_homogenization)))
-  call material_parseHomogenization
-
+  call material_parseHomogenization()
 
   num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
-  num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
-  if (num%nMPstate < 1)                   call IO_error(301,ext_msg='nMPstate')
-
+  num%nMPstate  = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
+  if (num%nMPstate < 1) call IO_error(301,ext_msg='nMPstate')
 
   call mechanical_init(num_homog)
   call thermal_init()
   call damage_init()
-
-  call damage_nonlocal_init
+  call damage_nonlocal_init()
 
 
 end subroutine homogenization_init
@@ -290,8 +276,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%State0(:,me)
-      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%State0(:,me)
+      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,me) = homogState(ho)%state0(:,me)
+      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,me) = damageState_h(ho)%state0(:,me)
       call damage_partition(ce)
 
       doneAndHappy = [.false.,.true.]
@@ -301,20 +287,17 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
                                     .and. NiterationMPstate < num%nMPstate)
         NiterationMPstate = NiterationMPstate + 1
 
+        call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
+        converged = .true.
+        do co = 1, myNgrains
+          converged = converged .and. crystallite_stress(dt,co,ip,el)
+        enddo
 
-        if (.not. doneAndHappy(1)) then
-          call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-          converged = .true.
-          do co = 1, myNgrains
-            converged = converged .and. crystallite_stress(dt,co,ip,el)
-          enddo
-
-          if (.not. converged) then
-            doneAndHappy = [.true.,.false.]
-          else
-            doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
-            converged = all(doneAndHappy)
-          endif
+        if (converged) then
+          doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
+          converged = all(doneAndHappy)
+        else
+          doneAndHappy = [.true.,.false.]
         endif
 
       enddo convergenceLooping
@@ -326,7 +309,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   enddo
   !$OMP END DO
 
-  if (.not. terminallyIll ) then
+  if (.not. terminallyIll) then
     !$OMP DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
@@ -340,9 +323,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
             terminallyIll = .true.                                                                  ! ...and kills all others
-         endif
-         call thermal_homogenize(ip,el)
+          endif
         enddo
+        call thermal_homogenize(ip,el)
       enddo
     enddo
     !$OMP END DO
@@ -384,17 +367,17 @@ subroutine homogenization_results
 
     call mechanical_results(group_base,ho)
 
-    group = trim(group_base)//'/damage'
-    call results_closeGroup(results_addGroup(group))
     select case(damage_type(ho))
       case(DAMAGE_NONLOCAL_ID)
+        group = trim(group_base)//'/damage'
+        call results_closeGroup(results_addGroup(group))
         call damage_nonlocal_results(ho,group)
     end select
 
-    group = trim(group_base)//'/thermal'
-    call results_closeGroup(results_addGroup(group))
     select case(thermal_type(ho))
       case(THERMAL_CONDUCTION_ID)
+        group = trim(group_base)//'/thermal'
+        call results_closeGroup(results_addGroup(group))
         call thermal_conduction_results(ho,group)
     end select
 
@@ -464,7 +447,7 @@ subroutine homogenization_restartRead(fileHandle)
 
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
 
-    call HDF5_read(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+    call HDF5_read(groupHandle(2),homogState(ho)%state0,'omega') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -553,14 +536,13 @@ subroutine material_parseHomogenization
 
   material_homogenization => config_material%get('homogenization')
 
-  allocate(homogenization_type(size(material_name_homogenization)),           source=HOMOGENIZATION_undefined_ID)
-  allocate(thermal_type(size(material_name_homogenization)),                  source=THERMAL_isothermal_ID)
-  allocate(damage_type (size(material_name_homogenization)),                  source=DAMAGE_none_ID)
-  allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
+  allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
+  allocate(thermal_type(size(material_name_homogenization)),        source=THERMAL_isothermal_ID)
+  allocate(damage_type (size(material_name_homogenization)),        source=DAMAGE_none_ID)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanics')
+    homogMech => homog%get('mechanical')
     select case (homogMech%get_asString('type'))
       case('pass')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID
@@ -572,34 +554,26 @@ subroutine material_parseHomogenization
         call IO_error(500,ext_msg=homogMech%get_asString('type'))
     end select
 
-
-    if(homog%contains('thermal')) then
+    if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
-        thermal_initialT(h) =  homogThermal%get_asFloat('T_0',defaultVal=300.0_pReal)
-
         select case (homogThermal%get_asString('type'))
-          case('isothermal')
-            thermal_type(h) = THERMAL_isothermal_ID
-          case('conduction')
+          case('pass')
             thermal_type(h) = THERMAL_conduction_ID
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))
         end select
     endif
 
-    if(homog%contains('damage')) then
+    if (homog%contains('damage')) then
       homogDamage => homog%get('damage')
         select case (homogDamage%get_asString('type'))
-          case('none')
-            damage_type(h) = DAMAGE_none_ID
-          case('nonlocal')
+          case('pass')
             damage_type(h) = DAMAGE_nonlocal_ID
           case default
             call IO_error(500,ext_msg=homogDamage%get_asString('type'))
         end select
     endif
   enddo
-
 
 end subroutine material_parseHomogenization
 

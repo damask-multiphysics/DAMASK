@@ -71,7 +71,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph, i, &
-    Nconstituents, &
+    Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
@@ -107,8 +107,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanics')
-    pl  => mech%get('plasticity')
+    mech  => phase%get('mechanical')
+    pl  => mech%get('plastic')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -223,20 +223,20 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nconstituents = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseAt2 == ph)
     sizeDotState = size(['xi_sl   ','gamma_sl']) * prm%sum_N_sl &
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
 
-    call phase_allocateState(plasticState(ph),Nconstituents,sizeState,sizeDotState,0)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%xi_slip => plasticState(ph)%state   (startIndex:endIndex,:)
-    stt%xi_slip =  spread(xi_0_sl, 2, Nconstituents)
+    stt%xi_slip =  spread(xi_0_sl, 2, Nmembers)
     dot%xi_slip => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
@@ -244,7 +244,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     stt%xi_twin => plasticState(ph)%state   (startIndex:endIndex,:)
-    stt%xi_twin =  spread(xi_0_tw, 2, Nconstituents)
+    stt%xi_twin =  spread(xi_0_tw, 2, Nmembers)
     dot%xi_twin => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
