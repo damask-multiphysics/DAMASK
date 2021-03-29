@@ -855,7 +855,7 @@ function tNode_get_byKey_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs
         list => node%asList()
         nodeAs1dFloat = list%as1dFloat()
       class default
-        call IO_error(706,ext_msg='Expected 1D list for key '//k)
+        call IO_error(706,ext_msg='Expected 1D Float array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dFloat = defaultVal
@@ -891,7 +891,7 @@ function tNode_get_byKey_as2dFloat(self,k,defaultVal) result(nodeAs2dFloat)
         rows => node%asList()
         nodeAs2dFloat = rows%as2dFloat()
       class default
-        call IO_error(706,ext_msg='Expected 2D list for key '//k)
+        call IO_error(706,ext_msg='Expected 2D Float array for key '//k)
     endselect
   elseif(present(defaultVal)) then
     nodeAs2dFloat = defaultVal
@@ -923,7 +923,7 @@ function tNode_get_byKey_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1d
         list => node%asList()
         nodeAs1dInt = list%as1dInt()
       class default
-        call IO_error(706,ext_msg='Expected list for key '//k)
+        call IO_error(706,ext_msg='Expected 1D Integer array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dInt = defaultVal
@@ -958,7 +958,7 @@ function tNode_get_byKey_as1dBool(self,k,defaultVal) result(nodeAs1dBool)
         list => node%asList()
         nodeAs1dBool = list%as1dBool()
       class default
-        call IO_error(706,ext_msg='Expected list for key '//k)
+        call IO_error(706,ext_msg='Expected 1D Boolean array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dBool = defaultVal
@@ -989,7 +989,7 @@ function tNode_get_byKey_as1dString(self,k,defaultVal) result(nodeAs1dString)
         list => node%asList()
         nodeAs1dString = list%as1dString()
       class default
-        call IO_error(706,ext_msg='Expected list for key '//k)
+        call IO_error(706,ext_msg='Expected 1D String array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dString = defaultVal
