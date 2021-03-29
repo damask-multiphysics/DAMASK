@@ -145,20 +145,20 @@ module subroutine mechanical_RGC_init(num_homogMech)
               dst => dependentState(ho))
 
 #if defined (__GFORTRAN__)
-    prm%output = output_asStrings(homogMech)
+    prm%output = output_as1dString(homogMech)
 #else
-    prm%output = homogMech%get_asStrings('output',defaultVal=emptyStringArray)
+    prm%output = homogMech%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    prm%N_constituents = homogMech%get_asInts('cluster_size',requiredSize=3)
+    prm%N_constituents = homogMech%get_as1dInt('cluster_size',requiredSize=3)
     if (homogenization_Nconstituents(ho) /= product(prm%N_constituents)) &
       call IO_error(211,ext_msg='N_constituents (mechanical_RGC)')
 
     prm%xi_alpha = homogMech%get_asFloat('xi_alpha')
     prm%c_alpha  = homogMech%get_asFloat('c_alpha')
 
-    prm%D_alpha  = homogMech%get_asFloats('D_alpha', requiredSize=3)
-    prm%a_g      = homogMech%get_asFloats('a_g',     requiredSize=3)
+    prm%D_alpha  = homogMech%get_as1dFloat('D_alpha', requiredSize=3)
+    prm%a_g      = homogMech%get_as1dFloat('a_g',     requiredSize=3)
 
     Nmaterialpoints = count(material_homogenizationAt == ho)
     nIntFaceTot = 3*(  (prm%N_constituents(1)-1)*prm%N_constituents(2)*prm%N_constituents(3) &

@@ -233,9 +233,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     phase_localPlasticity(ph) = .not. pl%contains('nonlocal')
 
 #if defined (__GFORTRAN__)
-    prm%output = output_asStrings(pl)
+    prm%output = output_as1dString(pl)
 #else
-    prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
     prm%atol_rho   = pl%get_asFloat('atol_rho',defaultVal=1.0e4_pReal)
@@ -244,14 +244,14 @@ module function plastic_nonlocal_init() result(myPlasticity)
     prm%mu = lattice_mu(ph)
     prm%nu = lattice_nu(ph)
 
-    ini%N_sl     = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+    ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%Schmid = lattice_SchmidMatrix_slip(ini%N_sl,phase%get_asString('lattice'),&
                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'cI') then
-        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
@@ -261,7 +261,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl, &
-                                                   pl%get_asFloats('h_sl_sl'), &
+                                                   pl%get_as1dFloat('h_sl_sl'), &
                                                    phase%get_asString('lattice'))
 
       prm%forestProjection_edge  = lattice_forestProjection_edge (ini%N_sl,phase%get_asString('lattice'),&
@@ -286,29 +286,29 @@ module function plastic_nonlocal_init() result(myPlasticity)
         enddo
       enddo
 
-      ini%rho_u_ed_pos_0  = pl%get_asFloats('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_ed_neg_0  = pl%get_asFloats('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_sc_pos_0  = pl%get_asFloats('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_sc_neg_0  = pl%get_asFloats('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rho_d_ed_0      = pl%get_asFloats('rho_d_ed_0',       requiredSize=size(ini%N_sl))
-      ini%rho_d_sc_0      = pl%get_asFloats('rho_d_sc_0',       requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_pos_0  = pl%get_as1dFloat('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_neg_0  = pl%get_as1dFloat('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_sc_pos_0  = pl%get_as1dFloat('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_sc_neg_0  = pl%get_as1dFloat('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
+      ini%rho_d_ed_0      = pl%get_as1dFloat('rho_d_ed_0',       requiredSize=size(ini%N_sl))
+      ini%rho_d_sc_0      = pl%get_as1dFloat('rho_d_sc_0',       requiredSize=size(ini%N_sl))
 
-      prm%i_sl            = pl%get_asFloats('i_sl',             requiredSize=size(ini%N_sl))
-      prm%b_sl            = pl%get_asFloats('b_sl',             requiredSize=size(ini%N_sl))
+      prm%i_sl            = pl%get_as1dFloat('i_sl',             requiredSize=size(ini%N_sl))
+      prm%b_sl            = pl%get_as1dFloat('b_sl',             requiredSize=size(ini%N_sl))
 
       prm%i_sl = math_expand(prm%i_sl,ini%N_sl)
       prm%b_sl = math_expand(prm%b_sl,ini%N_sl)
 
-      prm%d_ed            = pl%get_asFloats('d_ed',             requiredSize=size(ini%N_sl))
-      prm%d_sc            = pl%get_asFloats('d_sc',             requiredSize=size(ini%N_sl))
+      prm%d_ed            = pl%get_as1dFloat('d_ed',             requiredSize=size(ini%N_sl))
+      prm%d_sc            = pl%get_as1dFloat('d_sc',             requiredSize=size(ini%N_sl))
       prm%d_ed            = math_expand(prm%d_ed,ini%N_sl)
       prm%d_sc            = math_expand(prm%d_sc,ini%N_sl)
       allocate(prm%minDipoleHeight(prm%sum_N_sl,2))
       prm%minDipoleHeight(:,1)  = prm%d_ed
       prm%minDipoleHeight(:,2)  = prm%d_sc
 
-      prm%tau_Peierls_ed    = pl%get_asFloats('tau_Peierls_ed', requiredSize=size(ini%N_sl))
-      prm%tau_Peierls_sc    = pl%get_asFloats('tau_Peierls_sc', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_ed    = pl%get_as1dFloat('tau_Peierls_ed', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_sc    = pl%get_as1dFloat('tau_Peierls_sc', requiredSize=size(ini%N_sl))
       prm%tau_Peierls_ed    = math_expand(prm%tau_Peierls_ed,ini%N_sl)
       prm%tau_Peierls_sc    = math_expand(prm%tau_Peierls_sc,ini%N_sl)
       allocate(prm%peierlsstress(prm%sum_N_sl,2))
