@@ -59,9 +59,9 @@ module function isoductile_init() result(mySources)
         prm%gamma_crit = src%get_asFloat('gamma_crit')
 
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(src)
+        prm%output = output_as1dString(src)
 #else
-        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
         ! sanity checks

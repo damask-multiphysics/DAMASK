@@ -249,9 +249,9 @@ module subroutine mechanical_init(materials,phases)
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
 #if defined(__GFORTRAN__)
-    output_constituent(ph)%label  = output_asStrings(mech)
+    output_constituent(ph)%label  = output_as1dString(mech)
 #else
-    output_constituent(ph)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
+    output_constituent(ph)%label  = mech%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
     elastic => mech%get('elastic')
     if(elastic%get_asString('type') == 'hooke') then
@@ -288,7 +288,7 @@ module subroutine mechanical_init(materials,phases)
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
 
-      call material_orientation0(co,ph,me)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
+      call material_orientation0(co,ph,me)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
 
       phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ph,me)%asMatrix()                         ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp0(ph)%data(1:3,1:3,me) &

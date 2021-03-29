@@ -64,14 +64,14 @@ module function anisobrittle_init() result(mySources)
         associate(prm  => param(p))
         src => sources%get(1)
 
-        N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
+        N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
 
         prm%q       = src%get_asFloat('q')
         prm%dot_o   = src%get_asFloat('dot_o')
 
-        prm%s_crit  = src%get_asFloats('s_crit',  requiredSize=size(N_cl))
-        prm%g_crit  = src%get_asFloats('g_crit',  requiredSize=size(N_cl))
+        prm%s_crit  = src%get_as1dFloat('s_crit',  requiredSize=size(N_cl))
+        prm%g_crit  = src%get_as1dFloat('g_crit',  requiredSize=size(N_cl))
 
         prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
                                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
@@ -81,9 +81,9 @@ module function anisobrittle_init() result(mySources)
         prm%g_crit = math_expand(prm%g_crit,N_cl)
 
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(src)
+        prm%output = output_as1dString(src)
 #else
-        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
           ! sanity checks

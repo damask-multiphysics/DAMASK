@@ -102,21 +102,21 @@ module function plastic_kinehardening_init() result(myPlasticity)
     pl  => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
-    prm%output = output_asStrings(pl)
+    prm%output = output_as1dString(pl)
 #else
-    prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+    N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%P = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
                                         phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'cI') then
-        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
@@ -125,16 +125,16 @@ module function plastic_kinehardening_init() result(myPlasticity)
         prm%nonSchmid_neg  = prm%P
       endif
       prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(N_sl, &
-                                                                pl%get_asFloats('h_sl_sl'), &
+                                                                pl%get_as1dFloat('h_sl_sl'), &
                                                                 phase%get_asString('lattice'))
 
-      xi_0          = pl%get_asFloats('xi_0',       requiredSize=size(N_sl))
-      prm%xi_inf_f  = pl%get_asFloats('xi_inf_f',   requiredSize=size(N_sl))
-      prm%xi_inf_b  = pl%get_asFloats('xi_inf_b',   requiredSize=size(N_sl))
-      prm%h_0_f     = pl%get_asFloats('h_0_f',      requiredSize=size(N_sl))
-      prm%h_inf_f   = pl%get_asFloats('h_inf_f',    requiredSize=size(N_sl))
-      prm%h_0_b     = pl%get_asFloats('h_0_b',      requiredSize=size(N_sl))
-      prm%h_inf_b   = pl%get_asFloats('h_inf_b',    requiredSize=size(N_sl))
+      xi_0          = pl%get_as1dFloat('xi_0',       requiredSize=size(N_sl))
+      prm%xi_inf_f  = pl%get_as1dFloat('xi_inf_f',   requiredSize=size(N_sl))
+      prm%xi_inf_b  = pl%get_as1dFloat('xi_inf_b',   requiredSize=size(N_sl))
+      prm%h_0_f     = pl%get_as1dFloat('h_0_f',      requiredSize=size(N_sl))
+      prm%h_inf_f   = pl%get_as1dFloat('h_inf_f',    requiredSize=size(N_sl))
+      prm%h_0_b     = pl%get_as1dFloat('h_0_b',      requiredSize=size(N_sl))
+      prm%h_inf_b   = pl%get_as1dFloat('h_inf_b',    requiredSize=size(N_sl))
 
       prm%dot_gamma_0  = pl%get_asFloat('dot_gamma_0')
       prm%n            = pl%get_asFloat('n')

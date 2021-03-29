@@ -124,9 +124,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     pl  => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
-    prm%output = output_asStrings(pl)
+    prm%output = output_as1dString(pl)
 #else
-    prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
     ! This data is read in already in lattice
@@ -134,14 +134,14 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+    N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'cI') then
-        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -149,28 +149,28 @@ module function plastic_dislotungsten_init() result(myPlasticity)
         prm%nonSchmid_neg = prm%P_sl
       endif
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_asFloats('h_sl_sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl_sl'), &
                                                    phase%get_asString('lattice'))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
                                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
       prm%forestProjection = transpose(prm%forestProjection)
 
-      rho_mob_0       = pl%get_asFloats('rho_mob_0',     requiredSize=size(N_sl))
-      rho_dip_0       = pl%get_asFloats('rho_dip_0',     requiredSize=size(N_sl))
-      prm%v_0         = pl%get_asFloats('v_0',           requiredSize=size(N_sl))
-      prm%b_sl        = pl%get_asFloats('b_sl',          requiredSize=size(N_sl))
-      prm%Q_s         = pl%get_asFloats('Q_s',           requiredSize=size(N_sl))
+      rho_mob_0       = pl%get_as1dFloat('rho_mob_0',     requiredSize=size(N_sl))
+      rho_dip_0       = pl%get_as1dFloat('rho_dip_0',     requiredSize=size(N_sl))
+      prm%v_0         = pl%get_as1dFloat('v_0',           requiredSize=size(N_sl))
+      prm%b_sl        = pl%get_as1dFloat('b_sl',          requiredSize=size(N_sl))
+      prm%Q_s         = pl%get_as1dFloat('Q_s',           requiredSize=size(N_sl))
 
-      prm%i_sl        = pl%get_asFloats('i_sl',          requiredSize=size(N_sl))
-      prm%tau_Peierls = pl%get_asFloats('tau_Peierls',   requiredSize=size(N_sl))
-      prm%p           = pl%get_asFloats('p_sl',          requiredSize=size(N_sl), &
+      prm%i_sl        = pl%get_as1dFloat('i_sl',          requiredSize=size(N_sl))
+      prm%tau_Peierls = pl%get_as1dFloat('tau_Peierls',   requiredSize=size(N_sl))
+      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl), &
                                          defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%q           = pl%get_asFloats('q_sl',          requiredSize=size(N_sl), &
+      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl), &
                                          defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%h           = pl%get_asFloats('h',             requiredSize=size(N_sl))
-      prm%w           = pl%get_asFloats('w',             requiredSize=size(N_sl))
-      prm%omega       = pl%get_asFloats('omega',         requiredSize=size(N_sl))
-      prm%B           = pl%get_asFloats('B',             requiredSize=size(N_sl))
+      prm%h           = pl%get_as1dFloat('h',             requiredSize=size(N_sl))
+      prm%w           = pl%get_as1dFloat('w',             requiredSize=size(N_sl))
+      prm%omega       = pl%get_as1dFloat('omega',         requiredSize=size(N_sl))
+      prm%B           = pl%get_as1dFloat('B',             requiredSize=size(N_sl))
 
       prm%D               = pl%get_asFloat('D')
       prm%D_0             = pl%get_asFloat('D_0')

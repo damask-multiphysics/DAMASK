@@ -62,10 +62,10 @@ module function externalheat_init(source_length) result(mySources)
         associate(prm  => param(ph))
           src => sources%get(so)
 
-          prm%t_n = src%get_asFloats('t_n')
+          prm%t_n = src%get_as1dFloat('t_n')
           prm%nIntervals = size(prm%t_n) - 1
 
-          prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
+          prm%f_T = src%get_as1dFloat('f_T',requiredSize = size(prm%t_n))
 
           Nmembers = count(material_phaseAt2 == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
