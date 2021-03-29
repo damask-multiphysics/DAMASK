@@ -260,10 +260,10 @@ subroutine selfTest
     allocate(tList::l3)
     select type(l3)
       class is(tList)
-        call l3%append(s3) 
+        call l3%append(s3)
         call l3%append(s4)
-    endselect 
-   
+    endselect
+
     allocate(tList::l2)
     select type(l2)
       class is(tList)
@@ -539,7 +539,7 @@ end function tNode_get_byIndex_asString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by index and convert to float array
+!> @brief Access by index and convert to float array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byIndex_as1dFloat(self,i) result(nodeAs1dFloat)
 
@@ -558,7 +558,7 @@ end function tNode_get_byIndex_as1dFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by index and convert to int array
+!> @brief Access by index and convert to int array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byIndex_as1dInt(self,i) result(nodeAs1dInt)
 
@@ -577,7 +577,7 @@ end function tNode_get_byIndex_as1dInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by index and convert to bool array
+!> @brief Access by index and convert to bool array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byIndex_as1dBool(self,i) result(nodeAs1dBool)
 
@@ -596,7 +596,7 @@ end function tNode_get_byIndex_as1dBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by index and convert to string array
+!> @brief Access by index and convert to string array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byIndex_as1dString(self,i) result(nodeAs1dString)
 
@@ -823,7 +823,7 @@ end function tNode_get_byKey_asString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by key and convert to float array
+!> @brief Access by key and convert to float array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byKey_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs1dFloat)
 
@@ -855,7 +855,7 @@ end function tNode_get_byKey_as1dFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by key and convert to 2D float array
+!> @brief Access by key and convert to float array (2D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byKey_as2dFloat(self,k,defaultVal) result(nodeAs2dFloat)
 
@@ -882,7 +882,7 @@ end function tNode_get_byKey_as2dFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by key and convert to int array
+!> @brief Access by key and convert to int array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byKey_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1dInt)
 
@@ -913,7 +913,7 @@ end function tNode_get_byKey_as1dInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by key and convert to bool array
+!> @brief Access by key and convert to bool array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byKey_as1dBool(self,k,defaultVal) result(nodeAs1dBool)
 
@@ -939,7 +939,7 @@ end function tNode_get_byKey_as1dBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Access by key and convert to string array
+!> @brief Access by key and convert to string array (1D)
 !--------------------------------------------------------------------------------------------------
 function tNode_get_byKey_as1dString(self,k,defaultVal) result(nodeAs1dString)
 
@@ -965,7 +965,7 @@ end function tNode_get_byKey_as1dString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns string output array (hack for GNU)
+!> @brief Returns string output array (1D) (hack for GNU)
 !--------------------------------------------------------------------------------------------------
 function output_as1dString(self)  result(output)                   !ToDo: SR: Remove whenever GNU works
 
@@ -1146,7 +1146,7 @@ end function tScalar_asString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to float array
+!> @brief Convert to float array (1D)
 !--------------------------------------------------------------------------------------------------
 function tList_as1dFloat(self)
 
@@ -1169,7 +1169,7 @@ end function tList_as1dFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to 2D float array
+!> @brief Convert to float array (2D)
 !--------------------------------------------------------------------------------------------------
 function tList_as2dFloat(self)
 
@@ -1180,22 +1180,22 @@ function tList_as2dFloat(self)
   class(tNode), pointer :: row
   type(tList),  pointer :: row_data
 
-  row => self%get(1)                                !SR: some interface called 'shape' may be used?
+  row => self%get(1)
   row_data => row%asList()
-  allocate(tList_as2dFloat(self%length,row_data%length),source=0.0_pReal)
+  allocate(tList_as2dFloat(self%length,row_data%length))
 
   do i=1,self%length
     row => self%get(i)
     row_data => row%asList()
     if(row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='Varying number of columns')
-    tList_as2dFloat(i,:) = self%get_as1dFloat(i)  
+    tList_as2dFloat(i,:) = self%get_as1dFloat(i)
   enddo
 
 end function tList_as2dFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to int array
+!> @brief Convert to int array (1D)
 !--------------------------------------------------------------------------------------------------
 function tList_as1dInt(self)
 
@@ -1218,7 +1218,7 @@ end function tList_as1dInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to bool array
+!> @brief Convert to bool array (1D)
 !--------------------------------------------------------------------------------------------------
 function tList_as1dBool(self)
 
@@ -1241,7 +1241,7 @@ end function tList_as1dBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to string array
+!> @brief Convert to string array (1D)
 !--------------------------------------------------------------------------------------------------
 function tList_as1dString(self)
 
