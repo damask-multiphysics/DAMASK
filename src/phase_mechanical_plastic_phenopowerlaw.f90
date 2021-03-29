@@ -12,7 +12,7 @@ submodule(phase:plastic) phenopowerlaw
       dot_gamma_0_tw = 1.0_pReal, &                                                                 !< reference shear strain rate for twin
       n_sl           = 1.0_pReal, &                                                                 !< stress exponent for slip
       n_tw           = 1.0_pReal, &                                                                 !< stress exponent for twin
-      f_sl_sat_tw    = 1.0_pReal, &                                                                 !< push-up factor for slip saturation due to twinning
+      f_sat_sl_tw    = 1.0_pReal, &                                                                 !< push-up factor for slip saturation due to twinning
       c_1            = 1.0_pReal, &
       c_2            = 1.0_pReal, &
       c_3            = 1.0_pReal, &
@@ -180,7 +180,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%c_4             = pl%get_asFloat('c_4',defaultVal=0.0_pReal)
       prm%dot_gamma_0_tw  = pl%get_asFloat('dot_gamma_0_tw')
       prm%n_tw            = pl%get_asFloat('n_tw')
-      prm%f_sl_sat_tw     = pl%get_asFloat('f_sl_sat_tw')
+      prm%f_sat_sl_tw     = pl%get_asFloat('f_sat_sl_tw')
       prm%h_0_tw_tw       = pl%get_asFloat('h_0_tw_tw')
 
       ! expand: family => system
@@ -365,7 +365,7 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors
   left_SlipSlip  = 1.0_pReal + prm%h_int
-  xi_slip_sat_offset = prm%f_sl_sat_tw*sqrt(sumF)
+  xi_slip_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
   right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
                  * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset))
 

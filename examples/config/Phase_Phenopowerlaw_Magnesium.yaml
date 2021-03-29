@@ -25,4 +25,4 @@ Magnesium:
       dot_gamma_0_tw: 0.001
       n_sl: 20
       n_tw: 20
-      f_sl_sat_tw: 10.0
+      f_sat_sl_tw: 10.0
