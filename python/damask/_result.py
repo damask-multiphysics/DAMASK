@@ -11,6 +11,7 @@ from collections import defaultdict
 
 import h5py
 import numpy as np
+import numpy.ma as ma
 from numpy.lib import recfunctions as rfn
 
 import damask
@@ -343,76 +344,6 @@ class Result:
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
-
-
-    def place(self,datasets,constituent=0,tagged=False,split=True):
-        """
-        Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
-
-        Must not mix nodal end cell data.
-
-        Only data within
-        - inc*/phase/*/*
-        - inc*/homogenization/*/*
-        - inc*/geometry/*
-        are considered.
-
-        Parameters
-        ----------
-          datasets : iterable or str
-          constituent : int
-              Constituent to consider for phase data.
-          tagged : bool
-              Tag Table.column name with '#constituent'.
-              Defaults to False.
-          split : bool
-              Split Table by increment and return dictionary of Tables.
-              Defaults to True.
-
-        """
-        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
-              [datasets]
-        tag = f'#{constituent}' if tagged else ''
-        tbl = {} if split else None
-        inGeom = {}
-        inData = {}
-        # compatibility hack
-        name   = 'Name' if self.version_minor < 12 else 'label'
-        member = 'Position' if self.version_minor < 12 else 'entry'
-        grp    = 'mapping' if self.version_minor < 12 else 'cell_to'
-        with h5py.File(self.fname,'r') as f:
-            for dataset in sets:
-                for group in self.groups_with_datasets(dataset):
-                    path = '/'.join([group,dataset])
-                    inc,prop,name,cat,item = (path.split('/') + ['']*5)[:5]
-                    key = '/'.join([prop,name+tag])
-                    if key not in inGeom:
-                        if prop == 'geometry':
-                            inGeom[key] = inData[key] = np.arange(self.N_materialpoints)
-                        elif prop == 'phase':
-                            inGeom[key] = np.where(f[f'{grp}/phase'][:,constituent][name] == str.encode(name))[0]
-                            inData[key] =          f[f'{grp}/phase'][inGeom[key],constituent][member]
-                        elif prop == 'homogenization':
-                            inGeom[key] = np.where(f[f'{grp}/homogenization'][name] == str.encode(name))[0]
-                            inData[key] =          f[f'{grp}/homogenization'][inGeom[key].tolist()][member]
-                    shape = np.shape(f[path])
-                    data = np.full((self.N_materialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
-                                   np.nan,
-                                   dtype=np.dtype(f[path]))
-                    data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
-                    path = ('/'.join([prop,name]+([cat] if cat else [])+([item] if item else [])) if split else path)+tag
-                    if split:
-                        try:
-                            tbl[inc] = tbl[inc].add(path,data)
-                        except KeyError:
-                            tbl[inc] = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
-                    else:
-                        try:
-                            tbl = tbl.add(path,data)
-                        except AttributeError:
-                            tbl = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
-
-        return tbl
 
 
     def groups_with_datasets(self,datasets):
@@ -1385,3 +1316,73 @@ class Result:
             v.add(u,'u')
 
             v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
+
+
+    def read(self,labels):
+        r = {}
+        labels_ = labels if isinstance(labels,list) else [labels] # check for arbitrary iterable
+        with h5py.File(self.fname,'r') as f:
+            for inc in util.show_progress(self.visible['increments'],len(self.visible['increments'])):
+                r[inc] = {'phase':{},'homogenization':{}}
+                for ph in self.visible['phases']:
+                    r[inc]['phase'][ph] = {}
+                    for me in f[os.path.join(inc,'phase',ph)].keys():
+                        r[inc]['phase'][ph][me] = {}
+                        for da in f[os.path.join(inc,'phase',ph,me)].keys():
+                            if da in labels_:
+                                r[inc]['phase'][ph][me][da] = \
+                                    f[os.path.join(inc,'phase',ph,me,da)][()]
+                for ho in self.visible['homogenizations']:
+                    r[inc]['homogenization'][ho] = {}
+                    for me in f[os.path.join(inc,'homogenization',ho)].keys():
+                        r[inc]['homogenization'][ho][me] = {}
+                        for da in f[os.path.join(inc,'homogenization',ho,me)].keys():
+                            if da in labels_:
+                                r[inc]['homogenization'][ho][me][da] = \
+                                    f[os.path.join(inc,'homogenization',ho,me,da)][()]
+        return r
+
+
+    def place(self,labels,fill_int=0,fill_float=0,constituents=None):
+        r = {}
+
+        labels_ = labels if isinstance(labels,list) else [labels] # check for arbitrary iterable
+        if constituents is None:
+            constituents_ = range(self.N_constituents)
+        else:
+            constituents_ = labels if isinstance(labels,list) else [labels] # allow abribtrary iterable
+
+
+        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'
+        name = 'Name' if self.version_minor < 12 else 'label'
+
+        with h5py.File(self.fname,'r') as f:
+            N_cells = self.cells.prod() if self.structured else np.shape(f['/geometry/T_c'])[0]
+
+            to_cell_ph = []
+            for c in constituents_:
+                to_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == str.encode(label))[0] \
+                                          for label in self.visible['phases']})
+            to_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][name] == str.encode(label))[0] \
+                                 for label in self.visible['homogenizations']}
+
+            for inc in util.show_progress(self.visible['increments'],len(self.visible['increments'])):
+                r[inc] = {'phase':{},'homogenization':{}}
+                for ph in self.visible['phases']:
+                    for me in f[os.path.join(inc,'phase',ph)].keys():
+                        r[inc]['phase'][me] = {}
+                        for da in f[os.path.join(inc,'phase',ph,me)].keys():
+                            if da in labels_:
+                                data = f[os.path.join(inc,'phase',ph,me,da)][()]
+
+                                unit = f[os.path.join(inc,'phase',ph,me,da)].attrs['unit']
+                                description = f[os.path.join(inc,'phase',ph,me,da)].attrs['description']
+                                if not h5py3:
+                                    description = description.decode()
+                                    unit = unit.decode()
+
+                                if da not in r[inc]['phase'][me].keys():
+                                    dt = np.dtype(data.dtype,metadata={'description':description,
+                                                                       'unit':unit})
+                                    r[inc]['phase'][me][da] = ma.empty((N_cells,)+data.shape[1:],dtype=dt)
+        return r
