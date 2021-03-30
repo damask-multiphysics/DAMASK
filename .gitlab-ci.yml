@@ -96,7 +96,7 @@ processing:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
+    - COLUMS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
   except:
     - master
@@ -116,7 +116,7 @@ compile_grid_Intel:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
+    - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
     - master
     - release
@@ -126,7 +126,7 @@ compile_mesh_Intel:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
+    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
     - master
     - release
@@ -136,7 +136,7 @@ compile_grid_GNU:
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
+    - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
@@ -146,7 +146,7 @@ compile_mesh_GNU:
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
+    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
@@ -156,7 +156,7 @@ compile_Marc:
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd pytest
-    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
+    - COLUMNS=256 pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
   except:
     - master
     - release
@@ -191,7 +191,7 @@ core:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
+    - COLUMNS=256 pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
     - master
     - release
