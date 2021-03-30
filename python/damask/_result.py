@@ -125,7 +125,7 @@ class Result:
             Select from 'set', 'add', and 'del'.
         what : str
             Attribute to change (must be from self.visible).
-        datasets : list of str or bool
+        datasets : str, int, list of str, list of int, or bool
             Name of datasets as list; supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to [].
 
@@ -139,7 +139,8 @@ class Result:
             datasets = ['*']
         elif datasets is False:
             datasets = []
-        choice = [datasets] if isinstance(datasets,str) else datasets.copy()
+        choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
+                [datasets]
 
         inc = 'inc' if self.version_minor < 12 else 'increment_' # compatibility hack
         if   what == 'increments':
