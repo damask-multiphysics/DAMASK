@@ -139,8 +139,7 @@ class Result:
             datasets = ['*']
         elif datasets is False:
             datasets = []
-        choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
-                [datasets]
+        choice = [datasets] if isinstance(datasets,str) else datasets.copy()
 
         inc = 'inc' if self.version_minor < 12 else 'increment_' # compatibility hack
         if   what == 'increments':
