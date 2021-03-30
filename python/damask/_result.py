@@ -1318,11 +1318,11 @@ class Result:
             v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
 
 
-    def read(self,labels):
+    def read(self,labels,compress=True,strip=True):
         r = {}
-        labels_ = labels if isinstance(labels,list) else [labels] # check for arbitrary iterable
+        labels_ = [labels] if isinstance(labels,str) else labels
         with h5py.File(self.fname,'r') as f:
-            for inc in util.show_progress(self.visible['increments'],len(self.visible['increments'])):
+            for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{}}
                 for ph in self.visible['phases']:
                     r[inc]['phase'][ph] = {}
@@ -1340,13 +1340,16 @@ class Result:
                             if da in labels_:
                                 r[inc]['homogenization'][ho][me][da] = \
                                     f[os.path.join(inc,'homogenization',ho,me,da)][()]
+
+        if strip:    r = util.dict_strip(r)
+
         return r
 
 
     def place(self,labels,fill_int=0,fill_float=0,constituents=None):
         r = {}
 
-        labels_ = labels if isinstance(labels,list) else [labels] # check for arbitrary iterable
+        labels_ = [labels] if isinstance(labels,str) else labels
         if constituents is None:
             constituents_ = range(self.N_constituents)
         else:

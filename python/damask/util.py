@@ -25,7 +25,8 @@ __all__=[
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
-         'DREAM3D_base_group', 'DREAM3D_cell_data_group'
+         'DREAM3D_base_group', 'DREAM3D_cell_data_group',
+         'dict_strip', 'dict_compress'
         ]
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
@@ -130,7 +131,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
         Character length of bar. Defaults to 50.
 
     """
-    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
+    status = _ProgressBar(N_iter if N_iter is not None else len(iterable),prefix,bar_length)
 
     for i,item in enumerate(iterable):
         yield item
@@ -397,6 +398,22 @@ def DREAM3D_cell_data_group(fname):
         raise ValueError(f'Could not determine cell data group in file {fname}/{base_group}.')
 
     return cell_data_group
+
+def dict_strip(a_dict):
+    # https://stackoverflow.com/questions/48151953
+    new_dict = {}
+    for k, v in a_dict.items():
+        if isinstance(v, dict):
+            v = dict_strip(v)
+        if not isinstance(v,dict) or v != {}:
+            new_dict[k] = v
+    return new_dict
+
+
+def dict_compress(a_dict):
+
+
+    return None
 
 
 ####################################################################################################
