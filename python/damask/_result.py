@@ -1342,18 +1342,18 @@ class Result:
                                     f[os.path.join(inc,'homogenization',ho,me,da)][()]
 
         if strip:    r = util.dict_strip(r)
-
+        if compress: r = util.dict_compress(r)
         return r
 
 
-    def place(self,labels,fill_int=0,fill_float=0,constituents=None):
+    def place(self,labels,compress=True,strip=True,constituents=None,fill_int=0,fill_float=0.0):
         r = {}
 
         labels_ = [labels] if isinstance(labels,str) else labels
         if constituents is None:
             constituents_ = range(self.N_constituents)
         else:
-            constituents_ = labels if isinstance(labels,list) else [labels] # allow abribtrary iterable
+            constituents_ = labels if isinstance(labels,list) else [labels] # fix
 
 
         grp  = 'mapping' if self.version_minor < 12 else 'cell_to'
@@ -1388,4 +1388,6 @@ class Result:
                                     dt = np.dtype(data.dtype,metadata={'description':description,
                                                                        'unit':unit})
                                     r[inc]['phase'][me][da] = ma.empty((N_cells,)+data.shape[1:],dtype=dt)
+        if strip:    r = util.dict_strip(r)
+        if compress: r = util.dict_compress(r)
         return r
