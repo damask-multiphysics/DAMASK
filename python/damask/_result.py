@@ -8,6 +8,7 @@ import xml.dom.minidom
 from pathlib import Path
 from functools import partial
 from collections import defaultdict
+from collections.abc import Iterable
 
 import h5py
 import numpy as np
@@ -1326,11 +1327,14 @@ class Result:
     def read(self,labels,compress=True,strip=True):
         r = {}
         labels_ = set([labels] if isinstance(labels,str) else labels)
+
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
+
                 for la in labels_.intersection(f[os.path.join(inc,'geometry')].keys()):
                     r[inc]['geometry'][la] = _read(f,os.path.join(inc,'geometry',la))
+
                 for ph in self.visible['phases']:
                     r[inc]['phase'][ph] = {}
                     for me in f[os.path.join(inc,'phase',ph)].keys():
@@ -1338,6 +1342,7 @@ class Result:
                         for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
                             r[inc]['phase'][ph][me][la] = \
                                 _read(f,os.path.join(inc,'phase',ph,me,la))
+
                 for ho in self.visible['homogenizations']:
                     r[inc]['homogenization'][ho] = {}
                     for me in f[os.path.join(inc,'homogenization',ho)].keys():
@@ -1358,31 +1363,36 @@ class Result:
         if constituents is None:
             constituents_ = range(self.N_constituents)
         else:
-            constituents_ = labels if isinstance(labels,list) else [labels] # fix
+            constituents_ = constituents if isinstance(constituents,Iterable) else [constituents]
 
 
         grp  = 'mapping' if self.version_minor < 12 else 'cell_to'
         name = 'Name' if self.version_minor < 12 else 'label'
+        member = 'member' if self.version_minor < 12 else 'entry'
 
         with h5py.File(self.fname,'r') as f:
-            N_cells = self.cells.prod() if self.structured else np.shape(f['/geometry/T_c'])[0]
 
             at_cell_ph = []
             in_data_ph = []
             for c in constituents_:
                 at_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == str.encode(label))[0] \
                                           for label in self.visible['phases']})
-                in_data_ph.append({label: f[os.path.join(grp,'phase')]['entry'][at_cell_ph[c][label]][...,0] \
+                in_data_ph.append({label: f[os.path.join(grp,'phase')][member][at_cell_ph[c][label]][...,0] \
                                           for label in self.visible['phases']})
 
-            #at_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][name] == str.encode(label))[0] \
-            #                     for label in self.visible['homogenizations']}
+            at_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][:][name] == str.encode(label))[0] \
+                                 for label in self.visible['homogenizations']}
+            in_data_ho = {label: f[os.path.join(grp,'homogenization')][member][at_cell_ho[label]][...,0] \
+                                 for label in self.visible['homogenizations']}
 
             c = 0
+
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
+
                 for la in labels_.intersection(f[os.path.join(inc,'geometry')].keys()):
                     r[inc]['geometry'][la] = _read(f,os.path.join(inc,'geometry',la))
+
                 for ph in self.visible['phases']:
                     for me in f[os.path.join(inc,'phase',ph)].keys():
                         if me not in r[inc]['phase'].keys(): r[inc]['phase'][me] = {}
@@ -1390,11 +1400,28 @@ class Result:
                             data = ma.array(_read(f,os.path.join(inc,'phase',ph,me,la)))
 
                             if la not in r[inc]['phase'][me].keys():
-                                container = np.empty((N_cells,)+data.shape[1:],dtype=data.dtype)
-                                fill_value = fill_float if data.dtype in np.sctypes['float'] else fill_int
-                                r[inc]['phase'][me][la] = ma.array(container,fill_value=fill_value,mask=True)
+                                container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
+                                fill_value = fill_float if data.dtype in np.sctypes['float'] else \
+                                             fill_int
+                                r[inc]['phase'][me][la] = \
+                                    ma.array(container,fill_value=fill_value,mask=True)
 
                             r[inc]['phase'][me][la][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
+
+                for ho in self.visible['homogenizations']:
+                    for me in f[os.path.join(inc,'homogenization',ho)].keys():
+                        if me not in r[inc]['homogenization'].keys(): r[inc]['homogenization'][me] = {}
+                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,me)].keys()):
+                            data = ma.array(_read(f,os.path.join(inc,'homogenization',ho,me,la)))
+
+                            if la not in r[inc]['homogenization'][me].keys():
+                                container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
+                                fill_value = fill_float if data.dtype in np.sctypes['float'] else \
+                                             fill_int
+                                r[inc]['homogenization'][me][la] = \
+                                    ma.array(container,fill_value=fill_value,mask=True)
+
+                            r[inc]['homogenization'][me][la][at_cell_ho[ho]] = data[in_data_ho[ho]]
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
