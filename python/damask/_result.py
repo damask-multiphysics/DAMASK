@@ -1359,19 +1359,19 @@ class Result:
 
                 for ph in self.visible['phases']:
                     r[inc]['phase'][ph] = {}
-                    for me in f[os.path.join(inc,'phase',ph)].keys():
-                        r[inc]['phase'][ph][me] = {}
-                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
-                            r[inc]['phase'][ph][me][la] = \
-                                _read(f,os.path.join(inc,'phase',ph,me,la))
+                    for field in f[os.path.join(inc,'phase',ph)].keys():
+                        r[inc]['phase'][ph][field] = {}
+                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,field)].keys()):
+                            r[inc]['phase'][ph][field][la] = \
+                                _read(f,os.path.join(inc,'phase',ph,field,la))
 
                 for ho in self.visible['homogenizations']:
                     r[inc]['homogenization'][ho] = {}
-                    for me in f[os.path.join(inc,'homogenization',ho)].keys():
-                        r[inc]['homogenization'][ho][me] = {}
-                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,me)].keys()):
-                            r[inc]['homogenization'][ho][me][la] = \
-                                _read(f,os.path.join(inc,'homogenization',ho,me,la))
+                    for field in f[os.path.join(inc,'homogenization',ho)].keys():
+                        r[inc]['homogenization'][ho][field] = {}
+                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,field)].keys()):
+                            r[inc]['homogenization'][ho][field][la] = \
+                                _read(f,os.path.join(inc,'homogenization',ho,field,la))
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
@@ -1401,7 +1401,15 @@ class Result:
         strip : bool
             Remove branches that contain no dataset. Defaults to
             'True'.
-
+        constituents : int or list of, optional
+            Constituents to consider. Defaults to 'None', in which case
+            all constituents are considered.
+        fill_float : float
+            Fill value for non existent entries of floating point type.
+            Defaults to 0.0.
+        fill_int : int
+            Fill value for non existent entries of integer type.
+            Defaults to 0.
         """
         r = {}
 
@@ -1440,40 +1448,40 @@ class Result:
                     r[inc]['geometry'][la] = _read(f,os.path.join(inc,'geometry',la))
 
                 for ph in self.visible['phases']:
-                    for me in f[os.path.join(inc,'phase',ph)].keys():
-                        if me not in r[inc]['phase'].keys():
-                            r[inc]['phase'][me] = {}
+                    for field in f[os.path.join(inc,'phase',ph)].keys():
+                        if field not in r[inc]['phase'].keys():
+                            r[inc]['phase'][field] = {}
 
-                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
-                            data = ma.array(_read(f,os.path.join(inc,'phase',ph,me,la)))
+                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,field)].keys()):
+                            data = ma.array(_read(f,os.path.join(inc,'phase',ph,field,la)))
 
-                            if la+suffixes[0] not in r[inc]['phase'][me].keys():
+                            if la+suffixes[0] not in r[inc]['phase'][field].keys():
                                 container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
                                 fill_value = fill_float if data.dtype in np.sctypes['float'] else \
                                              fill_int
                                 for c,suffix in zip(constituents_, suffixes):
-                                    r[inc]['phase'][me][la+suffix] = \
+                                    r[inc]['phase'][field][la+suffix] = \
                                         ma.array(container,fill_value=fill_value,mask=True)
 
                             for c,suffix in zip(constituents_, suffixes):
-                                r[inc]['phase'][me][la+suffix][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
+                                r[inc]['phase'][field][la+suffix][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
 
                 for ho in self.visible['homogenizations']:
-                    for me in f[os.path.join(inc,'homogenization',ho)].keys():
-                        if me not in r[inc]['homogenization'].keys():
-                            r[inc]['homogenization'][me] = {}
+                    for field in f[os.path.join(inc,'homogenization',ho)].keys():
+                        if field not in r[inc]['homogenization'].keys():
+                            r[inc]['homogenization'][field] = {}
 
-                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,me)].keys()):
-                            data = ma.array(_read(f,os.path.join(inc,'homogenization',ho,me,la)))
+                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,field)].keys()):
+                            data = ma.array(_read(f,os.path.join(inc,'homogenization',ho,field,la)))
 
-                            if la not in r[inc]['homogenization'][me].keys():
+                            if la not in r[inc]['homogenization'][field].keys():
                                 container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
                                 fill_value = fill_float if data.dtype in np.sctypes['float'] else \
                                              fill_int
-                                r[inc]['homogenization'][me][la] = \
+                                r[inc]['homogenization'][field][la] = \
                                     ma.array(container,fill_value=fill_value,mask=True)
 
-                            r[inc]['homogenization'][me][la][at_cell_ho[ho]] = data[in_data_ho[ho]]
+                            r[inc]['homogenization'][field][la][at_cell_ho[ho]] = data[in_data_ho[ho]]
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
