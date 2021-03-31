@@ -322,11 +322,7 @@ class Table:
             Array of column data.
 
         """
-        if re.match(r'[0-9]*?_',label):
-            idx,key = label.split('_',1)
-            data = self.data[key].to_numpy()[:,int(idx)-1].reshape(-1,1)
-        else:
-            data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
+        data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
         return data.astype(type(data.flatten()[0]))
 
