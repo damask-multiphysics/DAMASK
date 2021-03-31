@@ -27,19 +27,68 @@ class Table:
         self.comments = [] if comments_ is None else [c for c in comments_]
         self.data = pd.DataFrame(data=data)
         self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
-        self._label_uniform()
+        self._relabel('uniform')
+
 
     def __repr__(self):
         """Brief overview."""
-        return '\n'.join(['# '+c for c in self.comments])+'\n'+self.data.__repr__()
+        self._relabel('shapes')
+        data_repr = self.data.__repr__()
+        self._relabel('uniform')
+        return '\n'.join(['# '+c for c in self.comments])+'\n'+data_repr
+
 
     def __getitem__(self,item):
-        """Return slice according to item."""
-        return self.__class__(data=self.data[item],shapes=self.shapes,comments=self.comments)
+        """
+        Slice the Table according to item.
+
+        Parameters
+        ----------
+        item : row and/or column indexer
+            Slice to select from Table.
+
+        Returns
+        -------
+        slice : Table
+            Sliced part of the Table.
+
+        Examples
+        --------
+        >>> import damask
+        >>> import numpy as np
+        >>> tbl = damask.Table(data=np.arange(12).reshape((4,3)),
+        ...                    shapes=dict(colA=(1,),colB=(1,),colC=(1,)))
+        >>> tbl['colA','colB']
+           colA  colB
+        0     0     1
+        1     3     4
+        2     6     7
+        3     9    10
+        >>> tbl[::2,['colB','colA']]
+           colB  colA
+        0     1     0
+        2     7     6
+        >>> tbl[1:2,'colB']
+           colB
+        1     4
+        2     7
+
+        """
+        item = (item,slice(None,None,None)) if isinstance(item,slice) else \
+               item if isinstance(item[0],slice) else \
+               (slice(None,None,None),item)
+        sliced = self.data.loc[item]
+        cols = np.array(sliced.columns if isinstance(sliced,pd.core.frame.DataFrame) else [item[1]])
+        _,idx = np.unique(cols,return_index=True)
+        return self.__class__(data=sliced,
+                              shapes = {k:self.shapes[k] for k in cols[np.sort(idx)]},
+                              comments=self.comments)
+
 
     def __len__(self):
         """Number of rows."""
         return len(self.data)
+
 
     def __copy__(self):
         """Create deep copy."""
@@ -48,21 +97,51 @@ class Table:
     copy = __copy__
 
 
-    def _label_discrete(self):
-        """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""
+    def _label(self,what,how):
+        """
+        Expand labels according to data shape.
+
+        Parameters
+        ----------
+        what : str or list
+            Labels to expand.
+        how : str
+            Mode of labeling.
+            'uniform' ==> v v v
+            'shapes'  ==> 3:v v v
+            'linear'  ==> 1_v 2_v 3_v
+
+        """
+        what = [what] if isinstance(what,str) else what
         labels = []
-        for label,shape in self.shapes.items():
-            size = int(np.prod(shape))
-            labels += [('' if size == 1 else f'{i+1}_')+label for i in range(size)]
-        self.data.columns = labels
+        for label in what:
+            shape = self.shapes[label]
+            size = np.prod(shape,dtype=int)
+            if   how == 'uniform':
+                labels += [label] * size
+            elif how == 'shapes':
+                labels += [('' if size == 1 or i>0 else f'{util.srepr(shape,"x")}:')+label for i in range(size)]
+            elif how == 'linear':
+                labels += [('' if size == 1 else f'{i+1}_')+label for i in range(size)]
+            else:
+                raise KeyError
+        return labels
 
 
-    def _label_uniform(self):
-        """Label data uniformly, e.g. 1_v 2_v 3_v ==> v v v."""
-        labels = []
-        for label,shape in self.shapes.items():
-            labels += [label] * int(np.prod(shape))
-        self.data.columns = labels
+    def _relabel(self,how):
+        """
+        Modify labeling of data in-place.
+
+        Parameters
+        ----------
+        how : str
+            Mode of labeling.
+            'uniform' ==> v v v
+            'shapes'  ==> 3:v v v
+            'linear'  ==> 1_v 2_v 3_v
+
+        """
+        self.data.columns = self._label(self.shapes,how)
 
 
     def _add_comment(self,label,shape,info):
@@ -70,6 +149,62 @@ class Table:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
             self.comments.append(f'{specific} / {general}')
+
+
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Report where values are approximately equal to corresponding ones of other Table.
+
+        Parameters
+        ----------
+        other : Table
+            Table to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        mask : numpy.ndarray bool
+            Mask indicating where corresponding table values are close.
+
+        """
+        return np.isclose( self.data.to_numpy(),
+                          other.data.to_numpy(),
+                          rtol=rtol,
+                          atol=atol,
+                          equal_nan=equal_nan)
+
+
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Test whether all values are approximately equal to corresponding ones of other Table.
+
+        Parameters
+        ----------
+        other : Table
+            Table to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        answer : bool
+            Whether corresponding values are close between both tables.
+
+        """
+        return np.allclose( self.data.to_numpy(),
+                           other.data.to_numpy(),
+                           rtol=rtol,
+                           atol=atol,
+                           equal_nan=equal_nan)
 
 
     @staticmethod
@@ -120,12 +255,13 @@ class Table:
 
         return Table(data,shapes,comments)
 
+
     @staticmethod
     def load_ang(fname):
         """
         Load from ang file.
 
-        A valid TSL ang file needs to contains the following columns:
+        A valid TSL ang file has to have the following columns:
 
         - Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
         - Spatial position in meters, 2 floats, label 'pos'.
@@ -216,10 +352,12 @@ class Table:
         """
         dup = self.copy()
         dup._add_comment(label,data.shape[1:],info)
-
-        if re.match(r'[0-9]*?_',label):
-            idx,key = label.split('_',1)
-            iloc = dup.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
+        m = re.match(r'(.*)\[((\d+,)*(\d+))\]',label)
+        if m:
+            key = m.group(1)
+            idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
+                                       self.shapes[key])
+            iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx
             dup.data.iloc[:,iloc] = data
         else:
             dup.data[label]       = data.reshape(dup.data[label].shape)
@@ -322,10 +460,18 @@ class Table:
             Updated table.
 
         """
+        labels_ = [labels] if isinstance(labels,str) else labels.copy()
+        for i,l in enumerate(labels_):
+            m = re.match(r'(.*)\[((\d+,)*(\d+))\]',l)
+            if m:
+                idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(','))),
+                                           self.shapes[m.group(1)])
+                labels_[i] = f'{1+idx}_{m.group(1)}'
+
         dup = self.copy()
-        dup._label_discrete()
-        dup.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
-        dup._label_uniform()
+        dup._relabel('linear')
+        dup.data.sort_values(labels_,axis=0,inplace=True,ascending=ascending)
+        dup._relabel('uniform')
         dup.comments.append(f'sorted {"ascending" if ascending else "descending"} by {labels}')
         return dup
 
