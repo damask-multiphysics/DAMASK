@@ -24,6 +24,12 @@ from . import util
 
 h5py3 = h5py.__version__[0] == '3'
 
+def _read(handle,path):
+    metadata = {k:(v if h5py3 else v.decode()) for k,v in handle[path].attrs.items()}
+    dtype = np.dtype(handle[path].dtype,metadata=metadata)
+    return np.array(handle[path],dtype=dtype)
+
+
 class Result:
     """
     Manipulate and read DADF5 files.
@@ -1322,21 +1328,23 @@ class Result:
         labels_ = set([labels] if isinstance(labels,str) else labels)
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
-                r[inc] = {'phase':{},'homogenization':{}}
+                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
+                for la in labels_.intersection(f[os.path.join(inc,'geometry')].keys()):
+                    r[inc]['geometry'][la] = _read(f,os.path.join(inc,'geometry',la))
                 for ph in self.visible['phases']:
                     r[inc]['phase'][ph] = {}
                     for me in f[os.path.join(inc,'phase',ph)].keys():
                         r[inc]['phase'][ph][me] = {}
                         for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
                             r[inc]['phase'][ph][me][la] = \
-                                f[os.path.join(inc,'phase',ph,me,la)][()]
+                                _read(f,os.path.join(inc,'phase',ph,me,la))
                 for ho in self.visible['homogenizations']:
                     r[inc]['homogenization'][ho] = {}
                     for me in f[os.path.join(inc,'homogenization',ho)].keys():
                         r[inc]['homogenization'][ho][me] = {}
                         for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,me)].keys()):
                             r[inc]['homogenization'][ho][me][la] = \
-                                f[os.path.join(inc,'homogenization',ho,me,la)][()]
+                                _read(f,os.path.join(inc,'homogenization',ho,me,la))
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
@@ -1372,22 +1380,17 @@ class Result:
 
             c = 0
             for inc in util.show_progress(self.visible['increments']):
-                r[inc] = {'phase':{},'homogenization':{}}
+                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
+                for la in labels_.intersection(f[os.path.join(inc,'geometry')].keys()):
+                    r[inc]['geometry'][la] = _read(f,os.path.join(inc,'geometry',la))
                 for ph in self.visible['phases']:
                     for me in f[os.path.join(inc,'phase',ph)].keys():
                         if me not in r[inc]['phase'].keys(): r[inc]['phase'][me] = {}
                         for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
-                            data = ma.array(f[os.path.join(inc,'phase',ph,me,la)])
-
-                            unit = f[os.path.join(inc,'phase',ph,me,la)].attrs['unit']
-                            description = f[os.path.join(inc,'phase',ph,me,la)].attrs['description']
-                            if not h5py3:
-                                description = description.decode()
-                                unit = unit.decode()
+                            data = ma.array(_read(f,os.path.join(inc,'phase',ph,me,la)))
 
                             if la not in r[inc]['phase'][me].keys():
-                                dt = np.dtype(data.dtype,metadata={'description':description, 'unit':unit})
-                                container = np.empty((N_cells,)+data.shape[1:],dtype=dt)
+                                container = np.empty((N_cells,)+data.shape[1:],dtype=data.dtype)
                                 r[inc]['phase'][me][la] = ma.array(container,fill_value=fill_value,mask=True)
 
                             r[inc]['phase'][me][la][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
