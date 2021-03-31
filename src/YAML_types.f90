@@ -389,7 +389,7 @@ function tNode_get_byIndex(self,i) result(node)
     class is(tList)
       self_ => self%asList()
     class default
-      call IO_error(706,ext_msg='Expected List')
+      call IO_error(706,ext_msg='Expected list')
   endselect
 
   item => self_%first
@@ -418,11 +418,11 @@ function tNode_get_byIndex_asFloat(self,i) result(nodeAsFloat)
 
   node   => self%get(i)
   select type(node)
-    class is(tScalar) 
+    class is(tScalar)
       scalar => node%asScalar()
       nodeAsFloat = scalar%asFloat()
     class default
-      call IO_error(706,ext_msg='Expected Scalar')
+      call IO_error(706,ext_msg='Expected scalar float')
   end select
 
 end function tNode_get_byIndex_asFloat
@@ -446,7 +446,7 @@ function tNode_get_byIndex_asInt(self,i) result(nodeAsInt)
       scalar => node%asScalar()
       nodeAsInt = scalar%asInt()
     class default
-      call IO_error(706,ext_msg='Expected Scalar')
+      call IO_error(706,ext_msg='Expected scalar integer')
   end select
 
 end function tNode_get_byIndex_asInt
@@ -470,7 +470,7 @@ function tNode_get_byIndex_asBool(self,i) result(nodeAsBool)
       scalar => node%asScalar()
       nodeAsBool = scalar%asBool()
     class default
-      call IO_error(706,ext_msg='Expected Scalar')
+      call IO_error(706,ext_msg='Expected scalar Boolean')
   endselect
 
 end function tNode_get_byIndex_asBool
@@ -494,7 +494,7 @@ function tNode_get_byIndex_asString(self,i) result(nodeAsString)
       scalar => node%asScalar()
       nodeAsString = scalar%asString()
     class default
-      call IO_error(706,ext_msg='Expected Scalar')
+      call IO_error(706,ext_msg='Expected scalar string')
   endselect
 
 end function tNode_get_byIndex_asString
@@ -518,7 +518,7 @@ function tNode_get_byIndex_as1dFloat(self,i) result(nodeAs1dFloat)
       list => node%asList()
       nodeAs1dFloat = list%as1dFloat()
     class default
-      call IO_error(706,ext_msg='Expected list')
+      call IO_error(706,ext_msg='Expected list of floats')
   endselect
 
 end function tNode_get_byIndex_as1dFloat
@@ -542,7 +542,7 @@ function tNode_get_byIndex_as1dInt(self,i) result(nodeAs1dInt)
       list => node%asList()
       nodeAs1dInt = list%as1dInt()
     class default
-      call IO_error(706,ext_msg='Expected list')
+      call IO_error(706,ext_msg='Expected list of integers')
   endselect
 
 end function tNode_get_byIndex_as1dInt
@@ -566,7 +566,7 @@ function tNode_get_byIndex_as1dBool(self,i) result(nodeAs1dBool)
       list => node%asList()
       nodeAs1dBool = list%as1dBool()
     class default
-      call IO_error(706,ext_msg='Expected list')
+      call IO_error(706,ext_msg='Expected list of Booleans')
   endselect
 
 end function tNode_get_byIndex_as1dBool
@@ -590,7 +590,7 @@ function tNode_get_byIndex_as1dString(self,i) result(nodeAs1dString)
       list => node%asList()
       nodeAs1dString = list%as1dString()
     class default
-      call IO_error(706,ext_msg='Expected list')
+      call IO_error(706,ext_msg='Expected list of strings')
   endselect
 
 end function tNode_get_byIndex_as1dString
@@ -619,7 +619,7 @@ function tNode_get_byIndex_asKey(self,i)  result(key)
     class default
       call IO_error(706,ext_msg='Expected dict')
   endselect
-  
+
   key = item%key
 
 end function tNode_get_byIndex_asKey
@@ -657,7 +657,7 @@ function tNode_contains(self,k)  result(exists)
         endif
       enddo
     class default
-      call IO_error(706,ext_msg='Expected "list" or "dict"')
+      call IO_error(706,ext_msg='Expected list or dict')
   endselect
 
 end function tNode_contains
@@ -685,7 +685,7 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
     class is(tDict)
       self_ => self%asDict()
     class default
-      call IO_error(706,ext_msg='Expected Dict for key '//k)
+      call IO_error(706,ext_msg='Expected dict for key '//k)
   endselect
 
   j = 1
@@ -729,7 +729,7 @@ function tNode_get_byKey_asFloat(self,k,defaultVal) result(nodeAsFloat)
         scalar => node%asScalar()
         nodeAsFloat = scalar%asFloat()
       class default
-        call IO_error(706,ext_msg='Expected Scalar for key '//k)
+        call IO_error(706,ext_msg='Expected scalar float for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAsFloat = defaultVal
@@ -760,7 +760,7 @@ function tNode_get_byKey_asInt(self,k,defaultVal) result(nodeAsInt)
         scalar => node%asScalar()
         nodeAsInt = scalar%asInt()
       class default
-        call IO_error(706,ext_msg='Expected Scalar for key '//k)
+        call IO_error(706,ext_msg='Expected scalar integer for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAsInt = defaultVal
@@ -791,7 +791,7 @@ function tNode_get_byKey_asBool(self,k,defaultVal) result(nodeAsBool)
         scalar => node%asScalar()
         nodeAsBool = scalar%asBool()
       class default
-        call IO_error(706,ext_msg='Expected Scalar for key '//k)
+        call IO_error(706,ext_msg='Expected scalar Boolean for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAsBool = defaultVal
@@ -822,7 +822,7 @@ function tNode_get_byKey_asString(self,k,defaultVal) result(nodeAsString)
         scalar => node%asScalar()
         nodeAsString = scalar%asString()
       class default
-        call IO_error(706,ext_msg='Expected Scalar for key '//k)
+        call IO_error(706,ext_msg='Expected scalar string for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAsString = defaultVal
@@ -855,7 +855,7 @@ function tNode_get_byKey_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs
         list => node%asList()
         nodeAs1dFloat = list%as1dFloat()
       class default
-        call IO_error(706,ext_msg='Expected 1D Float array for key '//k)
+        call IO_error(706,ext_msg='Expected 1D float array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dFloat = defaultVal
@@ -891,7 +891,7 @@ function tNode_get_byKey_as2dFloat(self,k,defaultVal) result(nodeAs2dFloat)
         rows => node%asList()
         nodeAs2dFloat = rows%as2dFloat()
       class default
-        call IO_error(706,ext_msg='Expected 2D Float array for key '//k)
+        call IO_error(706,ext_msg='Expected 2D float array for key '//k)
     endselect
   elseif(present(defaultVal)) then
     nodeAs2dFloat = defaultVal
@@ -923,7 +923,7 @@ function tNode_get_byKey_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1d
         list => node%asList()
         nodeAs1dInt = list%as1dInt()
       class default
-        call IO_error(706,ext_msg='Expected 1D Integer array for key '//k)
+        call IO_error(706,ext_msg='Expected 1D integer array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dInt = defaultVal
@@ -989,7 +989,7 @@ function tNode_get_byKey_as1dString(self,k,defaultVal) result(nodeAs1dString)
         list => node%asList()
         nodeAs1dString = list%as1dString()
       class default
-        call IO_error(706,ext_msg='Expected 1D String array for key '//k)
+        call IO_error(706,ext_msg='Expected 1D string array for key '//k)
     endselect
   elseif (present(defaultVal)) then
     nodeAs1dString = defaultVal
