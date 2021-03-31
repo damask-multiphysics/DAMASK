@@ -407,7 +407,8 @@ class TestGrid:
         z=np.ones(cells.prod())
         z[cells[:2].prod()*int(cells[2]/2):]=0
         t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
-        g = Grid.from_table(t,'coords',['1_coords','z'])
+        t = t.add('indicator',t.get('coords')[:,0])
+        g = Grid.from_table(t,'coords',['indicator','z'])
         assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
 
 
