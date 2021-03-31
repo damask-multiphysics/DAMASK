@@ -399,34 +399,52 @@ def DREAM3D_cell_data_group(fname):
 
     return cell_data_group
 
-def dict_strip(a_dict):
+
+def dict_strip(d):
+    """
+    Remove recursively empty dictionaries.
+
+    Parameters
+    ----------
+    d : dict
+        dictionary.
+
+    """
     # https://stackoverflow.com/questions/48151953
-    new_dict = {}
-    for k, v in a_dict.items():
+    new = {}
+    for k,v in d.items():
         if isinstance(v, dict):
             v = dict_strip(v)
         if not isinstance(v,dict) or v != {}:
-            new_dict[k] = v
-    return new_dict
+            new[k] = v
+    return new
 
 
-def dict_compress(a_dict):
-    # https://stackoverflow.com/questions/48151953
-    if isinstance(a_dict,dict) and len(a_dict) == 1:
-        key = list(a_dict.keys())[0]
-        entry = a_dict[key]
+def dict_compress(d):
+    """
+    Remove recursively dictionaries with one entry.
+
+    Parameters
+    ----------
+    d : dict
+        dictionary.
+
+    """
+    if isinstance(d,dict) and len(d) == 1:
+        key = list(d.keys())[0]
+        entry = d[key]
         if isinstance(entry,dict):
-            new_dict = dict_compress(entry.copy())
+            new = dict_compress(entry.copy())
         else:
-            new_dict = entry
+            new = entry
     else:
-        new_dict = {}
-        for k, v in a_dict.items():
+        new = {}
+        for k,v in d.items():
             if isinstance(v, dict):
                 v = dict_compress(v)
-            if not isinstance(v,dict) or v != {}:
-                new_dict[k] = v
-    return new_dict
+            if not isinstance(v,dict) or v == {}:
+                new[k] = v
+    return new
 
 
 

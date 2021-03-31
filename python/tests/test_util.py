@@ -136,3 +136,25 @@ class TestUtil:
         else:
             with pytest.raises(ValueError):
                 util.DREAM3D_cell_data_group(tmp_path/'cell_data_group.dream3d')
+
+
+    @pytest.mark.parametrize('full,reduced',[({},                           {}),
+                                             ({'A':{}},                     {}),
+                                             ({'A':{'B':{}}},               {}),
+                                             ({'A':{'B':'C'}},)*2,
+                                             ({'A':{'B':{},'C':'D'}},       {'A':{'C':'D'}})])
+    def test_strip(self,full,reduced):
+        assert util.dict_strip(full) == reduced
+
+
+    @pytest.mark.parametrize('full,reduced',[({},                           {}),
+                                             ({'A':{}},                     {}),
+                                             ({'A':'F'},                    'F'),
+                                             ({'A':{'B':{}}},               {}),
+                                             ({'A':{'B':'C'}},              'C'),
+                                             ({'A':1,'B':2},)*2,
+                                             ({'A':{'B':'C','D':'E'}},      {'B':'C','D':'E'}),
+                                             ({'B':'C','D':'E'},)*2,
+                                             ({'A':{'B':{},'C':'D'}},       {'B':{},'C':'D'})])
+    def test_compress(self,full,reduced):
+        assert util.dict_compress(full) == reduced
