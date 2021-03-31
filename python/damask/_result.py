@@ -1351,7 +1351,7 @@ class Result:
         return r
 
 
-    def place(self,labels,compress=True,strip=True,constituents=None,fill_value=0.0):
+    def place(self,labels,compress=True,strip=True,constituents=None,fill_float=0.0,fill_int=0):
         r = {}
 
         labels_ = set([labels] if isinstance(labels,str) else labels)
@@ -1391,10 +1391,10 @@ class Result:
 
                             if la not in r[inc]['phase'][me].keys():
                                 container = np.empty((N_cells,)+data.shape[1:],dtype=data.dtype)
+                                fill_value = fill_float if data.dtype in np.sctypes['float'] else fill_int
                                 r[inc]['phase'][me][la] = ma.array(container,fill_value=fill_value,mask=True)
 
                             r[inc]['phase'][me][la][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
-
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
