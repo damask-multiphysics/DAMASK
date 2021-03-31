@@ -131,11 +131,15 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
         Character length of bar. Defaults to 50.
 
     """
-    status = _ProgressBar(N_iter if N_iter is not None else len(iterable),prefix,bar_length)
+    if N_iter == 1 or len(iterable) == 1:
+        for item in iterable:
+            yield item
+    else:
+        status = _ProgressBar(N_iter if N_iter is not None else len(iterable),prefix,bar_length)
 
-    for i,item in enumerate(iterable):
-        yield item
-        status.update(i)
+        for i,item in enumerate(iterable):
+            yield item
+            status.update(i)
 
 
 def scale_to_coprime(v):
@@ -431,19 +435,11 @@ def dict_compress(d):
 
     """
     if isinstance(d,dict) and len(d) == 1:
-        key = list(d.keys())[0]
-        entry = d[key]
-        if isinstance(entry,dict):
-            new = dict_compress(entry.copy())
-        else:
-            new = entry
+        entry = d[list(d.keys())[0]]
+        new = dict_compress(entry.copy()) if isinstance(entry,dict) else entry
     else:
-        new = {}
-        for k,v in d.items():
-            if isinstance(v, dict):
-                v = dict_compress(v)
-            if not isinstance(v,dict) or v == {}:
-                new[k] = v
+        new = {k: (dict_compress(v) if isinstance(v, dict) else v) for k,v in d.items()}
+
     return new
 
 
