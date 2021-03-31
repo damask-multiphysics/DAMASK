@@ -16,7 +16,6 @@ from numpy.lib import recfunctions as rfn
 
 import damask
 from . import VTK
-from . import Table
 from . import Orientation
 from . import grid_filters
 from . import mechanics
@@ -1320,7 +1319,7 @@ class Result:
 
     def read(self,labels,compress=True,strip=True):
         r = {}
-        labels_ = [labels] if isinstance(labels,str) else labels
+        labels_ = set([labels] if isinstance(labels,str) else labels)
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{}}
@@ -1328,28 +1327,26 @@ class Result:
                     r[inc]['phase'][ph] = {}
                     for me in f[os.path.join(inc,'phase',ph)].keys():
                         r[inc]['phase'][ph][me] = {}
-                        for da in f[os.path.join(inc,'phase',ph,me)].keys():
-                            if da in labels_:
-                                r[inc]['phase'][ph][me][da] = \
-                                    f[os.path.join(inc,'phase',ph,me,da)][()]
+                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
+                            r[inc]['phase'][ph][me][la] = \
+                                f[os.path.join(inc,'phase',ph,me,la)][()]
                 for ho in self.visible['homogenizations']:
                     r[inc]['homogenization'][ho] = {}
                     for me in f[os.path.join(inc,'homogenization',ho)].keys():
                         r[inc]['homogenization'][ho][me] = {}
-                        for da in f[os.path.join(inc,'homogenization',ho,me)].keys():
-                            if da in labels_:
-                                r[inc]['homogenization'][ho][me][da] = \
-                                    f[os.path.join(inc,'homogenization',ho,me,da)][()]
+                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,me)].keys()):
+                            r[inc]['homogenization'][ho][me][la] = \
+                                f[os.path.join(inc,'homogenization',ho,me,la)][()]
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
         return r
 
 
-    def place(self,labels,compress=True,strip=True,constituents=None,fill_int=0,fill_float=0.0):
+    def place(self,labels,compress=True,strip=True,constituents=None,fill_value=0.0):
         r = {}
 
-        labels_ = [labels] if isinstance(labels,str) else labels
+        labels_ = set([labels] if isinstance(labels,str) else labels)
         if constituents is None:
             constituents_ = range(self.N_constituents)
         else:
@@ -1362,32 +1359,40 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             N_cells = self.cells.prod() if self.structured else np.shape(f['/geometry/T_c'])[0]
 
-            to_cell_ph = []
+            at_cell_ph = []
+            in_data_ph = []
             for c in constituents_:
-                to_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == str.encode(label))[0] \
+                at_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == str.encode(label))[0] \
                                           for label in self.visible['phases']})
-            to_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][name] == str.encode(label))[0] \
-                                 for label in self.visible['homogenizations']}
+                in_data_ph.append({label: f[os.path.join(grp,'phase')]['entry'][at_cell_ph[c][label]][...,0] \
+                                          for label in self.visible['phases']})
 
-            for inc in util.show_progress(self.visible['increments'],len(self.visible['increments'])):
+            #at_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][name] == str.encode(label))[0] \
+            #                     for label in self.visible['homogenizations']}
+
+            c = 0
+            for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{}}
                 for ph in self.visible['phases']:
                     for me in f[os.path.join(inc,'phase',ph)].keys():
-                        r[inc]['phase'][me] = {}
-                        for da in f[os.path.join(inc,'phase',ph,me)].keys():
-                            if da in labels_:
-                                data = f[os.path.join(inc,'phase',ph,me,da)][()]
+                        if me not in r[inc]['phase'].keys(): r[inc]['phase'][me] = {}
+                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
+                            data = ma.array(f[os.path.join(inc,'phase',ph,me,la)])
 
-                                unit = f[os.path.join(inc,'phase',ph,me,da)].attrs['unit']
-                                description = f[os.path.join(inc,'phase',ph,me,da)].attrs['description']
-                                if not h5py3:
-                                    description = description.decode()
-                                    unit = unit.decode()
+                            unit = f[os.path.join(inc,'phase',ph,me,la)].attrs['unit']
+                            description = f[os.path.join(inc,'phase',ph,me,la)].attrs['description']
+                            if not h5py3:
+                                description = description.decode()
+                                unit = unit.decode()
 
-                                if da not in r[inc]['phase'][me].keys():
-                                    dt = np.dtype(data.dtype,metadata={'description':description,
-                                                                       'unit':unit})
-                                    r[inc]['phase'][me][da] = ma.empty((N_cells,)+data.shape[1:],dtype=dt)
+                            if la not in r[inc]['phase'][me].keys():
+                                dt = np.dtype(data.dtype,metadata={'description':description, 'unit':unit})
+                                container = np.empty((N_cells,)+data.shape[1:],dtype=dt)
+                                r[inc]['phase'][me][la] = ma.array(container,fill_value=fill_value,mask=True)
+
+                            r[inc]['phase'][me][la][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
+
+
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
         return r
