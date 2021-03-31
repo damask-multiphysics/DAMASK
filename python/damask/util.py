@@ -131,7 +131,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
         Character length of bar. Defaults to 50.
 
     """
-    if N_iter == 1 or len(iterable) == 1:
+    if N_iter == 1 or (hasattr(iterable,'__len__') and len(iterable) == 1):
         for item in iterable:
             yield item
     else:

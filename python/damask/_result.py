@@ -36,6 +36,8 @@ class Result:
     Manipulate and read DADF5 files.
 
     DADF5 (DAMASK HDF5) files contain DAMASK results.
+    The group/folder structure reflects the input data
+    in material.yaml.
     """
 
     def __init__(self,fname):
@@ -1325,6 +1327,26 @@ class Result:
 
 
     def read(self,labels,compress=True,strip=True):
+        """
+        Export data from file per phase/homogenization.
+
+        The returned data structure reflects the group/folder structure
+        in the DADF5 file.
+
+        Parameters
+        ----------
+        labels : str or list of, optional
+            Labels of the datasets to be read.
+        compress : bool
+            Squeeze out dictionaries that are not needed for a unique
+            structure. This might be beneficial in the case of single
+            constituent or single phase simulations or if only one
+            time increment is considered. Defaults to 'True'.
+        strip : bool
+            Remove branches that contain no dataset. Defaults to
+            'True'.
+
+        """
         r = {}
         labels_ = set([labels] if isinstance(labels,str) else labels)
 
@@ -1357,6 +1379,30 @@ class Result:
 
 
     def place(self,labels,compress=True,strip=True,constituents=None,fill_float=0.0,fill_int=0):
+        """
+        Export data from file suitable sorted for spatial operations.
+
+        The returned data structure reflects the group/folder structure
+        in the DADF5 file. In the case of multi phase simulations, the
+        data is merged from the individual phases/homogenizations.
+
+        In the cases of a single constituent and single phase simulation
+        this function is equivalent to `read`.
+
+        Parameters
+        ----------
+        labels : str or list of, optional
+            Labels of the datasets to be read.
+        compress : bool
+            Squeeze out dictionaries that are not needed for a unique
+            structure. This might be beneficial in the case of single
+            phase simulations or if only one time increment is
+            considered. Defaults to 'True'.
+        strip : bool
+            Remove branches that contain no dataset. Defaults to
+            'True'.
+
+        """
         r = {}
 
         labels_ = set([labels] if isinstance(labels,str) else labels)
@@ -1365,6 +1411,8 @@ class Result:
         else:
             constituents_ = constituents if isinstance(constituents,Iterable) else [constituents]
 
+        suffixes = [''] if self.N_constituents == 1 or len(constituents_) == 1 else \
+                   [f'#{c}' for c in constituents_]
 
         grp  = 'mapping' if self.version_minor < 12 else 'cell_to'
         name = 'Name' if self.version_minor < 12 else 'label'
@@ -1375,17 +1423,15 @@ class Result:
             at_cell_ph = []
             in_data_ph = []
             for c in constituents_:
-                at_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == str.encode(label))[0] \
+                at_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == label.encode())[0] \
                                           for label in self.visible['phases']})
                 in_data_ph.append({label: f[os.path.join(grp,'phase')][member][at_cell_ph[c][label]][...,0] \
                                           for label in self.visible['phases']})
 
-            at_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][:][name] == str.encode(label))[0] \
+            at_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][:][name] == label.encode())[0] \
                                  for label in self.visible['homogenizations']}
-            in_data_ho = {label: f[os.path.join(grp,'homogenization')][member][at_cell_ho[label]][...,0] \
+            in_data_ho = {label: f[os.path.join(grp,'homogenization')][member][at_cell_ho[label]] \
                                  for label in self.visible['homogenizations']}
-
-            c = 0
 
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
@@ -1395,22 +1441,28 @@ class Result:
 
                 for ph in self.visible['phases']:
                     for me in f[os.path.join(inc,'phase',ph)].keys():
-                        if me not in r[inc]['phase'].keys(): r[inc]['phase'][me] = {}
+                        if me not in r[inc]['phase'].keys():
+                            r[inc]['phase'][me] = {}
+
                         for la in labels_.intersection(f[os.path.join(inc,'phase',ph,me)].keys()):
                             data = ma.array(_read(f,os.path.join(inc,'phase',ph,me,la)))
 
-                            if la not in r[inc]['phase'][me].keys():
+                            if la+suffixes[0] not in r[inc]['phase'][me].keys():
                                 container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
                                 fill_value = fill_float if data.dtype in np.sctypes['float'] else \
                                              fill_int
-                                r[inc]['phase'][me][la] = \
-                                    ma.array(container,fill_value=fill_value,mask=True)
+                                for c,suffix in zip(constituents_, suffixes):
+                                    r[inc]['phase'][me][la+suffix] = \
+                                        ma.array(container,fill_value=fill_value,mask=True)
 
-                            r[inc]['phase'][me][la][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
+                            for c,suffix in zip(constituents_, suffixes):
+                                r[inc]['phase'][me][la+suffix][at_cell_ph[c][ph]] = data[in_data_ph[c][ph]]
 
                 for ho in self.visible['homogenizations']:
                     for me in f[os.path.join(inc,'homogenization',ho)].keys():
-                        if me not in r[inc]['homogenization'].keys(): r[inc]['homogenization'][me] = {}
+                        if me not in r[inc]['homogenization'].keys():
+                            r[inc]['homogenization'][me] = {}
+
                         for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,me)].keys()):
                             data = ma.array(_read(f,os.path.join(inc,'homogenization',ho,me,la)))
 
