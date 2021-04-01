@@ -345,7 +345,7 @@ class Result:
         if self._allow_modification:
             with h5py.File(self.fname,'a') as f:
                 for path_old in self.get_dataset_location(name_old):
-                    path_new = os.path.join(os.path.dirname(path_old),name_new)
+                    path_new = '/'.join([os.path.dirname(path_old),name_new])
                     f[path_new] = f[path_old]
                     f[path_new].attrs['Renamed'] = f'Original name: {name_old}' if h5py3 else \
                                                    f'Original name: {name_old}'.encode()
@@ -1326,25 +1326,24 @@ class Result:
             v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
 
 
-    def read(self,output,compress=True,strip=True):
+    def read(self,output,flatten=True,prune=True):
         """
-        Export data from file per phase/homogenization.
+        Export data per phase/homogenization.
 
         The returned data structure reflects the group/folder structure
         in the DADF5 file.
 
         Parameters
         ----------
-        output : str or list of, optional
-            Name of the datasets to include.
-        compress : bool
-            Squeeze out dictionaries that are not needed for a unique
-            structure. This might be beneficial in the case of single
-            constituent or single phase simulations or if only one
-            time increment is considered. Defaults to 'True'.
-        strip : bool
-            Remove branches that contain no dataset. Defaults to
-            'True'.
+        output : str or list of str
+            Labels of the datasets to read.
+        flatten : bool
+            Remove singular levels of the folder hierarchy.
+            This might be beneficial in case of a
+            single constituent, phase, or increment.
+            Defaults to True.
+        prune : bool
+            Remove branches with no data. Defaults to True.
 
         """
         r = {}
@@ -1365,53 +1364,49 @@ class Result:
                             for out in output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
                                 r[inc][ty][label][field][out] = _read(f,'/'.join((inc,ty,label,field,out)))
 
-        if strip:    r = util.dict_strip(r)
-        if compress: r = util.dict_compress(r)
+        if prune:   r = util.dict_prune(r)
+        if flatten: r = util.dict_flatten(r)
 
         return r
 
 
-    def place(self,output,compress=True,strip=True,constituents=None,fill_float=0.0,fill_int=0):
+    def place(self,output,flatten=True,prune=True,constituents=None,fill_float=0.0,fill_int=0):
         """
-        Export data from file suitable sorted for spatial operations.
+        Export data in spatial order that is compatible with the damask.VTK geometry representation.
 
         The returned data structure reflects the group/folder structure
-        in the DADF5 file. In the case of multi phase simulations, the
-        data is merged from the individual phases/homogenizations.
+        in the DADF5 file.
 
-        In the cases of a single constituent and single phase simulation
-        this function is equivalent to `read`.
+        Multi-phase data is fused into a single output.
+        `place` is equivalent to `read` if only one phase and one constituent is present.
 
         Parameters
         ----------
         output : str or list of, optional
-            Labels of the datasets to be read.
-        compress : bool
-            Squeeze out dictionaries that are not needed for a unique
-            structure. This might be beneficial in the case of single
-            phase simulations or if only one time increment is
-            considered. Defaults to 'True'.
-        strip : bool
-            Remove branches that contain no dataset. Defaults to
-            'True'.
+            Labels of the datasets to place.
+        flatten : bool
+            Remove singular levels of the folder hierarchy.
+            This might be beneficial in case of a
+            single constituent, phase, or increment.
+            Defaults to True.
+        prune : bool
+            Remove branches with no data. Defaults to True.
         constituents : int or list of, optional
             Constituents to consider. Defaults to 'None', in which case
             all constituents are considered.
         fill_float : float
-            Fill value for non existent entries of floating point type.
+            Fill value for non-existent entries of floating point type.
             Defaults to 0.0.
         fill_int : int
-            Fill value for non existent entries of integer type.
+            Fill value for non-existent entries of integer type.
             Defaults to 0.
 
         """
         r = {}
 
         output_ = set([output] if isinstance(output,str) else output)
-        if constituents is None:
-            constituents_ = range(self.N_constituents)
-        else:
-            constituents_ = constituents if isinstance(constituents,Iterable) else [constituents]
+        constituents_ = range(self.N_constituents) if constituents is None else \
+                        constituents if isinstance(constituents,Iterable) else [constituents]
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
@@ -1425,30 +1420,30 @@ class Result:
             at_cell_ph = []
             in_data_ph = []
             for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f[os.path.join(grp,'phase')][:,c][name] == label.encode())[0] \
+                at_cell_ph.append({label: np.where(f['/'.join((grp,'phase'))][:,c][name] == label.encode())[0] \
                                           for label in self.visible['phases']})
-                in_data_ph.append({label: f[os.path.join(grp,'phase')][member][at_cell_ph[c][label]][...,c] \
+                in_data_ph.append({label: f['/'.join((grp,'phase'))][member][at_cell_ph[c][label]][...,c] \
                                           for label in self.visible['phases']})
 
-            at_cell_ho = {label: np.where(f[os.path.join(grp,'homogenization')][:][name] == label.encode())[0] \
+            at_cell_ho = {label: np.where(f['/'.join((grp,'homogenization'))][:][name] == label.encode())[0] \
                                  for label in self.visible['homogenizations']}
-            in_data_ho = {label: f[os.path.join(grp,'homogenization')][member][at_cell_ho[label]] \
+            in_data_ho = {label: f['/'.join((grp,'homogenization'))][member][at_cell_ho[label]] \
                                  for label in self.visible['homogenizations']}
 
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in output_.intersection(f[os.path.join(inc,'geometry')].keys()):
-                    r[inc]['geometry'][out] = _read(f,os.path.join(inc,'geometry',out))
+                for out in output_.intersection(f['/'.join((inc,'geometry'))].keys()):
+                    r[inc]['geometry'][out] = _read(f,'/'.join((inc,'geometry',out)))
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in f[os.path.join(inc,ty,label)].keys():
+                        for field in f['/'.join((inc,ty,label))].keys():
                             if field not in r[inc][ty].keys():
                                 r[inc][ty][field] = {}
 
-                            for out in output_.intersection(f[os.path.join(inc,ty,label,field)].keys()):
-                                data = ma.array(_read(f,os.path.join(inc,ty,label,field,out)))
+                            for out in output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                                data = ma.array(_read(f,'/'.join((inc,ty,label,field,out))))
 
                                 if ty == 'phase':
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
@@ -1472,7 +1467,7 @@ class Result:
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
 
-        if strip:    r = util.dict_strip(r)
-        if compress: r = util.dict_compress(r)
+        if prune:   r = util.dict_prune(r)
+        if flatten: r = util.dict_flatten(r)
 
         return r

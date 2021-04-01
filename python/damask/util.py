@@ -26,7 +26,7 @@ __all__=[
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
          'DREAM3D_base_group', 'DREAM3D_cell_data_group',
-         'dict_strip', 'dict_compress'
+         'dict_prune', 'dict_flatten'
         ]
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
@@ -404,41 +404,51 @@ def DREAM3D_cell_data_group(fname):
     return cell_data_group
 
 
-def dict_strip(d):
+def dict_prune(d):
     """
-    Remove recursively empty dictionaries.
+    Recursively remove empty dictionaries.
 
     Parameters
     ----------
     d : dict
-        dictionary.
+        Dictionary to prune.
+
+    Returns
+    -------
+    pruned : dict
+        Pruned dictionary.
 
     """
     # https://stackoverflow.com/questions/48151953
     new = {}
     for k,v in d.items():
         if isinstance(v, dict):
-            v = dict_strip(v)
+            v = dict_prune(v)
         if not isinstance(v,dict) or v != {}:
             new[k] = v
     return new
 
 
-def dict_compress(d):
+def dict_flatten(d):
     """
-    Remove recursively dictionaries with one entry.
+    Recursively remove keys of single-entry dictionaries.
 
     Parameters
     ----------
     d : dict
-        dictionary.
+        Dictionary to flatten.
+
+    Returns
+    -------
+    flattened : dict
+        Flattened dictionary.
 
     """
     if isinstance(d,dict) and len(d) == 1:
         entry = d[list(d.keys())[0]]
-        new = dict_compress(entry.copy()) if isinstance(entry,dict) else entry
+        new = dict_flatten(entry.copy()) if isinstance(entry,dict) else entry
     else:
-        new = {k: (dict_compress(v) if isinstance(v, dict) else v) for k,v in d.items()}
+        new = {k: (dict_flatten(v) if isinstance(v, dict) else v) for k,v in d.items()}
 
     return new
 

@@ -143,8 +143,8 @@ class TestUtil:
                                              ({'A':{'B':{}}},               {}),
                                              ({'A':{'B':'C'}},)*2,
                                              ({'A':{'B':{},'C':'D'}},       {'A':{'C':'D'}})])
-    def test_strip(self,full,reduced):
-        assert util.dict_strip(full) == reduced
+    def test_prune(self,full,reduced):
+        assert util.dict_prune(full) == reduced
 
 
     @pytest.mark.parametrize('full,reduced',[({},                           {}),
@@ -156,5 +156,5 @@ class TestUtil:
                                              ({'A':{'B':'C','D':'E'}},      {'B':'C','D':'E'}),
                                              ({'B':'C','D':'E'},)*2,
                                              ({'A':{'B':{},'C':'D'}},       {'B':{},'C':'D'})])
-    def test_compress(self,full,reduced):
-        assert util.dict_compress(full) == reduced
+    def test_flatten(self,full,reduced):
+        assert util.dict_flatten(full) == reduced
