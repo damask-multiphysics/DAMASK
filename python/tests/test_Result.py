@@ -401,7 +401,7 @@ class TestResult:
         with pytest.raises(TypeError):
             default.save_XDMF()
 
-    @pytest.mark.parametrize('view,labels,compress,strip',
+    @pytest.mark.parametrize('view,output,compress,strip',
             [({},['F','P','F','L_p','F_e','F_p'],True,True),
              ({'increments':3},'F',True,True),
              ({'increments':[1,8,3,4,5,6,7]},['F','P'],True,True),
@@ -411,18 +411,41 @@ class TestResult:
              ({'phases':False},['Delta_V'],True,True),
              ({},['u_p','u_n'],False,False)],
             ids=list(range(8)))
-    def test_read(self,update,request,ref_path,view,labels,compress,strip):
+    def test_read(self,update,request,ref_path,view,output,compress,strip):
         result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
             result.view(key,value)
 
         N = request.node.name[8:].split('[')[1].split(']')[0]
-        cur = result.read(labels,compress,strip)
+        cur = result.read(output,compress,strip)
         if update:
             with bz2.BZ2File(ref_path/f'read_{N}.pbz2','w') as f:
                 pickle.dump(cur,f)
-            
+
         with bz2.BZ2File(ref_path/f'read_{N}.pbz2') as f:
-            ref = pickle.load(f)
-        
-        assert dict_equal(cur,ref)
+            assert dict_equal(cur,pickle.load(f))
+
+
+    @pytest.mark.parametrize('view,output,compress,constituents,strip',
+            [({},['F','P','F','L_p','F_e','F_p'],True,True,None),
+             ({'increments':3},'F',True,True,[0,1,2,3,4,5,6,7]),
+             ({'increments':[1,8,3,4,5,6,7]},['F','P'],True,True,1),
+             ({'phases':['A','B']},['F','P'],True,True,[1,2]),
+             ({'phases':['A','C'],'homogenizations':False},['F','P','O'],True,True,[0,7]),
+             ({'phases':False,'homogenizations':False},['F','P','O'],True,True,[1,2,3,4]),
+             ({'phases':False},['Delta_V'],True,True,[1,2,4]),
+             ({},['u_p','u_n'],False,False,None)],
+            ids=list(range(8)))
+    def test_place(self,update,request,ref_path,view,output,compress,strip,constituents):
+        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        for key,value in view.items():
+            result.view(key,value)
+
+        N = request.node.name[8:].split('[')[1].split(']')[0]
+        cur = result.place(output,compress,strip,constituents)
+        if update:
+            with bz2.BZ2File(ref_path/f'place_{N}.pbz2','w') as f:
+                pickle.dump(cur,f)
+
+        with bz2.BZ2File(ref_path/f'place_{N}.pbz2') as f:
+            assert dict_equal(cur,pickle.load(f))
