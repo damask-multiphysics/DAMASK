@@ -2,7 +2,6 @@ import os
 import multiprocessing as mp
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
@@ -224,7 +223,7 @@ class VTK:
 
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
-    # Needs support for pd.DataFrame and/or table
+    # Needs support for damask.Table
     def add(self,data,label=None):
         """
         Add data to either cells or points.
@@ -256,8 +255,6 @@ class VTK:
                 self.vtk_data.GetCellData().AddArray(d)
             else:
                 raise ValueError(f'Cell / point count ({N_cells} / {N_points}) differs from data ({N_data}).')
-        elif isinstance(data,pd.DataFrame):
-            raise NotImplementedError('pd.DataFrame')
         elif isinstance(data,Table):
             raise NotImplementedError('damask.Table')
         else:
