@@ -1,3 +1,5 @@
+import bz2
+import pickle
 import time
 import shutil
 import os
@@ -36,6 +38,17 @@ def ref_path(ref_path_base):
     """Directory containing reference results."""
     return ref_path_base/'Result'
 
+def dict_equal(d1, d2):
+    for k in d1:
+        if (k not in d2):
+            return False
+        else:
+            if type(d1[k]) is dict:
+                return dict_equal(d1[k],d2[k])
+            else:
+                if not np.allclose(d1[k],d2[k]):
+                    return False
+    return True
 
 class TestResult:
 
@@ -387,3 +400,29 @@ class TestResult:
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
             default.save_XDMF()
+
+    @pytest.mark.parametrize('view,labels,compress,strip',
+            [({},['F','P','F','L_p','F_e','F_p'],True,True),
+             ({'increments':3},'F',True,True),
+             ({'increments':[1,8,3,4,5,6,7]},['F','P'],True,True),
+             ({'phases':['A','B']},['F','P'],True,True),
+             ({'phases':['A','C'],'homogenizations':False},['F','P','O'],True,True),
+             ({'phases':False,'homogenizations':False},['F','P','O'],True,True),
+             ({'phases':False},['Delta_V'],True,True),
+             ({},['u_p','u_n'],False,False)],
+            ids=list(range(8)))
+    def test_read(self,update,request,ref_path,view,labels,compress,strip):
+        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        for key,value in view.items():
+            result.view(key,value)
+
+        N = request.node.name[8:].split('[')[1].split(']')[0]
+        cur = result.read(labels,compress,strip)
+        if update:
+            with bz2.BZ2File(ref_path/f'read_{N}.pbz2','w') as f:
+                pickle.dump(cur,f)
+            
+        with bz2.BZ2File(ref_path/f'read_{N}.pbz2') as f:
+            ref = pickle.load(f)
+        
+        assert dict_equal(cur,ref)
