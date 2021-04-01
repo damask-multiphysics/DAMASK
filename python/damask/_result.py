@@ -1354,27 +1354,20 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for la in labels_.intersection(f[os.path.join(inc,'geometry')].keys()):
-                    r[inc]['geometry'][la] = _read(f,os.path.join(inc,'geometry',la))
+                for la in labels_.intersection(f['/'.join((inc,'geometry'))].keys()):
+                    r[inc]['geometry'][la] = _read(f,'/'.join((inc,'geometry',la)))
 
-                for ph in self.visible['phases']:
-                    r[inc]['phase'][ph] = {}
-                    for field in f[os.path.join(inc,'phase',ph)].keys():
-                        r[inc]['phase'][ph][field] = {}
-                        for la in labels_.intersection(f[os.path.join(inc,'phase',ph,field)].keys()):
-                            r[inc]['phase'][ph][field][la] = \
-                                _read(f,os.path.join(inc,'phase',ph,field,la))
-
-                for ho in self.visible['homogenizations']:
-                    r[inc]['homogenization'][ho] = {}
-                    for field in f[os.path.join(inc,'homogenization',ho)].keys():
-                        r[inc]['homogenization'][ho][field] = {}
-                        for la in labels_.intersection(f[os.path.join(inc,'homogenization',ho,field)].keys()):
-                            r[inc]['homogenization'][ho][field][la] = \
-                                _read(f,os.path.join(inc,'homogenization',ho,field,la))
+                for ty in ['phase','homogenization']:
+                    for na in self.visible[ty+'s']:
+                        r[inc][ty][na] = {}
+                        for field in f['/'.join((inc,ty,na))].keys():
+                            r[inc][ty][na][field] = {}
+                            for la in labels_.intersection(f['/'.join((inc,ty,na,field))].keys()):
+                                r[inc][ty][na][field][la] = _read(f,'/'.join((inc,ty,na,field,la)))
 
         if strip:    r = util.dict_strip(r)
         if compress: r = util.dict_compress(r)
+
         return r
 
 
