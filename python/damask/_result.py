@@ -84,21 +84,17 @@ class Result:
             self.phases           = [c.decode() for c in np.unique(f[f'{grp}/phase']
                                                                     ['Name' if self.version_minor < 12 else 'label'])]
 
-            self.out_type_ph = []
+            self.fields = []
             for c in self.phases:
-                self.out_type_ph += f['/'.join([self.increments[0],'phase',c])].keys()
-            self.out_type_ph = list(set(self.out_type_ph))                                          # make unique
-
-            self.out_type_ho = []
+                self.fields += f['/'.join([self.increments[0],'phase',c])].keys()
             for m in self.homogenizations:
-                self.out_type_ho += f['/'.join([self.increments[0],'homogenization',m])].keys()
-            self.out_type_ho = list(set(self.out_type_ho))                                          # make unique
+                self.fields += f['/'.join([self.increments[0],'homogenization',m])].keys()
+            self.fields = list(set(self.fields))                                                    # make unique
 
         self.visible = {'increments':      self.increments,
                         'phases':          self.phases,
                         'homogenizations': self.homogenizations,
-                        'out_type_ph':     self.out_type_ph,
-                        'out_type_ho':     self.out_type_ho
+                        'fields':          self.fields,
                        }
 
         self.fname = Path(fname).absolute()
@@ -392,7 +388,7 @@ class Result:
 
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
+                for o,p in zip(['phases','homogenizations'],['fields','fields']):
                     for oo in self.iterate(o):
                         for pp in self.iterate(p):
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
@@ -414,7 +410,7 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
                 message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
-                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
+                for o,p in zip(['phases','homogenizations'],['fields','fields']):
                     message += f'  {o[:-1]}\n'
                     for oo in self.iterate(o):
                         message += f'    {oo}\n'
@@ -448,7 +444,7 @@ class Result:
                     path.append(k)
                 except KeyError:
                     pass
-                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
+                for o,p in zip(['phases','homogenizations'],['fields','fields']):
                     for oo in self.iterate(o):
                         for pp in self.iterate(p):
                             k = '/'.join([i,o[:-1],oo,pp,label])
@@ -1222,7 +1218,7 @@ class Result:
                                        'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
-                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
+                for o,p in zip(['phases','homogenizations'],['fields','fields']):
                     for oo in getattr(self,o):
                         for pp in getattr(self,p):
                             g = '/'.join([inc,o[:-1],oo,pp])
@@ -1286,7 +1282,7 @@ class Result:
             viewed_backup_ho = self.visible['homogenizations'].copy()
             self.view('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for o in self.iterate('out_type_ph'):
+                for o in self.iterate('fields'):
                     for c in range(self.N_constituents):
                         prefix = '' if self.N_constituents == 1 else f'constituent{c}/'
                         if o not in ['mechanics', 'mechanical']:                                    # compatibility hack
@@ -1312,7 +1308,7 @@ class Result:
             viewed_backup_ph = self.visible['phases'].copy()
             self.view('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for _ in self.iterate('out_type_ho'):
+                for _ in self.iterate('fields'):
                     paths = self.get_dataset_location(label)
                     if len(paths) == 0:
                         continue
