@@ -1405,8 +1405,8 @@ class Result:
         r = {}
 
         output_ = set([output] if isinstance(output,str) else output)
-        constituents_ = range(self.N_constituents) if constituents is None else \
-                        constituents if isinstance(constituents,Iterable) else [constituents]
+        constituents_ = constituents if isinstance(constituents,Iterable) else \
+                      (range(self.N_constituents) if constituents is None else [constituents])
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
@@ -1422,7 +1422,7 @@ class Result:
             for c in range(self.N_constituents):
                 at_cell_ph.append({label: np.where(f['/'.join((grp,'phase'))][:,c][name] == label.encode())[0] \
                                           for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join((grp,'phase'))][member][at_cell_ph[c][label]][...,c] \
+                in_data_ph.append({label: f['/'.join((grp,'phase'))][member][at_cell_ph[c][label]][:,c] \
                                           for label in self.visible['phases']})
 
             at_cell_ho = {label: np.where(f['/'.join((grp,'homogenization'))][:][name] == label.encode())[0] \
@@ -1450,7 +1450,7 @@ class Result:
                                         container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
                                         fill_value = fill_float if data.dtype in np.sctypes['float'] else \
                                                      fill_int
-                                        for c,suffix in zip(constituents_, suffixes):
+                                        for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
                                                 ma.array(container,fill_value=fill_value,mask=True)
 
