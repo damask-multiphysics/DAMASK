@@ -3,6 +3,7 @@ import multiprocessing as mp
 from pathlib import Path
 
 import numpy as np
+import numpy.ma as ma
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
@@ -230,7 +231,7 @@ class VTK:
 
         Parameters
         ----------
-        data : numpy.ndarray
+        data : numpy.ndarray or numpy.ma.MaskedArray
             Data to add. First dimension needs to match either
             number of cells or number of points.
         label : str
@@ -245,8 +246,10 @@ class VTK:
                 raise ValueError('No label defined for numpy.ndarray')
 
             N_data = data.shape[0]
-            d = np_to_vtk((data.astype(np.single) if data.dtype in [np.double, np.longdouble] else
-                           data).reshape(N_data,-1),deep=True)                                      # avoid large files
+            data_ = np.where(data.mask,data.fill_value,data) if isinstance(data,ma.MaskedArray) else\
+                    data
+            d = np_to_vtk((data_.astype(np.single) if data_.dtype in [np.double, np.longdouble] else
+                           data_).reshape(N_data,-1),deep=True)                                      # avoid large files
             d.SetName(label)
 
             if   N_data == N_points:
