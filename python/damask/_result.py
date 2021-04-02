@@ -1246,17 +1246,27 @@ class Result:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
-    def save_VTK(self,labels=[],mode='cell'):
+    def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0):
         """
         Export to vtk cell/point data.
 
         Parameters
         ----------
-        labels : str or list of, optional
-            Labels of the datasets to be exported.
+        output : str or list of, optional
+            Labels of the datasets to place. Defaults to '*', in which
+            case all datasets are exported.
         mode : str, either 'cell' or 'point'
             Export in cell format or point format.
             Defaults to 'cell'.
+        constituents : int or list of, optional
+            Constituents to consider. Defaults to 'None', in which case
+            all constituents are considered.
+        fill_float : float
+            Fill value for non-existent entries of floating point type.
+            Defaults to 0.0.
+        fill_int : int
+            Fill value for non-existent entries of integer type.
+            Defaults to 0.
 
         """
         if mode.lower()=='cell':
@@ -1272,53 +1282,76 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
 
-        # compatibility hack
-        ln = 3 if self.version_minor < 12 else 10
+        ln = 3 if self.version_minor < 12 else 10         # compatibility hack
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][ln:])))))+1
 
-        for inc in util.show_progress(self.iterate('increments'),len(self.visible['increments'])):
+        output_ = set([output] if isinstance(output,str) else output)
+        constituents_ = constituents if isinstance(constituents,Iterable) else \
+                      (range(self.N_constituents) if constituents is None else [constituents])
 
-            viewed_backup_ho = self.visible['homogenizations'].copy()
-            self.view('homogenizations',False)
-            for label in (labels if isinstance(labels,list) else [labels]):
-                for o in self.iterate('fields'):
-                    for c in range(self.N_constituents):
-                        prefix = '' if self.N_constituents == 1 else f'constituent{c}/'
-                        if o not in ['mechanics', 'mechanical']:                                    # compatibility hack
-                            for _ in self.iterate('phases'):
-                                path = self.get_dataset_location(label)
-                                if len(path) == 0:
-                                    continue
-                                array = self.read_dataset(path,c)
-                                v.add(array,prefix+path[0].split('/',1)[1]+f' / {self._get_attribute(path[0],"unit")}')
-                        else:
-                            paths = self.get_dataset_location(label)
-                            if len(paths) == 0:
-                                continue
-                            array = self.read_dataset(paths,c)
-                            if self.version_minor < 12:
-                                ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')         # identify  phase name
-                            else:
-                                ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanical))')        # identify  phase name
-                            dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])         # remove phase name
-                            v.add(array,dset_name+f' / {self._get_attribute(paths[0],"unit")}')
-            self.view('homogenizations',viewed_backup_ho)
+        suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
+                   [f'#{c}' for c in constituents_]
 
-            viewed_backup_ph = self.visible['phases'].copy()
-            self.view('phases',False)
-            for label in (labels if isinstance(labels,list) else [labels]):
-                for _ in self.iterate('fields'):
-                    paths = self.get_dataset_location(label)
-                    if len(paths) == 0:
-                        continue
-                    array = self.read_dataset(paths)
-                    v.add(array,paths[0].split('/',1)[1]+f' / {self._get_attribute(paths[0],"unit")}')
-            self.view('phases',viewed_backup_ph)
+        grp  = 'mapping' if self.version_minor < 12 else 'cell_to' # compatibility hack
+        name = 'Name' if self.version_minor < 12 else 'label' # compatibility hack
+        member = 'member' if self.version_minor < 12 else 'entry' # compatibility hack
 
-            u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
-            v.add(u,'u')
+        with h5py.File(self.fname,'r') as f:
 
-            v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
+            at_cell_ph = []
+            in_data_ph = []
+            for c in range(self.N_constituents):
+                at_cell_ph.append({label: np.where(f['/'.join((grp,'phase'))][:,c][name] == label.encode())[0] \
+                                          for label in self.visible['phases']})
+                in_data_ph.append({label: f['/'.join((grp,'phase'))][member][at_cell_ph[c][label]][:,c] \
+                                          for label in self.visible['phases']})
+
+            at_cell_ho = {label: np.where(f['/'.join((grp,'homogenization'))][:][name] == label.encode())[0] \
+                                 for label in self.visible['homogenizations']}
+            in_data_ho = {label: f['/'.join((grp,'homogenization'))][member][at_cell_ho[label]] \
+                                 for label in self.visible['homogenizations']}
+
+            for inc in util.show_progress(self.visible['increments']):
+
+                u = _read(f['/'.join((inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'))])
+                v.add(u,'u')
+
+                for ty in ['phase','homogenization']:
+                    for field in self.visible['fields']:
+                        for label in self.visible[ty+'s']:
+                            if field not in f['/'.join((inc,ty,label))].keys(): continue
+                            outs = {}
+
+                            for out in f['/'.join((inc,ty,label,field))].keys() if '*' in output_ else \
+                                       output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                                data = ma.array(_read(f['/'.join((inc,ty,label,field,out))]))
+
+                                if ty == 'phase':
+                                    if out+suffixes[0] not in outs.keys():
+                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
+                                        fill_value = fill_float if data.dtype in np.sctypes['float'] else \
+                                                     fill_int
+                                        for c,suffix in zip(constituents_,suffixes):
+                                            outs[out+suffix] = \
+                                                ma.array(container,fill_value=fill_value,mask=True)
+
+                                    for c,suffix in zip(constituents_,suffixes):
+                                        outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+
+                                if ty == 'homogenization':
+                                    if out not in outs.keys():
+                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
+                                        fill_value = fill_float if data.dtype in np.sctypes['float'] else \
+                                                     fill_int
+                                        outs[out] = \
+                                            ma.array(container,fill_value=fill_value,mask=True)
+
+                                    outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
+
+                        for label,dataset in outs.items():
+                            v.add(dataset,' / '.join(('/'.join((ty,field,label)),dataset.dtype.metadata['unit'])))
+
+                v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
 
 
     def read(self,output='*',flatten=True,prune=True):
@@ -1375,7 +1408,8 @@ class Result:
         in the DADF5 file.
 
         Multi-phase data is fused into a single output.
-        `place` is equivalent to `read` if only one phase and one constituent is present.
+        `place` is equivalent to `read` if only one phase/homogenization
+        and one constituent is present.
 
         Parameters
         ----------
@@ -1408,9 +1442,9 @@ class Result:
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
 
-        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'
-        name = 'Name' if self.version_minor < 12 else 'label'
-        member = 'member' if self.version_minor < 12 else 'entry'
+        grp  = 'mapping' if self.version_minor < 12 else 'cell_to' # compatibility hack
+        name = 'Name' if self.version_minor < 12 else 'label' # compatibility hack
+        member = 'member' if self.version_minor < 12 else 'entry' # compatibility hack
 
         with h5py.File(self.fname,'r') as f:
 

@@ -376,7 +376,7 @@ class TestResult:
              b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
          assert np.allclose(a,b)
 
-    @pytest.mark.parametrize('output',['F',[],['F','P']])
+    @pytest.mark.parametrize('output',['F','*',['F','P']])
     def test_vtk(self,tmp_path,default,output):
         os.chdir(tmp_path)
         default.save_VTK(output)
