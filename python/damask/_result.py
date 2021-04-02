@@ -25,10 +25,10 @@ from . import util
 
 h5py3 = h5py.__version__[0] == '3'
 
-def _read(handle,path):
-    metadata = {k:(v if h5py3 else v.decode()) for k,v in handle[path].attrs.items()}
-    dtype = np.dtype(handle[path].dtype,metadata=metadata)
-    return np.array(handle[path],dtype=dtype)
+def _read(dataset):
+    metadata = {k:(v if h5py3 else v.decode()) for k,v in dataset.attrs.items()}
+    dtype = np.dtype(dataset.dtype,metadata=metadata)
+    return np.array(dataset,dtype=dtype)
 
 
 class Result:
@@ -1274,7 +1274,6 @@ class Result:
 
         # compatibility hack
         ln = 3 if self.version_minor < 12 else 10
-
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][ln:])))))+1
 
         for inc in util.show_progress(self.iterate('increments'),len(self.visible['increments'])):
@@ -1322,7 +1321,7 @@ class Result:
             v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
 
 
-    def read(self,output,flatten=True,prune=True):
+    def read(self,output='*',flatten=True,prune=True):
         """
         Export data per phase/homogenization.
 
@@ -1332,12 +1331,12 @@ class Result:
         Parameters
         ----------
         output : str or list of str
-            Labels of the datasets to read.
+            Labels of the datasets to read. Defaults to '*', in which
+            case all datasets are placed.
         flatten : bool
             Remove singular levels of the folder hierarchy.
-            This might be beneficial in case of a
-            single constituent, phase, or increment.
-            Defaults to True.
+            This might be beneficial in case of single increment,
+            phase/homogenization, or field. Defaults to True.
         prune : bool
             Remove branches with no data. Defaults to True.
 
@@ -1349,16 +1348,18 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in output_.intersection(f['/'.join((inc,'geometry'))].keys()):
-                    r[inc]['geometry'][out] = _read(f,'/'.join((inc,'geometry',out)))
+                for out in f['/'.join((inc,'geometry'))].keys() if '*' in output_ else \
+                           output_.intersection(f['/'.join((inc,'geometry'))].keys()):
+                    r[inc]['geometry'][out] = _read(f['/'.join((inc,'geometry',out))])
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
                         r[inc][ty][label] = {}
-                        for field in f['/'.join((inc,ty,label))].keys():
+                        for field in set(self.visible['fields']).union(f['/'.join((inc,ty,label))].keys()):
                             r[inc][ty][label][field] = {}
-                            for out in output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
-                                r[inc][ty][label][field][out] = _read(f,'/'.join((inc,ty,label,field,out)))
+                            for out in f['/'.join((inc,ty,label,field))].keys() if '*' in output_ else \
+                                       output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                                r[inc][ty][label][field][out] = _read(f['/'.join((inc,ty,label,field,out))])
 
         if prune:   r = util.dict_prune(r)
         if flatten: r = util.dict_flatten(r)
@@ -1366,7 +1367,7 @@ class Result:
         return r
 
 
-    def place(self,output,flatten=True,prune=True,constituents=None,fill_float=0.0,fill_int=0):
+    def place(self,output='*',flatten=True,prune=True,constituents=None,fill_float=0.0,fill_int=0):
         """
         Export data in spatial order that is compatible with the damask.VTK geometry representation.
 
@@ -1379,12 +1380,12 @@ class Result:
         Parameters
         ----------
         output : str or list of, optional
-            Labels of the datasets to place.
+            Labels of the datasets to place. Defaults to '*', in which
+            case all datasets are placed.
         flatten : bool
             Remove singular levels of the folder hierarchy.
-            This might be beneficial in case of a
-            single constituent, phase, or increment.
-            Defaults to True.
+            This might be beneficial in case of single increment
+            or field. Defaults to True.
         prune : bool
             Remove branches with no data. Defaults to True.
         constituents : int or list of, optional
@@ -1429,33 +1430,35 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in output_.intersection(f['/'.join((inc,'geometry'))].keys()):
-                    r[inc]['geometry'][out] = _read(f,'/'.join((inc,'geometry',out)))
+                for out in f['/'.join((inc,'geometry'))].keys() if '*' in output_ else \
+                           output_.intersection(f['/'.join((inc,'geometry'))].keys()):
+                    r[inc]['geometry'][out] = _read(f['/'.join((inc,'geometry',out))])
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in f['/'.join((inc,ty,label))].keys():
+                        for field in set(self.visible['fields']).union(f['/'.join((inc,ty,label))].keys()):
                             if field not in r[inc][ty].keys():
                                 r[inc][ty][field] = {}
 
-                            for out in output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
-                                data = ma.array(_read(f,'/'.join((inc,ty,label,field,out))))
+                            for out in f['/'.join((inc,ty,label,field))].keys() if '*' in output_ else \
+                                       output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                                data = ma.array(_read(f['/'.join((inc,ty,label,field,out))]))
 
                                 if ty == 'phase':
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
-                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
+                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
                                         fill_value = fill_float if data.dtype in np.sctypes['float'] else \
                                                      fill_int
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
                                                 ma.array(container,fill_value=fill_value,mask=True)
 
-                                    for c,suffix in zip(constituents_, suffixes):
+                                    for c,suffix in zip(constituents_,suffixes):
                                         r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
-                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],dtype=data.dtype)
+                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
                                         fill_value = fill_float if data.dtype in np.sctypes['float'] else \
                                                      fill_int
                                         r[inc][ty][field][out] = \
