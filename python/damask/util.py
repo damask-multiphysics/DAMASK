@@ -17,6 +17,7 @@ __all__=[
          'srepr',
          'emph','deemph','warn','strikeout',
          'execute',
+         'natural_sort',
          'show_progress',
          'scale_to_coprime',
          'project_stereographic',
@@ -111,6 +112,11 @@ def execute(cmd,wd='./',env=None):
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
     return process.stdout, process.stderr
+
+
+def natural_sort(key):
+    convert = lambda text: int(text) if text.isdigit() else text
+    return [ convert(c) for c in re.split('([0-9]+)', key) ]
 
 
 def show_progress(iterable,N_iter=None,prefix='',bar_length=50):

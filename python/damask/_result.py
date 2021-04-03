@@ -25,10 +25,26 @@ from . import util
 
 h5py3 = h5py.__version__[0] == '3'
 
+
 def _read(dataset):
     metadata = {k:(v if h5py3 else v.decode()) for k,v in dataset.attrs.items()}
     dtype = np.dtype(dataset.dtype,metadata=metadata)
     return np.array(dataset,dtype=dtype)
+
+def _match(requested,existing):
+    def flatten_list(list_of_lists):
+        return [e for e_ in list_of_lists for e in e_]
+
+    if requested is True:
+        requested = '*'
+    elif requested is False or requested is None:
+        requested = []
+
+    requested_ = requested if hasattr(requested,'__iter__') and not isinstance(requested,str) else \
+                [requested]
+
+    return sorted(set(flatten_list([glob.fnmatch.filter(existing,r) for r in requested_])),
+                  key=util.natural_sort)
 
 
 class Result:
@@ -70,10 +86,9 @@ class Result:
                 self.origin = f['geometry'].attrs['origin']
 
             r=re.compile('inc[0-9]+' if self.version_minor < 12 else 'increment_[0-9]+')
-            increments_unsorted = {int(i[10:]):i for i in f.keys() if r.match(i)}
-            self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
-            self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments] if self.version_minor < 12 else \
-                                  [round(f[i].attrs['t/s'],12) for i in self.increments]
+            self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
+            self.times      = [round(f[i].attrs['time/s'],12) for i in self.increments] if self.version_minor < 12 else \
+                              [round(f[i].attrs['t/s'],12) for i in self.increments]
 
             grp = 'mapping' if self.version_minor < 12 else 'cell_to'
 
@@ -81,15 +96,17 @@ class Result:
 
             self.homogenizations  = [m.decode() for m in np.unique(f[f'{grp}/homogenization']
                                                                     ['Name' if self.version_minor < 12 else 'label'])]
+            self.homogenizations  = sorted(self.homogenizations,key=util.natural_sort)
             self.phases           = [c.decode() for c in np.unique(f[f'{grp}/phase']
                                                                     ['Name' if self.version_minor < 12 else 'label'])]
+            self.phases           = sorted(self.phases,key=util.natural_sort)
 
             self.fields = []
             for c in self.phases:
                 self.fields += f['/'.join([self.increments[0],'phase',c])].keys()
             for m in self.homogenizations:
                 self.fields += f['/'.join([self.increments[0],'homogenization',m])].keys()
-            self.fields = list(set(self.fields))                                                    # make unique
+            self.fields = sorted(set(self.fields),key=util.natural_sort)                            # make unique
 
         self.visible = {'increments':      self.increments,
                         'phases':          self.phases,
@@ -135,14 +152,10 @@ class Result:
             True is equivalent to [*], False is equivalent to [].
 
         """
-        def natural_sort(key):
-            convert = lambda text: int(text) if text.isdigit() else text
-            return [ convert(c) for c in re.split('([0-9]+)', key) ]
-
         # allow True/False and string arguments
         if  datasets is True:
-            datasets = ['*']
-        elif datasets is False:
+            datasets = '*'
+        elif datasets is False or datasets is None:
             datasets = []
         choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
@@ -166,19 +179,17 @@ class Result:
                     elif np.isclose(c,self.times[idx+1]):
                         choice.append(self.increments[idx+1])
 
-        valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
+        valid = _match(choice,getattr(self,what))
         existing = set(self.visible[what])
 
         if   action == 'set':
-            self.visible[what] = valid
+            self.visible[what] = sorted(set(valid), key=util.natural_sort)
         elif action == 'add':
             add = existing.union(valid)
-            add_sorted = sorted(add, key=natural_sort)
-            self.visible[what] = add_sorted
+            self.visible[what] = sorted(add, key=util.natural_sort)
         elif action == 'del':
             diff = existing.difference(valid)
-            diff_sorted = sorted(diff, key=natural_sort)
-            self.visible[what] = diff_sorted
+            self.visible[what] = sorted(diff, key=util.natural_sort)
 
 
     def _get_attribute(self,path,attr):
@@ -1285,7 +1296,6 @@ class Result:
         ln = 3 if self.version_minor < 12 else 10         # compatibility hack
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][ln:])))))+1
 
-        output_ = set([output] if isinstance(output,str) else output)
         constituents_ = constituents if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])
 
@@ -1322,8 +1332,7 @@ class Result:
                             if field not in f['/'.join((inc,ty,label))].keys(): continue
                             outs = {}
 
-                            for out in f['/'.join((inc,ty,label,field))].keys() if '*' in output_ else \
-                                       output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
                                 data = ma.array(_read(f['/'.join((inc,ty,label,field,out))]))
 
                                 if ty == 'phase':
@@ -1375,23 +1384,20 @@ class Result:
 
         """
         r = {}
-        output_ = set([output] if isinstance(output,str) else output)
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in f['/'.join((inc,'geometry'))].keys() if '*' in output_ else \
-                           output_.intersection(f['/'.join((inc,'geometry'))].keys()):
+                for out in _match(output,f['/'.join((inc,'geometry'))].keys()):
                     r[inc]['geometry'][out] = _read(f['/'.join((inc,'geometry',out))])
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
                         r[inc][ty][label] = {}
-                        for field in set(self.visible['fields']).union(f['/'.join((inc,ty,label))].keys()):
+                        for field in _match(self.visible['fields'],f['/'.join((inc,ty,label))].keys()):
                             r[inc][ty][label][field] = {}
-                            for out in f['/'.join((inc,ty,label,field))].keys() if '*' in output_ else \
-                                       output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
                                 r[inc][ty][label][field][out] = _read(f['/'.join((inc,ty,label,field,out))])
 
         if prune:   r = util.dict_prune(r)
@@ -1435,7 +1441,6 @@ class Result:
         """
         r = {}
 
-        output_ = set([output] if isinstance(output,str) else output)
         constituents_ = constituents if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])
 
@@ -1464,18 +1469,16 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in f['/'.join((inc,'geometry'))].keys() if '*' in output_ else \
-                           output_.intersection(f['/'.join((inc,'geometry'))].keys()):
+                for out in _match(output,f['/'.join((inc,'geometry'))].keys()):
                     r[inc]['geometry'][out] = _read(f['/'.join((inc,'geometry',out))])
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in set(self.visible['fields']).union(f['/'.join((inc,ty,label))].keys()):
+                        for field in _match(self.visible['fields'],f['/'.join((inc,ty,label))].keys()):
                             if field not in r[inc][ty].keys():
                                 r[inc][ty][field] = {}
 
-                            for out in f['/'.join((inc,ty,label,field))].keys() if '*' in output_ else \
-                                       output_.intersection(f['/'.join((inc,ty,label,field))].keys()):
+                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
                                 data = ma.array(_read(f['/'.join((inc,ty,label,field,out))]))
 
                                 if ty == 'phase':
