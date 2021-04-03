@@ -530,6 +530,17 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
 
+    @property
+    def geometry0(self):
+        if self.structured:
+            return VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
+        else:
+            with h5py.File(self.fname,'r') as f:
+                return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
+                                                  f['/geometry/T_c'][()]-1,
+                                                  f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
+                                                  f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+
 
     @staticmethod
     def _add_absolute(x):
@@ -1267,15 +1278,7 @@ class Result:
 
         """
         if mode.lower()=='cell':
-
-            if self.structured:
-                v = VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
-            else:
-                with h5py.File(self.fname,'r') as f:
-                    v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
-                                                   f['/geometry/T_c'][()]-1,
-                                                   f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
-                                                   f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+            v = self.geometry0
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
 
