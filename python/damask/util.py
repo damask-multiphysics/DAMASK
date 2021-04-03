@@ -59,9 +59,9 @@ def srepr(arg,glue = '\n'):
         Glue used for joining operation. Defaults to \n.
 
     """
-    if (not hasattr(arg, "strip") and
-           (hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))):
+    if (not hasattr(arg, 'strip') and
+           (hasattr(arg, '__getitem__') or
+            hasattr(arg, '__iter__'))):
         return glue.join(str(x) for x in arg)
     return arg if isinstance(arg,str) else repr(arg)
 

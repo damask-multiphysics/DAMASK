@@ -420,11 +420,8 @@ class Result:
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    if un in dataset.attrs:
-                                        unit = f" / {dataset.attrs[un]}" if h5py3 else \
-                                               f" / {dataset.attrs[un].decode()}"
-                                    else:
-                                        unit = ''
+                                    unit = f" / {dataset.attrs[un]}" if h5py3 else \
+                                           f" / {dataset.attrs[un].decode()}"
                                     description = dataset.attrs[de] if h5py3 else \
                                                   dataset.attrs[de].decode()
                                     message += f'        {d}{unit}: {description}\n'
@@ -1127,8 +1124,8 @@ class Result:
                         dataset.attrs[l.lower()]=v if h5py3 else v.encode()
                     creator = dataset.attrs['creator'] if h5py3 else \
                               dataset.attrs['creator'].decode()
-                    dataset.attrs['creator'] = f"damask.Result.{creator} v{damask.version}" if h5py3 else \
-                                               f"damask.Result.{creator} v{damask.version}".encode()
+                    dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
+                                               f'damask.Result.{creator} v{damask.version}'.encode()
 
                 except (OSError,RuntimeError) as err:
                     print(f'Could not add dataset: {err}.')
