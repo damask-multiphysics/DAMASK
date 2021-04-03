@@ -419,25 +419,22 @@ class Result:
         un = 'Unit'        if self.version_minor < 12 else 'unit'
         message = ''
         with h5py.File(self.fname,'r') as f:
-            for i in self.iterate('increments'):
+            for i in self.visible['increments']:
                 message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
                 for o,p in zip(['phases','homogenizations'],['fields','fields']):
                     message += f'  {o[:-1]}\n'
-                    for oo in self.iterate(o):
+                    for oo in self.visible[o]:
                         message += f'    {oo}\n'
-                        for pp in self.iterate(p):
+                        for pp in self.visible[p]:
                             message += f'      {pp}\n'
-                            group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
-                            for d in f[group].keys():
-                                try:
-                                    dataset = f['/'.join([group,d])]
-                                    unit = f" / {dataset.attrs[un]}" if h5py3 else \
-                                           f" / {dataset.attrs[un].decode()}"
-                                    description = dataset.attrs[de] if h5py3 else \
-                                                  dataset.attrs[de].decode()
-                                    message += f'        {d}{unit}: {description}\n'
-                                except KeyError:
-                                    pass
+                            for d in f['/'.join([i,o[:-1],oo,pp])].keys():
+                                dataset = f['/'.join([i,o[:-1],oo,pp,d])]
+                                unit = f' / {dataset.attrs[un]}' if h5py3 else \
+                                       f' / {dataset.attrs[un].decode()}'
+                                description = dataset.attrs[de] if h5py3 else \
+                                              dataset.attrs[de].decode()
+                                message += f'        {d}{unit}: {description}\n'
+
         return message
 
 
@@ -445,7 +442,7 @@ class Result:
         """Return the location of all active datasets with given label."""
         path = []
         with h5py.File(self.fname,'r') as f:
-            for i in self.iterate('increments'):
+            for i in self.visible['increments']:
                 k = '/'.join([i,'geometry',label])
                 try:
                     f[k]
@@ -453,8 +450,8 @@ class Result:
                 except KeyError:
                     pass
                 for o,p in zip(['phases','homogenizations'],['fields','fields']):
-                    for oo in self.iterate(o):
-                        for pp in self.iterate(p):
+                    for oo in self.visible[o]:
+                        for pp in self.visible[p]:
                             k = '/'.join([i,o[:-1],oo,pp,label])
                             try:
                                 f[k]
