@@ -123,15 +123,15 @@ module YAML_types
     procedure :: asFormattedString => tList_asFormattedString
     procedure :: append            => tList_append
     procedure :: &
-      as1dFloat    => tList_as1dFloat
+      as1dFloat  => tList_as1dFloat
     procedure :: &
-      as2dFloat    => tList_as2dFloat
+      as2dFloat  => tList_as2dFloat
     procedure :: &
-      as1dInt      => tList_as1dInt
+      as1dInt    => tList_as1dInt
     procedure :: &
-      as1dBool     => tList_as1dBool
+      as1dBool   => tList_as1dBool
     procedure :: &
-      as1dString   => tList_as1dString
+      as1dString => tList_as1dString
     final :: tList_finalize
   end type tList
 
@@ -329,8 +329,8 @@ end subroutine tScalar_assign__
 !--------------------------------------------------------------------------------------------------
 function tNode_asScalar(self) result(scalar)
 
-  class(tNode),   intent(in), target     :: self
-  class(tScalar), pointer                :: scalar
+  class(tNode),   intent(in), target :: self
+  class(tScalar), pointer            :: scalar
 
   select type(self)
     class is(tScalar)
@@ -345,8 +345,8 @@ end function tNode_asScalar
 !--------------------------------------------------------------------------------------------------
 function tNode_asList(self) result(list)
 
-  class(tNode), intent(in), target     :: self
-  class(tList), pointer                :: list
+  class(tNode), intent(in), target :: self
+  class(tList), pointer            :: list
 
   select type(self)
     class is(tList)
@@ -361,8 +361,8 @@ end function tNode_asList
 !--------------------------------------------------------------------------------------------------
 function tNode_asDict(self) result(dict)
 
-  class(tNode), intent(in), target    :: self
-  class(tDict), pointer               :: dict
+  class(tNode), intent(in), target :: self
+  class(tDict), pointer            :: dict
 
   select type(self)
     class is(tDict)
@@ -720,7 +720,6 @@ function tNode_get_byKey_asFloat(self,k,defaultVal) result(nodeAsFloat)
 
   class(tNode),  pointer :: node
   type(tScalar), pointer :: scalar
-  character(len=:), allocatable :: str
 
   if (self%contains(k)) then
     node => self%get(k)
