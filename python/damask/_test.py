@@ -399,7 +399,7 @@ class Test:
 
     tables = [damask.Table.load(filename) for filename in files]
     for table in tables:
-      table._label_discrete()
+      table._relabel('linear')
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
@@ -419,7 +419,7 @@ class Test:
 
     data = []
     for table,labels in zip(tables,columns):
-      table._label_uniform()
+      table._relabel('uniform')
       data.append(np.hstack(list(table.get(label) for label in labels)))
 
 
