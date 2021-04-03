@@ -4,6 +4,7 @@ import time
 import shutil
 import os
 import sys
+import hashlib
 from datetime import datetime
 
 import pytest
@@ -376,10 +377,31 @@ class TestResult:
              b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
          assert np.allclose(a,b)
 
-    @pytest.mark.parametrize('output',['F','*',['F','P']])
-    def test_vtk(self,tmp_path,default,output):
+    # need to wait for writing in parallel, output order might change if select more then one
+    @pytest.mark.parametrize('output',['F','*',['P']],ids=range(3))
+    @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
+    @pytest.mark.parametrize('inc',[4,0],ids=range(2))
+    def test_vtk(self,request,tmp_path,ref_path,update,output,fname,inc):
+        result = Result(ref_path/fname)
+        result.view('increments',inc)
         os.chdir(tmp_path)
-        default.save_VTK(output)
+        result.save_VTK(output)
+        fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vtr'
+        last = ''
+        for i in range(10):
+            if os.path.isfile(tmp_path/fname):
+                with open(fname) as f:
+                    cur = hashlib.md5(f.read().encode()).hexdigest()
+                    if cur == last:
+                        break
+                    else:
+                        last = cur
+            time.sleep(.5)
+        if update:
+            with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
+                f.write(cur)
+        with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5')) as f:
+            assert cur == f.read()
 
     @pytest.mark.parametrize('mode',['point','cell'])
     def test_vtk_mode(self,tmp_path,single_phase,mode):
@@ -416,13 +438,13 @@ class TestResult:
         for key,value in view.items():
             result.view(key,value)
 
-        N = request.node.name[8:].split('[')[1].split(']')[0]
+        fname = request.node.name
         cur = result.read(output,compress,strip)
         if update:
-            with bz2.BZ2File(ref_path/f'read_{N}.pbz2','w') as f:
+            with bz2.BZ2File((ref_path/'read'/fname).with_suffix('.pbz2'),'w') as f:
                 pickle.dump(cur,f)
 
-        with bz2.BZ2File(ref_path/f'read_{N}.pbz2') as f:
+        with bz2.BZ2File((ref_path/'read'/fname).with_suffix('.pbz2')) as f:
             assert dict_equal(cur,pickle.load(f))
 
 
@@ -441,11 +463,11 @@ class TestResult:
         for key,value in view.items():
             result.view(key,value)
 
-        N = request.node.name[8:].split('[')[1].split(']')[0]
+        fname = request.node.name
         cur = result.place(output,compress,strip,constituents)
         if update:
-            with bz2.BZ2File(ref_path/f'place_{N}.pbz2','w') as f:
+            with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2'),'w') as f:
                 pickle.dump(cur,f)
 
-        with bz2.BZ2File(ref_path/f'place_{N}.pbz2') as f:
+        with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2')) as f:
             assert dict_equal(cur,pickle.load(f))
