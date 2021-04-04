@@ -1096,7 +1096,7 @@ class Result:
         pool.join()
 
 
-    def save_XDMF(self):
+    def save_XDMF(self,output='*'):
         """
         Write XDMF file to directly visualize data in DADF5 file.
 
@@ -1139,7 +1139,7 @@ class Result:
         attributes = []
         data_items = []
 
-        for inc in self.increments:
+        for inc in self.visible['increments']:
 
             grid=ET.SubElement(collection,'Grid')
             grid.attrib = {'GridType': 'Uniform',
@@ -1176,12 +1176,11 @@ class Result:
                                        'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
-                for o,p in zip(['phases','homogenizations'],['fields','fields']):
-                    for oo in getattr(self,o):
-                        for pp in getattr(self,p):
-                            g = '/'.join([inc,o[:-1],oo,pp])
-                            for l in f[g]:
-                                name = '/'.join([g,l])
+                for ty in ['phases','homogenizations']:
+                    for label in self.visible[ty]:
+                        for field in self.visible['fields']:
+                            for out in _match(output,f['/'.join((inc,ty[:-1],label,field))].keys()):
+                                name = '/'.join([inc,ty[:-1],label,field,out])
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
 
