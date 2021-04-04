@@ -97,12 +97,12 @@ class TestResult:
     def test_view_less(self,default,what):
         default.view(what,True)
         default.view_less(what,'*')
-        a = default.get_dataset_location('F')
+        a = default.read('F')
 
         default.view(what,False)
-        b = default.get_dataset_location('F')
+        b = default.read('F')
 
-        assert a == b == []
+        assert a == b == {}
 
     def test_view_invalid(self,default):
         with pytest.raises(AttributeError):
@@ -168,13 +168,11 @@ class TestResult:
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
         default.add_IPF_color(d,'O')
-        loc = {'O':     default.get_dataset_location('O'),
-               'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
-        qu = default.read_dataset(loc['O'])
-        crystal_structure = default._get_attribute(default.get_dataset_location('O')[0],'lattice')
+        qu = default.place('O')
+        crystal_structure = qu.dtype.metadata['lattice']
         c = Orientation(rotation=qu,lattice=crystal_structure)
         in_memory = np.uint8(c.IPF_color(np.array(d))*255)
-        in_file = default.read_dataset(loc['color'])
+        in_file = default.place('IPFcolor_({} {} {})'.format(*d))
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
@@ -205,7 +203,7 @@ class TestResult:
         default.add_stress_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')
         default.add_equivalent_Mises('sigma_y')
-        assert default.get_dataset_location('sigma_y_vM') == []
+        assert default.read('sigma_y_vM') == {}
 
     def test_add_Mises_stress_strain(self,default):
         default.add_stress_Cauchy('P','F')

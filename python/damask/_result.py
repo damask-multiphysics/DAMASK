@@ -720,11 +720,11 @@ class Result:
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),
-                'label': 'IPFcolor_[{} {} {}]'.format(*m),
+                'label': 'IPFcolor_({} {} {})'.format(*m),
                 'meta' : {
                           'unit':        '8-bit RGB',
                           'lattice':     q['meta']['lattice'],
-                          'description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
+                          'description': 'Inverse Pole Figure (IPF) colors along sample direction ({} {} {})'.format(*m),
                           'creator':     'add_IPF_color'
                          }
                }
