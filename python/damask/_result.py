@@ -1,6 +1,6 @@
 import multiprocessing as mp
 import re
-import glob
+import fnmatch
 import os
 import datetime
 import xml.etree.ElementTree as ET
@@ -43,7 +43,7 @@ def _match(requested,existing):
     requested_ = requested if hasattr(requested,'__iter__') and not isinstance(requested,str) else \
                 [requested]
 
-    return sorted(set(flatten_list([glob.fnmatch.filter(existing,r) for r in requested_])),
+    return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
 
 def _empty(dataset,N_materialpoints,fill_float,fill_int):
@@ -196,30 +196,6 @@ class Result:
             self.visible[what] = sorted(diff, key=util.natural_sort)
 
 
-    def _get_attribute(self,path,attr):
-        """
-        Get the attribute of a dataset.
-
-        Parameters
-        ----------
-        Path : str
-            Path to the dataset.
-        attr : str
-            Name of the attribute to get.
-
-        Returns
-        -------
-        attr at path, str or None.
-            The requested attribute, None if not found.
-
-        """
-        with h5py.File(self.fname,'r') as f:
-            try:
-                return f[path].attrs[attr] if h5py3 else f[path].attrs[attr].decode()
-            except KeyError:
-                return None
-
-
     def allow_modification(self):
         """Allow to overwrite existing data."""
         print(util.warn('Warning: Modification of existing datasets allowed!'))
@@ -353,16 +329,21 @@ class Result:
             New name of the dataset.
 
         """
-        if self._allow_modification:
-            with h5py.File(self.fname,'a') as f:
-                for path_old in self.get_dataset_location(name_old):
-                    path_new = '/'.join([os.path.dirname(path_old),name_new])
-                    f[path_new] = f[path_old]
-                    f[path_new].attrs['Renamed'] = f'Original name: {name_old}' if h5py3 else \
-                                                   f'Original name: {name_old}'.encode()
-                    del f[path_old]
-        else:
+        if not self._allow_modification:
             raise PermissionError('Rename operation not permitted')
+
+        with h5py.File(self.fname,'a') as f:
+            for inc in self.visible['increments']:
+                for ty in ['phases','homogenizations']:
+                    for label in self.visible[ty]:
+                        for field in self.visible['fields']:
+                            path_old = '/'.join([inc,ty[:-1],label,field,name_old])
+                            path_new = '/'.join([inc,ty[:-1],label,field,name_new])
+                            if path_old in f.keys():
+                                f[path_new] = f[path_old]
+                                f[path_new].attrs['renamed'] = f'original name: {name_old}' if h5py3 else \
+                                                               f'original name: {name_old}'.encode()
+                                del f[path_old]
 
 
     def list_data(self):
