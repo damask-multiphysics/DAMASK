@@ -284,13 +284,9 @@ class TestResult:
         default.view('times',default.times_in_range(0,np.inf)[-1])
 
         default.add_stress_Cauchy()
-        loc = default.get_dataset_location('sigma')
         with h5py.File(default.fname,'r') as f:
-            # h5py3 compatibility
-            try:
-                created_first = f[loc[0]].attrs['created'].decode()
-            except AttributeError:
-                created_first = f[loc[0]].attrs['created']
+            created_first = default.place('sigma').dtype.metadata['created']
+        
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -304,16 +300,13 @@ class TestResult:
         except ValueError:
             pass
         with h5py.File(default.fname,'r') as f:
-            # h5py3 compatibility
-            try:
-                created_second = f[loc[0]].attrs['created'].decode()
-            except AttributeError:
-                created_second = f[loc[0]].attrs['created']
+            created_second = default.place('sigma').dtype.metadata['created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
+
         if overwrite == 'on':
-            assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
+            assert created_first < created_second and np.allclose(default.place('sigma'),311.)
         else:
-            assert created_first == created_second and not np.allclose(default.read_dataset(loc),311.)
+            assert created_first == created_second and not np.allclose(default.place('sigma'),311.)
 
     @pytest.mark.parametrize('allowed',['off','on'])
     def test_rename(self,default,allowed):

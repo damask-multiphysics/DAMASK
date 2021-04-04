@@ -365,35 +365,6 @@ class Result:
             raise PermissionError('Rename operation not permitted')
 
 
-    def groups_with_datasets(self,datasets):
-        """
-        Return groups that contain all requested datasets.
-
-        Only groups within
-          - inc*/phase/*/
-          - inc*/homogenization/*/
-          - inc*/geometry/
-
-        are considered as they contain user-relevant data.
-        Single strings will be treated as list with one entry.
-
-        Parameters
-        ----------
-            datasets : iterable or str or bool
-
-        """
-        groups = []
-
-        with h5py.File(self.fname,'r') as f:
-            for inc in self.visible['increments']:
-                for ty in ['phases','homogenizations']:
-                    for label in self.visible[ty]:
-                        for field in self.visible['fields']:
-                            group = '/'.join([inc,ty[:-1],label,field])
-                            if set(datasets).issubset(f[group].keys()): groups.append(group)
-        return groups
-
-
     def list_data(self):
         """Return information on all active datasets in the file."""
         # compatibility hack
@@ -1089,7 +1060,15 @@ class Result:
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
         lock = mp.Manager().Lock()
 
-        groups = self.groups_with_datasets(datasets.values())
+        groups = []
+        with h5py.File(self.fname,'r') as f:
+            for inc in self.visible['increments']:
+                for ty in ['phases','homogenizations']:
+                    for label in self.visible[ty]:
+                        for field in self.visible['fields']:
+                            group = '/'.join([inc,ty[:-1],label,field])
+                            if set(datasets.values()).issubset(f[group].keys()): groups.append(group)
+
         if len(groups) == 0:
             print('No matching dataset found, no data was added.')
             return
