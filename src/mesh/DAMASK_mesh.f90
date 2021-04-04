@@ -339,15 +339,15 @@ program DAMASK_mesh
         cutBack = .False.
         if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
           if (cutBackLevel < maxCutBack) then                                                       ! do cut back
-            print'(/,a)', ' cut back detected'
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
             timeinc = timeinc/2.0_pReal
+            print'(/,a)', ' cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
-            call IO_warning(850)
-            call quit(1)                                                                            ! quit
+            if (worldrank == 0) close(statUnit)
+            call IO_error(950)
           endif
         else
           guess = .true.                                                                            ! start guessing after first converged (sub)inc

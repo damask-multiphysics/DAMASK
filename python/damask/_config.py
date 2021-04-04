@@ -31,7 +31,7 @@ class NiceDumper(yaml.SafeDumper):
             return super().represent_data(data)
 
     def ignore_aliases(self, data):
-        """No references."""
+        """Do not use references to existing objects."""
         return True
 
 class Config(dict):

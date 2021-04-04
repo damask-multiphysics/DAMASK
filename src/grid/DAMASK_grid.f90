@@ -441,9 +441,8 @@ program DAMASK_grid
             timeinc = timeinc/real(subStepFactor,pReal)                                             ! cut timestep
             print'(/,a)', ' cutting back '
           else                                                                                      ! no more options to continue
-            call IO_warning(850)
             if (worldrank == 0) close(statUnit)
-            call quit(0)
+            call IO_error(950)
           endif
 
         enddo subStepLooping

@@ -76,10 +76,10 @@ def asMFD(mfd_data):
           elif type(num) == float:
             result += '{:20.12e}'.format(num)
           else:
-            damask.util.croak('WARNING: encountered unknown type: ' + str(type(el)))
+            print(f'WARNING: encountered unknown type: {type(el)}')
         result += '\n'
       else:
-        damask.util.croak('WARNING: encountered unknown type: ' + str(type(el)))
+        print(f'WARNING: encountered unknown type: {type(el)}')
     if section['uid'] > 0:
       result += '=end=\n'
   return result.strip()
@@ -236,7 +236,7 @@ if remote:
   sys.path.append(str(damask.solver.Marc().library_path))
   import py_mentat
 
-  damask.util.report(scriptName, 'waiting to connect...')
+  print(scriptName+': waiting to connect...')
   filenames = [os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + '.mfd')]
   try:
     py_mentat.py_connect('',options.port)
@@ -244,14 +244,14 @@ if remote:
     py_mentat.py_send('*save_as_model "{}" yes'.format(filenames[0]))
     py_mentat.py_get_int("nnodes()")
   except py_mentat.InputError as err:
-    damask.util.croak('{}. Try Tools/Python/"Run as Separate Process" & "Initiate".'.format(err))
+    print(f'{err}. Try Tools/Python/"Run as Separate Process" & "Initiate".')
     sys.exit(-1)
-  damask.util.croak( 'connected...')
+  print( 'connected...')
 
 for name in filenames:
   while remote and not os.path.exists(name): time.sleep(0.5)
   with  open( name,'r') if name is not None else sys.stdin as fileIn:
-    damask.util.report(scriptName, name)
+    print(scriptName+': '+name)
     mfd = parseMFD(fileIn)
 
   add_servoLinks(mfd,[options.x,options.y,options.z])

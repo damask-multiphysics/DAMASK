@@ -1,0 +1,10 @@
+8Grains:
+  N_constituents: 8
+  mechanical:
+    type: RGC
+    D_alpha: [4.0e-06, 4.0e-06, 2.0e-06]
+    a_g: [0.0, 0.0, 0.0]
+    c_alpha: 2.0
+    cluster_size: [2, 2, 2]
+    output: [M, Delta_V, avg_a_dot, max_a_dot]
+    xi_alpha: 10.0

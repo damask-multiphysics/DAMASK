@@ -17,11 +17,18 @@ from . import Rotation
 
 
 class Grid:
-    """Geometry definition for grid solvers."""
+    """
+    Geometry definition for grid solvers.
+
+    Create and manipulate geometry definitions for storage as VTK
+    rectiliear grid files ('.vtr' extension). A grid contains the
+    material ID (referring to the entry in 'material.yaml') and
+    the physical size.
+    """
 
     def __init__(self,material,size,origin=[0.0,0.0,0.0],comments=[]):
         """
-        New grid definition from array of materials, size, and origin.
+        New geometry definition for grid solvers.
 
         Parameters
         ----------
@@ -263,12 +270,10 @@ class Grid:
         """
         Load DREAM.3D (HDF5) file.
 
-        Data in DREAM.3D files can be stored per cell ('CellData')
-        and/or per grain ('Grain Data'). Per default, cell-wise data
-        is assumed.
+        Data in DREAM.3D files can be stored per cell ('CellData') and/or 
+        per grain ('Grain Data'). Per default, cell-wise data is assumed.
 
-        damask.ConfigMaterial.load_DREAM3D allows to get the
-        corresponding material definition.
+        damask.ConfigMaterial.load_DREAM3D gives the corresponding material definition.
 
         Parameters
         ----------
@@ -296,8 +301,8 @@ class Grid:
 
 
         """
-        b = util.DREAM3D_base_group(fname) if base_group is None else base_group
-        c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
+        b = util.DREAM3D_base_group(fname)      if base_group is None else base_group
+        c = util.DREAM3D_cell_data_group(fname) if cell_data  is None else cell_data
         f = h5py.File(fname, 'r')
 
         cells  = f[os.path.join(b,'_SIMPL_GEOMETRY','DIMENSIONS')][()]
@@ -901,8 +906,7 @@ class Grid:
         def tainted_neighborhood(stencil,trigger):
 
             me = stencil[stencil.shape[0]//2]
-            return np.any(stencil != me
-                          if len(trigger) == 0 else
+            return np.any(stencil != me if len(trigger) == 0 else
                           np.in1d(stencil,np.array(list(set(trigger) - {me}))))
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset

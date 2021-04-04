@@ -12,7 +12,7 @@ submodule(phase:plastic) phenopowerlaw
       dot_gamma_0_tw = 1.0_pReal, &                                                                 !< reference shear strain rate for twin
       n_sl           = 1.0_pReal, &                                                                 !< stress exponent for slip
       n_tw           = 1.0_pReal, &                                                                 !< stress exponent for twin
-      f_sl_sat_tw    = 1.0_pReal, &                                                                 !< push-up factor for slip saturation due to twinning
+      f_sat_sl_tw    = 1.0_pReal, &                                                                 !< push-up factor for slip saturation due to twinning
       c_1            = 1.0_pReal, &
       c_2            = 1.0_pReal, &
       c_3            = 1.0_pReal, &
@@ -24,7 +24,7 @@ submodule(phase:plastic) phenopowerlaw
     real(pReal),               allocatable, dimension(:) :: &
       xi_inf_sl, &                                                                                  !< maximum critical shear stress for slip
       h_int, &                                                                                      !< per family hardening activity (optional)
-      gamma_tw_char                                                                                 !< characteristic shear for twins
+      gamma_char                                                                                    !< characteristic shear for twins
     real(pReal),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
       h_sl_tw, &                                                                                    !< slip resistance from twin activity
@@ -169,7 +169,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%h_tw_tw         = lattice_interaction_TwinByTwin(N_tw,&
                                                            pl%get_as1dFloat('h_tw_tw'), &
                                                            phase%get_asString('lattice'))
-      prm%gamma_tw_char   = lattice_characteristicShear_twin(N_tw,phase%get_asString('lattice'),&
+      prm%gamma_char      = lattice_characteristicShear_twin(N_tw,phase%get_asString('lattice'),&
                                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       xi_0_tw             = pl%get_as1dFloat('xi_0_tw',requiredSize=size(N_tw))
@@ -180,7 +180,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%c_4             = pl%get_asFloat('c_4',defaultVal=0.0_pReal)
       prm%dot_gamma_0_tw  = pl%get_asFloat('dot_gamma_0_tw')
       prm%n_tw            = pl%get_asFloat('n_tw')
-      prm%f_sl_sat_tw     = pl%get_asFloat('f_sl_sat_tw')
+      prm%f_sat_sl_tw     = pl%get_asFloat('f_sat_sl_tw')
       prm%h_0_tw_tw       = pl%get_asFloat('h_0_tw_tw')
 
       ! expand: family => system
@@ -192,7 +192,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
     else twinActive
       xi_0_tw = emptyRealArray
-      allocate(prm%gamma_tw_char,source=emptyRealArray)
+      allocate(prm%gamma_char,source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
     endif twinActive
 
@@ -354,7 +354,7 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
   dot => dotState(ph))
 
   sumGamma = sum(stt%gamma_slip(:,me))
-  sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)
+  sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_char)
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
@@ -365,7 +365,7 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors
   left_SlipSlip  = 1.0_pReal + prm%h_int
-  xi_slip_sat_offset = prm%f_sl_sat_tw*sqrt(sumF)
+  xi_slip_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
   right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
                  * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset))
 
@@ -524,7 +524,7 @@ pure subroutine kinetics_twin(Mp,ph,me,&
   enddo
 
   where(tau_twin > 0.0_pReal)
-    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,me)/prm%gamma_tw_char)) &                           ! only twin in untwinned volume fraction
+    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,me)/prm%gamma_char)) &                              ! only twin in untwinned volume fraction
               * prm%dot_gamma_0_tw*(abs(tau_twin)/stt%xi_twin(:,me))**prm%n_tw
   else where
     gdot_twin = 0.0_pReal

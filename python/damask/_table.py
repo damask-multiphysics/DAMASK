@@ -7,7 +7,7 @@ import numpy as np
 from . import util
 
 class Table:
-    """Store spreadsheet-like data."""
+    """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,data,shapes,comments=None):
         """
@@ -212,13 +212,11 @@ class Table:
         """
         Load from ASCII table file.
 
-        In legacy style, the first line indicates the number of
-        subsequent header lines as "N header", with the last header line being
-        interpreted as column labels.
-        Alternatively, initial comments are marked by '#', with the first non-comment line
+        Initial comments are marked by '#', the first non-comment line
         containing the column labels.
-        Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
-        Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
+
+        - Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
+        - Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
 
         Parameters
         ----------
@@ -232,21 +230,13 @@ class Table:
             f = fname
             f.seek(0)
 
-        try:
-            N_comment_lines,keyword = f.readline().strip().split(maxsplit=1)
-            if keyword != 'header':
-                raise ValueError
-            else:
-                comments = [f.readline().strip() for i in range(1,int(N_comment_lines))]
-                labels   = f.readline().split()
-        except ValueError:
-            f.seek(0)
-            comments = []
+        f.seek(0)
+        comments = []
+        line = f.readline().strip()
+        while line.startswith('#'):
+            comments.append(line.lstrip('#').strip())
             line = f.readline().strip()
-            while line.startswith('#'):
-                comments.append(line.lstrip('#').strip())
-                line = f.readline().strip()
-            labels = line.split()
+        labels = line.split()
 
         shapes = {}
         for label in labels:
@@ -272,13 +262,14 @@ class Table:
         Load from ang file.
 
         A valid TSL ang file has to have the following columns:
-        * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
-        * Spatial position in meters, 2 floats, label 'pos'.
-        * Image quality, 1 float, label 'IQ'.
-        * Confidence index, 1 float, label 'CI'.
-        * Phase ID, 1 int, label 'ID'.
-        * SEM signal, 1 float, label 'intensity'.
-        * Fit, 1 float, label 'fit'.
+
+        - Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
+        - Spatial position in meters, 2 floats, label 'pos'.
+        - Image quality, 1 float, label 'IQ'.
+        - Confidence index, 1 float, label 'CI'.
+        - Phase ID, 1 int, label 'ID'.
+        - SEM signal, 1 float, label 'intensity'.
+        - Fit, 1 float, label 'fit'.
 
         Parameters
         ----------
@@ -331,11 +322,7 @@ class Table:
             Array of column data.
 
         """
-        if re.match(r'[0-9]*?_',label):
-            idx,key = label.split('_',1)
-            data = self.data[key].to_numpy()[:,int(idx)-1].reshape(-1,1)
-        else:
-            data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
+        data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
         return data.astype(type(data.flatten()[0]))
 
@@ -537,7 +524,7 @@ class Table:
             return dup
 
 
-    def save(self,fname,legacy=False):
+    def save(self,fname):
         """
         Save as plain text file.
 
@@ -545,9 +532,6 @@ class Table:
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for writing.
-        legacy : bool, optional
-            Write table in legacy style, indicating header lines by "N header"
-            in contrast to using comment sign ('#') at beginning of lines.
 
         """
         seen = set()
@@ -562,13 +546,10 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        header = ([f'{len(self.comments)+1} header'] + self.comments) if legacy else \
-                  [f'# {comment}' for comment in self.comments]
-
         try:
             fhandle = open(fname,'w',newline='\n')
         except TypeError:
             fhandle = fname
 
-        for line in header + [' '.join(labels)]: fhandle.write(line+'\n')
+        fhandle.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
         self.data.to_csv(fhandle,sep=' ',na_rep='nan',index=False,header=False)

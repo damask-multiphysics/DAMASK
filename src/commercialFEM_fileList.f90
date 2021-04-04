@@ -16,7 +16,7 @@
 #include "results.f90"
 #include "geometry_plastic_nonlocal.f90"
 #include "discretization.f90"
-#include "marc/discretization_marc.f90"
+#include "Marc/discretization_Marc.f90"
 #include "material.f90"
 #include "lattice.f90"
 #include "phase.f90"

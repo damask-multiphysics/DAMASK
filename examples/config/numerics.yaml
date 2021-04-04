@@ -1,0 +1,84 @@
+# Available numerical parameters
+# Case sensitive keys
+
+homogenization:
+  mech:
+    RGC:
+      atol:                     1.0e+4       # absolute tolerance of RGC residuum (in Pa)
+      rtol:                     1.0e-3       # relative ...
+      amax:                     1.0e+10      # absolute upper-limit of RGC residuum (in Pa)
+      rmax:                     1.0e+2       # relative ...
+      perturbpenalty:           1.0e-7       # perturbation for computing penalty tangent
+      relevantmismatch:         1.0e-5       # minimum threshold of mismatch
+      viscositypower:           1.0e+0       # power (sensitivity rate) of numerical viscosity in RGC scheme
+      viscositymodulus:         0.0e+0       # stress modulus of RGC numerical viscosity (zero = without numerical viscosity)
+                                             # suggestion: larger than the aTol_RGC but still far below the expected flow stress of material
+      refrelaxationrate:        1.0e-3       # reference rate of relaxation (about the same magnitude as straining rate, possibly a bit higher)
+      maxrelaxationrate:        1.0e+0       # threshold of maximum relaxation vector increment (if exceed this then cutback)
+      maxvoldiscrepancy:        1.0e-5       # maximum allowable relative volume discrepancy
+      voldiscrepancymod:        1.0e+12
+      discrepancypower:         5.0
+
+  generic:
+    subStepMin:               1.0e-3       # minimum (relative) size of sub-step allowed during cutback in homogenization
+    subStepSize:              0.25         # size of substep when cutback introduced in homogenization (value between 0 and 1)
+    stepIncrease:             1.5          # increase of next substep size when previous substep converged in homogenization (value higher than 1)
+    nMPstate:                 10           # materialpoint state loop limit
+
+grid:
+  eps_div_atol:                1.0e-3       # absolute tolerance for fulfillment of stress equilibrium
+  eps_div_rtol:                5.0e-4       # relative tolerance for fulfillment of stress equilibrium
+  eps_curl_atol:               1.0e-12      # absolute tolerance for fulfillment of strain compatibility
+  eps_curl_rtol:               5.0e-4       # relative tolerance for fulfillment of strain compatibility
+  eps_stress_atol:             1.0e3        # absolute tolerance for fulfillment of stress BC
+  eps_stress_rtol:             0.01         # relative tolerance for fulfillment of stress BC
+  eps_damage_atol:             1.0e-2       # absolute tolerance for damage evolution
+  eps_damage_rtol:             1.0e-6       # relative tolerance for damage evolution
+  eps_thermal_atol:            1.0e-2       # absolute tolerance for thermal equilibrium
+  eps_thermal_rtol:            1.0e-6       # relative tolerance for thermal equilibrium
+  itmax:                       250          # Maximum iteration number
+  itmin:                       2            # Minimum iteration number
+  fftw_timelimit:              -1.0          # timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
+  fftw_plan_mode:              FFTW_PATIENT # reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
+  maxCutBack:                  3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
+  maxStaggeredIter:            10           # max number of field level staggered iterations
+  memory_efficient:            1            # Precalculate Gamma-operator (81 double per point)
+  update_gamma:                false        # Update Gamma-operator with current dPdF (not possible if memory_efficient=1)
+  divergence_correction:       2            # Use size-independent divergence criterion
+  derivative:                  continuous   # Approximation used for derivatives in Fourier space
+  petsc_options:               -snes_type ngmres -snes_ngmres_anderson # PetSc solver options
+  alpha:                       1.0          # polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+  beta:                        1.0          # polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
+
+mesh:
+  maxCutBack:                  3            # maximum cut back level (0: 1, 1: 0.5, 2: 0.25, etc)
+  maxStaggeredIter:            10           # max number of field level staggered iterations
+  structorder:                 2            # order of displacement shape functions (when mesh is defined)
+  bbarstabilisation:           false
+  integrationorder:            2            # order of quadrature rule required (when mesh is defined)
+  itmax:                       250          # Maximum iteration number
+  itmin:                       2            # Minimum iteration number
+  eps_struct_atol:             1.0e-10      # absolute tolerance for mechanical equilibrium
+  eps_struct_rtol:             1.0e-4       # relative tolerance for mechanical equilibrium
+
+crystallite:
+  subStepMin:                  1.0e-3       # minimum (relative) size of sub-step allowed during cutback in crystallite
+  subStepSize:                 0.25         # size of substep when cutback introduced in crystallite (value between 0 and 1)
+  stepIncrease:                1.5          # increase of next substep size when previous substep converged in crystallite (value higher than 1)
+  subStepSizeLp:               0.5          # size of first substep when cutback in Lp calculation
+  subStepSizeLi:               0.5          # size of first substep when cutback in Li calculation
+  nState:                      10           # state loop limit
+  nStress:                     40           # stress loop limit
+  rtol_State:                  1.0e-6       # relative tolerance in crystallite state loop (abs tol provided by constitutive law)
+  rtol_Stress:                 1.0e-6       # relative tolerance in crystallite stress loop (Lp residuum)
+  atol_Stress:                 1.0e-8       # absolute tolerance in crystallite stress loop (Lp residuum!)
+  integrator:                  FPI          # integration method (FPI = Fixed Point Iteration, Euler = Euler, AdaptiveEuler = Adaptive Euler, RK4 = classical 4th order Runge-Kutta, RKCK45 = 5th order Runge-Kutta Cash-Karp)
+  iJacoLpresiduum:             1            # frequency of Jacobian update of residuum in Lp
+
+commercialFEM:
+  unitlength:                  1            # physical length of one computational length unit
+
+generic:
+  charLength:                  1.0          # characteristic length scale for gradient problems.
+  random_seed:                 0            # fixed seeding for pseudo-random number generator, Default 0: use random seed.
+  residualStiffness:           1.0e-6       # non-zero residual damage.

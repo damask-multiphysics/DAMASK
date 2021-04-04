@@ -205,10 +205,18 @@ subroutine grid_mechanical_spectral_polarisation_init
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(groupHandle,P_aim,        'P_aim')
-    call HDF5_read(groupHandle,F_aim,        'F_aim')
-    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
-    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
+    call HDF5_read(groupHandle,P_aim,        'P_aim',.false.)
+    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,F_aim,        'F_aim',.false.)
+    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
+    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot',.false.)
+    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
     call HDF5_read(groupHandle,F,            'F')
     call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
     call HDF5_read(groupHandle,F_tau,        'F_tau')
@@ -230,8 +238,12 @@ subroutine grid_mechanical_spectral_polarisation_init
 
   restartRead2: if (interface_restartInc > 0) then
     print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
-    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
-    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg',.false.)
+    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
+    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
+    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    if(ierr /=0) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -426,17 +438,17 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
-  call HDF5_write(groupHandle,F_aim,        'P_aim')
-  call HDF5_write(groupHandle,F_aim,        'F_aim')
-  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
-  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
+  call HDF5_write(groupHandle,F_aim,        'P_aim',.false.)
+  call HDF5_write(groupHandle,F_aim,        'F_aim',.false.)
+  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
+  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot',.false.)
   call HDF5_write(groupHandle,F,            'F')
   call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
   call HDF5_write(groupHandle,F_tau,        'F_tau')
   call HDF5_write(groupHandle,F_tau_lastInc,'F_tau_lastInc')
 
-  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg')
-  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
+  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg',.false.)
+  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
 
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
@@ -471,11 +483,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   divTol     = max(maxval(abs(P_av))         *num%eps_div_rtol   ,num%eps_div_atol)
   BCTol      = max(maxval(abs(P_av))         *num%eps_stress_rtol,num%eps_stress_atol)
 
-  if (terminallyIll .or. &
-      (totalIter >= num%itmin .and. &
-       all([ err_div /divTol, &
-             err_curl/curlTol, &
-             err_BC  /BCTol   ] < 1.0_pReal))) then
+  if ((totalIter >= num%itmin .and. all([err_div/divTol, err_curl/curlTol, err_BC/BCTol] < 1.0_pReal)) &
+       .or. terminallyIll) then
     reason = 1
   elseif (totalIter >= num%itmax) then
     reason = -1

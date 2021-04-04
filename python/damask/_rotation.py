@@ -29,16 +29,26 @@ class Rotation:
 
     Examples
     --------
-    Rotate vector "a" (defined in coordinate system "A") to
-    coordinates "b" expressed in system "B":
+    Rotate vector 'a' (defined in coordinate system 'A') to
+    coordinates 'b' expressed in system 'B':
 
-    - b = Q @ a
-    - b = np.dot(Q.as_matrix(),a)
+    >>> import damask
+    >>> import numpy as np
+    >>> Q = damask.Rotation.from_random()
+    >>> a = np.random.rand(3)
+    >>> b = R @ a
+    >>> np.allclose(np.dot(Q.as_matrix(),a),b)
+    True
 
     Compound rotations R1 (first) and R2 (second):
 
-    - R = R2 * R1
-    - R = Rotation.from_matrix(np.dot(R2.as_matrix(),R1.as_matrix())
+    >>> import damask
+    >>> import numpy as np
+    >>> R1 = damask.Rotation.from_random()
+    >>> R2 = damask.Rotation.from_random()
+    >>> R = R2 * R1
+    >>> np.allclose(R.as_matrix(), np.dot(R2.as_matrix(),R1.as_matrix()))
+    True
 
     References
     ----------
@@ -51,7 +61,7 @@ class Rotation:
 
     def __init__(self,rotation = np.array([1.0,0.0,0.0,0.0])):
         """
-        Initialize rotation object.
+        New rotation.
 
         Parameters
         ----------
@@ -71,7 +81,7 @@ class Rotation:
 
     def __repr__(self):
         """Represent rotation as unit quaternion(s)."""
-        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape)+chr(10)}'\
+        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
 
@@ -140,7 +150,7 @@ class Rotation:
 
 
     def __len__(self):
-        """Length of leading/leftmost dimension of Rotation array."""
+        """Length of leading/leftmost dimension of array."""
         return 0 if self.shape == () else self.shape[0]
 
 
@@ -180,7 +190,7 @@ class Rotation:
 
     def __mul__(self,other):
         """
-        Compose this rotation with other.
+        Compose with other.
 
         Parameters
         ----------
@@ -206,7 +216,7 @@ class Rotation:
 
     def __imul__(self,other):
         """
-        Compose this rotation with other (in-place).
+        Compose with other (in-place).
 
         Parameters
         ----------
@@ -219,7 +229,7 @@ class Rotation:
 
     def __truediv__(self,other):
         """
-        Compose this rotation with inverse of other.
+        Compose with inverse of other.
 
         Parameters
         ----------
@@ -239,7 +249,7 @@ class Rotation:
 
     def __itruediv__(self,other):
         """
-        Compose this rotation with inverse of other (in-place).
+        Compose with inverse of other (in-place).
 
         Parameters
         ----------
@@ -252,7 +262,7 @@ class Rotation:
 
     def __matmul__(self,other):
         """
-        Rotation of vector, second order tensor, or fourth order tensor.
+        Rotate vector, second order tensor, or fourth order tensor.
 
         Parameters
         ----------
@@ -301,7 +311,7 @@ class Rotation:
 
     def append(self,other):
         """
-        Extend rotation array along first dimension with other array(s).
+        Extend array along first dimension with other array(s).
 
         Parameters
         ----------
@@ -313,19 +323,19 @@ class Rotation:
 
 
     def flatten(self,order = 'C'):
-        """Flatten quaternion array."""
+        """Flatten array."""
         return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
 
 
     def reshape(self,shape,order = 'C'):
-        """Reshape quaternion array."""
+        """Reshape array."""
         if isinstance(shape,(int,np.integer)): shape = (shape,)
         return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
 
     def broadcast_to(self,shape,mode = 'right'):
         """
-        Broadcast quaternion array to shape.
+        Broadcast array.
 
         Parameters
         ----------
@@ -343,7 +353,7 @@ class Rotation:
 
     def average(self,weights = None):
         """
-        Average rotations along last dimension.
+        Average along last array dimension.
 
         Parameters
         ----------
@@ -382,7 +392,7 @@ class Rotation:
 
     def misorientation(self,other):
         """
-        Calculate misorientation from self to other Rotation.
+        Calculate misorientation to other Rotation.
 
         Parameters
         ----------

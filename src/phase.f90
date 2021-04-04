@@ -58,8 +58,6 @@ module phase
       grain
   end type tDebugOptions
 
-  type(tDebugOptions) :: debugCrystallite
-
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
     phase_elasticityInstance, &
     phase_NstiffnessDegradations
@@ -348,17 +346,17 @@ subroutine phase_init
 
   print'(/,a)', ' <<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
-  debug_constitutive => config_debug%get('constitutive', defaultVal=emptyList)
-  debugConstitutive%basic      =  debug_constitutive%contains('basic')
-  debugConstitutive%extensive  =  debug_constitutive%contains('extensive')
-  debugConstitutive%selective  =  debug_constitutive%contains('selective')
-  debugConstitutive%element    =  config_debug%get_asInt('element',defaultVal = 1)
-  debugConstitutive%ip         =  config_debug%get_asInt('integrationpoint',defaultVal = 1)
-  debugConstitutive%grain      =  config_debug%get_asInt('grain',defaultVal = 1)
+  debug_constitutive => config_debug%get('phase', defaultVal=emptyList)
+  debugConstitutive%basic     = debug_constitutive%contains('basic')
+  debugConstitutive%extensive = debug_constitutive%contains('extensive')
+  debugConstitutive%selective = debug_constitutive%contains('selective')
+  debugConstitutive%element   = config_debug%get_asInt('element',         defaultVal = 1)
+  debugConstitutive%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
+  debugConstitutive%grain     = config_debug%get_asInt('constituent',     defaultVal = 1)
 
 
   materials => config_material%get('material')
-  phases => config_material%get('phase')
+  phases    => config_material%get('phase')
 
   call mechanical_init(materials,phases)
   call damage_init
@@ -497,14 +495,10 @@ subroutine crystallite_init()
 
   class(tNode), pointer :: &
     num_crystallite, &
-    debug_crystallite, &                                                                            ! pointer to debug options for crystallite
     phases
 
 
   print'(/,a)', ' <<<+-  crystallite init  -+>>>'
-
-  debug_crystallite => config_debug%get('crystallite', defaultVal=emptyList)
-  debugCrystallite%extensive = debug_crystallite%contains('extensive')
 
   cMax = homogenization_maxNconstituents
   iMax = discretization_nIPs

@@ -1,0 +1,8 @@
+type: Hooke
+references:
+  - J. Vallin et al.,
+    Journal of Applied Physics 35(6), 1825-1826, 1964,
+    10.1063/1.1713749
+C_11: 107.3e9
+C_12: 60.8e9
+C_44: 28.3e9

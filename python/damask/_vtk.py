@@ -22,7 +22,7 @@ class VTK:
 
     def __init__(self,vtk_data):
         """
-        Initialize from vtk dataset.
+        New spatial visualization.
 
         Parameters
         ----------

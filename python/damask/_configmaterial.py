@@ -1,4 +1,4 @@
-import os.path
+import os
 
 import numpy as np
 import h5py
@@ -9,15 +9,28 @@ from . import Orientation
 from . import util
 
 class ConfigMaterial(Config):
-    """Material configuration."""
+    """
+    Material configuration.
 
-    _defaults = {'material': [],
-                 'homogenization': {},
-                 'phase': {}}
+    Manipulate material configurations for storage in YAML format.
+    A complete material configuration file has the entries 'material',
+    'phase', and 'homogenization'. For use in DAMASK, it needs to be
+    stored as 'material.yaml'.
+    
+    """
 
-    def __init__(self,d=_defaults):
-        """Initialize object with default dictionary keys."""
-        super().__init__(d)
+    def __init__(self,d=None):
+        """
+        New material configuration.
+
+        Parameters
+        ----------
+        d : dictionary, optional
+            Initial content. Defaults to None, in which case empty entries for
+            material, homogenization, and phase are created.
+
+        """
+        super().__init__({'material': [], 'homogenization': {}, 'phase': {}} if d is None else d)
 
 
     def save(self,fname='material.yaml',**kwargs):

@@ -254,7 +254,7 @@ module subroutine mechanical_init(materials,phases)
     output_constituent(ph)%label  = mech%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
     elastic => mech%get('elastic')
-    if(elastic%get_asString('type') == 'hooke') then
+    if (IO_lc(elastic%get_asString('type')) == 'hooke') then ! accept small letter h for the moment
       phase_elasticity(ph) = ELASTICITY_HOOKE_ID
     else
       call IO_error(200,ext_msg=elastic%get_asString('type'))

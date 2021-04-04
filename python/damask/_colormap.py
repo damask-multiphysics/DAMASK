@@ -39,20 +39,20 @@ class Colormap(mpl.colors.ListedColormap):
     """
 
     def __add__(self,other):
-        """Concatenate colormaps."""
+        """Concatenate."""
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
     def __iadd__(self,other):
-        """Concatenate colormaps."""
+        """Concatenate (in-place)."""
         return self.__add__(other)
 
     def __invert__(self):
-        """Return inverted colormap."""
+        """Reverse."""
         return self.reversed()
 
     def __repr__(self):
-        """Show colormap as matplotlib figure."""
+        """Show as matplotlib figure."""
         fig = plt.figure(self.name,figsize=(5,.5))
         ax1 = fig.add_axes([0, 0, 1, 1])
         ax1.set_axis_off()
@@ -207,7 +207,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def reversed(self,name=None):
         """
-        Make a reversed instance of the colormap.
+        Reverse.
 
         Parameters
         ----------

@@ -1,0 +1,10 @@
+type: Hooke
+references:
+  - L. Wang et al.,
+    Acta Materialia 132, 598-610, 2017,
+    10.1016/j.actamat.2017.05.015
+C_11: 162.4e9
+C_33: 181.6e9
+C_44: 47.2e9
+C_12: 92e9
+C_13: 69e9

@@ -1,18 +1,15 @@
 ---
 stages:
-  - prepareAll
+  - prepare
   - python
-  - deprecated
   - compile
-  - grid
-  - marc
+  - fortran
   - performance
-  - createPackage
-  - createDocumentation
-  - saveDocumentation
-  - updateMaster
+  - deploy
+  - backup
+  - update_master
+  - distclean
   - clean
-  - releaseLock
 
 ###################################################################################################
 before_script:
@@ -74,7 +71,7 @@ variables:
 
 ###################################################################################################
 checkout:
-  stage: prepareAll
+  stage: prepare
   before_script:
     - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
     - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
@@ -89,89 +86,26 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
-    - make processing
+    - ./installation/symlink_Processing.py
   except:
     - master
     - release
 
 ###################################################################################################
-pytest_python:
+processing:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=${TESTROOT}/python -v
+    - COLUMNS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
+    - coverage report --fail-under=90
   except:
     - master
     - release
 
 ###################################################################################################
-Pre_SeedGeneration:
-  stage: deprecated
-  script: PreProcessing_SeedGeneration/test.py
-  except:
-    - master
-    - release
-
-Pre_GeomGeneration:
-  stage: deprecated
-  script: PreProcessing_GeomGeneration/test.py
-  except:
-    - master
-    - release
-
-Pre_GeomModification:
-  stage: deprecated
-  script: PreProcessing_GeomModification/test.py
-  except:
-    - master
-    - release
-
-Pre_General:
-  stage: deprecated
+preprocessing_deprecated:
+  stage: python
   script: PreProcessing/test.py
-  except:
-    - master
-    - release
-
-Post_General:
-  stage: deprecated
-  script: PostProcessing/test.py
-  except:
-    - master
-    - release
-
-Post_GeometryReconstruction:
-  stage: deprecated
-  script: spectral_geometryReconstruction/test.py
-  except:
-    - master
-    - release
-
-Post_addCurl:
-  stage: deprecated
-  script: addCurl/test.py
-  except:
-    - master
-    - release
-
-Post_addDivergence:
-  stage: deprecated
-  script: addDivergence/test.py
-  except:
-    - master
-    - release
-
-Post_addGradient:
-  stage: deprecated
-  script: addGradient/test.py
-  except:
-    - master
-    - release
-
-Post_OrientationAverageMisorientation:
-  stage: deprecated
-  script:
-    - OrientationAverageMisorientation/test.py
   except:
     - master
     - release
@@ -182,7 +116,7 @@ compile_grid_Intel:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
+    - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
     - master
     - release
@@ -192,7 +126,7 @@ compile_mesh_Intel:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
+    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
     - master
     - release
@@ -202,7 +136,7 @@ compile_grid_GNU:
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
+    - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
@@ -212,17 +146,17 @@ compile_mesh_GNU:
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
+    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
 
-compile_MARC:
+compile_Marc:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd pytest
-    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
+    - COLUMNS=256 pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
   except:
     - master
     - release
@@ -252,34 +186,25 @@ setup_mesh:
     - release
 
 ###################################################################################################
-pytest_fortran:
-  stage: grid
+core:
+  stage: fortran
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
-  except:
-    - master
-    - release
-
-Plasticity_DetectChanges:
-  stage: grid
-  script: Plasticity_DetectChanges/test.py
+    - COLUMNS=256 pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
     - master
     - release
 
 Phenopowerlaw_singleSlip:
-  stage: grid
+  stage: fortran
   script: Phenopowerlaw_singleSlip/test.py
   except:
     - master
     - release
 
-
-###################################################################################################
 J2_plasticBehavior:
-  stage: marc
+  stage: fortran
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - J2_plasticBehavior/test.py
@@ -294,7 +219,7 @@ SpectralRuntime:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $DAMASKROOT
-    - make clean grid processing OPTIMIZATION=AGGRESSIVE
+    - make clean grid OPTIMIZATION=AGGRESSIVE
     - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
@@ -304,8 +229,8 @@ SpectralRuntime:
     - release
 
 ###################################################################################################
-createTar:
-  stage: createPackage
+source_distribution:
+  stage: deploy
   script:
     - cd $(mktemp -d)
     - $DAMASKROOT/PRIVATE/releasing/deployMe.sh $CI_COMMIT_SHA
@@ -313,18 +238,18 @@ createTar:
     - master
     - release
 
-###################################################################################################
-Python:
-  stage: createDocumentation
+library_documentation:
+  stage: deploy
   script:
-    - echo 'tbd one matesting1'
+    - cd $DAMASKROOT/PRIVATE/documenting/sphinx
+    - make html
   except:
     - master
     - release
 
 ##################################################################################################
-backupData:
-  stage: saveDocumentation
+backup_runtime_measurement:
+  stage: backup
   script:
     - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
@@ -335,8 +260,8 @@ backupData:
     - development
 
 ##################################################################################################
-mergeIntoMaster:
-  stage: updateMaster
+merge_into_master:
+  stage: update_master
   script:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
@@ -354,8 +279,8 @@ mergeIntoMaster:
     - development
 
 ###################################################################################################
-removeData:
-  stage: clean
+remove_data:
+  stage: distclean
   before_script:
     - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
@@ -366,8 +291,8 @@ removeData:
     - release
 
 ###################################################################################################
-removeLock:
-  stage: releaseLock
+remove_lock:
+  stage: clean
   before_script:
     - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
