@@ -354,20 +354,20 @@ class Result:
         message = ''
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
-                message += f'\n{inc} ({self.times[self.increments.index(inc)]}s)\n'
+                ''.join([message,f'\n{inc} ({self.times[self.increments.index(inc)]}s)\n'])
                 for ty in ['phases','homogenizations']:
-                    message += f'  {ty[:-1]}\n'
+                    '  '.join([message,f'{ty[:-1]}\n'])
                     for label in self.visible[ty]:
-                        message += f'    {label}\n'
+                        '    '.join([message,f'{label}\n'])
                         for field in self.visible['fields']:
-                            message += f'      {field}\n'
+                            '      '.join([message,f'{field}\n'])
                             for d in f['/'.join([inc,ty[:-1],label,field])].keys():
                                 dataset = f['/'.join([inc,ty[:-1],label,field,d])]
                                 unit = f' / {dataset.attrs[un]}' if h5py3 else \
                                        f' / {dataset.attrs[un].decode()}'
                                 description = dataset.attrs[de] if h5py3 else \
                                               dataset.attrs[de].decode()
-                                message += f'        {d}{unit}: {description}\n'
+                                '        '.join([message,f'{d}{unit}: {description}\n'])
 
         return message
 
