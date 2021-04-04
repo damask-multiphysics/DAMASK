@@ -366,49 +366,27 @@ class Result:
         Return groups that contain all requested datasets.
 
         Only groups within
-          - inc*/phase/*/*
-          - inc*/homogenization/*/*
-          - inc*/geometry/*
+          - inc*/phase/*/
+          - inc*/homogenization/*/
+          - inc*/geometry/
 
         are considered as they contain user-relevant data.
         Single strings will be treated as list with one entry.
-
-        Wild card matching is allowed, but the number of arguments needs to fit.
 
         Parameters
         ----------
             datasets : iterable or str or bool
 
-        Examples
-        --------
-            datasets = False matches no group
-            datasets = True matches all groups
-            datasets = ['F','P'] matches a group with ['F','P','sigma']
-            datasets = ['*','P'] matches a group with ['F','P']
-            datasets = ['*'] does not match a group with ['F','P','sigma']
-            datasets = ['*','*'] does not match a group with ['F','P','sigma']
-            datasets = ['*','*','*'] matches a group with ['F','P','sigma']
-
         """
-        if datasets is False: return []
-
-        sets = datasets if isinstance(datasets,bool) or (hasattr(datasets,'__iter__') and not isinstance(datasets,str)) else \
-              [datasets]
-
         groups = []
 
         with h5py.File(self.fname,'r') as f:
-            for i in self.iterate('increments'):
-                for o,p in zip(['phases','homogenizations'],['fields','fields']):
-                    for oo in self.iterate(o):
-                        for pp in self.iterate(p):
-                            group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
-                            if sets is True:
-                                groups.append(group)
-                            else:
-                                if group in f.keys():
-                                    match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                                    if len(set(match)) == len(sets): groups.append(group)
+            for inc in self.visible['increments']:
+                for ty in ['phases','homogenizations']:
+                    for label in self.visible[ty]:
+                        for field in self.visible['fields']:
+                            group = '/'.join([inc,ty[:-1],label,field])
+                            if set(group) == set(datasets): groups.append(group)
         return groups
 
 
@@ -419,16 +397,16 @@ class Result:
         un = 'Unit'        if self.version_minor < 12 else 'unit'
         message = ''
         with h5py.File(self.fname,'r') as f:
-            for i in self.visible['increments']:
-                message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
-                for o,p in zip(['phases','homogenizations'],['fields','fields']):
-                    message += f'  {o[:-1]}\n'
-                    for oo in self.visible[o]:
-                        message += f'    {oo}\n'
-                        for pp in self.visible[p]:
-                            message += f'      {pp}\n'
-                            for d in f['/'.join([i,o[:-1],oo,pp])].keys():
-                                dataset = f['/'.join([i,o[:-1],oo,pp,d])]
+            for inc in self.visible['increments']:
+                message += f'\n{inc} ({self.times[self.increments.index(inc)]}s)\n'
+                for ty in ['phases','homogenizations']:
+                    message += f'  {ty[:-1]}\n'
+                    for label in self.visible[ty]:
+                        message += f'    {label}\n'
+                        for field in self.visible['fields']:
+                            message += f'      {field}\n'
+                            for d in f['/'.join([inc,ty[:-1],label,field])].keys():
+                                dataset = f['/'.join([inc,ty[:-1],label,field,d])]
                                 unit = f' / {dataset.attrs[un]}' if h5py3 else \
                                        f' / {dataset.attrs[un].decode()}'
                                 description = dataset.attrs[de] if h5py3 else \
