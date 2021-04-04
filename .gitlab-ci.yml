@@ -96,7 +96,7 @@ processing:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - COLUMS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
+    - COLUMNS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
   except:
     - master
