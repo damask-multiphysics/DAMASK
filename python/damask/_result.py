@@ -46,6 +46,10 @@ def _match(requested,existing):
     return sorted(set(flatten_list([glob.fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
 
+def _empty(dataset,N_materialpoints,fill_float,fill_int):
+    return ma.array(np.empty((N_materialpoints,)+dataset.shape[1:],dataset.dtype),
+                    fill_value = fill_float if dataset.dtype in np.sctypes['float'] else fill_int,
+                    mask = True)
 
 class Result:
     """
@@ -386,7 +390,7 @@ class Result:
                     for label in self.visible[ty]:
                         for field in self.visible['fields']:
                             group = '/'.join([inc,ty[:-1],label,field])
-                            if set(group) == set(datasets): groups.append(group)
+                            if set(datasets).issubset(f[group].keys()): groups.append(group)
         return groups
 
 
@@ -1312,23 +1316,16 @@ class Result:
 
                                 if ty == 'phase':
                                     if out+suffixes[0] not in outs.keys():
-                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
-                                        fill_value = fill_float if data.dtype in np.sctypes['float'] else \
-                                                     fill_int
                                         for c,suffix in zip(constituents_,suffixes):
                                             outs[out+suffix] = \
-                                                ma.array(container,fill_value=fill_value,mask=True)
+                                                _empty(data,self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in outs.keys():
-                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
-                                        fill_value = fill_float if data.dtype in np.sctypes['float'] else \
-                                                     fill_int
-                                        outs[out] = \
-                                            ma.array(container,fill_value=fill_value,mask=True)
+                                        outs[out] = _empty(data,self.N_materialpoints,fill_float,fill_int)
 
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
@@ -1458,23 +1455,17 @@ class Result:
 
                                 if ty == 'phase':
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
-                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
-                                        fill_value = fill_float if data.dtype in np.sctypes['float'] else \
-                                                     fill_int
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
-                                                ma.array(container,fill_value=fill_value,mask=True)
+                                                _empty(data,self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
-                                        container = np.empty((self.N_materialpoints,)+data.shape[1:],data.dtype)
-                                        fill_value = fill_float if data.dtype in np.sctypes['float'] else \
-                                                     fill_int
                                         r[inc][ty][field][out] = \
-                                            ma.array(container,fill_value=fill_value,mask=True)
+                                            _empty(data,self.N_materialpoints,fill_float,fill_int)
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
 
