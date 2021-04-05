@@ -24,8 +24,7 @@ def default(tmp_path,ref_path):
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(ref_path/fname,tmp_path)
     f = Result(tmp_path/fname)
-    f.view('times',20.0)
-    return f
+    return f.view('times',20.0)
 
 @pytest.fixture
 def single_phase(tmp_path,ref_path):
@@ -58,49 +57,37 @@ class TestResult:
 
 
     def test_view_all(self,default):
-        default.view('increments',True)
-        a = default.read('F')
+        a = default.view('increments',True).read('F')
 
-        default.view('increments','*')
-        assert dict_equal(a,default.read('F'))
-        default.view('increments',default.increments_in_range(0,np.iinfo(int).max))
-        assert dict_equal(a,default.read('F'))
+        assert dict_equal(a,default.view('increments','*').read('F'))
+        assert dict_equal(a,default.view('increments',default.increments_in_range(0,np.iinfo(int).max)).read('F'))
 
-        default.view('times',True)
-        assert dict_equal(a,default.read('F'))
-        default.view('times','*')
-        assert dict_equal(a,default.read('F'))
-        default.view('times',default.times_in_range(0.0,np.inf))
-        assert dict_equal(a,default.read('F'))
+        assert dict_equal(a,default.view('times',True).read('F'))
+        assert dict_equal(a,default.view('times','*').read('F'))
+        assert dict_equal(a,default.view('times',default.times_in_range(0.0,np.inf)).read('F'))
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_view_none(self,default,what):
-        default.view(what,False)
-        a = default.read('F')
-        default.view(what,[])
-        b = default.read('F')
+        a = default.view(what,False).read('F')
+        b = default.view(what,[]).read('F')
 
         assert a == b == {}
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_view_more(self,default,what):
-        default.view(what,False)
-        default.view_more(what,'*')
-        a = default.read('F')
+        empty = default.view(what,False)
 
-        default.view(what,True)
-        b = default.read('F')
+        a = empty.view_more(what,'*').read('F')
+        b = empty.view_more(what,True).read('F')
 
         assert dict_equal(a,b)
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_view_less(self,default,what):
-        default.view(what,True)
-        default.view_less(what,'*')
-        a = default.read('F')
+        full = default.view(what,True)
 
-        default.view(what,False)
-        b = default.read('F')
+        a = full.view_less(what,'*').read('F')
+        b = full.view_less(what,True).read('F')
 
         assert a == b == {}
 
@@ -279,41 +266,41 @@ class TestResult:
 
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
-        default.view('times',default.times_in_range(0,np.inf)[-1])
+        last = default.view('times',default.times_in_range(0,np.inf)[-1])
 
-        default.add_stress_Cauchy()
-        with h5py.File(default.fname,'r') as f:
+        last.add_stress_Cauchy()
+        with h5py.File(last.fname,'r') as f:
             created_first = default.place('sigma').dtype.metadata['created']
         
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            default.allow_modification()
+            last = last.allow_modification()
         else:
-            default.disallow_modification()
+            last = last.disallow_modification()
 
         time.sleep(2.)
         try:
-            default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+            last.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
         except ValueError:
             pass
-        with h5py.File(default.fname,'r') as f:
-            created_second = default.place('sigma').dtype.metadata['created']
+        with h5py.File(last.fname,'r') as f:
+            created_second = last.place('sigma').dtype.metadata['created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            assert created_first < created_second and np.allclose(default.place('sigma'),311.)
+            assert created_first < created_second and np.allclose(last.place('sigma'),311.)
         else:
-            assert created_first == created_second and not np.allclose(default.place('sigma'),311.)
+            assert created_first == created_second and not np.allclose(last.place('sigma'),311.)
 
     @pytest.mark.parametrize('allowed',['off','on'])
     def test_rename(self,default,allowed):
         if allowed == 'on':
             F = default.place('F')
-            default.allow_modification()
+            default = default.allow_modification()
             default.rename('F','new_name')
             assert np.all(F == default.place('new_name'))
-            default.disallow_modification()
+            default = default.disallow_modification()
 
         with pytest.raises(PermissionError):
             default.rename('P','another_new_name')
@@ -333,8 +320,7 @@ class TestResult:
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     def test_vtk(self,request,tmp_path,ref_path,update,output,fname,inc):
-        result = Result(ref_path/fname)
-        result.view('increments',inc)
+        result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
         result.save_VTK(output)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vtr'
@@ -387,7 +373,7 @@ class TestResult:
     def test_read(self,update,request,ref_path,view,output,compress,strip):
         result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
-            result.view(key,value)
+            result = result.view(key,value)
 
         fname = request.node.name
         cur = result.read(output,compress,strip)
@@ -412,7 +398,7 @@ class TestResult:
     def test_place(self,update,request,ref_path,view,output,compress,strip,constituents):
         result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
-            result.view(key,value)
+            result = result.view(key,value)
 
         fname = request.node.name
         cur = result.place(output,compress,strip,constituents)
