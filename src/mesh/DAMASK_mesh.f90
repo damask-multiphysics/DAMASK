@@ -85,11 +85,12 @@ program DAMASK_mesh
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  if (stagItMax < 0)  call IO_error(301,ext_msg='maxStaggeredIter')
+  if (maxCutBack < 0) call IO_error(301,ext_msg='maxCutBack')
 
 ! reading basic information from load case file and allocate data structure containing load cases
-  call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
+  call DMGetDimension(geomMesh,dimPlex,ierr)                                                        !< dimension of mesh (2D or 3D)
+  CHKERRA(ierr)
   nActiveFields = 1
   allocate(solres(nActiveFields))
 
