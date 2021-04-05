@@ -222,7 +222,7 @@ class TestOrientation:
         blend = util.shapeblender(o.shape,p.shape)
         for loc in np.random.randint(0,blend,(10,len(blend))):
             assert o[tuple(loc[:len(o.shape)])].disorientation(p[tuple(loc[-len(p.shape):])]) \
-                == o.disorientation(p)[tuple(loc)]
+                   .isclose(o.disorientation(p)[tuple(loc)])
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_disorientation360(self,lattice):

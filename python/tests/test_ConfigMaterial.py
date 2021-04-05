@@ -140,6 +140,5 @@ class TestConfigMaterial:
         if update:
             cur.save(ref_path/'measured.material_yaml')
         for i,m in enumerate(ref['material']):
-            assert Rotation(m['constituents'][0]['O']) == \
-                   Rotation(cur['material'][i]['constituents'][0]['O'])
+            assert Rotation(m['constituents'][0]['O']).isclose(Rotation(cur['material'][i]['constituents'][0]['O']))
         assert cur.is_valid and cur['phase'] == ref['phase'] and cur['homogenization'] == ref['homogenization']

@@ -960,7 +960,7 @@ class TestRotation:
         if axis_angle[3] > np.pi:
             axis_angle[3] -= 2.*np.pi
             axis_angle    *= -1
-        assert R**pwr == Rotation.from_axis_angle(axis_angle)
+        assert (R**pwr).isclose(Rotation.from_axis_angle(axis_angle))
 
     def test_rotate_inverse(self):
         R = Rotation.from_random()
@@ -1027,7 +1027,7 @@ class TestRotation:
 
     def test_invariant(self):
         R = Rotation.from_random()
-        assert R/R == R*R**(-1) == Rotation()
+        assert (R/R).isclose(R*R**(-1)) and (R/R).isclose(Rotation())
 
     @pytest.mark.parametrize('item',[np.ones(3),np.ones((3,3)), np.ones((3,3,3,3))])
     def test_apply(self,item):

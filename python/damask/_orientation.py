@@ -239,7 +239,9 @@ class Orientation(Rotation):
         """
         matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
                              for attr in ['family','lattice','parameters']])
-        return np.logical_and(super().__eq__(other),matching_type)
+        s = self  if self.family  is None else  self.reduced
+        o = other if other.family is None else other.reduced
+        return np.logical_and(super(__class__,s).__eq__(o),matching_type)
 
     def __ne__(self,other):
         """
@@ -252,6 +254,59 @@ class Orientation(Rotation):
 
         """
         return np.logical_not(self==other)
+
+
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Report where values are approximately equal to corresponding ones of other Orientation.
+
+        Parameters
+        ----------
+        other : Orientation
+            Orientation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        mask : numpy.ndarray bool
+            Mask indicating where corresponding orientations are close.
+
+        """
+        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
+                             for attr in ['family','lattice','parameters']])
+        s = self  if self.family  is None else  self.reduced
+        o = other if other.family is None else other.reduced
+        return np.logical_and(super(__class__,s).isclose(o),matching_type)
+
+
+
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Test whether all values are approximately equal to corresponding ones of other Orientation.
+
+        Parameters
+        ----------
+        other : Orientation
+            Orientation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        answer : bool
+            Whether all values are close between both orientations.
+
+        """
+        return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
     def __mul__(self,other):
