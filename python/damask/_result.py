@@ -1315,7 +1315,7 @@ class Result:
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
                 for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
-                    r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
+                    r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
