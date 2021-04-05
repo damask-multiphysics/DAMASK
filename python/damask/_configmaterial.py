@@ -157,18 +157,18 @@ class ConfigMaterial(Config):
         f = h5py.File(fname,'r')
 
         if grain_data is None:
-            phase = f['/'.join((b,c,phases))][()].flatten()
-            O = Rotation.from_Euler_angles(f['/'.join((b,c,Euler_angles))]).as_quaternion().reshape(-1,4) # noqa
+            phase = f['/'.join([b,c,phases])][()].flatten()
+            O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
             _,idx = np.unique(np.hstack([O,phase.reshape(-1,1)]),return_index=True,axis=0)
             idx = np.sort(idx)
         else:
-            phase = f['/'.join((b,grain_data,phases))][()]
-            O = Rotation.from_Euler_angles(f['/'.join((b,grain_data,Euler_angles))]).as_quaternion() # noqa
+            phase = f['/'.join([b,grain_data,phases])][()]
+            O = Rotation.from_Euler_angles(f['/'.join([b,grain_data,Euler_angles])]).as_quaternion() # noqa
             idx = np.arange(phase.size)
 
         if cell_ensemble_data is not None and phase_names is not None:
             try:
-                names = np.array([s.decode() for s in f['/'.join((b,cell_ensemble_data,phase_names))]])
+                names = np.array([s.decode() for s in f['/'.join([b,cell_ensemble_data,phase_names])]])
                 phase = names[phase]
             except KeyError:
                 pass

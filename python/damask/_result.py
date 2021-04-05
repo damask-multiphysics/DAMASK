@@ -34,7 +34,7 @@ def _read(dataset):
     return np.array(dataset,dtype=dtype)
 
 def _match(requested,existing):
-    """Find matches among two sets of labels"""
+    """Find matches among two sets of labels."""
     def flatten_list(list_of_lists):
         return [e for e_ in list_of_lists for e in e_]
 
@@ -159,7 +159,7 @@ class Result:
             Select from 'set', 'add', and 'del'.
         what : str
             Attribute to change (must be from self.visible).
-        datasets : list of str or bool
+        datasets : str, int, list of str, list of int, or bool
             Name of datasets as list; supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to [].
 
@@ -169,7 +169,7 @@ class Result:
             datasets = '*'
         elif datasets is False or datasets is None:
             datasets = []
-        choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
+        choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
 
         inc = 'inc' if self.version_minor < 12 else 'increment_' # compatibility hack
@@ -1095,7 +1095,7 @@ class Result:
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
                         for field in self.visible['fields']:
-                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
                                 name = '/'.join([inc,ty,label,field,out])
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
@@ -1165,29 +1165,29 @@ class Result:
             at_cell_ph = []
             in_data_ph = []
             for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f['/'.join((grp,'phase'))][:,c][name] == label.encode())[0] \
+                at_cell_ph.append({label: np.where(f['/'.join([grp,'phase'])][:,c][name] == label.encode())[0] \
                                           for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join((grp,'phase'))][member][at_cell_ph[c][label]][:,c] \
+                in_data_ph.append({label: f['/'.join([grp,'phase'])][member][at_cell_ph[c][label]][:,c] \
                                           for label in self.visible['phases']})
 
-            at_cell_ho = {label: np.where(f['/'.join((grp,'homogenization'))][:][name] == label.encode())[0] \
+            at_cell_ho = {label: np.where(f['/'.join([grp,'homogenization'])][:][name] == label.encode())[0] \
                                  for label in self.visible['homogenizations']}
-            in_data_ho = {label: f['/'.join((grp,'homogenization'))][member][at_cell_ho[label]] \
+            in_data_ho = {label: f['/'.join([grp,'homogenization'])][member][at_cell_ho[label]] \
                                  for label in self.visible['homogenizations']}
 
             for inc in util.show_progress(self.visible['increments']):
 
-                u = _read(f['/'.join((inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'))])
+                u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
                 v.add(u,'u')
 
                 for ty in ['phase','homogenization']:
                     for field in self.visible['fields']:
                         for label in self.visible[ty+'s']:
-                            if field not in f['/'.join((inc,ty,label))].keys(): continue
+                            if field not in f['/'.join([inc,ty,label])].keys(): continue
                             outs = {}
 
-                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
-                                data = ma.array(_read(f['/'.join((inc,ty,label,field,out))]))
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
 
                                 if ty == 'phase':
                                     if out+suffixes[0] not in outs.keys():
@@ -1205,7 +1205,7 @@ class Result:
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
                         for label,dataset in outs.items():
-                            v.add(dataset,' / '.join(('/'.join((ty,field,label)),dataset.dtype.metadata['unit'])))
+                            v.add(dataset,' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]))
 
                 v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
 
@@ -1236,16 +1236,16 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in _match(output,f['/'.join((inc,'geometry'))].keys()):
-                    r[inc]['geometry'][out] = _read(f['/'.join((inc,'geometry',out))])
+                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
+                    r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
                         r[inc][ty][label] = {}
-                        for field in _match(self.visible['fields'],f['/'.join((inc,ty,label))].keys()):
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             r[inc][ty][label][field] = {}
-                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
-                                r[inc][ty][label][field][out] = _read(f['/'.join((inc,ty,label,field,out))])
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                r[inc][ty][label][field][out] = _read(f['/'.join([inc,ty,label,field,out])])
 
         if prune:   r = util.dict_prune(r)
         if flatten: r = util.dict_flatten(r)
@@ -1303,30 +1303,30 @@ class Result:
             at_cell_ph = []
             in_data_ph = []
             for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f['/'.join((grp,'phase'))][:,c][name] == label.encode())[0] \
+                at_cell_ph.append({label: np.where(f['/'.join([grp,'phase'])][:,c][name] == label.encode())[0] \
                                           for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join((grp,'phase'))][member][at_cell_ph[c][label]][:,c] \
+                in_data_ph.append({label: f['/'.join([grp,'phase'])][member][at_cell_ph[c][label]][:,c] \
                                           for label in self.visible['phases']})
 
-            at_cell_ho = {label: np.where(f['/'.join((grp,'homogenization'))][:][name] == label.encode())[0] \
+            at_cell_ho = {label: np.where(f['/'.join([grp,'homogenization'])][:][name] == label.encode())[0] \
                                  for label in self.visible['homogenizations']}
-            in_data_ho = {label: f['/'.join((grp,'homogenization'))][member][at_cell_ho[label]] \
+            in_data_ho = {label: f['/'.join([grp,'homogenization'])][member][at_cell_ho[label]] \
                                  for label in self.visible['homogenizations']}
 
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
 
-                for out in _match(output,f['/'.join((inc,'geometry'))].keys()):
-                    r[inc]['geometry'][out] = _read(f['/'.join((inc,'geometry',out))])
+                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
+                    r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join((inc,ty,label))].keys()):
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             if field not in r[inc][ty].keys():
                                 r[inc][ty][field] = {}
 
-                            for out in _match(output,f['/'.join((inc,ty,label,field))].keys()):
-                                data = ma.array(_read(f['/'.join((inc,ty,label,field,out))]))
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
 
                                 if ty == 'phase':
                                     if out+suffixes[0] not in r[inc][ty][field].keys():

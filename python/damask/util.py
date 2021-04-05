@@ -399,7 +399,7 @@ def DREAM3D_cell_data_group(fname):
     """
     base_group = DREAM3D_base_group(fname)
     with h5py.File(fname,'r') as f:
-        cells = tuple(f['/'.join((base_group,'_SIMPL_GEOMETRY','DIMENSIONS'))][()][::-1])
+        cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,h5py._hl.dataset.Dataset) and np.shape(obj)[:-1] == cells \
                                                    else None)

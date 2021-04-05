@@ -269,9 +269,8 @@ class TestResult:
         last = default.view('times',default.times_in_range(0,np.inf)[-1])
 
         last.add_stress_Cauchy()
-        with h5py.File(last.fname,'r') as f:
-            created_first = default.place('sigma').dtype.metadata['created']
-        
+
+        created_first = last.place('sigma').dtype.metadata['created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -284,8 +283,8 @@ class TestResult:
             last.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
         except ValueError:
             pass
-        with h5py.File(last.fname,'r') as f:
-            created_second = last.place('sigma').dtype.metadata['created']
+
+        created_second = last.place('sigma').dtype.metadata['created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
