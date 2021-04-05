@@ -674,7 +674,7 @@ class Result:
             elif T_sym['meta']['unit'] == 'Pa':
                 k = 'stress'
         if k not in ['stress', 'strain']:
-            raise ValueError('invalid von Mises kind {kind}')
+            raise ValueError(f'invalid von Mises kind {kind}')
 
         return {
                 'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
@@ -1122,6 +1122,29 @@ class Result:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
+    def _mappings(self):
+        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'                                  # compatibility hack
+        name = 'Name' if self.version_minor < 12 else 'label'                                       # compatibility hack
+        member = 'member' if self.version_minor < 12 else 'entry'                                   # compatibility hack
+
+        with h5py.File(self.fname,'r') as f:
+
+            at_cell_ph = []
+            in_data_ph = []
+            for c in range(self.N_constituents):
+                at_cell_ph.append({label: np.where(f['/'.join([grp,'phase'])][:,c][name] == label.encode())[0] \
+                                          for label in self.visible['phases']})
+                in_data_ph.append({label: f['/'.join([grp,'phase'])][member][at_cell_ph[c][label]][:,c] \
+                                          for label in self.visible['phases']})
+
+            at_cell_ho = {label: np.where(f['/'.join([grp,'homogenization'])][:][name] == label.encode())[0] \
+                                 for label in self.visible['homogenizations']}
+            in_data_ho = {label: f['/'.join([grp,'homogenization'])][member][at_cell_ho[label]] \
+                                 for label in self.visible['homogenizations']}
+
+        return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
+
+
     def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
         """
         Export to vtk cell/point data.
@@ -1162,24 +1185,9 @@ class Result:
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
 
-        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'                                  # compatibility hack
-        name = 'Name' if self.version_minor < 12 else 'label'                                       # compatibility hack
-        member = 'member' if self.version_minor < 12 else 'entry'                                   # compatibility hack
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
         with h5py.File(self.fname,'r') as f:
-
-            at_cell_ph = []
-            in_data_ph = []
-            for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f['/'.join([grp,'phase'])][:,c][name] == label.encode())[0] \
-                                          for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join([grp,'phase'])][member][at_cell_ph[c][label]][:,c] \
-                                          for label in self.visible['phases']})
-
-            at_cell_ho = {label: np.where(f['/'.join([grp,'homogenization'])][:][name] == label.encode())[0] \
-                                 for label in self.visible['homogenizations']}
-            in_data_ho = {label: f['/'.join([grp,'homogenization'])][member][at_cell_ho[label]] \
-                                 for label in self.visible['homogenizations']}
 
             for inc in util.show_progress(self.visible['increments']):
 
@@ -1300,24 +1308,9 @@ class Result:
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
 
-        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'                                  # compatibility hack
-        name = 'Name' if self.version_minor < 12 else 'label'                                       # compatibility hack
-        member = 'member' if self.version_minor < 12 else 'entry'                                   # compatibility hack
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
         with h5py.File(self.fname,'r') as f:
-
-            at_cell_ph = []
-            in_data_ph = []
-            for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f['/'.join([grp,'phase'])][:,c][name] == label.encode())[0] \
-                                          for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join([grp,'phase'])][member][at_cell_ph[c][label]][:,c] \
-                                          for label in self.visible['phases']})
-
-            at_cell_ho = {label: np.where(f['/'.join([grp,'homogenization'])][:][name] == label.encode())[0] \
-                                 for label in self.visible['homogenizations']}
-            in_data_ho = {label: f['/'.join([grp,'homogenization'])][member][at_cell_ho[label]] \
-                                 for label in self.visible['homogenizations']}
 
             for inc in util.show_progress(self.visible['increments']):
                 r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
