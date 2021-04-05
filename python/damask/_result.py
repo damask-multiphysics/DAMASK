@@ -1059,33 +1059,32 @@ class Result:
         attributes = []
         data_items = []
 
-        for inc in self.visible['increments']:
+        with h5py.File(self.fname,'r') as f:
+            for inc in self.visible['increments']:
 
-            grid=ET.SubElement(collection,'Grid')
-            grid.attrib = {'GridType': 'Uniform',
-                           'Name':      inc}
+                grid=ET.SubElement(collection,'Grid')
+                grid.attrib = {'GridType': 'Uniform',
+                               'Name':      inc}
 
-            topology=ET.SubElement(grid, 'Topology')
-            topology.attrib={'TopologyType': '3DCoRectMesh',
-                             'Dimensions':   '{} {} {}'.format(*self.cells+1)}
+                topology=ET.SubElement(grid, 'Topology')
+                topology.attrib={'TopologyType': '3DCoRectMesh',
+                                 'Dimensions':   '{} {} {}'.format(*self.cells+1)}
 
-            geometry=ET.SubElement(grid, 'Geometry')
-            geometry.attrib={'GeometryType':'Origin_DxDyDz'}
+                geometry=ET.SubElement(grid, 'Geometry')
+                geometry.attrib={'GeometryType':'Origin_DxDyDz'}
 
-            origin=ET.SubElement(geometry, 'DataItem')
-            origin.attrib={'Format':     'XML',
-                           'NumberType': 'Float',
-                           'Dimensions': '3'}
-            origin.text="{} {} {}".format(*self.origin)
+                origin=ET.SubElement(geometry, 'DataItem')
+                origin.attrib={'Format':     'XML',
+                               'NumberType': 'Float',
+                               'Dimensions': '3'}
+                origin.text="{} {} {}".format(*self.origin)
 
-            delta=ET.SubElement(geometry, 'DataItem')
-            delta.attrib={'Format':     'XML',
-                          'NumberType': 'Float',
-                          'Dimensions': '3'}
-            delta.text="{} {} {}".format(*(self.size/self.cells))
+                delta=ET.SubElement(geometry, 'DataItem')
+                delta.attrib={'Format':     'XML',
+                              'NumberType': 'Float',
+                              'Dimensions': '3'}
+                delta.text="{} {} {}".format(*(self.size/self.cells))
 
-
-            with h5py.File(self.fname,'r') as f:
                 attributes.append(ET.SubElement(grid, 'Attribute'))
                 attributes[-1].attrib={'Name':          'u / m',
                                        'Center':        'Node',
