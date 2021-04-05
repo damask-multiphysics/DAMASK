@@ -22,7 +22,6 @@ __all__=[
          'scale_to_coprime',
          'project_stereographic',
          'hybrid_IA',
-         'return_message',
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
@@ -64,7 +63,8 @@ def srepr(arg,glue = '\n'):
            (hasattr(arg, '__getitem__') or
             hasattr(arg, '__iter__'))):
         return glue.join(str(x) for x in arg)
-    return arg if isinstance(arg,str) else repr(arg)
+    else:
+       return arg if isinstance(arg,str) else repr(arg)
 
 
 def emph(what):
@@ -463,26 +463,6 @@ def dict_flatten(d):
 ####################################################################################################
 # Classes
 ####################################################################################################
-class return_message:
-    """Object with formatted return message."""
-
-    def __init__(self,message):
-        """
-        Set return message.
-
-        Parameters
-        ----------
-        message : str or list of str
-            message for output to screen
-
-        """
-        self.message = message
-
-    def __repr__(self):
-        """Return message suitable for interactive shells."""
-        return srepr(self.message)
-
-
 class _ProgressBar:
     """
     Report progress of an interation as a status bar.

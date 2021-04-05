@@ -81,26 +81,32 @@ class Grid:
         """
         message = []
         if np.any(other.cells != self.cells):
-            message.append(util.deemph(f'cells    a b c:     {util.srepr(other.cells," x ")}'))
-            message.append(util.emph(  f'cells    a b c:     {util.srepr( self.cells," x ")}'))
+            message.append(util.deemph(f'cells    x y z: {util.srepr(other.cells," x ")}'))
+            message.append(util.emph(  f'cells    x y z: {util.srepr( self.cells," x ")}'))
 
         if not np.allclose(other.size,self.size):
-            message.append(util.deemph(f'size     x y z:     {util.srepr(other.size," x ")}'))
-            message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
+            message.append(util.deemph(f'size     x y z: {util.srepr(other.size," x ")}'))
+            message.append(util.emph(  f'size     x y z: {util.srepr( self.size," x ")}'))
 
         if not np.allclose(other.origin,self.origin):
-            message.append(util.deemph(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
-            message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
+            message.append(util.deemph(f'origin   x y z: {util.srepr(other.origin,"   ")}'))
+            message.append(util.emph(  f'origin   x y z: {util.srepr( self.origin,"   ")}'))
 
         if other.N_materials != self.N_materials:
-            message.append(util.deemph(f'# materials:        {other.N_materials}'))
-            message.append(util.emph(  f'# materials:        { self.N_materials}'))
+            message.append(util.deemph(f'# materials:    {other.N_materials}'))
+            message.append(util.emph(  f'# materials:    { self.N_materials}'))
+
+        if np.nanmin(other.material) != np.nanmin(self.material):
+            message.append(util.deemph(f'min material:   {np.nanmin(other.material)}'))
+            message.append(util.emph(  f'min material:   {np.nanmin( self.material)}'))
 
         if np.nanmax(other.material) != np.nanmax(self.material):
-            message.append(util.deemph(f'max material:       {np.nanmax(other.material)}'))
-            message.append(util.emph(  f'max material:       {np.nanmax( self.material)}'))
+            message.append(util.deemph(f'max material:   {np.nanmax(other.material)}'))
+            message.append(util.emph(  f'max material:   {np.nanmax( self.material)}'))
 
-        return util.return_message(message)
+        print(util.srepr(message))
+
+        return True if message != [] or (other.material != self.material).any() else False
 
 
     @property

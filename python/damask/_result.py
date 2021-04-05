@@ -1234,7 +1234,7 @@ class Result:
         ----------
         output : str or list of str
             Labels of the datasets to read. Defaults to '*', in which
-            case all datasets are placed.
+            case all datasets are read.
         flatten : bool
             Remove singular levels of the folder hierarchy.
             This might be beneficial in case of single increment,
