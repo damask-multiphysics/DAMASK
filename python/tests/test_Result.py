@@ -9,7 +9,6 @@ from datetime import datetime
 
 import pytest
 import numpy as np
-import h5py
 
 from damask import Result
 from damask import Rotation

@@ -29,7 +29,7 @@ h5py3 = h5py.__version__[0] == '3'
 
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
-    metadata = {k:(v if h5py3 else v.decode()) for k,v in dataset.attrs.items()}
+    metadata = {k:(v.decode() if not h5py3 and type(v) is bytes else v) for k,v in dataset.attrs.items()}
     dtype = np.dtype(dataset.dtype,metadata=metadata)
     return np.array(dataset,dtype=dtype)
 
@@ -268,9 +268,9 @@ class Result:
 
         Parameters
         ----------
-        what : str
-            Attribute to change (must be from self.visible).
-        datasets : list of str or bool
+        what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
+            Attribute to change.
+        datasets : int (for increments), float (for times), str or list of, bool
             Name of datasets as list; supports ? and * wildcards.
             True is equivalent to *, False is equivalent to [].
 
@@ -284,9 +284,9 @@ class Result:
 
         Parameters
         ----------
-        what : str
-            Attribute to change (must be from self.visible).
-        datasets : list of str or bool
+        what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
+            Attribute to change.
+        datasets : int (for increments), float (for times), str or list of, bool
             Name of datasets as list; supports ? and * wildcards.
             True is equivalent to *, False is equivalent to [].
 
@@ -300,9 +300,9 @@ class Result:
 
         Parameters
         ----------
-        what : str
-            Attribute to change (must be from self.visible).
-        datasets : list of str or bool
+        what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
+            Attribute to change.
+        datasets : int (for increments), float (for times), str or list of, bool
             Name of datasets as list; supports ? and * wildcards.
             True is equivalent to *, False is equivalent to [].
 
@@ -1016,11 +1016,14 @@ class Result:
         """
         Write XDMF file to directly visualize data in DADF5 file.
 
-        The view is not taken into account, i.e. the content of the
-        whole file will be included.
+        Parameters
+        ----------
+        output : str or list of str
+            Labels of the datasets to read. Defaults to '*', in which
+            case all datasets are considered.
+
         """
-        # compatibility hack
-        u = 'Unit' if self.version_minor < 12 else 'unit'
+        u = 'Unit' if self.version_minor < 12 else 'unit'                                           # compatibility hack
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise TypeError('XDMF output requires homogeneous grid')
 
@@ -1047,10 +1050,11 @@ class Result:
         time.attrib={'TimeType': 'List'}
 
         time_data = ET.SubElement(time, 'DataItem')
+        times = [self.times[self.increments.index(i)] for i in self.visible['increments']]
         time_data.attrib={'Format':     'XML',
                           'NumberType': 'Float',
-                          'Dimensions': f'{len(self.times)}'}
-        time_data.text = ' '.join(map(str,self.times))
+                          'Dimensions': f'{len(times)}'}
+        time_data.text = ' '.join(map(str,times))
 
         attributes = []
         data_items = []
@@ -1100,7 +1104,6 @@ class Result:
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
 
-                                if dtype not in np.sctypes['int']+np.sctypes['uint']+np.sctypes['float']: continue
                                 unit = f[name].attrs[u] if h5py3 else f[name].attrs[u].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
@@ -1119,7 +1122,7 @@ class Result:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
-    def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0):
+    def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
         """
         Export to vtk cell/point data.
 
@@ -1140,6 +1143,9 @@ class Result:
         fill_int : int
             Fill value for non-existent entries of integer type.
             Defaults to 0.
+        parallel : bool
+            Write out VTK files in parallel in a separate background process.
+            Defaults to True.
 
         """
         if mode.lower()=='cell':
@@ -1147,7 +1153,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
 
-        ln = 3 if self.version_minor < 12 else 10         # compatibility hack
+        ln = 3 if self.version_minor < 12 else 10                                                   # compatibility hack
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][ln:])))))+1
 
         constituents_ = constituents if isinstance(constituents,Iterable) else \
@@ -1156,9 +1162,9 @@ class Result:
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
 
-        grp  = 'mapping' if self.version_minor < 12 else 'cell_to' # compatibility hack
-        name = 'Name' if self.version_minor < 12 else 'label' # compatibility hack
-        member = 'member' if self.version_minor < 12 else 'entry' # compatibility hack
+        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'                                  # compatibility hack
+        name = 'Name' if self.version_minor < 12 else 'label'                                       # compatibility hack
+        member = 'member' if self.version_minor < 12 else 'entry'                                   # compatibility hack
 
         with h5py.File(self.fname,'r') as f:
 
@@ -1207,7 +1213,7 @@ class Result:
                         for label,dataset in outs.items():
                             v.add(dataset,' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]))
 
-                v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}')
+                v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}',parallel=parallel)
 
 
     def read(self,output='*',flatten=True,prune=True):
@@ -1294,9 +1300,9 @@ class Result:
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
 
-        grp  = 'mapping' if self.version_minor < 12 else 'cell_to' # compatibility hack
-        name = 'Name' if self.version_minor < 12 else 'label' # compatibility hack
-        member = 'member' if self.version_minor < 12 else 'entry' # compatibility hack
+        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'                                  # compatibility hack
+        name = 'Name' if self.version_minor < 12 else 'label'                                       # compatibility hack
+        member = 'member' if self.version_minor < 12 else 'entry'                                   # compatibility hack
 
         with h5py.File(self.fname,'r') as f:
 
