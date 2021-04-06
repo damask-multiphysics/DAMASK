@@ -110,10 +110,10 @@ module subroutine mechanical_partition(subF,ce)
     ce
 
   integer :: co
-  real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationAt2(ce))) :: Fs
+  real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationID(ce))) :: Fs
 
 
-  chosenHomogenization: select case(homogenization_type(material_homogenizationAt2(ce)))
+  chosenHomogenization: select case(homogenization_type(material_homogenizationID(ce)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
       Fs(1:3,1:3,1) = subF
@@ -126,7 +126,7 @@ module subroutine mechanical_partition(subF,ce)
 
   end select chosenHomogenization
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
+  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
     call phase_mechanical_setF(Fs(1:3,1:3,co),co,ce)
   enddo
 
@@ -143,18 +143,18 @@ module subroutine mechanical_homogenize(dt,ce)
   integer, intent(in) :: ce
 
   integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
+  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
 
 
-  chosenHomogenization: select case(homogenization_type(material_homogenizationAt2(ce)))
+  chosenHomogenization: select case(homogenization_type(material_homogenizationID(ce)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
         homogenization_P(1:3,1:3,ce)            = phase_mechanical_getP(1,ce)
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ce)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+      do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
         Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
@@ -162,10 +162,10 @@ module subroutine mechanical_homogenize(dt,ce)
         homogenization_P(1:3,1:3,ce), &
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         Ps,dPdFs, &
-        material_homogenizationAt2(ce))
+        material_homogenizationID(ce))
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+      do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
         Ps(:,:,co) = phase_mechanical_getP(co,ce)
       enddo
@@ -173,7 +173,7 @@ module subroutine mechanical_homogenize(dt,ce)
         homogenization_P(1:3,1:3,ce), &
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         Ps,dPdFs, &
-        material_homogenizationAt2(ce))
+        material_homogenizationID(ce))
 
   end select chosenHomogenization
 
@@ -195,13 +195,13 @@ module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
   logical, dimension(2) :: doneAndHappy
 
   integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
-  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationAt2(ce)))
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
+  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
+  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
 
 
-  if (homogenization_type(material_homogenizationAt2(ce)) == HOMOGENIZATION_RGC_ID) then
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+  if (homogenization_type(material_homogenizationID(ce)) == HOMOGENIZATION_RGC_ID) then
+      do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ce)
         Fs(:,:,co)        = phase_mechanical_getF(co,ce)
         Ps(:,:,co)        = phase_mechanical_getP(co,ce)

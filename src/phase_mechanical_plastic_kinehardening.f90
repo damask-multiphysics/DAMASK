@@ -165,7 +165,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
     sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
     sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
     sizeState = sizeDotState + sizeDeltaState

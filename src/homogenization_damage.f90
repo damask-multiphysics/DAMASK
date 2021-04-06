@@ -42,7 +42,7 @@ module subroutine damage_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    allocate(current(ho)%phi(count(material_homogenizationAt2==ho)), source=1.0_pReal)
+    allocate(current(ho)%phi(count(material_homogenizationID==ho)), source=1.0_pReal)
     configHomogenization => configHomogenizations%get(ho)
     associate(prm => param(ho))
       if (configHomogenization%contains('damage')) then
@@ -72,9 +72,9 @@ module subroutine damage_partition(ce)
   integer :: co
 
 
-  if(damageState_h(material_homogenizationAt2(ce))%sizeState < 1) return
-  phi     = damagestate_h(material_homogenizationAt2(ce))%state(1,material_homogenizationMemberAt2(ce))
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+  if(damageState_h(material_homogenizationID(ce))%sizeState < 1) return
+  phi = damagestate_h(material_homogenizationID(ce))%state(1,material_homogenizationEntry(ce))
+  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
     call phase_damage_set_phi(phi,co,ce)
   enddo
 
@@ -94,11 +94,11 @@ module function damage_nonlocal_getMobility(ce) result(M)
 
   M = 0.0_pReal
 
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-    M = M + lattice_M(material_phaseAt2(co,ce))
+  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+    M = M + lattice_M(material_phaseID(co,ce))
   enddo
 
-  M = M/real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
+  M = M/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end function damage_nonlocal_getMobility
 
@@ -118,8 +118,8 @@ module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, p
   dPhiDot_dPhi = 0.0_pReal
 
   call phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
-  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
+  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
+  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -134,11 +134,11 @@ module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
     phi
   integer :: &
     ho, &
-    me
+    en
 
-  ho = material_homogenizationAt2(ce)
-  me = material_homogenizationMemberAt2(ce)
-  damagestate_h(ho)%state(1,me) = phi
+  ho = material_homogenizationID(ce)
+  en = material_homogenizationEntry(ce)
+  damagestate_h(ho)%state(1,en) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
 

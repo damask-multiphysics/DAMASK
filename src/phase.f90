@@ -419,10 +419,10 @@ subroutine phase_restore(ce,includeL)
     co
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    if (damageState(material_phaseAt2(co,ce))%sizeState > 0) &
-    damageState(material_phaseAt2(co,ce))%state( :,material_phasememberAt2(co,ce)) = &
-      damageState(material_phaseAt2(co,ce))%state0(:,material_phasememberAt2(co,ce))
+  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
+    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
+      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
   enddo
 
   call mechanical_restore(ce,includeL)
@@ -473,7 +473,6 @@ subroutine crystallite_init()
 
   integer :: &
     ph, &
-    me, &
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
@@ -539,12 +538,10 @@ subroutine crystallite_init()
   flush(IO_STDOUT)
 
 
-  !$OMP PARALLEL DO PRIVATE(ph,me)
+  !$OMP PARALLEL DO
   do el = 1, size(material_phaseMemberAt,3)
     do ip = 1, size(material_phaseMemberAt,2)
       do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-        ph = material_phaseAt(co,el)
-        me = material_phaseMemberAt(co,ip,el)
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
      enddo
@@ -590,11 +587,11 @@ function crystallite_push33ToRef(co,ce, tensor33)
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
   real(pReal), dimension(3,3)             :: T
-  integer :: ph, me
+  integer :: ph, en
 
-  ph = material_phaseAt2(co,ce)
-  me = material_phaseMemberAt2(co,ce)
-  T = matmul(material_orientation0(co,ph,me)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ce)))) ! ToDo: initial orientation correct?
+  ph = material_phaseID(co,ce)
+  en = material_phaseEntry(co,ce)
+  T = matmul(material_orientation0(co,ph,en)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ce)))) ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 

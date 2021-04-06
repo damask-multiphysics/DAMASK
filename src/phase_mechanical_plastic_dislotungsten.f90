@@ -220,7 +220,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 

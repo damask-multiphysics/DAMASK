@@ -31,7 +31,7 @@ module function isobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Nmembers,p
+  integer :: Nmembers,ph
   character(len=pStringLen) :: extmsg = ''
 
 
@@ -45,12 +45,12 @@ module function isobrittle_init() result(mySources)
   phases => config_material%get('phase')
   allocate(param(phases%length))
 
-  do p = 1, phases%length
-    if(mySources(p)) then
-    phase => phases%get(p)
+  do ph = 1, phases%length
+    if(mySources(ph)) then
+    phase => phases%get(ph)
     sources => phase%get('damage')
 
-        associate(prm  => param(p))
+        associate(prm  => param(ph))
         src => sources%get(1)
 
         prm%W_crit = src%get_asFloat('W_crit')
@@ -64,10 +64,10 @@ module function isobrittle_init() result(mySources)
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        Nmembers = count(material_phaseAt2==p)
-        call phase_allocateState(damageState(p),Nmembers,1,1,1)
-        damageState(p)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
+        Nmembers = count(material_phaseID==ph)
+        call phase_allocateState(damageState(ph),Nmembers,1,1,1)
+        damageState(ph)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 
         end associate
 
