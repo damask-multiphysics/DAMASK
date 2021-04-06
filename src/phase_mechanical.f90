@@ -1061,26 +1061,6 @@ end subroutine crystallite_results
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Wind homog inc forward.
-!--------------------------------------------------------------------------------------------------
-module subroutine mechanical_windForward(ph,me)
-
-  integer, intent(in) :: ph, me
-
-
-  phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
-  phase_mechanical_Fi0(ph)%data(1:3,1:3,me) = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
-  phase_mechanical_F0(ph)%data(1:3,1:3,me)  = phase_mechanical_F(ph)%data(1:3,1:3,me)
-  phase_mechanical_Li0(ph)%data(1:3,1:3,me) = phase_mechanical_Li(ph)%data(1:3,1:3,me)
-  phase_mechanical_Lp0(ph)%data(1:3,1:3,me) = phase_mechanical_Lp(ph)%data(1:3,1:3,me)
-  phase_mechanical_S0(ph)%data(1:3,1:3,me)  = phase_mechanical_S(ph)%data(1:3,1:3,me)
-
-  plasticState(ph)%State0(:,me) = plasticState(ph)%state(:,me)
-
-end subroutine mechanical_windForward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------

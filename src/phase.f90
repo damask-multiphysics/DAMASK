@@ -100,11 +100,6 @@ module phase
       integer,          intent(in) :: ph
     end subroutine damage_results
 
-    module subroutine mechanical_windForward(ph,me)
-      integer, intent(in) :: ph, me
-    end subroutine mechanical_windForward
-
-
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
 
@@ -325,13 +320,12 @@ module phase
     phase_damage_get_phi, &
     phase_mechanical_getP, &
     phase_mechanical_setF, &
-    phase_mechanical_getF, &
-    phase_windForward
+    phase_mechanical_getF
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialze constitutive models for individual physics
+!> @brief Initialize constitutive models for individual physics
 !--------------------------------------------------------------------------------------------------
 subroutine phase_init
 
@@ -382,12 +376,12 @@ end subroutine phase_init
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine phase_allocateState(state, &
-                               Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+                               NEntries,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
   integer, intent(in) :: &
-    Nconstituents, &
+    NEntries, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
@@ -398,13 +392,13 @@ subroutine phase_allocateState(state, &
   state%sizeDeltaState   = sizeDeltaState
   state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
 
-  allocate(state%atol             (sizeState),               source=0.0_pReal)
-  allocate(state%state0           (sizeState,Nconstituents), source=0.0_pReal)
-  allocate(state%state            (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%atol             (sizeState),          source=0.0_pReal)
+  allocate(state%state0           (sizeState,NEntries), source=0.0_pReal)
+  allocate(state%state            (sizeState,NEntries), source=0.0_pReal)
 
-  allocate(state%dotState      (sizeDotState,Nconstituents), source=0.0_pReal)
+  allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pReal)
 
-  allocate(state%deltaState  (sizeDeltaState,Nconstituents), source=0.0_pReal)
+  allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pReal)
 
 
 end subroutine phase_allocateState
@@ -568,34 +562,6 @@ end subroutine crystallite_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Wind homog inc forward.
-!--------------------------------------------------------------------------------------------------
-subroutine phase_windForward(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
-
-  integer :: &
-    co, &                                                                                            !< constituent number
-    so, ph, me
-
-
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    ph = material_phaseAt(co,el)
-    me = material_phaseMemberAt(co,ip,el)
-
-    call mechanical_windForward(ph,me)
-
-    if(damageState(ph)%sizeState > 0) damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
-
-
-  enddo
-
-end subroutine phase_windForward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calculates orientations
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_orientations(co,ip,el)
@@ -658,8 +624,7 @@ end function converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current  restart information (Field and constitutive data) to file.
-! ToDo: Merge data into one file for MPI
+!> @brief Write restart data to file.
 !--------------------------------------------------------------------------------------------------
 subroutine phase_restartWrite(fileHandle)
 
@@ -687,8 +652,7 @@ end subroutine phase_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read data for restart
-! ToDo: Merge data into one file for MPI
+!> @brief Read restart data from file.
 !--------------------------------------------------------------------------------------------------
 subroutine phase_restartRead(fileHandle)
 
