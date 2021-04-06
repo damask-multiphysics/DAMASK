@@ -503,4 +503,21 @@ module function damage_phi(ph,me) result(phi)
 end function damage_phi
 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_forward()
+
+  integer :: ph
+
+
+  do ph = 1, size(damageState)
+    if (damageState(ph)%sizeState > 0) &
+      damageState(ph)%state0 = damageState(ph)%state
+  enddo
+
+end subroutine damage_forward
+
+
 end submodule damagee

@@ -103,6 +103,9 @@ module phase
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
 
+    module subroutine damage_forward()
+    end subroutine damage_forward
+
     module subroutine thermal_forward()
     end subroutine thermal_forward
 
@@ -429,20 +432,12 @@ end subroutine phase_restore
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
-! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
 subroutine phase_forward()
 
-  integer :: ph
-
-
   call mechanical_forward()
+  call damage_forward()
   call thermal_forward()
-
-  do ph = 1, size(damageState)
-    if (damageState(ph)%sizeState > 0) &
-      damageState(ph)%state0 = damageState(ph)%state
-  enddo
 
 end subroutine phase_forward
 
