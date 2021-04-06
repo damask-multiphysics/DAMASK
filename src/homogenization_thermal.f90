@@ -10,8 +10,8 @@ submodule(homogenization) thermal
     module subroutine pass_init
     end subroutine pass_init
 
-    module subroutine isothermal_init
-    end subroutine isothermal_init
+    module subroutine isotemperature_init
+    end subroutine isotemperature_init
 
   end interface
 
