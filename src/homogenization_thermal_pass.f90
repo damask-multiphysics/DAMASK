@@ -2,7 +2,7 @@
 !> @author Martin Diehl, KU Leuven
 !> @brief Dummy homogenization scheme for 1 constituent per material point
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization:thermal) pass
+submodule(homogenization:thermal) thermal_pass
 
 contains
 
@@ -11,4 +11,4 @@ module subroutine pass_init
 
 end subroutine pass_init
 
-end submodule pass
+end submodule thermal_pass

@@ -71,7 +71,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_init(num_homogMech)
+module subroutine RGC_init(num_homogMech)
 
   class(tNode), pointer, intent(in) :: &
     num_homogMech                                                                                   !< pointer to mechanical homogenization numerics data
@@ -152,7 +152,7 @@ module subroutine mechanical_RGC_init(num_homogMech)
 
     prm%N_constituents = homogMech%get_as1dInt('cluster_size',requiredSize=3)
     if (homogenization_Nconstituents(ho) /= product(prm%N_constituents)) &
-      call IO_error(211,ext_msg='N_constituents (mechanical_RGC)')
+      call IO_error(211,ext_msg='N_constituents (RGC)')
 
     prm%xi_alpha = homogMech%get_asFloat('xi_alpha')
     prm%c_alpha  = homogMech%get_asFloat('c_alpha')
@@ -187,13 +187,13 @@ module subroutine mechanical_RGC_init(num_homogMech)
 
   enddo
 
-end subroutine mechanical_RGC_init
+end subroutine RGC_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_partitionDeformation(F,avgF,ce)
+module subroutine RGC_partitionDeformation(F,avgF,ce)
 
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned F  per grain
 
@@ -227,14 +227,14 @@ module subroutine mechanical_RGC_partitionDeformation(F,avgF,ce)
 
   end associate
 
-end subroutine mechanical_RGC_partitionDeformation
+end subroutine RGC_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
+module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
       real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
@@ -697,13 +697,13 @@ module function mechanical_RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHa
 
   end subroutine grainDeformation
 
-end function mechanical_RGC_updateState
+end function RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
+module subroutine RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
 
   real(pReal), dimension (3,3),        intent(out) :: avgP                                          !< average stress at material point
   real(pReal), dimension (3,3,3,3),    intent(out) :: dAvgPdAvgF                                    !< average stiffness at material point
@@ -715,13 +715,13 @@ module subroutine mechanical_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dP
   avgP       = sum(P,3)   /real(product(param(ho)%N_constituents),pReal)
   dAvgPdAvgF = sum(dPdF,5)/real(product(param(ho)%N_constituents),pReal)
 
-end subroutine mechanical_RGC_averageStressAndItsTangent
+end subroutine RGC_averageStressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_RGC_results(ho,group)
+module subroutine RGC_results(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -747,7 +747,7 @@ module subroutine mechanical_RGC_results(ho,group)
   enddo outputsLoop
   end associate
 
-end subroutine mechanical_RGC_results
+end subroutine RGC_results
 
 
 !--------------------------------------------------------------------------------------------------
