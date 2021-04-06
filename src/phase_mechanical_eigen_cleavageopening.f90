@@ -13,7 +13,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function kinematics_cleavage_opening_init() result(myKinematics)
+module function damage_anisobrittle_init() result(myKinematics)
 
   logical, dimension(:), allocatable :: myKinematics
 
@@ -24,7 +24,7 @@ module function kinematics_cleavage_opening_init() result(myKinematics)
   print'(/,a)', ' <<<+-  phase:mechanical:eigen:cleavageopening init  -+>>>'
   print'(a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)
 
-end function kinematics_cleavage_opening_init
+end function damage_anisobrittle_init
 
 
 end submodule cleavageopening
