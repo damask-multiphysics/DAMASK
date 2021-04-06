@@ -41,13 +41,9 @@ class TestGrid:
     def _patch_datetime_now(self, patch_datetime_now):
         print('patched datetime.datetime.now')
 
-    def test_diff_equal(self,default):
-        assert not default.diff(default)
 
-
-    def test_diff_not_equal(self,default):
-        new = Grid(default.material[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
-        assert default.diff(new)
+    def test_equal(self,default):
+        assert default == default
 
     def test_repr(self,default):
         print(default)

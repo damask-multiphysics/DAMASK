@@ -326,7 +326,7 @@ class TestResult:
         for i in range(10):
             if os.path.isfile(tmp_path/fname):
                 with open(fname) as f:
-                    cur = hashlib.md5(f.get().encode()).hexdigest()
+                    cur = hashlib.md5(f.read().encode()).hexdigest()
                     if cur == last:
                         break
                     else:
@@ -336,7 +336,7 @@ class TestResult:
             with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur)
         with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5')) as f:
-            assert cur == f.get()
+            assert cur == f.read()
 
     @pytest.mark.parametrize('mode',['point','cell'])
     def test_vtk_mode(self,tmp_path,single_phase,mode):
@@ -352,7 +352,7 @@ class TestResult:
         single_phase.save_XDMF()
         if update:
             shutil.copy(tmp_path/fname,ref_path/fname)
-        assert sorted(open(tmp_path/fname).get()) == sorted(open(ref_path/fname).get())           # XML is not ordered
+        assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):

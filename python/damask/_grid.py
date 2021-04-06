@@ -69,9 +69,9 @@ class Grid:
     copy = __copy__
 
 
-    def diff(self,other):
+    def __eq__(self,other):
         """
-        Report property differences of self relative to other.
+        Test equality of other.
 
         Parameters
         ----------
@@ -79,34 +79,10 @@ class Grid:
             Grid to compare self against.
 
         """
-        message = []
-        if np.any(other.cells != self.cells):
-            message.append(util.deemph(f'cells    x y z: {util.srepr(other.cells," x ")}'))
-            message.append(util.emph(  f'cells    x y z: {util.srepr( self.cells," x ")}'))
-
-        if not np.allclose(other.size,self.size):
-            message.append(util.deemph(f'size     x y z: {util.srepr(other.size," x ")}'))
-            message.append(util.emph(  f'size     x y z: {util.srepr( self.size," x ")}'))
-
-        if not np.allclose(other.origin,self.origin):
-            message.append(util.deemph(f'origin   x y z: {util.srepr(other.origin,"   ")}'))
-            message.append(util.emph(  f'origin   x y z: {util.srepr( self.origin,"   ")}'))
-
-        if other.N_materials != self.N_materials:
-            message.append(util.deemph(f'# materials:    {other.N_materials}'))
-            message.append(util.emph(  f'# materials:    { self.N_materials}'))
-
-        if np.nanmin(other.material) != np.nanmin(self.material):
-            message.append(util.deemph(f'min material:   {np.nanmin(other.material)}'))
-            message.append(util.emph(  f'min material:   {np.nanmin( self.material)}'))
-
-        if np.nanmax(other.material) != np.nanmax(self.material):
-            message.append(util.deemph(f'max material:   {np.nanmax(other.material)}'))
-            message.append(util.emph(  f'max material:   {np.nanmax( self.material)}'))
-
-        print(util.srepr(message))
-
-        return True if message != [] or (other.material != self.material).any() else False
+        return (np.allclose(other.size,self.size)
+            and np.allclose(other.origin,self.origin)
+            and np.all(other.cells == self.cells)
+            and np.all(other.material == self.material))
 
 
     @property
@@ -276,7 +252,7 @@ class Grid:
         """
         Load DREAM.3D (HDF5) file.
 
-        Data in DREAM.3D files can be stored per cell ('CellData') and/or 
+        Data in DREAM.3D files can be stored per cell ('CellData') and/or
         per grain ('Grain Data'). Per default, cell-wise data is assumed.
 
         damask.ConfigMaterial.load_DREAM3D gives the corresponding material definition.
