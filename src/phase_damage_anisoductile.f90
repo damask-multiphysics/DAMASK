@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:damagee) anisoductile
+submodule(phase:damage) anisoductile
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &

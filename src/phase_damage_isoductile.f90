@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating isotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:damagee) isoductile
+submodule(phase:damage) isoductile
 
   type:: tParameters                                                                                !< container type for internal constitutive parameters
     real(pReal) :: &

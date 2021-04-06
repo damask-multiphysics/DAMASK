@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(phase) damagee
+submodule(phase) damage
   enum, bind(c); enumerator :: &
     DAMAGE_UNDEFINED_ID, &
     DAMAGE_ISOBRITTLE_ID, &
@@ -520,4 +520,4 @@ module subroutine damage_forward()
 end subroutine damage_forward
 
 
-end submodule damagee
+end submodule damage

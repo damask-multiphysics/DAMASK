@@ -4,7 +4,7 @@
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:damagee) isobrittle
+submodule(phase:damage) isobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &

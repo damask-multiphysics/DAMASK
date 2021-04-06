@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule (phase:damagee) anisobrittle
+submodule (phase:damage) anisobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
