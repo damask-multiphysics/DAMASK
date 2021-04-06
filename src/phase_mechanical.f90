@@ -1193,8 +1193,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
     if (todo) then
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,me) - phase_mechanical_F0(ph)%data(1:3,1:3,me))
-      phase_mechanical_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(phase_mechanical_Fi(ph)%data(1:3,1:3,me), &
-                                                                               phase_mechanical_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
     endif
