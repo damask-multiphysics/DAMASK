@@ -5,6 +5,16 @@ submodule(homogenization) thermal
 
   use lattice
 
+  interface
+
+    module subroutine pass_init
+    end subroutine pass_init
+
+    module subroutine isothermal_init
+    end subroutine isothermal_init
+
+  end interface
+
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: T, dot_T
   end type tDataContainer

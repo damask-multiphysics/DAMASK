@@ -1,9 +1,16 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_damage
+submodule(homogenization) damage
 
   use lattice
+
+  interface
+
+    module subroutine pass_init
+    end subroutine pass_init
+
+  end interface
 
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: phi
@@ -165,4 +172,4 @@ module subroutine damage_nonlocal_results(ho,group)
 
 end subroutine damage_nonlocal_results
 
-end submodule homogenization_damage
+end submodule damage
