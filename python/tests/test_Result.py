@@ -56,19 +56,19 @@ class TestResult:
 
 
     def test_view_all(self,default):
-        a = default.view('increments',True).read('F')
+        a = default.view('increments',True).get('F')
 
-        assert dict_equal(a,default.view('increments','*').read('F'))
-        assert dict_equal(a,default.view('increments',default.increments_in_range(0,np.iinfo(int).max)).read('F'))
+        assert dict_equal(a,default.view('increments','*').get('F'))
+        assert dict_equal(a,default.view('increments',default.increments_in_range(0,np.iinfo(int).max)).get('F'))
 
-        assert dict_equal(a,default.view('times',True).read('F'))
-        assert dict_equal(a,default.view('times','*').read('F'))
-        assert dict_equal(a,default.view('times',default.times_in_range(0.0,np.inf)).read('F'))
+        assert dict_equal(a,default.view('times',True).get('F'))
+        assert dict_equal(a,default.view('times','*').get('F'))
+        assert dict_equal(a,default.view('times',default.times_in_range(0.0,np.inf)).get('F'))
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_view_none(self,default,what):
-        a = default.view(what,False).read('F')
-        b = default.view(what,[]).read('F')
+        a = default.view(what,False).get('F')
+        b = default.view(what,[]).get('F')
 
         assert a == b == {}
 
@@ -76,8 +76,8 @@ class TestResult:
     def test_view_more(self,default,what):
         empty = default.view(what,False)
 
-        a = empty.view_more(what,'*').read('F')
-        b = empty.view_more(what,True).read('F')
+        a = empty.view_more(what,'*').get('F')
+        b = empty.view_more(what,True).get('F')
 
         assert dict_equal(a,b)
 
@@ -85,8 +85,8 @@ class TestResult:
     def test_view_less(self,default,what):
         full = default.view(what,True)
 
-        a = full.view_less(what,'*').read('F')
-        b = full.view_less(what,True).read('F')
+        a = full.view_less(what,'*').get('F')
+        b = full.view_less(what,True).get('F')
 
         assert a == b == {}
 
@@ -189,7 +189,7 @@ class TestResult:
         default.add_stress_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')
         default.add_equivalent_Mises('sigma_y')
-        assert default.read('sigma_y_vM') == {}
+        assert default.get('sigma_y_vM') == {}
 
     def test_add_Mises_stress_strain(self,default):
         default.add_stress_Cauchy('P','F')
@@ -326,7 +326,7 @@ class TestResult:
         for i in range(10):
             if os.path.isfile(tmp_path/fname):
                 with open(fname) as f:
-                    cur = hashlib.md5(f.read().encode()).hexdigest()
+                    cur = hashlib.md5(f.get().encode()).hexdigest()
                     if cur == last:
                         break
                     else:
@@ -336,7 +336,7 @@ class TestResult:
             with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur)
         with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5')) as f:
-            assert cur == f.read()
+            assert cur == f.get()
 
     @pytest.mark.parametrize('mode',['point','cell'])
     def test_vtk_mode(self,tmp_path,single_phase,mode):
@@ -352,7 +352,7 @@ class TestResult:
         single_phase.save_XDMF()
         if update:
             shutil.copy(tmp_path/fname,ref_path/fname)
-        assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
+        assert sorted(open(tmp_path/fname).get()) == sorted(open(ref_path/fname).get())           # XML is not ordered
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
@@ -374,7 +374,7 @@ class TestResult:
             result = result.view(key,value)
 
         fname = request.node.name
-        cur = result.read(output,compress,strip)
+        cur = result.get(output,compress,strip)
         if update:
             with bz2.BZ2File((ref_path/'read'/fname).with_suffix('.pbz2'),'w') as f:
                 pickle.dump(cur,f)

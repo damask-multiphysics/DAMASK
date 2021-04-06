@@ -49,7 +49,7 @@ def _match(requested,existing):
     return sorted(set(flatten_list([fnmatch.filter(existing,r) for r in requested_])),
                   key=util.natural_sort)
 
-def _empty(dataset,N_materialpoints,fill_float,fill_int):
+def _empty_like(dataset,N_materialpoints,fill_float,fill_int):
     """Create empty numpy.ma.MaskedArray."""
     return ma.array(np.empty((N_materialpoints,)+dataset.shape[1:],dataset.dtype),
                     fill_value = fill_float if dataset.dtype in np.sctypes['float'] else fill_int,
@@ -95,8 +95,8 @@ class Result:
 
             r=re.compile('inc[0-9]+' if self.version_minor < 12 else 'increment_[0-9]+')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self.times      = [round(f[i].attrs['time/s'],12) for i in self.increments] if self.version_minor < 12 else \
-                              [round(f[i].attrs['t/s'],12) for i in self.increments]
+            self.times      = [round(f[i].attrs['time/s' if self.version_minor < 12 else
+                                                't/s'],12) for i in self.increments]
 
             grp = 'mapping' if self.version_minor < 12 else 'cell_to'
 
@@ -159,9 +159,9 @@ class Result:
             Select from 'set', 'add', and 'del'.
         what : str
             Attribute to change (must be from self.visible).
-        datasets : str, int, list of str, list of int, or bool
-            Name of datasets as list; supports ? and * wildcards.
-            True is equivalent to [*], False is equivalent to [].
+        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
+            Name of datasets; supports '?' and '*' wildcards.
+            True is equivalent to '*', False is equivalent to [].
 
         """
         # allow True/False and string arguments
@@ -270,9 +270,9 @@ class Result:
         ----------
         what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
             Attribute to change.
-        datasets : int (for increments), float (for times), str or list of, bool
-            Name of datasets as list; supports ? and * wildcards.
-            True is equivalent to *, False is equivalent to [].
+        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
+            Name of datasets; supports '?' and '*' wildcards.
+            True is equivalent to '*', False is equivalent to [].
 
         """
         return self._manage_view('set',what,datasets)
@@ -286,9 +286,9 @@ class Result:
         ----------
         what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
             Attribute to change.
-        datasets : int (for increments), float (for times), str or list of, bool
-            Name of datasets as list; supports ? and * wildcards.
-            True is equivalent to *, False is equivalent to [].
+        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
+            Name of datasets; supports '?' and '*' wildcards.
+            True is equivalent to '*', False is equivalent to [].
 
         """
         return self._manage_view('add',what,datasets)
@@ -302,9 +302,9 @@ class Result:
         ----------
         what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
             Attribute to change.
-        datasets : int (for increments), float (for times), str or list of, bool
-            Name of datasets as list; supports ? and * wildcards.
-            True is equivalent to *, False is equivalent to [].
+        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
+            Name of datasets; supports '?' and '*' wildcards.
+            True is equivalent to '*', False is equivalent to [].
 
         """
         return self._manage_view('del',what,datasets)
@@ -448,7 +448,7 @@ class Result:
         label : str
           Label of resulting dataset.
         formula : str
-            Formula to calculate resulting dataset. Existing datasets are referenced by ‘#TheirLabel#‘.
+            Formula to calculate resulting dataset. Existing datasets are referenced by '#TheirLabel#'.
         unit : str, optional
             Physical unit of the result.
         description : str, optional
@@ -480,9 +480,9 @@ class Result:
         Parameters
         ----------
         P : str, optional
-            Label of the dataset containing the first Piola-Kirchhoff stress. Defaults to ‘P’.
+            Label of the dataset containing the first Piola-Kirchhoff stress. Defaults to 'P'.
         F : str, optional
-            Label of the dataset containing the deformation gradient. Defaults to ‘F’.
+            Label of the dataset containing the deformation gradient. Defaults to 'F'.
 
         """
         self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
@@ -563,7 +563,7 @@ class Result:
         T_sym : str
             Label of symmetric tensor dataset.
         eigenvalue : str, optional
-            Eigenvalue. Select from ‘max’, ‘mid’, ‘min’. Defaults to ‘max’.
+            Eigenvalue. Select from 'max', 'mid', 'min'. Defaults to 'max'.
 
         """
         self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
@@ -596,8 +596,8 @@ class Result:
         T_sym : str
             Label of symmetric tensor dataset.
         eigenvalue : str, optional
-            Eigenvalue to which the eigenvector corresponds. Select from
-            ‘max’, ‘mid’, ‘min’. Defaults to ‘max’.
+            Eigenvalue to which the eigenvector corresponds.
+            Select from 'max', 'mid', 'min'. Defaults to 'max'.
 
         """
         self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
@@ -696,7 +696,7 @@ class Result:
             Label of symmetric tensorial stress or strain dataset.
         kind : {'stress', 'strain', None}, optional
             Kind of the von Mises equivalent. Defaults to None, in which case
-            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress').
+            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress).
 
         """
         self._add_generic_pointwise(self._add_equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
@@ -733,7 +733,7 @@ class Result:
         ----------
         x : str
             Label of vector or tensor dataset.
-        ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
+        ord : {non-zero int, inf, -inf, 'fro', 'nuc'}, optional
             Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
 
         """
@@ -760,9 +760,9 @@ class Result:
         Parameters
         ----------
         P : str, optional
-            Label of first Piola-Kirchhoff stress dataset. Defaults to ‘P’.
+            Label of first Piola-Kirchhoff stress dataset. Defaults to 'P'.
         F : str, optional
-            Label of deformation gradient dataset. Defaults to ‘F’.
+            Label of deformation gradient dataset. Defaults to 'F'.
 
         """
         self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
@@ -874,17 +874,17 @@ class Result:
         """
         Add strain tensor of a deformation gradient.
 
-        For details refer to damask.mechanics.strain
+        For details, see damask.mechanics.strain.
 
         Parameters
         ----------
         F : str, optional
-            Label of deformation gradient dataset. Defaults to ‘F’.
-        t : {‘V’, ‘U’}, optional
-            Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
-            Defaults to ‘V’.
+            Label of deformation gradient dataset. Defaults to 'F'.
+        t : {'V', 'U'}, optional
+            Type of the polar decomposition, 'V' for left stretch tensor and 'U' for right stretch tensor.
+            Defaults to 'V'.
         m : float, optional
-            Order of the strain calculation. Defaults to ‘0.0’.
+            Order of the strain calculation. Defaults to 0.0.
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
@@ -909,10 +909,10 @@ class Result:
         Parameters
         ----------
         F : str, optional
-            Label of deformation gradient dataset. Defaults to ‘F’.
-        t : {‘V’, ‘U’}, optional
-            Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
-            Defaults to ‘V’.
+            Label of deformation gradient dataset. Defaults to 'F'.
+        t : {'V', 'U'}, optional
+            Type of the polar decomposition, 'V' for left stretch tensor and 'U' for right stretch tensor.
+            Defaults to 'V'.
 
         """
         self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
@@ -947,8 +947,8 @@ class Result:
             Callback function that calculates a new dataset from one or
             more datasets per HDF5 group.
         datasets : dictionary
-            Details of the datasets to be used: label (in HDF5 file) and
-            arg (argument to which the data is parsed in func).
+            Details of the datasets to be used:
+            {arg (name to which the data is passed in func): label (in HDF5 file)}.
         args : dictionary, optional
             Arguments parsed to func.
 
@@ -1018,14 +1018,14 @@ class Result:
 
         Parameters
         ----------
-        output : str or list of str
-            Labels of the datasets to read. Defaults to '*', in which
-            case all datasets are considered.
+        output : (list of) str
+            Labels of the datasets to read.
+            Defaults to '*', in which case all datasets are considered.
 
         """
         u = 'Unit' if self.version_minor < 12 else 'unit'                                           # compatibility hack
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
-            raise TypeError('XDMF output requires homogeneous grid')
+            raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
 
 
         attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
@@ -1036,11 +1036,11 @@ class Result:
             if dtype in np.sctypes['float']: return 'Float'
 
 
-        xdmf=ET.Element('Xdmf')
+        xdmf = ET.Element('Xdmf')
         xdmf.attrib={'Version':  '2.0',
                      'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
 
-        domain=ET.SubElement(xdmf, 'Domain')
+        domain = ET.SubElement(xdmf, 'Domain')
 
         collection = ET.SubElement(domain, 'Grid')
         collection.attrib={'GridType':       'Collection',
@@ -1062,38 +1062,38 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
 
-                grid=ET.SubElement(collection,'Grid')
+                grid = ET.SubElement(collection,'Grid')
                 grid.attrib = {'GridType': 'Uniform',
                                'Name':      inc}
 
-                topology=ET.SubElement(grid, 'Topology')
-                topology.attrib={'TopologyType': '3DCoRectMesh',
-                                 'Dimensions':   '{} {} {}'.format(*self.cells+1)}
+                topology = ET.SubElement(grid, 'Topology')
+                topology.attrib = {'TopologyType': '3DCoRectMesh',
+                                   'Dimensions':   '{} {} {}'.format(*(self.cells+1))}
 
-                geometry=ET.SubElement(grid, 'Geometry')
-                geometry.attrib={'GeometryType':'Origin_DxDyDz'}
+                geometry = ET.SubElement(grid, 'Geometry')
+                geometry.attrib = {'GeometryType':'Origin_DxDyDz'}
 
-                origin=ET.SubElement(geometry, 'DataItem')
-                origin.attrib={'Format':     'XML',
-                               'NumberType': 'Float',
-                               'Dimensions': '3'}
-                origin.text="{} {} {}".format(*self.origin)
+                origin = ET.SubElement(geometry, 'DataItem')
+                origin.attrib = {'Format':     'XML',
+                                 'NumberType': 'Float',
+                                 'Dimensions': '3'}
+                origin.text = "{} {} {}".format(*self.origin)
 
-                delta=ET.SubElement(geometry, 'DataItem')
-                delta.attrib={'Format':     'XML',
-                              'NumberType': 'Float',
-                              'Dimensions': '3'}
+                delta = ET.SubElement(geometry, 'DataItem')
+                delta.attrib = {'Format':     'XML',
+                                'NumberType': 'Float',
+                                'Dimensions': '3'}
                 delta.text="{} {} {}".format(*(self.size/self.cells))
 
                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                attributes[-1].attrib={'Name':          'u / m',
-                                       'Center':        'Node',
-                                       'AttributeType': 'Vector'}
+                attributes[-1].attrib = {'Name':          'u / m',
+                                         'Center':        'Node',
+                                         'AttributeType': 'Vector'}
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
-                data_items[-1].attrib={'Format':     'HDF',
-                                       'Precision':  '8',
-                                       'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
-                data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
+                data_items[-1].attrib = {'Format':     'HDF',
+                                         'Precision':  '8',
+                                         'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
+                data_items[-1].text = f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
@@ -1106,25 +1106,25 @@ class Result:
                                 unit = f[name].attrs[u] if h5py3 else f[name].attrs[u].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib={'Name':          name.split('/',2)[2]+f' / {unit}',
-                                                       'Center':       'Cell',
-                                                       'AttributeType': attribute_type_map[shape]}
+                                attributes[-1].attrib = {'Name':          name.split('/',2)[2]+f' / {unit}',
+                                                         'Center':       'Cell',
+                                                         'AttributeType': attribute_type_map[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
-                                data_items[-1].attrib={'Format':     'HDF',
-                                                       'NumberType': number_type_map(dtype),
-                                                       'Precision':  f'{dtype.itemsize}',
-                                                       'Dimensions': '{} {} {} {}'.format(*self.cells,1 if shape == () else
-                                                                                                      np.prod(shape))}
-                                data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
+                                data_items[-1].attrib = {'Format':     'HDF',
+                                                         'NumberType': number_type_map(dtype),
+                                                         'Precision':  f'{dtype.itemsize}',
+                                                         'Dimensions': '{} {} {} {}'.format(*self.cells,1 if shape == () else
+                                                                                                        np.prod(shape))}
+                                data_items[-1].text = f'{os.path.split(self.fname)[1]}:{name}'
 
         with open(self.fname.with_suffix('.xdmf').name,'w',newline='\n') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
     def _mappings(self):
-        grp  = 'mapping' if self.version_minor < 12 else 'cell_to'                                  # compatibility hack
-        name = 'Name' if self.version_minor < 12 else 'label'                                       # compatibility hack
-        member = 'member' if self.version_minor < 12 else 'entry'                                   # compatibility hack
+        grp    = 'mapping' if self.version_minor < 12 else 'cell_to'                              # compatibility hack
+        name   = 'Name'    if self.version_minor < 12 else 'label'                                # compatibility hack
+        member = 'member'  if self.version_minor < 12 else 'entry'                                # compatibility hack
 
         with h5py.File(self.fname,'r') as f:
 
@@ -1146,22 +1146,22 @@ class Result:
 
     def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
         """
-        Export to vtk cell/point data.
+        Export to VTK cell/point data.
 
         Parameters
         ----------
-        output : str or list of, optional
-            Labels of the datasets to place. Defaults to '*', in which
-            case all datasets are exported.
-        mode : str, either 'cell' or 'point'
+        output : (list of) str, optional
+            Labels of the datasets to place.
+            Defaults to '*', in which case all datasets are exported.
+        mode : {'cell', 'point'}
             Export in cell format or point format.
             Defaults to 'cell'.
-        constituents : int or list of, optional
-            Constituents to consider. Defaults to 'None', in which case
-            all constituents are considered.
+        constituents : (list of) int, optional
+            Constituents to consider.
+            Defaults to None, in which case all constituents are considered.
         fill_float : float
             Fill value for non-existent entries of floating point type.
-            Defaults to 0.0.
+            Defaults to NaN.
         fill_int : int
             Fill value for non-existent entries of integer type.
             Defaults to 0.
@@ -1206,14 +1206,14 @@ class Result:
                                     if out+suffixes[0] not in outs.keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             outs[out+suffix] = \
-                                                _empty(data,self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
 
                                 if ty == 'homogenization':
                                     if out not in outs.keys():
-                                        outs[out] = _empty(data,self.N_materialpoints,fill_float,fill_int)
+                                        outs[out] = _empty_like(data,self.N_materialpoints,fill_float,fill_int)
 
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
@@ -1223,24 +1223,26 @@ class Result:
                 v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}',parallel=parallel)
 
 
-    def read(self,output='*',flatten=True,prune=True):
+    def get(self,output='*',flatten=True,prune=True):
         """
-        Export data per phase/homogenization.
-
-        The returned data structure reflects the group/folder structure
-        in the DADF5 file.
+        Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
 
         Parameters
         ----------
-        output : str or list of str
-            Labels of the datasets to read. Defaults to '*', in which
-            case all datasets are read.
+        output : (list of) str
+            Labels of the datasets to read.
+            Defaults to '*', in which case all datasets are read.
         flatten : bool
             Remove singular levels of the folder hierarchy.
             This might be beneficial in case of single increment,
             phase/homogenization, or field. Defaults to True.
         prune : bool
             Remove branches with no data. Defaults to True.
+
+        Returns
+        -------
+        data : dict of numpy.ndarray
+            Datasets structured by phase/homogenization and according to selected view.
 
         """
         r = {}
@@ -1266,9 +1268,9 @@ class Result:
         return r
 
 
-    def place(self,output='*',flatten=True,prune=True,constituents=None,fill_float=0.0,fill_int=0):
+    def place(self,output='*',flatten=True,prune=True,constituents=None,fill_float=np.nan,fill_int=0):
         """
-        Export data in spatial order that is compatible with the damask.VTK geometry representation.
+        Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
         The returned data structure reflects the group/folder structure
         in the DADF5 file.
@@ -1279,21 +1281,21 @@ class Result:
 
         Parameters
         ----------
-        output : str or list of, optional
-            Labels of the datasets to place. Defaults to '*', in which
-            case all datasets are placed.
+        output : (list of) str, optional
+            Labels of the datasets to place.
+            Defaults to '*', in which case all datasets are placed.
         flatten : bool
             Remove singular levels of the folder hierarchy.
-            This might be beneficial in case of single increment
-            or field. Defaults to True.
+            This might be beneficial in case of single increment or field.
+            Defaults to True.
         prune : bool
             Remove branches with no data. Defaults to True.
-        constituents : int or list of, optional
-            Constituents to consider. Defaults to 'None', in which case
-            all constituents are considered.
+        constituents : (list of) int, optional
+            Constituents to consider.
+            Defaults to 'None', in which case all constituents are considered.
         fill_float : float
             Fill value for non-existent entries of floating point type.
-            Defaults to 0.0.
+            Defaults to NaN.
         fill_int : int
             Fill value for non-existent entries of integer type.
             Defaults to 0.
@@ -1330,7 +1332,7 @@ class Result:
                                     if out+suffixes[0] not in r[inc][ty][field].keys():
                                         for c,suffix in zip(constituents_,suffixes):
                                             r[inc][ty][field][out+suffix] = \
-                                                _empty(data,self.N_materialpoints,fill_float,fill_int)
+                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
 
                                     for c,suffix in zip(constituents_,suffixes):
                                         r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
@@ -1338,7 +1340,7 @@ class Result:
                                 if ty == 'homogenization':
                                     if out not in r[inc][ty][field].keys():
                                         r[inc][ty][field][out] = \
-                                            _empty(data,self.N_materialpoints,fill_float,fill_int)
+                                            _empty_like(data,self.N_materialpoints,fill_float,fill_int)
 
                                     r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
 
