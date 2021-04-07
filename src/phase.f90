@@ -227,8 +227,8 @@ module phase
     end function phase_homogenizedC
 
 
-    module function phase_damage_phi_dot(phi, ce) result(phi_dot)
-      integer, intent(in) :: ce
+    module function phase_damage_phi_dot(phi,co,ce) result(phi_dot)
+      integer, intent(in) :: ce,co
       real(pReal), intent(in) :: &
         phi                                                                                         !< damage parameter
       real(pReal) :: &

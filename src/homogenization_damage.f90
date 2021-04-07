@@ -109,7 +109,7 @@ module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
   real(pReal), intent(out) :: &
     phiDot
 
-  phiDot = phase_damage_phi_dot(phi, ce)
+  phiDot = phase_damage_phi_dot(phi, 1, ce)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
