@@ -42,7 +42,7 @@ module subroutine damage_init()
 
 
   print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:damage:isodamage init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:damage:pass init  -+>>>'
 
   configHomogenizations => config_material%get('homogenization')
   allocate(param(configHomogenizations%length))
@@ -113,20 +113,19 @@ end function damage_nonlocal_getMobility
 !--------------------------------------------------------------------------------------------------
 !> @brief  calculates homogenized damage driving forces
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ce)
+module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
 
   integer, intent(in) :: ce
-  real(pReal),   intent(in) :: &
+  real(pReal), intent(in) :: &
     phi
-  real(pReal) :: &
-    phiDot, dPhiDot_dPhi
+  real(pReal), intent(out) :: &
+    phiDot
 
-  phiDot = 0.0_pReal
-  dPhiDot_dPhi = 0.0_pReal
+  real(pReal) :: &
+    dPhiDot_dPhi
 
   call phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
   phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 

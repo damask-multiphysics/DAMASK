@@ -170,12 +170,12 @@ module homogenization
       real(pReal) :: M
     end function damage_nonlocal_getMobility
 
-    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ce)
+    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
       integer, intent(in) :: ce
-      real(pReal),   intent(in) :: &
+      real(pReal), intent(in) :: &
         phi
-      real(pReal) :: &
-        phiDot, dPhiDot_dPhi
+      real(pReal), intent(out) :: &
+        phiDot
     end subroutine damage_nonlocal_getSourceAndItsTangent
 
     module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)

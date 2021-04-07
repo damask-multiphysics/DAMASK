@@ -45,7 +45,7 @@ module subroutine thermal_init()
 
 
   print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:thermal:isotemperature init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal:pass init  -+>>>'
 
 
 
