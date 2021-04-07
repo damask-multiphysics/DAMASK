@@ -604,7 +604,7 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'read only the first document'
     case default
       msg = 'unknown warning number'
-    end select
+  end select
 
   !$OMP CRITICAL (write2out)
   write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
@@ -658,7 +658,7 @@ subroutine selfTest
   if(any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
   if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
 
-  str=' 1.0 xxx'
+  str = ' 1.0 xxx'
   chunkPos = IO_stringPos(str)
   if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
 

@@ -39,8 +39,6 @@ module homogenization
     thermal_type                                                                                    !< thermal transport model
   integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable :: &
     damage_type                                                                                     !< nonlocal damage model
-  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
-    homogenization_type                                                                             !< type of each homogenization
 
   type, private :: tNumerics_damage
     real(pReal) :: &

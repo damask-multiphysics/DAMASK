@@ -266,7 +266,7 @@ subroutine selfTest
         if(any(dNeq(l2%get_as1dFloat(1),[2.0_pReal,3.0_pReal]))) error stop 'byIndex_as1dFloat'
         call l2%append(l3)
         x = l2%as2dFloat()
-        if(x(2,1)/= 4.0_pReal)                                   error stop 'byKey_as2dFloat'
+        if(dNeq(x(2,1),4.0_pReal))                               error stop 'byKey_as2dFloat'
         if(any(dNeq(pack(l2%as2dFloat(),.true.),&
                [2.0_pReal,4.0_pReal,3.0_pReal,5.0_pReal])))      error stop 'byKey_as2dFloat'
         n => l2

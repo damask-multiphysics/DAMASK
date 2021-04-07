@@ -71,6 +71,9 @@ submodule(homogenization) mechanical
 
   end interface
 
+  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
+    homogenization_type                                                                             !< type of each homogenization
+
 contains
 
 !--------------------------------------------------------------------------------------------------
