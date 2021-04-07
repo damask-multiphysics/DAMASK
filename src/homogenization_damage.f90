@@ -37,8 +37,11 @@ module subroutine damage_init()
   class(tNode), pointer :: &
     configHomogenizations, &
     configHomogenization, &
-    configHomogenizationDamage
+    configHomogenizationDamage, &
+    num_generic, &
+    material_homogenization
   integer :: ho
+  integer :: Ninstances,Nmaterialpoints,h
 
 
   print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
@@ -63,6 +66,24 @@ module subroutine damage_init()
         prm%output = emptyStringArray
       endif
     end associate
+  enddo
+
+!------------------------------------------------------------------------------------
+! read numerics parameter
+  num_generic => config_numerics%get('generic',defaultVal= emptyDict)
+  num_damage%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
+
+  Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
+
+  material_homogenization => config_material%get('homogenization')
+  do h = 1, material_homogenization%length
+    if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
+
+    Nmaterialpoints = count(material_homogenizationAt == h)
+    damageState_h(h)%sizeState = 1
+    allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
+    allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
+
   enddo
 
 end subroutine damage_init

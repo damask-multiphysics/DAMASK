@@ -205,7 +205,6 @@ module homogenization
     DAMAGE_NONLOCAL_ID
 
   public :: &
-    damage_nonlocal_init, &
     damage_nonlocal_getDiffusion
 
 contains
@@ -236,8 +235,6 @@ subroutine homogenization_init()
   call mechanical_init(num_homog)
   call thermal_init()
   call damage_init()
-  call damage_nonlocal_init()
-
 
 end subroutine homogenization_init
 
@@ -450,41 +447,6 @@ subroutine homogenization_restartRead(fileHandle)
   call HDF5_closeGroup(groupHandle(1))
 
 end subroutine homogenization_restartRead
-
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief module initialization
-!> @details reads in material parameters, allocates arrays, and does sanity checks
-!--------------------------------------------------------------------------------------------------
-subroutine damage_nonlocal_init
-
-  integer :: Ninstances,Nmaterialpoints,h
-  class(tNode), pointer :: &
-    num_generic, &
-    material_homogenization
-
-  print'(/,a)', ' <<<+-  damage_nonlocal init  -+>>>'; flush(6)
-
-!------------------------------------------------------------------------------------
-! read numerics parameter
-  num_generic => config_numerics%get('generic',defaultVal= emptyDict)
-  num_damage%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
-
-  Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
-
-  material_homogenization => config_material%get('homogenization')
-  do h = 1, material_homogenization%length
-    if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-
-    Nmaterialpoints = count(material_homogenizationAt == h)
-    damageState_h(h)%sizeState = 1
-    allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
-    allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
-
-  enddo
-
-end subroutine damage_nonlocal_init
 
 
 !--------------------------------------------------------------------------------------------------
