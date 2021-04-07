@@ -398,7 +398,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers  = count(material_phaseAt2 == ph)
+    Nmembers  = count(material_phaseID == ph)
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -527,7 +527,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if(.not. myPlasticity(ph)) cycle
 
     phase => phases%get(ph)
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
     l = 0
     do t = 1,4
       do s = 1,param(ph)%sum_N_sl
@@ -1824,9 +1824,9 @@ subroutine storeGeometry(ph)
 
 
   V = reshape(IPvolume,[product(shape(IPvolume))])
-  do ce = 1, size(material_homogenizationMemberAt2,1)
+  do ce = 1, size(material_homogenizationEntry,1)
     do co = 1, homogenization_maxNconstituents
-      if (material_phaseAt2(co,ce) == ph) geom(ph)%V_0(material_phaseMemberAt2(co,ce)) = V(ce)
+      if (material_phaseID(co,ce) == ph) geom(ph)%V_0(material_phaseEntry(co,ce)) = V(ce)
     enddo
   enddo
 

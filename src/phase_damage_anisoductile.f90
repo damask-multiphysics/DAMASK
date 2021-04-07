@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:damagee) anisoductile
+submodule(phase:damage) anisoductile
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -35,7 +35,7 @@ module function anisoductile_init() result(mySources)
     pl, &
     sources, &
     src
-  integer :: Ninstances,Nmembers,p
+  integer :: Ninstances,Nmembers,ph
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
@@ -50,15 +50,15 @@ module function anisoductile_init() result(mySources)
   phases => config_material%get('phase')
   allocate(param(phases%length))
 
-  do p = 1, phases%length
-    if(mySources(p)) then
-      phase => phases%get(p)
+  do ph = 1, phases%length
+    if(mySources(ph)) then
+      phase => phases%get(ph)
       mech  => phase%get('mechanical')
       pl    => mech%get('plastic')
       sources => phase%get('damage')
 
 
-        associate(prm  => param(p))
+        associate(prm  => param(ph))
         src => sources%get(1)
 
         N_sl           = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
@@ -78,10 +78,10 @@ module function anisoductile_init() result(mySources)
         if (prm%q              <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (any(prm%gamma_crit <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
 
-        Nmembers=count(material_phaseAt2==p)
-        call phase_allocateState(damageState(p),Nmembers,1,1,0)
-        damageState(p)%atol = src%get_asFloat('anisoDuctile_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
+        Nmembers=count(material_phaseID==ph)
+        call phase_allocateState(damageState(ph),Nmembers,1,1,0)
+        damageState(ph)%atol = src%get_asFloat('anisoDuctile_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
 
         end associate
 

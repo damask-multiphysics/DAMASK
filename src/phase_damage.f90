@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(phase) damagee
+submodule(phase) damage
   enum, bind(c); enumerator :: &
     DAMAGE_UNDEFINED_ID, &
     DAMAGE_ISOBRITTLE_ID, &
@@ -151,7 +151,7 @@ module subroutine damage_init
 
   do ph = 1,phases%length
 
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
     allocate(current(ph)%d_phi_d_dot_phi(Nmembers),source=0.0_pReal)
@@ -199,9 +199,9 @@ module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, 
    phiDot = 0.0_pReal
    dPhiDot_dPhi = 0.0_pReal
 
-   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-     ph = material_phaseAt2(co,ce)
-     me = material_phasememberAt2(co,ce)
+   do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+     ph = material_phaseID(co,ce)
+     me = material_phaseEntry(co,ce)
 
        select case(phase_source(ph))
          case (DAMAGE_ISOBRITTLE_ID)
@@ -477,7 +477,7 @@ module subroutine phase_damage_set_phi(phi,co,ce)
   integer, intent(in) :: ce, co
 
 
-  current(material_phaseAt2(co,ce))%phi(material_phaseMemberAt2(co,ce)) = phi
+  current(material_phaseID(co,ce))%phi(material_phaseEntry(co,ce)) = phi
 
 end subroutine phase_damage_set_phi
 
@@ -503,4 +503,21 @@ module function damage_phi(ph,me) result(phi)
 end function damage_phi
 
 
-end submodule damagee
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_forward()
+
+  integer :: ph
+
+
+  do ph = 1, size(damageState)
+    if (damageState(ph)%sizeState > 0) &
+      damageState(ph)%state0 = damageState(ph)%state
+  enddo
+
+end subroutine damage_forward
+
+
+end submodule damage

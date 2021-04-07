@@ -1061,26 +1061,6 @@ end subroutine crystallite_results
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Wind homog inc forward.
-!--------------------------------------------------------------------------------------------------
-module subroutine mechanical_windForward(ph,me)
-
-  integer, intent(in) :: ph, me
-
-
-  phase_mechanical_Fp0(ph)%data(1:3,1:3,me) = phase_mechanical_Fp(ph)%data(1:3,1:3,me)
-  phase_mechanical_Fi0(ph)%data(1:3,1:3,me) = phase_mechanical_Fi(ph)%data(1:3,1:3,me)
-  phase_mechanical_F0(ph)%data(1:3,1:3,me)  = phase_mechanical_F(ph)%data(1:3,1:3,me)
-  phase_mechanical_Li0(ph)%data(1:3,1:3,me) = phase_mechanical_Li(ph)%data(1:3,1:3,me)
-  phase_mechanical_Lp0(ph)%data(1:3,1:3,me) = phase_mechanical_Lp(ph)%data(1:3,1:3,me)
-  phase_mechanical_S0(ph)%data(1:3,1:3,me)  = phase_mechanical_S(ph)%data(1:3,1:3,me)
-
-  plasticState(ph)%State0(:,me) = plasticState(ph)%state(:,me)
-
-end subroutine mechanical_windForward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
@@ -1235,9 +1215,9 @@ module subroutine mechanical_restore(ce,includeL)
     co, ph, me
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    ph = material_phaseAt2(co,ce)
-    me = material_phaseMemberAt2(co,ce)
+  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+    ph = material_phaseID(co,ce)
+    me = material_phaseEntry(co,ce)
     if (includeL) then
       phase_mechanical_Lp(ph)%data(1:3,1:3,me) = phase_mechanical_Lp0(ph)%data(1:3,1:3,me)
       phase_mechanical_Li(ph)%data(1:3,1:3,me) = phase_mechanical_Li0(ph)%data(1:3,1:3,me)
@@ -1285,8 +1265,8 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
   logical :: error
 
 
-  ph = material_phaseAt2(co,ce)
-  me = material_phaseMemberAt2(co,ce)
+  ph = material_phaseID(co,ce)
+  me = material_phaseEntry(co,ce)
 
   call phase_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
                                           phase_mechanical_Fe(ph)%data(1:3,1:3,me), &
@@ -1450,7 +1430,7 @@ module function phase_mechanical_getF(co,ce) result(F)
   real(pReal), dimension(3,3) :: F
 
 
-  F = phase_mechanical_F(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce))
+  F = phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce))
 
 end function phase_mechanical_getF
 
@@ -1479,7 +1459,7 @@ module function phase_mechanical_getP(co,ce) result(P)
   real(pReal), dimension(3,3) :: P
 
 
-  P = phase_mechanical_P(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce))
+  P = phase_mechanical_P(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce))
 
 end function phase_mechanical_getP
 
@@ -1491,7 +1471,7 @@ module subroutine phase_mechanical_setF(F,co,ce)
   integer, intent(in) :: co, ce
 
 
-  phase_mechanical_F(material_phaseAt2(co,ce))%data(1:3,1:3,material_phaseMemberAt2(co,ce)) = F
+  phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce)) = F
 
 end subroutine phase_mechanical_setF
 

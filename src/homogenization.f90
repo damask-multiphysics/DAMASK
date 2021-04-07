@@ -259,25 +259,25 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co, ce, ho, me, ph
+    myNgrains, co, ce, ho, en, ph
   logical :: &
     converged
   logical, dimension(2) :: &
     doneAndHappy
 
   !$OMP PARALLEL
-  !$OMP DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,converged,doneAndHappy)
+  !$OMP DO PRIVATE(ce,en,ho,myNgrains,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
-      me = material_homogenizationMemberAt2(ce)
+      en = material_homogenizationEntry(ce)
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,me) = homogState(ho)%state0(:,me)
-      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,me) = damageState_h(ho)%state0(:,me)
+      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
+      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
       call damage_partition(ce)
 
       doneAndHappy = [.false.,.true.]
@@ -505,12 +505,12 @@ function damage_nonlocal_getDiffusion(ce)
     ho, &
     co
 
-  ho  = material_homogenizationAt2(ce)
+  ho  = material_homogenizationID(ce)
   damage_nonlocal_getDiffusion = 0.0_pReal
 
   do co = 1, homogenization_Nconstituents(ho)
     damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
-      crystallite_push33ToRef(co,ce,lattice_D(1:3,1:3,material_phaseAt2(co,ce)))
+      crystallite_push33ToRef(co,ce,lattice_D(1:3,1:3,material_phaseID(co,ce)))
   enddo
 
   damage_nonlocal_getDiffusion = &

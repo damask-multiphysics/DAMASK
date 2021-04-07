@@ -119,7 +119,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
     sizeDotState = size(['xi   ','gamma'])
     sizeState = sizeDotState
 

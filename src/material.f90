@@ -28,14 +28,14 @@ module material
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt, &                                                                    !< homogenization ID of each element
-    material_homogenizationAt2, &                                                                   !< per cell
-    material_homogenizationMemberAt2                                                                !< cell
+    material_homogenizationID, &                                                                    !< per cell
+    material_homogenizationEntry                                                                    !< cell
   integer, dimension(:,:),   allocatable :: &                                                       ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt, &                                                                             !< phase ID of each element
-    material_phaseAt2, &                                                                            !< per constituent,cell
-    material_phaseMemberAt2                                                                         !< per constituent, cell
+    material_phaseID, &                                                                             !< per constituent,cell
+    material_phaseEntry                                                                             !< per constituent, cell
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
@@ -117,10 +117,10 @@ subroutine material_parseMaterial
   allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
 
 
-  allocate(material_homogenizationAt2(discretization_nIPs*discretization_Nelems),source=0)
-  allocate(material_homogenizationMemberAt2(discretization_nIPs*discretization_Nelems),source=0)
-  allocate(material_phaseAt2(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
-  allocate(material_phaseMemberAt2(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_homogenizationID(discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_homogenizationEntry(discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_phaseID(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
 
   do el = 1, discretization_Nelems
     material     => materials%get(discretization_materialAt(el))
@@ -131,8 +131,8 @@ subroutine material_parseMaterial
       ce = (el-1)*discretization_nIPs + ip
       counterHomogenization(material_homogenizationAt(el)) = counterHomogenization(material_homogenizationAt(el)) + 1
       material_homogenizationMemberAt(ip,el)               = counterHomogenization(material_homogenizationAt(el))
-      material_homogenizationAt2(ce)       = material_homogenizationAt(el)
-      material_homogenizationMemberAt2(ce) = material_homogenizationMemberAt(ip,el)
+      material_homogenizationID(ce)    = material_homogenizationAt(el)
+      material_homogenizationEntry(ce) = material_homogenizationMemberAt(ip,el)
     enddo
 
     frac = 0.0_pReal
@@ -146,8 +146,8 @@ subroutine material_parseMaterial
         counterPhase(material_phaseAt(co,el)) = counterPhase(material_phaseAt(co,el)) + 1
         material_phaseMemberAt(co,ip,el)       = counterPhase(material_phaseAt(co,el))
 
-        material_phaseAt2(co,ce)       = material_phaseAt(co,el)
-        material_phaseMemberAt2(co,ce) = material_phaseMemberAt(co,ip,el)
+        material_phaseID(co,ce)    = material_phaseAt(co,el)
+        material_phaseEntry(co,ce) = material_phaseMemberAt(co,ip,el)
       enddo
 
     enddo

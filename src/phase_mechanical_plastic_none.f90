@@ -30,7 +30,7 @@ module function plastic_none_init() result(myPlasticity)
   phases => config_material%get('phase')
   do ph = 1, phases%length
     if(.not. myPlasticity(ph)) cycle
-    call phase_allocateState(plasticState(ph),count(material_phaseAt2 == ph),0,0,0)
+    call phase_allocateState(plasticState(ph),count(material_phaseID == ph),0,0,0)
   enddo
 
 end function plastic_none_init

@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule (phase:damagee) anisobrittle
+submodule (phase:damage) anisobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -197,7 +197,7 @@ end subroutine anisobrittle_results
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
 
   integer, intent(in) :: &
     ph,me
@@ -253,6 +253,6 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
   enddo
   end associate
 
-end subroutine kinematics_cleavage_opening_LiAndItsTangent
+end subroutine damage_anisobrittle_LiAndItsTangent
 
 end submodule anisobrittle

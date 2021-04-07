@@ -100,13 +100,11 @@ module phase
       integer,          intent(in) :: ph
     end subroutine damage_results
 
-    module subroutine mechanical_windForward(ph,me)
-      integer, intent(in) :: ph, me
-    end subroutine mechanical_windForward
-
-
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
+
+    module subroutine damage_forward()
+    end subroutine damage_forward
 
     module subroutine thermal_forward()
     end subroutine thermal_forward
@@ -261,7 +259,7 @@ module phase
     end subroutine plastic_dependentState
 
 
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
       integer, intent(in) :: ph, me
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
@@ -269,9 +267,9 @@ module phase
         Ld                                                                                          !< damage velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_cleavage_opening_LiAndItsTangent
+    end subroutine damage_anisobrittle_LiAndItsTangent
 
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+    module subroutine damage_isoductile_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
       integer, intent(in) :: ph, me
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
@@ -279,7 +277,7 @@ module phase
         Ld                                                                                          !< damage velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine kinematics_slipplane_opening_LiAndItsTangent
+    end subroutine damage_isoductile_LiAndItsTangent
 
   end interface
 
@@ -325,13 +323,12 @@ module phase
     phase_damage_get_phi, &
     phase_mechanical_getP, &
     phase_mechanical_setF, &
-    phase_mechanical_getF, &
-    phase_windForward
+    phase_mechanical_getF
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialze constitutive models for individual physics
+!> @brief Initialize constitutive models for individual physics
 !--------------------------------------------------------------------------------------------------
 subroutine phase_init
 
@@ -382,12 +379,12 @@ end subroutine phase_init
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine phase_allocateState(state, &
-                               Nconstituents,sizeState,sizeDotState,sizeDeltaState)
+                               NEntries,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
   integer, intent(in) :: &
-    Nconstituents, &
+    NEntries, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
@@ -398,13 +395,13 @@ subroutine phase_allocateState(state, &
   state%sizeDeltaState   = sizeDeltaState
   state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
 
-  allocate(state%atol             (sizeState),               source=0.0_pReal)
-  allocate(state%state0           (sizeState,Nconstituents), source=0.0_pReal)
-  allocate(state%state            (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%atol             (sizeState),          source=0.0_pReal)
+  allocate(state%state0           (sizeState,NEntries), source=0.0_pReal)
+  allocate(state%state            (sizeState,NEntries), source=0.0_pReal)
 
-  allocate(state%dotState      (sizeDotState,Nconstituents), source=0.0_pReal)
+  allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pReal)
 
-  allocate(state%deltaState  (sizeDeltaState,Nconstituents), source=0.0_pReal)
+  allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pReal)
 
 
 end subroutine phase_allocateState
@@ -422,10 +419,10 @@ subroutine phase_restore(ce,includeL)
     co
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt2(ce))
-    if (damageState(material_phaseAt2(co,ce))%sizeState > 0) &
-    damageState(material_phaseAt2(co,ce))%state( :,material_phasememberAt2(co,ce)) = &
-      damageState(material_phaseAt2(co,ce))%state0(:,material_phasememberAt2(co,ce))
+  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
+    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
+      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
   enddo
 
   call mechanical_restore(ce,includeL)
@@ -435,20 +432,12 @@ end subroutine phase_restore
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
-! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
 subroutine phase_forward()
 
-  integer :: ph
-
-
   call mechanical_forward()
+  call damage_forward()
   call thermal_forward()
-
-  do ph = 1, size(damageState)
-    if (damageState(ph)%sizeState > 0) &
-      damageState(ph)%state0 = damageState(ph)%state
-  enddo
 
 end subroutine phase_forward
 
@@ -484,7 +473,6 @@ subroutine crystallite_init()
 
   integer :: &
     ph, &
-    me, &
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
@@ -550,12 +538,10 @@ subroutine crystallite_init()
   flush(IO_STDOUT)
 
 
-  !$OMP PARALLEL DO PRIVATE(ph,me)
+  !$OMP PARALLEL DO
   do el = 1, size(material_phaseMemberAt,3)
     do ip = 1, size(material_phaseMemberAt,2)
       do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-        ph = material_phaseAt(co,el)
-        me = material_phaseMemberAt(co,ip,el)
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
      enddo
@@ -565,34 +551,6 @@ subroutine crystallite_init()
 
 
 end subroutine crystallite_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Wind homog inc forward.
-!--------------------------------------------------------------------------------------------------
-subroutine phase_windForward(ip,el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
-
-  integer :: &
-    co, &                                                                                            !< constituent number
-    so, ph, me
-
-
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    ph = material_phaseAt(co,el)
-    me = material_phaseMemberAt(co,ip,el)
-
-    call mechanical_windForward(ph,me)
-
-    if(damageState(ph)%sizeState > 0) damageState(ph)%state0(:,me) = damageState(ph)%state(:,me)
-
-
-  enddo
-
-end subroutine phase_windForward
 
 
 !--------------------------------------------------------------------------------------------------
@@ -629,11 +587,11 @@ function crystallite_push33ToRef(co,ce, tensor33)
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
   real(pReal), dimension(3,3)             :: T
-  integer :: ph, me
+  integer :: ph, en
 
-  ph = material_phaseAt2(co,ce)
-  me = material_phaseMemberAt2(co,ce)
-  T = matmul(material_orientation0(co,ph,me)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ce)))) ! ToDo: initial orientation correct?
+  ph = material_phaseID(co,ce)
+  en = material_phaseEntry(co,ce)
+  T = matmul(material_orientation0(co,ph,en)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ce)))) ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
@@ -658,8 +616,7 @@ end function converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current  restart information (Field and constitutive data) to file.
-! ToDo: Merge data into one file for MPI
+!> @brief Write restart data to file.
 !--------------------------------------------------------------------------------------------------
 subroutine phase_restartWrite(fileHandle)
 
@@ -687,8 +644,7 @@ end subroutine phase_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read data for restart
-! ToDo: Merge data into one file for MPI
+!> @brief Read restart data from file.
 !--------------------------------------------------------------------------------------------------
 subroutine phase_restartRead(fileHandle)
 
