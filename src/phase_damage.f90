@@ -152,13 +152,18 @@ module function phase_damage_phi_dot(phi,co,ce) result(phi_dot)
 
   integer :: &
     ph, &
-    me
+    en
 
   ph = material_phaseID(co,ce)
-  me = material_phaseEntry(co,ce)
+  en = material_phaseEntry(co,ce)
 
-  phi_dot = 1.0_pReal &
-          - phi*damageState(ph)%state(1,me)
+  select case(phase_source(ph))
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ISODUCTILE_ID,DAMAGE_ANISOBRITTLE_ID,DAMAGE_ANISODUCTILE_ID)
+      phi_dot = 1.0_pReal &
+              - phi*damageState(ph)%state(1,en)
+    case default
+      phi_dot = 0.0_pReal
+  end select
 
 end function phase_damage_phi_dot
 
