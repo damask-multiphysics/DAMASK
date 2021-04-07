@@ -76,14 +76,10 @@ module subroutine damage_partition(ce)
   real(pReal) :: phi
   integer,     intent(in) :: ce
 
-  integer :: co
-
 
   if(damageState_h(material_homogenizationID(ce))%sizeState < 1) return
   phi = damagestate_h(material_homogenizationID(ce))%state(1,material_homogenizationEntry(ce))
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
-    call phase_damage_set_phi(phi,co,ce)
-  enddo
+  call phase_damage_set_phi(phi,1,ce)
 
 end subroutine damage_partition
 
@@ -95,17 +91,9 @@ end subroutine damage_partition
 module function damage_nonlocal_getMobility(ce) result(M)
 
   integer, intent(in) :: ce
-  integer :: &
-    co
   real(pReal) :: M
 
-  M = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
-    M = M + lattice_M(material_phaseID(co,ce))
-  enddo
-
-  M = M/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
+  M = lattice_M(material_phaseID(1,ce))
 
 end function damage_nonlocal_getMobility
 
@@ -121,11 +109,7 @@ module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
   real(pReal), intent(out) :: &
     phiDot
 
-  real(pReal) :: &
-    dPhiDot_dPhi
-
-  call phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
-  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
+  phiDot = phase_damage_phi_dot(phi, ce)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 

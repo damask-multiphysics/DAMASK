@@ -227,14 +227,13 @@ module phase
     end function phase_homogenizedC
 
 
-    module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
+    module function phase_damage_phi_dot(phi, ce) result(phi_dot)
       integer, intent(in) :: ce
       real(pReal), intent(in) :: &
         phi                                                                                         !< damage parameter
-      real(pReal), intent(inout) :: &
-        phiDot, &
-        dPhiDot_dPhi
-    end subroutine phase_damage_getRateAndItsTangents
+      real(pReal) :: &
+        phi_dot
+    end function phase_damage_phi_dot
 
     module subroutine phase_thermal_getRate(TDot, ph,me)
       integer, intent(in) :: ph, me
@@ -301,7 +300,7 @@ module phase
   public :: &
     phase_init, &
     phase_homogenizedC, &
-    phase_damage_getRateAndItsTangents, &
+    phase_damage_phi_dot, &
     phase_thermal_getRate, &
     phase_results, &
     phase_allocateState, &

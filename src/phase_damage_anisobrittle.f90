@@ -149,29 +149,6 @@ end subroutine anisobrittle_dotState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns local part of nonlocal damage driving force
-!--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-  integer, intent(in) :: &
-    ph, &
-    me
-  real(pReal),  intent(in) :: &
-    phi
-  real(pReal),  intent(out) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
-
-
-  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
-
-  localphiDot = 1.0_pReal &
-              + dLocalphiDot_dPhi*phi
-
-end subroutine anisobrittle_getRateAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine anisobrittle_results(phase,group)
