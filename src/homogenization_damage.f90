@@ -150,6 +150,7 @@ module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
   ho = material_homogenizationID(ce)
   en = material_homogenizationEntry(ce)
   damagestate_h(ho)%state(1,en) = phi
+  current(ho)%phi(en) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage
 
