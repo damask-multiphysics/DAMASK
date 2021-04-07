@@ -153,7 +153,7 @@ end subroutine damage_nonlocal_putNonLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_results(ho,group)
+module subroutine damage_results(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -170,6 +170,6 @@ module subroutine damage_nonlocal_results(ho,group)
   enddo outputsLoop
   end associate
 
-end subroutine damage_nonlocal_results
+end subroutine damage_results
 
 end submodule damage

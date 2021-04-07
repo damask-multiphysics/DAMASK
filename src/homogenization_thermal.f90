@@ -193,7 +193,7 @@ end subroutine homogenization_thermal_setField
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_conduction_results(ho,group)
+module subroutine thermal_results(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -209,7 +209,7 @@ module subroutine thermal_conduction_results(ho,group)
     enddo outputsLoop
   end associate
 
-end subroutine thermal_conduction_results
+end subroutine thermal_results
 
 
 module function homogenization_thermal_T(ce) result(T)

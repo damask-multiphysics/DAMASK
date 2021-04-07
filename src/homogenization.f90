@@ -117,6 +117,16 @@ module homogenization
       integer, intent(in)          :: ho
     end subroutine mechanical_results
 
+    module subroutine damage_results(ho,group)
+      integer,          intent(in) :: ho
+      character(len=*), intent(in) :: group
+    end subroutine damage_results
+
+    module subroutine thermal_results(ho,group)
+      integer,          intent(in) :: ho
+      character(len=*), intent(in) :: group
+    end subroutine thermal_results
+
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
       real(pReal), intent(in) :: &
         subdt                                                                                       !< current time step
@@ -148,11 +158,6 @@ module homogenization
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
-    module subroutine thermal_conduction_results(ho,group)
-      integer,          intent(in) :: ho
-      character(len=*), intent(in) :: group
-    end subroutine thermal_conduction_results
-
     module function homogenization_thermal_T(ce) result(T)
       integer, intent(in) :: ce
       real(pReal) :: T
@@ -183,11 +188,6 @@ module homogenization
       real(pReal),   intent(in) :: &
         phi
     end subroutine damage_nonlocal_putNonLocalDamage
-
-    module subroutine damage_nonlocal_results(ho,group)
-      integer,          intent(in) :: ho
-      character(len=*), intent(in) :: group
-    end subroutine damage_nonlocal_results
 
   end interface
 
@@ -371,14 +371,14 @@ subroutine homogenization_results
       case(DAMAGE_NONLOCAL_ID)
         group = trim(group_base)//'/damage'
         call results_closeGroup(results_addGroup(group))
-        call damage_nonlocal_results(ho,group)
+        call damage_results(ho,group)
     end select
 
     select case(thermal_type(ho))
       case(THERMAL_CONDUCTION_ID)
         group = trim(group_base)//'/thermal'
         call results_closeGroup(results_addGroup(group))
-        call thermal_conduction_results(ho,group)
+        call thermal_results(ho,group)
     end select
 
  enddo
