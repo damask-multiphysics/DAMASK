@@ -145,20 +145,20 @@ module phase
       real(pReal), dimension(3,3) :: L_p
     end function mechanical_L_p
 
-    module function phase_mechanical_getF(co,ce) result(F)
+    module function phase_F(co,ce) result(F)
       integer, intent(in) :: co, ce
       real(pReal), dimension(3,3) :: F
-    end function phase_mechanical_getF
+    end function phase_F
 
     module function mechanical_F_e(ph,me) result(F_e)
       integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: F_e
     end function mechanical_F_e
 
-    module function phase_mechanical_getP(co,ce) result(P)
+    module function phase_P(co,ce) result(P)
       integer, intent(in) :: co, ce
       real(pReal), dimension(3,3) :: P
-    end function phase_mechanical_getP
+    end function phase_P
 
     module function phase_damage_get_phi(co,ip,el) result(phi)
       integer, intent(in) :: co, ip, el
@@ -181,10 +181,10 @@ module phase
     end function damage_phi
 
 
-    module subroutine phase_mechanical_setF(F,co,ce)
+    module subroutine phase_set_F(F,co,ce)
       real(pReal), dimension(3,3), intent(in) :: F
       integer, intent(in) :: co, ce
-    end subroutine phase_mechanical_setF
+    end subroutine phase_set_F
 
     module subroutine phase_thermal_setField(T,dot_T, co,ce)
       real(pReal), intent(in) :: T, dot_T
@@ -320,9 +320,9 @@ module phase
     phase_thermal_setField, &
     phase_damage_set_phi, &
     phase_damage_get_phi, &
-    phase_mechanical_getP, &
-    phase_mechanical_setF, &
-    phase_mechanical_getF
+    phase_P, &
+    phase_set_F, &
+    phase_F
 
 contains
 
@@ -588,7 +588,7 @@ function crystallite_push33ToRef(co,ce, tensor33)
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
-  T = matmul(material_orientation0(co,ph,en)%asMatrix(),transpose(math_inv33(phase_mechanical_getF(co,ce)))) ! ToDo: initial orientation correct?
+  T = matmul(material_orientation0(co,ph,en)%asMatrix(),transpose(math_inv33(phase_F(co,ce)))) ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 

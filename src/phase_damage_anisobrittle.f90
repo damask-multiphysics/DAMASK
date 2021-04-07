@@ -120,9 +120,6 @@ module subroutine anisobrittle_dotState(S, ph,me)
     S
 
   integer :: &
-    sourceOffset, &
-    damageOffset, &
-    homog, &
     i
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit

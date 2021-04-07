@@ -176,11 +176,11 @@ module homogenization
         phiDot
     end subroutine damage_nonlocal_getSourceAndItsTangent
 
-    module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
+    module subroutine homogenization_set_phi(phi,ce)
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: &
         phi
-    end subroutine damage_nonlocal_putNonLocalDamage
+    end subroutine homogenization_set_phi
 
   end interface
 
@@ -192,7 +192,7 @@ module homogenization
     thermal_conduction_getSource, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_getSourceAndItsTangent, &
-    damage_nonlocal_putNonLocalDamage, &
+    homogenization_set_phi, &
     homogenization_thermal_setfield, &
     homogenization_thermal_T, &
     homogenization_forward, &

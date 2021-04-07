@@ -196,7 +196,7 @@ function grid_damage_spectral_solution(timeinc) result(solution)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),ce)
+    call homogenization_set_phi(phi_current(i,j,k),ce)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
@@ -233,7 +233,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
-      call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),ce)
+      call homogenization_set_phi(phi_current(i,j,k),ce)
     enddo; enddo; enddo
   else
     phi_lastInc = phi_current

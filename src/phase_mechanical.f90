@@ -1422,20 +1422,6 @@ end function mechanical_L_p
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief Get deformation gradient (for use by homogenization)
-!----------------------------------------------------------------------------------------------
-module function phase_mechanical_getF(co,ce) result(F)
-
-  integer, intent(in) :: co, ce
-  real(pReal), dimension(3,3) :: F
-
-
-  F = phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce))
-
-end function phase_mechanical_getF
-
-
-!----------------------------------------------------------------------------------------------
 !< @brief Get elastic deformation gradient (for use by non-mech physics)
 !----------------------------------------------------------------------------------------------
 module function mechanical_F_e(ph,me) result(F_e)
@@ -1449,11 +1435,10 @@ module function mechanical_F_e(ph,me) result(F_e)
 end function mechanical_F_e
 
 
-
 !----------------------------------------------------------------------------------------------
 !< @brief Get second Piola-Kichhoff stress (for use by homogenization)
 !----------------------------------------------------------------------------------------------
-module function phase_mechanical_getP(co,ce) result(P)
+module function phase_P(co,ce) result(P)
 
   integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: P
@@ -1461,11 +1446,27 @@ module function phase_mechanical_getP(co,ce) result(P)
 
   P = phase_mechanical_P(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce))
 
-end function phase_mechanical_getP
+end function phase_P
 
 
-! setter for homogenization
-module subroutine phase_mechanical_setF(F,co,ce)
+!----------------------------------------------------------------------------------------------
+!< @brief Get deformation gradient (for use by homogenization)
+!----------------------------------------------------------------------------------------------
+module function phase_F(co,ce) result(F)
+
+  integer, intent(in) :: co, ce
+  real(pReal), dimension(3,3) :: F
+
+
+  F = phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce))
+
+end function phase_F
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief Set deformation gradient (for use by homogenization)
+!----------------------------------------------------------------------------------------------
+module subroutine phase_set_F(F,co,ce)
 
   real(pReal), dimension(3,3), intent(in) :: F
   integer, intent(in) :: co, ce
@@ -1473,7 +1474,7 @@ module subroutine phase_mechanical_setF(F,co,ce)
 
   phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce)) = F
 
-end subroutine phase_mechanical_setF
+end subroutine phase_set_F
 
 
 end submodule mechanical

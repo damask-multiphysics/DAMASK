@@ -138,7 +138,7 @@ end subroutine damage_nonlocal_getSourceAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief updated nonlocal damage field with solution from damage phase field PDE
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
+module subroutine homogenization_set_phi(phi,ce)
 
   integer, intent(in) :: ce
   real(pReal),   intent(in) :: &
@@ -152,7 +152,7 @@ module subroutine damage_nonlocal_putNonLocalDamage(phi,ce)
   damagestate_h(ho)%state(1,en) = phi
   current(ho)%phi(en) = phi
 
-end subroutine damage_nonlocal_putNonLocalDamage
+end subroutine homogenization_set_phi
 
 
 !--------------------------------------------------------------------------------------------------
