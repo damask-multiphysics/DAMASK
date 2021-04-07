@@ -109,7 +109,7 @@ end subroutine thermal_homogenize
 !--------------------------------------------------------------------------------------------------
 !> @brief return homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
-module function thermal_conduction_getConductivity(ce) result(K)
+module function homogenization_K(ce) result(K)
 
   integer, intent(in) :: ce
   real(pReal), dimension(3,3) :: K
@@ -125,11 +125,11 @@ module function thermal_conduction_getConductivity(ce) result(K)
 
   K = K / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end function thermal_conduction_getConductivity
+end function homogenization_K
 
 
 module function homogenization_thermal_mu_T(ce) result(mu_T)
-  
+
   integer, intent(in) :: ce
   real(pReal) :: mu_T
 
@@ -220,43 +220,35 @@ module subroutine thermal_results(ho,group)
 end subroutine thermal_results
 
 
-module function homogenization_thermal_T(ce) result(T)
+module function homogenization_T(ce) result(T)
 
   integer, intent(in) :: ce
   real(pReal) :: T
 
   T = current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce))
 
-end function homogenization_thermal_T
+end function homogenization_T
 
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_conduction_getSource(Tdot, ip, el)
+module function homogenization_f_T(ce) result(f_T)
 
-  integer, intent(in) :: &
-    ip, &
-    el
-  real(pReal), intent(out) :: &
-    Tdot
+  integer, intent(in) :: ce
+  real(pReal) :: f_T
 
-  integer :: co, ho,ph,me
-  real(pReal) :: dot_T_temp
+  integer :: co
 
-  ho = material_homogenizationAt(el)
-  Tdot = 0.0_pReal
-  do co = 1, homogenization_Nconstituents(ho)
-     ph = material_phaseAt(co,el)
-     me = material_phasememberAt(co,ip,el)
-     call phase_thermal_getRate(dot_T_temp, ph,me)
-     Tdot = Tdot + dot_T_temp
+  f_T = phase_f_T(material_phaseID(1,ce),material_phaseEntry(1,ce))
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+    f_T = f_T + phase_f_T(material_phaseID(co,ce),material_phaseEntry(co,ce))
   enddo
 
-  Tdot = Tdot/real(homogenization_Nconstituents(ho),pReal)
+  f_T = f_T/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end subroutine thermal_conduction_getSource
+end function homogenization_f_T
 
 
 end submodule thermal

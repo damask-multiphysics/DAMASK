@@ -136,10 +136,10 @@ module homogenization
     end function mechanical_updateState
 
 
-    module function thermal_conduction_getConductivity(ce) result(K)
+    module function homogenization_K(ce) result(K)
       integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
-    end function thermal_conduction_getConductivity
+    end function homogenization_K
 
     module function homogenization_thermal_mu_T(ce) result(mu_T)
       integer, intent(in) :: ce
@@ -151,17 +151,15 @@ module homogenization
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
-    module function homogenization_thermal_T(ce) result(T)
+    module function homogenization_T(ce) result(T)
       integer, intent(in) :: ce
       real(pReal) :: T
-    end function homogenization_thermal_T
+    end function homogenization_T
 
-    module subroutine thermal_conduction_getSource(Tdot, ip, el)
-      integer, intent(in) :: &
-        ip, &
-        el
-      real(pReal), intent(out) :: Tdot
-    end subroutine thermal_conduction_getSource
+    module function homogenization_f_T(ce) result(f_T)
+      integer, intent(in) :: ce
+      real(pReal) :: f_T
+    end function homogenization_f_T
 
     module function damage_nonlocal_getMobility(ce) result(M)
       integer, intent(in) :: ce
@@ -188,13 +186,13 @@ module homogenization
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
     homogenization_thermal_mu_T, &
-    thermal_conduction_getConductivity, &
-    thermal_conduction_getSource, &
+    homogenization_K, &
+    homogenization_f_T, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_getSourceAndItsTangent, &
     homogenization_set_phi, &
     homogenization_thermal_setfield, &
-    homogenization_thermal_T, &
+    homogenization_T, &
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &

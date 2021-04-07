@@ -21,7 +21,7 @@ submodule(phase) thermal
   integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
-  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ??
+  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(me) reads quite good
 
   integer :: thermal_source_maxSizeDotState
 
@@ -45,21 +45,19 @@ submodule(phase) thermal
         me
     end subroutine externalheat_dotState
 
-    module subroutine dissipation_getRate(TDot, ph,me)
+    module function dissipation_f_T(ph,me) result(f_T)
       integer, intent(in) :: &
         ph, &
         me
-      real(pReal),  intent(out) :: &
-        TDot
-    end subroutine dissipation_getRate
+      real(pReal) :: f_T
+    end function dissipation_f_T
 
-    module subroutine externalheat_getRate(TDot, ph,me)
+    module function externalheat_f_T(ph,me)  result(f_T)
       integer, intent(in) :: &
         ph, &
         me
-      real(pReal),  intent(out) :: &
-        TDot
-    end subroutine externalheat_getRate
+      real(pReal) :: f_T
+    end function externalheat_f_T
 
  end interface
 
@@ -123,35 +121,31 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine phase_thermal_getRate(TDot, ph,me)
+module function phase_f_T(ph,me) result(f_T)
 
   integer, intent(in) :: ph, me
-  real(pReal), intent(out) :: &
-    TDot
-
-  real(pReal) :: &
-    my_Tdot
-  integer :: &
-    so
+  real(pReal) :: f_T
 
 
-  TDot = 0.0_pReal
+  integer :: so
+
+
+  f_T = 0.0_pReal
 
   do so = 1, thermal_Nsources(ph)
    select case(thermal_source(so,ph))
+
      case (THERMAL_DISSIPATION_ID)
-       call dissipation_getRate(my_Tdot, ph,me)
+       f_T = f_T + dissipation_f_T(ph,me)
 
      case (THERMAL_EXTERNALHEAT_ID)
-       call externalheat_getRate(my_Tdot, ph,me)
+       f_T = f_T + externalheat_f_T(ph,me)
 
-     case default
-       my_Tdot = 0.0_pReal
    end select
-   Tdot = Tdot + my_Tdot
+
   enddo
 
-end subroutine phase_thermal_getRate
+end function phase_f_T
 
 
 !--------------------------------------------------------------------------------------------------

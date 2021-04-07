@@ -235,11 +235,10 @@ module phase
         phi_dot
     end function phase_damage_phi_dot
 
-    module subroutine phase_thermal_getRate(TDot, ph,me)
+    module function phase_f_T(ph,me) result(f_T)
       integer, intent(in) :: ph, me
-      real(pReal), intent(out) :: &
-        TDot
-    end subroutine phase_thermal_getRate
+      real(pReal) :: f_T
+    end function phase_f_T
 
     module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
       integer, intent(in) :: &
@@ -301,7 +300,7 @@ module phase
     phase_init, &
     phase_homogenizedC, &
     phase_damage_phi_dot, &
-    phase_thermal_getRate, &
+    phase_f_T, &
     phase_results, &
     phase_allocateState, &
     phase_forward, &

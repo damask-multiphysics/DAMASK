@@ -100,13 +100,13 @@ end subroutine externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine externalheat_getRate(TDot, ph, me)
+module function externalheat_f_T(ph,me) result(f_T)
 
   integer, intent(in) :: &
     ph, &
     me
-  real(pReal),  intent(out) :: &
-    TDot
+  real(pReal) :: &
+    f_T
 
   integer :: &
     so, interval
@@ -122,12 +122,12 @@ module subroutine externalheat_getRate(TDot, ph, me)
       if (     (frac_time <  0.0_pReal .and. interval == 1) &
           .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
           .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
-        TDot = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
-               prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
+        f_T = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
+              prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
                                                                                                     ! ...or extrapolate if outside me bounds
     enddo
   end associate
 
-end subroutine externalheat_getRate
+end function externalheat_f_T
 
 end submodule externalheat
