@@ -143,15 +143,10 @@ module homogenization
       real(pReal), dimension(3,3) :: K
     end function thermal_conduction_getConductivity
 
-    module function thermal_conduction_getSpecificHeat(ce) result(c_P)
+    module function homogenization_thermal_mu_T(ce) result(mu_T)
       integer, intent(in) :: ce
-      real(pReal) :: c_P
-    end function thermal_conduction_getSpecificHeat
-
-    module function thermal_conduction_getMassDensity(ce) result(rho)
-      integer, intent(in) :: ce
-      real(pReal) :: rho
-    end function thermal_conduction_getMassDensity
+      real(pReal) :: mu_T
+    end function homogenization_thermal_mu_T
 
     module subroutine homogenization_thermal_setField(T,dot_T, ce)
       integer, intent(in) :: ce
@@ -194,9 +189,8 @@ module homogenization
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
-    thermal_conduction_getSpecificHeat, &
+    homogenization_thermal_mu_T, &
     thermal_conduction_getConductivity, &
-    thermal_conduction_getMassDensity, &
     thermal_conduction_getSource, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_getSourceAndItsTangent, &

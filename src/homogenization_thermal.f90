@@ -45,7 +45,7 @@ module subroutine thermal_init()
 
 
   print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:thermal:isotemperature   init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal:isotemperature init  -+>>>'
 
 
 
@@ -128,10 +128,20 @@ module function thermal_conduction_getConductivity(ce) result(K)
 end function thermal_conduction_getConductivity
 
 
+module function homogenization_thermal_mu_T(ce) result(mu_T)
+  
+  integer, intent(in) :: ce
+  real(pReal) :: mu_T
+
+  mu_T = c_P(ce) * rho(ce)
+
+end function homogenization_thermal_mu_T
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized specific heat capacity
 !--------------------------------------------------------------------------------------------------
-module function thermal_conduction_getSpecificHeat(ce) result(c_P)
+function c_P(ce)
 
   integer, intent(in) :: ce
   real(pReal) :: c_P
@@ -139,21 +149,20 @@ module function thermal_conduction_getSpecificHeat(ce) result(c_P)
   integer :: co
 
 
-  c_P = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+  c_P = lattice_c_p(material_phaseID(1,ce))
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
     c_P = c_P + lattice_c_p(material_phaseID(co,ce))
   enddo
 
   c_P = c_P / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end function thermal_conduction_getSpecificHeat
+end function c_P
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
-module function thermal_conduction_getMassDensity(ce) result(rho)
+function rho(ce)
 
   integer, intent(in) :: ce
   real(pReal) :: rho
@@ -161,15 +170,14 @@ module function thermal_conduction_getMassDensity(ce) result(rho)
   integer :: co
 
 
-  rho = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+  rho = lattice_rho(material_phaseID(1,ce))
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
     rho = rho + lattice_rho(material_phaseID(co,ce))
   enddo
 
   rho = rho / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end function thermal_conduction_getMassDensity
+end function rho
 
 
 
