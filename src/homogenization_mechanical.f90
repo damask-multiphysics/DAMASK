@@ -86,6 +86,8 @@ module subroutine mechanical_init(num_homog)
 
   print'(/,a)', ' <<<+-  homogenization:mechanical init  -+>>>'
 
+  call material_parseHomogenization2()
+
   allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
   homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
   homogenization_F = homogenization_F0                                                              ! initialize to identity
@@ -242,6 +244,40 @@ module subroutine mechanical_results(group_base,ho)
   !                          '1st Piola-Kirchhoff stress','Pa')
 
 end subroutine mechanical_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief parses the homogenization part from the material configuration
+!--------------------------------------------------------------------------------------------------
+subroutine material_parseHomogenization2()
+
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogMech
+
+  integer :: h
+
+  material_homogenization => config_material%get('homogenization')
+
+  allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
+
+  do h=1, size(material_name_homogenization)
+    homog => material_homogenization%get(h)
+    homogMech => homog%get('mechanical')
+    select case (homogMech%get_asString('type'))
+      case('pass')
+        homogenization_type(h) = HOMOGENIZATION_NONE_ID
+      case('isostrain')
+        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+      case('RGC')
+        homogenization_type(h) = HOMOGENIZATION_RGC_ID
+      case default
+        call IO_error(500,ext_msg=homogMech%get_asString('type'))
+    end select
+  enddo
+
+end subroutine material_parseHomogenization2
 
 
 end submodule mechanical

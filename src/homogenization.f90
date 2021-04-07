@@ -515,14 +515,12 @@ end function damage_nonlocal_getDiffusion
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
-! ToDo: This should be done in homogenization
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
 
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
-    homogMech, &
     homogThermal, &
     homogDamage
 
@@ -530,23 +528,11 @@ subroutine material_parseHomogenization
 
   material_homogenization => config_material%get('homogenization')
 
-  allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(material_name_homogenization)),        source=THERMAL_isothermal_ID)
   allocate(damage_type (size(material_name_homogenization)),        source=DAMAGE_none_ID)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanical')
-    select case (homogMech%get_asString('type'))
-      case('pass')
-        homogenization_type(h) = HOMOGENIZATION_NONE_ID
-      case('isostrain')
-        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
-      case('RGC')
-        homogenization_type(h) = HOMOGENIZATION_RGC_ID
-      case default
-        call IO_error(500,ext_msg=homogMech%get_asString('type'))
-    end select
 
     if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
