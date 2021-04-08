@@ -1300,6 +1300,11 @@ class Result:
             Fill value for non-existent entries of integer type.
             Defaults to 0.
 
+        Returns
+        -------
+        data : dict of numpy.ma.MaskedArray
+            Datasets structured by spatial position and according to selected view.
+
         """
         r = {}
 
