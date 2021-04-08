@@ -109,7 +109,7 @@ end subroutine thermal_homogenize
 !--------------------------------------------------------------------------------------------------
 !> @brief return homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
-module function homogenization_K(ce) result(K)
+module function homogenization_K_T(ce) result(K)
 
   integer, intent(in) :: ce
   real(pReal), dimension(3,3) :: K
@@ -125,17 +125,17 @@ module function homogenization_K(ce) result(K)
 
   K = K / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end function homogenization_K
+end function homogenization_K_T
 
 
-module function homogenization_thermal_mu_T(ce) result(mu_T)
+module function homogenization_mu_T(ce) result(mu)
 
   integer, intent(in) :: ce
-  real(pReal) :: mu_T
+  real(pReal) :: mu
 
-  mu_T = c_P(ce) * rho(ce)
+  mu = c_P(ce) * rho(ce)
 
-end function homogenization_thermal_mu_T
+end function homogenization_mu_T
 
 
 !--------------------------------------------------------------------------------------------------
@@ -234,19 +234,19 @@ end function homogenization_T
 !--------------------------------------------------------------------------------------------------
 !> @brief return heat generation rate
 !--------------------------------------------------------------------------------------------------
-module function homogenization_f_T(ce) result(f_T)
+module function homogenization_f_T(ce) result(f)
 
   integer, intent(in) :: ce
-  real(pReal) :: f_T
+  real(pReal) :: f
 
   integer :: co
 
-  f_T = phase_f_T(material_phaseID(1,ce),material_phaseEntry(1,ce))
+  f = phase_f_T(material_phaseID(1,ce),material_phaseEntry(1,ce))
   do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
-    f_T = f_T + phase_f_T(material_phaseID(co,ce),material_phaseEntry(co,ce))
+    f = f + phase_f_T(material_phaseID(co,ce),material_phaseEntry(co,ce))
   enddo
 
-  f_T = f_T/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
+  f = f/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end function homogenization_f_T
 

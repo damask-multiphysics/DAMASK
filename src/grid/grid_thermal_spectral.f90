@@ -270,7 +270,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(homogenization_K(ce) - K_ref, &
+    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, &
                                          vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
@@ -280,7 +280,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
-                            + homogenization_thermal_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
+                            + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
                             + mu_ref*T_current(i,j,k)
   enddo; enddo; enddo
 
@@ -309,8 +309,8 @@ subroutine updateReference
   mu_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    K_ref  = K_ref  + homogenization_K(ce)
-    mu_ref = mu_ref + homogenization_thermal_mu_T(ce)
+    K_ref  = K_ref  + homogenization_K_T(ce)
+    mu_ref = mu_ref + homogenization_mu_T(ce)
   enddo; enddo; enddo
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)

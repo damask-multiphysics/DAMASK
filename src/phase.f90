@@ -223,17 +223,17 @@ module phase
     end function phase_homogenizedC
 
 
-    module function phase_f_phi(phi,co,ce) result(phi_dot)
+    module function phase_f_phi(phi,co,ce) result(f)
       integer, intent(in) :: ce,co
       real(pReal), intent(in) :: &
         phi                                                                                         !< damage parameter
       real(pReal) :: &
-        phi_dot
+        f
     end function phase_f_phi
 
-    module function phase_f_T(ph,me) result(f_T)
+    module function phase_f_T(ph,me) result(f)
       integer, intent(in) :: ph, me
-      real(pReal) :: f_T
+      real(pReal) :: f
     end function phase_f_T
 
     module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)

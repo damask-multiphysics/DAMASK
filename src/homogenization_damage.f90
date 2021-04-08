@@ -109,12 +109,12 @@ end subroutine damage_partition
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns homogenized nonlocal damage mobility
 !--------------------------------------------------------------------------------------------------
-module function homogenization_mu_phi(ce) result(M)
+module function homogenization_mu_phi(ce) result(mu)
 
   integer, intent(in) :: ce
-  real(pReal) :: M
+  real(pReal) :: mu
 
-  M = lattice_M(material_phaseID(1,ce))
+  mu = lattice_M(material_phaseID(1,ce))
 
 end function homogenization_mu_phi
 
@@ -122,14 +122,14 @@ end function homogenization_mu_phi
 !--------------------------------------------------------------------------------------------------
 !> @brief  calculates homogenized damage driving forces
 !--------------------------------------------------------------------------------------------------
-module function homogenization_f_phi(phi,ce) result(f_phi)
+module function homogenization_f_phi(phi,ce) result(f)
 
   integer, intent(in) :: ce
   real(pReal), intent(in) :: &
     phi
-  real(pReal) :: f_phi
+  real(pReal) :: f
 
-  f_phi = phase_f_phi(phi, 1, ce)
+  f = phase_f_phi(phi, 1, ce)
 
 end function homogenization_f_phi
 

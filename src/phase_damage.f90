@@ -142,13 +142,13 @@ end subroutine damage_init
 !----------------------------------------------------------------------------------------------
 !< @brief returns local part of nonlocal damage driving force
 !----------------------------------------------------------------------------------------------
-module function phase_f_phi(phi,co,ce) result(phi_dot)
+module function phase_f_phi(phi,co,ce) result(f)
 
   integer, intent(in) :: ce,co
   real(pReal), intent(in) :: &
     phi                                                                                             !< damage parameter
   real(pReal) :: &
-    phi_dot
+    f
 
   integer :: &
     ph, &
@@ -159,10 +159,10 @@ module function phase_f_phi(phi,co,ce) result(phi_dot)
 
   select case(phase_source(ph))
     case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ISODUCTILE_ID,DAMAGE_ANISOBRITTLE_ID,DAMAGE_ANISODUCTILE_ID)
-      phi_dot = 1.0_pReal &
-              - phi*damageState(ph)%state(1,en)
+      f = 1.0_pReal &
+        - phi*damageState(ph)%state(1,en)
     case default
-      phi_dot = 0.0_pReal
+      f = 0.0_pReal
   end select
 
 end function phase_f_phi

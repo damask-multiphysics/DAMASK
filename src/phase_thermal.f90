@@ -121,25 +121,25 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module function phase_f_T(ph,me) result(f_T)
+module function phase_f_T(ph,me) result(f)
 
   integer, intent(in) :: ph, me
-  real(pReal) :: f_T
+  real(pReal) :: f
 
 
   integer :: so
 
 
-  f_T = 0.0_pReal
+  f = 0.0_pReal
 
   do so = 1, thermal_Nsources(ph)
    select case(thermal_source(so,ph))
 
      case (THERMAL_DISSIPATION_ID)
-       f_T = f_T + dissipation_f_T(ph,me)
+       f = f + dissipation_f_T(ph,me)
 
      case (THERMAL_EXTERNALHEAT_ID)
-       f_T = f_T + externalheat_f_T(ph,me)
+       f = f + externalheat_f_T(ph,me)
 
    end select
 

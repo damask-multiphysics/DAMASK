@@ -136,15 +136,15 @@ module homogenization
     end function mechanical_updateState
 
 
-    module function homogenization_K(ce) result(K)
+    module function homogenization_K_T(ce) result(K)
       integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
-    end function homogenization_K
+    end function homogenization_K_T
 
-    module function homogenization_thermal_mu_T(ce) result(mu_T)
+    module function homogenization_mu_T(ce) result(mu)
       integer, intent(in) :: ce
-      real(pReal) :: mu_T
-    end function homogenization_thermal_mu_T
+      real(pReal) :: mu
+    end function homogenization_mu_T
 
     module subroutine homogenization_thermal_setField(T,dot_T, ce)
       integer, intent(in) :: ce
@@ -156,20 +156,20 @@ module homogenization
       real(pReal) :: T
     end function homogenization_T
 
-    module function homogenization_f_T(ce) result(f_T)
+    module function homogenization_f_T(ce) result(f)
       integer, intent(in) :: ce
-      real(pReal) :: f_T
+      real(pReal) :: f
     end function homogenization_f_T
 
-    module function homogenization_mu_phi(ce) result(M)
+    module function homogenization_mu_phi(ce) result(mu)
       integer, intent(in) :: ce
-      real(pReal) :: M
+      real(pReal) :: mu
     end function homogenization_mu_phi
 
-    module function homogenization_f_phi(phi,ce) result(f_phi)
+    module function homogenization_f_phi(phi,ce) result(f)
       integer, intent(in) :: ce
       real(pReal), intent(in) :: phi
-      real(pReal) :: f_phi
+      real(pReal) :: f
     end function homogenization_f_phi
 
     module subroutine homogenization_set_phi(phi,ce)
@@ -183,9 +183,10 @@ module homogenization
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
-    homogenization_thermal_mu_T, &
-    homogenization_K, &
+    homogenization_mu_T, &
+    homogenization_K_T, &
     homogenization_f_T, &
+    homogenization_K_phi, &
     homogenization_mu_phi, &
     homogenization_f_phi, &
     homogenization_set_phi, &
@@ -197,9 +198,6 @@ module homogenization
     homogenization_restartWrite, &
     THERMAL_CONDUCTION_ID, &
     DAMAGE_NONLOCAL_ID
-
-  public :: &
-    homogenization_K_phi
 
 contains
 
