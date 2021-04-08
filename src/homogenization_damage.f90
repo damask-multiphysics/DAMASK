@@ -100,7 +100,7 @@ module subroutine damage_partition(ce)
 
   if(damageState_h(material_homogenizationID(ce))%sizeState < 1) return
   phi = damagestate_h(material_homogenizationID(ce))%state(1,material_homogenizationEntry(ce))
-  call phase_damage_set_phi(phi,1,ce)
+  call phase_set_phi(phi,1,ce)
 
 end subroutine damage_partition
 
@@ -109,30 +109,29 @@ end subroutine damage_partition
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns homogenized nonlocal damage mobility
 !--------------------------------------------------------------------------------------------------
-module function damage_nonlocal_getMobility(ce) result(M)
+module function homogenization_mu_phi(ce) result(M)
 
   integer, intent(in) :: ce
   real(pReal) :: M
 
   M = lattice_M(material_phaseID(1,ce))
 
-end function damage_nonlocal_getMobility
+end function homogenization_mu_phi
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  calculates homogenized damage driving forces
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
+module function homogenization_f_phi(phi,ce) result(f_phi)
 
   integer, intent(in) :: ce
   real(pReal), intent(in) :: &
     phi
-  real(pReal), intent(out) :: &
-    phiDot
+  real(pReal) :: f_phi
 
-  phiDot = phase_damage_phi_dot(phi, 1, ce)
+  f_phi = phase_f_phi(phi, 1, ce)
 
-end subroutine damage_nonlocal_getSourceAndItsTangent
+end function homogenization_f_phi
 
 
 !--------------------------------------------------------------------------------------------------

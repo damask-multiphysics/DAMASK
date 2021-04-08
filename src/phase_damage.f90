@@ -142,7 +142,7 @@ end subroutine damage_init
 !----------------------------------------------------------------------------------------------
 !< @brief returns local part of nonlocal damage driving force
 !----------------------------------------------------------------------------------------------
-module function phase_damage_phi_dot(phi,co,ce) result(phi_dot)
+module function phase_f_phi(phi,co,ce) result(phi_dot)
 
   integer, intent(in) :: ce,co
   real(pReal), intent(in) :: &
@@ -165,7 +165,7 @@ module function phase_damage_phi_dot(phi,co,ce) result(phi_dot)
       phi_dot = 0.0_pReal
   end select
 
-end function phase_damage_phi_dot
+end function phase_f_phi
 
 
 
@@ -411,7 +411,7 @@ end function source_active
 !----------------------------------------------------------------------------------------------
 !< @brief Set damage parameter
 !----------------------------------------------------------------------------------------------
-module subroutine phase_damage_set_phi(phi,co,ce)
+module subroutine phase_set_phi(phi,co,ce)
 
   real(pReal), intent(in) :: phi
   integer, intent(in) :: ce, co
@@ -419,17 +419,7 @@ module subroutine phase_damage_set_phi(phi,co,ce)
 
   current(material_phaseID(co,ce))%phi(material_phaseEntry(co,ce)) = phi
 
-end subroutine phase_damage_set_phi
-
-
-module function phase_damage_get_phi(co,ip,el) result(phi)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal) :: phi
-
-  phi = current(material_phaseAt(co,el))%phi(material_phaseMemberAt(co,ip,el))
-
-end function phase_damage_get_phi
+end subroutine phase_set_phi
 
 
 module function damage_phi(ph,me) result(phi)

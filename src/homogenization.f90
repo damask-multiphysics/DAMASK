@@ -161,18 +161,16 @@ module homogenization
       real(pReal) :: f_T
     end function homogenization_f_T
 
-    module function damage_nonlocal_getMobility(ce) result(M)
+    module function homogenization_mu_phi(ce) result(M)
       integer, intent(in) :: ce
       real(pReal) :: M
-    end function damage_nonlocal_getMobility
+    end function homogenization_mu_phi
 
-    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
+    module function homogenization_f_phi(phi,ce) result(f_phi)
       integer, intent(in) :: ce
-      real(pReal), intent(in) :: &
-        phi
-      real(pReal), intent(out) :: &
-        phiDot
-    end subroutine damage_nonlocal_getSourceAndItsTangent
+      real(pReal), intent(in) :: phi
+      real(pReal) :: f_phi
+    end function homogenization_f_phi
 
     module subroutine homogenization_set_phi(phi,ce)
       integer, intent(in) :: ce
@@ -188,8 +186,8 @@ module homogenization
     homogenization_thermal_mu_T, &
     homogenization_K, &
     homogenization_f_T, &
-    damage_nonlocal_getMobility, &
-    damage_nonlocal_getSourceAndItsTangent, &
+    homogenization_mu_phi, &
+    homogenization_f_phi, &
     homogenization_set_phi, &
     homogenization_thermal_setfield, &
     homogenization_T, &
@@ -201,7 +199,7 @@ module homogenization
     DAMAGE_NONLOCAL_ID
 
   public :: &
-    damage_nonlocal_getDiffusion
+    homogenization_K_phi
 
 contains
 
@@ -448,27 +446,27 @@ end subroutine homogenization_restartRead
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized non local damage diffusion tensor in reference configuration
 !--------------------------------------------------------------------------------------------------
-function damage_nonlocal_getDiffusion(ce)
+function homogenization_K_phi(ce)
 
   integer, intent(in) :: ce
   real(pReal), dimension(3,3) :: &
-    damage_nonlocal_getDiffusion
+    homogenization_K_phi
   integer :: &
     ho, &
     co
 
   ho  = material_homogenizationID(ce)
-  damage_nonlocal_getDiffusion = 0.0_pReal
+  homogenization_K_phi = 0.0_pReal
 
   do co = 1, homogenization_Nconstituents(ho)
-    damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
+    homogenization_K_phi = homogenization_K_phi + &
       crystallite_push33ToRef(co,ce,lattice_D(1:3,1:3,material_phaseID(co,ce)))
   enddo
 
-  damage_nonlocal_getDiffusion = &
-    num_damage%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(ho),pReal)
+  homogenization_K_phi = &
+    num_damage%charLength**2*homogenization_K_phi/real(homogenization_Nconstituents(ho),pReal)
 
-end function damage_nonlocal_getDiffusion
+end function homogenization_K_phi
 
 
 !--------------------------------------------------------------------------------------------------

@@ -259,7 +259,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
   integer :: i, j, k, ce
-  real(pReal)   :: phiDot, mobility
+  real(pReal) :: mobility
 
   phi_current = x_scal
 !--------------------------------------------------------------------------------------------------
@@ -272,7 +272,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion(ce) - K_ref, &
+    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, &
                                          vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
@@ -281,9 +281,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call damage_nonlocal_getSourceAndItsTangent(phiDot, phi_current(i,j,k),ce)
-    mobility = damage_nonlocal_getMobility(ce)
-    scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + phiDot) &
+    mobility = homogenization_mu_phi(ce)
+    scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
                             + mobility*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
                             + mu_ref*phi_current(i,j,k)
   enddo; enddo; enddo
@@ -317,8 +316,8 @@ subroutine updateReference
   mu_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    K_ref  = K_ref  + damage_nonlocal_getDiffusion(ce)
-    mu_ref = mu_ref + damage_nonlocal_getMobility(ce)
+    K_ref  = K_ref  + homogenization_K_phi(ce)
+    mu_ref = mu_ref + homogenization_mu_phi(ce)
   enddo; enddo; enddo
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
