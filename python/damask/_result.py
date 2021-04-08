@@ -1195,9 +1195,9 @@ class Result:
 
                 for ty in ['phase','homogenization']:
                     for field in self.visible['fields']:
+                        outs = {}
                         for label in self.visible[ty+'s']:
                             if field not in f['/'.join([inc,ty,label])].keys(): continue
-                            outs = {}
 
                             for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
                                 data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
