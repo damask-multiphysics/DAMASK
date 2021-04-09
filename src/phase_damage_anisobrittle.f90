@@ -120,9 +120,6 @@ module subroutine anisobrittle_dotState(S, ph,me)
     S
 
   integer :: &
-    sourceOffset, &
-    damageOffset, &
-    homog, &
     i
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
@@ -146,29 +143,6 @@ module subroutine anisobrittle_dotState(S, ph,me)
   end associate
 
 end subroutine anisobrittle_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local part of nonlocal damage driving force
-!--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-  integer, intent(in) :: &
-    ph, &
-    me
-  real(pReal),  intent(in) :: &
-    phi
-  real(pReal),  intent(out) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
-
-
-  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
-
-  localphiDot = 1.0_pReal &
-              + dLocalphiDot_dPhi*phi
-
-end subroutine anisobrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

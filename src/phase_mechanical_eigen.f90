@@ -46,7 +46,6 @@ module subroutine eigendeformation_init(phases)
   class(tNode), pointer :: &
     phase, &
     kinematics, &
-    damage, &
     mechanics
 
   print'(/,a)', ' <<<+-  phase:mechanical:eigen init  -+>>>'

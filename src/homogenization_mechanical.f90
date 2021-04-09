@@ -71,6 +71,9 @@ submodule(homogenization) mechanical
 
   end interface
 
+  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
+    homogenization_type                                                                             !< type of each homogenization
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -85,6 +88,8 @@ module subroutine mechanical_init(num_homog)
     num_homogMech
 
   print'(/,a)', ' <<<+-  homogenization:mechanical init  -+>>>'
+
+  call material_parseHomogenization2()
 
   allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
   homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
@@ -127,7 +132,7 @@ module subroutine mechanical_partition(subF,ce)
   end select chosenHomogenization
 
   do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-    call phase_mechanical_setF(Fs(1:3,1:3,co),co,ce)
+    call phase_set_F(Fs(1:3,1:3,co),co,ce)
   enddo
 
 
@@ -150,13 +155,13 @@ module subroutine mechanical_homogenize(dt,ce)
   chosenHomogenization: select case(homogenization_type(material_homogenizationID(ce)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-        homogenization_P(1:3,1:3,ce)            = phase_mechanical_getP(1,ce)
+        homogenization_P(1:3,1:3,ce)            = phase_P(1,ce)
         homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ce)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
-        Ps(:,:,co) = phase_mechanical_getP(co,ce)
+        Ps(:,:,co) = phase_P(co,ce)
       enddo
       call isostrain_averageStressAndItsTangent(&
         homogenization_P(1:3,1:3,ce), &
@@ -167,7 +172,7 @@ module subroutine mechanical_homogenize(dt,ce)
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
-        Ps(:,:,co) = phase_mechanical_getP(co,ce)
+        Ps(:,:,co) = phase_P(co,ce)
       enddo
       call RGC_averageStressAndItsTangent(&
         homogenization_P(1:3,1:3,ce), &
@@ -203,8 +208,8 @@ module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
   if (homogenization_type(material_homogenizationID(ce)) == HOMOGENIZATION_RGC_ID) then
       do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ce)
-        Fs(:,:,co)        = phase_mechanical_getF(co,ce)
-        Ps(:,:,co)        = phase_mechanical_getP(co,ce)
+        Fs(:,:,co)        = phase_F(co,ce)
+        Ps(:,:,co)        = phase_P(co,ce)
       enddo
       doneAndHappy = RGC_updateState(Ps,Fs,subF,subdt,dPdFs,ce)
   else
@@ -242,6 +247,40 @@ module subroutine mechanical_results(group_base,ho)
   !                          '1st Piola-Kirchhoff stress','Pa')
 
 end subroutine mechanical_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief parses the homogenization part from the material configuration
+!--------------------------------------------------------------------------------------------------
+subroutine material_parseHomogenization2()
+
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogMech
+
+  integer :: h
+
+  material_homogenization => config_material%get('homogenization')
+
+  allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
+
+  do h=1, size(material_name_homogenization)
+    homog => material_homogenization%get(h)
+    homogMech => homog%get('mechanical')
+    select case (homogMech%get_asString('type'))
+      case('pass')
+        homogenization_type(h) = HOMOGENIZATION_NONE_ID
+      case('isostrain')
+        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+      case('RGC')
+        homogenization_type(h) = HOMOGENIZATION_RGC_ID
+      case default
+        call IO_error(500,ext_msg=homogMech%get_asString('type'))
+    end select
+  enddo
+
+end subroutine material_parseHomogenization2
 
 
 end submodule mechanical

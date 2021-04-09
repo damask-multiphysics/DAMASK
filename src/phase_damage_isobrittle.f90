@@ -114,29 +114,6 @@ end subroutine isobrittle_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns local part of nonlocal damage driving force
-!--------------------------------------------------------------------------------------------------
-module subroutine isobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi,  ph, me)
-
-  integer, intent(in) :: &
-    ph, me
-  real(pReal),  intent(in) :: &
-    phi
-  real(pReal),  intent(out) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
-
-
-  associate(prm => param(ph))
-    localphiDot = 1.0_pReal &
-                - phi*damageState(ph)%state(1,me)
-    dLocalphiDot_dPhi = - damageState(ph)%state(1,me)
-  end associate
-
-end subroutine isobrittle_getRateAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine isobrittle_results(phase,group)

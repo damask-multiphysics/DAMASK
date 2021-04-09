@@ -196,7 +196,7 @@ function grid_damage_spectral_solution(timeinc) result(solution)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),ce)
+    call homogenization_set_phi(phi_current(i,j,k),ce)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
@@ -233,7 +233,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
-      call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),ce)
+      call homogenization_set_phi(phi_current(i,j,k),ce)
     enddo; enddo; enddo
   else
     phi_lastInc = phi_current
@@ -259,7 +259,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
   integer :: i, j, k, ce
-  real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
+  real(pReal)   :: phiDot, mobility
 
   phi_current = x_scal
 !--------------------------------------------------------------------------------------------------
@@ -281,7 +281,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi_current(i,j,k),ce)
+    call damage_nonlocal_getSourceAndItsTangent(phiDot, phi_current(i,j,k),ce)
     mobility = damage_nonlocal_getMobility(ce)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + phiDot) &
                             + mobility*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
