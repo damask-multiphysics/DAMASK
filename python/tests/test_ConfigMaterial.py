@@ -136,9 +136,9 @@ class TestConfigMaterial:
 
     def test_load_DREAM3D_reference(self,tmp_path,ref_path,update):
         cur = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d')
-        ref = ConfigMaterial.load(ref_path/'measured.material_yaml')
+        ref = ConfigMaterial.load(ref_path/'measured.material.yaml')
         if update:
-            cur.save(ref_path/'measured.material_yaml')
+            cur.save(ref_path/'measured.material.yaml')
         for i,m in enumerate(ref['material']):
             assert Rotation(m['constituents'][0]['O']) == \
                    Rotation(cur['material'][i]['constituents'][0]['O'])
