@@ -65,14 +65,17 @@ class TestResult:
         assert dict_equal(a,default.view('times','*').get('F'))
         assert dict_equal(a,default.view('times',default.times_in_range(0.0,np.inf)).get('F'))
 
-    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
+    @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_none(self,default,what):
-        a = default.view(what,False).get('F')
-        b = default.view(what,[]).get('F')
+        n0 = default.view(what,False)
+        n1 = default.view(what,[])
 
-        assert a == b == {}
+        label = 'increments' if what == 'times' else what
 
-    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
+        assert n0.get('F') is n1.get('F') is None and \
+               len(n0.visible[label]) == len(n1.visible[label]) == 0
+
+    @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_more(self,default,what):
         empty = default.view(what,False)
 
@@ -81,14 +84,17 @@ class TestResult:
 
         assert dict_equal(a,b)
 
-    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
+    @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_less(self,default,what):
         full = default.view(what,True)
 
-        a = full.view_less(what,'*').get('F')
-        b = full.view_less(what,True).get('F')
+        n0 = full.view_less(what,'*')
+        n1 = full.view_less(what,True)
 
-        assert a == b == {}
+        label = 'increments' if what == 'times' else what
+
+        assert n0.get('F') is n1.get('F') is None and \
+               len(n0.visible[label]) == len(n1.visible[label]) == 0
 
     def test_view_invalid(self,default):
         with pytest.raises(AttributeError):
@@ -189,7 +195,7 @@ class TestResult:
         default.add_stress_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')
         default.add_equivalent_Mises('sigma_y')
-        assert default.get('sigma_y_vM') == {}
+        assert default.get('sigma_y_vM') is None
 
     def test_add_Mises_stress_strain(self,default):
         default.add_stress_Cauchy('P','F')
@@ -380,8 +386,8 @@ class TestResult:
                 pickle.dump(cur,f)
 
         with bz2.BZ2File((ref_path/'get'/fname).with_suffix('.pbz2')) as f:
-            assert dict_equal(cur,pickle.load(f))
-
+            ref = pickle.load(f)
+            assert cur is None if ref is None else dict_equal(cur,ref)
 
     @pytest.mark.parametrize('view,output,flatten,constituents,prune',
             [({},['F','P','F','L_p','F_e','F_p'],True,True,None),
@@ -405,4 +411,5 @@ class TestResult:
                 pickle.dump(cur,f)
 
         with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2')) as f:
-            assert dict_equal(cur,pickle.load(f))
+            ref = pickle.load(f)
+            assert cur is None if ref is None else dict_equal(cur,ref)
