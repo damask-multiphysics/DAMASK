@@ -1,7 +1,6 @@
 import subprocess
 import shlex
 import re
-import io
 import os
 from pathlib import Path
 
@@ -63,7 +62,8 @@ class Marc:
         ret = subprocess.run(shlex.split(cmd),capture_output=True)
 
         try:
-            if 3004 != int(re.search('Exit number ([0-9]+)',ret.stderr.decode()).group(1)):
+            v = int(re.search('Exit number ([0-9]+)',ret.stderr.decode()).group(1))
+            if 3004 != v:
                 print(ret.stderr.decode())
                 print(ret.stdout.decode())
                 raise RuntimeError(f'Marc simulation failed ({v})')
