@@ -69,9 +69,9 @@ class Grid:
     copy = __copy__
 
 
-    def diff(self,other):
+    def __eq__(self,other):
         """
-        Report property differences of self relative to other.
+        Test equality of other.
 
         Parameters
         ----------
@@ -79,28 +79,10 @@ class Grid:
             Grid to compare self against.
 
         """
-        message = []
-        if np.any(other.cells != self.cells):
-            message.append(util.deemph(f'cells    a b c:     {util.srepr(other.cells," x ")}'))
-            message.append(util.emph(  f'cells    a b c:     {util.srepr( self.cells," x ")}'))
-
-        if not np.allclose(other.size,self.size):
-            message.append(util.deemph(f'size     x y z:     {util.srepr(other.size," x ")}'))
-            message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
-
-        if not np.allclose(other.origin,self.origin):
-            message.append(util.deemph(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
-            message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
-
-        if other.N_materials != self.N_materials:
-            message.append(util.deemph(f'# materials:        {other.N_materials}'))
-            message.append(util.emph(  f'# materials:        { self.N_materials}'))
-
-        if np.nanmax(other.material) != np.nanmax(self.material):
-            message.append(util.deemph(f'max material:       {np.nanmax(other.material)}'))
-            message.append(util.emph(  f'max material:       {np.nanmax( self.material)}'))
-
-        return util.return_message(message)
+        return (np.allclose(other.size,self.size)
+            and np.allclose(other.origin,self.origin)
+            and np.all(other.cells == self.cells)
+            and np.all(other.material == self.material))
 
 
     @property
@@ -270,7 +252,7 @@ class Grid:
         """
         Load DREAM.3D (HDF5) file.
 
-        Data in DREAM.3D files can be stored per cell ('CellData') and/or 
+        Data in DREAM.3D files can be stored per cell ('CellData') and/or
         per grain ('Grain Data'). Per default, cell-wise data is assumed.
 
         damask.ConfigMaterial.load_DREAM3D gives the corresponding material definition.
@@ -305,18 +287,18 @@ class Grid:
         c = util.DREAM3D_cell_data_group(fname) if cell_data  is None else cell_data
         f = h5py.File(fname, 'r')
 
-        cells  = f[os.path.join(b,'_SIMPL_GEOMETRY','DIMENSIONS')][()]
-        size   = f[os.path.join(b,'_SIMPL_GEOMETRY','SPACING')] * cells
-        origin = f[os.path.join(b,'_SIMPL_GEOMETRY','ORIGIN')][()]
+        cells  = f['/'.join([b,'_SIMPL_GEOMETRY','DIMENSIONS'])][()]
+        size   = f['/'.join([b,'_SIMPL_GEOMETRY','SPACING'])] * cells
+        origin = f['/'.join([b,'_SIMPL_GEOMETRY','ORIGIN'])][()]
 
         if feature_IDs is None:
-            phase = f[os.path.join(b,c,phases)][()].reshape(-1,1)
-            O = Rotation.from_Euler_angles(f[os.path.join(b,c,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
+            phase = f['/'.join([b,c,phases])][()].reshape(-1,1)
+            O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
             unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
             ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
                  np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
         else:
-            ma = f[os.path.join(b,c,feature_IDs)][()].flatten()
+            ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 

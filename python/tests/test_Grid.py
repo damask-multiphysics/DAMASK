@@ -14,8 +14,7 @@ from damask import grid_filters
 def grid_equal(a,b):
     return np.all(a.material == b.material) and \
            np.all(a.cells    == b.cells) and \
-           np.allclose(a.size, b.size) and \
-           str(a.diff(b)) == str(b.diff(a))
+           np.allclose(a.size, b.size)
 
 @pytest.fixture
 def default():
@@ -42,13 +41,9 @@ class TestGrid:
     def _patch_datetime_now(self, patch_datetime_now):
         print('patched datetime.datetime.now')
 
-    def test_diff_equal(self,default):
-        assert str(default.diff(default)) == ''
 
-
-    def test_diff_not_equal(self,default):
-        new = Grid(default.material[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
-        assert str(default.diff(new)) != ''
+    def test_equal(self,default):
+        assert default == default
 
     def test_repr(self,default):
         print(default)
