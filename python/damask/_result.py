@@ -1266,7 +1266,7 @@ class Result:
         if prune:   r = util.dict_prune(r)
         if flatten: r = util.dict_flatten(r)
 
-        return r
+        return None if (type(r) == dict and r == {}) else r
 
 
     def place(self,output='*',flatten=True,prune=True,constituents=None,fill_float=np.nan,fill_int=0):
@@ -1353,4 +1353,4 @@ class Result:
         if prune:   r = util.dict_prune(r)
         if flatten: r = util.dict_flatten(r)
 
-        return r
+        return None if (type(r) == dict and r == {}) else r
