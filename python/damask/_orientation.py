@@ -238,7 +238,7 @@ class Orientation(Rotation):
         """
         matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
                              for attr in ['family','lattice','parameters']])
-        return np.logical_and(super(__class__,self.reduced).__eq__(other.reduced),matching_type)
+        return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
     def __ne__(self,other):
         """
@@ -276,7 +276,7 @@ class Orientation(Rotation):
         """
         matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
                              for attr in ['family','lattice','parameters']])
-        return np.logical_and(super(__class__,self.reduced).isclose(other.reduced),matching_type)
+        return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
 
 
 
