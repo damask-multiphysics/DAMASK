@@ -39,8 +39,9 @@ module discretization_marc
     connectivity_cell                                                                               !< cell connectivity for each element,ip/cell
 
   public :: &
-    discretization_marc_init, &
-    discretization_marc_UpdateNodeAndIpCoords
+    discretization_Marc_init, &
+    discretization_Marc_updateNodeAndIpCoords, &
+    discretization_Marc_FEM2DAMASK_cell
 
 contains
 
@@ -48,7 +49,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_marc_init
+subroutine discretization_Marc_init
 
   real(pReal), dimension(:,:),     allocatable :: &
    node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
@@ -96,7 +97,7 @@ subroutine discretization_marc_init
   call buildCells(connectivity_cell,cellNodeDefinition,&
                   elem,connectivity_elem)
   node0_cell  = buildCellNodes(node0_elem)
-  
+
   IP_reshaped = buildIPcoordinates(node0_cell)
 
   call discretization_init(materialAt, IP_reshaped, node0_cell)
@@ -114,25 +115,42 @@ subroutine discretization_marc_init
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem))
   call geometry_plastic_nonlocal_results
 
-end subroutine discretization_marc_init
+end subroutine discretization_Marc_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate and set current nodal and IP positions (including cell nodes)
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_marc_UpdateNodeAndIpCoords(d_n)
- 
+subroutine discretization_Marc_updateNodeAndIpCoords(d_n)
+
   real(pReal), dimension(:,:), intent(in)  :: d_n
 
   real(pReal), dimension(:,:), allocatable :: node_cell
 
- 
+
   node_cell = buildCellNodes(discretization_NodeCoords0(1:3,1:maxval(discretization_Marc_FEM2DAMASK_node)) + d_n)
 
   call discretization_setNodeCoords(node_cell)
   call discretization_setIPcoords(buildIPcoordinates(node_cell))
 
-end subroutine discretization_marc_UpdateNodeAndIpCoords
+end subroutine discretization_Marc_updateNodeAndIpCoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate and set current nodal and IP positions (including cell nodes)
+!--------------------------------------------------------------------------------------------------
+function discretization_marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
+
+  integer, intent(in) :: IP_FEM, elem_FEM
+  integer :: cell
+
+  real(pReal), dimension(:,:), allocatable :: node_cell
+
+
+  cell = (discretization_Marc_FEM2DAMASK_elem(elem_FEM)-1)*discretization_nIPs + IP_FEM
+
+
+end function discretization_marc_FEM2DAMASK_cell
 
 
 !--------------------------------------------------------------------------------------------------
