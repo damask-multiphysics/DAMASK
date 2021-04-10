@@ -5,6 +5,16 @@ submodule(homogenization) thermal
 
   use lattice
 
+  interface
+
+    module subroutine pass_init
+    end subroutine pass_init
+
+    module subroutine isotemperature_init
+    end subroutine isotemperature_init
+
+  end interface
+
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: T, dot_T
   end type tDataContainer
@@ -35,7 +45,7 @@ module subroutine thermal_init()
 
 
   print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:thermal:isotemperature   init  -+>>>'
+  print'(/,a)', ' <<<+-  homogenization:thermal:pass init  -+>>>'
 
 
 
@@ -44,8 +54,8 @@ module subroutine thermal_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    allocate(current(ho)%T(count(material_homogenizationAt2==ho)), source=300.0_pReal)
-    allocate(current(ho)%dot_T(count(material_homogenizationAt2==ho)), source=0.0_pReal)
+    allocate(current(ho)%T(count(material_homogenizationID==ho)), source=300.0_pReal)
+    allocate(current(ho)%dot_T(count(material_homogenizationID==ho)), source=0.0_pReal)
     configHomogenization => configHomogenizations%get(ho)
     associate(prm => param(ho))
       if (configHomogenization%contains('thermal')) then
@@ -75,9 +85,9 @@ module subroutine thermal_partition(ce)
   integer :: co
 
 
-  T     = current(material_homogenizationAt2(ce))%T(material_homogenizationMemberAt2(ce))
-  dot_T = current(material_homogenizationAt2(ce))%dot_T(material_homogenizationMemberAt2(ce))
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+  T     = current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce))
+  dot_T = current(material_homogenizationID(ce))%dot_T(material_homogenizationEntry(ce))
+  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
     call phase_thermal_setField(T,dot_T,co,ce)
   enddo
 
@@ -109,19 +119,29 @@ module function thermal_conduction_getConductivity(ce) result(K)
 
   K = 0.0_pReal
 
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-    K = K + crystallite_push33ToRef(co,ce,lattice_K(:,:,material_phaseAt2(co,ce)))
+  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+    K = K + crystallite_push33ToRef(co,ce,lattice_K(:,:,material_phaseID(co,ce)))
   enddo
 
-  K = K / real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
+  K = K / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end function thermal_conduction_getConductivity
+
+
+module function homogenization_thermal_mu_T(ce) result(mu_T)
+  
+  integer, intent(in) :: ce
+  real(pReal) :: mu_T
+
+  mu_T = c_P(ce) * rho(ce)
+
+end function homogenization_thermal_mu_T
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized specific heat capacity
 !--------------------------------------------------------------------------------------------------
-module function thermal_conduction_getSpecificHeat(ce) result(c_P)
+function c_P(ce)
 
   integer, intent(in) :: ce
   real(pReal) :: c_P
@@ -129,21 +149,20 @@ module function thermal_conduction_getSpecificHeat(ce) result(c_P)
   integer :: co
 
 
-  c_P = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-    c_P = c_P + lattice_c_p(material_phaseAt2(co,ce))
+  c_P = lattice_c_p(material_phaseID(1,ce))
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+    c_P = c_P + lattice_c_p(material_phaseID(co,ce))
   enddo
 
-  c_P = c_P / real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
+  c_P = c_P / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end function thermal_conduction_getSpecificHeat
+end function c_P
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
-module function thermal_conduction_getMassDensity(ce) result(rho)
+function rho(ce)
 
   integer, intent(in) :: ce
   real(pReal) :: rho
@@ -151,15 +170,14 @@ module function thermal_conduction_getMassDensity(ce) result(rho)
   integer :: co
 
 
-  rho = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-    rho = rho + lattice_rho(material_phaseAt2(co,ce))
+  rho = lattice_rho(material_phaseID(1,ce))
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+    rho = rho + lattice_rho(material_phaseID(co,ce))
   enddo
 
-  rho = rho / real(homogenization_Nconstituents(material_homogenizationAt2(ce)),pReal)
+  rho = rho / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
-end function thermal_conduction_getMassDensity
+end function rho
 
 
 
@@ -172,8 +190,8 @@ module subroutine homogenization_thermal_setField(T,dot_T, ce)
   real(pReal),   intent(in) :: T, dot_T
 
 
-  current(material_homogenizationAt2(ce))%T(material_homogenizationMemberAt2(ce)) = T
-  current(material_homogenizationAt2(ce))%dot_T(material_homogenizationMemberAt2(ce)) = dot_T
+  current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce)) = T
+  current(material_homogenizationID(ce))%dot_T(material_homogenizationEntry(ce)) = dot_T
 
 
 end subroutine homogenization_thermal_setField
@@ -183,7 +201,7 @@ end subroutine homogenization_thermal_setField
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_conduction_results(ho,group)
+module subroutine thermal_results(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -199,7 +217,7 @@ module subroutine thermal_conduction_results(ho,group)
     enddo outputsLoop
   end associate
 
-end subroutine thermal_conduction_results
+end subroutine thermal_results
 
 
 module function homogenization_thermal_T(ce) result(T)
@@ -207,7 +225,7 @@ module function homogenization_thermal_T(ce) result(T)
   integer, intent(in) :: ce
   real(pReal) :: T
 
-  T = current(material_homogenizationAt2(ce))%T(material_homogenizationMemberAt2(ce))
+  T = current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce))
 
 end function homogenization_thermal_T
 

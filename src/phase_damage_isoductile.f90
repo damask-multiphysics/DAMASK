@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating isotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:damagee) isoductile
+submodule(phase:damage) isoductile
 
   type:: tParameters                                                                                !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -33,7 +33,7 @@ module function isoductile_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Ninstances,Nmembers,p
+  integer :: Ninstances,Nmembers,ph
   character(len=pStringLen) :: extmsg = ''
 
 
@@ -47,12 +47,12 @@ module function isoductile_init() result(mySources)
   phases => config_material%get('phase')
   allocate(param(phases%length))
 
-  do p = 1, phases%length
-    if(mySources(p)) then
-      phase => phases%get(p)
+  do ph = 1, phases%length
+    if(mySources(ph)) then
+      phase => phases%get(ph)
       sources => phase%get('damage')
 
-        associate(prm  => param(p))
+        associate(prm  => param(ph))
         src => sources%get(1)
 
         prm%q          = src%get_asFloat('q')
@@ -68,10 +68,10 @@ module function isoductile_init() result(mySources)
         if (prm%q          <= 0.0_pReal) extmsg = trim(extmsg)//' q'
         if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
 
-        Nmembers=count(material_phaseAt2==p)
-        call phase_allocateState(damageState(p),Nmembers,1,1,0)
-        damageState(p)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
+        Nmembers=count(material_phaseID==ph)
+        call phase_allocateState(damageState(ph),Nmembers,1,1,0)
+        damageState(ph)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
 
         end associate
 
@@ -101,29 +101,6 @@ module subroutine isoductile_dotState(ph, me)
   end associate
 
 end subroutine isoductile_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local part of nonlocal damage driving force
-!--------------------------------------------------------------------------------------------------
-module subroutine isoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-  integer, intent(in) :: &
-    ph, &
-    me
-  real(pReal),  intent(in) :: &
-    phi
-  real(pReal),  intent(out) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
-
-
-  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
-
-  localphiDot = 1.0_pReal &
-              + dLocalphiDot_dPhi*phi
-
-end subroutine isoductile_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

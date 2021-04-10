@@ -89,7 +89,7 @@ module subroutine thermal_init(phases)
   allocate(thermal_Nsources(phases%length),source = 0)
 
   do ph = 1, phases%length
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
     allocate(current(ph)%T(Nmembers),source=300.0_pReal)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
     phase => phases%get(ph)
@@ -268,8 +268,8 @@ module subroutine phase_thermal_setField(T,dot_T, co,ce)
   integer, intent(in) :: ce, co
 
 
-  current(material_phaseAt2(co,ce))%T(material_phaseMemberAt2(co,ce)) = T
-  current(material_phaseAt2(co,ce))%dot_T(material_phaseMemberAt2(co,ce)) = dot_T
+  current(material_phaseID(co,ce))%T(material_phaseEntry(co,ce)) = T
+  current(material_phaseID(co,ce))%dot_T(material_phaseEntry(co,ce)) = dot_T
 
 end subroutine phase_thermal_setField
 

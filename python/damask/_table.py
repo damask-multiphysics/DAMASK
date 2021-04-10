@@ -230,7 +230,6 @@ class Table:
             f = fname
             f.seek(0)
 
-        f.seek(0)
         comments = []
         line = f.readline().strip()
         while line.startswith('#'):
@@ -515,7 +514,7 @@ class Table:
 
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
-            raise KeyError('Dublicated keys or row count mismatch')
+            raise KeyError('Duplicated keys or row count mismatch')
         else:
             dup = self.copy()
             dup.data = dup.data.join(other.data)

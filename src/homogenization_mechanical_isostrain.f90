@@ -26,7 +26,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_isostrain_init
+module subroutine isostrain_init
 
   integer :: &
     h, &
@@ -56,7 +56,7 @@ module subroutine mechanical_isostrain_init
       case ('avg')
         prm%mapping = average_ID
       case default
-        call IO_error(211,ext_msg='sum'//' (mechanical_isostrain)')
+        call IO_error(211,ext_msg='sum'//' (isostrain)')
     end select
 
     Nmaterialpoints = count(material_homogenizationAt == h)
@@ -68,13 +68,13 @@ module subroutine mechanical_isostrain_init
 
   enddo
 
-end subroutine mechanical_isostrain_init
+end subroutine isostrain_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_isostrain_partitionDeformation(F,avgF)
+module subroutine isostrain_partitionDeformation(F,avgF)
 
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
 
@@ -82,13 +82,13 @@ module subroutine mechanical_isostrain_partitionDeformation(F,avgF)
 
   F = spread(avgF,3,size(F,3))
 
-end subroutine mechanical_isostrain_partitionDeformation
+end subroutine isostrain_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
+module subroutine isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
 
   real(pReal),   dimension (3,3),       intent(out) :: avgP                                         !< average stress at material point
   real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                   !< average stiffness at material point
@@ -110,6 +110,6 @@ module subroutine mechanical_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvg
 
   end associate
 
-end subroutine mechanical_isostrain_averageStressAndItsTangent
+end subroutine isostrain_averageStressAndItsTangent
 
 end submodule isostrain

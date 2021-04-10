@@ -17,15 +17,16 @@ __all__=[
          'srepr',
          'emph','deemph','warn','strikeout',
          'execute',
+         'natural_sort',
          'show_progress',
          'scale_to_coprime',
          'project_stereographic',
          'hybrid_IA',
-         'return_message',
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
-         'DREAM3D_base_group', 'DREAM3D_cell_data_group'
+         'DREAM3D_base_group', 'DREAM3D_cell_data_group',
+         'dict_prune', 'dict_flatten'
         ]
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
@@ -58,11 +59,12 @@ def srepr(arg,glue = '\n'):
         Glue used for joining operation. Defaults to \n.
 
     """
-    if (not hasattr(arg, "strip") and
-           (hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))):
+    if (not hasattr(arg, 'strip') and
+           (hasattr(arg, '__getitem__') or
+            hasattr(arg, '__iter__'))):
         return glue.join(str(x) for x in arg)
-    return arg if isinstance(arg,str) else repr(arg)
+    else:
+       return arg if isinstance(arg,str) else repr(arg)
 
 
 def emph(what):
@@ -112,6 +114,11 @@ def execute(cmd,wd='./',env=None):
     return process.stdout, process.stderr
 
 
+def natural_sort(key):
+    convert = lambda text: int(text) if text.isdigit() else text
+    return [ convert(c) for c in re.split('([0-9]+)', key) ]
+
+
 def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
     """
     Decorate a loop with a status bar.
@@ -130,11 +137,15 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
         Character length of bar. Defaults to 50.
 
     """
-    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
+    if N_iter == 1 or (hasattr(iterable,'__len__') and len(iterable) == 1):
+        for item in iterable:
+            yield item
+    else:
+        status = _ProgressBar(N_iter if N_iter is not None else len(iterable),prefix,bar_length)
 
-    for i,item in enumerate(iterable):
-        yield item
-        status.update(i)
+        for i,item in enumerate(iterable):
+            yield item
+            status.update(i)
 
 
 def scale_to_coprime(v):
@@ -388,7 +399,7 @@ def DREAM3D_cell_data_group(fname):
     """
     base_group = DREAM3D_base_group(fname)
     with h5py.File(fname,'r') as f:
-        cells = tuple(f[os.path.join(base_group,'_SIMPL_GEOMETRY','DIMENSIONS')][()][::-1])
+        cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,h5py._hl.dataset.Dataset) and np.shape(obj)[:-1] == cells \
                                                    else None)
@@ -399,29 +410,59 @@ def DREAM3D_cell_data_group(fname):
     return cell_data_group
 
 
+def dict_prune(d):
+    """
+    Recursively remove empty dictionaries.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to prune.
+
+    Returns
+    -------
+    pruned : dict
+        Pruned dictionary.
+
+    """
+    # https://stackoverflow.com/questions/48151953
+    new = {}
+    for k,v in d.items():
+        if isinstance(v, dict):
+            v = dict_prune(v)
+        if not isinstance(v,dict) or v != {}:
+            new[k] = v
+    return new
+
+
+def dict_flatten(d):
+    """
+    Recursively remove keys of single-entry dictionaries.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to flatten.
+
+    Returns
+    -------
+    flattened : dict
+        Flattened dictionary.
+
+    """
+    if isinstance(d,dict) and len(d) == 1:
+        entry = d[list(d.keys())[0]]
+        new = dict_flatten(entry.copy()) if isinstance(entry,dict) else entry
+    else:
+        new = {k: (dict_flatten(v) if isinstance(v, dict) else v) for k,v in d.items()}
+
+    return new
+
+
+
 ####################################################################################################
 # Classes
 ####################################################################################################
-class return_message:
-    """Object with formatted return message."""
-
-    def __init__(self,message):
-        """
-        Set return message.
-
-        Parameters
-        ----------
-        message : str or list of str
-            message for output to screen
-
-        """
-        self.message = message
-
-    def __repr__(self):
-        """Return message suitable for interactive shells."""
-        return srepr(self.message)
-
-
 class _ProgressBar:
     """
     Report progress of an interation as a status bar.

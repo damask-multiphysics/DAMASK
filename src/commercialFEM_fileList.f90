@@ -47,5 +47,8 @@
 #include "homogenization_mechanical_isostrain.f90"
 #include "homogenization_mechanical_RGC.f90"
 #include "homogenization_thermal.f90"
+#include "homogenization_thermal_pass.f90"
+#include "homogenization_thermal_isotemperature.f90"
 #include "homogenization_damage.f90"
+#include "homogenization_damage_pass.f90"
 #include "CPFEM.f90"
