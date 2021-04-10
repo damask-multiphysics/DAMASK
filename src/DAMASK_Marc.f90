@@ -266,7 +266,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
       computationMode = CPFEM_RESTOREJACOBIAN
   elseif (lovl == 6) then                                                                           ! stress requested by marc
     computationMode = CPFEM_CALCRESULTS
-    cp_en = mesh_FEM2DAMASK_elem(m(1))
+    cp_en = discretization_Marc_FEM2DAMASK_elem(m(1))
     if (cptim > theTime .or. inc /= theInc) then                                                    ! reached "convergence"
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
@@ -370,11 +370,11 @@ subroutine uedinc(inc,incsub)
 
 
   if (inc > inc_written) then
-    allocate(d_n(3,count(mesh_FEM2DAMASK_node /= -1)))
-    do n = lbound(mesh_FEM2DAMASK_node,1), ubound(mesh_FEM2DAMASK_node,1)
-      if (mesh_FEM2DAMASK_node(n) /= -1) then
-        call nodvar(1,n,d_n(1:3,mesh_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
-        if(nqncomp == 2) d_n(3,mesh_FEM2DAMASK_node(n)) = 0.0_pReal
+    allocate(d_n(3,count(discretization_Marc_FEM2DAMASK_node /= -1)))
+    do n = lbound(discretization_Marc_FEM2DAMASK_node,1), ubound(discretization_Marc_FEM2DAMASK_node,1)
+      if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
+        call nodvar(1,n,d_n(1:3,discretization_Marc_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
+        if(nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
       endif
     enddo
 

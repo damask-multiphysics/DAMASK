@@ -156,7 +156,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
                                                      ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian if terminallyIll
 
 
-  elCP = mesh_FEM2DAMASK_elem(elFE)
+  elCP = discretization_Marc_FEM2DAMASK_elem(elFE)
 
   ma = (elCP-1) * discretization_nIPs + ip
 
