@@ -1044,7 +1044,8 @@ class Result:
 
         collection = ET.SubElement(domain, 'Grid')
         collection.attrib={'GridType':       'Collection',
-                           'CollectionType': 'Temporal'}
+                           'CollectionType': 'Temporal',
+                           'Name':           'Increments'}
 
         time = ET.SubElement(collection, 'Time')
         time.attrib={'TimeType': 'List'}
@@ -1106,7 +1107,7 @@ class Result:
                                 unit = f[name].attrs[u] if h5py3 else f[name].attrs[u].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib = {'Name':          name.split('/',2)[2]+f' / {unit}',
+                                attributes[-1].attrib = {'Name':          '/'.join([ty,field,out])+f' / {unit}',
                                                          'Center':       'Cell',
                                                          'AttributeType': attribute_type_map[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
