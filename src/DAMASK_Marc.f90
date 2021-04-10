@@ -344,8 +344,8 @@ subroutine flux(f,ts,n,time)
   real(pReal), dimension(2),           intent(out) :: &
     f
 
+  f(1) = homogenization_f_T(discretization_Marc_FEM2DAMASK_cell(n(3),n(1)))
   f(2) = 0.0_pReal
-  call thermal_conduction_getSource(f(1), n(3),mesh_FEM2DAMASK_elem(n(1)))
 
  end subroutine flux
 
