@@ -41,13 +41,9 @@ class Marc:
         return path_tools
 
 
-    def submit_job(self,
-                   model,
-                   job          = 'job1',
-                   logfile      = False,
+    def submit_job(self, model, job,
                    compile      = False,
-                   optimization = '',
-                  ):
+                   optimization = ''):
 
         usersub = Path(os.environ['DAMASK_ROOT'])/'src/DAMASK_Marc'
         usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
@@ -64,22 +60,15 @@ class Marc:
                ' -prog ' + str(usersub.with_suffix(''))
         print(cmd)
 
-        if logfile is not None:
-            try:
-                f = open(logfile,'w+',newline='\n')
-            except TypeError:
-                f = logfile
-        else:
-            f = io.StringIO()
-
-        proc = subprocess.Popen(shlex.split(cmd),stdout=f,stderr=subprocess.STDOUT)
-        proc.wait()
-        f.seek(0)
+        ret = subprocess.run(shlex.split(cmd),capture_output=True)
 
         try:
-            v = int(re.search('Exit number ([0-9]+)',''.join(f.readlines())).group(1))
+            if 3004 != int(re.search('Exit number ([0-9]+)',ret.stderr.decode()).group(1)):
+                print(ret.stderr.decode())
+                print(ret.stdout.decode())
+                raise RuntimeError(f'Marc simulation failed ({v})')
         except (AttributeError,ValueError):
+            print(ret.stderr.decode())
+            print(ret.stdout.decode())
             raise RuntimeError('Marc simulation failed (unknown return value)')
 
-        if v != 3004:
-            raise RuntimeError(f'Marc simulation failed ({v})')
