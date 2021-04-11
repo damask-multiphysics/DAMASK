@@ -105,7 +105,8 @@ module subroutine damage_init
   class(tNode), pointer :: &
    phases, &
    phase, &
-   sources
+   sources, &
+   source
   logical:: damage_active
 
   print'(/,a)', ' <<<+-  phase:damage init  -+>>>'
@@ -113,7 +114,6 @@ module subroutine damage_init
   phases => config_material%get('phase')
 
   allocate(current(phases%length))
-
   allocate(damageState (phases%length))
   allocate(param(phases%length))
 
@@ -127,11 +127,14 @@ module subroutine damage_init
 
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
-    param(ph)%K(1,1) = sources%get_asFloat('K_11',defaultVal=0.0_pReal)
-    param(ph)%K(2,2) = sources%get_asFloat('K_22',defaultVal=0.0_pReal)
-    param(ph)%K(3,3) = sources%get_asFloat('K_33',defaultVal=0.0_pReal)
     if (sources%length > 1) error stop
-    if (sources%length == 1) damage_active = .true.
+    if (sources%length == 1) then
+      damage_active = .true.
+      source => sources%get(1)
+      param(ph)%K(1,1) = source%get_asFloat('K_11',defaultVal=0.0_pReal)
+      param(ph)%K(2,2) = source%get_asFloat('K_22',defaultVal=0.0_pReal)
+      param(ph)%K(3,3) = source%get_asFloat('K_33',defaultVal=0.0_pReal)
+    endif
 
   enddo
 
