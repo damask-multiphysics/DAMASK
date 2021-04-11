@@ -3,6 +3,11 @@
 !----------------------------------------------------------------------------------------------------
 submodule(phase) thermal
 
+  type :: tThermalParameters
+    real(pReal) ::                 C_p = 0.0_pReal                                                  !< heat capacity
+    real(pReal), dimension(3,3) :: K   = 0.0_pReal                                                  !< thermal conductivity
+  end type tThermalParameters
+
   integer, dimension(:), allocatable :: &
     thermal_Nsources
 
@@ -22,6 +27,8 @@ submodule(phase) thermal
     thermal_source
 
   type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(me) reads quite good
+
+  type(tThermalParameters), dimension(:), allocatable :: param
 
   integer :: thermal_source_maxSizeDotState
 
@@ -85,6 +92,7 @@ module subroutine thermal_init(phases)
 
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
+  allocate(param(phases%length))
 
   do ph = 1, phases%length
     Nmembers = count(material_phaseID == ph)
@@ -93,6 +101,9 @@ module subroutine thermal_init(phases)
     phase => phases%get(ph)
     thermal => phase%get('thermal',defaultVal=emptyDict)
     sources => thermal%get('source',defaultVal=emptyList)
+    param(ph)%K(1,1) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
+    param(ph)%K(2,2) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
+    param(ph)%K(3,3) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
     thermal_Nsources(ph) = sources%length
     allocate(thermalstate(ph)%p(thermal_Nsources(ph)))
   enddo

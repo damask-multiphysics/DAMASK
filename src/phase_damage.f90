@@ -2,6 +2,12 @@
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(phase) damage
+
+  type :: tDamageParameters
+    real(pReal) ::                 mu = 0.0_pReal                                                   !< viscosity
+    real(pReal), dimension(3,3) :: K  = 0.0_pReal                                                   !< conductivity/diffusivity
+  end type tDamageParameters
+
   enum, bind(c); enumerator :: &
     DAMAGE_UNDEFINED_ID, &
     DAMAGE_ISOBRITTLE_ID, &
@@ -16,12 +22,14 @@ submodule(phase) damage
   end type tDataContainer
 
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
-    phase_source                                                                                !< active sources mechanisms of each phase
+    phase_source                                                                                    !< active sources mechanisms of each phase
 
   integer, dimension(:), allocatable :: &
     phase_Nsources
 
   type(tDataContainer), dimension(:), allocatable :: current
+
+  type(tDamageParameters), dimension(:), allocatable :: param
 
   interface
 
@@ -111,6 +119,7 @@ module subroutine damage_init
 
   allocate(damageState (phases%length))
   allocate(phase_Nsources(phases%length),source = 0)
+  allocate(param(phases%length))
 
   do ph = 1,phases%length
 
@@ -121,6 +130,9 @@ module subroutine damage_init
 
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
+    param(ph)%K(1,1) = sources%get_asFloat('K_11',defaultVal=0.0_pReal)
+    param(ph)%K(2,2) = sources%get_asFloat('K_22',defaultVal=0.0_pReal)
+    param(ph)%K(3,3) = sources%get_asFloat('K_33',defaultVal=0.0_pReal)
     if (sources%length > 1) error stop
     phase_Nsources(ph) = sources%length
 
