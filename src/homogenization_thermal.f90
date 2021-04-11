@@ -45,8 +45,6 @@ module subroutine thermal_init()
 
 
   print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:thermal:pass init  -+>>>'
-
 
 
   configHomogenizations => config_material%get('homogenization')
@@ -70,6 +68,8 @@ module subroutine thermal_init()
       endif
     end associate
   enddo
+
+  call pass_init()
 
 end subroutine thermal_init
 

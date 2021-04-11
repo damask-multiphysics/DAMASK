@@ -6,8 +6,9 @@ submodule(homogenization:damage) damage_pass
 
 contains
 
-module subroutine pass_init
-
+module subroutine pass_init()
+  
+  print'(/,a)', ' <<<+-  homogenization:damage:pass init  -+>>>'
 
 end subroutine pass_init
 

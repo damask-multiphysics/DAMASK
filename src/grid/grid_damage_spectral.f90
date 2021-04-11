@@ -15,8 +15,8 @@ module grid_damage_spectral
   use IO
   use spectral_utilities
   use discretization_grid
-  use YAML_types
   use homogenization
+  use YAML_types
   use config
 
   implicit none
@@ -61,7 +61,7 @@ contains
 !> @brief allocates all neccessary fields and fills them with data
 ! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
-subroutine grid_damage_spectral_init
+subroutine grid_damage_spectral_init()
 
   PetscInt, dimension(0:worldsize-1) :: localK
   DM :: damage_grid
@@ -88,10 +88,10 @@ subroutine grid_damage_spectral_init
   num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
 
-  if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
-  if (num%itmax <= 1)                      call IO_error(301,ext_msg='itmax')
-  if (num%eps_damage_atol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_atol')
-  if (num%eps_damage_rtol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_rtol')
+  if (num%residualStiffness < 0.0_pReal) call IO_error(301,ext_msg='residualStiffness')
+  if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
+  if (num%eps_damage_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_damage_atol')
+  if (num%eps_damage_rtol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_damage_rtol')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -146,6 +146,7 @@ subroutine grid_damage_spectral_init
   allocate(phi_current(grid(1),grid(2),grid3), source=1.0_pReal)
   allocate(phi_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
   allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
+
   call VecSet(solution_vec,1.0_pReal,ierr); CHKERRQ(ierr)
 
   call updateReference
@@ -216,21 +217,21 @@ end function grid_damage_spectral_solution
 subroutine grid_damage_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
-  integer                               :: i, j, k, ce
+  integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer     :: x_scal
-  PetscErrorCode                              :: ierr
+  PetscScalar,  dimension(:,:,:), pointer :: x_scal
+  PetscErrorCode :: ierr
 
   if (cutBack) then
     phi_current = phi_lastInc
     phi_stagInc = phi_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state
-    ce = 0
     call SNESGetDM(damage_snes,dm_local,ierr); CHKERRQ(ierr)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                       !< get the data out of PETSc to work with
     x_scal(xstart:xend,ystart:yend,zstart:zend) = phi_current
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
+    ce = 0
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
       call homogenization_set_phi(phi_current(i,j,k),ce)
@@ -271,8 +272,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, &
-                                         vectorField_real(1:3,i,j,k))
+    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate damage divergence in fourier field
@@ -290,6 +290,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   call utilities_FFTscalarForward
   call utilities_fourierGreenConvolution(K_ref, mu_ref, params%timeinc)
   call utilities_FFTscalarBackward
+
   where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > phi_lastInc) &
         scalarField_real(1:grid(1),1:grid(2),1:grid3) = phi_lastInc
   where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < num%residualStiffness) &
@@ -305,7 +306,7 @@ end subroutine formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief update reference viscosity and conductivity
 !--------------------------------------------------------------------------------------------------
-subroutine updateReference
+subroutine updateReference()
 
   integer :: ce,ierr
 

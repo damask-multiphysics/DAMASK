@@ -18,7 +18,6 @@ module grid_thermal_spectral
   use homogenization
   use YAML_types
   use config
-  use material
 
   implicit none
   private
@@ -46,7 +45,7 @@ module grid_thermal_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc.
-  integer                     :: totalIter = 0                                             !< total iteration in current increment
+  integer                     :: totalIter = 0                                                      !< total iteration in current increment
   real(pReal), dimension(3,3) :: K_ref
   real(pReal)                 :: mu_ref
 
@@ -68,7 +67,7 @@ subroutine grid_thermal_spectral_init(T_0)
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: thermal_grid
-  PetscScalar,  dimension(:,:,:), pointer :: x_scal
+  PetscScalar, dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
     num_grid
@@ -85,9 +84,9 @@ subroutine grid_thermal_spectral_init(T_0)
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
   num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
 
-  if (num%itmax <= 1)                         call IO_error(301,ext_msg='itmax')
-  if (num%eps_thermal_atol <= 0.0_pReal)      call IO_error(301,ext_msg='eps_thermal_atol')
-  if (num%eps_thermal_rtol <= 0.0_pReal)      call IO_error(301,ext_msg='eps_thermal_rtol')
+  if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
+  if (num%eps_thermal_atol <= 0.0_pReal) call IO_error(301,ext_msg='eps_thermal_atol')
+  if (num%eps_thermal_rtol <= 0.0_pReal) call IO_error(301,ext_msg='eps_thermal_rtol')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -130,6 +129,7 @@ subroutine grid_thermal_spectral_init(T_0)
   allocate(T_current(grid(1),grid(2),grid3), source=0.0_pReal)
   allocate(T_lastInc(grid(1),grid(2),grid3), source=0.0_pReal)
   allocate(T_stagInc(grid(1),grid(2),grid3), source=0.0_pReal)
+
   ce = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     ce = ce + 1
@@ -138,9 +138,10 @@ subroutine grid_thermal_spectral_init(T_0)
     T_stagInc(i,j,k) = T_current(i,j,k)
     call homogenization_thermal_setField(T_0,0.0_pReal,ce)
   enddo; enddo; enddo
-  call DMDAVecGetArrayF90(thermal_grid,solution_vec,x_scal,ierr); CHKERRQ(ierr)                     !< get the data out of PETSc to work with
-  x_scal(xstart:xend,ystart:yend,zstart:zend) = T_current
-  call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,x_scal,ierr); CHKERRQ(ierr)
+
+  call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,ierr); CHKERRQ(ierr)
+  T_PETSc(xstart:xend,ystart:yend,zstart:zend) = T_current
+  call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,ierr); CHKERRQ(ierr)
 
   call updateReference
 
@@ -190,9 +191,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T_current(i,j,k), &
-                                                     (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
-                                                     ce)
+    call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc,ce)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
@@ -223,16 +222,14 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
 !--------------------------------------------------------------------------------------------------
 ! reverting thermal field state
-    ce = 0
     call SNESGetDM(thermal_snes,dm_local,ierr); CHKERRQ(ierr)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                       !< get the data out of PETSc to work with
     x_scal(xstart:xend,ystart:yend,zstart:zend) = T_current
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
+    ce = 0
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
-      call homogenization_thermal_setField(T_current(i,j,k), &
-                                          (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
-                                                       ce)
+      call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc,ce)
     enddo; enddo; enddo
   else
     T_lastInc = T_current
@@ -270,8 +267,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, &
-                                         vectorField_real(1:3,i,j,k))
+    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate temperature divergence in fourier field
@@ -300,7 +296,7 @@ end subroutine formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief update reference viscosity and conductivity
 !--------------------------------------------------------------------------------------------------
-subroutine updateReference
+subroutine updateReference()
 
   integer :: ce,ierr
 

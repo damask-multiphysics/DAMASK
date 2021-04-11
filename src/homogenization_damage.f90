@@ -38,14 +38,12 @@ module subroutine damage_init()
     configHomogenizations, &
     configHomogenization, &
     configHomogenizationDamage, &
-    num_generic, &
-    material_homogenization
-  integer :: ho
-  integer :: Ninstances,Nmaterialpoints,h
+    num_generic
+  integer :: ho,Nmaterialpoints
 
 
   print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:damage:pass init  -+>>>'
+
 
   configHomogenizations => config_material%get('homogenization')
   allocate(param(configHomogenizations%length))
@@ -62,6 +60,10 @@ module subroutine damage_init()
 #else
         prm%output = configHomogenizationDamage%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+        Nmaterialpoints = count(material_homogenizationAt == ho)
+        damageState_h(ho)%sizeState = 1
+        allocate(damageState_h(ho)%state0(1,Nmaterialpoints), source=1.0_pReal)
+        allocate(damageState_h(ho)%state (1,Nmaterialpoints), source=1.0_pReal)
       else
         prm%output = emptyStringArray
       endif
@@ -73,18 +75,7 @@ module subroutine damage_init()
   num_generic => config_numerics%get('generic',defaultVal= emptyDict)
   num_damage%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
-  Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
-
-  material_homogenization => config_material%get('homogenization')
-  do h = 1, material_homogenization%length
-    if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-
-    Nmaterialpoints = count(material_homogenizationAt == h)
-    damageState_h(h)%sizeState = 1
-    allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
-    allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
-
-  enddo
+  call pass_init()
 
 end subroutine damage_init
 
@@ -183,13 +174,13 @@ module subroutine damage_results(ho,group)
   integer :: o
 
   associate(prm => param(ho))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(prm%output(o))
-      case ('phi')
-        call results_writeDataset(group,damagestate_h(ho)%state(1,:),prm%output(o),&
-                                  'damage indicator','-')
-    end select
-  enddo outputsLoop
+      outputsLoop: do o = 1,size(prm%output)
+        select case(prm%output(o))
+          case ('phi')
+            call results_writeDataset(group,damagestate_h(ho)%state(1,:),prm%output(o),&
+                                      'damage indicator','-')
+        end select
+      enddo outputsLoop
   end associate
 
 end subroutine damage_results
