@@ -135,31 +135,25 @@ module homogenization
       logical, dimension(2) :: doneAndHappy
     end function mechanical_updateState
 
+    module function homogenization_mu_T(ce) result(mu)
+      integer, intent(in) :: ce
+      real(pReal) :: mu
+    end function homogenization_mu_T
 
     module function homogenization_K_T(ce) result(K)
       integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
     end function homogenization_K_T
 
-    module function homogenization_mu_T(ce) result(mu)
+    module function homogenization_f_T(ce) result(f)
       integer, intent(in) :: ce
-      real(pReal) :: mu
-    end function homogenization_mu_T
+      real(pReal) :: f
+    end function homogenization_f_T
 
     module subroutine homogenization_thermal_setField(T,dot_T, ce)
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
-
-    module function homogenization_T(ce) result(T)
-      integer, intent(in) :: ce
-      real(pReal) :: T
-    end function homogenization_T
-
-    module function homogenization_f_T(ce) result(f)
-      integer, intent(in) :: ce
-      real(pReal) :: f
-    end function homogenization_f_T
 
     module function homogenization_mu_phi(ce) result(mu)
       integer, intent(in) :: ce
@@ -191,12 +185,11 @@ module homogenization
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
-    homogenization_K_phi, &
+    homogenization_thermal_setfield, &
     homogenization_mu_phi, &
+    homogenization_K_phi, &
     homogenization_f_phi, &
     homogenization_set_phi, &
-    homogenization_thermal_setfield, &
-    homogenization_T, &
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &

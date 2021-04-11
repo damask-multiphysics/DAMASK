@@ -26,8 +26,8 @@ submodule(homogenization) damage
   type(tparameters),             dimension(:), allocatable :: &
     param
 
-contains
 
+contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate variables and set parameters.
@@ -105,14 +105,14 @@ module subroutine damage_partition(ce)
 end subroutine damage_partition
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns homogenized nonlocal damage mobility
+!> @brief Homogenized damage viscosity.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_mu_phi(ce) result(mu)
 
   integer, intent(in) :: ce
   real(pReal) :: mu
+
 
   mu = lattice_mu_phi(material_phaseID(1,ce))
 
@@ -120,42 +120,7 @@ end function homogenization_mu_phi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  calculates homogenized damage driving forces
-!--------------------------------------------------------------------------------------------------
-module function homogenization_f_phi(phi,ce) result(f)
-
-  integer, intent(in) :: ce
-  real(pReal), intent(in) :: &
-    phi
-  real(pReal) :: f
-
-  f = phase_f_phi(phi, 1, ce)
-
-end function homogenization_f_phi
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief updated nonlocal damage field with solution from damage phase field PDE
-!--------------------------------------------------------------------------------------------------
-module subroutine homogenization_set_phi(phi,ce)
-
-  integer, intent(in) :: ce
-  real(pReal),   intent(in) :: &
-    phi
-  integer :: &
-    ho, &
-    en
-
-  ho = material_homogenizationID(ce)
-  en = material_homogenizationEntry(ce)
-  damagestate_h(ho)%state(1,en) = phi
-  current(ho)%phi(en) = phi
-
-end subroutine homogenization_set_phi
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns homogenized non local damage diffusion tensor in reference configuration
+!> @brief Homogenized damage conductivity/diffusivity in reference configuration.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_K_phi(ce) result(K)
 
@@ -167,6 +132,44 @@ module function homogenization_K_phi(ce) result(K)
     * num_damage%charLength**2
 
 end function homogenization_K_phi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Homogenized damage driving force.
+!--------------------------------------------------------------------------------------------------
+module function homogenization_f_phi(phi,ce) result(f)
+
+  integer, intent(in) :: ce
+  real(pReal), intent(in) :: &
+    phi
+  real(pReal) :: f
+
+
+  f = phase_f_phi(phi, 1, ce)
+
+end function homogenization_f_phi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Set damage field.
+!--------------------------------------------------------------------------------------------------
+module subroutine homogenization_set_phi(phi,ce)
+
+  integer, intent(in) :: ce
+  real(pReal),   intent(in) :: &
+    phi
+
+  integer :: &
+    ho, &
+    en
+
+
+  ho = material_homogenizationID(ce)
+  en = material_homogenizationEntry(ce)
+  damagestate_h(ho)%state(1,en) = phi
+  current(ho)%phi(en) = phi
+
+end subroutine homogenization_set_phi
 
 
 !--------------------------------------------------------------------------------------------------
