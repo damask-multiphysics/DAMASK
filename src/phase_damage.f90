@@ -24,9 +24,6 @@ submodule(phase) damage
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
     phase_source                                                                                    !< active sources mechanisms of each phase
 
-  integer, dimension(:), allocatable :: &
-    phase_Nsources
-
   type(tDataContainer), dimension(:), allocatable :: current
 
   type(tDamageParameters), dimension(:), allocatable :: param
@@ -109,7 +106,7 @@ module subroutine damage_init
    phases, &
    phase, &
    sources
-
+  logical:: damage_active
 
   print'(/,a)', ' <<<+-  phase:damage init  -+>>>'
 
@@ -118,9 +115,9 @@ module subroutine damage_init
   allocate(current(phases%length))
 
   allocate(damageState (phases%length))
-  allocate(phase_Nsources(phases%length),source = 0)
   allocate(param(phases%length))
 
+  damage_active = .false.
   do ph = 1,phases%length
 
     Nmembers = count(material_phaseID == ph)
@@ -134,14 +131,13 @@ module subroutine damage_init
     param(ph)%K(2,2) = sources%get_asFloat('K_22',defaultVal=0.0_pReal)
     param(ph)%K(3,3) = sources%get_asFloat('K_33',defaultVal=0.0_pReal)
     if (sources%length > 1) error stop
-    phase_Nsources(ph) = sources%length
+    if (sources%length == 1) damage_active = .true.
 
   enddo
 
   allocate(phase_source(phases%length), source = DAMAGE_UNDEFINED_ID)
 
-! initialize source mechanisms
-  if(maxval(phase_Nsources) /= 0) then
+  if (damage_active) then
     where(isobrittle_init()  ) phase_source = DAMAGE_ISOBRITTLE_ID
     where(isoductile_init()  ) phase_source = DAMAGE_ISODUCTILE_ID
     where(anisobrittle_init()) phase_source = DAMAGE_ANISOBRITTLE_ID
@@ -288,30 +284,25 @@ module subroutine damage_results(group,ph)
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
-  integer :: so
-
-  sourceLoop: do so = 1, phase_Nsources(ph)
 
   if (phase_source(ph) /= DAMAGE_UNDEFINED_ID) &
     call results_closeGroup(results_addGroup(group//'damage'))
 
-    sourceType: select case (phase_source(ph))
+  sourceType: select case (phase_source(ph))
 
-      case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call isobrittle_results(ph,group//'damage/')
+    case (DAMAGE_ISOBRITTLE_ID) sourceType
+      call isobrittle_results(ph,group//'damage/')
 
-      case (DAMAGE_ISODUCTILE_ID) sourceType
-        call isoductile_results(ph,group//'damage/')
+    case (DAMAGE_ISODUCTILE_ID) sourceType
+      call isoductile_results(ph,group//'damage/')
 
-      case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_results(ph,group//'damage/')
+    case (DAMAGE_ANISOBRITTLE_ID) sourceType
+      call anisobrittle_results(ph,group//'damage/')
 
-      case (DAMAGE_ANISODUCTILE_ID) sourceType
-        call anisoductile_results(ph,group//'damage/')
+    case (DAMAGE_ANISODUCTILE_ID) sourceType
+      call anisoductile_results(ph,group//'damage/')
 
-    end select sourceType
-
-  enddo SourceLoop
+  end select sourceType
 
 end subroutine damage_results
 
@@ -374,19 +365,19 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   if (damageState(ph)%sizeState == 0) return
 
-     sourceType: select case (phase_source(ph))
+   sourceType: select case (phase_source(ph))
 
-      case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
-        broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,me)))
-        if(.not. broken) then
-          myOffset = damageState(ph)%offsetDeltaState
-          mySize   = damageState(ph)%sizeDeltaState
-          damageState(ph)%state(myOffset + 1: myOffset + mySize,me) = &
-          damageState(ph)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%deltaState(1:mySize,me)
-        endif
+    case (DAMAGE_ISOBRITTLE_ID) sourceType
+      call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
+      broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,me)))
+      if(.not. broken) then
+        myOffset = damageState(ph)%offsetDeltaState
+        mySize   = damageState(ph)%sizeDeltaState
+        damageState(ph)%state(myOffset + 1: myOffset + mySize,me) = &
+        damageState(ph)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%deltaState(1:mySize,me)
+      endif
 
-    end select sourceType
+  end select sourceType
 
 
 end function phase_damage_deltaState
