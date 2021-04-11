@@ -155,6 +155,21 @@ end subroutine homogenization_set_phi
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief returns homogenized non local damage diffusion tensor in reference configuration
+!--------------------------------------------------------------------------------------------------
+module function homogenization_K_phi(ce) result(K)
+
+  integer, intent(in) :: ce
+  real(pReal), dimension(3,3) :: K
+
+
+  K = crystallite_push33ToRef(1,ce,lattice_K_phi(1:3,1:3,material_phaseID(1,ce))) \
+    * num_damage%charLength**2
+
+end function homogenization_K_phi
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine damage_results(ho,group)

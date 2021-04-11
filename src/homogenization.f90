@@ -166,6 +166,11 @@ module homogenization
       real(pReal) :: mu
     end function homogenization_mu_phi
 
+    module function homogenization_K_phi(ce) result(K)
+      integer, intent(in) :: ce
+      real(pReal), dimension(3,3) :: K
+    end function homogenization_K_phi
+
     module function homogenization_f_phi(phi,ce) result(f)
       integer, intent(in) :: ce
       real(pReal), intent(in) :: phi
@@ -439,32 +444,6 @@ subroutine homogenization_restartRead(fileHandle)
   call HDF5_closeGroup(groupHandle(1))
 
 end subroutine homogenization_restartRead
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns homogenized non local damage diffusion tensor in reference configuration
-!--------------------------------------------------------------------------------------------------
-function homogenization_K_phi(ce)
-
-  integer, intent(in) :: ce
-  real(pReal), dimension(3,3) :: &
-    homogenization_K_phi
-  integer :: &
-    ho, &
-    co
-
-  ho  = material_homogenizationID(ce)
-  homogenization_K_phi = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(ho)
-    homogenization_K_phi = homogenization_K_phi + &
-      crystallite_push33ToRef(co,ce,lattice_K_phi(1:3,1:3,material_phaseID(co,ce)))
-  enddo
-
-  homogenization_K_phi = &
-    num_damage%charLength**2*homogenization_K_phi/real(homogenization_Nconstituents(ho),pReal)
-
-end function homogenization_K_phi
 
 
 !--------------------------------------------------------------------------------------------------
