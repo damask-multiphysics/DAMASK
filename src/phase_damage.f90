@@ -131,9 +131,11 @@ module subroutine damage_init
     if (sources%length == 1) then
       damage_active = .true.
       source => sources%get(1)
-      param(ph)%K(1,1) = source%get_asFloat('K_11',defaultVal=0.0_pReal)
-      param(ph)%K(2,2) = source%get_asFloat('K_22',defaultVal=0.0_pReal)
-      param(ph)%K(3,3) = source%get_asFloat('K_33',defaultVal=0.0_pReal)
+      param(ph)%mu     = source%get_asFloat('M',defaultVal=0.0_pReal)
+      param(ph)%K(1,1) = source%get_asFloat('D_11',defaultVal=0.0_pReal)
+      param(ph)%K(2,2) = source%get_asFloat('D_22',defaultVal=0.0_pReal)
+      param(ph)%K(3,3) = source%get_asFloat('D_33',defaultVal=0.0_pReal)
+      param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase%get_asString('lattice'))
     endif
 
   enddo
@@ -354,7 +356,7 @@ module function phase_mu_phi(co,ce) result(mu)
   real(pReal) :: mu
 
 
-  mu = lattice_mu_phi(material_phaseID(co,ce))
+  mu = param(material_phaseID(co,ce))%mu
 
 end function phase_mu_phi
 
@@ -368,7 +370,7 @@ module function phase_K_phi(co,ce) result(K)
   real(pReal), dimension(3,3) :: K
 
 
-  K = crystallite_push33ToRef(co,ce,lattice_K_phi(1:3,1:3,material_phaseID(co,ce)))
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%K)
 
 end function phase_K_phi
 

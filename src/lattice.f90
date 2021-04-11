@@ -398,9 +398,7 @@ module lattice
     lattice_rho, &
     lattice_c_p
    real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
-    lattice_C66, &
-    lattice_K_T, &
-    lattice_K_phi
+    lattice_C66
  integer(kind(lattice_UNDEFINED_ID)), dimension(:),     allocatable, public, protected :: &
     lattice_structure
 ! SHOULD NOT BE PART OF LATTICE END
@@ -458,11 +456,11 @@ subroutine lattice_init
     phases, &
     phase, &
     mech, &
-    elasticity, &
-    thermal, &
-    damage
+    elasticity
 
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
+
+! SHOULD NOT BE PART OF LATTICE BEGIN
 
   phases => config_material%get('phase')
   Nphases = phases%length
@@ -470,11 +468,7 @@ subroutine lattice_init
   allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
 
-  allocate(lattice_K_T  (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_K_phi  (3,3,Nphases), source=0.0_pReal)
-
-  allocate(lattice_mu_phi,&
-           lattice_rho,lattice_c_p, &
+  allocate(lattice_rho, &
            lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
 
@@ -522,32 +516,7 @@ subroutine lattice_init
     enddo
 
     lattice_rho(ph) = phase%get_asFloat('rho', defaultVal=0.0_pReal)
-
-    ! SHOULD NOT BE PART OF LATTICE BEGIN
-
-    if (phase%contains('thermal')) then
-      thermal  => phase%get('thermal')
-      lattice_K_T(1,1,ph) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
-      lattice_K_T(2,2,ph) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
-      lattice_K_T(3,3,ph) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
-      lattice_K_T(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_K_T(1:3,1:3,ph), &
-                                                             phase%get_asString('lattice'))
-      lattice_c_p(ph) = thermal%get_asFloat('c_p', defaultVal=0.0_pReal)
-    endif
-
-
-    if (phase%contains('damage')) then
-      damage => phase%get('damage')
-      damage => damage%get(1)
-      lattice_K_phi(1,1,ph) = damage%get_asFloat('D_11',defaultVal=0.0_pReal)
-      lattice_K_phi(2,2,ph) = damage%get_asFloat('D_22',defaultVal=0.0_pReal)
-      lattice_K_phi(3,3,ph) = damage%get_asFloat('D_33',defaultVal=0.0_pReal)
-      lattice_K_phi(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_K_phi(1:3,1:3,ph), &
-                                                          phase%get_asString('lattice'))
-
-      lattice_mu_phi(ph) = damage%get_asFloat('M',defaultVal=0.0_pReal)
-    endif
-    ! SHOULD NOT BE PART OF LATTICE END
+! SHOULD NOT BE PART OF LATTICE END
 
     call selfTest
 
