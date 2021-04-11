@@ -103,28 +103,19 @@ class Rotation:
         """
         Equal to other.
 
-        Equality is determined taking limited floating point precision into account.
-        See numpy.allclose for details.
-
         Parameters
         ----------
         other : Rotation
             Rotation to check for equality.
 
         """
-        s = self.quaternion
-        o = other.quaternion
-        if self.shape == () == other.shape:
-            return np.allclose(s,o) or (np.isclose(s[0],0.0) and np.allclose(s,-1.0*o))
-        else:
-            return np.all(np.isclose(s,o),-1) + np.all(np.isclose(s,-1.0*o),-1) * np.isclose(s[...,0],0.0)
+        return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
+                             np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
+
 
     def __ne__(self,other):
         """
         Not equal to other.
-
-        Equality is determined taking limited floating point precision into
-        account. See numpy.allclose for details.
 
         Parameters
         ----------
@@ -133,6 +124,57 @@ class Rotation:
 
         """
         return np.logical_not(self==other)
+
+
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Report where values are approximately equal to corresponding ones of other Rotation.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        mask : numpy.ndarray bool
+            Mask indicating where corresponding rotations are close.
+
+        """
+        s = self.quaternion
+        o = other.quaternion
+        return np.logical_or(np.all(np.isclose(s,     o,rtol,atol,equal_nan),axis=-1),
+                             np.all(np.isclose(s,-1.0*o,rtol,atol,equal_nan),axis=-1))
+
+
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Test whether all values are approximately equal to corresponding ones of other Rotation.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        answer : bool
+            Whether all values are close between both rotations.
+
+        """
+        return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
     def __array__(self):
