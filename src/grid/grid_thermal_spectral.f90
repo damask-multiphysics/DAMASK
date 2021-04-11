@@ -302,16 +302,16 @@ end subroutine formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine updateReference
 
-  integer :: i,j,k,ce,ierr
+  integer :: ce,ierr
 
-  ce = 0
+
   K_ref = 0.0_pReal
   mu_ref = 0.0_pReal
-  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-    ce = ce + 1
+  do ce = 1, product(grid(1:2))*grid3
     K_ref  = K_ref  + homogenization_K_T(ce)
     mu_ref = mu_ref + homogenization_mu_T(ce)
-  enddo; enddo; enddo
+  enddo
+
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   mu_ref = mu_ref*wgt

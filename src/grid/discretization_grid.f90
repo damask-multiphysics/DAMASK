@@ -74,7 +74,7 @@ subroutine discretization_grid_init(restart)
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
   endif
 
-  if (grid(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than  1')
+  if (grid(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
 
   call MPI_Bcast(grid,3,MPI_INTEGER,0,PETSC_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'

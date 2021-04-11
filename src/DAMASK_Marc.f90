@@ -218,7 +218,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   logical :: cutBack
   real(pReal), dimension(6) ::   stress
   real(pReal), dimension(6,6) :: ddsdde
-  integer :: computationMode, i, cp_en, node, CPnodeID
+  integer :: computationMode, i, node, CPnodeID
   integer(pI32) :: defaultNumThreadsInt                                                             !< default value set by Marc
 
   integer(pInt), save :: &
@@ -266,7 +266,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
       computationMode = CPFEM_RESTOREJACOBIAN
   elseif (lovl == 6) then                                                                           ! stress requested by marc
     computationMode = CPFEM_CALCRESULTS
-    cp_en = discretization_Marc_FEM2DAMASK_elem(m(1))
     if (cptim > theTime .or. inc /= theInc) then                                                    ! reached "convergence"
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
