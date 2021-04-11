@@ -458,7 +458,7 @@ function homogenization_K_phi(ce)
 
   do co = 1, homogenization_Nconstituents(ho)
     homogenization_K_phi = homogenization_K_phi + &
-      crystallite_push33ToRef(co,ce,lattice_D(1:3,1:3,material_phaseID(co,ce)))
+      crystallite_push33ToRef(co,ce,lattice_K_phi(1:3,1:3,material_phaseID(co,ce)))
   enddo
 
   homogenization_K_phi = &

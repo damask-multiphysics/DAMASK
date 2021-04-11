@@ -114,7 +114,7 @@ module function homogenization_mu_phi(ce) result(mu)
   integer, intent(in) :: ce
   real(pReal) :: mu
 
-  mu = lattice_M(material_phaseID(1,ce))
+  mu = lattice_mu_phi(material_phaseID(1,ce))
 
 end function homogenization_mu_phi
 

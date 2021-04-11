@@ -394,13 +394,13 @@ module lattice
 ! SHOULD NOT BE PART OF LATTICE BEGIN
   real(pReal),                        dimension(:),     allocatable, public, protected :: &
     lattice_mu, lattice_nu, &
-    lattice_M, &
+    lattice_mu_phi, &
     lattice_rho, &
     lattice_c_p
    real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
     lattice_C66, &
-    lattice_K, &
-    lattice_D
+    lattice_K_T, &
+    lattice_K_phi
  integer(kind(lattice_UNDEFINED_ID)), dimension(:),     allocatable, public, protected :: &
     lattice_structure
 ! SHOULD NOT BE PART OF LATTICE END
@@ -470,10 +470,10 @@ subroutine lattice_init
   allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
 
-  allocate(lattice_K  (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_D  (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_K_T  (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_K_phi  (3,3,Nphases), source=0.0_pReal)
 
-  allocate(lattice_M,&
+  allocate(lattice_mu_phi,&
            lattice_rho,lattice_c_p, &
            lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
@@ -527,10 +527,10 @@ subroutine lattice_init
 
     if (phase%contains('thermal')) then
       thermal  => phase%get('thermal')
-      lattice_K(1,1,ph) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
-      lattice_K(2,2,ph) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
-      lattice_K(3,3,ph) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
-      lattice_K(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_K(1:3,1:3,ph), &
+      lattice_K_T(1,1,ph) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
+      lattice_K_T(2,2,ph) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
+      lattice_K_T(3,3,ph) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
+      lattice_K_T(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_K_T(1:3,1:3,ph), &
                                                              phase%get_asString('lattice'))
       lattice_c_p(ph) = thermal%get_asFloat('c_p', defaultVal=0.0_pReal)
     endif
@@ -539,13 +539,13 @@ subroutine lattice_init
     if (phase%contains('damage')) then
       damage => phase%get('damage')
       damage => damage%get(1)
-      lattice_D(1,1,ph) = damage%get_asFloat('D_11',defaultVal=0.0_pReal)
-      lattice_D(2,2,ph) = damage%get_asFloat('D_22',defaultVal=0.0_pReal)
-      lattice_D(3,3,ph) = damage%get_asFloat('D_33',defaultVal=0.0_pReal)
-      lattice_D(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,ph), &
+      lattice_K_phi(1,1,ph) = damage%get_asFloat('D_11',defaultVal=0.0_pReal)
+      lattice_K_phi(2,2,ph) = damage%get_asFloat('D_22',defaultVal=0.0_pReal)
+      lattice_K_phi(3,3,ph) = damage%get_asFloat('D_33',defaultVal=0.0_pReal)
+      lattice_K_phi(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_K_phi(1:3,1:3,ph), &
                                                           phase%get_asString('lattice'))
 
-      lattice_M(ph) = damage%get_asFloat('M',defaultVal=0.0_pReal)
+      lattice_mu_phi(ph) = damage%get_asFloat('M',defaultVal=0.0_pReal)
     endif
     ! SHOULD NOT BE PART OF LATTICE END
 

@@ -117,10 +117,9 @@ module function homogenization_K_T(ce) result(K)
   integer :: &
     co
 
-  K = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
-    K = K + crystallite_push33ToRef(co,ce,lattice_K(:,:,material_phaseID(co,ce)))
+  K = crystallite_push33ToRef(co,1,lattice_K_T(:,:,material_phaseID(1,ce)))
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+    K = K + crystallite_push33ToRef(co,ce,lattice_K_T(:,:,material_phaseID(co,ce)))
   enddo
 
   K = K / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
