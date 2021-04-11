@@ -184,6 +184,35 @@ function phase_thermal_collectDotState(ph,me) result(broken)
 end function phase_thermal_collectDotState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage viscosity.
+!--------------------------------------------------------------------------------------------------
+module function phase_mu_T(co,ce) result(mu)
+
+  integer, intent(in) :: co, ce
+  real(pReal) :: mu
+
+
+  mu = lattice_c_p(material_phaseID(co,ce)) &
+     * lattice_rho(material_phaseID(co,ce))
+
+end function phase_mu_T
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage conductivity/diffusivity in reference configuration.
+!--------------------------------------------------------------------------------------------------
+module function phase_K_T(co,ce) result(K)
+
+  integer, intent(in) :: co, ce
+  real(pReal), dimension(3,3) :: K
+
+
+  K = crystallite_push33ToRef(co,ce,lattice_K_T(1:3,1:3,material_phaseID(co,ce)))
+
+end function phase_K_T
+
+
 module function thermal_stress(Delta_t,ph,me) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??
 
   real(pReal), intent(in) :: Delta_t

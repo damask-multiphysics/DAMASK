@@ -345,6 +345,33 @@ function phase_damage_collectDotState(ph,me) result(broken)
 end function phase_damage_collectDotState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage viscosity.
+!--------------------------------------------------------------------------------------------------
+module function phase_mu_phi(co,ce) result(mu)
+
+  integer, intent(in) :: co, ce
+  real(pReal) :: mu
+
+
+  mu = lattice_mu_phi(material_phaseID(co,ce))
+
+end function phase_mu_phi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage conductivity/diffusivity in reference configuration.
+!--------------------------------------------------------------------------------------------------
+module function phase_K_phi(co,ce) result(K)
+
+  integer, intent(in) :: co, ce
+  real(pReal), dimension(3,3) :: K
+
+
+  K = crystallite_push33ToRef(co,ce,lattice_K_phi(1:3,1:3,material_phaseID(co,ce)))
+
+end function phase_K_phi
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief for constitutive models having an instantaneous change of state

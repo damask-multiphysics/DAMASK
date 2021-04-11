@@ -184,13 +184,35 @@ module phase
 
     module subroutine phase_thermal_setField(T,dot_T, co,ce)
       real(pReal), intent(in) :: T, dot_T
-      integer, intent(in) :: ce, co
+      integer, intent(in) :: co, ce
     end subroutine phase_thermal_setField
 
     module subroutine phase_set_phi(phi,co,ce)
       real(pReal), intent(in) :: phi
       integer, intent(in) :: co, ce
     end subroutine phase_set_phi
+
+
+    module function phase_mu_phi(co,ce) result(mu)
+      integer, intent(in) :: co, ce
+      real(pReal) :: mu
+    end function phase_mu_phi
+
+    module function phase_K_phi(co,ce) result(K)
+      integer, intent(in) :: co, ce
+      real(pReal), dimension(3,3) :: K
+    end function phase_K_phi
+
+
+    module function phase_mu_T(co,ce) result(mu)
+      integer, intent(in) :: co, ce
+      real(pReal) :: mu
+    end function phase_mu_T
+
+    module function phase_K_T(co,ce) result(K)
+      integer, intent(in) :: co, ce
+      real(pReal), dimension(3,3) :: K
+    end function phase_K_T
 
 ! == cleaned:end ===================================================================================
 
@@ -297,6 +319,10 @@ module phase
     phase_homogenizedC, &
     phase_f_phi, &
     phase_f_T, &
+    phase_K_phi, &
+    phase_K_T, &
+    phase_mu_phi, &
+    phase_mu_T, &
     phase_results, &
     phase_allocateState, &
     phase_forward, &

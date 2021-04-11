@@ -102,8 +102,15 @@ module function homogenization_mu_T(ce) result(mu)
   integer, intent(in) :: ce
   real(pReal) :: mu
 
+  integer :: co
 
-  mu = c_P(ce) * rho(ce)
+
+  mu = phase_mu_T(1,ce)
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+    mu = mu + phase_mu_T(co,ce)
+  enddo
+
+  mu = mu / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end function homogenization_mu_T
 
@@ -119,9 +126,9 @@ module function homogenization_K_T(ce) result(K)
   integer :: co
 
 
-  K = crystallite_push33ToRef(1,ce,lattice_K_T(:,:,material_phaseID(1,ce)))
+  K = phase_K_T(1,ce)
   do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
-    K = K + crystallite_push33ToRef(co,ce,lattice_K_T(:,:,material_phaseID(co,ce)))
+    K = K + phase_K_T(co,ce)
   enddo
 
   K = K / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
@@ -186,47 +193,5 @@ module subroutine thermal_results(ho,group)
   end associate
 
 end subroutine thermal_results
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Homogenize specific heat capacity.
-!--------------------------------------------------------------------------------------------------
-function c_P(ce)
-
-  integer, intent(in) :: ce
-  real(pReal) :: c_P
-
-  integer :: co
-
-
-  c_P = lattice_c_p(material_phaseID(1,ce))
-  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
-    c_P = c_P + lattice_c_p(material_phaseID(co,ce))
-  enddo
-
-  c_P = c_P / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
-
-end function c_P
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Homogenize mass density.
-!--------------------------------------------------------------------------------------------------
-function rho(ce)
-
-  integer, intent(in) :: ce
-  real(pReal) :: rho
-
-  integer :: co
-
-
-  rho = lattice_rho(material_phaseID(1,ce))
-  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
-    rho = rho + lattice_rho(material_phaseID(co,ce))
-  enddo
-
-  rho = rho / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
-
-end function rho
 
 end submodule thermal

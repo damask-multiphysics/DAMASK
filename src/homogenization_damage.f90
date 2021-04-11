@@ -114,7 +114,7 @@ module function homogenization_mu_phi(ce) result(mu)
   real(pReal) :: mu
 
 
-  mu = lattice_mu_phi(material_phaseID(1,ce))
+  mu = phase_mu_phi(1,ce)
 
 end function homogenization_mu_phi
 
@@ -128,7 +128,7 @@ module function homogenization_K_phi(ce) result(K)
   real(pReal), dimension(3,3) :: K
 
 
-  K = crystallite_push33ToRef(1,ce,lattice_K_phi(1:3,1:3,material_phaseID(1,ce))) \
+  K = phase_K_phi(1,ce) &
     * num_damage%charLength**2
 
 end function homogenization_K_phi
