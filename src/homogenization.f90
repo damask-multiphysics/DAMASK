@@ -100,10 +100,6 @@ module homogenization
       integer,     intent(in) :: ce
     end subroutine damage_partition
 
-    module subroutine thermal_homogenize(ip,el)
-      integer, intent(in) :: ip,el
-    end subroutine thermal_homogenize
-
     module subroutine mechanical_homogenize(dt,ce)
      real(pReal), intent(in) :: dt
      integer, intent(in) :: &
@@ -306,7 +302,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             terminallyIll = .true.                                                                  ! ...and kills all others
           endif
         enddo
-        call thermal_homogenize(ip,el)
       enddo
     enddo
     !$OMP END DO

@@ -95,18 +95,6 @@ end subroutine thermal_partition
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenize temperature rates
-!--------------------------------------------------------------------------------------------------
-module subroutine thermal_homogenize(ip,el)
-
-  integer, intent(in) :: ip,el
-
-  !call phase_thermal_getRate(homogenization_dot_T((el-1)*discretization_nIPs+ip), ip,el)
-
-end subroutine thermal_homogenize
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Homogenized thermal viscosity.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_mu_T(ce) result(mu)
