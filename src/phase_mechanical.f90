@@ -226,10 +226,10 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
 
-  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseMemberAt)))
+  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseEntry)))
 
   do ph = 1, phases%length
-    Nmembers = count(material_phaseAt == ph) * discretization_nIPs
+    Nmembers = count(material_phaseID == ph)
 
     allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fe(ph)%data(3,3,Nmembers))

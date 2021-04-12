@@ -297,7 +297,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         do co = 1, homogenization_Nconstituents(ho)
           ph = material_phaseAt(co,el)
           if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
-            if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
+            if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
             terminallyIll = .true.                                                                  ! ...and kills all others
           endif

@@ -29,13 +29,13 @@ module material
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt, &                                                                    !< homogenization ID of each element
     material_homogenizationID, &                                                                    !< per cell
-    material_homogenizationEntry                                                                    !< cell
+    material_homogenizationEntry                                                                    !< per cell
   integer, dimension(:,:),   allocatable :: &                                                       ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt, &                                                                             !< phase ID of each element
-    material_phaseID, &                                                                             !< per constituent,cell
-    material_phaseEntry                                                                             !< per constituent, cell
+    material_phaseID, &                                                                             !< per (constituent,cell)
+    material_phaseEntry                                                                             !< per (constituent,cell
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
