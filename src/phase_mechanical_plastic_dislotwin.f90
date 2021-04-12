@@ -483,10 +483,10 @@ end function plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Return the homogenized elasticity matrix.
 !--------------------------------------------------------------------------------------------------
-module function plastic_dislotwin_homogenizedC(ph,me) result(homogenizedC)
+module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
 
   integer,     intent(in) :: &
-    ph, me
+    ph, en
   real(pReal), dimension(6,6) :: &
     homogenizedC
 
@@ -498,17 +498,17 @@ module function plastic_dislotwin_homogenizedC(ph,me) result(homogenizedC)
             stt => state(ph))
 
   f_unrotated = 1.0_pReal &
-              - sum(stt%f_tw(1:prm%sum_N_tw,me)) &
-              - sum(stt%f_tr(1:prm%sum_N_tr,me))
+              - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
+              - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
   homogenizedC = f_unrotated * prm%C66
   do i=1,prm%sum_N_tw
     homogenizedC = homogenizedC &
-                 + stt%f_tw(i,me)*prm%C66_tw(1:6,1:6,i)
+                 + stt%f_tw(i,en)*prm%C66_tw(1:6,1:6,i)
   enddo
   do i=1,prm%sum_N_tr
     homogenizedC = homogenizedC &
-                 + stt%f_tr(i,me)*prm%C66_tr(1:6,1:6,i)
+                 + stt%f_tr(i,en)*prm%C66_tr(1:6,1:6,i)
   enddo
 
   end associate

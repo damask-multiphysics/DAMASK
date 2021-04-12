@@ -208,7 +208,7 @@ end subroutine isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate inelastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,me)
+module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
@@ -219,7 +219,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,me)
     Mi                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
     ph, &
-    me
+    en
 
   real(pReal) :: &
     tr                                                                                              !< trace of spherical part of Mandel stress (= 3 x pressure)
@@ -232,7 +232,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,me)
 
   if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
-       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(me))**(-prm%n) &
+       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(en))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
   else

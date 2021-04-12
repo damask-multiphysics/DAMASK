@@ -135,18 +135,18 @@ module phase
     end subroutine mechanical_restartRead
 
 
-    module function mechanical_S(ph,me) result(S)
-      integer, intent(in) :: ph,me
+    module function mechanical_S(ph,en) result(S)
+      integer, intent(in) :: ph,en
       real(pReal), dimension(3,3) :: S
     end function mechanical_S
 
-    module function mechanical_L_p(ph,me) result(L_p)
-      integer, intent(in) :: ph,me
+    module function mechanical_L_p(ph,en) result(L_p)
+      integer, intent(in) :: ph,en
       real(pReal), dimension(3,3) :: L_p
     end function mechanical_L_p
 
-    module function mechanical_F_e(ph,me) result(F_e)
-      integer, intent(in) :: ph,me
+    module function mechanical_F_e(ph,en) result(F_e)
+      integer, intent(in) :: ph,en
       real(pReal), dimension(3,3) :: F_e
     end function mechanical_F_e
 
@@ -239,8 +239,8 @@ module phase
       logical :: converged_
     end function crystallite_stress
 
-    module function phase_homogenizedC(ph,me) result(C)
-      integer, intent(in) :: ph, me
+    module function phase_homogenizedC(ph,en) result(C)
+      integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C
     end function phase_homogenizedC
 
