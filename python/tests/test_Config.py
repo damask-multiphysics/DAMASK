@@ -53,7 +53,7 @@ class TestConfig:
 
     def test_abstract_is_complete(self):
         assert Config().is_complete is None
-    
-    @pytest.mark.parametrize('data',[Rotation.from_random(),Orientation.from_random()])
+
+    @pytest.mark.parametrize('data',[Rotation.from_random(),Orientation.from_random(lattice='cI')])
     def test_rotation_orientation(self,data):
         assert str(Config(a=data)) == str(Config(a=data.as_quaternion()))

@@ -86,11 +86,11 @@ class Orientation(Rotation):
     """
 
     crystal_families = ['triclinic',
-                         'monoclinic',
-                         'orthorhombic',
-                         'tetragonal',
-                         'hexagonal',
-                         'cubic']
+                        'monoclinic',
+                        'orthorhombic',
+                        'tetragonal',
+                        'hexagonal',
+                        'cubic']
 
     lattice_symmetries = {
                 'aP': 'triclinic',
@@ -136,8 +136,7 @@ class Orientation(Rotation):
 
         Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
 
-        if (    lattice is not None
-            and lattice not in self.lattice_symmetries
+        if (    lattice not in self.lattice_symmetries
             and lattice not in self.crystal_families):
             raise KeyError(f'Lattice "{lattice}" is unknown')
 
@@ -206,7 +205,7 @@ class Orientation(Rotation):
     def __repr__(self):
         """Represent."""
         return '\n'.join(([] if self.lattice is None else [f'Bravais lattice {self.lattice}'])
-                       + ([] if self.family  is None else [f'Crystal family {self.family}'])
+                       + ([f'Crystal family {self.family}'])
                        + [super().__repr__()])
 
 
@@ -239,7 +238,7 @@ class Orientation(Rotation):
         """
         matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
                              for attr in ['family','lattice','parameters']])
-        return np.logical_and(super().__eq__(other),matching_type)
+        return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
     def __ne__(self,other):
         """
@@ -252,6 +251,57 @@ class Orientation(Rotation):
 
         """
         return np.logical_not(self==other)
+
+
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Report where values are approximately equal to corresponding ones of other Orientation.
+
+        Parameters
+        ----------
+        other : Orientation
+            Orientation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        mask : numpy.ndarray bool
+            Mask indicating where corresponding orientations are close.
+
+        """
+        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
+                             for attr in ['family','lattice','parameters']])
+        return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
+
+
+
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Test whether all values are approximately equal to corresponding ones of other Orientation.
+
+        Parameters
+        ----------
+        other : Orientation
+            Orientation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        answer : bool
+            Whether all values are close between both orientations.
+
+        """
+        return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
     def __mul__(self,other):
@@ -491,9 +541,6 @@ class Orientation(Rotation):
         is added to the left of the Rotation array.
 
         """
-        if self.family is None:
-            raise ValueError('Missing crystal symmetry')
-
         o = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+self.shape,mode='right')
         return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
@@ -501,9 +548,6 @@ class Orientation(Rotation):
     @property
     def reduced(self):
         """Select symmetrically equivalent orientation that falls into fundamental zone according to symmetry."""
-        if self.family is None:
-            raise ValueError('Missing crystal symmetry')
-
         eq   = self.equivalent
         ok   = eq.in_FZ
         ok  &= np.cumsum(ok,axis=0) == 1
@@ -532,9 +576,6 @@ class Orientation(Rotation):
         https://doi.org/10.1107/S0108767391006864
 
         """
-        if self.family is None:
-            raise ValueError('Missing crystal symmetry')
-
         rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))*(1.-1.e-9)
 
         with np.errstate(invalid='ignore'):
@@ -575,9 +616,6 @@ class Orientation(Rotation):
         https://doi.org/10.1107/S0108767391006864
 
         """
-        if self.family is None:
-            raise ValueError('Missing crystal symmetry')
-
         rho = self.as_Rodrigues_vector(compact=True)*(1.0-1.0e-9)
 
         with np.errstate(invalid='ignore'):
@@ -728,8 +766,6 @@ class Orientation(Rotation):
                      'beta':  np.pi/2.,
                      'gamma': np.pi/2.,
                    }
-        else:
-            raise KeyError(f'Crystal family "{self.family}" is unknown')
 
 
     @property
@@ -1026,8 +1062,6 @@ class Orientation(Rotation):
         Bunge Eulers / deg: (11.40, 21.86, 0.60)
 
         """
-        if self.family is None or other.family is None:
-            raise ValueError('missing crystal symmetry')
         if self.family != other.family:
             raise NotImplementedError('disorientation between different crystal families')
 
@@ -1084,9 +1118,6 @@ class Orientation(Rotation):
         https://doi.org/10.1107/S0021889801003077
 
         """
-        if self.family is None:
-            raise ValueError('Missing crystal symmetry')
-
         eq = self.equivalent
         m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))
                                           .broadcast_to(eq.shape))\
@@ -1128,9 +1159,6 @@ class Orientation(Rotation):
             Index of symmetrically equivalent orientation that rotated vector to SST.
 
         """
-        if self.family is None:
-            raise ValueError('Missing crystal symmetry')
-
         eq  = self.equivalent
         blend = util.shapeblender(eq.shape,np.array(vector).shape[:-1])
         poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(np.array(vector),blend+(3,))

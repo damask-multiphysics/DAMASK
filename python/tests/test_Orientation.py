@@ -37,9 +37,15 @@ class TestOrientation:
         assert not ( Orientation(R,lattice) != Orientation(R,lattice) if shape is None else \
                     (Orientation(R,lattice) != Orientation(R,lattice)).any())
 
+    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('shape',[None,5,(4,6)])
+    def test_close(self,lattice,shape):
+        R = Orientation.from_random(lattice=lattice,shape=shape)
+        assert R.isclose(R.reduced).all() and R.allclose(R.reduced)
+
     @pytest.mark.parametrize('a,b',[
-                                    (dict(rotation=[1,0,0,0]),
-                                     dict(rotation=[0.5,0.5,0.5,0.5])),
+                                    (dict(rotation=[1,0,0,0],lattice='triclinic'),
+                                     dict(rotation=[0.5,0.5,0.5,0.5],lattice='triclinic')),
 
                                     (dict(rotation=[1,0,0,0],lattice='cubic'),
                                      dict(rotation=[1,0,0,0],lattice='hexagonal')),
@@ -222,7 +228,7 @@ class TestOrientation:
         blend = util.shapeblender(o.shape,p.shape)
         for loc in np.random.randint(0,blend,(10,len(blend))):
             assert o[tuple(loc[:len(o.shape)])].disorientation(p[tuple(loc[-len(p.shape):])]) \
-                == o.disorientation(p)[tuple(loc)]
+                   .isclose(o.disorientation(p)[tuple(loc)])
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_disorientation360(self,lattice):
@@ -335,33 +341,9 @@ class TestOrientation:
             o.family = invalid_family
             o.symmetry_operations                                                                   # noqa
 
-    def test_missing_symmetry_equivalent(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).equivalent                                                    # noqa
-
-    def test_missing_symmetry_reduced(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).reduced                                                       # noqa
-
-    def test_missing_symmetry_in_FZ(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).in_FZ                                                         # noqa
-
-    def test_missing_symmetry_in_disorientation_FZ(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).in_disorientation_FZ                                          # noqa
-
-    def test_missing_symmetry_disorientation(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).disorientation(Orientation(lattice=None))                     # noqa
-
-    def test_missing_symmetry_average(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).average()                                                     # noqa
-
-    def test_missing_symmetry_to_SST(self):
-        with pytest.raises(ValueError):
-            Orientation(lattice=None).to_SST(np.zeros(3))                                           # noqa
+    def test_invalid_rot(self):
+        with pytest.raises(TypeError):
+            Orientation.from_random(lattice='cubic') * np.ones(3)
 
     def test_missing_symmetry_immutable(self):
         with pytest.raises(KeyError):
