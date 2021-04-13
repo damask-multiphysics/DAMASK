@@ -257,20 +257,20 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
 
 
   contains
-
   !--------------------------------------------------------------------------------------------------
   !> @brief calculate the damping for correction of state and dot state
   !--------------------------------------------------------------------------------------------------
-  real(pReal) pure function damper(current,previous,previous2)
+  real(pReal) pure function damper(omega_0,omega_1,omega_2)
 
-  real(pReal), dimension(:), intent(in) ::&
-    current, previous, previous2
+  real(pReal), dimension(:), intent(in) :: &
+    omega_0, omega_1, omega_2
 
   real(pReal) :: dot_prod12, dot_prod22
 
-  dot_prod12 = dot_product(current  - previous,  previous - previous2)
-  dot_prod22 = dot_product(previous - previous2, previous - previous2)
-  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
+  dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
+  dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
+
+  if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
     damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
   else
     damper = 1.0_pReal

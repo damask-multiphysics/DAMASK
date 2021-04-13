@@ -720,12 +720,14 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
 
   real(pReal) :: dot_prod12, dot_prod22
 
-  dot_prod12 = dot_product(omega_0 - omega_1, omega_1 - omega_2)
-  dot_prod22 = dot_product(omega_1 - omega_2, omega_1 - omega_2)
+  dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
+  dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
 
-  damper = merge(0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22), &
-                 1.0_pReal, &
-                 (min(dot_product(omega_0,omega_1), dot_prod12) < 0.0_pReal) .and. dot_prod22 > 0.0_pReal)
+  if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
+    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+  else
+    damper = 1.0_pReal
+  endif
 
   end function damper
 
