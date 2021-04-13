@@ -24,8 +24,8 @@ module discretization_marc
     mesh_unitlength                                                                                 !< physical length of one unit in mesh MD: needs systematic_name
 
   integer,  dimension(:), allocatable, public, protected :: &
-    mesh_FEM2DAMASK_elem, &                                                                         !< DAMASK element ID for Marc element ID MD: Needs systematic name
-    mesh_FEM2DAMASK_node                                                                            !< DAMASK node ID for Marc node ID MD: needs systematic_name
+    discretization_Marc_FEM2DAMASK_elem, &                                                          !< DAMASK element ID for Marc element ID
+    discretization_Marc_FEM2DAMASK_node                                                             !< DAMASK node ID for Marc node ID
 
 
   type tCellNodeDefinition
@@ -39,8 +39,9 @@ module discretization_marc
     connectivity_cell                                                                               !< cell connectivity for each element,ip/cell
 
   public :: &
-    discretization_marc_init, &
-    discretization_marc_UpdateNodeAndIpCoords
+    discretization_Marc_init, &
+    discretization_Marc_updateNodeAndIpCoords, &
+    discretization_Marc_FEM2DAMASK_cell
 
 contains
 
@@ -48,7 +49,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_marc_init
+subroutine discretization_Marc_init
 
   real(pReal), dimension(:,:),     allocatable :: &
    node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
@@ -96,7 +97,7 @@ subroutine discretization_marc_init
   call buildCells(connectivity_cell,cellNodeDefinition,&
                   elem,connectivity_elem)
   node0_cell  = buildCellNodes(node0_elem)
-  
+
   IP_reshaped = buildIPcoordinates(node0_cell)
 
   call discretization_init(materialAt, IP_reshaped, node0_cell)
@@ -114,25 +115,42 @@ subroutine discretization_marc_init
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem))
   call geometry_plastic_nonlocal_results
 
-end subroutine discretization_marc_init
+end subroutine discretization_Marc_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate and set current nodal and IP positions (including cell nodes)
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_marc_UpdateNodeAndIpCoords(d_n)
- 
+subroutine discretization_Marc_updateNodeAndIpCoords(d_n)
+
   real(pReal), dimension(:,:), intent(in)  :: d_n
 
   real(pReal), dimension(:,:), allocatable :: node_cell
 
- 
-  node_cell = buildCellNodes(discretization_NodeCoords0(1:3,1:maxval(mesh_FEM2DAMASK_node)) + d_n)
+
+  node_cell = buildCellNodes(discretization_NodeCoords0(1:3,1:maxval(discretization_Marc_FEM2DAMASK_node)) + d_n)
 
   call discretization_setNodeCoords(node_cell)
   call discretization_setIPcoords(buildIPcoordinates(node_cell))
 
-end subroutine discretization_marc_UpdateNodeAndIpCoords
+end subroutine discretization_Marc_updateNodeAndIpCoords
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate and set current nodal and IP positions (including cell nodes)
+!--------------------------------------------------------------------------------------------------
+function discretization_marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
+
+  integer, intent(in) :: IP_FEM, elem_FEM
+  integer :: cell
+
+  real(pReal), dimension(:,:), allocatable :: node_cell
+
+
+  cell = (discretization_Marc_FEM2DAMASK_elem(elem_FEM)-1)*discretization_nIPs + IP_FEM
+
+
+end function discretization_marc_FEM2DAMASK_cell
 
 
 !--------------------------------------------------------------------------------------------------
@@ -219,10 +237,10 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
   call inputRead_elemType(elem, &
                           nElems,inputFile)
 
-  call inputRead_mapElems(mesh_FEM2DAMASK_elem,&
+  call inputRead_mapElems(discretization_Marc_FEM2DAMASK_elem,&
                           nElems,elem%nNodes,inputFile)
 
-  call inputRead_mapNodes(mesh_FEM2DAMASK_node,&
+  call inputRead_mapNodes(discretization_Marc_FEM2DAMASK_node,&
                           nNodes,inputFile)
 
   call inputRead_elemNodes(node0_elem, &
@@ -532,7 +550,7 @@ subroutine inputRead_elemNodes(nodes, &
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
-        m = mesh_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
+        m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
         do j = 1,3
           nodes(j,m) = mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1)
         enddo
@@ -653,11 +671,11 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
       j = 0
       do i = 1,nElem
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
-        e = mesh_FEM2DAMASK_elem(IO_intValue(fileContent(l+1+i+j),chunkPos,1))
+        e = discretization_Marc_FEM2DAMASK_elem(IO_intValue(fileContent(l+1+i+j),chunkPos,1))
         if (e /= 0) then                                                                            ! disregard non CP elems
           do k = 1,chunkPos(1)-2
             inputRead_connectivityElem(k,e) = &
-              mesh_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
+              discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
@@ -665,7 +683,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
             chunkPos = IO_stringPos(fileContent(l+1+i+j))
             do k = 1,chunkPos(1)
               inputRead_connectivityElem(nNodesAlreadyRead+k,e) = &
-                mesh_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
+                discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           enddo
@@ -718,7 +736,7 @@ subroutine inputRead_material(materialAt,&
           if (initialcondTableStyle == 2) m = m + 2
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
-            e = mesh_FEM2DAMASK_elem(contInts(1+i))
+            e = discretization_Marc_FEM2DAMASK_elem(contInts(1+i))
             materialAt(e) = myVal
           enddo
           if (initialcondTableStyle == 0) m = m + 1

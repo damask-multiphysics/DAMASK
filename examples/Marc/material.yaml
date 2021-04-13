@@ -1,0 +1,31 @@
+---
+homogenization:
+  SX:
+    N_constituents: 1
+    mechanical: {type: pass}
+
+phase:
+  Aluminum:
+    lattice: cF
+    mechanical:
+      output: [F, P, F_e, F_p, L_p, O]
+      elastic: {type: Hooke, C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9}
+      plastic:
+        type: phenopowerlaw
+        N_sl: [12]
+        a_sl: 2.25
+        atol_xi: 1.0
+        dot_gamma_0_sl: 0.001
+        h_0_sl_sl: 75e6
+        h_sl_sl: [1, 1, 1.4, 1.4, 1.4, 1.4]
+        n_sl: 20
+        output: [xi_sl]
+        xi_0_sl: [31e6]
+        xi_inf_sl: [63e6]
+
+material:
+  - homogenization: SX
+    constituents:
+      - phase: Aluminum
+        v: 1.0
+        O: [0.9330127018922194, 0.25, 0.06698729810778066, 0.25]

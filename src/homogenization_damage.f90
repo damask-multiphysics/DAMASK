@@ -26,8 +26,8 @@ submodule(homogenization) damage
   type(tparameters),             dimension(:), allocatable :: &
     param
 
-contains
 
+contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate variables and set parameters.
@@ -38,14 +38,12 @@ module subroutine damage_init()
     configHomogenizations, &
     configHomogenization, &
     configHomogenizationDamage, &
-    num_generic, &
-    material_homogenization
-  integer :: ho
-  integer :: Ninstances,Nmaterialpoints,h
+    num_generic
+  integer :: ho,Nmaterialpoints
 
 
   print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
-  print'(/,a)', ' <<<+-  homogenization:damage:pass init  -+>>>'
+
 
   configHomogenizations => config_material%get('homogenization')
   allocate(param(configHomogenizations%length))
@@ -62,6 +60,10 @@ module subroutine damage_init()
 #else
         prm%output = configHomogenizationDamage%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+        Nmaterialpoints = count(material_homogenizationAt == ho)
+        damageState_h(ho)%sizeState = 1
+        allocate(damageState_h(ho)%state0(1,Nmaterialpoints), source=1.0_pReal)
+        allocate(damageState_h(ho)%state (1,Nmaterialpoints), source=1.0_pReal)
       else
         prm%output = emptyStringArray
       endif
@@ -73,18 +75,7 @@ module subroutine damage_init()
   num_generic => config_numerics%get('generic',defaultVal= emptyDict)
   num_damage%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
-  Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
-
-  material_homogenization => config_material%get('homogenization')
-  do h = 1, material_homogenization%length
-    if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-
-    Nmaterialpoints = count(material_homogenizationAt == h)
-    damageState_h(h)%sizeState = 1
-    allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
-    allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
-
-  enddo
+  call pass_init()
 
 end subroutine damage_init
 
@@ -100,52 +91,69 @@ module subroutine damage_partition(ce)
 
   if(damageState_h(material_homogenizationID(ce))%sizeState < 1) return
   phi = damagestate_h(material_homogenizationID(ce))%state(1,material_homogenizationEntry(ce))
-  call phase_damage_set_phi(phi,1,ce)
+  call phase_set_phi(phi,1,ce)
 
 end subroutine damage_partition
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns homogenized nonlocal damage mobility
+!> @brief Homogenized damage viscosity.
 !--------------------------------------------------------------------------------------------------
-module function damage_nonlocal_getMobility(ce) result(M)
+module function homogenization_mu_phi(ce) result(mu)
 
   integer, intent(in) :: ce
-  real(pReal) :: M
+  real(pReal) :: mu
 
-  M = lattice_M(material_phaseID(1,ce))
 
-end function damage_nonlocal_getMobility
+  mu = phase_mu_phi(1,ce)
+
+end function homogenization_mu_phi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  calculates homogenized damage driving forces
+!> @brief Homogenized damage conductivity/diffusivity in reference configuration.
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
+module function homogenization_K_phi(ce) result(K)
+
+  integer, intent(in) :: ce
+  real(pReal), dimension(3,3) :: K
+
+
+  K = phase_K_phi(1,ce) &
+    * num_damage%charLength**2
+
+end function homogenization_K_phi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Homogenized damage driving force.
+!--------------------------------------------------------------------------------------------------
+module function homogenization_f_phi(phi,ce) result(f)
 
   integer, intent(in) :: ce
   real(pReal), intent(in) :: &
     phi
-  real(pReal), intent(out) :: &
-    phiDot
+  real(pReal) :: f
 
-  phiDot = phase_damage_phi_dot(phi, 1, ce)
 
-end subroutine damage_nonlocal_getSourceAndItsTangent
+  f = phase_f_phi(phi, 1, ce)
+
+end function homogenization_f_phi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief updated nonlocal damage field with solution from damage phase field PDE
+!> @brief Set damage field.
 !--------------------------------------------------------------------------------------------------
 module subroutine homogenization_set_phi(phi,ce)
 
   integer, intent(in) :: ce
   real(pReal),   intent(in) :: &
     phi
+
   integer :: &
     ho, &
     en
+
 
   ho = material_homogenizationID(ce)
   en = material_homogenizationEntry(ce)
@@ -166,13 +174,13 @@ module subroutine damage_results(ho,group)
   integer :: o
 
   associate(prm => param(ho))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(prm%output(o))
-      case ('phi')
-        call results_writeDataset(group,damagestate_h(ho)%state(1,:),prm%output(o),&
-                                  'damage indicator','-')
-    end select
-  enddo outputsLoop
+      outputsLoop: do o = 1,size(prm%output)
+        select case(prm%output(o))
+          case ('phi')
+            call results_writeDataset(group,damagestate_h(ho)%state(1,:),prm%output(o),&
+                                      'damage indicator','-')
+        end select
+      enddo outputsLoop
   end associate
 
 end subroutine damage_results

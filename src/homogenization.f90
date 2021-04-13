@@ -100,10 +100,6 @@ module homogenization
       integer,     intent(in) :: ce
     end subroutine damage_partition
 
-    module subroutine thermal_homogenize(ip,el)
-      integer, intent(in) :: ip,el
-    end subroutine thermal_homogenize
-
     module subroutine mechanical_homogenize(dt,ce)
      real(pReal), intent(in) :: dt
      integer, intent(in) :: &
@@ -135,46 +131,41 @@ module homogenization
       logical, dimension(2) :: doneAndHappy
     end function mechanical_updateState
 
+    module function homogenization_mu_T(ce) result(mu)
+      integer, intent(in) :: ce
+      real(pReal) :: mu
+    end function homogenization_mu_T
 
-    module function thermal_conduction_getConductivity(ce) result(K)
+    module function homogenization_K_T(ce) result(K)
       integer, intent(in) :: ce
       real(pReal), dimension(3,3) :: K
-    end function thermal_conduction_getConductivity
+    end function homogenization_K_T
 
-    module function homogenization_thermal_mu_T(ce) result(mu_T)
+    module function homogenization_f_T(ce) result(f)
       integer, intent(in) :: ce
-      real(pReal) :: mu_T
-    end function homogenization_thermal_mu_T
+      real(pReal) :: f
+    end function homogenization_f_T
 
     module subroutine homogenization_thermal_setField(T,dot_T, ce)
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
-    module function homogenization_thermal_T(ce) result(T)
+    module function homogenization_mu_phi(ce) result(mu)
       integer, intent(in) :: ce
-      real(pReal) :: T
-    end function homogenization_thermal_T
+      real(pReal) :: mu
+    end function homogenization_mu_phi
 
-    module subroutine thermal_conduction_getSource(Tdot, ip, el)
-      integer, intent(in) :: &
-        ip, &
-        el
-      real(pReal), intent(out) :: Tdot
-    end subroutine thermal_conduction_getSource
-
-    module function damage_nonlocal_getMobility(ce) result(M)
+    module function homogenization_K_phi(ce) result(K)
       integer, intent(in) :: ce
-      real(pReal) :: M
-    end function damage_nonlocal_getMobility
+      real(pReal), dimension(3,3) :: K
+    end function homogenization_K_phi
 
-    module subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, phi, ce)
+    module function homogenization_f_phi(phi,ce) result(f)
       integer, intent(in) :: ce
-      real(pReal), intent(in) :: &
-        phi
-      real(pReal), intent(out) :: &
-        phiDot
-    end subroutine damage_nonlocal_getSourceAndItsTangent
+      real(pReal), intent(in) :: phi
+      real(pReal) :: f
+    end function homogenization_f_phi
 
     module subroutine homogenization_set_phi(phi,ce)
       integer, intent(in) :: ce
@@ -187,23 +178,20 @@ module homogenization
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
-    homogenization_thermal_mu_T, &
-    thermal_conduction_getConductivity, &
-    thermal_conduction_getSource, &
-    damage_nonlocal_getMobility, &
-    damage_nonlocal_getSourceAndItsTangent, &
-    homogenization_set_phi, &
+    homogenization_mu_T, &
+    homogenization_K_T, &
+    homogenization_f_T, &
     homogenization_thermal_setfield, &
-    homogenization_thermal_T, &
+    homogenization_mu_phi, &
+    homogenization_K_phi, &
+    homogenization_f_phi, &
+    homogenization_set_phi, &
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &
     homogenization_restartWrite, &
     THERMAL_CONDUCTION_ID, &
     DAMAGE_NONLOCAL_ID
-
-  public :: &
-    damage_nonlocal_getDiffusion
 
 contains
 
@@ -314,7 +302,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             terminallyIll = .true.                                                                  ! ...and kills all others
           endif
         enddo
-        call thermal_homogenize(ip,el)
       enddo
     enddo
     !$OMP END DO
@@ -445,32 +432,6 @@ subroutine homogenization_restartRead(fileHandle)
   call HDF5_closeGroup(groupHandle(1))
 
 end subroutine homogenization_restartRead
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns homogenized non local damage diffusion tensor in reference configuration
-!--------------------------------------------------------------------------------------------------
-function damage_nonlocal_getDiffusion(ce)
-
-  integer, intent(in) :: ce
-  real(pReal), dimension(3,3) :: &
-    damage_nonlocal_getDiffusion
-  integer :: &
-    ho, &
-    co
-
-  ho  = material_homogenizationID(ce)
-  damage_nonlocal_getDiffusion = 0.0_pReal
-
-  do co = 1, homogenization_Nconstituents(ho)
-    damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
-      crystallite_push33ToRef(co,ce,lattice_D(1:3,1:3,material_phaseID(co,ce)))
-  enddo
-
-  damage_nonlocal_getDiffusion = &
-    num_damage%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(ho),pReal)
-
-end function damage_nonlocal_getDiffusion
 
 
 !--------------------------------------------------------------------------------------------------

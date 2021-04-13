@@ -14,25 +14,24 @@ contains
 module subroutine pass_init
 
   integer :: &
-    Ninstances, &
-    h, &
+    ho, &
     Nmaterialpoints
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:pass init  -+>>>'
 
-  Ninstances = count(homogenization_type == HOMOGENIZATION_NONE_ID)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_NONE_ID)
+  flush(IO_STDOUT)
 
-  do h = 1, size(homogenization_type)
-    if(homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
+  do ho = 1, size(homogenization_type)
+    if(homogenization_type(ho) /= HOMOGENIZATION_NONE_ID) cycle
 
-    if(homogenization_Nconstituents(h) /= 1) &
+    if(homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='N_constituents (pass)')
 
-    Nmaterialpoints = count(material_homogenizationAt == h)
-    homogState(h)%sizeState = 0
-    allocate(homogState(h)%state0   (0,Nmaterialpoints))
-    allocate(homogState(h)%state    (0,Nmaterialpoints))
+    Nmaterialpoints = count(material_homogenizationAt == ho)
+    homogState(ho)%sizeState = 0
+    allocate(homogState(ho)%state0(0,Nmaterialpoints))
+    allocate(homogState(ho)%state (0,Nmaterialpoints))
 
   enddo
 

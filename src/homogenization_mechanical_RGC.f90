@@ -89,7 +89,8 @@ module subroutine RGC_init(num_homogMech)
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:RGC init  -+>>>'
 
-  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_RGC_ID); flush(IO_STDOUT)
+  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_RGC_ID)
+  flush(IO_STDOUT)
 
   print*, 'D.D. Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
   print*, 'https://doi.org/10.1007/s12289-009-0619-1'//IO_EOL
@@ -207,7 +208,7 @@ module subroutine RGC_partitionDeformation(F,avgF,ce)
   integer ::  iGrain,iFace,i,j,ho,en
 
   associate(prm => param(material_homogenizationID(ce)))
- 
+
   ho = material_homogenizationID(ce)
   en = material_homogenizationEntry(ce)
 !--------------------------------------------------------------------------------------------------
@@ -701,24 +702,6 @@ end function RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief derive average stress and stiffness from constituent quantities
-!--------------------------------------------------------------------------------------------------
-module subroutine RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
-
-  real(pReal), dimension (3,3),        intent(out) :: avgP                                          !< average stress at material point
-  real(pReal), dimension (3,3,3,3),    intent(out) :: dAvgPdAvgF                                    !< average stiffness at material point
-
-  real(pReal), dimension (:,:,:),      intent(in)  :: P                                             !< partitioned stresses
-  real(pReal), dimension (:,:,:,:,:),  intent(in)  :: dPdF                                          !< partitioned stiffnesses
-  integer,                             intent(in)  :: ho
-
-  avgP       = sum(P,3)   /real(product(param(ho)%N_constituents),pReal)
-  dAvgPdAvgF = sum(dPdF,5)/real(product(param(ho)%N_constituents),pReal)
-
-end subroutine RGC_averageStressAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine RGC_results(ho,group)
@@ -802,7 +785,7 @@ pure function interfaceNormal(intFace,ho,en)
   interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                                    ! get the normal vector w.r.t. cluster axis
 
   interfaceNormal = matmul(dst%orientation(1:3,1:3,en),interfaceNormal)                             ! map the normal vector into sample coordinate system (basis)
-  
+
   end associate
 
 end function interfaceNormal

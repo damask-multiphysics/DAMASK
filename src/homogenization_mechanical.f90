@@ -32,25 +32,6 @@ submodule(homogenization) mechanical
     end subroutine RGC_partitionDeformation
 
 
-    module subroutine isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
-      real(pReal),   dimension (3,3),       intent(out) :: avgP                                     !< average stress at material point
-      real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                               !< average stiffness at material point
-
-      real(pReal),   dimension (:,:,:),     intent(in)  :: P                                        !< partitioned stresses
-      real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                     !< partitioned stiffnesses
-      integer,                              intent(in)  :: ho
-    end subroutine isostrain_averageStressAndItsTangent
-
-    module subroutine RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ho)
-      real(pReal),   dimension (3,3),       intent(out) :: avgP                                     !< average stress at material point
-      real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                               !< average stiffness at material point
-
-      real(pReal),   dimension (:,:,:),     intent(in)  :: P                                        !< partitioned stresses
-      real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                     !< partitioned stiffnesses
-      integer,                              intent(in)  :: ho
-    end subroutine RGC_averageStressAndItsTangent
-
-
     module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
       real(pReal), dimension(:,:,:),     intent(in)    :: &
@@ -148,39 +129,21 @@ module subroutine mechanical_homogenize(dt,ce)
   integer, intent(in) :: ce
 
   integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
 
 
-  chosenHomogenization: select case(homogenization_type(material_homogenizationID(ce)))
+  homogenization_P(1:3,1:3,ce)            = phase_P(1,ce)
+  homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ce)
+  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+    homogenization_P(1:3,1:3,ce)            = homogenization_P(1:3,1:3,ce) &
+                                            + phase_P(co,ce)
+    homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = homogenization_dPdF(1:3,1:3,1:3,1:3,ce) &
+                                            + phase_mechanical_dPdF(dt,co,ce)
+  enddo
 
-    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-        homogenization_P(1:3,1:3,ce)            = phase_P(1,ce)
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(dt,1,ce)
-
-    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
-        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
-        Ps(:,:,co) = phase_P(co,ce)
-      enddo
-      call isostrain_averageStressAndItsTangent(&
-        homogenization_P(1:3,1:3,ce), &
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
-        Ps,dPdFs, &
-        material_homogenizationID(ce))
-
-    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
-        dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(dt,co,ce)
-        Ps(:,:,co) = phase_P(co,ce)
-      enddo
-      call RGC_averageStressAndItsTangent(&
-        homogenization_P(1:3,1:3,ce), &
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
-        Ps,dPdFs, &
-        material_homogenizationID(ce))
-
-  end select chosenHomogenization
+  homogenization_P(1:3,1:3,ce)            = homogenization_P(1:3,1:3,ce) &
+                                          / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
+  homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = homogenization_dPdF(1:3,1:3,1:3,1:3,ce) &
+                                          / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end subroutine mechanical_homogenize
 

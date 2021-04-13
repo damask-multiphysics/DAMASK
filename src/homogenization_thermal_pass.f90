@@ -6,8 +6,9 @@ submodule(homogenization:thermal) thermal_pass
 
 contains
 
-module subroutine pass_init
-
+module subroutine pass_init()
+  
+  print'(/,a)', ' <<<+-  homogenization:thermal:pass init  -+>>>'
 
 end subroutine pass_init
 

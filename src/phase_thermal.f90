@@ -3,6 +3,11 @@
 !----------------------------------------------------------------------------------------------------
 submodule(phase) thermal
 
+  type :: tThermalParameters
+    real(pReal) ::                 C_p = 0.0_pReal                                                  !< heat capacity
+    real(pReal), dimension(3,3) :: K   = 0.0_pReal                                                  !< thermal conductivity
+  end type tThermalParameters
+
   integer, dimension(:), allocatable :: &
     thermal_Nsources
 
@@ -21,7 +26,9 @@ submodule(phase) thermal
   integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
-  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ??
+  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(me) reads quite good
+
+  type(tThermalParameters), dimension(:), allocatable :: param
 
   integer :: thermal_source_maxSizeDotState
 
@@ -45,21 +52,19 @@ submodule(phase) thermal
         me
     end subroutine externalheat_dotState
 
-    module subroutine dissipation_getRate(TDot, ph,me)
+    module function dissipation_f_T(ph,me) result(f_T)
       integer, intent(in) :: &
         ph, &
         me
-      real(pReal),  intent(out) :: &
-        TDot
-    end subroutine dissipation_getRate
+      real(pReal) :: f_T
+    end function dissipation_f_T
 
-    module subroutine externalheat_getRate(TDot, ph,me)
+    module function externalheat_f_T(ph,me)  result(f_T)
       integer, intent(in) :: &
         ph, &
         me
-      real(pReal),  intent(out) :: &
-        TDot
-    end subroutine externalheat_getRate
+      real(pReal) :: f_T
+    end function externalheat_f_T
 
  end interface
 
@@ -87,6 +92,7 @@ module subroutine thermal_init(phases)
 
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
+  allocate(param(phases%length))
 
   do ph = 1, phases%length
     Nmembers = count(material_phaseID == ph)
@@ -94,9 +100,17 @@ module subroutine thermal_init(phases)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
     phase => phases%get(ph)
     thermal => phase%get('thermal',defaultVal=emptyDict)
+    param(ph)%C_p = thermal%get_asFloat('c_p',defaultVal=0.0_pReal)
+    if (param(ph)%C_p <= 0) param(ph)%C_p = thermal%get_asFloat('C_p',defaultVal=0.0_pReal)
+    param(ph)%K(1,1) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
+    param(ph)%K(2,2) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
+    param(ph)%K(3,3) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
+    param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase%get_asString('lattice'))
+
     sources => thermal%get('source',defaultVal=emptyList)
     thermal_Nsources(ph) = sources%length
     allocate(thermalstate(ph)%p(thermal_Nsources(ph)))
+
   enddo
 
   allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
@@ -123,35 +137,31 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine phase_thermal_getRate(TDot, ph,me)
+module function phase_f_T(ph,me) result(f)
 
   integer, intent(in) :: ph, me
-  real(pReal), intent(out) :: &
-    TDot
-
-  real(pReal) :: &
-    my_Tdot
-  integer :: &
-    so
+  real(pReal) :: f
 
 
-  TDot = 0.0_pReal
+  integer :: so
+
+
+  f = 0.0_pReal
 
   do so = 1, thermal_Nsources(ph)
    select case(thermal_source(so,ph))
+
      case (THERMAL_DISSIPATION_ID)
-       call dissipation_getRate(my_Tdot, ph,me)
+       f = f + dissipation_f_T(ph,me)
 
      case (THERMAL_EXTERNALHEAT_ID)
-       call externalheat_getRate(my_Tdot, ph,me)
+       f = f + externalheat_f_T(ph,me)
 
-     case default
-       my_Tdot = 0.0_pReal
    end select
-   Tdot = Tdot + my_Tdot
+
   enddo
 
-end subroutine phase_thermal_getRate
+end function phase_f_T
 
 
 !--------------------------------------------------------------------------------------------------
@@ -177,6 +187,35 @@ function phase_thermal_collectDotState(ph,me) result(broken)
   enddo SourceLoop
 
 end function phase_thermal_collectDotState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage viscosity.
+!--------------------------------------------------------------------------------------------------
+module function phase_mu_T(co,ce) result(mu)
+
+  integer, intent(in) :: co, ce
+  real(pReal) :: mu
+
+
+  mu = lattice_rho(material_phaseID(co,ce)) &
+     *  param(material_phaseID(co,ce))%C_p
+
+end function phase_mu_T
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage conductivity/diffusivity in reference configuration.
+!--------------------------------------------------------------------------------------------------
+module function phase_K_T(co,ce) result(K)
+
+  integer, intent(in) :: co, ce
+  real(pReal), dimension(3,3) :: K
+
+
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%K)
+
+end function phase_K_T
 
 
 module function thermal_stress(Delta_t,ph,me) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??

@@ -145,25 +145,21 @@ module phase
       real(pReal), dimension(3,3) :: L_p
     end function mechanical_L_p
 
-    module function phase_F(co,ce) result(F)
-      integer, intent(in) :: co, ce
-      real(pReal), dimension(3,3) :: F
-    end function phase_F
-
     module function mechanical_F_e(ph,me) result(F_e)
       integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: F_e
     end function mechanical_F_e
 
+
+    module function phase_F(co,ce) result(F)
+      integer, intent(in) :: co, ce
+      real(pReal), dimension(3,3) :: F
+    end function phase_F
+
     module function phase_P(co,ce) result(P)
       integer, intent(in) :: co, ce
       real(pReal), dimension(3,3) :: P
     end function phase_P
-
-    module function phase_damage_get_phi(co,ip,el) result(phi)
-      integer, intent(in) :: co, ip, el
-      real(pReal) :: phi
-    end function phase_damage_get_phi
 
     module function thermal_T(ph,me) result(T)
       integer, intent(in) :: ph,me
@@ -188,13 +184,35 @@ module phase
 
     module subroutine phase_thermal_setField(T,dot_T, co,ce)
       real(pReal), intent(in) :: T, dot_T
-      integer, intent(in) :: ce, co
+      integer, intent(in) :: co, ce
     end subroutine phase_thermal_setField
 
-    module subroutine phase_damage_set_phi(phi,co,ce)
+    module subroutine phase_set_phi(phi,co,ce)
       real(pReal), intent(in) :: phi
       integer, intent(in) :: co, ce
-    end subroutine phase_damage_set_phi
+    end subroutine phase_set_phi
+
+
+    module function phase_mu_phi(co,ce) result(mu)
+      integer, intent(in) :: co, ce
+      real(pReal) :: mu
+    end function phase_mu_phi
+
+    module function phase_K_phi(co,ce) result(K)
+      integer, intent(in) :: co, ce
+      real(pReal), dimension(3,3) :: K
+    end function phase_K_phi
+
+
+    module function phase_mu_T(co,ce) result(mu)
+      integer, intent(in) :: co, ce
+      real(pReal) :: mu
+    end function phase_mu_T
+
+    module function phase_K_T(co,ce) result(K)
+      integer, intent(in) :: co, ce
+      real(pReal), dimension(3,3) :: K
+    end function phase_K_T
 
 ! == cleaned:end ===================================================================================
 
@@ -227,19 +245,18 @@ module phase
     end function phase_homogenizedC
 
 
-    module function phase_damage_phi_dot(phi,co,ce) result(phi_dot)
+    module function phase_f_phi(phi,co,ce) result(f)
       integer, intent(in) :: ce,co
       real(pReal), intent(in) :: &
         phi                                                                                         !< damage parameter
       real(pReal) :: &
-        phi_dot
-    end function phase_damage_phi_dot
+        f
+    end function phase_f_phi
 
-    module subroutine phase_thermal_getRate(TDot, ph,me)
+    module function phase_f_T(ph,me) result(f)
       integer, intent(in) :: ph, me
-      real(pReal), intent(out) :: &
-        TDot
-    end subroutine phase_thermal_getRate
+      real(pReal) :: f
+    end function phase_f_T
 
     module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
       integer, intent(in) :: &
@@ -300,8 +317,12 @@ module phase
   public :: &
     phase_init, &
     phase_homogenizedC, &
-    phase_damage_phi_dot, &
-    phase_thermal_getRate, &
+    phase_f_phi, &
+    phase_f_T, &
+    phase_K_phi, &
+    phase_K_T, &
+    phase_mu_phi, &
+    phase_mu_T, &
     phase_results, &
     phase_allocateState, &
     phase_forward, &
@@ -318,8 +339,7 @@ module phase
     phase_restartRead, &
     integrateDamageState, &
     phase_thermal_setField, &
-    phase_damage_set_phi, &
-    phase_damage_get_phi, &
+    phase_set_phi, &
     phase_P, &
     phase_set_F, &
     phase_F
