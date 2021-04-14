@@ -79,34 +79,25 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 12:
+            if self.version_major != 0 or not 12 <= self.version_minor <= 12:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
-            self.structured = 'grid' in f['geometry'].attrs.keys() or \
-                              'cells' in f['geometry'].attrs.keys()
+            self.structured = 'cells' in f['geometry'].attrs.keys()
 
             if self.structured:
-                try:
-                    self.cells  = f['geometry'].attrs['cells']
-                except KeyError:
-                    self.cells  = f['geometry'].attrs['grid']
+                self.cells  = f['geometry'].attrs['cells']
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
 
-            r=re.compile('inc[0-9]+' if self.version_minor < 12 else 'increment_[0-9]+')
+            r=re.compile('increment_[0-9]+')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self.times      = [round(f[i].attrs['time/s' if self.version_minor < 12 else
-                                                't/s'],12) for i in self.increments]
+            self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
 
-            grp = 'mapping' if self.version_minor < 12 else 'cell_to'
+            self.N_materialpoints, self.N_constituents = np.shape(f[f'cell_to/phase'])
 
-            self.N_materialpoints, self.N_constituents = np.shape(f[f'{grp}/phase'])
-
-            self.homogenizations  = [m.decode() for m in np.unique(f[f'{grp}/homogenization']
-                                                                    ['Name' if self.version_minor < 12 else 'label'])]
+            self.homogenizations  = [m.decode() for m in np.unique(f[f'cell_to/homogenization']['label'])]
             self.homogenizations  = sorted(self.homogenizations,key=util.natural_sort)
-            self.phases           = [c.decode() for c in np.unique(f[f'{grp}/phase']
-                                                                    ['Name' if self.version_minor < 12 else 'label'])]
+            self.phases           = [c.decode() for c in np.unique(f[f'cell_to/phase']['label'])]
             self.phases           = sorted(self.phases,key=util.natural_sort)
 
             self.fields = []
@@ -172,10 +163,9 @@ class Result:
         choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
 
-        inc = 'inc' if self.version_minor < 12 else 'increment_' # compatibility hack
         if   what == 'increments':
-            choice = [c if isinstance(c,str) and c.startswith(inc) else
-                      f'{inc}{c}' for c in choice]
+            choice = [c if isinstance(c,str) and c.startswith('increment_') else
+                      f'increment_{c}' for c in choice]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
@@ -233,11 +223,9 @@ class Result:
             End increment.
 
         """
-        # compatibility hack
-        ln = 3 if self.version_minor < 12 else 10
         selected = []
-        for i,inc in enumerate([int(i[ln:]) for i in self.increments]):
-            s,e = map(lambda x: int(x[ln:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
+        for i,inc in enumerate([int(i[10:]) for i in self.increments]):
+            s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
             if s <= inc <= e:
                 selected.append(self.increments[i])
         return selected
@@ -341,9 +329,6 @@ class Result:
 
     def list_data(self):
         """Return information on all active datasets in the file."""
-        # compatibility hack
-        de = 'Description' if self.version_minor < 12 else 'description'
-        un = 'Unit'        if self.version_minor < 12 else 'unit'
         msg = ''
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
@@ -356,10 +341,10 @@ class Result:
                             msg = '      '.join([msg,f'{field}\n'])
                             for d in f['/'.join([inc,ty,label,field])].keys():
                                 dataset = f['/'.join([inc,ty,label,field,d])]
-                                unit = f' / {dataset.attrs[un]}' if h5py3 else \
-                                       f' / {dataset.attrs[un].decode()}'
-                                description = dataset.attrs[de] if h5py3 else \
-                                              dataset.attrs[de].decode()
+                                unit = f' / {dataset.attrs["unit"]}' if h5py3 else \
+                                       f' / {dataset.attrs["unit"].decode()}'
+                                description = dataset.attrs['description'] if h5py3 else \
+                                              dataset.attrs['description'].decode()
                                 msg = '        '.join([msg,f'{d}{unit}: {description}\n'])
 
         return msg
@@ -1023,7 +1008,6 @@ class Result:
             Defaults to '*', in which case all datasets are considered.
 
         """
-        u = 'Unit' if self.version_minor < 12 else 'unit'                                           # compatibility hack
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
 
@@ -1104,7 +1088,8 @@ class Result:
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
 
-                                unit = f[name].attrs[u] if h5py3 else f[name].attrs[u].decode()
+                                unit = f[name].attrs['unit'] if h5py3 else \
+                                       f[name].attrs['unit'].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
                                 attributes[-1].attrib = {'Name':          '/'.join([ty,field,out])+f' / {unit}',
@@ -1123,23 +1108,20 @@ class Result:
 
 
     def _mappings(self):
-        grp    = 'mapping' if self.version_minor < 12 else 'cell_to'                              # compatibility hack
-        name   = 'Name'    if self.version_minor < 12 else 'label'                                # compatibility hack
-        member = 'member'  if self.version_minor < 12 else 'entry'                                # compatibility hack
-
+        """Mappings to place data spatially."""
         with h5py.File(self.fname,'r') as f:
 
             at_cell_ph = []
             in_data_ph = []
             for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f['/'.join([grp,'phase'])][:,c][name] == label.encode())[0] \
+                at_cell_ph.append({label: np.where(f['/'.join(['cell_to','phase'])][:,c]['label'] == label.encode())[0] \
                                           for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join([grp,'phase'])][member][at_cell_ph[c][label]][:,c] \
+                in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
                                           for label in self.visible['phases']})
 
-            at_cell_ho = {label: np.where(f['/'.join([grp,'homogenization'])][:][name] == label.encode())[0] \
+            at_cell_ho = {label: np.where(f['/'.join(['cell_to','homogenization'])][:]['label'] == label.encode())[0] \
                                  for label in self.visible['homogenizations']}
-            in_data_ho = {label: f['/'.join([grp,'homogenization'])][member][at_cell_ho[label]] \
+            in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
                                  for label in self.visible['homogenizations']}
 
         return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
@@ -1176,8 +1158,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
 
-        ln = 3 if self.version_minor < 12 else 10                                                   # compatibility hack
-        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][ln:])))))+1
+        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
 
         constituents_ = constituents if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])
@@ -1221,7 +1202,7 @@ class Result:
                         for label,dataset in outs.items():
                             v.add(dataset,' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]))
 
-                v.save(f'{self.fname.stem}_inc{inc[ln:].zfill(N_digits)}',parallel=parallel)
+                v.save(f'{self.fname.stem}_inc{inc[10:].zfill(N_digits)}',parallel=parallel)
 
 
     def get(self,output='*',flatten=True,prune=True):
