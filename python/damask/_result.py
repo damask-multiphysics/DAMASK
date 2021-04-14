@@ -329,7 +329,7 @@ class Result:
             for inc in self.visible['increments']:
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in self.visible['fields']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             path_old = '/'.join([inc,ty,label,field,name_old])
                             path_new = '/'.join([inc,ty,label,field,name_new])
                             if path_old in f.keys():
@@ -352,7 +352,7 @@ class Result:
                     msg = '  '.join([msg,f'{ty}\n'])
                     for label in self.visible[ty+'s']:
                         msg = '    '.join([msg,f'{label}\n'])
-                        for field in self.visible['fields']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             msg = '      '.join([msg,f'{field}\n'])
                             for d in f['/'.join([inc,ty,label,field])].keys():
                                 dataset = f['/'.join([inc,ty,label,field,d])]
@@ -962,7 +962,7 @@ class Result:
             for inc in self.visible['increments']:
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in self.visible['fields']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             group = '/'.join([inc,ty,label,field])
                             if set(datasets.values()).issubset(f[group].keys()): groups.append(group)
 
@@ -1098,7 +1098,7 @@ class Result:
 
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
-                        for field in self.visible['fields']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
                             for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
                                 name = '/'.join([inc,ty,label,field,out])
                                 shape = f[name].shape[1:]
