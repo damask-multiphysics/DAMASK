@@ -190,7 +190,7 @@ end function phase_thermal_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Damage viscosity.
+!> @brief Thermal viscosity.
 !--------------------------------------------------------------------------------------------------
 module function phase_mu_T(co,ce) result(mu)
 
@@ -205,7 +205,7 @@ end function phase_mu_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Damage conductivity/diffusivity in reference configuration.
+!> @brief Thermal conductivity/diffusivity in reference configuration.
 !--------------------------------------------------------------------------------------------------
 module function phase_K_T(co,ce) result(K)
 
