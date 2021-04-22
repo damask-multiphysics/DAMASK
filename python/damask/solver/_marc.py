@@ -4,10 +4,13 @@ import re
 import os
 from pathlib import Path
 
+_default_version='2020'
+_default_path='/opt/msc'
+
 class Marc:
     """Wrapper to run DAMASK with MSCMarc."""
 
-    def __init__(self,version=os.environ['MSC_VERSION']):
+    def __init__(self,version=os.environ.get('MSC_VERSION',_default_version)):
         """
         Create a Marc solver object.
 
@@ -17,13 +20,12 @@ class Marc:
             Marc version
 
         """
-        self.solver  = 'Marc'
         self.version = version
 
     @property
     def library_path(self):
 
-        path_lib = Path(f'{os.environ["MSC_ROOT"]}/mentat{self.version}/shlib/linux64')
+        path_lib = Path(f'{os.environ.get("MSC_ROOT",_default_path)}/mentat{self.version}/shlib/linux64')
         if not path_lib.is_dir():
             raise FileNotFoundError(f'library path "{path_lib}" not found')
 
@@ -33,7 +35,7 @@ class Marc:
     @property
     def tools_path(self):
 
-        path_tools = Path(f'{os.environ["MSC_ROOT"]}/marc{self.version}/tools')
+        path_tools = Path(f'{os.environ.get("MSC_ROOT",_default_path)}/marc{self.version}/tools')
         if not path_tools.is_dir():
             raise FileNotFoundError(f'tools path "{path_tools}" not found')
 
