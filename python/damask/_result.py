@@ -57,11 +57,15 @@ def _empty_like(dataset,N_materialpoints,fill_float,fill_int):
 
 class Result:
     """
-    Manipulate and read DADF5 files.
+    Add data to and export from DADF5 files.
 
     DADF5 (DAMASK HDF5) files contain DAMASK results.
-    The group/folder structure reflects the input data
-    in material.yaml.
+    Their group/folder structure reflects the input data in material.yaml.
+
+    This class provides a custom view on the DADF5 file.
+    Upon initialization, all attributes are visible.
+    Derived quantities can be added to the file and existing data can be exported based on the current view.
+
     """
 
     def __init__(self,fname):
@@ -274,6 +278,11 @@ class Result:
             Name of datasets; supports '?' and '*' wildcards.
             True is equivalent to '*', False is equivalent to [].
 
+        Returns
+        -------
+        view : damask.Result
+            View with where selected attributes are visible.
+
         """
         return self._manage_view('set',what,datasets)
 
@@ -290,6 +299,11 @@ class Result:
             Name of datasets; supports '?' and '*' wildcards.
             True is equivalent to '*', False is equivalent to [].
 
+        Returns
+        -------
+        modified_view : damask.Result
+            View with more visible attributes.
+
         """
         return self._manage_view('add',what,datasets)
 
@@ -305,6 +319,11 @@ class Result:
         datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
             Name of datasets; supports '?' and '*' wildcards.
             True is equivalent to '*', False is equivalent to [].
+
+        Returns
+        -------
+        modified_view : damask.Result
+            View with less visible attributes.
 
         """
         return self._manage_view('del',what,datasets)
@@ -372,7 +391,7 @@ class Result:
 
     @property
     def coordinates0_point(self):
-        """Return initial coordinates of the cell centers."""
+        """Initial/undeformed cell center coordinates."""
         if self.structured:
             return grid_filters.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
@@ -381,7 +400,7 @@ class Result:
 
     @property
     def coordinates0_node(self):
-        """Return initial coordinates of the cell centers."""
+        """Initial/undeformed nodal coordinates."""
         if self.structured:
             return grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
@@ -390,6 +409,7 @@ class Result:
 
     @property
     def geometry0(self):
+        """Initial/undeformed geometry."""
         if self.structured:
             return VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
         else:

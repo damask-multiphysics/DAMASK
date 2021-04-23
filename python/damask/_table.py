@@ -223,6 +223,11 @@ class Table:
         fname : file, str, or pathlib.Path
             Filename or file for reading.
 
+        Returns
+        -------
+        loaded : damask.Table
+            Table data from file.
+
         """
         try:
             f = open(fname)
@@ -274,6 +279,11 @@ class Table:
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for reading.
+
+        Returns
+        -------
+        loaded : damask.Table
+            Table data from file.
 
         """
         try:
@@ -334,14 +344,14 @@ class Table:
         ----------
         label : str
             Column label.
-        data : np.ndarray
+        data : numpy.ndarray
             New data.
         info : str, optional
             Human-readable information about the new data.
 
         Returns
         -------
-        table : Table
+        updated : damask.Table
             Updated table.
 
         """
@@ -367,14 +377,14 @@ class Table:
         ----------
         label : str
             Column label.
-        data : np.ndarray
+        data : numpy.ndarray
             Modified data.
         info : str, optional
             Human-readable information about the modified data.
 
         Returns
         -------
-        table : Table
+        udated : damask.Table
             Updated table.
 
         """
@@ -402,7 +412,7 @@ class Table:
 
         Returns
         -------
-        table : Table
+        udated : damask.Table
             Updated table.
 
         """
@@ -425,7 +435,7 @@ class Table:
 
         Returns
         -------
-        table : Table
+        udated : damask.Table
             Updated table.
 
         """
@@ -451,7 +461,7 @@ class Table:
 
         Returns
         -------
-        table : Table
+        udated : damask.Table
             Updated table.
 
         """
@@ -479,13 +489,13 @@ class Table:
 
         Parameters
         ----------
-        other : Table
+        other : damask.Table
             Table to append.
 
         Returns
         -------
-        table : Table
-            Concatenated table.
+        udated : damask.Table
+            Updated table.
 
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
@@ -504,13 +514,13 @@ class Table:
 
         Parameters
         ----------
-        other : Table
+        other : damask.Table
             Table to join.
 
         Returns
         -------
-        table : Table
-            Joined table.
+        udated : damask.Table
+            Updated table.
 
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:

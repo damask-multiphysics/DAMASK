@@ -24,6 +24,11 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
+    Returns
+    -------
+    new : numpy.ndarray of shape (N_seeds,3)
+        Coordinates in 3D space.
+
     """
     rng = _np.random.default_rng(rng_seed)
     if cells is None:
@@ -55,6 +60,11 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+    Returns
+    -------
+    new : numpy.ndarray of shape (N_seeds,3)
+        Coordinates in 3D space.
 
     """
     rng = _np.random.default_rng(rng_seed)
@@ -93,6 +103,11 @@ def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
         Seed corresponds to center of gravity of material ID cloud.
     periodic : boolean, optional
         Center of gravity with periodic boundaries.
+
+    Returns
+    -------
+    new : numpy.ndarray of shape (...,3)
+        Coordinates in 3D space.
 
     """
     material = grid.material.reshape((-1,1),order='F')

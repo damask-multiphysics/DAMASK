@@ -14,7 +14,7 @@ class ConfigMaterial(Config):
     A complete material configuration file has the entries 'material',
     'phase', and 'homogenization'. For use in DAMASK, it needs to be
     stored as 'material.yaml'.
-    
+
     """
 
     def __init__(self,d=None):
@@ -58,54 +58,6 @@ class ConfigMaterial(Config):
 
         """
         return super(ConfigMaterial,cls).load(fname)
-
-
-    @staticmethod
-    def from_table(table,**kwargs):
-        """
-        Generate from an ASCII table.
-
-        Parameters
-        ----------
-        table : damask.Table
-            Table that contains material information.
-        **kwargs
-            Keyword arguments where the key is the name and the value specifies
-            the label of the data column in the table.
-
-        Examples
-        --------
-        >>> import damask
-        >>> import damask.ConfigMaterial as cm
-        >>> t = damask.Table.load('small.txt')
-        >>> t
-            pos  pos  pos   qu   qu    qu    qu   phase    homog
-        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
-        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        1    1    1    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
-        material:
-          - constituents:
-              - O: [0.19, 0.8, 0.24, -0.51]
-                v: 1.0
-                phase: Aluminum
-            homogenization: SX
-          - constituents:
-              - O: [0.8, 0.19, 0.24, -0.51]
-                v: 1.0
-                phase: Steel
-            homogenization: SX
-        homogenization: {}
-        phase: {}
-
-        """
-        kwargs_ = {k:table.get(v) for k,v in kwargs.items()}
-
-        _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
-        idx = np.sort(idx)
-        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
-
-        return ConfigMaterial().material_add(**kwargs_)
 
 
     @staticmethod
@@ -181,9 +133,69 @@ class ConfigMaterial(Config):
         return base_config.material_add(**constituent,homogenization='direct')
 
 
+    @staticmethod
+    def from_table(table,**kwargs):
+        """
+        Generate from an ASCII table.
+
+        Parameters
+        ----------
+        table : damask.Table
+            Table that contains material information.
+        **kwargs
+            Keyword arguments where the key is the name and the value specifies
+            the label of the data column in the table.
+
+        Examples
+        --------
+        >>> import damask
+        >>> import damask.ConfigMaterial as cm
+        >>> t = damask.Table.load('small.txt')
+        >>> t
+            pos  pos  pos   qu   qu    qu    qu   phase    homog
+        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
+        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
+        1    1    1    0  0.8   0.19  0.24 -0.51  Steel    SX
+        >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
+        material:
+          - constituents:
+              - O: [0.19, 0.8, 0.24, -0.51]
+                v: 1.0
+                phase: Aluminum
+            homogenization: SX
+          - constituents:
+              - O: [0.8, 0.19, 0.24, -0.51]
+                v: 1.0
+                phase: Steel
+            homogenization: SX
+        homogenization: {}
+        phase: {}
+
+        """
+        kwargs_ = {k:table.get(v) for k,v in kwargs.items()}
+
+        _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
+        idx = np.sort(idx)
+        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+
+        return ConfigMaterial().material_add(**kwargs_)
+
+
     @property
     def is_complete(self):
-        """Check for completeness."""
+        """
+        Check for completeness.
+
+        Only the general file layout is considered.
+        This check does not consider whether parameters for
+        a particular phase/homogenization model are missing.
+
+        Returns
+        -------
+        complete : bool
+            Whether the material.yaml definition is complete.
+
+        """
         ok = True
         for top_level in ['homogenization','phase','material']:
             ok &= top_level in self
@@ -236,7 +248,19 @@ class ConfigMaterial(Config):
 
     @property
     def is_valid(self):
-        """Check for valid content."""
+        """
+        Check for valid content.
+
+        Only the generic file content is considered.
+        This check does not consider whether parameters for a
+        particular phase/homogenization mode are out of bounds.
+
+        Returns
+        -------
+        valid : bool
+            Whether the material.yaml definition is valid.
+
+        """
         ok = True
 
         if 'phase' in self:
@@ -282,7 +306,7 @@ class ConfigMaterial(Config):
 
         Returns
         -------
-        cfg : damask.ConfigMaterial
+        updated : damask.ConfigMaterial
             Updated material configuration.
 
         """
@@ -311,7 +335,7 @@ class ConfigMaterial(Config):
 
         Returns
         -------
-        cfg : damask.ConfigMaterial
+        updated : damask.ConfigMaterial
             Updated material configuration.
 
         """
@@ -336,7 +360,7 @@ class ConfigMaterial(Config):
 
         Returns
         -------
-        cfg : damask.ConfigMaterial
+        updated : damask.ConfigMaterial
             Updated material configuration.
 
         Examples

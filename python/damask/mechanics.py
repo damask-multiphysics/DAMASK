@@ -1,4 +1,11 @@
-"""Finite-strain continuum mechanics."""
+"""
+Finite-strain continuum mechanics.
+
+Notes
+-----
+Collection of routines to operate on numpy.ndarrays of shape (...,3,3).
+
+"""
 
 from . import tensor as _tensor
 from . import _rotation
@@ -152,7 +159,6 @@ def strain(F,t,m):
         eps = _np.einsum('...j,...kj,...lj',0.5*_np.log(w),n,n)
 
     return eps
-
 
 
 def stress_Cauchy(P,F):
