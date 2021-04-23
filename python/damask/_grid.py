@@ -161,6 +161,11 @@ class Grid:
             Grid file to read. Valid extension is .vtr, which will be appended
             if not given.
 
+        Returns
+        -------
+        loaded : damask.Grid
+            Geometry representation from file.
+
         """
         v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         comments = v.get_comments()
@@ -189,6 +194,11 @@ class Grid:
         ----------
         fname : str, pathlib.Path, or file handle
             Geometry file to read.
+
+        Returns
+        -------
+        loaded : damask.Grid
+            Geometry representation from file.
 
         """
         warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
@@ -281,6 +291,10 @@ class Grid:
             and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
+        Returns
+        -------
+        loaded : damask.Grid
+            Geometry representation from file.
 
         """
         b = util.DREAM3D_base_group(fname)      if base_group is None else base_group
@@ -319,6 +333,11 @@ class Grid:
             Label(s) of the columns containing the material definition.
             Each unique combination of values results in one material ID.
 
+        Returns
+        -------
+        new : damask.Grid
+            Geometry representation from values in table.
+
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
 
@@ -355,6 +374,11 @@ class Grid:
             Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        new : damask.Grid
+            Geometry representation from tessellation.
 
         """
         if periodic:
@@ -404,6 +428,11 @@ class Grid:
             Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        new : damask.Grid
+            Geometry representation from tessellation.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -477,6 +506,11 @@ class Grid:
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
+
+        Returns
+        -------
+        new : damask.Grid
+            Geometry representation defined by a minimal surface.
 
         Notes
         -----
@@ -598,6 +632,11 @@ class Grid:
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
         """
         # radius and center
         r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
@@ -638,6 +677,11 @@ class Grid:
         reflect : bool, optional
             Reflect (include) outermost layers. Defaults to False.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
@@ -670,6 +714,11 @@ class Grid:
             Direction(s) along which the grid is flipped.
             Valid entries are 'x', 'y', 'z'.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
@@ -694,6 +743,11 @@ class Grid:
             Number of cells in x,y,z direction.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
 
         """
         return Grid(material = ndimage.interpolation.zoom(
@@ -723,6 +777,11 @@ class Grid:
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
         """
         def mostFrequent(arr,selection=None):
             me = arr[arr.size//2]
@@ -746,7 +805,15 @@ class Grid:
 
 
     def renumber(self):
-        """Renumber sorted material indices as 0,...,N-1."""
+        """
+        Renumber sorted material indices as 0,...,N-1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
+        """
         _,renumbered = np.unique(self.material,return_inverse=True)
 
         return Grid(material = renumbered.reshape(self.cells),
@@ -766,6 +833,11 @@ class Grid:
             Rotation to apply to the grid.
         fill : int or float, optional
             Material index to fill the corners. Defaults to material.max() + 1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
 
         """
         if fill is None: fill = np.nanmax(self.material) + 1
@@ -802,6 +874,11 @@ class Grid:
         fill : int or float, optional
             Material index to fill the background. Defaults to material.max() + 1.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
         """
         if offset is None: offset = 0
         if fill is None: fill = np.nanmax(self.material) + 1
@@ -834,6 +911,11 @@ class Grid:
         to_material : iterable of ints
             New material indices.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
         """
         def mp(entry,mapper):
             return mapper[entry] if entry in mapper else entry
@@ -849,7 +931,15 @@ class Grid:
 
 
     def sort(self):
-        """Sort material indices such that min(material) is located at (0,0,0)."""
+        """
+        Sort material indices such that min(material) is located at (0,0,0).
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
+
+        """
         a = self.material.flatten(order='F')
         from_ma = pd.unique(a)
         sort_idx = np.argsort(from_ma)
@@ -883,6 +973,11 @@ class Grid:
             Defaults to [], meaning that any different neighbor triggers a change.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated geometry representation.
 
         """
         def tainted_neighborhood(stencil,trigger):

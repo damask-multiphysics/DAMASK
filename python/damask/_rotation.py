@@ -357,7 +357,7 @@ class Rotation:
 
         Parameters
         ----------
-            other : Rotation or list of Rotations.
+            other : damask.Rotation
 
         """
         return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
@@ -365,12 +365,28 @@ class Rotation:
 
 
     def flatten(self,order = 'C'):
-        """Flatten array."""
+        """
+        Flatten array.
+
+        Returns
+        -------
+            flattened : damask.Rotation
+            Rotation flattened to single dimension.
+
+        """
         return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
 
 
     def reshape(self,shape,order = 'C'):
-        """Reshape array."""
+        """
+        Reshape array.
+
+        Returns
+        -------
+            reshaped : damask.Rotation
+            Rotation of given shape.
+
+        """
         if isinstance(shape,(int,np.integer)): shape = (shape,)
         return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
@@ -386,6 +402,11 @@ class Rotation:
         mode : str, optional
             Where to preferentially locate missing dimensions.
             Either 'left' or 'right' (default).
+
+        Returns
+        -------
+            broadcasted : damask.Rotation
+            Rotation broadcasted to given shape.
 
         """
         if isinstance(shape,(int,np.integer)): shape = (shape,)
@@ -404,7 +425,7 @@ class Rotation:
 
         Returns
         -------
-        average : Rotation
+        average : damask.Rotation
             Weighted average of original Rotation field.
 
         References
@@ -438,8 +459,13 @@ class Rotation:
 
         Parameters
         ----------
-        other : Rotation
+        other : damask.Rotation
             Rotation to which the misorientation is computed.
+
+        Returns
+        -------
+            g : damask.Rotation
+            Misorientation.
 
         """
         return other*~self
@@ -531,10 +557,10 @@ class Rotation:
 
         Returns
         -------
-        rho : numpy.ndarray of shape (...,4) containing 
+        rho : numpy.ndarray of shape (...,4) containing
             [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π]
             unless compact == True:
-            numpy.ndarray of shape (...,3) containing 
+            numpy.ndarray of shape (...,3) containing
             tan(ω/2) [n_1, n_2, n_3], ω ∈ [0,π].
 
         """
