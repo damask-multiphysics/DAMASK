@@ -263,8 +263,8 @@ def cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True):
 
     Returns
     -------
-    DNA : tuple with 3 numpy.ndarray of shape (3)
-        Information to reconstruct grid: cells, size, origin.
+    cells, size, origin : Three numpy.ndarray, each of shape (3)
+        Information to reconstruct grid.
 
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
@@ -420,8 +420,8 @@ def cellsSizeOrigin_coordinates0_node(coordinates0,ordered=True):
 
     Returns
     -------
-    DNA : tuple with 3 numpy.ndarray of shape (3)
-        Information to reconstruct grid: cells, size, origin.
+    cells, size, origin : Three numpy.ndarray, each of shape (3)
+        Information to reconstruct grid.
 
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]

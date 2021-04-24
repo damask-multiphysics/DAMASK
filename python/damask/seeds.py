@@ -26,8 +26,8 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
 
     Returns
     -------
-    new : numpy.ndarray of shape (N_seeds,3)
-        Coordinates in 3D space.
+    coords : numpy.ndarray of shape (N_seeds,3)
+        Seed coordinates in 3D space.
 
     """
     rng = _np.random.default_rng(rng_seed)
@@ -63,8 +63,8 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
 
     Returns
     -------
-    new : numpy.ndarray of shape (N_seeds,3)
-        Coordinates in 3D space.
+    coords : numpy.ndarray of shape (N_seeds,3)
+        Seed coordinates in 3D space.
 
     """
     rng = _np.random.default_rng(rng_seed)
@@ -106,8 +106,8 @@ def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
 
     Returns
     -------
-    new : numpy.ndarray of shape (...,3)
-        Coordinates in 3D space.
+    coords, materials : numpy.ndarray of shape (:,3), numpy.ndarray of shape (:)
+        Seed coordinates in 3D space, material IDs.
 
     """
     material = grid.material.reshape((-1,1),order='F')

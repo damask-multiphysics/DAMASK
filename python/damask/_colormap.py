@@ -96,6 +96,11 @@ class Colormap(mpl.colors.ListedColormap):
         new : damask.Colormap
             Colormap within given bounds.
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
+
         """
         low_high = np.vstack((low,high))
         if   model.lower() == 'rgb':
@@ -159,6 +164,11 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         new : damask.Colormap
             Predefined colormap.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_predefined('strain')
 
         """
         # matplotlib presets
@@ -229,6 +239,11 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         damask.Colormap
             The reversed colormap.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_predefined('stress').reversed()
 
         """
         rev = super(Colormap,self).reversed(name)
