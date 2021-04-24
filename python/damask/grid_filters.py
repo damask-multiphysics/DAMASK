@@ -493,7 +493,7 @@ def node_to_point(node_data):
 
 def coordinates0_valid(coordinates0):
     """
-    Check whether coordinates lie on a regular grid.
+    Check whether coordinates form a regular grid.
 
     Parameters
     ----------
@@ -503,7 +503,7 @@ def coordinates0_valid(coordinates0):
     Returns
     -------
     valid : bool
-        Wheter the coordinates lie on a regular grid.
+        Whether the coordinates form a regular grid.
 
     """
     try:

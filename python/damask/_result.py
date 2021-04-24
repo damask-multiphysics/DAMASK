@@ -59,17 +59,17 @@ class Result:
     """
     Add data to and export data from a DADF5 file.
 
-    A DADF5 (DAMASK HDF5) file contain DAMASK results.
+    A DADF5 (DAMASK HDF5) file contains DAMASK results.
     Its group/folder structure reflects the layout in material.yaml.
 
-    This class provides a customable view on the DADF5 file.
+    This class provides a customizable view on the DADF5 file.
     Upon initialization, all attributes are visible.
     Derived quantities are added to the file and existing data is
     exported based on the current view.
 
     Examples
     --------
-    Open 'my_file.hdf5', which needs to contain deformation gradient 'F'
+    Open 'my_file.hdf5', which is assumed to contain deformation gradient 'F'
     and first Piola-Kirchhoff stress 'P', add the Mises equivalent of the
     Cauchy stress, and export it to VTK (file) and numpy.ndarray (memory).
 
@@ -234,12 +234,12 @@ class Result:
 
     def modification_enable(self):
         """
-        Allow to modify existing data.
+        Allow modification of existing data.
 
         Returns
         -------
         modified_view : damask.Result
-            View where data is not write-protected.
+            View without write-protection of existing data.
 
         """
         print(util.warn('Warning: Modification of existing datasets allowed!'))
@@ -249,12 +249,12 @@ class Result:
 
     def modification_disable(self):
         """
-        Disallow to modify existing data (default case).
+        Prevent modification of existing data (default case).
 
         Returns
         -------
         modified_view : damask.Result
-            View where data is write-protected.
+            View with write-protection of existing data.
 
         """
         dup = self.copy()
@@ -328,7 +328,7 @@ class Result:
         Returns
         -------
         view : damask.Result
-            View with where selected attributes are visible.
+            View with only the selected attributes being visible.
 
         Examples
         --------
@@ -338,7 +338,7 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r_first = r.view('increment',0)
 
-        Get a view that shows all results of in simulation time [10,40]:
+        Get a view that shows all results between simulation times of 10 to 40:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
@@ -363,7 +363,7 @@ class Result:
         Returns
         -------
         modified_view : damask.Result
-            View with more visible attributes.
+            View with additional visible attributes.
 
         Examples
         --------
@@ -380,7 +380,7 @@ class Result:
 
     def view_less(self,what,datasets):
         """
-        Delete from view.
+        Remove from view.
 
         Parameters
         ----------
@@ -393,11 +393,11 @@ class Result:
         Returns
         -------
         modified_view : damask.Result
-            View with less visible attributes.
+            View with fewer visible attributes.
 
         Examples
         --------
-        Get a view that does not show the undeformed configuration:
+        Get a view that omits the undeformed configuration:
 
         >>> import damask
         >>> r_all = damask.Result('my_file.hdf5')
@@ -1396,7 +1396,7 @@ class Result:
         Parameters
         ----------
         output : (list of) str, optional
-            Names of the datasets included in the VTK file.
+            Names of the datasets to export to the VTK file.
             Defaults to '*', in which case all datasets are exported.
         mode : {'cell', 'point'}
             Export in cell format or point format.
@@ -1521,7 +1521,7 @@ class Result:
         in the DADF5 file.
 
         Multi-phase data is fused into a single output.
-        `place` is equivalent to `read` if only one phase/homogenization
+        `place` is equivalent to `get` if only one phase/homogenization
         and one constituent is present.
 
         Parameters
@@ -1537,7 +1537,7 @@ class Result:
             Remove branches with no data. Defaults to True.
         constituents : (list of) int, optional
             Constituents to consider.
-            Defaults to 'None', in which case all constituents are considered.
+            Defaults to None, in which case all constituents are considered.
         fill_float : float
             Fill value for non-existent entries of floating point type.
             Defaults to NaN.
