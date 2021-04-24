@@ -1,8 +1,6 @@
 """
 Finite-strain continuum mechanics.
 
-Notes
------
 All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """

@@ -277,6 +277,7 @@ class Result:
         -------
         increments : list of ints
             Increment number of all increments within the given bounds.
+
         """
         # compatibility hack
         ln = 3 if self.version_minor < 12 else 10
@@ -303,6 +304,7 @@ class Result:
         -------
         times : list of float
             Simulation time of all increments within the given bounds.
+
         """
         selected = []
         for i,time in enumerate(self.times):

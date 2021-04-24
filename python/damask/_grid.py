@@ -164,7 +164,7 @@ class Grid:
         Returns
         -------
         loaded : damask.Grid
-            Geometry representation from file.
+            Grid-based geometry from file.
 
         """
         v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
@@ -198,7 +198,7 @@ class Grid:
         Returns
         -------
         loaded : damask.Grid
-            Geometry representation from file.
+            Grid-based geometry from file.
 
         """
         warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
@@ -294,7 +294,7 @@ class Grid:
         Returns
         -------
         loaded : damask.Grid
-            Geometry representation from file.
+            Grid-based geometry from file.
 
         """
         b = util.DREAM3D_base_group(fname)      if base_group is None else base_group
@@ -336,7 +336,7 @@ class Grid:
         Returns
         -------
         new : damask.Grid
-            Geometry representation from values in table.
+            Grid-based geometry from values in table.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -378,7 +378,7 @@ class Grid:
         Returns
         -------
         new : damask.Grid
-            Geometry representation from tessellation.
+            Grid-based geometry from tessellation.
 
         """
         if periodic:
@@ -432,7 +432,7 @@ class Grid:
         Returns
         -------
         new : damask.Grid
-            Geometry representation from tessellation.
+            Grid-based geometry from tessellation.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -510,7 +510,7 @@ class Grid:
         Returns
         -------
         new : damask.Grid
-            Geometry representation defined by a minimal surface.
+            Grid-based geometry from definition of minimal surface.
 
         Notes
         -----
@@ -635,7 +635,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         # radius and center
@@ -680,7 +680,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         valid = ['x','y','z']
@@ -717,7 +717,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         valid = ['x','y','z']
@@ -747,7 +747,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         return Grid(material = ndimage.interpolation.zoom(
@@ -780,7 +780,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         def mostFrequent(arr,selection=None):
@@ -811,7 +811,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         _,renumbered = np.unique(self.material,return_inverse=True)
@@ -837,7 +837,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         if fill is None: fill = np.nanmax(self.material) + 1
@@ -877,7 +877,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         if offset is None: offset = 0
@@ -914,7 +914,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         def mp(entry,mapper):
@@ -937,7 +937,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         a = self.material.flatten(order='F')
@@ -977,7 +977,7 @@ class Grid:
         Returns
         -------
         updated : damask.Grid
-            Updated geometry representation.
+            Updated grid-based geometry.
 
         """
         def tainted_neighborhood(stencil,trigger):

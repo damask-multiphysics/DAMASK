@@ -1,8 +1,6 @@
 """
 Filters for operations on regular grids.
 
-Notes
------
 The grids are defined as (x,y,z,...) where x is fastest and z is slowest.
 This convention is consistent with the layout in grid vtr files.
 
@@ -263,6 +261,11 @@ def cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True):
         Expect coordinates0 data to be ordered (x fast, z slow).
         Defaults to True.
 
+    Returns
+    -------
+    DNA : tuple with 3 numpy.ndarray of shape (3)
+        Information to reconstruct grid: cells, size, origin.
+
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
@@ -415,6 +418,11 @@ def cellsSizeOrigin_coordinates0_node(coordinates0,ordered=True):
         Expect coordinates0 data to be ordered (x fast, z slow).
         Defaults to True.
 
+    Returns
+    -------
+    DNA : tuple with 3 numpy.ndarray of shape (3)
+        Information to reconstruct grid: cells, size, origin.
+
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
@@ -452,6 +460,7 @@ def point_to_node(cell_data):
     -------
     node_data : numpy.ndarray of shape (:,:,:,...)
         Data defined on the nodes of a periodic grid.
+
     """
     n = (  cell_data + _np.roll(cell_data,1,(0,1,2))
          + _np.roll(cell_data,1,(0,))  + _np.roll(cell_data,1,(1,))  + _np.roll(cell_data,1,(2,))
@@ -490,6 +499,11 @@ def coordinates0_valid(coordinates0):
     ----------
     coordinates0 : numpy.ndarray
         Array of undeformed cell coordinates.
+
+    Returns
+    -------
+    valid : bool
+        Wheter the coordinates lie on a regular grid.
 
     """
     try:

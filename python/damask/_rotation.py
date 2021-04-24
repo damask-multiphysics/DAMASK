@@ -24,7 +24,7 @@ class Rotation:
     - Euler angle triplets are implemented using the Bunge convention,
       with angular ranges of [0,2π], [0,π], [0,2π].
     - The rotation angle ω is limited to the interval [0,π].
-    - The real part of a quaternion is positive, Re(q) > 0
+    - The real part of a quaternion is positive, Re(q) ≥ 0
     - P = -1 (as default).
 
     Examples
