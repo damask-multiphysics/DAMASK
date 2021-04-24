@@ -1352,12 +1352,12 @@ class Result:
             at_cell_ph = []
             in_data_ph = []
             for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(f['/'.join(['cell_to','phase'])][:,c]['label'] == label.encode())[0] \
+                at_cell_ph.append({label: np.where(self.phase[:,c] == label)[0] \
                                           for label in self.visible['phases']})
                 in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
                                           for label in self.visible['phases']})
 
-            at_cell_ho = {label: np.where(f['/'.join(['cell_to','homogenization'])][:]['label'] == label.encode())[0] \
+            at_cell_ho = {label: np.where(self.homogenization[:] == label)[0] \
                                  for label in self.visible['homogenizations']}
             in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
                                  for label in self.visible['homogenizations']}
