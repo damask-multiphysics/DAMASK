@@ -137,8 +137,8 @@ class VTK:
         fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
-            Name of the vtk.vtkDataSet subclass when opening a .vtk file. Valid types are vtkRectilinearGrid,
-            vtkUnstructuredGrid, and vtkPolyData.
+            Name of the vtk.vtkDataSet subclass when opening a .vtk file.
+            Valid types are vtkRectilinearGrid, vtkUnstructuredGrid, and vtkPolyData.
 
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
@@ -149,13 +149,13 @@ class VTK:
             reader.SetFileName(str(fname))
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
-            elif dataset_type.lower().endswith('rectilineargrid'):
+            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
                 reader.Update()
                 vtk_data = reader.GetRectilinearGridOutput()
-            elif dataset_type.lower().endswith('unstructuredgrid'):
+            elif dataset_type.lower().endswith(('unstructuredgrid','unstructured_grid')):
                 reader.Update()
                 vtk_data = reader.GetUnstructuredGridOutput()
-            elif dataset_type.lower().endswith('polydata'):
+            elif dataset_type.lower().endswith(('polydata','poly_data')):
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
             else:

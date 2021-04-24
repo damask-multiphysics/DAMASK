@@ -365,48 +365,56 @@ class ConfigMaterial(Config):
 
         Examples
         --------
+        Create a dual-phase steel microstructure for micromechanical simulations:
+
         >>> import numpy as np
         >>> import damask
-        >>> m = damask.ConfigMaterial().material_add(phase          = ['Aluminum','Steel'],
-        ...                                          O              = damask.Rotation.from_random(2),
-        ...                                          homogenization = 'SX')
+        >>> m = damask.ConfigMaterial()
+        >>> m = m.material_add(phase = ['Ferrite','Martensite'],
+        ...                    O = damask.Rotation.from_random(2),
+        ...                    homogenization = 'SX')
         >>> m
         material:
           - constituents:
               - O: [0.577764, -0.146299, -0.617669, 0.513010]
                 v: 1.0
-                phase: Aluminum
+                phase: Ferrite
             homogenization: SX
           - constituents:
               - O: [0.184176, 0.340305, 0.737247, 0.553840]
                 v: 1.0
-                phase: Steel
+                phase: Martensite
             homogenization: SX
         homogenization: {}
         phase: {}
 
-        >>> m = damask.ConfigMaterial().material_add(phase          = np.array(['Austenite','Martensite']).reshape(1,2),
-        ...                                          O              = damask.Rotation.from_random((2,2)),
-        ...                                          v              = np.array([0.2,0.8]).reshape(1,2),
-        ...                                          homogenization = ['A','B'])
+        Create a duplex stainless steel microstructure for forming simulations:
+
+        >>> import numpy as np
+        >>> import damask
+        >>> m = damask.ConfigMaterial()
+        >>> m = m.material_add(phase = np.array(['Austenite','Ferrite']).reshape(1,2),
+        ...                    O = damask.Rotation.from_random((2,2)),
+        ...                    v = np.array([0.2,0.8]).reshape(1,2),
+        ...                    homogenization = 'Taylor')
         >>> m
         material:
           - constituents:
               - phase: Austenite
                 O: [0.659802978293224, 0.6953785848195171, 0.22426295326327111, -0.17554139512785227]
                 v: 0.2
-              - phase: Martensite
+              - phase: Ferrite
                 O: [0.49356745891301596, 0.2841806579193434, -0.7487679215072818, -0.339085707289975]
                 v: 0.8
-            homogenization: A
+            homogenization: Taylor
           - constituents:
               - phase: Austenite
                 O: [0.26542221365204055, 0.7268854930702071, 0.4474726435701472, -0.44828201137283735]
                 v: 0.2
-              - phase: Martensite
+              - phase: Ferrite
                 O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
                 v: 0.8
-            homogenization: B
+            homogenization: Taylor
         homogenization: {}
         phase: {}
 

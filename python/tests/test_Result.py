@@ -271,7 +271,7 @@ class TestResult:
 
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
-        last = default.view('times',default.times_in_range(0,np.inf)[-1])
+        last = default.view('increments',-1)
 
         last.add_stress_Cauchy()
 
@@ -279,9 +279,9 @@ class TestResult:
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            last = last.allow_modification()
+            last = last.modification_enable()
         else:
-            last = last.disallow_modification()
+            last = last.modification_disable()
 
         time.sleep(2.)
         try:
@@ -301,13 +301,23 @@ class TestResult:
     def test_rename(self,default,allowed):
         if allowed == 'on':
             F = default.place('F')
-            default = default.allow_modification()
+            default = default.modification_enable()
             default.rename('F','new_name')
             assert np.all(F == default.place('new_name'))
-            default = default.disallow_modification()
+            default = default.modification_disable()
 
         with pytest.raises(PermissionError):
             default.rename('P','another_new_name')
+
+    @pytest.mark.parametrize('allowed',['off','on'])
+    def test_remove(self,default,allowed):
+        if allowed == 'on':
+            unsafe = default.modification_enable()
+            unsafe.remove('F')
+            assert unsafe.get('F') is None
+        else:
+            with pytest.raises(PermissionError):
+                default.remove('F')
 
     @pytest.mark.parametrize('mode',['cell','node'])
     def test_coordinates(self,default,mode):

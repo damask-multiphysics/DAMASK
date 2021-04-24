@@ -34,7 +34,7 @@ def _read(dataset):
     return np.array(dataset,dtype=dtype)
 
 def _match(requested,existing):
-    """Find matches among two sets of labels."""
+    """Find matches among two sets of names."""
     def flatten_list(list_of_lists):
         return [e for e_ in list_of_lists for e in e_]
 
@@ -57,14 +57,29 @@ def _empty_like(dataset,N_materialpoints,fill_float,fill_int):
 
 class Result:
     """
-    Add data to and export from DADF5 files.
+    Add data to and export data from a DADF5 file.
 
-    DADF5 (DAMASK HDF5) files contain DAMASK results.
-    Their group/folder structure reflects the input data in material.yaml.
+    A DADF5 (DAMASK HDF5) file contain DAMASK results.
+    Its group/folder structure reflects the layout in material.yaml.
 
-    This class provides a custom view on the DADF5 file.
+    This class provides a customable view on the DADF5 file.
     Upon initialization, all attributes are visible.
-    Derived quantities can be added to the file and existing data can be exported based on the current view.
+    Derived quantities are added to the file and existing data is
+    exported based on the current view.
+
+    Examples
+    --------
+    Open 'my_file.hdf5', which needs to contain deformation gradient 'F'
+    and first Piola-Kirchhoff stress 'P', add the Mises equivalent of the
+    Cauchy stress, and export it to VTK (file) and numpy.ndarray (memory).
+
+    >>> import damask
+    >>> r = damask.Result('my_file.hdf5')
+    >>> r.add_Cauchy()
+    >>> r.add_equivalent_Mises('sigma')
+    >>> r.save_VTK()
+    >>> r_last = r.view('increments',-1)
+    >>> sigma_vM_last = r_last.get('sigma_vM')
 
     """
 
@@ -167,6 +182,11 @@ class Result:
             Name of datasets; supports '?' and '*' wildcards.
             True is equivalent to '*', False is equivalent to [].
 
+        Returns
+        -------
+        view : damask.Result
+            Modified or new view on the DADF5 file.
+
         """
         # allow True/False and string arguments
         if  datasets is True:
@@ -180,6 +200,7 @@ class Result:
         if   what == 'increments':
             choice = [c if isinstance(c,str) and c.startswith(inc) else
                       f'{inc}{c}' for c in choice]
+            if datasets == -1: choice = [self.increments[-1]]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
@@ -211,15 +232,31 @@ class Result:
         return dup
 
 
-    def allow_modification(self):
-        """Allow to overwrite existing data."""
+    def modification_enable(self):
+        """
+        Allow to modify existing data.
+
+        Returns
+        -------
+        modified_view : damask.Result
+            View where data is not write-protected.
+
+        """
         print(util.warn('Warning: Modification of existing datasets allowed!'))
         dup = self.copy()
         dup._allow_modification = True
         return dup
 
-    def disallow_modification(self):
-        """Disallow to overwrite existing data (default case)."""
+    def modification_disable(self):
+        """
+        Disallow to modify existing data (default case).
+
+        Returns
+        -------
+        modified_view : damask.Result
+            View where data is write-protected.
+
+        """
         dup = self.copy()
         dup._allow_modification = False
         return dup
@@ -227,7 +264,7 @@ class Result:
 
     def increments_in_range(self,start,end):
         """
-        Select all increments within a given range.
+        Get all increments within a given range.
 
         Parameters
         ----------
@@ -236,6 +273,10 @@ class Result:
         end : int or str
             End increment.
 
+        Returns
+        -------
+        increments : list of ints
+            Increment number of all increments within the given bounds.
         """
         # compatibility hack
         ln = 3 if self.version_minor < 12 else 10
@@ -243,13 +284,13 @@ class Result:
         for i,inc in enumerate([int(i[ln:]) for i in self.increments]):
             s,e = map(lambda x: int(x[ln:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
             if s <= inc <= e:
-                selected.append(self.increments[i])
+                selected.append(int(self.increments[i].split('_')[1]))
         return selected
 
 
     def times_in_range(self,start,end):
         """
-        Select all increments within a given time range.
+        Get all increments within a given time range.
 
         Parameters
         ----------
@@ -258,6 +299,10 @@ class Result:
         end : float
             Time of end increment.
 
+        Returns
+        -------
+        times : list of float
+            Simulation time of all increments within the given bounds.
         """
         selected = []
         for i,time in enumerate(self.times):
@@ -283,6 +328,20 @@ class Result:
         view : damask.Result
             View with where selected attributes are visible.
 
+        Examples
+        --------
+        Get a view that shows only results from the initial configuration:
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r_first = r.view('increment',0)
+
+        Get a view that shows all results of in simulation time [10,40]:
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r_t10to40 = r.view('times',r.times_in_range(10.0,40.0))
+
         """
         return self._manage_view('set',what,datasets)
 
@@ -303,6 +362,15 @@ class Result:
         -------
         modified_view : damask.Result
             View with more visible attributes.
+
+        Examples
+        --------
+        Get a view that shows only results from first and last increment:
+
+        >>> import damask
+        >>> r_empty = damask.Result('my_file.hdf5').view('increments',False)
+        >>> r_first = r_empty.view_more('increments',0)
+        >>> r_first_and_last = r.first.view_more('increments',-1)
 
         """
         return self._manage_view('add',what,datasets)
@@ -325,37 +393,93 @@ class Result:
         modified_view : damask.Result
             View with less visible attributes.
 
+        Examples
+        --------
+        Get a view that does not show the undeformed configuration:
+
+        >>> import damask
+        >>> r_all = damask.Result('my_file.hdf5')
+        >>> r_deformed = r_all.view_less('increments',0)
+
         """
         return self._manage_view('del',what,datasets)
 
 
-    def rename(self,name_old,name_new):
+    def rename(self,name_src,name_dst):
         """
-        Rename dataset.
+        Rename/move datasets (within the same group/folder).
+
+        This operation is discouraged because the history of the
+        data becomes untracable and scientific integrity cannot be
+        ensured.
 
         Parameters
         ----------
-        name_old : str
-            Name of the dataset to be renamed.
-        name_new : str
-            New name of the dataset.
+        name_src : str
+            Name of the datasets to be renamed.
+        name_dst : str
+            New name of the datasets.
+
+        Examples
+        --------
+        Rename datasets containing the deformation gradient from 'F' to 'def_grad':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r_unprotected = r.modification_enable()
+        >>> r_unprotected.rename('F','def_grad')
 
         """
         if not self._allow_modification:
-            raise PermissionError('Rename operation not permitted')
+            raise PermissionError('Renaming datasets not permitted')
 
         with h5py.File(self.fname,'a') as f:
             for inc in self.visible['increments']:
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
                         for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
-                            path_old = '/'.join([inc,ty,label,field,name_old])
-                            path_new = '/'.join([inc,ty,label,field,name_new])
-                            if path_old in f.keys():
-                                f[path_new] = f[path_old]
-                                f[path_new].attrs['renamed'] = f'original name: {name_old}' if h5py3 else \
-                                                               f'original name: {name_old}'.encode()
-                                del f[path_old]
+                            path_src = '/'.join([inc,ty,label,field,name_src])
+                            path_dst = '/'.join([inc,ty,label,field,name_dst])
+                            if path_src in f.keys():
+                                f[path_dst] = f[path_src]
+                                f[path_dst].attrs['renamed'] = f'original name: {name_src}' if h5py3 else \
+                                                               f'original name: {name_src}'.encode()
+                                del f[path_src]
+
+
+    def remove(self,name):
+        """
+        Remove/delete datasets.
+
+        This operation is discouraged because the history of the
+        data becomes untracable and scientific integrity cannot be
+        ensured.
+
+        Parameters
+        ----------
+        name : str
+            Name of the datasets to be deleted.
+
+        Examples
+        --------
+        Delete the deformation gradient 'F':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r_unprotected = r.modification_enable()
+        >>> r_unprotected.remove('F')
+
+        """
+        if not self._allow_modification:
+            raise PermissionError('Removing datasets not permitted')
+
+        with h5py.File(self.fname,'a') as f:
+            for inc in self.visible['increments']:
+                for ty in ['phase','homogenization']:
+                    for label in self.visible[ty+'s']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                            path = '/'.join([inc,ty,label,field,name])
+                            if path in f.keys(): del f[path]
 
 
     def list_data(self):
@@ -438,7 +562,7 @@ class Result:
         Parameters
         ----------
         x : str
-            Label of scalar, vector, or tensor dataset to take absolute value of.
+            Name of scalar, vector, or tensor dataset to take absolute value of.
 
         """
         self._add_generic_pointwise(self._add_absolute,{'x':x})
@@ -459,24 +583,51 @@ class Result:
                           'creator':     'add_calculation'
                           }
                  }
-    def add_calculation(self,label,formula,unit='n/a',description=None):
+    def add_calculation(self,name,formula,unit='n/a',description=None):
         """
         Add result of a general formula.
 
         Parameters
         ----------
-        label : str
-          Label of resulting dataset.
+        name : str
+          Name of resulting dataset.
         formula : str
-            Formula to calculate resulting dataset. Existing datasets are referenced by '#TheirLabel#'.
+            Formula to calculate resulting dataset. Existing datasets are referenced by '#TheirName#'.
         unit : str, optional
             Physical unit of the result.
         description : str, optional
             Human-readable description of the result.
 
+        Examples
+        --------
+        Add total dislocation density, i.e. the sum of mobile dislocation
+        density 'rho_mob' and dislocation dipole density 'rho_dip' over
+        all slip systems:
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_calculation('rho_mob_total','np.sum(#rho_mob#,axis=1)',
+        ...                    '1/m²','total mobile dislocation density')
+        >>> r.add_calculation('rho_dip_total','np.sum(#rho_dip#,axis=1)',
+        ...                    '1/m²','total dislocation dipole density')
+        >>> r.add_calculation('rho_total','#rho_dip_total#+#rho_mob_total',
+        ...                    '1/m²','total dislocation density')
+
+        Add Mises equivalent of the Cauchy stress without storage of
+        intermediate results. Define a user function for better readability:
+
+        >>> import damask
+        >>> def equivalent_stress(F,P):
+        ...     sigma = damask.mechanics.stress_Cauchy(F=F,P=P)
+        ...     return damask.mechanics.equivalent_stress_Mises(sigma)
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.enable_user_function(equivalent_stress)
+        >>> r.add_calculation('sigma_vM','equivalent_stress(#F#,#P#)','Pa',
+        ...                   'Mises equivalent of the Cauchy stress')
+
         """
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
-        args             = {'formula':formula,'label':label,'unit':unit,'description':description}
+        args             = {'formula':formula,'label':name,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
 
 
@@ -500,9 +651,9 @@ class Result:
         Parameters
         ----------
         P : str, optional
-            Label of the dataset containing the first Piola-Kirchhoff stress. Defaults to 'P'.
+            Name of the dataset containing the first Piola-Kirchhoff stress. Defaults to 'P'.
         F : str, optional
-            Label of the dataset containing the deformation gradient. Defaults to 'F'.
+            Name of the dataset containing the deformation gradient. Defaults to 'F'.
 
         """
         self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
@@ -526,7 +677,15 @@ class Result:
         Parameters
         ----------
         T : str
-            Label of tensor dataset.
+            Name of tensor dataset.
+
+        Examples
+        --------
+        Add the determinant of plastic deformation gradient 'F_p':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_determinant('F_p')
 
         """
         self._add_generic_pointwise(self._add_determinant,{'T':T})
@@ -550,7 +709,7 @@ class Result:
         Parameters
         ----------
         T : str
-            Label of tensor dataset.
+            Name of tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_deviator,{'T':T})
@@ -581,7 +740,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-            Label of symmetric tensor dataset.
+            Name of symmetric tensor dataset.
         eigenvalue : str, optional
             Eigenvalue. Select from 'max', 'mid', 'min'. Defaults to 'max'.
 
@@ -614,7 +773,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-            Label of symmetric tensor dataset.
+            Name of symmetric tensor dataset.
         eigenvalue : str, optional
             Eigenvalue to which the eigenvector corresponds.
             Select from 'max', 'mid', 'min'. Defaults to 'max'.
@@ -654,8 +813,16 @@ class Result:
         l : numpy.array of shape (3)
             Lab frame direction for inverse pole figure.
         q : str
-            Label of the dataset containing the crystallographic orientation as quaternions.
+            Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
+
+        Examples
+        --------
+        Add the IPF color along [0,1,1] for orientation 'O':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_IPF_color(np.array([0,1,1]))
 
         """
         self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
@@ -679,7 +846,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-            Label of symmetric tensor dataset.
+            Name of symmetric tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_maximum_shear,{'T_sym':T_sym})
@@ -713,10 +880,24 @@ class Result:
         Parameters
         ----------
         T_sym : str
-            Label of symmetric tensorial stress or strain dataset.
+            Name of symmetric tensorial stress or strain dataset.
         kind : {'stress', 'strain', None}, optional
             Kind of the von Mises equivalent. Defaults to None, in which case
             it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress).
+
+        Examples
+        --------
+        Add the Mises equivalent of the Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_equivalent_Mises('sigma')
+
+        Add the Mises equivalent of the spatial logarithmic strain 'epsilon_V^0.0(F)':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_equivalent_Mises('epsilon_V^0.0(F)')
 
         """
         self._add_generic_pointwise(self._add_equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
@@ -752,7 +933,7 @@ class Result:
         Parameters
         ----------
         x : str
-            Label of vector or tensor dataset.
+            Name of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, 'fro', 'nuc'}, optional
             Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
 
@@ -780,9 +961,9 @@ class Result:
         Parameters
         ----------
         P : str, optional
-            Label of first Piola-Kirchhoff stress dataset. Defaults to 'P'.
+            Name of first Piola-Kirchhoff stress dataset. Defaults to 'P'.
         F : str, optional
-            Label of deformation gradient dataset. Defaults to 'F'.
+            Name of deformation gradient dataset. Defaults to 'F'.
 
         """
         self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
@@ -821,7 +1002,7 @@ class Result:
     #     Parameters
     #     ----------
     #     q : str
-    #         Label of the dataset containing the crystallographic orientation as quaternions.
+    #         Name of the dataset containing the crystallographic orientation as quaternions.
     #     p : numpy.array of shape (3)
     #         Crystallographic direction or plane.
     #     polar : bool, optional
@@ -848,8 +1029,16 @@ class Result:
 
         Parameters
         ----------
-        F : str, optional
-            Label of deformation gradient dataset.
+        F : str
+            Name of deformation gradient dataset.
+
+        Examples
+        --------
+        Add the rotational part of deformation gradient 'F':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_rotation('F')
 
         """
         self._add_generic_pointwise(self._add_rotation,{'F':F})
@@ -873,7 +1062,15 @@ class Result:
         Parameters
         ----------
         T : str
-            Label of tensor dataset.
+            Name of tensor dataset.
+
+        Examples
+        --------
+        Add the hydrostatic part of the Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_spherical('sigma')
 
         """
         self._add_generic_pointwise(self._add_spherical,{'T':T})
@@ -899,12 +1096,27 @@ class Result:
         Parameters
         ----------
         F : str, optional
-            Label of deformation gradient dataset. Defaults to 'F'.
+            Name of deformation gradient dataset. Defaults to 'F'.
         t : {'V', 'U'}, optional
             Type of the polar decomposition, 'V' for left stretch tensor and 'U' for right stretch tensor.
             Defaults to 'V'.
         m : float, optional
             Order of the strain calculation. Defaults to 0.0.
+
+        Examples
+        --------
+        Add the Biot strain based on the deformation gradient 'F':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.strain(t='U',m=0.5)
+
+        Add the plastic Euler-Almansi strain based on the
+        plastic deformation gradient 'F_p':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.strain('F_p','V',-1)
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
@@ -929,7 +1141,7 @@ class Result:
         Parameters
         ----------
         F : str, optional
-            Label of deformation gradient dataset. Defaults to 'F'.
+            Name of deformation gradient dataset. Defaults to 'F'.
         t : {'V', 'U'}, optional
             Type of the polar decomposition, 'V' for left stretch tensor and 'U' for right stretch tensor.
             Defaults to 'V'.
@@ -1036,10 +1248,14 @@ class Result:
         """
         Write XDMF file to directly visualize data in DADF5 file.
 
+        The XDMF format is only supported for structured grids
+        with single phase and single constituent.
+        For other cases use `save_VTK`.
+
         Parameters
         ----------
         output : (list of) str
-            Labels of the datasets to read.
+            Names of the datasets included in the XDMF file.
             Defaults to '*', in which case all datasets are considered.
 
         """
@@ -1169,10 +1385,16 @@ class Result:
         """
         Export to VTK cell/point data.
 
+        One VTK file per visible increment is created.
+        For cell data, the VTK format is a rectilinear grid (.vtr) for
+        grid-based simulations and an unstructured grid (.vtu) for
+        mesh-baed simulations. For point data, the VTK format is poly
+        data (.vtp).
+
         Parameters
         ----------
         output : (list of) str, optional
-            Labels of the datasets to place.
+            Names of the datasets included in the VTK file.
             Defaults to '*', in which case all datasets are exported.
         mode : {'cell', 'point'}
             Export in cell format or point format.
@@ -1251,7 +1473,7 @@ class Result:
         Parameters
         ----------
         output : (list of) str
-            Labels of the datasets to read.
+            Names of the datasets to read.
             Defaults to '*', in which case all datasets are read.
         flatten : bool
             Remove singular levels of the folder hierarchy.
@@ -1303,7 +1525,7 @@ class Result:
         Parameters
         ----------
         output : (list of) str, optional
-            Labels of the datasets to place.
+            Names of the datasets to read.
             Defaults to '*', in which case all datasets are placed.
         flatten : bool
             Remove singular levels of the folder hierarchy.

@@ -49,7 +49,7 @@ class Table:
 
         Returns
         -------
-        slice : Table
+        slice : damask.Table
             Sliced part of the Table.
 
         Examples
@@ -157,7 +157,7 @@ class Table:
 
         Parameters
         ----------
-        other : Table
+        other : damask.Table
             Table to compare against.
         rtol : float, optional
             Relative tolerance of equality.
@@ -185,7 +185,7 @@ class Table:
 
         Parameters
         ----------
-        other : Table
+        other : damask.Table
             Table to compare against.
         rtol : float, optional
             Relative tolerance of equality.

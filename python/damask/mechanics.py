@@ -3,7 +3,7 @@ Finite-strain continuum mechanics.
 
 Notes
 -----
-Collection of routines to operate on numpy.ndarrays of shape (...,3,3).
+All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 
