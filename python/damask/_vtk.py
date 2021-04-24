@@ -3,7 +3,6 @@ import multiprocessing as mp
 from pathlib import Path
 
 import numpy as np
-import numpy.ma as ma
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
@@ -51,6 +50,11 @@ class VTK:
         origin : iterable of float, len (3), optional
             Spatial origin coordinates.
 
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
+
         """
         vtk_data = vtk.vtkRectilinearGrid()
         vtk_data.SetDimensions(*(np.array(grid)+1))
@@ -68,7 +72,7 @@ class VTK:
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
-        This is the common type for FEM solver results.
+        This is the common type for mesh solver results.
 
         Parameters
         ----------
@@ -79,6 +83,11 @@ class VTK:
             second dimension determines #Nodes/Cell.
         cell_type : str
             Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
+
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
 
         """
         vtk_nodes = vtk.vtkPoints()
@@ -110,6 +119,11 @@ class VTK:
         points : numpy.ndarray of shape (:,3)
             Spatial position of the points.
 
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
+
         """
         N = points.shape[0]
         vtk_points = vtk.vtkPoints()
@@ -137,8 +151,13 @@ class VTK:
         fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
-            Name of the vtk.vtkDataSet subclass when opening a .vtk file. Valid types are vtkRectilinearGrid,
-            vtkUnstructuredGrid, and vtkPolyData.
+            Name of the vtk.vtkDataSet subclass when opening a .vtk file.
+            Valid types are vtkRectilinearGrid, vtkUnstructuredGrid, and vtkPolyData.
+
+        Returns
+        -------
+        loaded : damask.VTK
+            VTK-based geometry from file.
 
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
@@ -149,13 +168,13 @@ class VTK:
             reader.SetFileName(str(fname))
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
-            elif dataset_type.lower().endswith('rectilineargrid'):
+            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
                 reader.Update()
                 vtk_data = reader.GetRectilinearGridOutput()
-            elif dataset_type.lower().endswith('unstructuredgrid'):
+            elif dataset_type.lower().endswith(('unstructuredgrid','unstructured_grid')):
                 reader.Update()
                 vtk_data = reader.GetUnstructuredGridOutput()
-            elif dataset_type.lower().endswith('polydata'):
+            elif dataset_type.lower().endswith(('polydata','poly_data')):
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
             else:
@@ -246,7 +265,7 @@ class VTK:
                 raise ValueError('No label defined for numpy.ndarray')
 
             N_data = data.shape[0]
-            data_ = np.where(data.mask,data.fill_value,data) if isinstance(data,ma.MaskedArray) else\
+            data_ = np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else\
                     data
             d = np_to_vtk((data_.astype(np.single) if data_.dtype in [np.double, np.longdouble] else
                            data_).reshape(N_data,-1),deep=True)                                      # avoid large files
@@ -276,6 +295,11 @@ class VTK:
         ----------
         label : str
             Data label.
+
+        Returns
+        -------
+        data : numpy.ndarray
+            Data stored under the given label.
 
         """
         cell_data = self.vtk_data.GetCellData()

@@ -8,15 +8,15 @@ from . import tensor
 
 _parameter_doc = \
        """lattice : str
-            Either a crystal family  out of [triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic]
-            or     a Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
-            When specifying a Bravais lattice, additional lattice parameters might be required:
+            Either a crystal family  out of {triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic}
+            or     a Bravais lattice out of {aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF}.
+            When specifying a Bravais lattice, additional lattice parameters might be required.
         a : float, optional
-            Length of lattice parameter "a".
+            Length of lattice parameter 'a'.
         b : float, optional
-            Length of lattice parameter "b".
+            Length of lattice parameter 'b'.
         c : float, optional
-            Length of lattice parameter "c".
+            Length of lattice parameter 'c'.
         alpha : float, optional
             Angle between b and c lattice basis.
         beta : float, optional

@@ -49,7 +49,7 @@ _colors = {
 ####################################################################################################
 def srepr(arg,glue = '\n'):
     r"""
-    Join arguments with glue string.
+    Join items with glue string.
 
     Parameters
     ----------
@@ -57,6 +57,11 @@ def srepr(arg,glue = '\n'):
         Items to join.
     glue : str, optional
         Glue used for joining operation. Defaults to \n.
+
+    Returns
+    -------
+    joined : str
+        String representation of the joined items.
 
     """
     if (not hasattr(arg, 'strip') and
@@ -68,19 +73,71 @@ def srepr(arg,glue = '\n'):
 
 
 def emph(what):
-    """Formats string with emphasis."""
+    """
+    Format with emphasis.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
     return _colors['bold']+srepr(what)+_colors['end_color']
 
 def deemph(what):
-    """Formats string with deemphasis."""
+    """
+    Format with deemphasis.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
     return _colors['dim']+srepr(what)+_colors['end_color']
 
 def warn(what):
-    """Formats string for warning."""
+    """
+    Format for warning.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
     return _colors['warning']+emph(what)+_colors['end_color']
 
 def strikeout(what):
-    """Formats string as strikeout."""
+    """
+    Format as strikeout.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
     return _colors['crossout']+srepr(what)+_colors['end_color']
 
 
@@ -96,6 +153,11 @@ def execute(cmd,wd='./',env=None):
         Working directory of process. Defaults to ./ .
     env : dict, optional
         Environment for execution.
+
+    Returns
+    -------
+    stdout, stderr : str
+        Output of the executed command.
 
     """
     print(f"executing '{cmd}' in '{wd}'")
@@ -156,6 +218,11 @@ def scale_to_coprime(v):
     ----------
     v : numpy.ndarray of shape (:)
         Vector to scale.
+
+    Returns
+    -------
+    m : numpy.ndarray of shape (:)
+        Vector scaled to co-prime numbers.
 
     """
     MAX_DENOMINATOR = 1000000
@@ -371,8 +438,13 @@ def DREAM3D_base_group(fname):
 
     Parameters
     ----------
-    fname : str
+    fname : str or pathlib.Path
         Filename of the DREAM.3D (HDF5) file.
+
+    Returns
+    -------
+    path : str
+        Path to the base group.
 
     """
     with h5py.File(fname,'r') as f:
@@ -393,8 +465,13 @@ def DREAM3D_cell_data_group(fname):
 
     Parameters
     ----------
-    fname : str
+    fname : str or pathlib.Path
         Filename of the DREAM.3D (HDF5) file.
+
+    Returns
+    -------
+    path : str
+        Path to the cell data group.
 
     """
     base_group = DREAM3D_base_group(fname)

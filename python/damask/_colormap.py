@@ -91,6 +91,16 @@ class Colormap(mpl.colors.ListedColormap):
             - 'lab': CIE Lab.
             - 'msh': Msh (for perceptual uniform interpolation).
 
+        Returns
+        -------
+        new : damask.Colormap
+            Colormap within given bounds.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
+
         """
         low_high = np.vstack((low,high))
         if   model.lower() == 'rgb':
@@ -149,6 +159,16 @@ class Colormap(mpl.colors.ListedColormap):
            The number of color quantization levels. Defaults to 256.
            This parameter is not used for matplotlib colormaps
            that are of type `ListedColormap`.
+
+        Returns
+        -------
+        new : damask.Colormap
+            Predefined colormap.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_predefined('strain')
 
         """
         # matplotlib presets
@@ -220,6 +240,11 @@ class Colormap(mpl.colors.ListedColormap):
         damask.Colormap
             The reversed colormap.
 
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_predefined('stress').reversed()
+
         """
         rev = super(Colormap,self).reversed(name)
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
@@ -239,8 +264,8 @@ class Colormap(mpl.colors.ListedColormap):
 
         Returns
         -------
-        f
-            File handle
+        f : file object
+            File handle with write access.
 
         """
         if fname is None:
