@@ -400,8 +400,7 @@ class Result:
         Rename/move datasets (within the same group/folder).
 
         This operation is discouraged because the history of the
-        data becomes untracable and scientific integrity cannot be
-        ensured.
+        data becomes untraceable and data integrity is not ensured.
 
         Parameters
         ----------
@@ -442,8 +441,7 @@ class Result:
         Remove/delete datasets.
 
         This operation is discouraged because the history of the
-        data becomes untracable and scientific integrity cannot be
-        ensured.
+        data becomes untraceable and data integrity is not ensured.
 
         Parameters
         ----------
@@ -596,7 +594,7 @@ class Result:
         >>> r = damask.Result('my_file.hdf5')
         >>> r.add_calculation('np.sum(#rho_mob#,axis=1)','rho_mob_total',
         ...                    '1/m²','total mobile dislocation density')
-        >>> r.add_calculation(''np.sum(#rho_dip#,axis=1)',rho_dip_total',
+        >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
         >>> r.add_calculation('#rho_dip_total#+#rho_mob_total','rho_total',
         ...                    '1/m²','total dislocation density')
@@ -952,6 +950,13 @@ class Result:
             Name of first Piola-Kirchhoff stress dataset. Defaults to 'P'.
         F : str, optional
             Name of deformation gradient dataset. Defaults to 'F'.
+
+        Notes
+        -----
+        The definition of the second Piola-Kirchhoff (S) stress follows
+        the standard nonlinear continuum mechanics definition. It does
+        NOT take the different configurations into account as it would
+        be required for the crystal plasticity definition of S.
 
         """
         self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
