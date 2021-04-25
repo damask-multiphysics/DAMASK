@@ -54,7 +54,12 @@ class ConfigMaterial(Config):
         Parameters
         ----------
         fname : file, str, or pathlib.Path, optional
-            Filename or file for writing. Defaults to 'material.yaml'.
+            Filename or file to read from. Defaults to 'material.yaml'.
+
+        Returns
+        -------
+        loaded : damask.ConfigMaterial
+            Material configuration from file.
 
         """
         return super(ConfigMaterial,cls).load(fname)
@@ -103,6 +108,11 @@ class ConfigMaterial(Config):
             and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
+        Returns
+        -------
+        loaded : damask.ConfigMaterial
+            Material configuration from file.
+
         """
         b = util.DREAM3D_base_group(fname) if base_group is None else base_group
         c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
@@ -145,6 +155,11 @@ class ConfigMaterial(Config):
         **kwargs
             Keyword arguments where the key is the name and the value specifies
             the label of the data column in the table.
+
+        Returns
+        -------
+        new : damask.ConfigMaterial
+            Material configuration from values in table.
 
         Examples
         --------

@@ -46,9 +46,9 @@ class VTK:
         grid : iterable of int, len (3)
             Number of cells along each dimension.
         size : iterable of float, len (3)
-            Physical lengths along each dimension.
+            Physical length along each dimension.
         origin : iterable of float, len (3), optional
-            Spatial origin coordinates.
+            Coordinates of grid origin.
 
         Returns
         -------
@@ -161,7 +161,7 @@ class VTK:
 
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
-            raise FileNotFoundError(f'no such file: {fname}')
+            raise FileNotFoundError(f'No such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()

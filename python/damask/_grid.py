@@ -1012,6 +1012,11 @@ class Grid:
             Direction(s) along which the boundaries are determined.
             Valid entries are 'x', 'y', 'z'. Defaults to 'xyz'.
 
+        Returns
+        -------
+        grain_boundaries : damask.VTK
+            VTK-based geometry of grain boundary network.
+
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
