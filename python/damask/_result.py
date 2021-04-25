@@ -98,7 +98,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 12 <= self.version_minor <= 12:
+            if self.version_major != 0 or not 12 <= self.version_minor <= 13:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
@@ -1407,6 +1407,7 @@ class Result:
             v = self.geometry0
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
+        v.set_comments(util.execution_stamp('Result','save_VTK'))
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
 
@@ -1419,6 +1420,10 @@ class Result:
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
         with h5py.File(self.fname,'r') as f:
+            if self.version_minor >= 13:
+                creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
+                created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
+                v.add_comments(f'{creator} ({created})')
 
             for inc in util.show_progress(self.visible['increments']):
 

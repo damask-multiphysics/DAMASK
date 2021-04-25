@@ -333,7 +333,7 @@ class TestResult:
     @pytest.mark.parametrize('output',['F','*',['P']],ids=range(3))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
-    def test_vtk(self,request,tmp_path,ref_path,update,output,fname,inc):
+    def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
         result.save_VTK(output)

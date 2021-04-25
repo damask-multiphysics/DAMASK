@@ -57,7 +57,7 @@ subroutine results_init(restart)
 
   logical, intent(in) :: restart
 
-  character(len=pStringLen) :: commandLine
+  character(len=pPathLen) :: commandLine
 
   print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
@@ -67,8 +67,10 @@ subroutine results_init(restart)
   if(.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',12)
-    call results_addAttribute('DAMASK_version',DAMASKVERSION)
+    call results_addAttribute('DADF5_version_minor',13)
+    call get_command_argument(0,commandLine)
+    call results_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
+    call results_addAttribute('created',now())
     call get_command(commandLine)
     call results_addAttribute('call',trim(commandLine))
     call results_closeGroup(results_addGroup('cell_to'))
