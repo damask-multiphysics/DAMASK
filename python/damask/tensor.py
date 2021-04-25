@@ -1,10 +1,7 @@
 """
-Tensor operations.
+Tensor mathematics.
 
-Notes
------
-This is not a tensor class, but a collection of routines
-to operate on numpy.ndarrays of shape (...,3,3).
+All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 

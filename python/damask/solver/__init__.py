@@ -1,3 +1,3 @@
-"""Tools to control the various solvers."""
+"""Run simulations directly from Python."""
 
 from ._marc     import Marc       # noqa
