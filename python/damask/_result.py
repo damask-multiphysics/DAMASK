@@ -505,7 +505,7 @@ class Result:
             return grid_filters.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
-                return f['geometry/x_c'][()]
+                return f['geometry/x_p'][()]
 
     @property
     def coordinates0_node(self):

@@ -355,6 +355,19 @@ class TestResult:
             assert cur == f.read()
 
     @pytest.mark.parametrize('mode',['point','cell'])
+    @pytest.mark.parametrize('output',[False,True])
+    def test_vtk_marc(self,tmp_path,ref_path,mode,output):
+        os.chdir(tmp_path)
+        result = Result(ref_path/'check_compile_job1.hdf5')
+        result.save_VTK(output,mode)
+
+    def test_marc_coordinates(self,ref_path):
+        result = Result(ref_path/'check_compile_job1.hdf5').view('increments',-1)
+        c_n = result.coordinates0_node + result.get('u_n')
+        c_p = result.coordinates0_point + result.get('u_p')
+        assert len(c_n) > len(c_p)
+
+    @pytest.mark.parametrize('mode',['point','cell'])
     def test_vtk_mode(self,tmp_path,single_phase,mode):
         os.chdir(tmp_path)
         single_phase.save_VTK(mode=mode)
