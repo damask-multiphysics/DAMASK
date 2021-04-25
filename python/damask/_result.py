@@ -585,16 +585,17 @@ class Result:
                           'creator':     'add_calculation'
                           }
                  }
-    def add_calculation(self,name,formula,unit='n/a',description=None):
+    def add_calculation(self,formula,name,unit='n/a',description=None):
         """
         Add result of a general formula.
 
         Parameters
         ----------
-        name : str
-          Name of resulting dataset.
         formula : str
-            Formula to calculate resulting dataset. Existing datasets are referenced by '#TheirName#'.
+            Formula to calculate resulting dataset.
+            Existing datasets are referenced by '#TheirName#'.
+        name : str
+            Name of resulting dataset.
         unit : str, optional
             Physical unit of the result.
         description : str, optional
@@ -608,11 +609,11 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_calculation('rho_mob_total','np.sum(#rho_mob#,axis=1)',
+        >>> r.add_calculation('np.sum(#rho_mob#,axis=1)','rho_mob_total',
         ...                    '1/m²','total mobile dislocation density')
-        >>> r.add_calculation('rho_dip_total','np.sum(#rho_dip#,axis=1)',
+        >>> r.add_calculation(''np.sum(#rho_dip#,axis=1)',rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
-        >>> r.add_calculation('rho_total','#rho_dip_total#+#rho_mob_total',
+        >>> r.add_calculation('#rho_dip_total#+#rho_mob_total','rho_total',
         ...                    '1/m²','total dislocation density')
 
         Add Mises equivalent of the Cauchy stress without storage of
@@ -624,7 +625,7 @@ class Result:
         ...     return damask.mechanics.equivalent_stress_Mises(sigma)
         >>> r = damask.Result('my_file.hdf5')
         >>> r.enable_user_function(equivalent_stress)
-        >>> r.add_calculation('sigma_vM','equivalent_stress(#F#,#P#)','Pa',
+        >>> r.add_calculation('equivalent_stress(#F#,#P#)','sigma_vM','Pa',
         ...                   'Mises equivalent of the Cauchy stress')
 
         """

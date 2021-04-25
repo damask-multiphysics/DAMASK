@@ -110,14 +110,14 @@ class TestResult:
     def test_add_calculation(self,default,tmp_path,mode):
 
         if mode == 'direct':
-            default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
+            default.add_calculation('2.0*np.abs(#F#)-1.0','x','-','my notes')
         else:
             with open(tmp_path/'f.py','w') as f:
                 f.write("import numpy as np\ndef my_func(field):\n  return 2.0*np.abs(field)-1.0\n")
             sys.path.insert(0,str(tmp_path))
             import f
             default.enable_user_function(f.my_func)
-            default.add_calculation('x','my_func(#F#)','-','my notes')
+            default.add_calculation('my_func(#F#)','x','-','my notes')
 
         in_memory = 2.0*np.abs(default.place('F'))-1.0
         in_file   = default.place('x')
@@ -193,14 +193,14 @@ class TestResult:
 
     def test_add_Mises_invalid(self,default):
         default.add_stress_Cauchy('P','F')
-        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_calculation('#sigma#','sigma_y',unit='y')
         default.add_equivalent_Mises('sigma_y')
         assert default.get('sigma_y_vM') is None
 
     def test_add_Mises_stress_strain(self,default):
         default.add_stress_Cauchy('P','F')
-        default.add_calculation('sigma_y','#sigma#',unit='y')
-        default.add_calculation('sigma_x','#sigma#',unit='x')
+        default.add_calculation('#sigma#','sigma_y',unit='y')
+        default.add_calculation('#sigma#','sigma_x',unit='x')
         default.add_equivalent_Mises('sigma_y',kind='strain')
         default.add_equivalent_Mises('sigma_x',kind='stress')
         assert not np.allclose(default.place('sigma_y_vM'),default.place('sigma_x_vM'))
@@ -285,7 +285,7 @@ class TestResult:
 
         time.sleep(2.)
         try:
-            last.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+            last.add_calculation('#sigma#*0.0+311.','sigma','not the Cauchy stress')
         except ValueError:
             pass
 
@@ -362,7 +362,7 @@ class TestResult:
     def test_XDMF(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
             for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
-                 single_phase.add_calculation(f'{shape[0]}_{dtype}',f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')")
+                 single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         os.chdir(tmp_path)
         single_phase.save_XDMF()

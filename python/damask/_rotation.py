@@ -357,7 +357,7 @@ class Rotation:
 
         Parameters
         ----------
-            other : damask.Rotation
+        other : damask.Rotation
 
         """
         return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
@@ -370,7 +370,7 @@ class Rotation:
 
         Returns
         -------
-            flattened : damask.Rotation
+        flattened : damask.Rotation
             Rotation flattened to single dimension.
 
         """
@@ -383,7 +383,7 @@ class Rotation:
 
         Returns
         -------
-            reshaped : damask.Rotation
+        reshaped : damask.Rotation
             Rotation of given shape.
 
         """
@@ -405,7 +405,7 @@ class Rotation:
 
         Returns
         -------
-            broadcasted : damask.Rotation
+        broadcasted : damask.Rotation
             Rotation broadcasted to given shape.
 
         """
@@ -464,7 +464,7 @@ class Rotation:
 
         Returns
         -------
-            g : damask.Rotation
+        g : damask.Rotation
             Misorientation.
 
         """
