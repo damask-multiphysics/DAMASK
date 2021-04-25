@@ -51,9 +51,7 @@ subroutine DAMASK_interface_init
 #include <petsc/finclude/petscsys.h>
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
-===================================================================================================
---  WRONG PETSc VERSION --- WRONG PETSc VERSION --- WRONG PETSc VERSION ---  WRONG PETSc VERSION --
-===================================================================================================
+--  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
 
   character(len=pPathLen*3+pStringLen) :: &

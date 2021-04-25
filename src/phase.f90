@@ -161,13 +161,13 @@ module phase
       real(pReal), dimension(3,3) :: P
     end function phase_P
 
-    module function thermal_T(ph,me) result(T)
-      integer, intent(in) :: ph,me
+    module function thermal_T(ph,en) result(T)
+      integer, intent(in) :: ph,en
       real(pReal) :: T
     end function thermal_T
 
-    module function thermal_dot_T(ph,me) result(dot_T)
-      integer, intent(in) :: ph,me
+    module function thermal_dot_T(ph,en) result(dot_T)
+      integer, intent(in) :: ph,en
       real(pReal) :: dot_T
     end function thermal_dot_T
 
@@ -216,10 +216,10 @@ module phase
 
 ! == cleaned:end ===================================================================================
 
-    module function thermal_stress(Delta_t,ph,me) result(converged_)
+    module function thermal_stress(Delta_t,ph,en) result(converged_)
 
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: ph, me
+      integer, intent(in) :: ph, en
       logical :: converged_
 
     end function thermal_stress
@@ -253,8 +253,8 @@ module phase
         f
     end function phase_f_phi
 
-    module function phase_f_T(ph,me) result(f)
-      integer, intent(in) :: ph, me
+    module function phase_f_T(ph,en) result(f)
+      integer, intent(in) :: ph, en
       real(pReal) :: f
     end function phase_f_T
 

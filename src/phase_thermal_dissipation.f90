@@ -69,15 +69,15 @@ end function dissipation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module function dissipation_f_T(ph,me) result(f_T)
+module function dissipation_f_T(ph,en) result(f_T)
 
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   real(pReal) :: &
     f_T
 
 
   associate(prm => param(ph))
-    f_T = prm%kappa*sum(abs(mechanical_S(ph,me)*mechanical_L_p(ph,me)))
+    f_T = prm%kappa*sum(abs(mechanical_S(ph,en)*mechanical_L_p(ph,en)))
   end associate
 
 end function dissipation_f_T

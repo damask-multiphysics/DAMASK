@@ -156,7 +156,7 @@ end function plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
+module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -167,7 +167,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
     Mp                                                                                              !< Mandel stress
   integer,                     intent(in) :: &
     ph, &
-    me
+    en
 
   real(pReal), dimension(3,3) :: &
     Mp_dev                                                                                          !< deviatoric part of the Mandel stress
@@ -185,7 +185,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
   norm_Mp_dev = sqrt(squarenorm_Mp_dev)
 
   if (norm_Mp_dev > 0.0_pReal) then
-    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(me))) **prm%n
+    dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(en))) **prm%n
 
     Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -248,13 +248,13 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine isotropic_dotState(Mp,ph,me)
+module subroutine isotropic_dotState(Mp,ph,en)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
-    me
+    en
 
   real(pReal) :: &
     dot_gamma, &                                                                                    !< strainrate
@@ -270,7 +270,7 @@ module subroutine isotropic_dotState(Mp,ph,me)
     norm_Mp = sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp)))
   endif
 
-  dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(me))) **prm%n
+  dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(en))) **prm%n
 
   if (dot_gamma > 1e-12_pReal) then
     if (dEq0(prm%c_1)) then
@@ -280,15 +280,15 @@ module subroutine isotropic_dotState(Mp,ph,me)
                   + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2))**(1.0_pReal / prm%c_3) &
                   / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
-    dot%xi(me) = dot_gamma &
+    dot%xi(en) = dot_gamma &
                * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
-               * abs( 1.0_pReal - stt%xi(me)/xi_inf_star )**prm%a &
-               * sign(1.0_pReal, 1.0_pReal - stt%xi(me)/xi_inf_star)
+               * abs( 1.0_pReal - stt%xi(en)/xi_inf_star )**prm%a &
+               * sign(1.0_pReal, 1.0_pReal - stt%xi(en)/xi_inf_star)
   else
-    dot%xi(me) = 0.0_pReal
+    dot%xi(en) = 0.0_pReal
   endif
 
-  dot%gamma(me) = dot_gamma                                                                         ! ToDo: not really used
+  dot%gamma(en) = dot_gamma                                                                         ! ToDo: not really used
 
   end associate
 
