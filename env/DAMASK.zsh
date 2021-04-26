@@ -12,16 +12,6 @@ function blink {
 ENV_ROOT=$(canonicalPath "${0:a:h}")
 DAMASK_ROOT=$(canonicalPath "${0:a:h}'/..")
 
-# shorthand command to change to DAMASK_ROOT directory
-eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
-
-# defining set() allows to source the same file for tcsh and zsh, with and without space around =
-set() {
-    export $1$2$3
- }
-source $ENV_ROOT/CONFIG
-unset -f set
-
 # add BRANCH if DAMASK_ROOT is a git repository
 cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd - >/dev/null
 
@@ -80,9 +70,6 @@ if [ ! -z "$PS1" ]; then
   echo
 fi
 
-export OMP_NUM_THREADS
-export MSC_ROOT
-export MSC_VERSION
 export DAMASK_ROOT
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 

@@ -5,23 +5,36 @@ import glob
 import argparse
 from pathlib import Path
 
-msc_version = os.environ['MSC_VERSION']
-msc_root    = Path(os.environ['MSC_ROOT'])
-damask_root = Path(os.environ['DAMASK_ROOT'])
+import damask
 
 parser = argparse.ArgumentParser(
-     description='Apply DAMASK modification to MSC.Marc/Mentat',
-     epilog = f'MSC_ROOT={msc_root} and MSC_VERSION={msc_version} (from {damask_root}/env/CONFIG)')
+                  description='Apply DAMASK modification to MSC.Marc/Mentat',
+                  prog = Path(__file__).name,
+                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
                     help='Name of the editor for MSC.Mentat (executable)')
+parser.add_argument('--msc-root', dest='msc_root', metavar='string',
+                    default=damask.solver._marc._msc_root,
+                    help='MSC.Marc/Mentat root directory')
+parser.add_argument('--msc-version', dest='msc_version', metavar='string',
+                    default=damask.solver._marc._msc_version,
+                    help='MSC.Marc/Mentat version')
+parser.add_argument('--damask-root', dest='damask_root', type=float, metavar = 'float',
+                    default=damask.solver._marc._damask_root,
+                    help='DAMASK root directory')
 
+
+args = parser.parse_args()
+msc_root    = Path(args.msc_root)
+damask_root = Path(args.damask_root)
+msc_version = args.msc_version
 
 def copy_and_replace(in_file,dst):
     with open(in_file) as f:
         content = f.read()
     content = content.replace('%INSTALLDIR%',str(msc_root))
-    content = content.replace('%VERSION%', msc_version)
-    content = content.replace('%EDITOR%', parser.parse_args().editor)
+    content = content.replace('%EDITOR%', args.editor)
     with open(dst/Path(in_file).name,'w') as f:
         f.write(content)
 
