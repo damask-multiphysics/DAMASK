@@ -189,7 +189,8 @@ class Result:
 
         if   what == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('increment_') else
-                      self.increments[c] if c<0 else f'increment_{c}' for c in choice]
+                      self.increments[c] if isinstance(c,int) and c<0 else
+                      f'increment_{c}' for c in choice]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
