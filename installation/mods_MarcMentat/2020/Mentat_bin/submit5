@@ -4,7 +4,7 @@
 # Normal exit status is 0.
 #
 
-DIR=%INSTALLDIR%/marc%VERSION%
+DIR=%INSTALLDIR%/marc2020
 
 if test $MARCDIR1
 then
