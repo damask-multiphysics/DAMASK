@@ -283,7 +283,7 @@ end function plastic_phenopowerlaw_init
 !> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
-pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
+pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -294,7 +294,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
     Mp                                                                                              !< Mandel stress
   integer,               intent(in) :: &
     ph, &
-    me
+    en
 
   integer :: &
     i,k,l,m,n
@@ -309,7 +309,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
 
   associate(prm => param(ph))
 
-  call kinetics_slip(Mp,ph,me,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+  call kinetics_slip(Mp,ph,en,gdot_slip_pos,gdot_slip_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
   slipSystems: do i = 1, prm%sum_N_sl
     Lp = Lp + (gdot_slip_pos(i)+gdot_slip_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -318,7 +318,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,me)
                        + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_twin(Mp,ph,me,gdot_twin,dgdot_dtautwin)
+  call kinetics_twin(Mp,ph,en,gdot_twin,dgdot_dtautwin)
   twinSystems: do i = 1, prm%sum_N_tw
     Lp = Lp + gdot_twin(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -334,13 +334,13 @@ end subroutine phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine phenopowerlaw_dotState(Mp,ph,me)
+module subroutine phenopowerlaw_dotState(Mp,ph,en)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
-    me
+    en
 
   real(pReal) :: &
     c_SlipSlip,c_TwinSlip,c_TwinTwin, &
@@ -353,8 +353,8 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
   associate(prm => param(ph), stt => state(ph), &
   dot => dotState(ph))
 
-  sumGamma = sum(stt%gamma_slip(:,me))
-  sumF     = sum(stt%gamma_twin(:,me)/prm%gamma_char)
+  sumGamma = sum(stt%gamma_slip(:,en))
+  sumF     = sum(stt%gamma_twin(:,en)/prm%gamma_char)
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
@@ -366,23 +366,23 @@ module subroutine phenopowerlaw_dotState(Mp,ph,me)
 !  calculate left and right vectors
   left_SlipSlip  = 1.0_pReal + prm%h_int
   xi_slip_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
-  right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
-                 * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,me) / (prm%xi_inf_sl+xi_slip_sat_offset))
+  right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,en) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
+                 * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,en) / (prm%xi_inf_sl+xi_slip_sat_offset))
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates
-  call kinetics_slip(Mp,ph,me,gdot_slip_pos,gdot_slip_neg)
-  dot%gamma_slip(:,me) = abs(gdot_slip_pos+gdot_slip_neg)
-  call kinetics_twin(Mp,ph,me,dot%gamma_twin(:,me))
+  call kinetics_slip(Mp,ph,en,gdot_slip_pos,gdot_slip_neg)
+  dot%gamma_slip(:,en) = abs(gdot_slip_pos+gdot_slip_neg)
+  call kinetics_twin(Mp,ph,en,dot%gamma_twin(:,en))
 
 !--------------------------------------------------------------------------------------------------
 ! hardening
-  dot%xi_slip(:,me) = c_SlipSlip * left_SlipSlip * &
-                      matmul(prm%h_sl_sl,dot%gamma_slip(:,me)*right_SlipSlip) &
-                    + matmul(prm%h_sl_tw,dot%gamma_twin(:,me))
+  dot%xi_slip(:,en) = c_SlipSlip * left_SlipSlip * &
+                      matmul(prm%h_sl_sl,dot%gamma_slip(:,en)*right_SlipSlip) &
+                    + matmul(prm%h_sl_tw,dot%gamma_twin(:,en))
 
-  dot%xi_twin(:,me) = c_TwinSlip * matmul(prm%h_tw_sl,dot%gamma_slip(:,me)) &
-                    + c_TwinTwin * matmul(prm%h_tw_tw,dot%gamma_twin(:,me))
+  dot%xi_twin(:,en) = c_TwinSlip * matmul(prm%h_tw_sl,dot%gamma_slip(:,en)) &
+                    + c_TwinTwin * matmul(prm%h_tw_tw,dot%gamma_twin(:,en))
   end associate
 
 end subroutine phenopowerlaw_dotState
@@ -430,14 +430,14 @@ end subroutine plastic_phenopowerlaw_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_slip(Mp,ph,me, &
+pure subroutine kinetics_slip(Mp,ph,en, &
                               gdot_slip_pos,gdot_slip_neg,dgdot_dtau_slip_pos,dgdot_dtau_slip_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
-    me
+    en
 
   real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
     gdot_slip_pos, &
@@ -461,14 +461,14 @@ pure subroutine kinetics_slip(Mp,ph,me, &
 
   where(dNeq0(tau_slip_pos))
     gdot_slip_pos = prm%dot_gamma_0_sl * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &          ! 1/2 if non-Schmid active
-                  * sign(abs(tau_slip_pos/stt%xi_slip(:,me))**prm%n_sl,  tau_slip_pos)
+                  * sign(abs(tau_slip_pos/stt%xi_slip(:,en))**prm%n_sl,  tau_slip_pos)
   else where
     gdot_slip_pos = 0.0_pReal
   end where
 
   where(dNeq0(tau_slip_neg))
     gdot_slip_neg = prm%dot_gamma_0_sl * 0.5_pReal &                                                ! only used if non-Schmid active, always 1/2
-                  * sign(abs(tau_slip_neg/stt%xi_slip(:,me))**prm%n_sl,  tau_slip_neg)
+                  * sign(abs(tau_slip_neg/stt%xi_slip(:,en))**prm%n_sl,  tau_slip_neg)
   else where
     gdot_slip_neg = 0.0_pReal
   end where
@@ -499,14 +499,14 @@ end subroutine kinetics_slip
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_twin(Mp,ph,me,&
+pure subroutine kinetics_twin(Mp,ph,en,&
                               gdot_twin,dgdot_dtau_twin)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
-    me
+    en
 
   real(pReal), dimension(param(ph)%sum_N_tw), intent(out) :: &
     gdot_twin
@@ -524,8 +524,8 @@ pure subroutine kinetics_twin(Mp,ph,me,&
   enddo
 
   where(tau_twin > 0.0_pReal)
-    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,me)/prm%gamma_char)) &                              ! only twin in untwinned volume fraction
-              * prm%dot_gamma_0_tw*(abs(tau_twin)/stt%xi_twin(:,me))**prm%n_tw
+    gdot_twin = (1.0_pReal-sum(stt%gamma_twin(:,en)/prm%gamma_char)) &                              ! only twin in untwinned volume fraction
+              * prm%dot_gamma_0_tw*(abs(tau_twin)/stt%xi_twin(:,en))**prm%n_tw
   else where
     gdot_twin = 0.0_pReal
   end where

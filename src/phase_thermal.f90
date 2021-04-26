@@ -26,7 +26,7 @@ submodule(phase) thermal
   integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
 
-  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(me) reads quite good
+  type(tDataContainer), dimension(:), allocatable :: current          ! ?? not very telling name. Better: "field" ?? MD: current(ho)%T(en) reads quite good
 
   type(tThermalParameters), dimension(:), allocatable :: param
 
@@ -46,23 +46,23 @@ submodule(phase) thermal
     end function externalheat_init
 
 
-    module subroutine externalheat_dotState(ph, me)
+    module subroutine externalheat_dotState(ph, en)
       integer, intent(in) :: &
         ph, &
-        me
+        en
     end subroutine externalheat_dotState
 
-    module function dissipation_f_T(ph,me) result(f_T)
+    module function dissipation_f_T(ph,en) result(f_T)
       integer, intent(in) :: &
         ph, &
-        me
+        en
       real(pReal) :: f_T
     end function dissipation_f_T
 
-    module function externalheat_f_T(ph,me)  result(f_T)
+    module function externalheat_f_T(ph,en)  result(f_T)
       integer, intent(in) :: &
         ph, &
-        me
+        en
       real(pReal) :: f_T
     end function externalheat_f_T
 
@@ -137,9 +137,9 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module function phase_f_T(ph,me) result(f)
+module function phase_f_T(ph,en) result(f)
 
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   real(pReal) :: f
 
 
@@ -152,10 +152,10 @@ module function phase_f_T(ph,me) result(f)
    select case(thermal_source(so,ph))
 
      case (THERMAL_DISSIPATION_ID)
-       f = f + dissipation_f_T(ph,me)
+       f = f + dissipation_f_T(ph,en)
 
      case (THERMAL_EXTERNALHEAT_ID)
-       f = f + externalheat_f_T(ph,me)
+       f = f + externalheat_f_T(ph,en)
 
    end select
 
@@ -167,9 +167,9 @@ end function phase_f_T
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function phase_thermal_collectDotState(ph,me) result(broken)
+function phase_thermal_collectDotState(ph,en) result(broken)
 
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   logical :: broken
 
   integer :: i
@@ -180,9 +180,9 @@ function phase_thermal_collectDotState(ph,me) result(broken)
   SourceLoop: do i = 1, thermal_Nsources(ph)
 
     if (thermal_source(i,ph) == THERMAL_EXTERNALHEAT_ID) &
-      call externalheat_dotState(ph,me)
+      call externalheat_dotState(ph,en)
 
-    broken = broken .or. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,me)))
+    broken = broken .or. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))
 
   enddo SourceLoop
 
@@ -218,14 +218,14 @@ module function phase_K_T(co,ce) result(K)
 end function phase_K_T
 
 
-module function thermal_stress(Delta_t,ph,me) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??
+module function thermal_stress(Delta_t,ph,en) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??
 
   real(pReal), intent(in) :: Delta_t
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   logical :: converged_
 
 
-  converged_ = .not. integrateThermalState(Delta_t,ph,me)
+  converged_ = .not. integrateThermalState(Delta_t,ph,en)
 
 end function thermal_stress
 
@@ -233,10 +233,10 @@ end function thermal_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-function integrateThermalState(Delta_t, ph,me) result(broken)
+function integrateThermalState(Delta_t, ph,en) result(broken)
 
   real(pReal), intent(in) :: Delta_t
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   logical :: &
     broken
 
@@ -244,13 +244,13 @@ function integrateThermalState(Delta_t, ph,me) result(broken)
     so, &
     sizeDotState
 
-  broken = phase_thermal_collectDotState(ph,me)
+  broken = phase_thermal_collectDotState(ph,en)
   if (broken) return
 
   do so = 1, thermal_Nsources(ph)
     sizeDotState = thermalState(ph)%p(so)%sizeDotState
-    thermalState(ph)%p(so)%state(1:sizeDotState,me) = thermalState(ph)%p(so)%state0(1:sizeDotState,me) &
-                                                    + thermalState(ph)%p(so)%dotState(1:sizeDotState,me) * Delta_t
+    thermalState(ph)%p(so)%state(1:sizeDotState,en) = thermalState(ph)%p(so)%state0(1:sizeDotState,en) &
+                                                    + thermalState(ph)%p(so)%dotState(1:sizeDotState,en) * Delta_t
   enddo
 
 end function integrateThermalState
@@ -273,13 +273,13 @@ end subroutine thermal_forward
 !----------------------------------------------------------------------------------------------
 !< @brief Get temperature (for use by non-thermal physics)
 !----------------------------------------------------------------------------------------------
-module function thermal_T(ph,me) result(T)
+module function thermal_T(ph,en) result(T)
 
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   real(pReal) :: T
 
 
-  T = current(ph)%T(me)
+  T = current(ph)%T(en)
 
 end function thermal_T
 
@@ -287,13 +287,13 @@ end function thermal_T
 !----------------------------------------------------------------------------------------------
 !< @brief Get rate of temperature (for use by non-thermal physics)
 !----------------------------------------------------------------------------------------------
-module function thermal_dot_T(ph,me) result(dot_T)
+module function thermal_dot_T(ph,en) result(dot_T)
 
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   real(pReal) :: dot_T
 
 
-  dot_T = current(ph)%dot_T(me)
+  dot_T = current(ph)%dot_T(en)
 
 end function thermal_dot_T
 
