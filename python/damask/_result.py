@@ -112,11 +112,11 @@ class Result:
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
             self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
 
-            self.N_materialpoints, self.N_constituents = np.shape(f[f'cell_to/phase'])
+            self.N_materialpoints, self.N_constituents = np.shape(f['cell_to/phase'])
 
-            self.homogenization  = f[f'cell_to/homogenization']['label'].astype('str')
+            self.homogenization  = f['cell_to/homogenization']['label'].astype('str')
             self.homogenizations = sorted(np.unique(self.homogenization),key=util.natural_sort)
-            self.phase           = f[f'cell_to/phase']['label'].astype('str')
+            self.phase           = f['cell_to/phase']['label'].astype('str')
             self.phases          = sorted(np.unique(self.phase),key=util.natural_sort)
 
             self.fields = []
@@ -189,8 +189,7 @@ class Result:
 
         if   what == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('increment_') else
-                      f'increment_{c}' for c in choice]
-            if datasets == -1: choice = [self.increments[-1]]
+                      self.increments[c] if c<0 else f'increment_{c}' for c in choice]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
@@ -953,10 +952,10 @@ class Result:
 
         Notes
         -----
-        The definition of the second Piola-Kirchhoff (S) stress follows
-        the standard nonlinear continuum mechanics definition. It does
-        NOT take the different configurations into account as it would
-        be required for the crystal plasticity definition of S.
+        The definition of the second Piola-Kirchhoff stress (S = [F^-1 P]_sym)
+        follows the standard definition in nonlinear continuum mechanics.
+        As such, no intermediate configuration, for instance that reached by F_p,
+        is taken into account.
 
         """
         self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
