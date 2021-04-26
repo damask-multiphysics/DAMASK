@@ -36,7 +36,7 @@ class Rotation:
     >>> import numpy as np
     >>> Q = damask.Rotation.from_random()
     >>> a = np.random.rand(3)
-    >>> b = R @ a
+    >>> b = Q @ a
     >>> np.allclose(np.dot(Q.as_matrix(),a),b)
     True
 
