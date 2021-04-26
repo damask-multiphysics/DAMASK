@@ -17,7 +17,7 @@ submodule(phase:plastic) dislotungsten
       D_0  = 1.0_pReal, &                                                                           !< prefactor for self-diffusion coefficient
       Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
-      b_sl, &                                                                                       !< magnitude en Burgers vector [m]
+      b_sl, &                                                                                       !< magnitude of Burgers vector [m]
       D_a, &
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
       f_at, &                                                                                       !< factor to calculate atomic volume

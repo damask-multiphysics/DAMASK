@@ -336,7 +336,7 @@ module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
 
 
 !--------------------------------------------------------------------------------------------------
-! switch in sense en shear?
+! switch in sense of shear?
   where(dNeq(sense,stt%sense(:,en),0.1_pReal))
     dlt%sense (:,en) = sense - stt%sense(:,en)                                                      ! switch sense
     dlt%chi0  (:,en) = abs(stt%crss_back(:,en)) - stt%chi0(:,en)                                    ! remember current backstress magnitude

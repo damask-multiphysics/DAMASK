@@ -1118,7 +1118,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
         * 0.25_pReal * sqrt(stt%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
 
 
-  !*** thermally activated annihilation en edge dipoles by climb
+  !*** thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
   selfDiffusion = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))
   vClimb = prm%V_at * selfDiffusion * prm%mu &
