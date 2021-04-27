@@ -135,6 +135,18 @@ class TestVTK:
         with pytest.raises(TypeError):
             default.add('invalid_type','valid')
 
+    @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
+                                                (float,(3,3)),
+                                                (float,(1,)),
+                                                (int,(4,)),
+                                                (str,(1,))])
+    @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
+    def test_add_get(self,default,data_type,shape,N_values):
+        data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
+        default.add(data,'data')
+        assert (np.squeeze(data.reshape(N_values,-1)) == default.get('data')).all()
+
+
     def test_add_masked(self,default):
         data = np.random.rand(5*6*7,3)
         masked = ma.MaskedArray(data,mask=data<.4,fill_value=42.)

@@ -265,10 +265,18 @@ class VTK:
                 raise ValueError('No label defined for numpy.ndarray')
 
             N_data = data.shape[0]
-            data_ = np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else\
-                    data
-            d = np_to_vtk((data_.astype(np.single) if data_.dtype in [np.double, np.longdouble] else
-                           data_).reshape(N_data,-1),deep=True)                                      # avoid large files
+            data_ = (data if not isinstance(data,np.ma.MaskedArray) else
+                     np.where(data.mask,data.fill_value,data)).reshape(N_data,-1)
+
+            if data_.dtype in [np.double,np.longdouble]:
+                d = np_to_vtk(data_.astype(np.single),deep=True)                                    # avoid large files
+            elif data_.dtype.type is np.str_:
+                d = vtk.vtkStringArray()
+                for s in np.squeeze(data_):
+                    d.InsertNextValue(s)
+            else:
+                d = np_to_vtk(data_,deep=True)
+
             d.SetName(label)
 
             if   N_data == N_points:
@@ -305,14 +313,24 @@ class VTK:
         cell_data = self.vtk_data.GetCellData()
         for a in range(cell_data.GetNumberOfArrays()):
             if cell_data.GetArrayName(a) == label:
-                return vtk_to_np(cell_data.GetArray(a))
+                try:
+                    return vtk_to_np(cell_data.GetArray(a))
+                except AttributeError:
+                    vtk_array = cell_data.GetAbstractArray(a)                                       # string array
 
         point_data = self.vtk_data.GetPointData()
         for a in range(point_data.GetNumberOfArrays()):
             if point_data.GetArrayName(a) == label:
-                return vtk_to_np(point_data.GetArray(a))
+                try:
+                    return vtk_to_np(point_data.GetArray(a))
+                except AttributeError:
+                    vtk_array = point_data.GetAbstractArray(a)                                      # string array
 
-        raise ValueError(f'Array "{label}" not found.')
+        try:
+            # string array
+            return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
+        except UnboundLocalError:
+            raise ValueError(f'Array "{label}" not found.')
 
 
     def get_comments(self):

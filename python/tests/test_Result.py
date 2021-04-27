@@ -333,7 +333,7 @@ class TestResult:
     @pytest.mark.parametrize('output',['F','*',['P']],ids=range(3))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
-    def test_vtk(self,request,tmp_path,ref_path,update,output,fname,inc):
+    def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
         result.save_VTK(output)
@@ -353,6 +353,19 @@ class TestResult:
                 f.write(cur)
         with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5')) as f:
             assert cur == f.read()
+
+    @pytest.mark.parametrize('mode',['point','cell'])
+    @pytest.mark.parametrize('output',[False,True])
+    def test_vtk_marc(self,tmp_path,ref_path,mode,output):
+        os.chdir(tmp_path)
+        result = Result(ref_path/'check_compile_job1.hdf5')
+        result.save_VTK(output,mode)
+
+    def test_marc_coordinates(self,ref_path):
+        result = Result(ref_path/'check_compile_job1.hdf5').view('increments',-1)
+        c_n = result.coordinates0_node + result.get('u_n')
+        c_p = result.coordinates0_point + result.get('u_p')
+        assert len(c_n) > len(c_p)
 
     @pytest.mark.parametrize('mode',['point','cell'])
     def test_vtk_mode(self,tmp_path,single_phase,mode):
