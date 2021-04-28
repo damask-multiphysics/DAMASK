@@ -41,7 +41,7 @@ module subroutine elastic_init(phases)
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
     elastic => mech%get('elastic')
-    if(elastic%get_asString('type') == 'hooke') then
+    if(IO_lc(elastic%get_asString('type')) == 'hooke') then ! accept small letter h for the moment
       phase_elasticity(ph) = ELASTICITY_HOOKE_ID
     else
       call IO_error(200,ext_msg=elastic%get_asString('type'))
@@ -73,11 +73,11 @@ end subroutine elastic_init
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
-                                              Fe, Fi, ph, me)
+                                              Fe, Fi, ph, en)
 
   integer, intent(in) :: &
     ph, &
-    me
+    en
   real(pReal),   intent(in),  dimension(3,3) :: &
     Fe, &                                                                                           !< elastic deformation gradient
     Fi                                                                                              !< intermediate deformation gradient
@@ -93,12 +93,12 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     d, &                                                                                            !< counter in degradation loop
     i, j
 
-  C = math_66toSym3333(phase_homogenizedC(ph,me))
+  C = math_66toSym3333(phase_homogenizedC(ph,en))
 
   DegradationLoop: do d = 1, phase_NstiffnessDegradations(ph)
     degradationType: select case(phase_stiffnessDegradation(d,ph))
       case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * damage_phi(ph,me)**2
+        C = C * damage_phi(ph,en)**2
     end select degradationType
   enddo DegradationLoop
 

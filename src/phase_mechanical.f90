@@ -55,10 +55,10 @@ submodule(phase) mechanical
     module subroutine plastic_init
     end subroutine plastic_init
 
-    module subroutine phase_hooke_SandItsTangents(S,dS_dFe,dS_dFi,Fe,Fi,ph,me)
+    module subroutine phase_hooke_SandItsTangents(S,dS_dFe,dS_dFi,Fe,Fi,ph,en)
       integer, intent(in) :: &
         ph, &
-        me
+        en
       real(pReal),   intent(in),  dimension(3,3) :: &
         Fe, &                                                                                       !< elastic deformation gradient
         Fi                                                                                          !< intermediate deformation gradient

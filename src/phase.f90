@@ -294,7 +294,6 @@ module phase
   end interface
 
 
-
   type(tDebugOptions) :: debugConstitutive
 #if __INTEL_COMPILER >= 1900
   public :: &
