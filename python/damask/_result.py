@@ -1179,7 +1179,7 @@ class Result:
 
         """
         chunk_size = 1024**2//8
-        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
+        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
         lock = mp.Manager().Lock()
 
         groups = []

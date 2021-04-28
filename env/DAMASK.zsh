@@ -45,7 +45,8 @@ if [ ! -z "$PS1" ]; then
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
   [[ "x$PETSC_ARCH" != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
-  [[ "x$OMP_NUM_THREADS" != "x" ]] && echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
+  [[ "x$OMP_NUM_THREADS" == "x" ]] && export OMP_NUM_THREADS=4
+  echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
   echo -n "heap  size         "
    [[ "$(ulimit -d)" == "unlimited" ]] \
    && echo "unlimited" \
