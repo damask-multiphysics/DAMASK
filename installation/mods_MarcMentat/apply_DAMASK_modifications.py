@@ -17,10 +17,10 @@ parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
 parser.add_argument('--msc-root', dest='msc_root', metavar='string',
                     default=damask.solver._marc._msc_root,
                     help='MSC.Marc/Mentat root directory')
-parser.add_argument('--msc-version', dest='msc_version', metavar='string',
+parser.add_argument('--msc-version', dest='msc_version', type=float, metavar='float',
                     default=damask.solver._marc._msc_version,
                     help='MSC.Marc/Mentat version')
-parser.add_argument('--damask-root', dest='damask_root', type=float, metavar = 'float',
+parser.add_argument('--damask-root', dest='damask_root', metavar = 'string',
                     default=damask.solver._marc._damask_root,
                     help='DAMASK root directory')
 
