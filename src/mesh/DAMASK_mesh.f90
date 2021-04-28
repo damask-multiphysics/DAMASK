@@ -85,11 +85,12 @@ program DAMASK_mesh
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  if (stagItMax < 0)  call IO_error(301,ext_msg='maxStaggeredIter')
+  if (maxCutBack < 0) call IO_error(301,ext_msg='maxCutBack')
 
 ! reading basic information from load case file and allocate data structure containing load cases
-  call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
+  call DMGetDimension(geomMesh,dimPlex,ierr)                                                        !< dimension of mesh (2D or 3D)
+  CHKERRA(ierr)
   nActiveFields = 1
   allocate(solres(nActiveFields))
 
@@ -338,15 +339,15 @@ program DAMASK_mesh
         cutBack = .False.
         if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
           if (cutBackLevel < maxCutBack) then                                                       ! do cut back
-            print'(/,a)', ' cut back detected'
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
             timeinc = timeinc/2.0_pReal
+            print'(/,a)', ' cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
-            call IO_warning(850)
-            call quit(1)                                                                            ! quit
+            if (worldrank == 0) close(statUnit)
+            call IO_error(950)
           endif
         else
           guess = .true.                                                                            ! start guessing after first converged (sub)inc

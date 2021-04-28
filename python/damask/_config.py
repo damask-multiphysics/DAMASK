@@ -31,7 +31,7 @@ class NiceDumper(yaml.SafeDumper):
             return super().represent_data(data)
 
     def ignore_aliases(self, data):
-        """No references."""
+        """Do not use references to existing objects."""
         return True
 
 class Config(dict):
@@ -61,6 +61,11 @@ class Config(dict):
         other : damask.Config or dict
             Key-value pairs that update self.
 
+        Returns
+        -------
+        updated : damask.Config
+            Updated configuration.
+
         """
         duplicate = self.copy()
         duplicate.update(other)
@@ -81,6 +86,11 @@ class Config(dict):
         keys : iterable or scalar
             Label of the key(s) to remove.
 
+        Returns
+        -------
+        updated : damask.Config
+            Updated configuration.
+
         """
         duplicate = self.copy()
         for k in keys if isinstance(keys, Iterable) and not isinstance(keys, str) else [keys]:
@@ -97,6 +107,11 @@ class Config(dict):
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for writing.
+
+        Returns
+        -------
+        loaded : damask.Config
+            Configuration from file.
 
         """
         try:

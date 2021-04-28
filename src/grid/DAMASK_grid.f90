@@ -219,7 +219,7 @@ program DAMASK_grid
           loadCases(l)%stress%mask   = transpose(reshape(temp_maskVector,[3,3]))
           loadCases(l)%stress%values = math_9to33(temp_valueVector)
       end select
-      call loadCases(l)%rot%fromAxisAngle(step_mech%get_asFloats('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
+      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dFloat('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
     enddo readMech
     if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
 
@@ -441,9 +441,8 @@ program DAMASK_grid
             timeinc = timeinc/real(subStepFactor,pReal)                                             ! cut timestep
             print'(/,a)', ' cutting back '
           else                                                                                      ! no more options to continue
-            call IO_warning(850)
             if (worldrank == 0) close(statUnit)
-            call quit(0)
+            call IO_error(950)
           endif
 
         enddo subStepLooping

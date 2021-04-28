@@ -6,7 +6,6 @@ import shlex
 import re
 import fractions
 from functools import reduce
-from optparse import Option
 
 import numpy as np
 import h5py
@@ -16,28 +15,41 @@ from . import version
 # limit visibility
 __all__=[
          'srepr',
-         'croak',
-         'report',
          'emph','deemph','warn','strikeout',
          'execute',
+         'natural_sort',
          'show_progress',
          'scale_to_coprime',
          'project_stereographic',
          'hybrid_IA',
-         'return_message',
-         'extendableOption',
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
-         'DREAM3D_base_group', 'DREAM3D_cell_data_group'
+         'DREAM3D_base_group', 'DREAM3D_cell_data_group',
+         'dict_prune', 'dict_flatten'
         ]
+
+# https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
+# https://stackoverflow.com/questions/287871
+_colors = {
+           'header' :   '\033[95m',
+           'OK_blue':   '\033[94m',
+           'OK_green':  '\033[92m',
+           'warning':   '\033[93m',
+           'fail':      '\033[91m',
+           'end_color': '\033[0m',
+           'bold':      '\033[1m',
+           'dim':       '\033[2m',
+           'underline': '\033[4m',
+           'crossout':  '\033[9m'
+          }
 
 ####################################################################################################
 # Functions
 ####################################################################################################
 def srepr(arg,glue = '\n'):
     r"""
-    Join arguments with glue string.
+    Join items with glue string.
 
     Parameters
     ----------
@@ -46,65 +58,90 @@ def srepr(arg,glue = '\n'):
     glue : str, optional
         Glue used for joining operation. Defaults to \n.
 
+    Returns
+    -------
+    joined : str
+        String representation of the joined items.
+
     """
-    if (not hasattr(arg, "strip") and
-           (hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))):
+    if (not hasattr(arg, 'strip') and
+           (hasattr(arg, '__getitem__') or
+            hasattr(arg, '__iter__'))):
         return glue.join(str(x) for x in arg)
-    return arg if isinstance(arg,str) else repr(arg)
-
-
-def croak(what, newline = True):
-    """
-    Write formated to stderr.
-
-    DEPRECATED
-
-    Parameters
-    ----------
-    what : str or iterable
-        Content to be displayed.
-    newline : bool, optional
-        Separate items of what by newline. Defaults to True.
-
-    """
-    if what is not None:
-        sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
-    sys.stderr.flush()
-
-
-def report(who = None,
-           what = None):
-    """
-    Report script and file name.
-
-    DEPRECATED
-
-    """
-    croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
+    else:
+       return arg if isinstance(arg,str) else repr(arg)
 
 
 def emph(what):
-    """Formats string with emphasis."""
-    return bcolors.BOLD+srepr(what)+bcolors.ENDC
+    """
+    Format with emphasis.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
+    return _colors['bold']+srepr(what)+_colors['end_color']
 
 def deemph(what):
-    """Formats string with deemphasis."""
-    return bcolors.DIM+srepr(what)+bcolors.ENDC
+    """
+    Format with deemphasis.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
+    return _colors['dim']+srepr(what)+_colors['end_color']
 
 def warn(what):
-    """Formats string for warning."""
-    return bcolors.WARNING+emph(what)+bcolors.ENDC
+    """
+    Format for warning.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
+    return _colors['warning']+emph(what)+_colors['end_color']
 
 def strikeout(what):
-    """Formats string as strikeout."""
-    return bcolors.CROSSOUT+srepr(what)+bcolors.ENDC
+    """
+    Format as strikeout.
+
+    Parameters
+    ----------
+    what : object with __repr__ or iterable of objects with __repr__.
+        Message to format.
+
+    Returns
+    -------
+    formatted : str
+        Formatted string representation of the joined items.
+
+    """
+    return _colors['crossout']+srepr(what)+_colors['end_color']
 
 
-def execute(cmd,
-            stream_in = None,
-            wd = './',
-            env = None):
+def execute(cmd,wd='./',env=None):
     """
     Execute command.
 
@@ -112,33 +149,36 @@ def execute(cmd,
     ----------
     cmd : str
         Command to be executed.
-    stream_in : file object, optional
-        Input (via pipe) for executed process.
     wd : str, optional
         Working directory of process. Defaults to ./ .
     env : dict, optional
         Environment for execution.
 
+    Returns
+    -------
+    stdout, stderr : str
+        Output of the executed command.
+
     """
-    initialPath = os.getcwd()
-    myEnv = os.environ if env is None else env
-    os.chdir(wd)
     print(f"executing '{cmd}' in '{wd}'")
-    process = subprocess.Popen(shlex.split(cmd),
-                               stdout = subprocess.PIPE,
-                               stderr = subprocess.PIPE,
-                               stdin  = subprocess.PIPE,
-                               env = myEnv)
-    stdout, stderr = [i for i in (process.communicate() if stream_in is None
-                             else process.communicate(stream_in.read().encode('utf-8')))]
-    os.chdir(initialPath)
-    stdout = stdout.decode('utf-8').replace('\x08','')
-    stderr = stderr.decode('utf-8').replace('\x08','')
+    process = subprocess.run(shlex.split(cmd),
+                             stdout = subprocess.PIPE,
+                             stderr = subprocess.PIPE,
+                             env = os.environ if env is None else env,
+                             cwd = wd,
+                             encoding = 'utf-8')
+
     if process.returncode != 0:
-        print(stdout)
-        print(stderr)
+        print(process.stdout)
+        print(process.stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
-    return stdout, stderr
+
+    return process.stdout, process.stderr
+
+
+def natural_sort(key):
+    convert = lambda text: int(text) if text.isdigit() else text
+    return [ convert(c) for c in re.split('([0-9]+)', key) ]
 
 
 def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
@@ -159,11 +199,15 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
         Character length of bar. Defaults to 50.
 
     """
-    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
+    if N_iter in [0,1] or (hasattr(iterable,'__len__') and len(iterable) <= 1):
+        for item in iterable:
+            yield item
+    else:
+        status = _ProgressBar(N_iter if N_iter is not None else len(iterable),prefix,bar_length)
 
-    for i,item in enumerate(iterable):
-        yield item
-        status.update(i)
+        for i,item in enumerate(iterable):
+            yield item
+            status.update(i)
 
 
 def scale_to_coprime(v):
@@ -175,6 +219,11 @@ def scale_to_coprime(v):
     v : numpy.ndarray of shape (:)
         Vector to scale.
 
+    Returns
+    -------
+    m : numpy.ndarray of shape (:)
+        Vector scaled to co-prime numbers.
+
     """
     MAX_DENOMINATOR = 1000000
 
@@ -182,10 +231,12 @@ def scale_to_coprime(v):
         """Denominator of the square of a number."""
         return fractions.Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
 
-    def lcm(a, b):
+    def lcm(a,b):
         """Least common multiple."""
-        # Python 3.9 provides math.lcm, see https://stackoverflow.com/questions/51716916.
-        return a * b // np.gcd(a, b)
+        try:
+            return np.lcm(a,b)                                                                      # numpy > 1.18
+        except AttributeError:
+            return a * b // np.gcd(a, b)
 
     m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(int)
     m = m//reduce(np.gcd,m)
@@ -387,8 +438,13 @@ def DREAM3D_base_group(fname):
 
     Parameters
     ----------
-    fname : str
+    fname : str or pathlib.Path
         Filename of the DREAM.3D (HDF5) file.
+
+    Returns
+    -------
+    path : str
+        Path to the base group.
 
     """
     with h5py.File(fname,'r') as f:
@@ -409,13 +465,18 @@ def DREAM3D_cell_data_group(fname):
 
     Parameters
     ----------
-    fname : str
+    fname : str or pathlib.Path
         Filename of the DREAM.3D (HDF5) file.
+
+    Returns
+    -------
+    path : str
+        Path to the cell data group.
 
     """
     base_group = DREAM3D_base_group(fname)
     with h5py.File(fname,'r') as f:
-        cells = tuple(f[os.path.join(base_group,'_SIMPL_GEOMETRY','DIMENSIONS')][()][::-1])
+        cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,h5py._hl.dataset.Dataset) and np.shape(obj)[:-1] == cells \
                                                    else None)
@@ -425,30 +486,60 @@ def DREAM3D_cell_data_group(fname):
 
     return cell_data_group
 
+
+def dict_prune(d):
+    """
+    Recursively remove empty dictionaries.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to prune.
+
+    Returns
+    -------
+    pruned : dict
+        Pruned dictionary.
+
+    """
+    # https://stackoverflow.com/questions/48151953
+    new = {}
+    for k,v in d.items():
+        if isinstance(v, dict):
+            v = dict_prune(v)
+        if not isinstance(v,dict) or v != {}:
+            new[k] = v
+    return new
+
+
+def dict_flatten(d):
+    """
+    Recursively remove keys of single-entry dictionaries.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to flatten.
+
+    Returns
+    -------
+    flattened : dict
+        Flattened dictionary.
+
+    """
+    if isinstance(d,dict) and len(d) == 1:
+        entry = d[list(d.keys())[0]]
+        new = dict_flatten(entry.copy()) if isinstance(entry,dict) else entry
+    else:
+        new = {k: (dict_flatten(v) if isinstance(v, dict) else v) for k,v in d.items()}
+
+    return new
+
+
+
 ####################################################################################################
 # Classes
 ####################################################################################################
-class extendableOption(Option):
-    """
-    Used for definition of new option parser action 'extend', which enables to take multiple option arguments.
-
-    Adopted from online tutorial http://docs.python.org/library/optparse.html
-    DEPRECATED
-    """
-
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 class _ProgressBar:
     """
     Report progress of an interation as a status bar.
@@ -458,7 +549,7 @@ class _ProgressBar:
 
     def __init__(self,total,prefix,bar_length):
         """
-        Inititalize a progress bar to current time as basis for ETA estimation.
+        Set current time as basis for ETA estimation.
 
         Parameters
         ----------
@@ -497,43 +588,3 @@ class _ProgressBar:
         if iteration == self.total - 1:
             sys.stderr.write('\n')
             sys.stderr.flush()
-
-
-class bcolors:
-    """
-    ASCII colors.
-
-    https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
-    https://stackoverflow.com/questions/287871
-    """
-
-    HEADER    = '\033[95m'
-    OKBLUE    = '\033[94m'
-    OKGREEN   = '\033[92m'
-    WARNING   = '\033[93m'
-    FAIL      = '\033[91m'
-    ENDC      = '\033[0m'
-    BOLD      = '\033[1m'
-    DIM       = '\033[2m'
-    UNDERLINE = '\033[4m'
-    CROSSOUT  = '\033[9m'
-
-
-class return_message:
-    """Object with formatted return message."""
-
-    def __init__(self,message):
-        """
-        Sets return message.
-
-        Parameters
-        ----------
-        message : str or list of str
-            message for output to screen
-
-        """
-        self.message = message
-
-    def __repr__(self):
-        """Return message suitable for interactive shells."""
-        return srepr(self.message)

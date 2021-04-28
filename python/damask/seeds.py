@@ -24,6 +24,11 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
+    Returns
+    -------
+    coords : numpy.ndarray of shape (N_seeds,3)
+        Seed coordinates in 3D space.
+
     """
     rng = _np.random.default_rng(rng_seed)
     if cells is None:
@@ -56,23 +61,35 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
+    Returns
+    -------
+    coords : numpy.ndarray of shape (N_seeds,3)
+        Seed coordinates in 3D space.
+
     """
     rng = _np.random.default_rng(rng_seed)
     coords = _np.empty((N_seeds,3))
     coords[0] = rng.random(3) * size
 
-    i = 1
+    s = 1
+    i = 0
     progress = util._ProgressBar(N_seeds+1,'',50)
-    while i < N_seeds:
+    while s < N_seeds:
         candidates = rng.random((N_candidates,3))*_np.broadcast_to(size,(N_candidates,3))
-        tree = _spatial.cKDTree(coords[:i],boxsize=size) if periodic else \
-               _spatial.cKDTree(coords[:i])
+        tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
+               _spatial.cKDTree(coords[:s])
         distances, dev_null = tree.query(candidates)
         best = distances.argmax()
         if distances[best] > distance:                                                              # require minimum separation
-            coords[i] = candidates[best]                                                            # maximum separation to existing point cloud
+            coords[s] = candidates[best]                                                            # maximum separation to existing point cloud
+            s += 1
+            progress.update(s)
+            i = 0
+        else:
             i += 1
-            progress.update(i)
+
+        if i == 100:
+            raise ValueError('Seeding not possible')
 
     return coords
 
@@ -93,6 +110,11 @@ def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
         Seed corresponds to center of gravity of material ID cloud.
     periodic : boolean, optional
         Center of gravity with periodic boundaries.
+
+    Returns
+    -------
+    coords, materials : numpy.ndarray of shape (:,3), numpy.ndarray of shape (:)
+        Seed coordinates in 3D space, material IDs.
 
     """
     material = grid.material.reshape((-1,1),order='F')

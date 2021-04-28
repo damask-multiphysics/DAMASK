@@ -62,12 +62,12 @@ module function externalheat_init(source_length) result(mySources)
         associate(prm  => param(ph))
           src => sources%get(so)
 
-          prm%t_n = src%get_asFloats('t_n')
+          prm%t_n = src%get_as1dFloat('t_n')
           prm%nIntervals = size(prm%t_n) - 1
 
-          prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
+          prm%f_T = src%get_as1dFloat('f_T',requiredSize = size(prm%t_n))
 
-          Nmembers = count(material_phaseAt2 == ph)
+          Nmembers = count(material_phaseID == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
         end associate
       endif
@@ -81,18 +81,18 @@ end function externalheat_init
 !> @brief rate of change of state
 !> @details state only contains current time to linearly interpolate given heat powers
 !--------------------------------------------------------------------------------------------------
-module subroutine externalheat_dotState(ph, me)
+module subroutine externalheat_dotState(ph, en)
 
   integer, intent(in) :: &
     ph, &
-    me
+    en
 
   integer :: &
     so
 
   so = source_thermal_externalheat_offset(ph)
 
-  thermalState(ph)%p(so)%dotState(1,me) = 1.0_pReal                                                 ! state is current time
+  thermalState(ph)%p(so)%dotState(1,en) = 1.0_pReal                                                 ! state is current time
 
 end subroutine externalheat_dotState
 
@@ -100,13 +100,13 @@ end subroutine externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine externalheat_getRate(TDot, ph, me)
+module function externalheat_f_T(ph,en) result(f_T)
 
   integer, intent(in) :: &
     ph, &
-    me
-  real(pReal),  intent(out) :: &
-    TDot
+    en
+  real(pReal) :: &
+    f_T
 
   integer :: &
     so, interval
@@ -117,17 +117,17 @@ module subroutine externalheat_getRate(TDot, ph, me)
 
   associate(prm => param(ph))
     do interval = 1, prm%nIntervals                                                                 ! scan through all rate segments
-      frac_time = (thermalState(ph)%p(so)%state(1,me) - prm%t_n(interval)) &
+      frac_time = (thermalState(ph)%p(so)%state(1,en) - prm%t_n(interval)) &
                 / (prm%t_n(interval+1) - prm%t_n(interval))                                         ! fractional time within segment
       if (     (frac_time <  0.0_pReal .and. interval == 1) &
           .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
           .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
-        TDot = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
-               prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
-                                                                                                    ! ...or extrapolate if outside me bounds
+        f_T = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
+              prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
+                                                                                                   ! ...or extrapolate if outside of bounds
     enddo
   end associate
 
-end subroutine externalheat_getRate
+end function externalheat_f_T
 
 end submodule externalheat

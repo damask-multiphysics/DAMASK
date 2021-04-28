@@ -1,0 +1,12 @@
+phase: [basic, extensive, selective]
+CPFEM: [basic, extensive, selective]
+
+# options for selective debugging
+element: 1
+integrationpoint: 1
+constituent: 1
+
+# solver-specific
+mesh: [PETSc]
+grid: [basic, rotation, PETSc]
+Marc: [basic]

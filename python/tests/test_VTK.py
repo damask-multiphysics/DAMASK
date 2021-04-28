@@ -4,6 +4,7 @@ import time
 
 import pytest
 import numpy as np
+import numpy.ma as ma
 
 from damask import VTK
 from damask import grid_filters
@@ -133,6 +134,27 @@ class TestVTK:
     def test_invalid_add_type(self,default):
         with pytest.raises(TypeError):
             default.add('invalid_type','valid')
+
+    @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
+                                                (float,(3,3)),
+                                                (float,(1,)),
+                                                (int,(4,)),
+                                                (str,(1,))])
+    @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
+    def test_add_get(self,default,data_type,shape,N_values):
+        data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
+        default.add(data,'data')
+        assert (np.squeeze(data.reshape(N_values,-1)) == default.get('data')).all()
+
+
+    def test_add_masked(self,default):
+        data = np.random.rand(5*6*7,3)
+        masked = ma.MaskedArray(data,mask=data<.4,fill_value=42.)
+        default.add(masked,'D')
+        result_masked = str(default)
+        default.add(np.where(masked.mask,masked.fill_value,masked),'D')
+        assert result_masked == str(default)
+
 
     def test_comments(self,tmp_path,default):
         default.add_comments(['this is a comment'])

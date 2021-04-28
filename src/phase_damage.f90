@@ -1,13 +1,18 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(phase) damagee
+submodule(phase) damage
+
+  type :: tDamageParameters
+    real(pReal) ::                 mu = 0.0_pReal                                                   !< viscosity
+    real(pReal), dimension(3,3) :: K  = 0.0_pReal                                                   !< conductivity/diffusivity
+  end type tDamageParameters
+
   enum, bind(c); enumerator :: &
     DAMAGE_UNDEFINED_ID, &
     DAMAGE_ISOBRITTLE_ID, &
     DAMAGE_ISODUCTILE_ID, &
-    DAMAGE_ANISOBRITTLE_ID, &
-    DAMAGE_ANISODUCTILE_ID
+    DAMAGE_ANISOBRITTLE_ID
   end enum
 
 
@@ -16,22 +21,17 @@ submodule(phase) damagee
   end type tDataContainer
 
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
-    phase_source                                                                                !< active sources mechanisms of each phase
-
-  integer, dimension(:), allocatable :: &
-    phase_Nsources
+    phase_source                                                                                    !< active sources mechanisms of each phase
 
   type(tDataContainer), dimension(:), allocatable :: current
+
+  type(tDamageParameters), dimension(:), allocatable :: param
 
   interface
 
     module function anisobrittle_init() result(mySources)
       logical, dimension(:), allocatable :: mySources
     end function anisobrittle_init
-
-    module function anisoductile_init() result(mySources)
-      logical, dimension(:), allocatable :: mySources
-    end function anisoductile_init
 
     module function isobrittle_init() result(mySources)
       logical, dimension(:), allocatable :: mySources
@@ -57,60 +57,14 @@ submodule(phase) damagee
         S
     end subroutine anisobrittle_dotState
 
-    module subroutine anisoductile_dotState(ph,me)
-      integer, intent(in) :: ph,me
-    end subroutine anisoductile_dotState
-
     module subroutine isoductile_dotState(ph,me)
       integer, intent(in) :: ph,me
     end subroutine isoductile_dotState
-
-
-    module subroutine anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-      integer, intent(in) :: ph,me
-      real(pReal),  intent(in) :: &
-        phi                                                                                           !< damage parameter
-      real(pReal),  intent(out) :: &
-        localphiDot, &
-        dLocalphiDot_dPhi
-    end subroutine anisobrittle_getRateAndItsTangent
-
-    module subroutine anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph,me)
-      integer, intent(in) :: ph,me
-      real(pReal),  intent(in) :: &
-        phi                                                                                           !< damage parameter
-      real(pReal),  intent(out) :: &
-        localphiDot, &
-        dLocalphiDot_dPhi
-    end subroutine anisoductile_getRateAndItsTangent
-
-    module subroutine isobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph,me)
-      integer, intent(in) :: ph,me
-      real(pReal),  intent(in) :: &
-        phi                                                                                           !< damage parameter
-      real(pReal),  intent(out) :: &
-        localphiDot, &
-        dLocalphiDot_dPhi
-    end subroutine isobrittle_getRateAndItsTangent
-
-    module subroutine isoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph,me)
-      integer, intent(in) :: ph,me
-      real(pReal),  intent(in) :: &
-        phi                                                                                           !< damage parameter
-      real(pReal),  intent(out) :: &
-        localphiDot, &
-        dLocalphiDot_dPhi
-    end subroutine isoductile_getRateAndItsTangent
 
     module subroutine anisobrittle_results(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
     end subroutine anisobrittle_results
-
-    module subroutine anisoductile_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine anisoductile_results
 
     module subroutine isobrittle_results(phase,group)
       integer,          intent(in) :: phase
@@ -137,21 +91,22 @@ module subroutine damage_init
   class(tNode), pointer :: &
    phases, &
    phase, &
-   sources
-
+   sources, &
+   source
+  logical:: damage_active
 
   print'(/,a)', ' <<<+-  phase:damage init  -+>>>'
 
   phases => config_material%get('phase')
 
   allocate(current(phases%length))
-
   allocate(damageState (phases%length))
-  allocate(phase_Nsources(phases%length),source = 0)
+  allocate(param(phases%length))
 
+  damage_active = .false.
   do ph = 1,phases%length
 
-    Nmembers = count(material_phaseAt2 == ph)
+    Nmembers = count(material_phaseID == ph)
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
     allocate(current(ph)%d_phi_d_dot_phi(Nmembers),source=0.0_pReal)
@@ -159,18 +114,24 @@ module subroutine damage_init
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
     if (sources%length > 1) error stop
-    phase_Nsources(ph) = sources%length
+    if (sources%length == 1) then
+      damage_active = .true.
+      source => sources%get(1)
+      param(ph)%mu     = source%get_asFloat('M',defaultVal=0.0_pReal)
+      param(ph)%K(1,1) = source%get_asFloat('D_11',defaultVal=0.0_pReal)
+      param(ph)%K(2,2) = source%get_asFloat('D_22',defaultVal=0.0_pReal)
+      param(ph)%K(3,3) = source%get_asFloat('D_33',defaultVal=0.0_pReal)
+      param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase%get_asString('lattice'))
+    endif
 
   enddo
 
   allocate(phase_source(phases%length), source = DAMAGE_UNDEFINED_ID)
 
-! initialize source mechanisms
-  if(maxval(phase_Nsources) /= 0) then
+  if (damage_active) then
     where(isobrittle_init()  ) phase_source = DAMAGE_ISOBRITTLE_ID
     where(isoductile_init()  ) phase_source = DAMAGE_ISODUCTILE_ID
     where(anisobrittle_init()) phase_source = DAMAGE_ANISOBRITTLE_ID
-    where(anisoductile_init()) phase_source = DAMAGE_ANISODUCTILE_ID
   endif
 
 end subroutine damage_init
@@ -179,53 +140,30 @@ end subroutine damage_init
 !----------------------------------------------------------------------------------------------
 !< @brief returns local part of nonlocal damage driving force
 !----------------------------------------------------------------------------------------------
-module subroutine phase_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ce)
+module function phase_f_phi(phi,co,ce) result(f)
 
-  integer, intent(in) :: ce
+  integer, intent(in) :: ce,co
   real(pReal), intent(in) :: &
     phi                                                                                             !< damage parameter
-  real(pReal), intent(inout) :: &
-    phiDot, &
-    dPhiDot_dPhi
-
   real(pReal) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
+    f
+
   integer :: &
     ph, &
-    co, &
-    me
+    en
 
-   phiDot = 0.0_pReal
-   dPhiDot_dPhi = 0.0_pReal
+  ph = material_phaseID(co,ce)
+  en = material_phaseEntry(co,ce)
 
-   do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
-     ph = material_phaseAt2(co,ce)
-     me = material_phasememberAt2(co,ce)
+  select case(phase_source(ph))
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ISODUCTILE_ID,DAMAGE_ANISOBRITTLE_ID)
+      f = 1.0_pReal &
+        - phi*damageState(ph)%state(1,en)
+    case default
+      f = 0.0_pReal
+  end select
 
-       select case(phase_source(ph))
-         case (DAMAGE_ISOBRITTLE_ID)
-           call isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-         case (DAMAGE_ISODUCTILE_ID)
-           call isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-         case (DAMAGE_ANISOBRITTLE_ID)
-           call anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-         case (DAMAGE_ANISODUCTILE_ID)
-           call anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-         case default
-         localphiDot = 0.0_pReal
-         dLocalphiDot_dPhi = 0.0_pReal
-
-      end select
-      phiDot = phiDot + localphiDot
-      dPhiDot_dPhi = dPhiDot_dPhi + dLocalphiDot_dPhi
-  enddo
-
-end subroutine phase_damage_getRateAndItsTangents
+end function phase_f_phi
 
 
 
@@ -304,20 +242,20 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
 
 
   contains
-
   !--------------------------------------------------------------------------------------------------
   !> @brief calculate the damping for correction of state and dot state
   !--------------------------------------------------------------------------------------------------
-  real(pReal) pure function damper(current,previous,previous2)
+  real(pReal) pure function damper(omega_0,omega_1,omega_2)
 
-  real(pReal), dimension(:), intent(in) ::&
-    current, previous, previous2
+  real(pReal), dimension(:), intent(in) :: &
+    omega_0, omega_1, omega_2
 
   real(pReal) :: dot_prod12, dot_prod22
 
-  dot_prod12 = dot_product(current  - previous,  previous - previous2)
-  dot_prod22 = dot_product(previous - previous2, previous - previous2)
-  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
+  dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
+  dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
+
+  if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
     damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
   else
     damper = 1.0_pReal
@@ -336,30 +274,22 @@ module subroutine damage_results(group,ph)
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
-  integer :: so
-
-  sourceLoop: do so = 1, phase_Nsources(ph)
 
   if (phase_source(ph) /= DAMAGE_UNDEFINED_ID) &
     call results_closeGroup(results_addGroup(group//'damage'))
 
-    sourceType: select case (phase_source(ph))
+  sourceType: select case (phase_source(ph))
 
-      case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call isobrittle_results(ph,group//'damage/')
+    case (DAMAGE_ISOBRITTLE_ID) sourceType
+      call isobrittle_results(ph,group//'damage/')
 
-      case (DAMAGE_ISODUCTILE_ID) sourceType
-        call isoductile_results(ph,group//'damage/')
+    case (DAMAGE_ISODUCTILE_ID) sourceType
+      call isoductile_results(ph,group//'damage/')
 
-      case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_results(ph,group//'damage/')
+    case (DAMAGE_ANISOBRITTLE_ID) sourceType
+      call anisobrittle_results(ph,group//'damage/')
 
-      case (DAMAGE_ANISODUCTILE_ID) sourceType
-        call anisoductile_results(ph,group//'damage/')
-
-    end select sourceType
-
-  enddo SourceLoop
+  end select sourceType
 
 end subroutine damage_results
 
@@ -384,9 +314,6 @@ function phase_damage_collectDotState(ph,me) result(broken)
       case (DAMAGE_ISODUCTILE_ID) sourceType
         call isoductile_dotState(ph,me)
 
-      case (DAMAGE_ANISODUCTILE_ID) sourceType
-        call anisoductile_dotState(ph,me)
-
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
         call anisobrittle_dotState(mechanical_S(ph,me), ph,me) ! correct stress?
 
@@ -398,6 +325,33 @@ function phase_damage_collectDotState(ph,me) result(broken)
 
 end function phase_damage_collectDotState
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage viscosity.
+!--------------------------------------------------------------------------------------------------
+module function phase_mu_phi(co,ce) result(mu)
+
+  integer, intent(in) :: co, ce
+  real(pReal) :: mu
+
+
+  mu = param(material_phaseID(co,ce))%mu
+
+end function phase_mu_phi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Damage conductivity/diffusivity in reference configuration.
+!--------------------------------------------------------------------------------------------------
+module function phase_K_phi(co,ce) result(K)
+
+  integer, intent(in) :: co, ce
+  real(pReal), dimension(3,3) :: K
+
+
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%K)
+
+end function phase_K_phi
 
 
 !--------------------------------------------------------------------------------------------------
@@ -422,19 +376,19 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   if (damageState(ph)%sizeState == 0) return
 
-     sourceType: select case (phase_source(ph))
+   sourceType: select case (phase_source(ph))
 
-      case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
-        broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,me)))
-        if(.not. broken) then
-          myOffset = damageState(ph)%offsetDeltaState
-          mySize   = damageState(ph)%sizeDeltaState
-          damageState(ph)%state(myOffset + 1: myOffset + mySize,me) = &
-          damageState(ph)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%deltaState(1:mySize,me)
-        endif
+    case (DAMAGE_ISOBRITTLE_ID) sourceType
+      call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
+      broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,me)))
+      if(.not. broken) then
+        myOffset = damageState(ph)%offsetDeltaState
+        mySize   = damageState(ph)%sizeDeltaState
+        damageState(ph)%state(myOffset + 1: myOffset + mySize,me) = &
+        damageState(ph)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%deltaState(1:mySize,me)
+      endif
 
-    end select sourceType
+  end select sourceType
 
 
 end function phase_damage_deltaState
@@ -471,25 +425,15 @@ end function source_active
 !----------------------------------------------------------------------------------------------
 !< @brief Set damage parameter
 !----------------------------------------------------------------------------------------------
-module subroutine phase_damage_set_phi(phi,co,ce)
+module subroutine phase_set_phi(phi,co,ce)
 
   real(pReal), intent(in) :: phi
   integer, intent(in) :: ce, co
 
 
-  current(material_phaseAt2(co,ce))%phi(material_phaseMemberAt2(co,ce)) = phi
+  current(material_phaseID(co,ce))%phi(material_phaseEntry(co,ce)) = phi
 
-end subroutine phase_damage_set_phi
-
-
-module function phase_damage_get_phi(co,ip,el) result(phi)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal) :: phi
-
-  phi = current(material_phaseAt(co,el))%phi(material_phaseMemberAt(co,ip,el))
-
-end function phase_damage_get_phi
+end subroutine phase_set_phi
 
 
 module function damage_phi(ph,me) result(phi)
@@ -503,4 +447,21 @@ module function damage_phi(ph,me) result(phi)
 end function damage_phi
 
 
-end submodule damagee
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_forward()
+
+  integer :: ph
+
+
+  do ph = 1, size(damageState)
+    if (damageState(ph)%sizeState > 0) &
+      damageState(ph)%state0 = damageState(ph)%state
+  enddo
+
+end subroutine damage_forward
+
+
+end submodule damage

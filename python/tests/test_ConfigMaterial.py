@@ -86,9 +86,12 @@ class TestConfigMaterial:
 
     def test_from_table(self):
         N = np.random.randint(3,10)
-        a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2))).T
-        t = Table(a,{'varying':1,'constant':4})
-        c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'4_constant'})
+        a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
+                       np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2),
+                       np.ones(N*2),
+                      )).T
+        t = Table(a,{'varying':1,'constant':4,'ones':1})
+        c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'ones'})
         assert len(c['material']) == N
         for i,m in enumerate(c['material']):
             assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
@@ -133,10 +136,9 @@ class TestConfigMaterial:
 
     def test_load_DREAM3D_reference(self,tmp_path,ref_path,update):
         cur = ConfigMaterial.load_DREAM3D(ref_path/'measured.dream3d')
-        ref = ConfigMaterial.load(ref_path/'measured.material_yaml')
+        ref = ConfigMaterial.load(ref_path/'measured.material.yaml')
         if update:
-            cur.save(ref_path/'measured.material_yaml')
+            cur.save(ref_path/'measured.material.yaml')
         for i,m in enumerate(ref['material']):
-            assert Rotation(m['constituents'][0]['O']) == \
-                   Rotation(cur['material'][i]['constituents'][0]['O'])
+            assert Rotation(m['constituents'][0]['O']).isclose(Rotation(cur['material'][i]['constituents'][0]['O']))
         assert cur.is_valid and cur['phase'] == ref['phase'] and cur['homogenization'] == ref['homogenization']

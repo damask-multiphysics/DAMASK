@@ -108,16 +108,12 @@ logical elemental pure function dEq(a,b,tol)
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
 
-  real(pReal)                       :: eps
-
 
   if (present(tol)) then
-    eps = tol
+    dEq = abs(a-b) <= tol
   else
-    eps = PREAL_EPSILON * maxval(abs([a,b]))
+    dEq = abs(a-b) <= PREAL_EPSILON * maxval(abs([a,b]))
   endif
-
-  dEq = merge(.True.,.False.,abs(a-b) <= eps)
 
 end function dEq
 
@@ -150,16 +146,12 @@ logical elemental pure function dEq0(a,tol)
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
 
-  real(pReal)                       :: eps
-
 
   if (present(tol)) then
-    eps = tol
+    dEq0 = abs(a) <= tol
   else
-    eps = PREAL_MIN * 10.0_pReal
+    dEq0 = abs(a) <= PREAL_MIN * 10.0_pReal
   endif
-
-  dEq0 = merge(.True.,.False.,abs(a) <= eps)
 
 end function dEq0
 
@@ -193,16 +185,12 @@ logical elemental pure function cEq(a,b,tol)
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
 
-  real(pReal)                          :: eps
-
 
   if (present(tol)) then
-    eps = tol
+    cEq = abs(a-b) <= tol
   else
-    eps = PREAL_EPSILON * maxval(abs([a,b]))
+    cEq = abs(a-b) <= PREAL_EPSILON * maxval(abs([a,b]))
   endif
-
-  cEq = merge(.True.,.False.,abs(a-b) <= eps)
 
 end function cEq
 

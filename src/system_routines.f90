@@ -83,7 +83,8 @@ logical function setCWD(path)
 
   character(len=*), intent(in) :: path
 
-  setCWD=merge(.True.,.False.,setCWD_C(f_c_string(path)) /= 0_C_INT)
+
+  setCWD = setCWD_C(f_c_string(path)) /= 0_C_INT
 
 end function setCWD
 
@@ -97,6 +98,7 @@ function getCWD()
 
   character(kind=C_CHAR), dimension(pPathLen+1) :: getCWD_Cstring
   integer(C_INT) :: stat
+
 
   call getCWD_C(getCWD_Cstring,stat)
 
@@ -119,6 +121,7 @@ function getHostName()
   character(kind=C_CHAR), dimension(pStringLen+1) :: getHostName_Cstring
   integer(C_INT) :: stat
 
+
   call getHostName_C(getHostName_Cstring,stat)
 
   if(stat == 0) then
@@ -140,6 +143,7 @@ function getUserName()
   character(kind=C_CHAR), dimension(pStringLen+1) :: getUserName_Cstring
   integer(C_INT) :: stat
 
+
   call getUserName_C(getUserName_Cstring,stat)
 
   if(stat == 0) then
@@ -159,7 +163,9 @@ pure function c_f_string(c_string) result(f_string)
 
   character(kind=C_CHAR), dimension(:), intent(in) :: c_string
   character(len=:),       allocatable              :: f_string
+
   integer :: i
+
 
   allocate(character(len=size(c_string))::f_string)
   arrayToString: do i=1,len(f_string)
@@ -182,7 +188,9 @@ pure function f_c_string(f_string) result(c_string)
 
   character(len=*), intent(in)                            :: f_string
   character(kind=C_CHAR), dimension(len_trim(f_string)+1) :: c_string
+
   integer :: i
+
 
   do i=1,len_trim(f_string)
     c_string(i)=f_string(i:i)

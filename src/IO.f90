@@ -503,6 +503,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Abrupt end of file'
     case (708)
       msg = '--- expected after YAML file header'
+    case (709)
+      msg = 'Length mismatch'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
@@ -524,16 +526,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'mixed boundary conditions allow rotation'
     case (839)
       msg = 'non-positive restart frequency in grid load case'
-    case (841)
-      msg = 'missing header length info in grid mesh'
-    case (842)
-      msg = 'incomplete information in grid mesh header'
-    case (843)
-      msg = 'material count mismatch'
     case (844)
       msg = 'invalid VTR file'
-    case (846)
-      msg = 'rotation for load case rotation ill-defined (R:RT != I)'
     case (891)
       msg = 'unknown solver type selected'
     case (892)
@@ -541,6 +535,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (894)
       msg = 'MPI error'
 
+    case (950)
+      msg = 'max number of cut back exceeded, terminating'
 
 !-------------------------------------------------------------------------------------------------
 ! general error messages
@@ -606,11 +602,9 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'unknown crystal symmetry'
     case (709)
       msg = 'read only the first document'
-    case (850)
-      msg = 'max number of cut back exceeded, terminating'
     case default
       msg = 'unknown warning number'
-    end select
+  end select
 
   !$OMP CRITICAL (write2out)
   write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
@@ -664,7 +658,7 @@ subroutine selfTest
   if(any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
   if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
 
-  str=' 1.0 xxx'
+  str = ' 1.0 xxx'
   chunkPos = IO_stringPos(str)
   if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
 

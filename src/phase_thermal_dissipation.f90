@@ -54,7 +54,7 @@ module function dissipation_init(source_length) result(mySources)
           src => sources%get(so)
 
           prm%kappa = src%get_asFloat('kappa')
-          Nmembers = count(material_phaseAt2 == ph)
+          Nmembers = count(material_phaseID == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
         end associate
@@ -69,17 +69,17 @@ end function dissipation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine dissipation_getRate(TDot, ph,me)
+module function dissipation_f_T(ph,en) result(f_T)
 
-  integer, intent(in) :: ph, me
-  real(pReal),  intent(out) :: &
-    TDot
+  integer, intent(in) :: ph, en
+  real(pReal) :: &
+    f_T
 
 
   associate(prm => param(ph))
-    TDot = prm%kappa*sum(abs(mechanical_S(ph,me)*mechanical_L_p(ph,me)))
+    f_T = prm%kappa*sum(abs(mechanical_S(ph,en)*mechanical_L_p(ph,en)))
   end associate
 
-end subroutine dissipation_getRate
+end function dissipation_f_T
 
 end submodule dissipation

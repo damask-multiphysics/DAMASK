@@ -36,13 +36,33 @@ class TestTable:
         d = default.get('F')
         assert np.allclose(d,1.0) and d.shape[1:] == (3,3)
 
-    def test_get_component(self,default):
-        d = default.get('5_F')
-        assert np.allclose(d,1.0) and d.shape[1:] == (1,)
+    def test_set(self,default):
+        d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
+        assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
 
-    @pytest.mark.parametrize('N',[10,40])
-    def test_getitem(self,N):
-        assert len(Table(np.random.rand(N,1),{'X':1})[:N//2]) == N//2
+    def test_set_component(self,default):
+        d = default.set('F[0,0]',np.zeros((5)),'set to zero').get('F')
+        assert np.allclose(d[...,0,0],0.0) and d.shape[1:] == (3,3)
+
+    def test_labels(self,default):
+        assert default.labels == ['F','v','s']
+
+    def test_add(self,default):
+        d = np.random.random((5,9))
+        assert np.allclose(d,default.add('nine',d,'random data').get('nine'))
+
+    def test_isclose(self,default):
+        assert default.isclose(default).all()
+
+    def test_allclose(self,default):
+        assert default.allclose(default)
+
+    @pytest.mark.parametrize('N',[1,3,4])
+    def test_slice(self,default,N):
+        assert len(default[:N]) == 1+N
+        assert len(default[:N,['F','s']]) == 1+N
+        assert default[N:].get('F').shape == (len(default)-N,3,3)
+        assert (default[:N,['v','s']].data == default['v','s'][:N].data).all().all()
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmp_path,mode):
@@ -57,13 +77,6 @@ class TestTable:
         with open(tmp_path/'default.txt','w') as f:
             default.save(f)
         with open(tmp_path/'default.txt') as f:
-            new = Table.load(f)
-        assert all(default.data==new.data) and default.shapes == new.shapes
-
-    def test_write_read_legacy_style(self,default,tmp_path):
-        with open(tmp_path/'legacy.txt','w') as f:
-            default.save(f,legacy=True)
-        with open(tmp_path/'legacy.txt') as f:
             new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
@@ -90,21 +103,6 @@ class TestTable:
     def test_read_strange(self,ref_path,fname):
         with open(ref_path/fname) as f:
             Table.load(f)
-
-    def test_set(self,default):
-        d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
-        assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
-
-    def test_set_component(self,default):
-        d = default.set('1_F',np.zeros((5)),'set to zero').get('F')
-        assert np.allclose(d[...,0,0],0.0) and d.shape[1:] == (3,3)
-
-    def test_labels(self,default):
-        assert default.labels == ['F','v','s']
-
-    def test_add(self,default):
-        d = np.random.random((5,9))
-        assert np.allclose(d,default.add('nine',d,'random data').get('nine'))
 
     def test_rename_equivalent(self):
         x = np.random.random((5,13))
@@ -176,15 +174,15 @@ class TestTable:
     def test_sort_component(self):
         x = np.random.random((5,12))
         t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
-        unsort = t.get('4_F')
-        sort   = t.sort_by('4_F').get('4_F')
+        unsort = t.get('F')[:,1,0]
+        sort   = t.sort_by('F[1,0]').get('F')[:,1,0]
         assert np.all(np.sort(unsort,0)==sort)
 
     def test_sort_revert(self):
         x = np.random.random((5,12))
         t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
-        sort = t.sort_by('4_F',ascending=False).get('4_F')
-        assert np.all(np.sort(sort,0)==sort[::-1,:])
+        sort = t.sort_by('F[1,0]',ascending=False).get('F')[:,1,0]
+        assert np.all(np.sort(sort,0)==sort[::-1])
 
     def test_sort(self):
         t = Table(np.array([[0,1,],[2,1,]]),
@@ -192,4 +190,4 @@ class TestTable:
                   ['test data'])\
             .add('s',np.array(['b','a']))\
             .sort_by('s')
-        assert np.all(t.get('1_v') == np.array([2,0]).reshape(2,1))
+        assert np.all(t.get('v')[:,0] == np.array([2,0]))

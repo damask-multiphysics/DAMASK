@@ -6,7 +6,7 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:eigen) slipplaneopening
 
-  integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
+  integer, dimension(:), allocatable :: damage_isoductile_instance
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
@@ -32,7 +32,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function kinematics_slipplane_opening_init() result(myKinematics)
+module function damage_isoductile_init() result(myKinematics)
 
   logical, dimension(:), allocatable :: myKinematics
 
@@ -71,7 +71,7 @@ module function kinematics_slipplane_opening_init() result(myKinematics)
 
         prm%dot_o    = kinematic_type%get_asFloat('dot_o')
         prm%q        = kinematic_type%get_asFloat('q')
-        N_sl         = pl%get_asInts('N_sl')
+        N_sl         = pl%get_as1dInt('N_sl')
         prm%sum_N_sl = sum(abs(N_sl))
 
         d = lattice_slip_direction (N_sl,phase%get_asString('lattice'),&
@@ -88,7 +88,7 @@ module function kinematics_slipplane_opening_init() result(myKinematics)
           prm%P_n(1:3,1:3,i) = math_outer(n(1:3,i), n(1:3,i))
         enddo
 
-        prm%g_crit = kinematic_type%get_asFloats('g_crit',requiredSize=size(N_sl))
+        prm%g_crit = kinematic_type%get_as1dFloat('g_crit',requiredSize=size(N_sl))
 
         ! expand: family => system
         prm%g_crit = math_expand(prm%g_crit,N_sl)
@@ -107,13 +107,13 @@ module function kinematics_slipplane_opening_init() result(myKinematics)
   enddo
 
 
-end function kinematics_slipplane_opening_init
+end function damage_isoductile_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+module subroutine damage_isoductile_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
 
   integer, intent(in) :: &
     ph, me
@@ -179,6 +179,6 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
 
   end associate
 
-end subroutine kinematics_slipplane_opening_LiAndItsTangent
+end subroutine damage_isoductile_LiAndItsTangent
 
 end submodule slipplaneopening

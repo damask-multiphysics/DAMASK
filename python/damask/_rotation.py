@@ -24,21 +24,31 @@ class Rotation:
     - Euler angle triplets are implemented using the Bunge convention,
       with angular ranges of [0,2π], [0,π], [0,2π].
     - The rotation angle ω is limited to the interval [0,π].
-    - The real part of a quaternion is positive, Re(q) > 0
+    - The real part of a quaternion is positive, Re(q) ≥ 0
     - P = -1 (as default).
 
     Examples
     --------
-    Rotate vector "a" (defined in coordinate system "A") to
-    coordinates "b" expressed in system "B":
+    Rotate vector 'a' (defined in coordinate system 'A') to
+    coordinates 'b' expressed in system 'B':
 
-    - b = Q @ a
-    - b = np.dot(Q.as_matrix(),a)
+    >>> import damask
+    >>> import numpy as np
+    >>> Q = damask.Rotation.from_random()
+    >>> a = np.random.rand(3)
+    >>> b = Q @ a
+    >>> np.allclose(np.dot(Q.as_matrix(),a),b)
+    True
 
     Compound rotations R1 (first) and R2 (second):
 
-    - R = R2 * R1
-    - R = Rotation.from_matrix(np.dot(R2.as_matrix(),R1.as_matrix())
+    >>> import damask
+    >>> import numpy as np
+    >>> R1 = damask.Rotation.from_random()
+    >>> R2 = damask.Rotation.from_random()
+    >>> R = R2 * R1
+    >>> np.allclose(R.as_matrix(), np.dot(R2.as_matrix(),R1.as_matrix()))
+    True
 
     References
     ----------
@@ -51,7 +61,7 @@ class Rotation:
 
     def __init__(self,rotation = np.array([1.0,0.0,0.0,0.0])):
         """
-        Initialize rotation object.
+        New rotation.
 
         Parameters
         ----------
@@ -71,7 +81,7 @@ class Rotation:
 
     def __repr__(self):
         """Represent rotation as unit quaternion(s)."""
-        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape)+chr(10)}'\
+        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
 
@@ -93,28 +103,19 @@ class Rotation:
         """
         Equal to other.
 
-        Equality is determined taking limited floating point precision into account.
-        See numpy.allclose for details.
-
         Parameters
         ----------
         other : Rotation
             Rotation to check for equality.
 
         """
-        s = self.quaternion
-        o = other.quaternion
-        if self.shape == () == other.shape:
-            return np.allclose(s,o) or (np.isclose(s[0],0.0) and np.allclose(s,-1.0*o))
-        else:
-            return np.all(np.isclose(s,o),-1) + np.all(np.isclose(s,-1.0*o),-1) * np.isclose(s[...,0],0.0)
+        return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
+                             np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
+
 
     def __ne__(self,other):
         """
         Not equal to other.
-
-        Equality is determined taking limited floating point precision into
-        account. See numpy.allclose for details.
 
         Parameters
         ----------
@@ -123,6 +124,57 @@ class Rotation:
 
         """
         return np.logical_not(self==other)
+
+
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Report where values are approximately equal to corresponding ones of other Rotation.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        mask : numpy.ndarray bool
+            Mask indicating where corresponding rotations are close.
+
+        """
+        s = self.quaternion
+        o = other.quaternion
+        return np.logical_or(np.all(np.isclose(s,     o,rtol,atol,equal_nan),axis=-1),
+                             np.all(np.isclose(s,-1.0*o,rtol,atol,equal_nan),axis=-1))
+
+
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+        """
+        Test whether all values are approximately equal to corresponding ones of other Rotation.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to compare against.
+        rtol : float, optional
+            Relative tolerance of equality.
+        atol : float, optional
+            Absolute tolerance of equality.
+        equal_nan : bool, optional
+            Consider matching NaN values as equal. Defaults to True.
+
+        Returns
+        -------
+        answer : bool
+            Whether all values are close between both rotations.
+
+        """
+        return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
     def __array__(self):
@@ -140,7 +192,7 @@ class Rotation:
 
 
     def __len__(self):
-        """Length of leading/leftmost dimension of Rotation array."""
+        """Length of leading/leftmost dimension of array."""
         return 0 if self.shape == () else self.shape[0]
 
 
@@ -180,7 +232,7 @@ class Rotation:
 
     def __mul__(self,other):
         """
-        Compose this rotation with other.
+        Compose with other.
 
         Parameters
         ----------
@@ -206,7 +258,7 @@ class Rotation:
 
     def __imul__(self,other):
         """
-        Compose this rotation with other (in-place).
+        Compose with other (in-place).
 
         Parameters
         ----------
@@ -219,7 +271,7 @@ class Rotation:
 
     def __truediv__(self,other):
         """
-        Compose this rotation with inverse of other.
+        Compose with inverse of other.
 
         Parameters
         ----------
@@ -239,7 +291,7 @@ class Rotation:
 
     def __itruediv__(self,other):
         """
-        Compose this rotation with inverse of other (in-place).
+        Compose with inverse of other (in-place).
 
         Parameters
         ----------
@@ -252,7 +304,7 @@ class Rotation:
 
     def __matmul__(self,other):
         """
-        Rotation of vector, second order tensor, or fourth order tensor.
+        Rotate vector, second order tensor, or fourth order tensor.
 
         Parameters
         ----------
@@ -301,11 +353,11 @@ class Rotation:
 
     def append(self,other):
         """
-        Extend rotation array along first dimension with other array(s).
+        Extend array along first dimension with other array(s).
 
         Parameters
         ----------
-            other : Rotation or list of Rotations.
+        other : damask.Rotation
 
         """
         return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
@@ -313,19 +365,35 @@ class Rotation:
 
 
     def flatten(self,order = 'C'):
-        """Flatten quaternion array."""
+        """
+        Flatten array.
+
+        Returns
+        -------
+        flattened : damask.Rotation
+            Rotation flattened to single dimension.
+
+        """
         return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
 
 
     def reshape(self,shape,order = 'C'):
-        """Reshape quaternion array."""
+        """
+        Reshape array.
+
+        Returns
+        -------
+        reshaped : damask.Rotation
+            Rotation of given shape.
+
+        """
         if isinstance(shape,(int,np.integer)): shape = (shape,)
         return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
 
     def broadcast_to(self,shape,mode = 'right'):
         """
-        Broadcast quaternion array to shape.
+        Broadcast array.
 
         Parameters
         ----------
@@ -335,6 +403,11 @@ class Rotation:
             Where to preferentially locate missing dimensions.
             Either 'left' or 'right' (default).
 
+        Returns
+        -------
+        broadcasted : damask.Rotation
+            Rotation broadcasted to given shape.
+
         """
         if isinstance(shape,(int,np.integer)): shape = (shape,)
         return self.copy(rotation=np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape,mode)+(4,)),
@@ -343,7 +416,7 @@ class Rotation:
 
     def average(self,weights = None):
         """
-        Average rotations along last dimension.
+        Average along last array dimension.
 
         Parameters
         ----------
@@ -352,7 +425,7 @@ class Rotation:
 
         Returns
         -------
-        average : Rotation
+        average : damask.Rotation
             Weighted average of original Rotation field.
 
         References
@@ -382,12 +455,17 @@ class Rotation:
 
     def misorientation(self,other):
         """
-        Calculate misorientation from self to other Rotation.
+        Calculate misorientation to other Rotation.
 
         Parameters
         ----------
-        other : Rotation
+        other : damask.Rotation
             Rotation to which the misorientation is computed.
+
+        Returns
+        -------
+        g : damask.Rotation
+            Misorientation.
 
         """
         return other*~self
@@ -479,10 +557,10 @@ class Rotation:
 
         Returns
         -------
-        rho : numpy.ndarray of shape (...,4) containing 
+        rho : numpy.ndarray of shape (...,4) containing
             [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π]
             unless compact == True:
-            numpy.ndarray of shape (...,3) containing 
+            numpy.ndarray of shape (...,3) containing
             tan(ω/2) [n_1, n_2, n_3], ω ∈ [0,π].
 
         """

@@ -9,13 +9,13 @@ submodule(phase:mechanical) eigen
     model_damage
 
   interface
-    module function kinematics_cleavage_opening_init() result(myKinematics)
+    module function damage_anisobrittle_init() result(myKinematics)
       logical, dimension(:), allocatable :: myKinematics
-    end function kinematics_cleavage_opening_init
+    end function damage_anisobrittle_init
 
-    module function kinematics_slipplane_opening_init() result(myKinematics)
+    module function damage_isoductile_init() result(myKinematics)
       logical, dimension(:), allocatable :: myKinematics
-    end function kinematics_slipplane_opening_init
+    end function damage_isoductile_init
 
     module function thermalexpansion_init(kinematics_length) result(myKinematics)
       integer, intent(in) :: kinematics_length
@@ -46,7 +46,6 @@ module subroutine eigendeformation_init(phases)
   class(tNode), pointer :: &
     phase, &
     kinematics, &
-    damage, &
     mechanics
 
   print'(/,a)', ' <<<+-  phase:mechanical:eigen init  -+>>>'
@@ -70,8 +69,8 @@ module subroutine eigendeformation_init(phases)
 
   allocate(model_damage(phases%length),  source = KINEMATICS_UNDEFINED_ID)
 
-  where(kinematics_cleavage_opening_init())  model_damage = KINEMATICS_cleavage_opening_ID
-  where(kinematics_slipplane_opening_init()) model_damage = KINEMATICS_slipplane_opening_ID
+  where(damage_anisobrittle_init())  model_damage = KINEMATICS_cleavage_opening_ID
+  where(damage_isoductile_init()) model_damage = KINEMATICS_slipplane_opening_ID
 
 
 end subroutine eigendeformation_init
@@ -146,10 +145,10 @@ end function kinematics_active2
 ! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
-                                         S, Fi, ph,me)
+                                         S, Fi, ph,en)
 
   integer, intent(in) :: &
-    ph,me
+    ph,en
   real(pReal),   intent(in),  dimension(3,3) :: &
     S                                                                                               !< 2nd Piola-Kirchhoff stress
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -180,7 +179,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_isotropic_ID) plasticType
-      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,me)
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
       active = .true.
@@ -189,7 +188,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   KinematicsLoop: do k = 1, Nmodels(ph)
     kinematicsType: select case (model(k,ph))
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,me)
+        call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,en)
         Li = Li + my_Li
         dLi_dS = dLi_dS + my_dLi_dS
         active = .true.
@@ -198,12 +197,12 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   select case (model_damage(ph))
     case (KINEMATICS_cleavage_opening_ID)
-      call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+      call damage_anisobrittle_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
       active = .true.
     case (KINEMATICS_slipplane_opening_ID)
-      call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, me)
+      call damage_isoductile_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
       active = .true.

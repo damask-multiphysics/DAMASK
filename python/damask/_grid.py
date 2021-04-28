@@ -17,11 +17,18 @@ from . import Rotation
 
 
 class Grid:
-    """Geometry definition for grid solvers."""
+    """
+    Geometry definition for grid solvers.
+
+    Create and manipulate geometry definitions for storage as VTK
+    rectiliear grid files ('.vtr' extension). A grid contains the
+    material ID (referring to the entry in 'material.yaml') and
+    the physical size.
+    """
 
     def __init__(self,material,size,origin=[0.0,0.0,0.0],comments=[]):
         """
-        New grid definition from array of materials, size, and origin.
+        New geometry definition for grid solvers.
 
         Parameters
         ----------
@@ -62,9 +69,9 @@ class Grid:
     copy = __copy__
 
 
-    def diff(self,other):
+    def __eq__(self,other):
         """
-        Report property differences of self relative to other.
+        Test equality of other.
 
         Parameters
         ----------
@@ -72,28 +79,10 @@ class Grid:
             Grid to compare self against.
 
         """
-        message = []
-        if np.any(other.cells != self.cells):
-            message.append(util.deemph(f'cells    a b c:     {util.srepr(other.cells," x ")}'))
-            message.append(util.emph(  f'cells    a b c:     {util.srepr( self.cells," x ")}'))
-
-        if not np.allclose(other.size,self.size):
-            message.append(util.deemph(f'size     x y z:     {util.srepr(other.size," x ")}'))
-            message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
-
-        if not np.allclose(other.origin,self.origin):
-            message.append(util.deemph(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
-            message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
-
-        if other.N_materials != self.N_materials:
-            message.append(util.deemph(f'# materials:        {other.N_materials}'))
-            message.append(util.emph(  f'# materials:        { self.N_materials}'))
-
-        if np.nanmax(other.material) != np.nanmax(self.material):
-            message.append(util.deemph(f'max material:       {np.nanmax(other.material)}'))
-            message.append(util.emph(  f'max material:       {np.nanmax( self.material)}'))
-
-        return util.return_message(message)
+        return (np.allclose(other.size,self.size)
+            and np.allclose(other.origin,self.origin)
+            and np.all(other.cells == self.cells)
+            and np.all(other.material == self.material))
 
 
     @property
@@ -172,6 +161,11 @@ class Grid:
             Grid file to read. Valid extension is .vtr, which will be appended
             if not given.
 
+        Returns
+        -------
+        loaded : damask.Grid
+            Grid-based geometry from file.
+
         """
         v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         comments = v.get_comments()
@@ -200,6 +194,11 @@ class Grid:
         ----------
         fname : str, pathlib.Path, or file handle
             Geometry file to read.
+
+        Returns
+        -------
+        loaded : damask.Grid
+            Grid-based geometry from file.
 
         """
         warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
@@ -263,12 +262,10 @@ class Grid:
         """
         Load DREAM.3D (HDF5) file.
 
-        Data in DREAM.3D files can be stored per cell ('CellData')
-        and/or per grain ('Grain Data'). Per default, cell-wise data
-        is assumed.
+        Data in DREAM.3D files can be stored per cell ('CellData') and/or
+        per grain ('Grain Data'). Per default, cell-wise data is assumed.
 
-        damask.ConfigMaterial.load_DREAM3D allows to get the
-        corresponding material definition.
+        damask.ConfigMaterial.load_DREAM3D gives the corresponding material definition.
 
         Parameters
         ----------
@@ -294,24 +291,28 @@ class Grid:
             and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
+        Returns
+        -------
+        loaded : damask.Grid
+            Grid-based geometry from file.
 
         """
-        b = util.DREAM3D_base_group(fname) if base_group is None else base_group
-        c = util.DREAM3D_cell_data_group(fname) if cell_data is None else cell_data
+        b = util.DREAM3D_base_group(fname)      if base_group is None else base_group
+        c = util.DREAM3D_cell_data_group(fname) if cell_data  is None else cell_data
         f = h5py.File(fname, 'r')
 
-        cells  = f[os.path.join(b,'_SIMPL_GEOMETRY','DIMENSIONS')][()]
-        size   = f[os.path.join(b,'_SIMPL_GEOMETRY','SPACING')] * cells
-        origin = f[os.path.join(b,'_SIMPL_GEOMETRY','ORIGIN')][()]
+        cells  = f['/'.join([b,'_SIMPL_GEOMETRY','DIMENSIONS'])][()]
+        size   = f['/'.join([b,'_SIMPL_GEOMETRY','SPACING'])] * cells
+        origin = f['/'.join([b,'_SIMPL_GEOMETRY','ORIGIN'])][()]
 
         if feature_IDs is None:
-            phase = f[os.path.join(b,c,phases)][()].reshape(-1,1)
-            O = Rotation.from_Euler_angles(f[os.path.join(b,c,Euler_angles)]).as_quaternion().reshape(-1,4) # noqa
+            phase = f['/'.join([b,c,phases])][()].reshape(-1,1)
+            O = Rotation.from_Euler_angles(f['/'.join([b,c,Euler_angles])]).as_quaternion().reshape(-1,4) # noqa
             unique,unique_inverse = np.unique(np.hstack([O,phase]),return_inverse=True,axis=0)
             ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
                  np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
         else:
-            ma = f[os.path.join(b,c,feature_IDs)][()].flatten()
+            ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 
@@ -331,6 +332,11 @@ class Grid:
         labels : str or list of str
             Label(s) of the columns containing the material definition.
             Each unique combination of values results in one material ID.
+
+        Returns
+        -------
+        new : damask.Grid
+            Grid-based geometry from values in table.
 
         """
         cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
@@ -368,6 +374,11 @@ class Grid:
             Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        new : damask.Grid
+            Grid-based geometry from tessellation.
 
         """
         if periodic:
@@ -417,6 +428,11 @@ class Grid:
             Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        new : damask.Grid
+            Grid-based geometry from tessellation.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -490,6 +506,11 @@ class Grid:
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
+
+        Returns
+        -------
+        new : damask.Grid
+            Grid-based geometry from definition of minimal surface.
 
         Notes
         -----
@@ -611,6 +632,11 @@ class Grid:
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         # radius and center
         r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
@@ -651,6 +677,11 @@ class Grid:
         reflect : bool, optional
             Reflect (include) outermost layers. Defaults to False.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
@@ -683,6 +714,11 @@ class Grid:
             Direction(s) along which the grid is flipped.
             Valid entries are 'x', 'y', 'z'.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
@@ -707,6 +743,11 @@ class Grid:
             Number of cells in x,y,z direction.
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
 
         """
         return Grid(material = ndimage.interpolation.zoom(
@@ -736,6 +777,11 @@ class Grid:
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         def mostFrequent(arr,selection=None):
             me = arr[arr.size//2]
@@ -759,7 +805,15 @@ class Grid:
 
 
     def renumber(self):
-        """Renumber sorted material indices as 0,...,N-1."""
+        """
+        Renumber sorted material indices as 0,...,N-1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
         _,renumbered = np.unique(self.material,return_inverse=True)
 
         return Grid(material = renumbered.reshape(self.cells),
@@ -779,6 +833,11 @@ class Grid:
             Rotation to apply to the grid.
         fill : int or float, optional
             Material index to fill the corners. Defaults to material.max() + 1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
 
         """
         if fill is None: fill = np.nanmax(self.material) + 1
@@ -815,6 +874,11 @@ class Grid:
         fill : int or float, optional
             Material index to fill the background. Defaults to material.max() + 1.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         if offset is None: offset = 0
         if fill is None: fill = np.nanmax(self.material) + 1
@@ -847,6 +911,11 @@ class Grid:
         to_material : iterable of ints
             New material indices.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         def mp(entry,mapper):
             return mapper[entry] if entry in mapper else entry
@@ -862,7 +931,15 @@ class Grid:
 
 
     def sort(self):
-        """Sort material indices such that min(material) is located at (0,0,0)."""
+        """
+        Sort material indices such that min(material) is located at (0,0,0).
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
         a = self.material.flatten(order='F')
         from_ma = pd.unique(a)
         sort_idx = np.argsort(from_ma)
@@ -897,12 +974,16 @@ class Grid:
         periodic : Boolean, optional
             Assume grid to be periodic. Defaults to True.
 
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
         """
         def tainted_neighborhood(stencil,trigger):
 
             me = stencil[stencil.shape[0]//2]
-            return np.any(stencil != me
-                          if len(trigger) == 0 else
+            return np.any(stencil != me if len(trigger) == 0 else
                           np.in1d(stencil,np.array(list(set(trigger) - {me}))))
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
@@ -930,6 +1011,11 @@ class Grid:
         directions : iterable containing str, optional
             Direction(s) along which the boundaries are determined.
             Valid entries are 'x', 'y', 'z'. Defaults to 'xyz'.
+
+        Returns
+        -------
+        grain_boundaries : damask.VTK
+            VTK-based geometry of grain boundary network.
 
         """
         valid = ['x','y','z']

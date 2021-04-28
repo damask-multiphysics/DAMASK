@@ -14,8 +14,7 @@ from damask import grid_filters
 def grid_equal(a,b):
     return np.all(a.material == b.material) and \
            np.all(a.cells    == b.cells) and \
-           np.allclose(a.size, b.size) and \
-           str(a.diff(b)) == str(b.diff(a))
+           np.allclose(a.size, b.size)
 
 @pytest.fixture
 def default():
@@ -42,13 +41,9 @@ class TestGrid:
     def _patch_datetime_now(self, patch_datetime_now):
         print('patched datetime.datetime.now')
 
-    def test_diff_equal(self,default):
-        assert str(default.diff(default)) == ''
 
-
-    def test_diff_not_equal(self,default):
-        new = Grid(default.material[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
-        assert str(default.diff(new)) != ''
+    def test_equal(self,default):
+        assert default == default
 
     def test_repr(self,default):
         print(default)
@@ -407,7 +402,8 @@ class TestGrid:
         z=np.ones(cells.prod())
         z[cells[:2].prod()*int(cells[2]/2):]=0
         t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
-        g = Grid.from_table(t,'coords',['1_coords','z'])
+        t = t.add('indicator',t.get('coords')[:,0])
+        g = Grid.from_table(t,'coords',['indicator','z'])
         assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
 
 
@@ -431,6 +427,10 @@ class TestGrid:
         reference = VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
         assert current.__repr__() == reference.__repr__()
 
+    @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
+    def test_get_grain_boundaries_invalid(self,default,directions):
+        with pytest.raises(ValueError):
+            default.get_grain_boundaries(directions=directions)
 
     def test_load_DREAM3D(self,ref_path):
         grain = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','FeatureIds')

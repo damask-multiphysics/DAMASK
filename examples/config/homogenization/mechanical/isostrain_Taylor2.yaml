@@ -1,0 +1,3 @@
+Taylor2:
+  N_constituents: 2
+  mechanical: {type: isostrain}

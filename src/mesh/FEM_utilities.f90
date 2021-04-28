@@ -116,12 +116,12 @@ subroutine FEM_utilities_init
   structOrder =  num_mesh%get_asInt('structOrder', defaultVal = 2)
 
   debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
-  debugPETSc  =  debug_mesh%contains('petsc')
+  debugPETSc  =  debug_mesh%contains('PETSc')
 
   if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the PETSc_Options keyword in numerics.yaml '
+                 ' add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
@@ -134,7 +134,7 @@ subroutine FEM_utilities_init
                                &-mechanical_pc_type ml -mechanical_mg_levels_ksp_type chebyshev &
                                &-mechanical_mg_levels_pc_type sor -mechanical_pc_ml_nullspace user',ierr)
   CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('petsc_options',defaultVal=''),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('PETSc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)

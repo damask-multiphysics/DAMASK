@@ -84,13 +84,13 @@ subroutine parallelization_init
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if(got_env /= 0) then
-!$   print*, 'Could not determine value of $OMP_NUM_THREADS'
-!$   OMP_NUM_THREADS = 1_pI32
+!$   print*, 'Could not get $OMP_NUM_THREADS, using default'
+!$   OMP_NUM_THREADS = 4_pI32
 !$ else
 !$   read(NumThreadsString,'(i6)') OMP_NUM_THREADS
 !$   if (OMP_NUM_THREADS < 1_pI32) then
-!$     print*, 'Invalid OMP_NUM_THREADS: '//trim(NumThreadsString)
-!$     OMP_NUM_THREADS = 1_pI32
+!$     print*, 'Invalid OMP_NUM_THREADS: "'//trim(NumThreadsString)//'", using default'
+!$     OMP_NUM_THREADS = 4_pI32
 !$   endif
 !$ endif
 !$ print'(a,i2)',   ' OMP_NUM_THREADS: ',OMP_NUM_THREADS

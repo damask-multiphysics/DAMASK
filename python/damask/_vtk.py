@@ -2,7 +2,6 @@ import os
 import multiprocessing as mp
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
@@ -22,7 +21,7 @@ class VTK:
 
     def __init__(self,vtk_data):
         """
-        Initialize from vtk dataset.
+        New spatial visualization.
 
         Parameters
         ----------
@@ -47,9 +46,14 @@ class VTK:
         grid : iterable of int, len (3)
             Number of cells along each dimension.
         size : iterable of float, len (3)
-            Physical lengths along each dimension.
+            Physical length along each dimension.
         origin : iterable of float, len (3), optional
-            Spatial origin coordinates.
+            Coordinates of grid origin.
+
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
 
         """
         vtk_data = vtk.vtkRectilinearGrid()
@@ -68,7 +72,7 @@ class VTK:
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
-        This is the common type for FEM solver results.
+        This is the common type for mesh solver results.
 
         Parameters
         ----------
@@ -79,6 +83,11 @@ class VTK:
             second dimension determines #Nodes/Cell.
         cell_type : str
             Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
+
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
 
         """
         vtk_nodes = vtk.vtkPoints()
@@ -110,6 +119,11 @@ class VTK:
         points : numpy.ndarray of shape (:,3)
             Spatial position of the points.
 
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
+
         """
         N = points.shape[0]
         vtk_points = vtk.vtkPoints()
@@ -137,25 +151,30 @@ class VTK:
         fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
-            Name of the vtk.vtkDataSet subclass when opening a .vtk file. Valid types are vtkRectilinearGrid,
-            vtkUnstructuredGrid, and vtkPolyData.
+            Name of the vtk.vtkDataSet subclass when opening a .vtk file.
+            Valid types are vtkRectilinearGrid, vtkUnstructuredGrid, and vtkPolyData.
+
+        Returns
+        -------
+        loaded : damask.VTK
+            VTK-based geometry from file.
 
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
-            raise FileNotFoundError(f'no such file: {fname}')
+            raise FileNotFoundError(f'No such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
-            elif dataset_type.lower().endswith('rectilineargrid'):
+            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
                 reader.Update()
                 vtk_data = reader.GetRectilinearGridOutput()
-            elif dataset_type.lower().endswith('unstructuredgrid'):
+            elif dataset_type.lower().endswith(('unstructuredgrid','unstructured_grid')):
                 reader.Update()
                 vtk_data = reader.GetUnstructuredGridOutput()
-            elif dataset_type.lower().endswith('polydata'):
+            elif dataset_type.lower().endswith(('polydata','poly_data')):
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
             else:
@@ -224,14 +243,14 @@ class VTK:
 
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
-    # Needs support for pd.DataFrame and/or table
+    # Needs support for damask.Table
     def add(self,data,label=None):
         """
         Add data to either cells or points.
 
         Parameters
         ----------
-        data : numpy.ndarray
+        data : numpy.ndarray or numpy.ma.MaskedArray
             Data to add. First dimension needs to match either
             number of cells or number of points.
         label : str
@@ -246,8 +265,18 @@ class VTK:
                 raise ValueError('No label defined for numpy.ndarray')
 
             N_data = data.shape[0]
-            d = np_to_vtk((data.astype(np.single) if data.dtype in [np.double, np.longdouble] else
-                           data).reshape(N_data,-1),deep=True)                                      # avoid large files
+            data_ = (data if not isinstance(data,np.ma.MaskedArray) else
+                     np.where(data.mask,data.fill_value,data)).reshape(N_data,-1)
+
+            if data_.dtype in [np.double,np.longdouble]:
+                d = np_to_vtk(data_.astype(np.single),deep=True)                                    # avoid large files
+            elif data_.dtype.type is np.str_:
+                d = vtk.vtkStringArray()
+                for s in np.squeeze(data_):
+                    d.InsertNextValue(s)
+            else:
+                d = np_to_vtk(data_,deep=True)
+
             d.SetName(label)
 
             if   N_data == N_points:
@@ -256,8 +285,6 @@ class VTK:
                 self.vtk_data.GetCellData().AddArray(d)
             else:
                 raise ValueError(f'Cell / point count ({N_cells} / {N_points}) differs from data ({N_data}).')
-        elif isinstance(data,pd.DataFrame):
-            raise NotImplementedError('pd.DataFrame')
         elif isinstance(data,Table):
             raise NotImplementedError('damask.Table')
         else:
@@ -277,18 +304,33 @@ class VTK:
         label : str
             Data label.
 
+        Returns
+        -------
+        data : numpy.ndarray
+            Data stored under the given label.
+
         """
         cell_data = self.vtk_data.GetCellData()
         for a in range(cell_data.GetNumberOfArrays()):
             if cell_data.GetArrayName(a) == label:
-                return vtk_to_np(cell_data.GetArray(a))
+                try:
+                    return vtk_to_np(cell_data.GetArray(a))
+                except AttributeError:
+                    vtk_array = cell_data.GetAbstractArray(a)                                       # string array
 
         point_data = self.vtk_data.GetPointData()
         for a in range(point_data.GetNumberOfArrays()):
             if point_data.GetArrayName(a) == label:
-                return vtk_to_np(point_data.GetArray(a))
+                try:
+                    return vtk_to_np(point_data.GetArray(a))
+                except AttributeError:
+                    vtk_array = point_data.GetAbstractArray(a)                                      # string array
 
-        raise ValueError(f'Array "{label}" not found.')
+        try:
+            # string array
+            return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
+        except UnboundLocalError:
+            raise ValueError(f'Array "{label}" not found.')
 
 
     def get_comments(self):

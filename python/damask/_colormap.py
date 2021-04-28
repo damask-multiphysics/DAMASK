@@ -39,20 +39,20 @@ class Colormap(mpl.colors.ListedColormap):
     """
 
     def __add__(self,other):
-        """Concatenate colormaps."""
+        """Concatenate."""
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
     def __iadd__(self,other):
-        """Concatenate colormaps."""
+        """Concatenate (in-place)."""
         return self.__add__(other)
 
     def __invert__(self):
-        """Return inverted colormap."""
+        """Reverse."""
         return self.reversed()
 
     def __repr__(self):
-        """Show colormap as matplotlib figure."""
+        """Show as matplotlib figure."""
         fig = plt.figure(self.name,figsize=(5,.5))
         ax1 = fig.add_axes([0, 0, 1, 1])
         ax1.set_axis_off()
@@ -90,6 +90,16 @@ class Colormap(mpl.colors.ListedColormap):
             - 'xyz': CIE Xyz.
             - 'lab': CIE Lab.
             - 'msh': Msh (for perceptual uniform interpolation).
+
+        Returns
+        -------
+        new : damask.Colormap
+            Colormap within given bounds.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
 
         """
         low_high = np.vstack((low,high))
@@ -150,6 +160,16 @@ class Colormap(mpl.colors.ListedColormap):
            This parameter is not used for matplotlib colormaps
            that are of type `ListedColormap`.
 
+        Returns
+        -------
+        new : damask.Colormap
+            Predefined colormap.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_predefined('strain')
+
         """
         # matplotlib presets
         try:
@@ -207,7 +227,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def reversed(self,name=None):
         """
-        Make a reversed instance of the colormap.
+        Reverse.
 
         Parameters
         ----------
@@ -219,6 +239,11 @@ class Colormap(mpl.colors.ListedColormap):
         -------
         damask.Colormap
             The reversed colormap.
+
+        Examples
+        --------
+        >>> import damask
+        >>> damask.Colormap.from_predefined('stress').reversed()
 
         """
         rev = super(Colormap,self).reversed(name)
@@ -239,8 +264,8 @@ class Colormap(mpl.colors.ListedColormap):
 
         Returns
         -------
-        f
-            File handle
+        f : file object
+            File handle with write access.
 
         """
         if fname is None:

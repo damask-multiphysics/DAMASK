@@ -4,7 +4,7 @@
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(phase:damagee) isobrittle
+submodule(phase:damage) isobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -31,7 +31,7 @@ module function isobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Nmembers,p
+  integer :: Nmembers,ph
   character(len=pStringLen) :: extmsg = ''
 
 
@@ -45,29 +45,29 @@ module function isobrittle_init() result(mySources)
   phases => config_material%get('phase')
   allocate(param(phases%length))
 
-  do p = 1, phases%length
-    if(mySources(p)) then
-    phase => phases%get(p)
+  do ph = 1, phases%length
+    if(mySources(ph)) then
+    phase => phases%get(ph)
     sources => phase%get('damage')
 
-        associate(prm  => param(p))
+        associate(prm  => param(ph))
         src => sources%get(1)
 
         prm%W_crit = src%get_asFloat('W_crit')
 
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(src)
+        prm%output = output_as1dString(src)
 #else
-        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        Nmembers = count(material_phaseAt2==p)
-        call phase_allocateState(damageState(p),Nmembers,1,1,1)
-        damageState(p)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
+        Nmembers = count(material_phaseID==ph)
+        call phase_allocateState(damageState(ph),Nmembers,1,1,1)
+        damageState(ph)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 
         end associate
 
@@ -111,29 +111,6 @@ module subroutine isobrittle_deltaState(C, Fe, ph,me)
   end associate
 
 end subroutine isobrittle_deltaState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local part of nonlocal damage driving force
-!--------------------------------------------------------------------------------------------------
-module subroutine isobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi,  ph, me)
-
-  integer, intent(in) :: &
-    ph, me
-  real(pReal),  intent(in) :: &
-    phi
-  real(pReal),  intent(out) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
-
-
-  associate(prm => param(ph))
-    localphiDot = 1.0_pReal &
-                - phi*damageState(ph)%state(1,me)
-    dLocalphiDot_dPhi = - damageState(ph)%state(1,me)
-  end associate
-
-end subroutine isobrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------

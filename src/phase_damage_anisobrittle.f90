@@ -4,7 +4,7 @@
 !> @brief material subroutine incorporating anisotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule (phase:damagee) anisobrittle
+submodule (phase:damage) anisobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -64,14 +64,14 @@ module function anisobrittle_init() result(mySources)
         associate(prm  => param(p))
         src => sources%get(1)
 
-        N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
+        N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
 
         prm%q       = src%get_asFloat('q')
         prm%dot_o   = src%get_asFloat('dot_o')
 
-        prm%s_crit  = src%get_asFloats('s_crit',  requiredSize=size(N_cl))
-        prm%g_crit  = src%get_asFloats('g_crit',  requiredSize=size(N_cl))
+        prm%s_crit  = src%get_as1dFloat('s_crit',  requiredSize=size(N_cl))
+        prm%g_crit  = src%get_as1dFloat('g_crit',  requiredSize=size(N_cl))
 
         prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
                                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
@@ -81,9 +81,9 @@ module function anisobrittle_init() result(mySources)
         prm%g_crit = math_expand(prm%g_crit,N_cl)
 
 #if defined (__GFORTRAN__)
-        prm%output = output_asStrings(src)
+        prm%output = output_as1dString(src)
 #else
-        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
           ! sanity checks
@@ -120,9 +120,6 @@ module subroutine anisobrittle_dotState(S, ph,me)
     S
 
   integer :: &
-    sourceOffset, &
-    damageOffset, &
-    homog, &
     i
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
@@ -146,29 +143,6 @@ module subroutine anisobrittle_dotState(S, ph,me)
   end associate
 
 end subroutine anisobrittle_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local part of nonlocal damage driving force
-!--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, ph, me)
-
-  integer, intent(in) :: &
-    ph, &
-    me
-  real(pReal),  intent(in) :: &
-    phi
-  real(pReal),  intent(out) :: &
-    localphiDot, &
-    dLocalphiDot_dPhi
-
-
-  dLocalphiDot_dPhi = -damageState(ph)%state(1,me)
-
-  localphiDot = 1.0_pReal &
-              + dLocalphiDot_dPhi*phi
-
-end subroutine anisobrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -197,7 +171,7 @@ end subroutine anisobrittle_results
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
 
   integer, intent(in) :: &
     ph,me
@@ -253,6 +227,6 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
   enddo
   end associate
 
-end subroutine kinematics_cleavage_opening_LiAndItsTangent
+end subroutine damage_anisobrittle_LiAndItsTangent
 
 end submodule anisobrittle

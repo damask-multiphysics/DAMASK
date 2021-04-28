@@ -60,7 +60,7 @@ class TestGridFilters:
          cell_field_x = np.interp(coordinates0_point_x,coordinates_node_x,node_field_x,period=np.pi*2.)
          cell_field   = np.broadcast_to(cell_field_x.reshape(-1,1,1),cells)
 
-         assert np.allclose(cell_field,grid_filters.node_2_point(node_field))
+         assert np.allclose(cell_field,grid_filters.node_to_point(node_field))
 
     @pytest.mark.parametrize('mode',['point','node'])
     def test_coordinates0_origin(self,mode):
@@ -93,13 +93,23 @@ class TestGridFilters:
          F    = np.broadcast_to(np.random.random((3,3)), tuple(cells)+(3,3))
          assert np.allclose(function(size,F),0.0)
 
-    @pytest.mark.parametrize('function',[grid_filters.coordinates0_check,
-                                         grid_filters.cellsSizeOrigin_coordinates0_node,
-                                         grid_filters.cellsSizeOrigin_coordinates0_point])
+    @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_point,
+                                         grid_filters.cellsSizeOrigin_coordinates0_node])
     def test_invalid_coordinates(self,function):
         invalid_coordinates = np.random.random((np.random.randint(12,52),3))
         with pytest.raises(ValueError):
             function(invalid_coordinates)
+
+    @pytest.mark.parametrize('function',[grid_filters.coordinates0_point,
+                                         grid_filters.coordinates0_node])
+    def test_valid_coordinates_check(self,function):
+        valid_coordinates = function(np.random.randint(4,10,(3)),np.random.rand(3))
+        assert grid_filters.coordinates0_valid(valid_coordinates.reshape(-1,3,order='F'))
+
+    def test_invalid_coordinates_check(self):
+        invalid_coordinates = np.random.random((np.random.randint(12,52),3))
+        assert not grid_filters.coordinates0_valid(invalid_coordinates)
+
 
     @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_node,
                                          grid_filters.cellsSizeOrigin_coordinates0_point])
