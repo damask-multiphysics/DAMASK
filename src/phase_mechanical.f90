@@ -1015,26 +1015,6 @@ module subroutine mechanical_forward()
 end subroutine mechanical_forward
 
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenize elasticity matrix
-!> ToDo: homogenizedC66 would be more consistent
-!--------------------------------------------------------------------------------------------------
-module function phase_homogenizedC(ph,en) result(C)
-
-  real(pReal), dimension(6,6) :: C
-  integer,      intent(in)    :: ph, en
-
-  plasticType: select case (phase_plasticity(ph))
-    case (PLASTICITY_DISLOTWIN_ID) plasticType
-     C = plastic_dislotwin_homogenizedC(ph,en)
-    case default plasticType
-     C = lattice_C66(1:6,1:6,ph)
-  end select plasticType
-
-end function phase_homogenizedC
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
