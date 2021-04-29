@@ -436,8 +436,12 @@ class Grid:
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
-        KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
-        devNull,material_ = KDTree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))
+        tree = spatial.cKDTree(seeds,boxsize=size) if periodic else \
+               spatial.cKDTree(seeds)
+        try:
+            material_ = tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1]
+        except TypeError:
+            material_ = tree.query(coords, n_jobs = int(os.environ.get('OMP_NUM_THREADS',4)))[1]    # scipy <1.6
 
         return Grid(material = (material_ if material is None else material[material_]).reshape(cells),
                     size     = size,

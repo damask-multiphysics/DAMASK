@@ -78,7 +78,7 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
         candidates = rng.random((N_candidates,3))*_np.broadcast_to(size,(N_candidates,3))
         tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
                _spatial.cKDTree(coords[:s])
-        distances, dev_null = tree.query(candidates)
+        distances = tree.query(candidates)[0]
         best = distances.argmax()
         if distances[best] > distance:                                                              # require minimum separation
             coords[s] = candidates[best]                                                            # maximum separation to existing point cloud
