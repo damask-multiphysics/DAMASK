@@ -14,7 +14,6 @@ from .                 import tensor           # noqa
 from .                 import mechanics        # noqa
 from .                 import solver           # noqa
 from .                 import grid_filters     # noqa
-from .                 import lattice          # noqa
 #Modules that contain only one class (of the same name), are prefixed by a '_'.
 #For example, '_colormap' containsa class called 'Colormap' which is imported as 'damask.Colormap'.
 from ._rotation        import Rotation         # noqa
