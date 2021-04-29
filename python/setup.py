@@ -4,7 +4,7 @@ import re
 
 # https://www.python.org/dev/peps/pep-0440
 with open(Path(__file__).parent/'damask/VERSION') as f:
-  version = re.sub(r'(-([^-]*)).*$',r'.\2',re.sub(r'^v(\d+\.\d+(\.\d+)?)',r'\1',f.readline().strip()))
+    version = re.sub(r'(-([^-]*)).*$',r'.\2',re.sub(r'^v(\d+\.\d+(\.\d+)?)',r'\1',f.readline().strip()))
 
 setuptools.setup(
     name='damask',

@@ -26,6 +26,15 @@ class TestSeeds:
                        cKDTree(coords).query(coords, 2)
         assert (0<= coords).all() and (coords<size).all() and np.min(min_dists[:,1])>=distance
 
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_from_Poisson_disc_invalid(self,periodic):
+        N_seeds = np.random.randint(30,300)
+        N_candidates = N_seeds//15
+        distance = np.random.random()
+        size = np.ones(3)*distance
+        with pytest.raises(ValueError):
+            seeds.from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=periodic)
+
     def test_from_grid_reconstruct(self):
         cells = np.random.randint(10,20,3)
         N_seeds = np.random.randint(30,300)
