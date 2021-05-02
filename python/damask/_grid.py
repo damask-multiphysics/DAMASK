@@ -392,7 +392,7 @@ class Grid:
             seeds_p   = seeds
             coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
-        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
+        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
         result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
@@ -436,8 +436,12 @@ class Grid:
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
-        KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
-        devNull,material_ = KDTree.query(coords)
+        tree = spatial.cKDTree(seeds,boxsize=size) if periodic else \
+               spatial.cKDTree(seeds)
+        try:
+            material_ = tree.query(coords, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1]
+        except TypeError:
+            material_ = tree.query(coords, n_jobs = int(os.environ.get('OMP_NUM_THREADS',4)))[1]    # scipy <1.6
 
         return Grid(material = (material_ if material is None else material[material_]).reshape(cells),
                     size     = size,

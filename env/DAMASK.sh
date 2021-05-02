@@ -30,7 +30,6 @@ PATH=${DAMASK_ROOT}/bin:$PATH
 SOLVER=$(type -p DAMASK_grid || true 2>/dev/null)
 [ "x$SOLVER" == "x" ] && SOLVER=$(blink 'Not found!')
 
-[ "x$OMP_NUM_THREADS" == "x" ] && OMP_NUM_THREADS=1
 
 # currently, there is no information that unlimited stack size causes problems
 # still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
@@ -55,9 +54,8 @@ if [ ! -z "$PS1" ]; then
     [[ $(canonicalPath "$PETSC_DIR") == $PETSC_DIR ]] \
     || echo "               ~~> "$(canonicalPath "$PETSC_DIR")
   fi
-  echo -n "MSC.Marc/Mentat    "
-  [ -d $MSC_ROOT ] && echo $MSC_ROOT || blink $MSC_ROOT
-  echo
+  [ "x$PETSC_ARCH" != "x" ] && echo "PETSc architecture $PETSC_ARCH"
+  [ "x$OMP_NUM_THREADS" == "x" ] && export OMP_NUM_THREADS=4
   echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
   echo -n "heap  size         "
    [[ "$(ulimit -d)" == "unlimited" ]] \
