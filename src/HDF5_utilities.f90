@@ -1775,7 +1775,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 
   integer,          dimension(worldsize)      :: writeSize                                          !< contribution of all processes
   integer(HID_T) ::  dcpl
-  integer :: ierr, hdferr
+  integer :: ierr, hdferr, HDF5_major, HDF5_minor, HDF5_release
   integer(HSIZE_T), parameter :: chunkSize = 1024_HSIZE_T**2/8_HSIZE_T
 
 !-------------------------------------------------------------------------------------------------
@@ -1808,14 +1808,18 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   call h5pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   if(product(totalShape) >= chunkSize*2_HSIZE_T) then
-    call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
-    call h5pset_shuffle_f(dcpl, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
-    call h5pset_deflate_f(dcpl, 6, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
-    call h5pset_Fletcher32_f(dcpl,hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
+    if (hdferr < 0) error stop 'HDF5 error'
+    if (HDF5_major == 1 .and. HDF5_minor >= 12) then                                                ! https://forum.hdfgroup.org/t/6186
+      call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
+      if (hdferr < 0) error stop 'HDF5 error'
+      call h5pset_shuffle_f(dcpl, hdferr)
+      if (hdferr < 0) error stop 'HDF5 error'
+      call h5pset_deflate_f(dcpl, 6, hdferr)
+      if (hdferr < 0) error stop 'HDF5 error'
+      call h5pset_Fletcher32_f(dcpl,hdferr)
+      if (hdferr < 0) error stop 'HDF5 error'
+    endif
   endif
 
 !--------------------------------------------------------------------------------------------------
