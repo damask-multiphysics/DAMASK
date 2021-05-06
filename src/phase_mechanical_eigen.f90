@@ -70,7 +70,7 @@ module subroutine eigendeformation_init(phases)
   allocate(model_damage(phases%length),  source = KINEMATICS_UNDEFINED_ID)
 
   where(damage_anisobrittle_init())  model_damage = KINEMATICS_cleavage_opening_ID
-  where(damage_isoductile_init()) model_damage = KINEMATICS_slipplane_opening_ID
+  where(damage_isoductile_init())    model_damage = KINEMATICS_slipplane_opening_ID
 
 
 end subroutine eigendeformation_init

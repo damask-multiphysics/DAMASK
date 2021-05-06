@@ -33,14 +33,16 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     kinematics, &
     kinematic_type
 
   print'(/,a)', ' <<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
 
-  myKinematics = kinematics_active('thermal_expansion',kinematics_length)
+  myKinematics = kinematics_active('thermalexpansion',kinematics_length)
+  print*, myKinematics
   Ninstances = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  print'(a,i2)', ' # phases: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
@@ -51,7 +53,8 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
     if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('kinematics')
+    mech => phase%get('mechanical')
+    kinematics => mech%get('eigen')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
