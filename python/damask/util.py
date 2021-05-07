@@ -1,3 +1,5 @@
+"""Miscellaneous helper functionality."""
+
 import sys
 import datetime
 import os
@@ -177,6 +179,16 @@ def execute(cmd,wd='./',env=None):
 
 
 def natural_sort(key):
+    """
+    Natural sort.
+
+    For use in python's 'sorted'.
+
+    References
+    ----------
+    https://en.wikipedia.org/wiki/Natural_sort_order
+
+    """
     convert = lambda text: int(text) if text.isdigit() else text
     return [ convert(c) for c in re.split('([0-9]+)', key) ]
 
@@ -191,9 +203,9 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
     ----------
     iterable : iterable/function with yield statement
         Iterable (or function with yield statement) to be decorated.
-    N_iter : int
+    N_iter : int, optional
         Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
-    prefix : str, optional.
+    prefix : str, optional
         Prefix string.
     bar_length : int, optional
         Character length of bar. Defaults to 50.
@@ -509,6 +521,7 @@ def dict_prune(d):
             v = dict_prune(v)
         if not isinstance(v,dict) or v != {}:
             new[k] = v
+
     return new
 
 

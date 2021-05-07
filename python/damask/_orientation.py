@@ -134,30 +134,15 @@ class Orientation(Rotation):
         """
         Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
 
-        if (    lattice not in _lattice_symmetries
-            and lattice not in _crystal_families):
-            raise KeyError(f'Lattice "{lattice}" is unknown')
-
-        self.family     = None
-        self.lattice    = None
-        self.a          = None
-        self.b          = None
-        self.c          = None
-        self.alpha      = None
-        self.beta       = None
-        self.gamma      = None
         self.kinematics = None
 
         if lattice in _lattice_symmetries:
             self.family  = _lattice_symmetries[lattice]
             self.lattice = lattice
+
             self.a = 1 if a is None else a
             self.b = b
             self.c = c
-            self.alpha = (np.radians(alpha) if degrees else alpha) if alpha is not None else None
-            self.beta  = (np.radians(beta)  if degrees else beta)  if beta  is not None else None
-            self.gamma = (np.radians(gamma) if degrees else gamma) if gamma is not None else None
-
             self.a = float(self.a) if self.a is not None else \
                      (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
                       self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
@@ -169,9 +154,13 @@ class Orientation(Rotation):
                      (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
                       self.b / self.ratio['b'] * self.ratio['c']
                       if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-            self.alpha = self.alpha if self.alpha is not None else self.immutable['alpha'] if 'alpha' in self.immutable else None
-            self.beta  = self.beta  if self.beta  is not None else self.immutable['beta']  if 'beta'  in self.immutable else None
-            self.gamma = self.gamma if self.gamma is not None else self.immutable['gamma'] if 'gamma' in self.immutable else None
+
+            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
+            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
+            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
+            if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
+            if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
+            if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
 
             if \
                 (self.a     is None) \
@@ -197,7 +186,13 @@ class Orientation(Rotation):
                                          {'direction':self.Bravais_to_Miller(uvtw=master[m][:,0:4]),
                                           'plane':    self.Bravais_to_Miller(hkil=master[m][:,4:8])}
         elif lattice in _crystal_families:
-            self.family = lattice
+            self.family  = lattice
+            self.lattice = None
+
+            self.a = self.b = self.c = None
+            self.alpha = self.beta = self.gamma = None
+        else:
+            raise KeyError(f'Lattice "{lattice}" is unknown')
 
 
     def __repr__(self):

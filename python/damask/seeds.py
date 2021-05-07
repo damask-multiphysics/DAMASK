@@ -3,8 +3,8 @@
 from scipy import spatial as _spatial
 import numpy as _np
 
-from . import util
-from . import grid_filters
+from . import util as _util
+from . import grid_filters as _grid_filters
 
 
 def from_random(size,N_seeds,cells=None,rng_seed=None):
@@ -34,7 +34,7 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
     if cells is None:
         coords = rng.random((N_seeds,3)) * size
     else:
-        grid_coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
+        grid_coords = _grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
                + _np.broadcast_to(size/cells,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)          # wobble without leaving cells
 
@@ -73,12 +73,12 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
 
     s = 1
     i = 0
-    progress = util._ProgressBar(N_seeds+1,'',50)
+    progress = _util._ProgressBar(N_seeds+1,'',50)
     while s < N_seeds:
         candidates = rng.random((N_candidates,3))*_np.broadcast_to(size,(N_candidates,3))
         tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
                _spatial.cKDTree(coords[:s])
-        distances, dev_null = tree.query(candidates)
+        distances = tree.query(candidates)[0]
         best = distances.argmax()
         if distances[best] > distance:                                                              # require minimum separation
             coords[s] = candidates[best]                                                            # maximum separation to existing point cloud
@@ -120,7 +120,7 @@ def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert).flatten()
-    coords = grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
+    coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:
         return (coords[mask],material[mask])

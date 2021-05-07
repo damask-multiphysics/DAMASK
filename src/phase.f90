@@ -58,10 +58,6 @@ module phase
       grain
   end type tDebugOptions
 
-  integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
-    phase_elasticityInstance, &
-    phase_NstiffnessDegradations
-
   logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
 
@@ -296,7 +292,6 @@ module phase
     end subroutine damage_isoductile_LiAndItsTangent
 
   end interface
-
 
 
   type(tDebugOptions) :: debugConstitutive
