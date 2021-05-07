@@ -759,38 +759,39 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
 
   integer, dimension(FCC_NSLIP,FCC_NSLIP), parameter :: &
     FCC_INTERACTIONSLIPSLIP = reshape( [&
-       1, 2, 2, 4, 6, 5, 3, 5, 5, 4, 5, 6,  9,10, 9,10,11,12, & ! -----> acting
-       2, 1, 2, 6, 4, 5, 5, 4, 6, 5, 3, 5,  9,10,11,12, 9,10, & ! |
-       2, 2, 1, 5, 5, 3, 5, 6, 4, 6, 5, 4, 11,12, 9,10, 9,10, & ! |
-       4, 6, 5, 1, 2, 2, 4, 5, 6, 3, 5, 5,  9,10,10, 9,12,11, & ! v
-       6, 4, 5, 2, 1, 2, 5, 3, 5, 5, 4, 6,  9,10,12,11,10, 9, & ! reacting
-       5, 5, 3, 2, 2, 1, 6, 5, 4, 5, 6, 4, 11,12,10, 9,10, 9, &
-       3, 5, 5, 4, 5, 6, 1, 2, 2, 4, 6, 5, 10, 9,10, 9,11,12, &
-       5, 4, 6, 5, 3, 5, 2, 1, 2, 6, 4, 5, 10, 9,12,11, 9,10, &
-       5, 6, 4, 6, 5, 4, 2, 2, 1, 5, 5, 3, 12,11,10, 9, 9,10, &
-       4, 5, 6, 3, 5, 5, 4, 6, 5, 1, 2, 2, 10, 9, 9,10,12,11, &
-       5, 3, 5, 5, 4, 6, 6, 4, 5, 2, 1, 2, 10, 9,11,12,10, 9, &
-       6, 5, 4, 5, 6, 4, 5, 5, 3, 2, 2, 1, 12,11, 9,10,10, 9, &
-
-       9, 9,11, 9, 9,11,10,10,12,10,10,12,  1, 7, 8, 8, 8, 8, &
-      10,10,12,10,10,12, 9, 9,11, 9, 9,11,  7, 1, 8, 8, 8, 8, &
-       9,11, 9,10,12,10,10,12,10, 9,11, 9,  8, 8, 1, 7, 8, 8, &
-      10,12,10, 9,11, 9, 9,11, 9,10,12,10,  8, 8, 7, 1, 8, 8, &
-      11, 9, 9,12,10,10,11, 9, 9,12,10,10,  8, 8, 8, 8, 1, 7, &
-      12,10,10,11, 9, 9,12,10,10,11, 9, 9,  8, 8, 8, 8, 7, 1  &
-      ],shape(FCC_INTERACTIONSLIPSLIP))                                                             !< Slip--slip interaction types for fcc
-                                                                                                    !< 1: self interaction
-                                                                                                    !< 2: coplanar interaction
-                                                                                                    !< 3: collinear interaction
-                                                                                                    !< 4: Hirth locks
-                                                                                                    !< 5: glissile junctions
-                                                                                                    !< 6: Lomer locks
-                                                                                                    !< 7: crossing (similar to Hirth locks in <110>{111} for two {110} planes)
-                                                                                                    !< 8: similar to Lomer locks in <110>{111} for two {110} planes
-                                                                                                    !< 9: similar to Lomer locks in <110>{111} btw one {110} and one {111} plane
-                                                                                                    !<10: similar to glissile junctions in <110>{111} btw one {110} and one {111} plane
-                                                                                                    !<11: crossing btw one {110} and one {111} plane
-                                                                                                    !<12: collinear btw one {110} and one {111} plane
+       1, 2, 2, 4, 7, 5, 3, 5, 5, 4, 6, 7, 10,11,10,11,12,13, & ! -----> acting
+       2, 1, 2, 7, 4, 5, 6, 4, 7, 5, 3, 5, 10,11,12,13,10,11, & ! |
+       2, 2, 1, 5, 5, 3, 6, 7, 4, 7, 6, 4, 12,13,10,11,10,11, & ! |
+       4, 7, 6, 1, 2, 2, 4, 6, 7, 3, 5, 5, 10,11,11,10,13,12, & ! v
+       7, 4, 6, 2, 1, 2, 5, 3, 5, 6, 4, 7, 10,11,13,12,11,10, & ! reacting
+       5, 5, 3, 2, 2, 1, 7, 6, 4, 6, 7, 4, 12,13,11,10,11,10, &
+       3, 5, 5, 4, 6, 7, 1, 2, 2, 4, 7, 6, 11,10,11,10,12,13, &
+       6, 4, 7, 5, 3, 5, 2, 1, 2, 7, 4, 6, 11,10,13,12,10,11, &
+       6, 7, 4, 7, 6, 4, 2, 2, 1, 5, 5, 3, 13,12,11,10,10,11, &
+       4, 6, 7, 3, 5, 5, 4, 7, 6, 1, 2, 2, 11,10,10,11,13,12, &
+       5, 3, 5, 6, 4, 7, 7, 4, 6, 2, 1, 2, 11,10,12,13,11,10, &
+       7, 6, 4, 6, 7, 4, 5, 5, 3, 2, 2, 1, 13,12,10,11,11,10, &
+      
+      10,10,12,10,10,12,11,11,13,11,11,13,  1, 8, 9, 9, 9, 9, &
+      11,11,13,11,11,13,10,10,12,10,10,12,  8, 1, 9, 9, 9, 9, &
+      10,12,10,11,13,11,11,13,11,10,12,10,  9, 9, 1, 8, 9, 9, &
+      11,13,11,10,12,10,10,12,10,11,13,11,  9, 9, 8, 1, 9, 9, &
+      12,10,10,13,11,11,12,10,10,13,11,11,  9, 9, 9, 9, 1, 8, &
+      13,11,11,12,10,10,13,11,11,12,10,10,  9, 9, 9, 9, 8, 1  &
+      ],shape(FCC_INTERACTIONSLIPSLIP))                                                             !< Slip--slip interaction types for fcc / Madec 2017(https://doi.org/10.1016/j.actamat.2016.12.040)
+                                                                                                    !< 1: self interaction         --> alpha 0
+                                                                                                    !< 2: coplanar interaction     --> alpha copla
+                                                                                                    !< 3: collinear interaction    --> alpha coli
+                                                                                                    !< 4: Hirth locks              --> alpha 1
+                                                                                                    !< 5: glissile junctions I     --> alpha 2
+                                                                                                    !< 6: glissile junctions II    --> alpha 2*
+                                                                                                    !< 7: Lomer locks              --> alpha 3
+                                                                                                    !< 8: crossing (similar to Hirth locks in <110>{111} for two {110} planes)
+                                                                                                    !< 9: similar to Lomer locks in <110>{111} for two {110} planes
+                                                                                                    !<10: similar to Lomer locks in <110>{111} btw one {110} and one {111} plane
+                                                                                                    !<11: similar to glissile junctions in <110>{111} btw one {110} and one {111} plane
+                                                                                                    !<12: crossing btw one {110} and one {111} plane
+                                                                                                    !<13: collinear btw one {110} and one {111} plane
 
   integer, dimension(BCC_NSLIP,BCC_NSLIP), parameter :: &
     BCC_INTERACTIONSLIPSLIP = reshape( [&
