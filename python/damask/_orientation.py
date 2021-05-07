@@ -1169,8 +1169,8 @@ class Orientation(Rotation):
                )
 
 
-    @classmethod
-    def Bravais_to_Miller(cls,*,uvtw=None,hkil=None):
+    @staticmethod
+    def Bravais_to_Miller(*,uvtw=None,hkil=None):
         """
         Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -1197,8 +1197,8 @@ class Orientation(Rotation):
         return np.einsum('il,...l',basis,axis)
 
 
-    @classmethod
-    def Miller_to_Bravais(cls,*,uvw=None,hkl=None):
+    @staticmethod
+    def Miller_to_Bravais(*,uvw=None,hkl=None):
         """
         Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
