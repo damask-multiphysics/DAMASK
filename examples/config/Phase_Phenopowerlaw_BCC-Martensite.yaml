@@ -15,7 +15,3 @@ Martensite:
       type: phenopowerlaw
       xi_0_sl: [405.8e6, 456.7e6]
       xi_inf_sl: [872.9e6, 971.2e6]
-      n_sl: 20
-      type: phenopowerlaw
-      xi_0_sl: [405.8e6, 456.7e6]
-      xi_inf_sl: [872.9e6, 971.2e6]
