@@ -18,4 +18,4 @@ Tungsten:
       D_0: 4.0e-5            # Vacancy diffusion prefactor / m^2/s
       D_a: 1.0               # minimum dipole distance / b
       Q_cl: 4.5e-19          # Activation energy for climb / J
-      h_sl_sl: [1, 1, 1.4, 1.4, 1.4, 1.4]
+      h_sl_sl: [1, 1.4, 1, 1.4, 1.4, 1.4, 1.4]
