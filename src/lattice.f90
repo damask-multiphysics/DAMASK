@@ -31,44 +31,38 @@ module lattice
     FCC_NCLEAVAGESYSTEM = [3]                                                                       !< # of cleavage systems per family for fcc
 
   integer, parameter  :: &
-#ifndef __PGI
     FCC_NSLIP     = sum(FCC_NSLIPSYSTEM), &                                                         !< total # of slip systems for fcc
     FCC_NTWIN     = sum(FCC_NTWINSYSTEM), &                                                         !< total # of twin systems for fcc
     FCC_NTRANS    = sum(FCC_NTRANSSYSTEM), &                                                        !< total # of transformation systems for fcc
     FCC_NCLEAVAGE = sum(FCC_NCLEAVAGESYSTEM)                                                        !< total # of cleavage systems for fcc
-#else
-    FCC_NSLIP     = 18, &
-    FCC_NTWIN     = 12, &
-    FCC_NTRANS    = 12, &
-    FCC_NCLEAVAGE = 3
-#endif
 
   real(pReal), dimension(3+3,FCC_NSLIP), parameter :: &
     FCC_SYSTEMSLIP = reshape(real([&
-     ! Slip direction     Plane normal                                                              ! SCHMID-BOAS notation
-       0, 1,-1,     1, 1, 1, &                                                                      ! B2
-      -1, 0, 1,     1, 1, 1, &                                                                      ! B4
-       1,-1, 0,     1, 1, 1, &                                                                      ! B5
-       0,-1,-1,    -1,-1, 1, &                                                                      ! C1
-       1, 0, 1,    -1,-1, 1, &                                                                      ! C3
-      -1, 1, 0,    -1,-1, 1, &                                                                      ! C5
-       0,-1, 1,     1,-1,-1, &                                                                      ! A2
-      -1, 0,-1,     1,-1,-1, &                                                                      ! A3
-       1, 1, 0,     1,-1,-1, &                                                                      ! A6
-       0, 1, 1,    -1, 1,-1, &                                                                      ! D1
-       1, 0,-1,    -1, 1,-1, &                                                                      ! D4
-      -1,-1, 0,    -1, 1,-1, &                                                                      ! D6
-      ! Slip system <110>{110}
+    ! <110>{111} systems
+       0, 1,-1,     1, 1, 1, & ! B2
+      -1, 0, 1,     1, 1, 1, & ! B4
+       1,-1, 0,     1, 1, 1, & ! B5
+       0,-1,-1,    -1,-1, 1, & ! C1
+       1, 0, 1,    -1,-1, 1, & ! C3
+      -1, 1, 0,    -1,-1, 1, & ! C5
+       0,-1, 1,     1,-1,-1, & ! A2
+      -1, 0,-1,     1,-1,-1, & ! A3
+       1, 1, 0,     1,-1,-1, & ! A6
+       0, 1, 1,    -1, 1,-1, & ! D1
+       1, 0,-1,    -1, 1,-1, & ! D4
+      -1,-1, 0,    -1, 1,-1, & ! D6
+     ! <110>{110}/non-octahedral systems
        1, 1, 0,     1,-1, 0, &
        1,-1, 0,     1, 1, 0, &
        1, 0, 1,     1, 0,-1, &
        1, 0,-1,     1, 0, 1, &
        0, 1, 1,     0, 1,-1, &
        0, 1,-1,     0, 1, 1  &
-      ],pReal),shape(FCC_SYSTEMSLIP))                                                               !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
+      ],pReal),shape(FCC_SYSTEMSLIP))                                                               !< fcc slip systems
 
   real(pReal), dimension(3+3,FCC_NTWIN), parameter :: &
     FCC_SYSTEMTWIN = reshape(real( [&
+    ! <112>{111} systems
       -2, 1, 1,     1, 1, 1, &
        1,-2, 1,     1, 1, 1, &
        1, 1,-2,     1, 1, 1, &
@@ -81,7 +75,7 @@ module lattice
        2, 1,-1,    -1, 1,-1, &
       -1,-2,-1,    -1, 1,-1, &
       -1, 1, 2,    -1, 1,-1  &
-      ],pReal),shape(FCC_SYSTEMTWIN))                                                               !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
+      ],pReal),shape(FCC_SYSTEMTWIN))                                                               !< fcc twin systems
 
   integer, dimension(2,FCC_NTWIN), parameter, public :: &
     lattice_FCC_TWINNUCLEATIONSLIPPAIR = reshape( [&
@@ -101,11 +95,11 @@ module lattice
 
   real(pReal), dimension(3+3,FCC_NCLEAVAGE), parameter :: &
     FCC_SYSTEMCLEAVAGE = reshape(real([&
-     ! Cleavage direction     Plane normal
+    ! <001>{001} systems
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(FCC_SYSTEMCLEAVAGE))
+      ],pReal),shape(FCC_SYSTEMCLEAVAGE))                                                           !< fcc cleavage systems
 
 !--------------------------------------------------------------------------------------------------
 ! body centered cubic (cI)
@@ -119,50 +113,43 @@ module lattice
     BCC_NCLEAVAGESYSTEM = [3]                                                                       !< # of cleavage systems per family for bcc
 
   integer, parameter  :: &
-#ifndef __PGI
     BCC_NSLIP     = sum(BCC_NSLIPSYSTEM), &                                                         !< total # of slip systems for bcc
     BCC_NTWIN     = sum(BCC_NTWINSYSTEM), &                                                         !< total # of twin systems for bcc
     BCC_NCLEAVAGE = sum(BCC_NCLEAVAGESYSTEM)                                                        !< total # of cleavage systems for bcc
-#else
-    BCC_NSLIP     = 24, &
-    BCC_NTWIN     = 12, &
-    BCC_NCLEAVAGE = 3
-#endif
 
   real(pReal), dimension(3+3,BCC_NSLIP), parameter :: &
     BCC_SYSTEMSLIP = reshape(real([&
-     ! Slip direction     Plane normal
-     ! Slip system <111>{110}
-       1,-1, 1,     0, 1, 1, & !D1
-      -1,-1, 1,     0, 1, 1, & !C1
-       1, 1, 1,     0,-1, 1, & !B2
-      -1, 1, 1,     0,-1, 1, & !A2
-      -1, 1, 1,     1, 0, 1, & !A3
-      -1,-1, 1,     1, 0, 1, & !C3
-       1, 1, 1,    -1, 0, 1, & !B4
-       1,-1, 1,    -1, 0, 1, & !D4
-      -1, 1, 1,     1, 1, 0, & !A6
-      -1, 1,-1,     1, 1, 0, & !D6
-       1, 1, 1,    -1, 1, 0, & !B5
-       1, 1,-1,    -1, 1, 0, & !C5
-     ! Slip system <111>{112}
-      -1, 1, 1,     2, 1, 1, & !A-4
-       1, 1, 1,    -2, 1, 1, & !B-3
-       1, 1,-1,     2,-1, 1, & !C-10
-       1,-1, 1,     2, 1,-1, & !D-9
-       1,-1, 1,     1, 2, 1, & !D-6
-       1, 1,-1,    -1, 2, 1, & !C-5
-       1, 1, 1,     1,-2, 1, & !B-12
-      -1, 1, 1,     1, 2,-1, & !A-11
-       1, 1,-1,     1, 1, 2, & !C-2
-       1,-1, 1,    -1, 1, 2, & !D-1
-      -1, 1, 1,     1,-1, 2, & !A-8
-       1, 1, 1,     1, 1,-2  & !B-7
-      ],pReal),shape(BCC_SYSTEMSLIP))
+    ! <111>{110} systems
+       1,-1, 1,     0, 1, 1, & ! D1
+      -1,-1, 1,     0, 1, 1, & ! C1
+       1, 1, 1,     0,-1, 1, & ! B2
+      -1, 1, 1,     0,-1, 1, & ! A2
+      -1, 1, 1,     1, 0, 1, & ! A3
+      -1,-1, 1,     1, 0, 1, & ! C3
+       1, 1, 1,    -1, 0, 1, & ! B4
+       1,-1, 1,    -1, 0, 1, & ! D4
+      -1, 1, 1,     1, 1, 0, & ! A6
+      -1, 1,-1,     1, 1, 0, & ! D6
+       1, 1, 1,    -1, 1, 0, & ! B5
+       1, 1,-1,    -1, 1, 0, & ! C5
+     ! <111>{112} systems
+      -1, 1, 1,     2, 1, 1, & ! A-4
+       1, 1, 1,    -2, 1, 1, & ! B-3
+       1, 1,-1,     2,-1, 1, & ! C-10
+       1,-1, 1,     2, 1,-1, & ! D-9
+       1,-1, 1,     1, 2, 1, & ! D-6
+       1, 1,-1,    -1, 2, 1, & ! C-5
+       1, 1, 1,     1,-2, 1, & ! B-12
+      -1, 1, 1,     1, 2,-1, & ! A-11
+       1, 1,-1,     1, 1, 2, & ! C-2
+       1,-1, 1,    -1, 1, 2, & ! D-1
+      -1, 1, 1,     1,-1, 2, & ! A-8
+       1, 1, 1,     1, 1,-2  & ! B-7
+      ],pReal),shape(BCC_SYSTEMSLIP))                                                               !< bcc slip systems
 
   real(pReal), dimension(3+3,BCC_NTWIN), parameter :: &
     BCC_SYSTEMTWIN = reshape(real([&
-     ! Twin system <111>{112}
+    ! <111>{112} systems
       -1, 1, 1,     2, 1, 1, &
        1, 1, 1,    -2, 1, 1, &
        1, 1,-1,     2,-1, 1, &
@@ -175,15 +162,15 @@ module lattice
        1,-1, 1,    -1, 1, 2, &
       -1, 1, 1,     1,-1, 2, &
        1, 1, 1,     1, 1,-2  &
-      ],pReal),shape(BCC_SYSTEMTWIN))
+      ],pReal),shape(BCC_SYSTEMTWIN))                                                               !< bcc twin systems
 
   real(pReal), dimension(3+3,BCC_NCLEAVAGE), parameter :: &
     BCC_SYSTEMCLEAVAGE = reshape(real([&
-     ! Cleavage direction     Plane normal
+    ! <001>{001} systems
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(BCC_SYSTEMCLEAVAGE))
+      ],pReal),shape(BCC_SYSTEMCLEAVAGE))                                                           !< bcc cleavage systems
 
 !--------------------------------------------------------------------------------------------------
 ! hexagonal (hP)
@@ -194,37 +181,31 @@ module lattice
     HEX_NTWINSYSTEM = [6, 6, 6, 6]                                                                  !< # of slip systems per family for hex
 
   integer, parameter  :: &
-#ifndef __PGI
     HEX_NSLIP     = sum(HEX_NSLIPSYSTEM), &                                                         !< total # of slip systems for hex
     HEX_NTWIN     = sum(HEX_NTWINSYSTEM)                                                            !< total # of twin systems for hex
-#else
-    HEX_NSLIP     = 33, &
-    HEX_NTWIN     = 24
-#endif
 
   real(pReal), dimension(4+4,HEX_NSLIP), parameter :: &
     HEX_SYSTEMSLIP = reshape(real([&
-     ! Slip direction     Plane normal
-     ! Basal systems <-1-1.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
+    ! <-1-1.0>{00.1}/basal systems (independent of c/a-ratio)
        2, -1, -1,  0,     0,  0,  0,  1, &
       -1,  2, -1,  0,     0,  0,  0,  1, &
       -1, -1,  2,  0,     0,  0,  0,  1, &
-     ! 1st type prismatic systems <-1-1.0>{1-1.0}  (independent of c/a-ratio)
+    ! <-1-1.0>{1-1.0}/prismatic systems (independent of c/a-ratio)
        2, -1, -1,  0,     0,  1, -1,  0, &
       -1,  2, -1,  0,    -1,  0,  1,  0, &
       -1, -1,  2,  0,     1, -1,  0,  0, &
-     ! 2nd type prismatic systems <-11.0>{11.0} -- a slip; plane normals independent of c/a-ratio
+    ! <-11.0>{11.0}/2nd order prismatic compound systems (plane normal independent of c/a-ratio)
       -1,  1,  0,  0,     1,  1, -2,  0, &
        0, -1,  1,  0,    -2,  1,  1,  0, &
        1,  0, -1,  0,     1, -2,  1,  0, &
-     ! 1st type 1st order pyramidal systems <-1-1.0>{-11.1} -- plane normals depend on the c/a-ratio
+    ! <-1-1.0>{-11.1}/1st order pyramidal <a> systems (direction independent of c/a-ratio)
       -1,  2, -1,  0,     1,  0, -1,  1, &
       -2,  1,  1,  0,     0,  1, -1,  1, &
       -1, -1,  2,  0,    -1,  1,  0,  1, &
        1, -2,  1,  0,    -1,  0,  1,  1, &
        2, -1, -1,  0,     0, -1,  1,  1, &
        1,  1, -2,  0,     1, -1,  0,  1, &
-     ! pyramidal system: c+a slip <11.3>{-10.1} -- plane normals depend on the c/a-ratio
+    ! <11.3>{-10.1}/1st order pyramidal <c+a> systems (direction independent of c/a-ratio)
       -2,  1,  1,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     0,  1, -1,  1, &
@@ -237,96 +218,96 @@ module lattice
       -1,  2, -1,  3,     0, -1,  1,  1, &
       -1,  2, -1,  3,     1, -1,  0,  1, &
       -2,  1,  1,  3,     1, -1,  0,  1, &
-     ! pyramidal system: c+a slip <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al. 1996, similar to twin system found below)
-      -1, -1,  2,  3,     1,  1, -2,  2, & ! <11.3>{-1-1.2} shear = 2((c/a)^2-2)/(3 c/a)
+    ! <11.3>{-1-1.2}/2nd order pyramidal <c+a> systems
+      -1, -1,  2,  3,     1,  1, -2,  2, &
        1, -2,  1,  3,    -1,  2, -1,  2, &
        2, -1, -1,  3,    -2,  1,  1,  2, &
        1,  1, -2,  3,    -1, -1,  2,  2, &
       -1,  2, -1,  3,     1, -2,  1,  2, &
       -2,  1,  1,  3,     2, -1, -1,  2  &
-      ],pReal),shape(HEX_SYSTEMSLIP))                                                               !< slip systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
+      ],pReal),shape(HEX_SYSTEMSLIP))                                                               !< hex slip systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
   real(pReal), dimension(4+4,HEX_NTWIN), parameter :: &
     HEX_SYSTEMTWIN =  reshape(real([&
-     ! Compression or Tension = f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
-      -1,  0,  1,  1,     1,  0, -1,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
+    ! <-10.1>{10.2} systems, shear = (3-(c/a)^2)/(sqrt(3) c/a)
+    ! tension in Co, Mg, Zr, Ti, and Be; compression in Cd and Zn
+      -1,  0,  1,  1,     1,  0, -1,  2, & !
        0, -1,  1,  1,     0,  1, -1,  2, &
        1, -1,  0,  1,    -1,  1,  0,  2, &
        1,  0, -1,  1,    -1,  0,  1,  2, &
        0,  1, -1,  1,     0, -1,  1,  2, &
       -1,  1,  0,  1,     1, -1,  0,  2, &
-!
-      -1, -1,  2,  6,     1,  1, -2,  1, & ! <11.6>{-1-1.1} shear = 1/(c/a)
+    ! <11.6>{-1-1.1} systems, shear = 1/(c/a)
+    ! tension in Co, Re, and Zr
+      -1, -1,  2,  6,     1,  1, -2,  1, &
        1, -2,  1,  6,    -1,  2, -1,  1, &
        2, -1, -1,  6,    -2,  1,  1,  1, &
        1,  1, -2,  6,    -1, -1,  2,  1, &
       -1,  2, -1,  6,     1, -2,  1,  1, &
       -2,  1,  1,  6,     2, -1, -1,  1, &
-!
-       1,  0, -1, -2,     1,  0, -1,  1, & ! <10.-2>{10.1} shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
+    ! <10.-2>{10.1} systems, shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
+    ! compression in Mg
+       1,  0, -1, -2,     1,  0, -1,  1, &
        0,  1, -1, -2,     0,  1, -1,  1, &
       -1,  1,  0, -2,    -1,  1,  0,  1, &
       -1,  0,  1, -2,    -1,  0,  1,  1, &
        0, -1,  1, -2,     0, -1,  1,  1, &
        1, -1,  0, -2,     1, -1,  0,  1, &
-!
-       1,  1, -2, -3,     1,  1, -2,  2, & ! <11.-3>{11.2} shear = 2((c/a)^2-2)/(3 c/a)
+    ! <11.-3>{11.2} systems, shear = 2((c/a)^2-2)/(3 c/a)
+    ! compression in Ti and Zr
+       1,  1, -2, -3,     1,  1, -2,  2, &
       -1,  2, -1, -3,    -1,  2, -1,  2, &
       -2,  1,  1, -3,    -2,  1,  1,  2, &
       -1, -1,  2, -3,    -1, -1,  2,  2, &
        1, -2,  1, -3,     1, -2,  1,  2, &
        2, -1, -1, -3,     2, -1, -1,  2  &
-      ],pReal),shape(HEX_SYSTEMTWIN))                                                               !< twin systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
+      ],pReal),shape(HEX_SYSTEMTWIN))                                                               !< hex twin systems, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal (tI)
   integer, dimension(*), parameter :: &
-    BCT_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                                      !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
+    BCT_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                                      !< # of slip systems per family for bct
 
   integer, parameter :: &
-#ifndef __PGI
     BCT_NSLIP = sum(BCT_NSLIPSYSTEM)                                                                !< total # of slip systems for bct
-#else
-    BCT_NSLIP = 52
-#endif
+
 
   real(pReal), dimension(3+3,BCT_NSLIP), parameter :: &
     BCT_SYSTEMSLIP = reshape(real([&
-     ! Slip direction     Plane normal
-     ! Slip family 1 {100)<001] (Bravais notation {hkl)<uvw] for bct c/a = 0.5456)
+    ! {100)<001] systems
        0, 0, 1,      1, 0, 0, &
        0, 0, 1,      0, 1, 0, &
-     ! Slip family 2 {110)<001]
+    ! {110)<001] systems
        0, 0, 1,      1, 1, 0, &
        0, 0, 1,     -1, 1, 0, &
-     ! slip family 3 {100)<010]
+    ! {100)<010] systems
        0,  1, 0,     1, 0, 0, &
        1,  0, 0,     0, 1, 0, &
-     ! Slip family 4 {110)<1-11]/2
+    ! {110)<1-11]/2 systems
        1,-1, 1,      1, 1, 0, &
        1,-1,-1,      1, 1, 0, &
       -1,-1,-1,     -1, 1, 0, &
       -1,-1, 1,     -1, 1, 0, &
-     ! Slip family 5 {110)<1-10]
+    ! {110)<1-10] systems
        1, -1, 0,     1, 1, 0, &
        1,  1, 0,     1,-1, 0, &
-     ! Slip family 6 {100)<011]
+    ! {100)<011] systems
        0, 1, 1,      1, 0, 0, &
        0,-1, 1,      1, 0, 0, &
       -1, 0, 1,      0, 1, 0, &
        1, 0, 1,      0, 1, 0, &
-     ! Slip family 7 {001)<010]
+    ! {001)<010] systems
        0, 1, 0,      0, 0, 1, &
        1, 0, 0,      0, 0, 1, &
-     ! Slip family 8 {001)<110]
+    ! {001)<110] systems
        1, 1, 0,      0, 0, 1, &
       -1, 1, 0,      0, 0, 1, &
-     ! Slip family 9 {011)<01-1]
+    ! {011)<01-1] systems
        0, 1,-1,      0, 1, 1, &
        0,-1,-1,      0,-1, 1, &
       -1, 0,-1,     -1, 0, 1, &
        1, 0,-1,      1, 0, 1, &
-     ! Slip family 10 {011)<1-11]/2
+    ! {011)<1-11]/2 systems
        1,-1, 1,      0, 1, 1, &
        1, 1,-1,      0, 1, 1, &
        1, 1, 1,      0, 1,-1, &
@@ -335,12 +316,12 @@ module lattice
       -1,-1, 1,      1, 0, 1, &
        1, 1, 1,      1, 0,-1, &
        1,-1, 1,      1, 0,-1,  &
-     ! Slip family 11 {011)<100]
+    ! {011)<100] systems
        1, 0, 0,      0, 1, 1, &
        1, 0, 0,      0, 1,-1, &
        0, 1, 0,      1, 0, 1, &
        0, 1, 0,      1, 0,-1, &
-     ! Slip family 12 {211)<01-1]
+    ! {211)<01-1] systems
        0, 1,-1,      2, 1, 1, &
        0,-1,-1,      2,-1, 1, &
        1, 0,-1,      1, 2, 1, &
@@ -349,7 +330,7 @@ module lattice
        0,-1,-1,     -2,-1, 1, &
       -1, 0,-1,     -1,-2, 1, &
        1, 0,-1,      1,-2, 1, &
-     ! Slip family 13 {211)<-111]/2
+    ! {211)<-111]/2 systems
       -1, 1, 1,      2, 1, 1, &
       -1,-1, 1,      2,-1, 1, &
        1,-1, 1,      1, 2, 1, &
@@ -358,27 +339,22 @@ module lattice
        1,-1, 1,     -2,-1, 1, &
       -1, 1, 1,     -1,-2, 1, &
        1, 1, 1,      1,-2, 1  &
-       ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< slip systems for bct sorted by Bieler
+       ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< bct slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic primitive (oP)
   integer, dimension(*), parameter :: &
-    ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                                 !< # of cleavage systems per family for ortho
+    ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                                 !< # of cleavage systems per family for orthorhombic primitive
 
   integer, parameter  :: &
-#ifndef __PGI
-    ORT_NCLEAVAGE = sum(ORT_NCLEAVAGESYSTEM)                                                        !< total # of cleavage systems for ortho
-#else
-    ORT_NCLEAVAGE = 3
-#endif
+    ORT_NCLEAVAGE = sum(ORT_NCLEAVAGESYSTEM)                                                        !< total # of cleavage systems for orthorhombic primitive
 
   real(pReal), dimension(3+3,ORT_NCLEAVAGE), parameter :: &
     ORT_SYSTEMCLEAVAGE = reshape(real([&
-     ! Cleavage direction     Plane normal
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(ORT_SYSTEMCLEAVAGE))
+      ],pReal),shape(ORT_SYSTEMCLEAVAGE))                                                           !< orthorhombic primitive cleavage systems
 
 
   enum, bind(c); enumerator :: &
@@ -714,10 +690,9 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
 
   if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
-  coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,&
-                                            'cI',0.0_pReal)
+  coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,'cI',0.0_pReal)
   coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pReal)     ! convert unidirectional coordinate system
-  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'cI',0.0_pReal)                                ! Schmid contribution
+  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'cI',0.0_pReal)                                 ! Schmid contribution
 
   do i = 1,sum(Nslip)
     direction = coordinateSystem(1:3,1,i)
@@ -759,26 +734,26 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
 
   integer, dimension(FCC_NSLIP,FCC_NSLIP), parameter :: &
     FCC_INTERACTIONSLIPSLIP = reshape( [&
-       1, 2, 2, 4, 7, 5, 3, 5, 5, 4, 6, 7, 10,11,10,11,12,13, & ! -----> acting
-       2, 1, 2, 7, 4, 5, 6, 4, 7, 5, 3, 5, 10,11,12,13,10,11, & ! |
-       2, 2, 1, 5, 5, 3, 6, 7, 4, 7, 6, 4, 12,13,10,11,10,11, & ! |
-       4, 7, 6, 1, 2, 2, 4, 6, 7, 3, 5, 5, 10,11,11,10,13,12, & ! v
-       7, 4, 6, 2, 1, 2, 5, 3, 5, 6, 4, 7, 10,11,13,12,11,10, & ! reacting
-       5, 5, 3, 2, 2, 1, 7, 6, 4, 6, 7, 4, 12,13,11,10,11,10, &
-       3, 5, 5, 4, 6, 7, 1, 2, 2, 4, 7, 6, 11,10,11,10,12,13, &
-       6, 4, 7, 5, 3, 5, 2, 1, 2, 7, 4, 6, 11,10,13,12,10,11, &
-       6, 7, 4, 7, 6, 4, 2, 2, 1, 5, 5, 3, 13,12,11,10,10,11, &
-       4, 6, 7, 3, 5, 5, 4, 7, 6, 1, 2, 2, 11,10,10,11,13,12, &
-       5, 3, 5, 6, 4, 7, 7, 4, 6, 2, 1, 2, 11,10,12,13,11,10, &
-       7, 6, 4, 6, 7, 4, 5, 5, 3, 2, 2, 1, 13,12,10,11,11,10, &
-      
-      10,10,12,10,10,12,11,11,13,11,11,13,  1, 8, 9, 9, 9, 9, &
-      11,11,13,11,11,13,10,10,12,10,10,12,  8, 1, 9, 9, 9, 9, &
-      10,12,10,11,13,11,11,13,11,10,12,10,  9, 9, 1, 8, 9, 9, &
-      11,13,11,10,12,10,10,12,10,11,13,11,  9, 9, 8, 1, 9, 9, &
-      12,10,10,13,11,11,12,10,10,13,11,11,  9, 9, 9, 9, 1, 8, &
-      13,11,11,12,10,10,13,11,11,12,10,10,  9, 9, 9, 9, 8, 1  &
-      ],shape(FCC_INTERACTIONSLIPSLIP))                                                             !< Slip--slip interaction types for fcc / Madec 2017(https://doi.org/10.1016/j.actamat.2016.12.040)
+       1, 2, 2, 4, 7, 5, 3, 5, 5, 4, 6, 7,  10,11,10,11,12,13, & ! -----> acting
+       2, 1, 2, 7, 4, 5, 6, 4, 7, 5, 3, 5,  10,11,12,13,10,11, & ! |
+       2, 2, 1, 5, 5, 3, 6, 7, 4, 7, 6, 4,  12,13,10,11,10,11, & ! |
+       4, 7, 6, 1, 2, 2, 4, 6, 7, 3, 5, 5,  10,11,11,10,13,12, & ! v
+       7, 4, 6, 2, 1, 2, 5, 3, 5, 6, 4, 7,  10,11,13,12,11,10, & ! reacting
+       5, 5, 3, 2, 2, 1, 7, 6, 4, 6, 7, 4,  12,13,11,10,11,10, &
+       3, 5, 5, 4, 6, 7, 1, 2, 2, 4, 7, 6,  11,10,11,10,12,13, &
+       6, 4, 7, 5, 3, 5, 2, 1, 2, 7, 4, 6,  11,10,13,12,10,11, &
+       6, 7, 4, 7, 6, 4, 2, 2, 1, 5, 5, 3,  13,12,11,10,10,11, &
+       4, 6, 7, 3, 5, 5, 4, 7, 6, 1, 2, 2,  11,10,10,11,13,12, &
+       5, 3, 5, 6, 4, 7, 7, 4, 6, 2, 1, 2,  11,10,12,13,11,10, &
+       7, 6, 4, 6, 7, 4, 5, 5, 3, 2, 2, 1,  13,12,10,11,11,10, &
+
+      10,10,12,10,10,12,11,11,13,11,11,13,   1, 8, 9, 9, 9, 9, &
+      11,11,13,11,11,13,10,10,12,10,10,12,   8, 1, 9, 9, 9, 9, &
+      10,12,10,11,13,11,11,13,11,10,12,10,   9, 9, 1, 8, 9, 9, &
+      11,13,11,10,12,10,10,12,10,11,13,11,   9, 9, 8, 1, 9, 9, &
+      12,10,10,13,11,11,12,10,10,13,11,11,   9, 9, 9, 9, 1, 8, &
+      13,11,11,12,10,10,13,11,11,12,10,10,   9, 9, 9, 9, 8, 1  &
+      ],shape(FCC_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for fcc / Madec 2017 (https://doi.org/10.1016/j.actamat.2016.12.040)
                                                                                                     !< 1: self interaction         --> alpha 0
                                                                                                     !< 2: coplanar interaction     --> alpha copla
                                                                                                     !< 3: collinear interaction    --> alpha coli
@@ -820,13 +795,14 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
        9,12,15,16,16,15,12, 9,10, 8,19,19,   21,23,22, 2, 2,23,22,21,24, 1,20,24, &
       16,15,12, 9, 9,12,15,16, 8,10,19,19,    2,22,23,21,21,22,23, 2,24,20, 1,24, &
       15,16, 9,12,15,16, 9,12,19,19, 8,10,   22, 2,21,23,22,21, 2,23,20,24,24, 1  &
-      ],shape(BCC_INTERACTIONSLIPSLIP))                                                             !< Slip--slip interaction types for bcc / Madec 2017(https://doi.org/10.1016/j.actamat.2016.12.040)
+      ],shape(BCC_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for bcc / Madec 2017 (https://doi.org/10.1016/j.actamat.2016.12.040)
                                                                                                     !< 1: self interaction      --> alpha 0
                                                                                                     !< 2: collinear interaction --> alpha 1
                                                                                                     !< 3: coplanar interaction  --> alpha 2
-                                                                                                    !< 4-24: other coefficients
+                                                                                                    !< 4-7: other coefficients
                                                                                                     !< 8: {110}-{112}, collinear and perpendicular planes --> alpha 6
                                                                                                     !< 9: {110}-{112}, just collinear                     --> alpha 7
+                                                                                                    !< 10-24: other coefficients
 
   integer, dimension(HEX_NSLIP,HEX_NSLIP), parameter :: &
     HEX_INTERACTIONSLIPSLIP = reshape( [&
@@ -868,7 +844,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,36,37,37, &
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &
-     ],shape(HEX_INTERACTIONSLIPSLIP))                                                              !< Slip--slip interaction types for hex (onion peel naming scheme)
+     ],shape(HEX_INTERACTIONSLIPSLIP))                                                              !< Slip-slip interaction types for hex (onion peel naming scheme)
 
   integer, dimension(BCT_NSLIP,BCT_NSLIP), parameter :: &
     BCT_INTERACTIONSLIPSLIP = reshape( [&
