@@ -90,7 +90,8 @@ subroutine grid_thermal_spectral_init(T_0)
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type ngmres',ierr)
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type newtonls -thermal_snes_mf &
+                               &-thermal_snes_ksp_ew -thermal_ksp_type fgmres',ierr)
  CHKERRQ(ierr)
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
  CHKERRQ(ierr)
