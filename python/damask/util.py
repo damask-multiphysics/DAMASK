@@ -195,20 +195,20 @@ def natural_sort(key):
 
 def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
     """
-    Decorate a loop with a status bar.
+    Decorate a loop with a progress bar.
 
     Use similar like enumerate.
 
     Parameters
     ----------
-    iterable : iterable/function with yield statement
+    iterable : iterable or function with yield statement
         Iterable (or function with yield statement) to be decorated.
     N_iter : int, optional
-        Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
+        Total number of iterations. Required unless obtainable as len(iterable).
     prefix : str, optional
         Prefix string.
     bar_length : int, optional
-        Character length of bar. Defaults to 50.
+        Length of progress bar in characters. Defaults to 50.
 
     """
     if N_iter in [0,1] or (hasattr(iterable,'__len__') and len(iterable) <= 1):
