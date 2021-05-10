@@ -137,6 +137,25 @@ module subroutine damage_init
 end subroutine damage_init
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the degraded/modified elasticity matrix
+!--------------------------------------------------------------------------------------------------
+module function phase_damage_C(C_homogenized,ph,en) result(C)
+
+  real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
+  integer,                         intent(in)  :: ph,en  
+  real(pReal), dimension(3,3,3,3) :: C
+
+  damageType: select case (phase_source(ph))
+    case (DAMAGE_ISOBRITTLE_ID) damageType
+     C = C_homogenized * damage_phi(ph,en)**2
+    case default damageType
+     C = C_homogenized
+  end select damageType
+
+end function phase_damage_C
+
+
 !----------------------------------------------------------------------------------------------
 !< @brief returns local part of nonlocal damage driving force
 !----------------------------------------------------------------------------------------------

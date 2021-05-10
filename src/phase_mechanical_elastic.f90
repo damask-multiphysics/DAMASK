@@ -94,13 +94,7 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     i, j
 
   C = math_66toSym3333(phase_homogenizedC(ph,en))
-
-  DegradationLoop: do d = 1, phase_NstiffnessDegradations(ph)
-    degradationType: select case(phase_stiffnessDegradation(d,ph))
-      case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * damage_phi(ph,en)**2
-    end select degradationType
-  enddo DegradationLoop
+  C = phase_damage_C(C,ph,en)
 
   E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
   S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                                        !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
