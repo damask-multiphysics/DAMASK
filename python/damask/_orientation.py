@@ -5,6 +5,35 @@ import numpy as np
 from . import Rotation
 from . import util
 from . import tensor
+from . import _lattice
+
+_crystal_families = ['triclinic',
+                     'monoclinic',
+                     'orthorhombic',
+                     'tetragonal',
+                     'hexagonal',
+                     'cubic']
+
+_lattice_symmetries = {
+                'aP': 'triclinic',
+
+                'mP': 'monoclinic',
+                'mS': 'monoclinic',
+
+                'oP': 'orthorhombic',
+                'oS': 'orthorhombic',
+                'oI': 'orthorhombic',
+                'oF': 'orthorhombic',
+
+                'tP': 'tetragonal',
+                'tI': 'tetragonal',
+
+                'hP': 'hexagonal',
+
+                'cP': 'cubic',
+                'cI': 'cubic',
+                'cF': 'cubic',
+               }
 
 _parameter_doc = \
        """lattice : str
@@ -33,7 +62,7 @@ class Orientation(Rotation):
     """
     Representation of crystallographic orientation as combination of rotation and either crystal family or Bravais lattice.
 
-    The crystal family is one of Orientation.crystal_families:
+    The crystal family is one of:
 
     - triclinic
     - monoclinic
@@ -45,7 +74,7 @@ class Orientation(Rotation):
     and enables symmetry-related operations such as
     "equivalent", "reduced", "disorientation", "IPF_color", or "to_SST".
 
-    The Bravais lattice is one of Orientation.lattice_symmetries:
+    The Bravais lattice is given in the Pearson notation:
 
     - triclinic
        - aP : primitive
@@ -85,35 +114,6 @@ class Orientation(Rotation):
 
     """
 
-    crystal_families = ['triclinic',
-                        'monoclinic',
-                        'orthorhombic',
-                        'tetragonal',
-                        'hexagonal',
-                        'cubic']
-
-    lattice_symmetries = {
-                'aP': 'triclinic',
-
-                'mP': 'monoclinic',
-                'mS': 'monoclinic',
-
-                'oP': 'orthorhombic',
-                'oS': 'orthorhombic',
-                'oI': 'orthorhombic',
-                'oF': 'orthorhombic',
-
-                'tP': 'tetragonal',
-                'tI': 'tetragonal',
-
-                'hP': 'hexagonal',
-
-                'cP': 'cubic',
-                'cI': 'cubic',
-                'cF': 'cubic',
-               }
-
-
     @util.extend_docstring(_parameter_doc)
     def __init__(self,
                  rotation = None,
@@ -132,34 +132,17 @@ class Orientation(Rotation):
             Defaults to no rotation.
 
         """
-        from damask.lattice import kinematics
-
         Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
 
-        if (    lattice not in self.lattice_symmetries
-            and lattice not in self.crystal_families):
-            raise KeyError(f'Lattice "{lattice}" is unknown')
-
-        self.family     = None
-        self.lattice    = None
-        self.a          = None
-        self.b          = None
-        self.c          = None
-        self.alpha      = None
-        self.beta       = None
-        self.gamma      = None
         self.kinematics = None
 
-        if lattice in self.lattice_symmetries:
-            self.family  = self.lattice_symmetries[lattice]
+        if lattice in _lattice_symmetries:
+            self.family  = _lattice_symmetries[lattice]
             self.lattice = lattice
+
             self.a = 1 if a is None else a
             self.b = b
             self.c = c
-            self.alpha = (np.radians(alpha) if degrees else alpha) if alpha is not None else None
-            self.beta  = (np.radians(beta)  if degrees else beta)  if beta  is not None else None
-            self.gamma = (np.radians(gamma) if degrees else gamma) if gamma is not None else None
-
             self.a = float(self.a) if self.a is not None else \
                      (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
                       self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
@@ -171,9 +154,13 @@ class Orientation(Rotation):
                      (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
                       self.b / self.ratio['b'] * self.ratio['c']
                       if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-            self.alpha = self.alpha if self.alpha is not None else self.immutable['alpha'] if 'alpha' in self.immutable else None
-            self.beta  = self.beta  if self.beta  is not None else self.immutable['beta']  if 'beta'  in self.immutable else None
-            self.gamma = self.gamma if self.gamma is not None else self.immutable['gamma'] if 'gamma' in self.immutable else None
+
+            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
+            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
+            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
+            if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
+            if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
+            if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
 
             if \
                 (self.a     is None) \
@@ -190,16 +177,22 @@ class Orientation(Rotation):
               > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('Each lattice angle must be less than sum of others')
 
-            if self.lattice in kinematics:
-                master = kinematics[self.lattice]
+            if self.lattice in _lattice.kinematics:
+                master = _lattice.kinematics[self.lattice]
                 self.kinematics = {}
                 for m in master:
                     self.kinematics[m] = {'direction':master[m][:,0:3],'plane':master[m][:,3:6]} \
                                          if master[m].shape[-1] == 6 else \
                                          {'direction':self.Bravais_to_Miller(uvtw=master[m][:,0:4]),
                                           'plane':    self.Bravais_to_Miller(hkil=master[m][:,4:8])}
-        elif lattice in self.crystal_families:
-            self.family = lattice
+        elif lattice in _crystal_families:
+            self.family  = lattice
+            self.lattice = None
+
+            self.a = self.b = self.c = None
+            self.alpha = self.beta = self.gamma = None
+        else:
+            raise KeyError(f'Lattice "{lattice}" is unknown')
 
 
     def __repr__(self):
@@ -676,11 +669,9 @@ class Orientation(Rotation):
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        from damask.lattice import relations
-
-        if model not in relations:
+        if model not in _lattice.relations:
             raise KeyError(f'Orientation relationship "{model}" is unknown')
-        r = relations[model]
+        r = _lattice.relations[model]
 
         if self.lattice not in r:
             raise KeyError(f'Relationship "{model}" not supported for lattice "{self.lattice}"')

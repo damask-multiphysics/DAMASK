@@ -5,9 +5,10 @@ from itertools import permutations
 from damask import Rotation
 from damask import Orientation
 from damask import Table
-from damask import lattice
 from damask import util
 from damask import grid_filters
+from damask import _lattice as lattice
+from damask._orientation import _crystal_families as crystal_families
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ def set_of_rodrigues(set_of_quaternions):
 
 class TestOrientation:
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_equal(self,lattice,shape):
         R = Rotation.from_random(shape)
@@ -30,14 +31,14 @@ class TestOrientation:
               (Orientation(R,lattice) == Orientation(R,lattice)).all()
 
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_unequal(self,lattice,shape):
         R = Rotation.from_random(shape)
         assert not ( Orientation(R,lattice) != Orientation(R,lattice) if shape is None else \
                     (Orientation(R,lattice) != Orientation(R,lattice)).any())
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_close(self,lattice,shape):
         R = Orientation.from_random(lattice=lattice,shape=shape)
@@ -182,14 +183,14 @@ class TestOrientation:
         with pytest.raises(ValueError):
             Orientation(lattice='aP',a=1,b=2,c=3,alpha=45,beta=45,gamma=90.0001,degrees=True)       # noqa
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('angle',[10,20,30,40])
     def test_average(self,angle,lattice):
         o = Orientation.from_axis_angle(lattice=lattice,axis_angle=[[0,0,1,10],[0,0,1,angle]],degrees=True)
         avg_angle = o.average().as_axis_angle(degrees=True,pair=True)[1]
         assert np.isclose(avg_angle,10+(angle-10)/2.)
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     def test_reduced_equivalent(self,lattice):
         i = Orientation(lattice=lattice)
         o = Orientation.from_random(lattice=lattice)
@@ -197,7 +198,7 @@ class TestOrientation:
         FZ = np.argmin(abs(eq.misorientation(i.broadcast_to(len(eq))).as_axis_angle(pair=True)[1]))
         assert o.reduced == eq[FZ]
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('N',[1,8,32])
     def test_disorientation(self,lattice,N):
         o = Orientation.from_random(lattice=lattice,shape=N)
@@ -215,7 +216,7 @@ class TestOrientation:
                                       .misorientation(p[n].equivalent[ops[n][1]])
                                       .as_quaternion())
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('a,b',[
                                     ((2,3,2),(2,3,2)),
                                     ((2,2),(4,4)),
@@ -230,20 +231,20 @@ class TestOrientation:
             assert o[tuple(loc[:len(o.shape)])].disorientation(p[tuple(loc[-len(p.shape):])]) \
                    .isclose(o.disorientation(p)[tuple(loc)])
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     def test_disorientation360(self,lattice):
         o_1 = Orientation(Rotation(),lattice)
         o_2 = Orientation.from_Euler_angles(lattice=lattice,phi=[360,0,0],degrees=True)
         assert np.allclose((o_1.disorientation(o_2)).as_matrix(),np.eye(3))
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
     def test_reduced_vectorization(self,lattice,shape):
         o = Orientation.from_random(lattice=lattice,shape=shape)
         for r, theO in zip(o.reduced.flatten(),o.flatten()):
             assert r == theO.reduced
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     def test_reduced_corner_cases(self,lattice):
         # test whether there is always a sym-eq rotation that falls into the FZ
         N = np.random.randint(10,40)
@@ -253,7 +254,7 @@ class TestOrientation:
         assert evenly_distributed.shape == evenly_distributed.reduced.shape
 
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
     @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
     @pytest.mark.parametrize('proper',[True,False])
@@ -262,7 +263,7 @@ class TestOrientation:
         for r, theO in zip(o.to_SST(vector=vector,proper=proper).reshape((-1,3)),o.flatten()):
             assert np.allclose(r,theO.to_SST(vector=vector,proper=proper))
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
     @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
     @pytest.mark.parametrize('proper',[True,False])
@@ -272,7 +273,7 @@ class TestOrientation:
         for r, theO in zip(o.IPF_color(vector,in_SST=in_SST,proper=proper).reshape((-1,3)),o.flatten()):
             assert np.allclose(r,theO.IPF_color(vector,in_SST=in_SST,proper=proper))
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('a,b',[
                                     ((2,3,2),(2,3,2)),
                                     ((2,2),(4,4)),
@@ -300,7 +301,7 @@ class TestOrientation:
             assert np.allclose(np.array(color['RGB']),
                                cube.IPF_color(vector=np.array(direction),proper=proper))
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('proper',[True,False])
     def test_IPF_equivalent(self,set_of_quaternions,lattice,proper):
         direction = np.random.random(3)*2.0-1.0
@@ -308,13 +309,13 @@ class TestOrientation:
         color = o.IPF_color(vector=direction,proper=proper)
         assert np.allclose(np.broadcast_to(color[0,...],color.shape),color)
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     def test_in_FZ_vectorization(self,set_of_rodrigues,lattice):
         result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((-1,4,4)),lattice=lattice).in_FZ.reshape(-1)
         for r,rho in zip(result,set_of_rodrigues[:len(result)]):
             assert r == Orientation.from_Rodrigues_vector(rho=rho,lattice=lattice).in_FZ
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     def test_in_disorientation_FZ_vectorization(self,set_of_rodrigues,lattice):
         result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((-1,4,4)),
                                             lattice=lattice).in_disorientation_FZ.reshape(-1)
@@ -322,7 +323,7 @@ class TestOrientation:
             assert r == Orientation.from_Rodrigues_vector(rho=rho,lattice=lattice).in_disorientation_FZ
 
     @pytest.mark.parametrize('proper',[True,False])
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     def test_in_SST_vectorization(self,lattice,proper):
         vecs = np.random.rand(20,4,3)
         result = Orientation(lattice=lattice).in_SST(vecs,proper).flatten()
@@ -393,7 +394,7 @@ class TestOrientation:
                         a=a,b=b,c=c,
                         alpha=alpha,beta=beta,gamma=gamma).related(relation)                        # noqa
 
-    @pytest.mark.parametrize('lattice',Orientation.crystal_families)
+    @pytest.mark.parametrize('lattice',crystal_families)
     @pytest.mark.parametrize('proper',[True,False])
     def test_in_SST(self,lattice,proper):
           assert Orientation(lattice=lattice).in_SST(np.zeros(3),proper)
