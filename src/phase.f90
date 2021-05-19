@@ -240,13 +240,11 @@ module phase
       real(pReal), dimension(6,6) :: C
     end function phase_homogenizedC
 
-
     module function phase_damage_C(C_homogenized,ph,en) result(C)        ! ToDo: SR: better name?
       real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
       integer,                         intent(in)  :: ph,en  
       real(pReal), dimension(3,3,3,3) :: C
     end function phase_damage_C
-
 
     module function phase_f_phi(phi,co,ce) result(f)
       integer, intent(in) :: ce,co

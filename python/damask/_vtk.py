@@ -150,9 +150,8 @@ class VTK:
         ----------
         fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
-        dataset_type : str, optional
+        dataset_type : {'vtkRectilinearGrid', 'vtkUnstructuredGrid', 'vtkPolyData'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
-            Valid types are vtkRectilinearGrid, vtkUnstructuredGrid, and vtkPolyData.
 
         Returns
         -------
