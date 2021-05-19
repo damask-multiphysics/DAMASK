@@ -8,11 +8,6 @@ pkg_check_modules (PETSC REQUIRED PETSc>=3.12.0 PETSc<3.16.0)
 pkg_get_variable (CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable (CMAKE_C_COMPILER PETSc ccompiler)
 
-find_program (CAT_EXECUTABLE NAMES cat)
-execute_process (COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
-                 RESULT_VARIABLE DAMASK_VERSION_RETURN
-                 OUTPUT_VARIABLE DAMASK_VERSION
-                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 #---------------------------------------------------------------------------------------
 # Find PETSc from system environment
@@ -90,7 +85,11 @@ elseif (DAMASK_SOLVER STREQUAL "mesh")
 else ()
     message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
+
+file (READ ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
+string (STRIP ${DAMASK_VERSION} DAMASK_VERSION)
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
+
 add_definitions (-DPETSc)
 
 message ("\nBuilding ${CMAKE_PROJECT_NAME}\n")
