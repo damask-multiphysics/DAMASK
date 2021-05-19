@@ -1,11 +1,11 @@
 cmake_minimum_required (VERSION 3.10.0)
 include (FindPkgConfig REQUIRED)
 
-set(PETSC_DIR $ENV{PETSC_DIR})
-if (PETSC_DIR STREQUAL "")
+if (DEFINED ENV{PETSC_DIR})
+    message ("PETSC_DIR:\n$ENV{PETSC_DIR}\n")
+else ()
     message (FATAL_ERROR "PETSc location (PETSC_DIR) is not defined")
 endif ()
-message ("PETSC_DIR:\n${PETSC_DIR}\n")
 
 # Dummy project to determine compiler names and version
 project (Prerequisites LANGUAGES)
@@ -79,13 +79,13 @@ else ()
     message (FATAL_ERROR "Compiler type (CMAKE_Fortran_COMPILER_ID) not recognized")
 endif ()
 
-file (STRINGS "${PETSC_DIR}/lib/petsc/conf/petscvariables" PETSC_EXTERNAL_LIB REGEX "PETSC_WITH_EXTERNAL_LIB = .*$?")
+file (STRINGS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/petsc/conf/petscvariables" PETSC_EXTERNAL_LIB REGEX "PETSC_WITH_EXTERNAL_LIB = .*$?")
 string (REGEX MATCHALL "-[lLW]([^\" ]+)" PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB}")
 list (REMOVE_DUPLICATES PETSC_EXTERNAL_LIB)
 string (REPLACE ";" " " PETSC_EXTERNAL_LIB "${PETSC_EXTERNAL_LIB}")
 message ("PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 
-file (STRINGS "${PETSC_DIR}/lib/petsc/conf/petscvariables" PETSC_INCLUDES REGEX "PETSC_FC_INCLUDES = .*$?")
+file (STRINGS "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/petsc/conf/petscvariables" PETSC_INCLUDES REGEX "PETSC_FC_INCLUDES = .*$?")
 string (REGEX MATCHALL "-I([^\" ]+)" PETSC_INCLUDES "${PETSC_INCLUDES}")
 list (REMOVE_DUPLICATES PETSC_INCLUDES)
 string (REPLACE ";" " " PETSC_INCLUDES "${PETSC_INCLUDES}")
