@@ -39,20 +39,17 @@ extlibs:
 \t@echo \${LIBRARIES}
 ")
 
-# CMake will execute each target in the ${petsc_config_makefile}
-# to acquire corresponding PETSc Variables.
+# CMake will execute each target in petsc_config_makefile to acquire corresponding PETSc Variables.
 find_program (MAKE_EXECUTABLE NAMES gmake make)
-# Find the PETSc includes directory settings
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "includes"
                  RESULT_VARIABLE PETSC_INCLUDES_RETURN
                  OUTPUT_VARIABLE petsc_includes
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
-# Find the PETSc external linking directory settings
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "extlibs"
                  RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                  OUTPUT_VARIABLE petsc_external_lib
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
-# Remove temporary makefile, no need to keep it anymore.
+
 file (REMOVE_RECURSE ${TEMPDIR})
 
 # Remove duplicate compiler and linker flags
@@ -75,7 +72,7 @@ message ("PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 # Now start to care about DAMASK
 
 # DAMASK solver defines project to build
-string(TOLOWER ${DAMASK_SOLVER} DAMASK_SOLVER)
+string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER)
 if (DAMASK_SOLVER STREQUAL "grid")
     project (damask-grid HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
     add_definitions (-DGrid)
@@ -86,8 +83,7 @@ else ()
     message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
 
-file (READ ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
-string (STRIP ${DAMASK_VERSION} DAMASK_VERSION)
+file (STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
 
 add_definitions (-DPETSc)
