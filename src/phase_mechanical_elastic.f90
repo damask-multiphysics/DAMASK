@@ -2,18 +2,11 @@ submodule(phase:mechanical) elastic
 
   enum, bind(c); enumerator :: &
     ELASTICITY_UNDEFINED_ID, &
-    ELASTICITY_HOOKE_ID, &
-    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
-    STIFFNESS_DEGRADATION_DAMAGE_ID
+    ELASTICITY_HOOKE_ID
   end enum
-
-  integer, dimension(:), allocatable :: &
-    phase_NstiffnessDegradations
  
   integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
-  integer(kind(STIFFNESS_DEGRADATION_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
-    phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
 
 contains
 
@@ -24,18 +17,15 @@ module subroutine elastic_init(phases)
     phases
 
   integer :: &
-    ph, &
-    stiffDegradationCtr
+    ph
   class(tNode), pointer :: &
     phase, &
     mech, &
-    elastic, &
-    stiffDegradation
+    elastic
  
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
 
   allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
-  allocate(phase_NstiffnessDegradations(phases%length),source=0)
   
   do ph = 1, phases%length
     phase   => phases%get(ph)
@@ -46,24 +36,7 @@ module subroutine elastic_init(phases)
     else
       call IO_error(200,ext_msg=elastic%get_asString('type'))
     endif
-    stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)                      ! check for stiffness degradation mechanisms
-    phase_NstiffnessDegradations(ph) = stiffDegradation%length
   enddo
-
-  allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),phases%length), &
-                        source=STIFFNESS_DEGRADATION_undefined_ID)
-
-  if(maxVal(phase_NstiffnessDegradations)/=0) then
-    do ph = 1, phases%length
-      phase => phases%get(ph)
-      mech    => phase%get('mechanical')
-      stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)
-      do stiffDegradationCtr = 1, stiffDegradation%length
-        if(stiffDegradation%get_asString(stiffDegradationCtr) == 'damage') &
-            phase_stiffnessDegradation(stiffDegradationCtr,ph) = STIFFNESS_DEGRADATION_damage_ID
-      enddo
-    enddo
-  endif
 
 end subroutine elastic_init
 
