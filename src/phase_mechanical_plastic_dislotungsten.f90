@@ -414,7 +414,7 @@ module subroutine plastic_dislotungsten_results(ph,group)
                                                      'mobile dislocation density','1/m²')
       case('rho_dip')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
-                                                     'dislocation dipole density''1/m²')
+                                                     'dislocation dipole density','1/m²')
       case('gamma_sl')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
                                                      'plastic shear','1')
