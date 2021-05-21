@@ -69,7 +69,7 @@ module phase
 
   integer, public, protected :: &
     phase_plasticity_maxSizeDotState, &
-    phase_source_maxSizeDotState
+    phase_damage_maxSizeDotState
 
   interface
 
@@ -235,12 +235,12 @@ module phase
       logical :: converged_
     end function crystallite_stress
 
+    !ToDo: Try to merge the all stiffness functions
     module function phase_homogenizedC(ph,en) result(C)
       integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C
     end function phase_homogenizedC
-
-    module function phase_damage_C(C_homogenized,ph,en) result(C)        ! ToDo: SR: better name?
+    module function phase_damage_C(C_homogenized,ph,en) result(C)
       real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
       integer,                         intent(in)  :: ph,en  
       real(pReal), dimension(3,3,3,3) :: C
@@ -378,7 +378,7 @@ subroutine phase_init
   call thermal_init(phases)
 
 
-  phase_source_maxSizeDotState = 0
+  phase_damage_maxSizeDotState = 0
   PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
@@ -387,7 +387,7 @@ subroutine phase_init
       damageState(ph)%state  = damageState(ph)%state0
   enddo PhaseLoop2
 
-  phase_source_maxSizeDotState     = maxval(damageState%sizeDotState)
+  phase_damage_maxSizeDotState     = maxval(damageState%sizeDotState)
   phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine phase_init

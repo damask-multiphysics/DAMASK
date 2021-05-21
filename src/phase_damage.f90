@@ -21,7 +21,7 @@ submodule(phase) damage
   end type tDataContainer
 
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
-    phase_source                                                                                    !< active sources mechanisms of each phase
+    phase_damage                                                                                    !< active sources mechanisms of each phase
 
   type(tDataContainer), dimension(:), allocatable :: current
 
@@ -126,12 +126,12 @@ module subroutine damage_init
 
   enddo
 
-  allocate(phase_source(phases%length), source = DAMAGE_UNDEFINED_ID)
+  allocate(phase_damage(phases%length), source = DAMAGE_UNDEFINED_ID)
 
   if (damage_active) then
-    where(isobrittle_init()  ) phase_source = DAMAGE_ISOBRITTLE_ID
-    where(isoductile_init()  ) phase_source = DAMAGE_ISODUCTILE_ID
-    where(anisobrittle_init()) phase_source = DAMAGE_ANISOBRITTLE_ID
+    where(isobrittle_init()  ) phase_damage = DAMAGE_ISOBRITTLE_ID
+    where(isoductile_init()  ) phase_damage = DAMAGE_ISODUCTILE_ID
+    where(anisobrittle_init()) phase_damage = DAMAGE_ANISOBRITTLE_ID
   endif
 
 end subroutine damage_init
@@ -146,7 +146,7 @@ module function phase_damage_C(C_homogenized,ph,en) result(C)
   integer,                         intent(in)  :: ph,en  
   real(pReal), dimension(3,3,3,3) :: C
 
-  damageType: select case (phase_source(ph))
+  damageType: select case (phase_damage(ph))
     case (DAMAGE_ISOBRITTLE_ID) damageType
      C = C_homogenized * damage_phi(ph,en)**2
     case default damageType
@@ -174,7 +174,7 @@ module function phase_f_phi(phi,co,ce) result(f)
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
 
-  select case(phase_source(ph))
+  select case(phase_damage(ph))
     case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ISODUCTILE_ID,DAMAGE_ANISOBRITTLE_ID)
       f = 1.0_pReal &
         - phi*damageState(ph)%state(1,en)
@@ -206,9 +206,9 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     size_so
   real(pReal) :: &
     zeta
-  real(pReal), dimension(phase_source_maxSizeDotState) :: &
+  real(pReal), dimension(phase_damage_maxSizeDotState) :: &
     r                                                                                               ! state residuum
-  real(pReal), dimension(phase_source_maxSizeDotState,2) :: source_dotState
+  real(pReal), dimension(phase_damage_maxSizeDotState,2) :: source_dotState
   logical :: &
     converged_
 
@@ -294,10 +294,10 @@ module subroutine damage_results(group,ph)
   integer,          intent(in) :: ph
 
 
-  if (phase_source(ph) /= DAMAGE_UNDEFINED_ID) &
+  if (phase_damage(ph) /= DAMAGE_UNDEFINED_ID) &
     call results_closeGroup(results_addGroup(group//'damage'))
 
-  sourceType: select case (phase_source(ph))
+  sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
       call isobrittle_results(ph,group//'damage/')
@@ -328,7 +328,7 @@ function phase_damage_collectDotState(ph,me) result(broken)
 
   if (damageState(ph)%sizeState > 0) then
 
-    sourceType: select case (phase_source(ph))
+    sourceType: select case (phase_damage(ph))
 
       case (DAMAGE_ISODUCTILE_ID) sourceType
         call isoductile_dotState(ph,me)
@@ -395,7 +395,7 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
 
   if (damageState(ph)%sizeState == 0) return
 
-   sourceType: select case (phase_source(ph))
+   sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
       call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
