@@ -66,14 +66,14 @@ module function isobrittle_init() result(mySources)
 
         Nmembers = count(material_phaseID==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,1)
-        damageState(ph)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
+        damageState(ph)%atol = src%get_asFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
         if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 
         end associate
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isoBrittle)')
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isobrittle)')
       endif
 
   enddo
