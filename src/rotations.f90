@@ -178,8 +178,7 @@ subroutine fromQuaternion(self,qu)
   class(rotation), intent(out)          :: self
   real(pReal), dimension(4), intent(in) :: qu
 
-  if (dNeq(norm2(qu),1.0_pReal)) &
-    call IO_error(402,ext_msg='fromQuaternion')
+  if (dNeq(norm2(qu),1.0_pReal,1.0e-8_pReal)) call IO_error(402,ext_msg='fromQuaternion')
 
   self%q = qu
 
@@ -1394,7 +1393,7 @@ end function conjugate_quaternion
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some rotations functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   type(rotation)                  :: R
   real(pReal), dimension(4)       :: qu, ax, ro
@@ -1405,7 +1404,7 @@ subroutine selfTest
   integer :: i
 
 
-  do i = 1, 10
+  do i = 1, 20
 
 #if defined(__GFORTRAN__) && __GNUC__<9
     if(i<7) cycle
@@ -1433,6 +1432,7 @@ subroutine selfTest
             sin(2.0_pReal*PI*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
+
     if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) error stop 'om2qu/qu2om'
     if(.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) error stop 'eu2qu/qu2eu'
     if(.not. quaternion_equal(ax2qu(qu2ax(qu)),qu)) error stop 'ax2qu/qu2ax'
@@ -1478,6 +1478,8 @@ subroutine selfTest
     call random_number(t3333)
     if(all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
       error stop 'rotTensor4'
+
+    call R%fromQuaternion(qu * (1.0_pReal + merge(+5.e-9_pReal,-5.e-9_pReal, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML
 
   enddo
 

@@ -629,7 +629,7 @@ class Rotation:
         else:
             if np.any(qu[...,0] < 0.0):
                 raise ValueError('Quaternion with negative first (real) component.')
-        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0)):
+        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0)):
             raise ValueError('Quaternion is not of unit length.')
 
         return Rotation(qu)
