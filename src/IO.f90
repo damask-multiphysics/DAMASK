@@ -113,8 +113,7 @@ end function IO_readlines
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read whole file.
-!> @details ensures that the string ends with a new line (expected UNIX behavior) and rejects
-! windows (CRLF) line endings
+!> @details ensures that the string ends with a new line (expected UNIX behavior)
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileName) result(fileContent)
 
@@ -124,8 +123,7 @@ function IO_read(fileName) result(fileContent)
   integer ::  &
     fileLength, &
     fileUnit, &
-    myStat, &
-    firstEOL
+    myStat
   character, parameter :: CR = achar(13)
 
 
@@ -143,11 +141,16 @@ function IO_read(fileName) result(fileContent)
   if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
 
+  foundCRLF: if (scan(fileContent(:index(fileContent,IO_EOL)),CR) /= 0) then
+    CRLF2LF: block
+      integer :: c
+      do c=1, len(fileContent)
+        if (fileContent(c:c) == CR) fileContent(c:c) = ' '
+      enddo
+    end block CRLF2LF
+  endif foundCRLF
 
   if(fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL                ! ensure EOL@EOF
-
-  firstEOL = index(fileContent,IO_EOL)
-  if(scan(fileContent(firstEOL:firstEOL),CR) /= 0) call IO_error(115)
 
 end function IO_read
 
@@ -400,9 +403,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for logical:'
     case (114)
       msg = 'cannot decode base64 string:'
-    case (115)
-      msg = 'found CR. Windows file endings (CRLF) are not supported.'
-
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
@@ -644,11 +644,16 @@ subroutine selfTest
   if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
   if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
   if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
+  if(dNeq(0.1_pReal, IO_stringAsFloat('1.0e-1')))   error stop 'IO_stringAsFloat'
+  if(dNeq(0.1_pReal, IO_stringAsFloat('1.00e-1')))  error stop 'IO_stringAsFloat'
+  if(dNeq(10._pReal, IO_stringAsFloat(' 1.0e+1 '))) error stop 'IO_stringAsFloat'
 
   if(3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
   if(3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
   if(-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
   if(3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt('03112019 '))       error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt('+03112019'))       error stop 'IO_stringAsInt'
 
   if(.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
   if(.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
