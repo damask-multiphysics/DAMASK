@@ -254,8 +254,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
     allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
 
-    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
-
     end associate
 
 !--------------------------------------------------------------------------------------------------

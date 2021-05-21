@@ -15,6 +15,8 @@ submodule(phase) damage
     DAMAGE_ANISOBRITTLE_ID
   end enum
 
+  integer :: phase_damage_maxSizeDotState
+
 
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: phi, d_phi_d_dot_phi
@@ -134,6 +136,8 @@ module subroutine damage_init
     where(anisobrittle_init()) phase_damage = DAMAGE_ANISOBRITTLE_ID
   endif
 
+  phase_damage_maxSizeDotState     = maxval(damageState%sizeDotState)
+
 end subroutine damage_init
 
 
@@ -143,7 +147,7 @@ end subroutine damage_init
 module function phase_damage_C(C_homogenized,ph,en) result(C)
 
   real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
-  integer,                         intent(in)  :: ph,en  
+  integer,                         intent(in)  :: ph,en
   real(pReal), dimension(3,3,3,3) :: C
 
   damageType: select case (phase_damage(ph))
