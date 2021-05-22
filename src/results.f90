@@ -423,7 +423,7 @@ subroutine results_mapping_phase(ID,entry,label)
 
   integer, dimension(size(entry,1),size(entry,2)) :: &
     entryGlobal
-  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                       !< offset in entry counting per process
+  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
@@ -717,7 +717,6 @@ end subroutine results_mapping_homogenization
 !> @brief Add default information to a dataset.
 !--------------------------------------------------------------------------------------------------
 subroutine executionStamp(path,description,SIunit)
-
 
   character(len=*), intent(in)           :: path,description
   character(len=*), intent(in), optional :: SIunit

@@ -564,8 +564,8 @@ subroutine crystallite_init()
 
 
   !$OMP PARALLEL DO
-  do el = 1, size(material_phaseMemberAt,3)
-    do ip = 1, size(material_phaseMemberAt,2)
+  do el = 1, eMax
+    do ip = 1, iMax
       do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
