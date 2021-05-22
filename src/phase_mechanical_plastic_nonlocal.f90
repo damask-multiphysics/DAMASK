@@ -1450,8 +1450,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     elseif (prm%chi_GB >= 0.0_pReal) then
       !* GRAIN BOUNDARY !
       !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
-      if (any(dNeq(material_orientation0(1,ph,en)%asQuaternion(), &
-                   material_orientation0(1,neighbor_phase,neighbor_me)%asQuaternion())) .and. &
+      if (any(dNeq(phase_orientation0(ph)%data(en)%asQuaternion(), &
+                   phase_orientation0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
           (.not. phase_localPlasticity(neighbor_phase))) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else

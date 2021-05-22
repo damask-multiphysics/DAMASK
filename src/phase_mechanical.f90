@@ -68,7 +68,7 @@ submodule(phase) mechanical
         dS_dFe, &                                                                                   !< derivative of 2nd P-K stress with respect to elastic deformation gradient
         dS_dFi                                                                                      !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
     end subroutine phase_hooke_SandItsTangents
-    
+
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
       real(pReal), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
@@ -204,7 +204,6 @@ module subroutine mechanical_init(materials,phases)
     num_crystallite, &
     material, &
     constituents, &
-    constituent, &
     phase, &
     mech
 
@@ -227,8 +226,6 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_mechanical_S(phases%length))
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
-
-  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseEntry)))
 
   do ph = 1, phases%length
     Nmembers = count(material_phaseID == ph)
@@ -260,15 +257,11 @@ module subroutine mechanical_init(materials,phases)
   do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
     do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
       material     => materials%get(discretization_materialAt(el))
-      constituents => material%get('constituents')
-      constituent => constituents%get(co)
 
       ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
       en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
-      call material_orientation0(co,ph,en)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-
-      phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = material_orientation0(co,ph,en)%asMatrix()                         ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_orientation0(ph)%data(en)%asMatrix()        ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en) &
                                                 / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,en))**(1.0_pReal/3.0_pReal)
       phase_mechanical_Fi0(ph)%data(1:3,1:3,en) = math_I3

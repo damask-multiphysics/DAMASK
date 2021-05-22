@@ -16,6 +16,12 @@ module material
   implicit none
   private
 
+  type :: tRotationContainer
+    type(Rotation), dimension(:),  allocatable :: data
+  end type
+
+  type(tRotationContainer), dimension(:), allocatable :: material_orientation0_2
+
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
   integer, public, protected :: &
@@ -39,6 +45,8 @@ module material
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
   public :: &
+    tRotationContainer, &
+    material_orientation0_2, &
     material_init
 
 contains
@@ -88,7 +96,7 @@ subroutine parse()
   real(pReal) :: &
     frac
   integer :: &
-    el, ip, co, &
+    el, ip, co, ma, &
     h, ce
 
   materials       => config_material%get('material')
@@ -152,6 +160,17 @@ subroutine parse()
     if (dNeq(frac,1.0_pReal)) call IO_error(153,ext_msg='constituent')
 
   enddo
+
+  allocate(material_orientation0_2(materials%length))
+
+  do ma = 1, materials%length
+    material     => materials%get(ma)
+    constituents => material%get('constituents')
+    allocate(material_orientation0_2(ma)%data(constituents%length))
+    do co = 1, constituents%length
+      call material_orientation0_2(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+    enddo
+ enddo
 
 end subroutine parse
 

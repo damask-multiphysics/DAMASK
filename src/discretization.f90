@@ -9,20 +9,20 @@ module discretization
 
   implicit none
   private
-  
+
   integer,     public, protected :: &
     discretization_nIPs, &
     discretization_Nelems
-    
-  integer,     public, protected, dimension(:),   allocatable :: &
-    discretization_materialAt                                                                       !ToDo: discretization_materialID
 
-  real(pReal), public, protected, dimension(:,:), allocatable :: & 
+  integer,     public, protected, dimension(:),   allocatable :: &
+    discretization_materialAt                                                                       !ToDo: discretization_ID_material
+
+  real(pReal), public, protected, dimension(:,:), allocatable :: &
     discretization_IPcoords0, &
     discretization_IPcoords, &
     discretization_NodeCoords0, &
     discretization_NodeCoords
-    
+
   integer :: &
     discretization_sharedNodesBegin
 
@@ -33,7 +33,7 @@ module discretization
     discretization_setNodeCoords
 
 contains
-  
+
 !--------------------------------------------------------------------------------------------------
 !> @brief stores the relevant information in globally accesible variables
 !--------------------------------------------------------------------------------------------------
@@ -54,20 +54,20 @@ subroutine discretization_init(materialAt,&
   discretization_Nelems = size(materialAt,1)
   discretization_nIPs   = size(IPcoords0,2)/discretization_Nelems
 
-  discretization_materialAt = materialAt  
+  discretization_materialAt = materialAt
 
   discretization_IPcoords0   = IPcoords0
   discretization_IPcoords    = IPcoords0
 
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
-  
+
   if(present(sharedNodesBegin)) then
     discretization_sharedNodesBegin = sharedNodesBegin
   else
     discretization_sharedNodesBegin = size(discretization_NodeCoords0,2)
   endif
-  
+
 end subroutine discretization_init
 
 
@@ -77,13 +77,13 @@ end subroutine discretization_init
 subroutine discretization_results
 
   real(pReal), dimension(:,:), allocatable :: u
-  
+
   call results_closeGroup(results_addGroup('current/geometry'))
-  
+
   u = discretization_NodeCoords (1:3,:discretization_sharedNodesBegin) &
     - discretization_NodeCoords0(1:3,:discretization_sharedNodesBegin)
   call results_writeDataset('current/geometry',u,'u_n','displacements of the nodes','m')
-  
+
   u = discretization_IPcoords &
     - discretization_IPcoords0
   call results_writeDataset('current/geometry',u,'u_p','displacements of the materialpoints (cell centers)','m')
@@ -97,7 +97,7 @@ end subroutine discretization_results
 subroutine discretization_setIPcoords(IPcoords)
 
   real(pReal), dimension(:,:), intent(in) :: IPcoords
-  
+
   discretization_IPcoords = IPcoords
 
 end subroutine discretization_setIPcoords
@@ -109,7 +109,7 @@ end subroutine discretization_setIPcoords
 subroutine discretization_setNodeCoords(NodeCoords)
 
   real(pReal), dimension(:,:), intent(in) :: NodeCoords
-  
+
   discretization_NodeCoords = NodeCoords
 
 end subroutine discretization_setNodeCoords

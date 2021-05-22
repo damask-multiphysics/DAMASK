@@ -19,8 +19,9 @@ module phase
   implicit none
   private
 
-  type(Rotation), dimension(:,:,:), allocatable :: &
-    material_orientation0                                                                           !< initial orientation of each grain,IP,element
+  type(tRotationContainer), dimension(:), allocatable :: &
+    phase_orientation0, &
+    phase_orientation
 
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
@@ -346,7 +347,7 @@ contains
 subroutine phase_init
 
   integer :: &
-    ph
+    ph, ce, co, ma
   class (tNode), pointer :: &
     debug_constitutive, &
     materials, &
@@ -366,6 +367,25 @@ subroutine phase_init
 
   materials => config_material%get('material')
   phases    => config_material%get('phase')
+
+
+  allocate(phase_orientation0(phases%length))
+  do ph = 1,phases%length
+    allocate(phase_orientation0(ph)%data(count(material_phaseID==ph)))
+  enddo
+
+  do ce = 1, size(material_phaseID,2)
+    ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
+    do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+      ph = material_phaseID(co,ce)
+      phase_orientation0(ph)%data(material_phaseEntry(co,ce)) = material_orientation0_2(ma)%data(co)
+    enddo
+  enddo
+
+  allocate(phase_orientation(phases%length))
+  do ph = 1,phases%length
+    phase_orientation(ph)%data = phase_orientation0(ph)%data
+  enddo
 
   call mechanical_init(materials,phases)
   call damage_init
@@ -602,7 +622,7 @@ function crystallite_push33ToRef(co,ce, tensor33)
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
-  T = matmul(material_orientation0(co,ph,en)%asMatrix(),transpose(math_inv33(phase_F(co,ce)))) ! ToDo: initial orientation correct?
+  T = matmul(phase_orientation0(ph)%data(en)%asMatrix(),transpose(math_inv33(phase_F(co,ce))))      ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
