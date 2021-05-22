@@ -467,8 +467,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
     allocate(dst%tau_r_tr              (prm%sum_N_tr,Nmembers),source=0.0_pReal)
     allocate(dst%V_tr                  (prm%sum_N_tr,Nmembers),source=0.0_pReal)
 
-    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
-
     end associate
 
 !--------------------------------------------------------------------------------------------------
