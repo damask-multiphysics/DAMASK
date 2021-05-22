@@ -20,6 +20,9 @@ module IO
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
     IO_COMMENT = '#'
+  character, parameter :: &
+    CR = achar(13), &
+    LF = IO_EOL
   character(len=*), parameter :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
@@ -112,8 +115,8 @@ end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read whole file.
-!> @details ensures that the string ends with a new line (expected UNIX behavior)
+!> @brief Read ASCII file.
+!> @details Proper Unix style (LF line endings and LF at EOF) is ensured.
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileName) result(fileContent)
 
@@ -124,7 +127,6 @@ function IO_read(fileName) result(fileContent)
     fileLength, &
     fileUnit, &
     myStat
-  character, parameter :: CR = achar(13)
 
 
   inquire(file = fileName, size=fileLength)
@@ -141,16 +143,8 @@ function IO_read(fileName) result(fileContent)
   if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
 
-  foundCRLF: if (scan(fileContent(:index(fileContent,IO_EOL)),CR) /= 0) then
-    CRLF2LF: block
-      integer :: c
-      do c=1, len(fileContent)
-        if (fileContent(c:c) == CR) fileContent(c:c) = ' '
-      enddo
-    end block CRLF2LF
-  endif foundCRLF
-
-  if(fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL                ! ensure EOL@EOF
+  if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
+  if(fileContent(fileLength:fileLength) /= IO_EOL)           fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
 
 end function IO_read
 
@@ -634,9 +628,35 @@ end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Convert Windows (CRLF) to Unix (LF) line endings.
+!--------------------------------------------------------------------------------------------------
+pure function CRLF2LF(string)
+
+  character(len=*), intent(in)  :: string
+  character(len=:), allocatable :: CRLF2LF
+
+  integer :: c,n
+
+
+  allocate(character(len=len_trim(string))::CRLF2LF)
+  if (len(CRLF2LF) == 0) return
+
+  n = 0
+  do c=1, len_trim(string)
+    CRLF2LF(c-n:c-n) = string(c:c)
+    if (c == len_trim(string)) exit
+    if (string(c:c+1) == CR//LF) n = n + 1
+  enddo
+
+  CRLF2LF = CRLF2LF(:c-n)
+
+end function
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some IO functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
@@ -670,6 +690,15 @@ subroutine selfTest
   str='M 3112019 F'
   chunkPos = IO_stringPos(str)
   if(3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
+
+  if (CRLF2LF('') /= '')                            error stop 'CRLF2LF/0'
+  if (CRLF2LF(LF)     /= LF)                        error stop 'CRLF2LF/1a'
+  if (CRLF2LF(CR//LF) /= LF)                        error stop 'CRLF2LF/1b'
+  if (CRLF2LF(' '//LF)     /= ' '//LF)              error stop 'CRLF2LF/2a'
+  if (CRLF2LF(' '//CR//LF) /= ' '//LF)              error stop 'CRLF2LF/2b'
+  if (CRLF2LF('A'//CR//LF//'B') /= 'A'//LF//'B')    error stop 'CRLF2LF/3'
+  if (CRLF2LF('A'//CR//LF//'B'//CR//LF) /= &
+              'A'//LF//'B'//LF)                     error stop 'CRLF2LF/4'
 
   if(.not. IO_isBlank('  '))                        error stop 'IO_isBlank/1'
   if(.not. IO_isBlank('  #isBlank'))                error stop 'IO_isBlank/2'
