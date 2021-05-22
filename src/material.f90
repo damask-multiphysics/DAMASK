@@ -18,13 +18,12 @@ module material
 
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
+  integer, public, protected :: &
+    homogenization_maxNconstituents                                                                 !< max number of grains in any homogenization
 
   character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
-
-  integer, public, protected :: &
-    homogenization_maxNconstituents                                                                 !< max number of grains in any USED homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt, &                                                                    !< homogenization ID of each element
@@ -55,8 +54,8 @@ subroutine material_init(restart)
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
 
-  call material_parseMaterial
-  print*, 'Material parsed'
+  call parse
+  print*, 'parsed material.yaml'
 
 
   if (.not. restart) then
@@ -69,11 +68,10 @@ subroutine material_init(restart)
 end subroutine material_init
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief parses the material part in the material configuration file
+!> @brief Parse material.yaml to get the global structure
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseMaterial
+subroutine parse()
 
   class(tNode), pointer :: materials, &                                                             !> list of materials
                            material, &                                                              !> material definition
@@ -155,7 +153,7 @@ subroutine material_parseMaterial
 
   enddo
 
-end subroutine material_parseMaterial
+end subroutine parse
 
 
 !--------------------------------------------------------------------------------------------------
