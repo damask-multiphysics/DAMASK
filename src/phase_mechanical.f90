@@ -971,10 +971,8 @@ subroutine crystallite_results(group,ph)
 
     integer, intent(in) :: ph
     type(rotation), dimension(:,:,:), intent(in) :: dataset
-    real(pReal), allocatable, dimension(:,:) :: select_rotations
+    real(pReal), dimension(4,count(material_phaseID==ph)) :: select_rotations
     integer :: el,ip,co,j
-
-    allocate(select_rotations(4,count(material_phaseAt==ph)*homogenization_maxNconstituents*discretization_nIPs))
 
     j=0
     do el = 1, size(material_phaseAt,2)
