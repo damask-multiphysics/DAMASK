@@ -192,6 +192,8 @@ module subroutine mechanical_init(materials,phases)
     phases
 
   integer :: &
+    el, &
+    ip, &
     co, &
     ce, &
     ph, &
@@ -255,14 +257,14 @@ module subroutine mechanical_init(materials,phases)
 #endif
   enddo
 
-  do ce = 1, size(discretization_materialAt,1)
-    do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
-      material     => materials%get(discretization_materialAt(ce))
+  do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
+    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+      material     => materials%get(discretization_materialAt(el))
       constituents => material%get('constituents')
       constituent => constituents%get(co)
 
-      ph = material_phaseID(co,ce)
-      en = material_phaseEntry(co,ce)
+      ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+      en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
       call material_orientation0(co,ph,en)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
 
@@ -279,7 +281,7 @@ module subroutine mechanical_init(materials,phases)
       phase_mechanical_F(ph)%data(1:3,1:3,en)  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
 
     enddo
-  enddo
+  enddo; enddo
 
 
 ! initialize elasticity
