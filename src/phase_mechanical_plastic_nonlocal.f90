@@ -1394,7 +1394,7 @@ end function rhoDotFlux
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
-  type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
+  type(tRotationContainer), dimension(:), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
     ph, &
@@ -1464,7 +1464,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
       !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
       !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
       !* All values below the threshold are set to zero.
-      mis = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
+      mis = orientation(ph)%data(en)%misorientation(orientation(neighbor_phase)%data(neighbor_me))
       mySlipSystems: do s1 = 1,ns
         neighborSlipSystems: do s2 = 1,ns
           my_compatibility(1,s2,s1,n) =     math_inner(prm%slip_normal(1:3,s1), &

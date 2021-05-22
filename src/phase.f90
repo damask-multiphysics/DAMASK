@@ -23,9 +23,6 @@ module phase
     phase_orientation0, &
     phase_orientation
 
-  type(rotation),            dimension(:,:,:),        allocatable :: &
-    crystallite_orientation                                                                         !< current orientation
-
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
   end type
@@ -259,8 +256,7 @@ module phase
         ph, &
         i, &
         e
-      type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
-        orientation                                                                                 !< crystal orientation
+        type(tRotationContainer), dimension(:), intent(in) :: orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
     module subroutine plastic_dependentState(co,ip,el)
@@ -378,7 +374,7 @@ subroutine phase_init
     ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
     do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
       ph = material_phaseID(co,ce)
-      phase_orientation0(ph)%data(material_phaseEntry(co,ce)) = material_orientation0_2(ma)%data(co)
+      phase_orientation0(ph)%data(material_phaseEntry(co,ce)) = material_orientation0(ma)%data(co)
     enddo
   enddo
 
@@ -523,8 +519,6 @@ subroutine crystallite_init()
   iMax = discretization_nIPs
   eMax = discretization_Nelems
 
-  allocate(crystallite_orientation(cMax,iMax,eMax))
-
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
   num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
@@ -594,13 +588,16 @@ subroutine crystallite_orientations(co,ip,el)
     ip, &                                                                                            !< counter in integration point loop
     el                                                                                               !< counter in element loop
 
+  integer :: ph, en
 
-  call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(&
-    mechanical_F_e(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))))
+
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+
+  call phase_orientation(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
-                                              material_phaseAt(1,el),ip,el)
+    call plastic_nonlocal_updateCompatibility(phase_orientation,material_phaseAt(1,el),ip,el)
 
 
 end subroutine crystallite_orientations

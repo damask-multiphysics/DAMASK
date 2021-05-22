@@ -20,7 +20,7 @@ module material
     type(Rotation), dimension(:),  allocatable :: data
   end type
 
-  type(tRotationContainer), dimension(:), allocatable :: material_orientation0_2
+  type(tRotationContainer), dimension(:), allocatable :: material_orientation0
 
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
@@ -46,7 +46,7 @@ module material
 
   public :: &
     tRotationContainer, &
-    material_orientation0_2, &
+    material_orientation0, &
     material_init
 
 contains
@@ -161,14 +161,15 @@ subroutine parse()
 
   enddo
 
-  allocate(material_orientation0_2(materials%length))
+  allocate(material_orientation0(materials%length))
 
   do ma = 1, materials%length
     material     => materials%get(ma)
     constituents => material%get('constituents')
-    allocate(material_orientation0_2(ma)%data(constituents%length))
+    allocate(material_orientation0(ma)%data(constituents%length))
     do co = 1, constituents%length
-      call material_orientation0_2(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+      constituent => constituents%get(co)
+      call material_orientation0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
     enddo
  enddo
 

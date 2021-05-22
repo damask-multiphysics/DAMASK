@@ -248,18 +248,14 @@ module subroutine mechanical_init(materials,phases)
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
 #if defined(__GFORTRAN__)
-    output_constituent(ph)%label  = output_as1dString(mech)
+    output_constituent(ph)%label = output_as1dString(mech)
 #else
-    output_constituent(ph)%label  = mech%get_as1dString('output',defaultVal=emptyStringArray)
+    output_constituent(ph)%label = mech%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
-  do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
-    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-      material     => materials%get(discretization_materialAt(el))
-
-      ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
-      en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+  do ph = 1, phases%length
+    do en = 1, count(material_phaseID == ph)
 
       phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_orientation0(ph)%data(en)%asMatrix()        ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en) &
@@ -268,13 +264,12 @@ module subroutine mechanical_init(materials,phases)
       phase_mechanical_F0(ph)%data(1:3,1:3,en)  = math_I3
 
       phase_mechanical_Fe(ph)%data(1:3,1:3,en) = math_inv33(matmul(phase_mechanical_Fi0(ph)%data(1:3,1:3,en), &
-                                                                   phase_mechanical_Fp0(ph)%data(1:3,1:3,en)))           ! assuming that euler angles are given in internal strain free configuration
-      phase_mechanical_Fp(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
-      phase_mechanical_Fi(ph)%data(1:3,1:3,en) = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
-      phase_mechanical_F(ph)%data(1:3,1:3,en)  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
-
+                                                                   phase_mechanical_Fp0(ph)%data(1:3,1:3,en)))  ! assuming that euler angles are given in internal strain free configuration
     enddo
-  enddo; enddo
+    phase_mechanical_Fp(ph)%data = phase_mechanical_Fp0(ph)%data
+    phase_mechanical_Fi(ph)%data = phase_mechanical_Fi0(ph)%data
+    phase_mechanical_F(ph)%data  = phase_mechanical_F0(ph)%data
+  enddo
 
 
 ! initialize elasticity
@@ -903,80 +898,71 @@ subroutine crystallite_results(group,ph)
   character(len=:), allocatable              :: structureLabel
 
 
-    call results_closeGroup(results_addGroup(group//'/mechanical'))
+  call results_closeGroup(results_addGroup(group//'/mechanical'))
 
-    do ou = 1, size(output_constituent(ph)%label)
+  do ou = 1, size(output_constituent(ph)%label)
 
-      select case (output_constituent(ph)%label(ou))
-        case('F')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_F(ph)%data,'F',&
-                                   'deformation gradient','1')
-        case('F_e')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fe(ph)%data,'F_e',&
-                                   'elastic deformation gradient','1')
-        case('F_p')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fp(ph)%data,'F_p', &
-                                   'plastic deformation gradient','1')
-        case('F_i')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fi(ph)%data,'F_i', &
-                                   'inelastic deformation gradient','1')
-        case('L_p')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Lp(ph)%data,'L_p', &
-                                   'plastic velocity gradient','1/s')
-        case('L_i')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Li(ph)%data,'L_i', &
-                                   'inelastic velocity gradient','1/s')
-        case('P')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_P(ph)%data,'P', &
-                                   'first Piola-Kirchhoff stress','Pa')
-        case('S')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_S(ph)%data,'S', &
-                                   'second Piola-Kirchhoff stress','Pa')
-        case('O')
-          select case(lattice_structure(ph))
-            case(lattice_ISO_ID)
-              structureLabel = 'aP'
-            case(lattice_FCC_ID)
-              structureLabel = 'cF'
-            case(lattice_BCC_ID)
-              structureLabel = 'cI'
-            case(lattice_BCT_ID)
-              structureLabel = 'tI'
-            case(lattice_HEX_ID)
-              structureLabel = 'hP'
-            case(lattice_ORT_ID)
-              structureLabel = 'oP'
-          end select
-          selected_rotations = select_rotations(crystallite_orientation,ph)
-          call results_writeDataset(group//'/mechanical',selected_rotations,output_constituent(ph)%label(ou),&
-                                   'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
-          call results_addAttribute('lattice',structureLabel,group//'/mechanical/'//output_constituent(ph)%label(ou))
-      end select
-    enddo
+    select case (output_constituent(ph)%label(ou))
+      case('F')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_F(ph)%data,'F',&
+                                 'deformation gradient','1')
+      case('F_e')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_Fe(ph)%data,'F_e',&
+                                 'elastic deformation gradient','1')
+      case('F_p')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_Fp(ph)%data,'F_p', &
+                                 'plastic deformation gradient','1')
+      case('F_i')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_Fi(ph)%data,'F_i', &
+                                 'inelastic deformation gradient','1')
+      case('L_p')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_Lp(ph)%data,'L_p', &
+                                 'plastic velocity gradient','1/s')
+      case('L_i')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_Li(ph)%data,'L_i', &
+                                 'inelastic velocity gradient','1/s')
+      case('P')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_P(ph)%data,'P', &
+                                 'first Piola-Kirchhoff stress','Pa')
+      case('S')
+        call results_writeDataset(group//'/mechanical/',phase_mechanical_S(ph)%data,'S', &
+                                 'second Piola-Kirchhoff stress','Pa')
+      case('O')
+        select case(lattice_structure(ph))
+          case(lattice_ISO_ID)
+            structureLabel = 'aP'
+          case(lattice_FCC_ID)
+            structureLabel = 'cF'
+          case(lattice_BCC_ID)
+            structureLabel = 'cI'
+          case(lattice_BCT_ID)
+            structureLabel = 'tI'
+          case(lattice_HEX_ID)
+            structureLabel = 'hP'
+          case(lattice_ORT_ID)
+            structureLabel = 'oP'
+        end select
+        selected_rotations = select_rotations(phase_orientation(ph)%data)
+        call results_writeDataset(group//'/mechanical',selected_rotations,output_constituent(ph)%label(ou),&
+                                 'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
+        call results_addAttribute('lattice',structureLabel,group//'/mechanical/'//output_constituent(ph)%label(ou))
+    end select
+  enddo
 
 
   contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief select rotations for output
+!> @brief Convert orientation for output: ToDo: implement in HDF5/results
 !--------------------------------------------------------------------------------------------------
-  function select_rotations(dataset,ph)
+  function select_rotations(dataset)
 
-    integer, intent(in) :: ph
-    type(rotation), dimension(:,:,:), intent(in) :: dataset
-    real(pReal), dimension(4,count(material_phaseID==ph)) :: select_rotations
-    integer :: el,ip,co,j
+    type(rotation), dimension(:), intent(in) :: dataset
+    real(pReal), dimension(4,size(dataset,1)) :: select_rotations
+    integer :: en
 
-    j=0
-    do el = 1, size(material_phaseAt,2)
-      do ip = 1, discretization_nIPs
-        do co = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-           if (material_phaseAt(co,el) == ph) then
-             j = j + 1
-             select_rotations(1:4,j) = dataset(co,ip,el)%asQuaternion()
-           endif
-        enddo
-      enddo
+    do en = 1, size(dataset,1)
+      select_rotations(:,en) = dataset(en)%asQuaternion()
    enddo
 
  end function select_rotations
