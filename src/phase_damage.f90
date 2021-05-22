@@ -171,13 +171,12 @@ end function phase_f_phi
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-module function integrateDamageState(dt,co,ip,el) result(broken)
+module function integrateDamageState(dt,co,ce) result(broken)
 
   real(pReal), intent(in) :: dt
   integer, intent(in) :: &
-    el, &                                                                                            !< element index in element loop
-    ip, &                                                                                            !< integration point index in ip loop
-    co                                                                                               !< grain index in grain loop
+    ce, &
+    co
   logical :: broken
 
   integer :: &
@@ -193,8 +192,8 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
   logical :: &
     converged_
 
-  ph = material_phaseAt(co,el)
-  me = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,ce)
+  me = material_phaseEntry(co,ce)
 
   if (damageState(ph)%sizeState == 0) then
     broken = .false.

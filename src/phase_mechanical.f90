@@ -192,8 +192,6 @@ module subroutine mechanical_init(materials,phases)
     phases
 
   integer :: &
-    el, &
-    ip, &
     co, &
     ce, &
     ph, &
@@ -257,14 +255,14 @@ module subroutine mechanical_init(materials,phases)
 #endif
   enddo
 
-  do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
-    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-      material     => materials%get(discretization_materialAt(el))
+  do ce = 1, size(discretization_materialAt,1)
+    do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+      material     => materials%get(discretization_materialAt(ce))
       constituents => material%get('constituents')
       constituent => constituents%get(co)
 
-      ph = material_phaseAt(co,el)
-      en = material_phaseMemberAt(co,ip,el)
+      ph = material_phaseID(co,ce)
+      en = material_phaseEntry(co,ce)
 
       call material_orientation0(co,ph,en)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
 
@@ -281,7 +279,7 @@ module subroutine mechanical_init(materials,phases)
       phase_mechanical_F(ph)%data(1:3,1:3,en)  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
 
     enddo
-  enddo; enddo
+  enddo
 
 
 ! initialize elasticity
@@ -427,8 +425,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
   broken = .true.
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   call plastic_dependentState(co,ip,el)
 
@@ -603,8 +601,8 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     dotState
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
   if(broken) return
@@ -688,8 +686,8 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) res
     sizeDotState
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
   if(broken) return
@@ -728,8 +726,8 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
   real(pReal), dimension(phase_plasticity_maxSizeDotState) :: residuum_plastic
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
   if(broken) return
@@ -846,8 +844,8 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
   real(pReal), dimension(phase_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t,co,ip,el,ph,en)
   if(broken) return
@@ -1105,7 +1103,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
-      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
+      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,(el-1)*discretization_nIPs + ip)
     endif
 
   enddo cutbackLooping

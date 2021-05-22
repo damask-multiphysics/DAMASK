@@ -360,10 +360,10 @@ module subroutine plastic_dependentState(co, ip, el)
     en
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phasememberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
-  plasticType: select case (phase_plasticity(material_phaseAt(co,el)))
+  plasticType: select case (phase_plasticity(ph))
 
     case (PLASTICITY_DISLOTWIN_ID) plasticType
       call dislotwin_dependentState(thermal_T(ph,en),ph,en)

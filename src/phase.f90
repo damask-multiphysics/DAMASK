@@ -220,12 +220,11 @@ module phase
 
     end function thermal_stress
 
-    module function integrateDamageState(dt,co,ip,el) result(broken)
+    module function integrateDamageState(dt,co,ce) result(broken)
       real(pReal), intent(in) :: dt
       integer, intent(in) :: &
-        el, &                                                                                            !< element index in element loop
-        ip, &                                                                                            !< integration point index in ip loop
-        co                                                                                               !< grain index in grain loop
+        ce, &
+        co
       logical :: broken
     end function integrateDamageState
 

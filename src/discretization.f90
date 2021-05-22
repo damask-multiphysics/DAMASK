@@ -15,7 +15,7 @@ module discretization
     discretization_Nelems
     
   integer,     public, protected, dimension(:),   allocatable :: &
-    discretization_materialAt   
+    discretization_materialAt                                                                       !ToDo: discretization_materialID
 
   real(pReal), public, protected, dimension(:,:), allocatable :: & 
     discretization_IPcoords0, &

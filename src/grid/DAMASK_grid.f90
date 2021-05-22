@@ -284,7 +284,7 @@ program DAMASK_grid
       if (loadCases(l)%f_restart < 1)  errorID = 839
 
       if (dEq(loadCases(l)%r,1.0_pReal,1.e-9_pReal)) then
-        print'(a)', '  r: 1 (constant step widths)'
+        print'(a)', '  r: 1 (constant step width)'
       else
         print'(a,f0.3)', '  r: ', loadCases(l)%r
       endif
