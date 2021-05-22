@@ -68,8 +68,8 @@ subroutine material_init(restart)
 
   if (.not. restart) then
     call results_openJobFile
-    call results_mapping_phase(material_phaseID,material_phaseMemberAt,material_name_phase)
-    call results_mapping_homogenization(material_homogenizationID,material_homogenizationMemberAt,material_name_homogenization)
+    call results_mapping_phase(material_phaseID,material_phaseEntry,material_name_phase)
+    call results_mapping_homogenization(material_homogenizationID,material_homogenizationEntry,material_name_homogenization)
     call results_closeJobFile
   endif
 
