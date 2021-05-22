@@ -1767,22 +1767,22 @@ end subroutine kinetics
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-pure function getRho(ph,en)
+pure function getRho(ph,en) result(rho)
 
   integer, intent(in) :: ph, en
-  real(pReal), dimension(param(ph)%sum_N_sl,10) :: getRho
+  real(pReal), dimension(param(ph)%sum_N_sl,10) :: rho
 
 
   associate(prm => param(ph))
 
-    getRho = reshape(state(ph)%rho(:,en),[prm%sum_N_sl,10])
+    rho = reshape(state(ph)%rho(:,en),[prm%sum_N_sl,10])
 
     ! ensure positive densities (not for imm, they have a sign)
-    getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
-    getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
+    rho(:,mob) = max(rho(:,mob),0.0_pReal)
+    rho(:,dip) = max(rho(:,dip),0.0_pReal)
 
-    where(abs(getRho) < max(prm%rho_min/geom(ph)%V_0(en)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
-      getRho = 0.0_pReal
+    where(abs(rho) < max(prm%rho_min/geom(ph)%V_0(en)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+      rho = 0.0_pReal
 
   end associate
 
@@ -1793,22 +1793,22 @@ end function getRho
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-pure function getRho0(ph,en)
+pure function getRho0(ph,en) result(rho0)
 
   integer, intent(in) :: ph, en
-  real(pReal), dimension(param(ph)%sum_N_sl,10) :: getRho0
+  real(pReal), dimension(param(ph)%sum_N_sl,10) :: rho0
 
 
   associate(prm => param(ph))
 
-    getRho0 = reshape(state0(ph)%rho(:,en),[prm%sum_N_sl,10])
+    rho0 = reshape(state0(ph)%rho(:,en),[prm%sum_N_sl,10])
 
     ! ensure positive densities (not for imm, they have a sign)
-    getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
-    getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
+    rho0(:,mob) = max(rho0(:,mob),0.0_pReal)
+    rho0(:,dip) = max(rho0(:,dip),0.0_pReal)
 
-    where (abs(getRho0) < max(prm%rho_min/geom(ph)%V_0(en)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
-      getRho0 = 0.0_pReal
+    where (abs(rho0) < max(prm%rho_min/geom(ph)%V_0(en)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+      rho0 = 0.0_pReal
 
   end associate
 
