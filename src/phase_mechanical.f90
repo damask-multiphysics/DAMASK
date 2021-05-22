@@ -41,6 +41,7 @@ submodule(phase) mechanical
   integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
     phase_plasticity                                                                                !< plasticity of each phase
 
+  integer :: phase_plasticity_maxSizeDotState
 
   interface
 
@@ -68,7 +69,7 @@ submodule(phase) mechanical
         dS_dFe, &                                                                                   !< derivative of 2nd P-K stress with respect to elastic deformation gradient
         dS_dFi                                                                                      !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
     end subroutine phase_hooke_SandItsTangents
-    
+
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
       real(pReal), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
@@ -293,6 +294,11 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_localPlasticity(phases%length),   source=.true.)
 
   call plastic_init()
+
+  do ph = 1,phases%length
+    plasticState(ph)%state0 = plasticState(ph)%state
+  enddo
+  phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)

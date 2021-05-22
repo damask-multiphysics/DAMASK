@@ -384,7 +384,7 @@ class Table:
 
         Returns
         -------
-        udated : damask.Table
+        updated : damask.Table
             Updated table.
 
         """
@@ -412,7 +412,7 @@ class Table:
 
         Returns
         -------
-        udated : damask.Table
+        updated : damask.Table
             Updated table.
 
         """
@@ -435,7 +435,7 @@ class Table:
 
         Returns
         -------
-        udated : damask.Table
+        updated : damask.Table
             Updated table.
 
         """
@@ -461,7 +461,7 @@ class Table:
 
         Returns
         -------
-        udated : damask.Table
+        updated : damask.Table
             Updated table.
 
         """
@@ -494,7 +494,7 @@ class Table:
 
         Returns
         -------
-        udated : damask.Table
+        updated : damask.Table
             Updated table.
 
         """
@@ -519,7 +519,7 @@ class Table:
 
         Returns
         -------
-        udated : damask.Table
+        updated : damask.Table
             Updated table.
 
         """
