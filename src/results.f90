@@ -445,17 +445,17 @@ subroutine results_mapping_phase(ID,entry,label)
   integer         :: hdferr, ierr, ce, co
 
 
-  entryGlobal = entry -1                                                                            ! 0-based
-
   writeSize = 0
   writeSize(worldrank) = size(entry(1,:))                                                           ! total number of entries of this process
 
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
+#ifndef PETSc
+  entryGlobal = entry -1                                                                            ! 0-based
+#else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
-#ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -473,7 +473,7 @@ subroutine results_mapping_phase(ID,entry,label)
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
-      entryGlobal(co,ce) = entryGlobal(co,ce) + entryOffset(ID(co,ce),worldrank)
+      entryGlobal(co,ce) = entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank)
     enddo
   enddo
 #endif
@@ -483,7 +483,7 @@ subroutine results_mapping_phase(ID,entry,label)
   totalShape = int([size(ID,1),sum(writeSize)], HSIZE_T)
 
 !---------------------------------------------------------------------------------------------------
-! compound type: name of phase section + position/index within results array
+! compound type: label(ID) + entry
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
@@ -598,17 +598,17 @@ subroutine results_mapping_homogenization(ID,entry,label)
   integer         :: hdferr, ierr, i, ce
 
 
-  entryGlobal = entry -1                                                                            ! 0-based
-
   writeSize = 0
   writeSize(worldrank) = size(entry)                                                                ! total number of entries of this process
 
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
+#ifndef PETSc
+  entryGlobal = entry -1                                                                            ! 0-based
+#else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
-#ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -623,7 +623,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
-    entryGlobal(ce) = entryGlobal(ce) + entryOffset(ID(ce),worldrank)
+    entryGlobal(ce) = entry(ce) -1 + entryOffset(ID(ce),worldrank)
   enddo
 #endif
 
@@ -632,7 +632,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   totalShape = int([sum(writeSize)], HSIZE_T)
 
 !---------------------------------------------------------------------------------------------------
-! compound type: name of phase section + position/index within results array
+! compound type: label(ID) + entry
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
