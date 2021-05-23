@@ -564,7 +564,7 @@ subroutine crystallite_init()
   flush(IO_STDOUT)
 
 
-  !$OMP PARALLEL DO
+  !$OMP PARALLEL DO PRIVATE(ce)
   do el = 1, eMax
     do ip = 1, iMax
       ce = (el-1)*discretization_nIPs + ip

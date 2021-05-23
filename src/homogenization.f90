@@ -236,21 +236,20 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co, ce, ho, en, ph
+    co, ce, ho, en, ph
   logical :: &
     converged
   logical, dimension(2) :: &
     doneAndHappy
 
   !$OMP PARALLEL
-  !$OMP DO PRIVATE(ce,en,ho,myNgrains,NiterationMPstate,converged,doneAndHappy)
+  !$OMP DO PRIVATE(ce,en,ho,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
 
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
       en = material_homogenizationEntry(ce)
       ho = material_homogenizationID(ce)
-      myNgrains = homogenization_Nconstituents(ho)
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
@@ -267,7 +266,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
         converged = .true.
-        do co = 1, myNgrains
+        do co = 1, homogenization_Nconstituents(ho)
           converged = converged .and. crystallite_stress(dt,co,ip,el)
         enddo
 
