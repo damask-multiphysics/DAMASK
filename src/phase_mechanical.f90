@@ -41,6 +41,7 @@ submodule(phase) mechanical
   integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
     phase_plasticity                                                                                !< plasticity of each phase
 
+  integer :: phase_plasticity_maxSizeDotState
 
   interface
 
@@ -281,6 +282,11 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_localPlasticity(phases%length),   source=.true.)
 
   call plastic_init()
+
+  do ph = 1,phases%length
+    plasticState(ph)%state0 = plasticState(ph)%state
+  enddo
+  phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)

@@ -265,8 +265,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
-    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
-
     end associate
 
 !--------------------------------------------------------------------------------------------------

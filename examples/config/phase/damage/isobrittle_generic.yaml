@@ -1,0 +1,9 @@
+type: isobrittle
+W_crit: 1400000.0
+m: 1.0
+isoBrittle_atol: 0.01
+
+output: [f_phi]
+
+D_11: 1.0
+M: 0.001
