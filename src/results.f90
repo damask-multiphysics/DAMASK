@@ -442,7 +442,7 @@ subroutine results_mapping_phase(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, i
+  integer         :: hdferr, ierr, ce, co
 
 
   entryGlobal = entry -1                                                                            ! 0-based
@@ -450,28 +450,31 @@ subroutine results_mapping_phase(ID,entry,label)
   writeSize = 0
   writeSize(worldrank) = size(entry(1,:))                                                           ! total number of entries of this process
 
-  entryOffset = 0
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
 #ifdef PETSc
-  do i=1, size(label)
-    entryOffset(i,worldrank) = count(ID == i)                                                       ! number of entries of this process
-  enddo
-
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
+  entryOffset = 0
+  do co = 1, size(ID,1)
+    do ce = 1, size(ID,2)
+      entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
+    enddo
+  enddo
   call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
-
-  do i = 1, size(label)
-    where(ID == i) entryGlobal = entryGlobal + sum(entryOffset(i,0:worldrank-1))
+  entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
+  do co = 1, size(ID,1)
+    do ce = 1, size(ID,2)
+      entryGlobal(co,ce) = entryGlobal(co,ce) + entryOffset(ID(co,ce),worldrank)
+    enddo
   enddo
 #endif
 
@@ -592,7 +595,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, i
+  integer         :: hdferr, ierr, i, ce
 
 
   entryGlobal = entry -1                                                                            ! 0-based
@@ -600,28 +603,27 @@ subroutine results_mapping_homogenization(ID,entry,label)
   writeSize = 0
   writeSize(worldrank) = size(entry)                                                                ! total number of entries of this process
 
-  entryOffset = 0
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
 #ifdef PETSc
-  do i=1, size(label)
-    entryOffset(i,worldrank) = count(ID == i)                                                       ! number of entries of this process
-  enddo
-
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
+  entryOffset = 0
+  do ce = 1, size(ID,1)
+    entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
+  enddo
   call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
-
-  do i = 1, size(label)
-    where(ID == i) entryGlobal = entryGlobal + sum(entryOffset(i,0:worldrank-1))
+  entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
+  do ce = 1, size(ID,1)
+    entryGlobal(ce) = entryGlobal(ce) + entryOffset(ID(ce),worldrank)
   enddo
 #endif
 
