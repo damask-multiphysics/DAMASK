@@ -213,8 +213,6 @@ module function plastic_kinehardening_init() result(myPlasticity)
     stt%gamma0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
     dlt%gamma0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
-    plasticState(ph)%state0 = plasticState(ph)%state                                                  ! ToDo: this could be done centrally
-
     end associate
 
 !--------------------------------------------------------------------------------------------------

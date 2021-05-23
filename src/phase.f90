@@ -67,10 +67,6 @@ module phase
     damageState
 
 
-  integer, public, protected :: &
-    phase_plasticity_maxSizeDotState, &
-    phase_source_maxSizeDotState
-
   interface
 
 ! == cleaned:begin =================================================================================
@@ -235,11 +231,16 @@ module phase
       logical :: converged_
     end function crystallite_stress
 
+    !ToDo: Try to merge the all stiffness functions
     module function phase_homogenizedC(ph,en) result(C)
       integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C
     end function phase_homogenizedC
-
+    module function phase_damage_C(C_homogenized,ph,en) result(C)
+      real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
+      integer,                         intent(in)  :: ph,en
+      real(pReal), dimension(3,3,3,3) :: C
+    end function phase_damage_C
 
     module function phase_f_phi(phi,co,ce) result(f)
       integer, intent(in) :: ce,co
@@ -371,19 +372,6 @@ subroutine phase_init
   call mechanical_init(materials,phases)
   call damage_init
   call thermal_init(phases)
-
-
-  phase_source_maxSizeDotState = 0
-  PhaseLoop2:do ph = 1,phases%length
-!--------------------------------------------------------------------------------------------------
-! partition and initialize state
-    plasticState(ph)%state = plasticState(ph)%state0
-    if(damageState(ph)%sizeState > 0) &
-      damageState(ph)%state  = damageState(ph)%state0
-  enddo PhaseLoop2
-
-  phase_source_maxSizeDotState     = maxval(damageState%sizeDotState)
-  phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine phase_init
 
@@ -540,8 +528,7 @@ subroutine crystallite_init()
   phases => config_material%get('phase')
 
   do ph = 1, phases%length
-    if (damageState(ph)%sizeState > 0) &
-      allocate(damageState(ph)%subState0,source=damageState(ph)%state0)                 ! ToDo: hack
+    if (damageState(ph)%sizeState > 0) allocate(damageState(ph)%subState0,source=damageState(ph)%state0)  ! ToDo: hack
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -555,7 +542,7 @@ subroutine crystallite_init()
     do ip = 1, size(material_phaseMemberAt,2)
       do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
         call crystallite_orientations(co,ip,el)
-        call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
+        call plastic_dependentState(co,ip,el)                                                       ! update dependent state variables to be consistent with basic states
      enddo
     enddo
   enddo
@@ -571,9 +558,9 @@ end subroutine crystallite_init
 subroutine crystallite_orientations(co,ip,el)
 
   integer, intent(in) :: &
-    co, &                                                                                            !< counter in integration point component loop
-    ip, &                                                                                            !< counter in integration point loop
-    el                                                                                               !< counter in element loop
+    co, &                                                                                           !< counter in integration point component loop
+    ip, &                                                                                           !< counter in integration point loop
+    el                                                                                              !< counter in element loop
 
 
   call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(&
