@@ -72,7 +72,7 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
           prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),&
                                                    phase%get_asString('lattice'))
         enddo
-
+        print*, prm%A
         end associate
       endif
     enddo
@@ -95,6 +95,7 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   real(pReal) :: T, dot_T
 
+  
   T     = thermal_T(ph,me)
   dot_T = thermal_dot_T(ph,me)
 

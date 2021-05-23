@@ -11,7 +11,7 @@
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 14
+#define PETSC_MINOR_MAX 15
 
 module DAMASK_interface
   use, intrinsic :: ISO_fortran_env
