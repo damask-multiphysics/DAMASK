@@ -1020,8 +1020,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   real(pReal), dimension(:), allocatable :: subState0
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
   sizeDotState = plasticState(ph)%sizeDotState
 
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)

@@ -506,7 +506,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
     end associate
 
     if (Nmembers > 0) call stateInit(ini,ph,Nmembers)
-    plasticState(ph)%state0 = plasticState(ph)%state
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range

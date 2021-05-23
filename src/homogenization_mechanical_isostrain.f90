@@ -15,7 +15,7 @@ module subroutine isostrain_init
 
   integer :: &
     ho, &
-    Nmaterialpoints
+    Nmembers
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:isostrain init  -+>>>'
 
@@ -25,10 +25,10 @@ module subroutine isostrain_init
   do ho = 1, size(homogenization_type)
     if (homogenization_type(ho) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
 
-    Nmaterialpoints = count(material_homogenizationAt == ho)
+    Nmembers = count(material_homogenizationID == ho)
     homogState(ho)%sizeState = 0
-    allocate(homogState(ho)%state0(0,Nmaterialpoints))
-    allocate(homogState(ho)%state (0,Nmaterialpoints))
+    allocate(homogState(ho)%state0(0,Nmembers))
+    allocate(homogState(ho)%state (0,Nmembers))
 
   enddo
 

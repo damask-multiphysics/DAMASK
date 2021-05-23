@@ -245,11 +245,12 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   !$OMP PARALLEL
   !$OMP DO PRIVATE(ce,en,ho,myNgrains,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    ho = material_homogenizationAt(el)
-    myNgrains = homogenization_Nconstituents(ho)
+
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
       en = material_homogenizationEntry(ce)
+      ho = material_homogenizationID(ce)
+      myNgrains = homogenization_Nconstituents(ho)
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
@@ -290,12 +291,12 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     !$OMP DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
-      ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
+        ho = material_homogenizationID(ce)
         call thermal_partition(ce)
         do co = 1, homogenization_Nconstituents(ho)
-          ph = material_phaseAt(co,el)
+          ph = material_phaseID(co,ce)
           if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
             if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
@@ -308,9 +309,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
     !$OMP DO PRIVATE(ho,ce)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-      ho = material_homogenizationAt(el)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
+        ho = material_homogenizationID(ce)
         do co = 1, homogenization_Nconstituents(ho)
           call crystallite_orientations(co,ip,el)
         enddo

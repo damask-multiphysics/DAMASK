@@ -501,6 +501,7 @@ subroutine crystallite_init()
 
   integer :: &
     ph, &
+    ce, &
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
@@ -566,7 +567,8 @@ subroutine crystallite_init()
   !$OMP PARALLEL DO
   do el = 1, eMax
     do ip = 1, iMax
-      do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+      ce = (el-1)*discretization_nIPs + ip
+      do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(co,ip,el)                                          ! update dependent state variables to be consistent with basic states
      enddo

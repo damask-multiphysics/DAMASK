@@ -39,7 +39,7 @@ module subroutine damage_init()
     configHomogenization, &
     configHomogenizationDamage, &
     num_generic
-  integer :: ho,Nmaterialpoints
+  integer :: ho,Nmembers
 
 
   print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
@@ -50,7 +50,8 @@ module subroutine damage_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    allocate(current(ho)%phi(count(material_homogenizationID==ho)), source=1.0_pReal)
+    Nmembers = count(material_homogenizationID == ho)
+    allocate(current(ho)%phi(Nmembers), source=1.0_pReal)
     configHomogenization => configHomogenizations%get(ho)
     associate(prm => param(ho))
       if (configHomogenization%contains('damage')) then
@@ -60,10 +61,9 @@ module subroutine damage_init()
 #else
         prm%output = configHomogenizationDamage%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
-        Nmaterialpoints = count(material_homogenizationAt == ho)
         damageState_h(ho)%sizeState = 1
-        allocate(damageState_h(ho)%state0(1,Nmaterialpoints), source=1.0_pReal)
-        allocate(damageState_h(ho)%state (1,Nmaterialpoints), source=1.0_pReal)
+        allocate(damageState_h(ho)%state0(1,Nmembers), source=1.0_pReal)
+        allocate(damageState_h(ho)%state (1,Nmembers), source=1.0_pReal)
       else
         prm%output = emptyStringArray
       endif

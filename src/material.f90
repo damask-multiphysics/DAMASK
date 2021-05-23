@@ -32,7 +32,6 @@ module material
     material_name_homogenization                                                                    !< name of each homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
-    material_homogenizationAt, &                                                                    !< homogenization ID of each element TODO: remove
     material_homogenizationID, &                                                                    !< per cell TODO: material_ID_homogenization
     material_homogenizationEntry                                                                    !< per cell TODO: material_entry_homogenization
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
@@ -40,7 +39,7 @@ module material
     material_phaseID, &                                                                             !< per (constituent,cell) TODO: material_ID_phase
     material_phaseEntry                                                                             !< per (constituent,cell) TODO: material_entry_phase
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
-    material_phaseMemberAt !TODO: remove
+    material_phaseMemberAt                                                                          !TODO: remove
   public :: &
     tRotationContainer, &
     material_orientation0, &
@@ -114,7 +113,6 @@ subroutine parse()
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  allocate(material_homogenizationAt(discretization_Nelems),source=0)
   allocate(material_phaseAt(homogenization_maxNconstituents,discretization_Nelems),source=0)
   allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
 
@@ -128,12 +126,11 @@ subroutine parse()
     material     => materials%get(discretization_materialAt(el))
     constituents => material%get('constituents')
 
-    material_homogenizationAt(el) = homogenizations%getIndex(material%get_asString('homogenization'))
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
-      counterHomogenization(material_homogenizationAt(el)) = counterHomogenization(material_homogenizationAt(el)) + 1
-      material_homogenizationEntry(ce) = counterHomogenization(material_homogenizationAt(el))
-      material_homogenizationID(ce) = material_homogenizationAt(el)
+      material_homogenizationID(ce) = homogenizations%getIndex(material%get_asString('homogenization'))
+      counterHomogenization(material_homogenizationID(ce)) = counterHomogenization(material_homogenizationID(ce)) + 1
+      material_homogenizationEntry(ce) = counterHomogenization(material_homogenizationID(ce))
     enddo
 
     frac = 0.0_pReal
