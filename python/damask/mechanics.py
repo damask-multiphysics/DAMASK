@@ -124,9 +124,6 @@ def strain(F,t,m):
     """
     Calculate strain tensor (Seth–Hill family).
 
-    For details refer to https://en.wikipedia.org/wiki/Finite_strain_theory and
-    https://de.wikipedia.org/wiki/Verzerrungstensor
-
     Parameters
     ----------
     F : numpy.ndarray of shape (...,3,3)
@@ -142,6 +139,11 @@ def strain(F,t,m):
     epsilon : numpy.ndarray of shape (...,3,3)
         Strain of F.
 
+    References
+    ----------
+    https://en.wikipedia.org/wiki/Finite_strain_theory
+    https://de.wikipedia.org/wiki/Verzerrungstensor
+
     """
     if   t == 'V':
         w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F))
@@ -150,7 +152,6 @@ def strain(F,t,m):
 
     if   m > 0.0:
         eps = 1.0/(2.0*abs(m)) * (+ _np.einsum('...j,...kj,...lj',w**m,n,n) - _np.eye(3))
-
     elif m < 0.0:
         eps = 1.0/(2.0*abs(m)) * (- _np.einsum('...j,...kj,...lj',w**m,n,n) + _np.eye(3))
     else:

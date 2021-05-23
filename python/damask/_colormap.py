@@ -110,13 +110,13 @@ class Colormap(mpl.colors.ListedColormap):
             low_,high_ = map(Colormap._rgb2msh,low_high)
 
         elif model.lower() == 'hsv':
-            if np.any(low_high<0) or np.any(low_high[:,1:3]>1) or np.any(low_high[:,0]>360):
+            if np.any(low_high<0) or np.any(low_high>[360,1,1]):
                 raise ValueError(f'HSV color {low} | {high} are out of range.')
 
             low_,high_ = map(Colormap._hsv2msh,low_high)
 
         elif model.lower() == 'hsl':
-            if np.any(low_high<0) or np.any(low_high[:,1:3]>1) or np.any(low_high[:,0]>360):
+            if np.any(low_high<0) or np.any(low_high>[360,1,1]):
                 raise ValueError(f'HSL color {low} | {high} are out of range.')
 
             low_,high_ = map(Colormap._hsl2msh,low_high)

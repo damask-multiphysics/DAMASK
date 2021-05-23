@@ -12,7 +12,7 @@ setuptools.setup(
     author='The DAMASK team',
     author_email='damask@mpie.de',
     description='DAMASK library',
-    long_description='Python library for pre and post processing of DAMASK simulations',
+    long_description='Python library for managing DAMASK simulations',
     url='https://damask.mpie.de',
     packages=setuptools.find_packages(),
     include_package_data=True,
