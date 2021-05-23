@@ -254,8 +254,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
     allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
 
-    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
-
     end associate
 
 !--------------------------------------------------------------------------------------------------
@@ -414,7 +412,7 @@ module subroutine plastic_dislotungsten_results(ph,group)
                                                      'mobile dislocation density','1/m²')
       case('rho_dip')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
-                                                     'dislocation dipole density''1/m²')
+                                                     'dislocation dipole density','1/m²')
       case('gamma_sl')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
                                                      'plastic shear','1')

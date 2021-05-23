@@ -140,8 +140,6 @@ module function plastic_isotropic_init() result(myPlasticity)
     ! global alias
     plasticState(ph)%slipRate => plasticState(ph)%dotState(2:2,:)
 
-    plasticState(ph)%state0 = plasticState(ph)%state                                                ! ToDo: this could be done centrally
-
     end associate
 
 !--------------------------------------------------------------------------------------------------
