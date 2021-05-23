@@ -445,20 +445,22 @@ subroutine results_mapping_phase(ID,entry,label)
   integer         :: hdferr, ierr, i
 
 
-!--------------------------------------------------------------------------------------------------
-! prepare MPI communication (transparent for non-MPI runs)
-  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  entryOffset = 0
-  do i=1, size(label)
-    entryOffset(i,worldrank) = count(ID == i)                                                       ! number of entries of this process
-  enddo
+  entryGlobal = entry -1                                                                            ! 0-based
+
   writeSize = 0
   writeSize(worldrank) = size(entry(1,:))                                                           ! total number of entries of this process
+
+  entryOffset = 0
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
 #ifdef PETSc
+  do i=1, size(label)
+    entryOffset(i,worldrank) = count(ID == i)                                                       ! number of entries of this process
+  enddo
+
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -467,17 +469,15 @@ subroutine results_mapping_phase(ID,entry,label)
 
   call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
+
+  do i = 1, size(label)
+    where(ID == i) entryGlobal = entryGlobal + sum(entryOffset(i,0:worldrank-1))
+  enddo
 #endif
 
   myShape = int([size(ID,1),writeSize(worldrank)], HSIZE_T)
   myOffset = int([0,sum(writeSize(0:worldrank-1))], HSIZE_T)
   totalShape = int([size(ID,1),sum(writeSize)], HSIZE_T)
-
-!---------------------------------------------------------------------------------------------------
-! renumber member from my process to all processes
-  do i = 1, size(label)
-    where(ID == i) entryGlobal = entry + sum(entryOffset(i,0:worldrank-1)) -1                       ! 0-based
-  enddo
 
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of phase section + position/index within results array
@@ -595,20 +595,22 @@ subroutine results_mapping_homogenization(ID,entry,label)
   integer         :: hdferr, ierr, i
 
 
-!--------------------------------------------------------------------------------------------------
-! prepare MPI communication (transparent for non-MPI runs)
-  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  entryOffset = 0
-  do i=1, size(label)
-    entryOffset(i,worldrank) = count(ID == i)                                                       ! number of entries of this process
-  enddo
+  entryGlobal = entry -1                                                                            ! 0-based
+
   writeSize = 0
   writeSize(worldrank) = size(entry)                                                                ! total number of entries of this process
+
+  entryOffset = 0
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
 #ifdef PETSc
+  do i=1, size(label)
+    entryOffset(i,worldrank) = count(ID == i)                                                       ! number of entries of this process
+  enddo
+
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -617,17 +619,15 @@ subroutine results_mapping_homogenization(ID,entry,label)
 
   call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
+
+  do i = 1, size(label)
+    where(ID == i) entryGlobal = entryGlobal + sum(entryOffset(i,0:worldrank-1))
+  enddo
 #endif
 
   myShape = int([writeSize(worldrank)], HSIZE_T)
   myOffset = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
   totalShape = int([sum(writeSize)], HSIZE_T)
-
-!---------------------------------------------------------------------------------------------------
-! renumber member from my process to all processes
-  do i = 1, size(label)
-    where(ID == i) entryGlobal = entry + sum(entryOffset(i,0:worldrank-1)) - 1                      !  0-based
-  enddo
 
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of phase section + position/index within results array
@@ -723,13 +723,13 @@ subroutine executionStamp(path,description,SIunit)
 
 
   if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'description',description,path)
-  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
-    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
-  if (HDF5_objectExists(resultsFile,path)) &
     call HDF5_addAttribute(resultsFile,'creator','DAMASK '//DAMASKVERSION,path)
   if (HDF5_objectExists(resultsFile,path)) &
     call HDF5_addAttribute(resultsFile,'created',now(),path)
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'description',description,path)
+  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
+    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
 
 end subroutine executionStamp
 
