@@ -1,14 +1,17 @@
-# parameters fitted by D. Ma to:
-# On the mathematical description of the tensile stress-strain curves of polycrystalline face centered cubic metals
-# International Journal of Plasticity, Volume 12, Issue 1, 1996, Pages 35-43
-# DOI: 10.1016/S0749-6419(95)00043-7
 type: phenopowerlaw
-output: [xi_sl]
+references:
+  - D. Ma et al.,
+    Acta Materialia, 103, 796-808, 2016,
+    10.1016/j.actamat.2015.11.016
+  - I. Kovács and G.Vörös,
+    International Journal of Plasticity, 12, 35-43, 1996,
+    10.1016/S0749-6419(95)00043-7
+output: [xi_sl, gamma_sl]
 N_sl: [12]
-n_sl: 83
+n_sl: 83.3
 dot_gamma_0_sl: 0.001
-h_0_sl_sl: 75e6
+h_0_sl_sl: 75.0e6
 h_sl_sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
 a_sl: 1.0
-xi_0_sl: [26e6]
-xi_inf_sl: [53e6]
+xi_0_sl: [26.25e6]
+xi_inf_sl: [53.0e6]

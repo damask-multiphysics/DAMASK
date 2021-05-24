@@ -1,0 +1,5 @@
+type: thermalexpansion
+references:
+  - en.wikipedia.org/wiki/Thermal_expansion, fitted from image description
+A_11: [12.70371e-6, 7.54e-9, -1.0e-11]
+T_ref: 273.0
