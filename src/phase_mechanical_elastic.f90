@@ -1,12 +1,11 @@
 submodule(phase:mechanical) elastic
 
-  enum, bind(c); enumerator :: &
-    ELASTICITY_UNDEFINED_ID, &
-    ELASTICITY_HOOKE_ID
-  end enum
+  type :: tParameters
+    real(pReal), dimension(6,6) :: &
+      C66                                                                                           !< Elastic constants in Voig notation
+  end type tParameters
  
-  integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
-    phase_elasticity                                                                                !< elasticity of each phase
+  type(tParameters), allocatable, dimension(:) :: param
 
 contains
 
@@ -22,20 +21,28 @@ module subroutine elastic_init(phases)
     phase, &
     mech, &
     elastic
- 
+
+
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
 
-  allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
+  allocate(param(phases%length))
   
   do ph = 1, phases%length
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
     elastic => mech%get('elastic')
-    if(IO_lc(elastic%get_asString('type')) == 'hooke') then ! accept small letter h for the moment
-      phase_elasticity(ph) = ELASTICITY_HOOKE_ID
-    else
-      call IO_error(200,ext_msg=elastic%get_asString('type'))
-    endif
+    if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
+    
+    associate(prm => param(ph))
+      prm%C66(1,1) = elastic%get_asFloat('C_11')
+      prm%C66(1,2) = elastic%get_asFloat('C_12')
+      prm%C66(4,4) = elastic%get_asFloat('C_44')
+
+      prm%C66(1,3) = elastic%get_asFloat('C_13',defaultVal=0.0_pReal)
+      prm%C66(2,3) = elastic%get_asFloat('C_23',defaultVal=0.0_pReal)
+      prm%C66(3,3) = elastic%get_asFloat('C_33',defaultVal=0.0_pReal)
+      prm%C66(6,6) = elastic%get_asFloat('C_66',defaultVal=0.0_pReal)
+    end associate
   enddo
 
 end subroutine elastic_init
@@ -63,8 +70,8 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   real(pReal), dimension(3,3) :: E
   real(pReal), dimension(3,3,3,3) :: C
   integer :: &
-    d, &                                                                                            !< counter in degradation loop
     i, j
+
 
   C = math_66toSym3333(phase_homogenizedC(ph,en))
   C = phase_damage_C(C,ph,en)
