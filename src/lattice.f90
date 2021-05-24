@@ -486,7 +486,7 @@ subroutine lattice_init
     lattice_nu(ph) = lattice_equivalent_nu(lattice_C66(1:6,1:6,ph),'voigt')
     lattice_mu(ph) = lattice_equivalent_mu(lattice_C66(1:6,1:6,ph),'voigt')
 
-    lattice_C66(1:6,1:6,ph) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,ph)))           ! Literature data is in Voigt notation
+    lattice_C66(1:6,1:6,ph) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,ph)))         ! Literature data is in Voigt notation
     do i = 1, 6
       if (abs(lattice_C66(i,i,ph))<tol_math_check) &
         call IO_error(135,el=i,ip=ph,ext_msg='matrix diagonal "el"ement of phase "ip"')
@@ -1708,29 +1708,29 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
   real(pReal), dimension(6,6), intent(in) :: C66
   character(len=*),            intent(in) :: structure
 
-  integer :: j,k
+  integer :: i,j
+
 
   C66_sym = 0.0_pReal
 
   select case(structure)
     case ('cF','cI')
-      do k=1,3
-        do j=1,3
-          C66_sym(k,j) = C66(1,2)
-        enddo
-        C66_sym(k,k)     = C66(1,1)
-        C66_sym(k+3,k+3) = C66(4,4) ! isotropic C_44 = .5*(C_11-C_12)
-      enddo
+      C66_sym(1,1) = C66(1,1)
+      C66_sym(2,2) = C66(1,1)
+      C66_sym(3,3) = C66(1,1)
+      C66_sym(1,2) = C66(1,2)
+      C66_sym(1,3) = C66(1,2)
+      C66_sym(2,3) = C66(1,2)
+      C66_sym(4,4) = C66(4,4) ! isotropic C_44 = (C_11-C_12)/2
+      C66_sym(5,5) = C66(4,4)
+      C66_sym(6,6) = C66(4,4)
     case ('hP')
       C66_sym(1,1) = C66(1,1)
       C66_sym(2,2) = C66(1,1)
       C66_sym(3,3) = C66(3,3)
       C66_sym(1,2) = C66(1,2)
-      C66_sym(2,1) = C66(1,2)
       C66_sym(1,3) = C66(1,3)
-      C66_sym(3,1) = C66(1,3)
       C66_sym(2,3) = C66(1,3)
-      C66_sym(3,2) = C66(1,3)
       C66_sym(4,4) = C66(4,4)
       C66_sym(5,5) = C66(4,4)
       C66_sym(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
@@ -1739,17 +1739,20 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
       C66_sym(2,2) = C66(1,1)
       C66_sym(3,3) = C66(3,3)
       C66_sym(1,2) = C66(1,2)
-      C66_sym(2,1) = C66(1,2)
       C66_sym(1,3) = C66(1,3)
-      C66_sym(3,1) = C66(1,3)
       C66_sym(2,3) = C66(1,3)
-      C66_sym(3,2) = C66(1,3)
       C66_sym(4,4) = C66(4,4)
       C66_sym(5,5) = C66(4,4)
       C66_sym(6,6) = C66(6,6)
     case default
       call IO_error(137,ext_msg='applyLatticeSymmetryC66: '//trim(structure))
    end select
+
+   do i = 1, 6
+     do j = i+1, 6
+       C66_sym(j,i) = C66_sym(i,j)
+     enddo
+   enddo
 
 end function applyLatticeSymmetryC66
 
@@ -2246,14 +2249,26 @@ subroutine selfTest
 
   real(pReal), dimension(6,6) :: C
   real(pReal), dimension(2)   :: r
-  real(pReal)                 :: lambda
-
+  real(pReal) :: lambda
+  integer     :: i
 
   call random_number(r)
 
   system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
   CoSy   = buildCoordinateSystem([1],[1],system,'cF',0.0_pReal)
   if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
+
+  do i = 1, 10
+    call random_number(C)
+    if (any(dNeq(applyLatticeSymmetryC66(C,'cI'),transpose(applyLatticeSymmetryC66(C,'cF'))))) &
+                                                              error stop 'applyLatticeSymmetryC66/cI-cF'
+    if (any(dNeq(applyLatticeSymmetryC66(C,'cF'),transpose(applyLatticeSymmetryC66(C,'cI'))))) &
+                                                              error stop 'applyLatticeSymmetryC66/cF-cI'
+    if (any(dNeq(applyLatticeSymmetryC66(C,'hP'),transpose(applyLatticeSymmetryC66(C,'hP'))))) &
+                                                              error stop 'applyLatticeSymmetryC66/hP'
+    if (any(dNeq(applyLatticeSymmetryC66(C,'tI'),transpose(applyLatticeSymmetryC66(C,'tI'))))) &
+                                                              error stop 'applyLatticeSymmetryC66/tI'
+  enddo
 
   call random_number(C)
   C(1,1) = C(1,1) + C(1,2) + 0.1_pReal
