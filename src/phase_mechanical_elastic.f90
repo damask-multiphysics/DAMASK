@@ -21,6 +21,7 @@ module subroutine elastic_init(phases)
     phase, &
     mech, &
     elastic
+  character(len=:), allocatable :: struct
 
 
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
@@ -34,14 +35,20 @@ module subroutine elastic_init(phases)
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
     
     associate(prm => param(ph))
+      struct = phase%get_asString('lattice')
+      if (struct /= 'cI' .and. struct /= 'cF' .and. struct /= 'hP' .and. struct /= 'tI') &
+        call IO_error(137,ext_msg=trim(struct))
+
       prm%C66(1,1) = elastic%get_asFloat('C_11')
       prm%C66(1,2) = elastic%get_asFloat('C_12')
       prm%C66(4,4) = elastic%get_asFloat('C_44')
 
-      prm%C66(1,3) = elastic%get_asFloat('C_13',defaultVal=0.0_pReal)
-      prm%C66(2,3) = elastic%get_asFloat('C_23',defaultVal=0.0_pReal)
-      prm%C66(3,3) = elastic%get_asFloat('C_33',defaultVal=0.0_pReal)
-      prm%C66(6,6) = elastic%get_asFloat('C_66',defaultVal=0.0_pReal)
+      if (struct == 'hP' .or. struct == 'tI') then
+        prm%C66(1,3) = elastic%get_asFloat('C_13')
+        prm%C66(2,3) = elastic%get_asFloat('C_23')
+        prm%C66(3,3) = elastic%get_asFloat('C_33')
+      endif
+      if (struct == 'tI') prm%C66(6,6) = elastic%get_asFloat('C_66')
     end associate
   enddo
 

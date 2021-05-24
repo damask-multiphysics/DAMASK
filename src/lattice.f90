@@ -1664,22 +1664,21 @@ end function lattice_labels_slip
 !--------------------------------------------------------------------------------------------------
 !> @brief Return 3x3 tensor with symmetry according to given crystal structure
 !--------------------------------------------------------------------------------------------------
-function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
+pure function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
 
   real(pReal), dimension(3,3) :: T_sym
 
   real(pReal), dimension(3,3), intent(in) :: T
   character(len=*),            intent(in) :: structure
 
-  integer :: k
 
   T_sym = 0.0_pReal
 
   select case(structure)
     case('cF','cI')
-      do k=1,3
-        T_sym(k,k) = T(1,1)
-      enddo
+      T_sym(1,1) = T(1,1)
+      T_sym(2,2) = T(1,1)
+      T_sym(3,3) = T(1,1)
     case('hP') ! MD TODO: I think that 'tI' has the same symmetry as 'hP' for 2nd order tensors
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
@@ -1688,8 +1687,6 @@ function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(2,2)
       T_sym(3,3) = T(3,3)
-    case default
-      call IO_error(137,ext_msg='lattice_applyLatticeSymmetry33: '//trim(structure))
    end select
 
 end function lattice_applyLatticeSymmetry33
@@ -1699,7 +1696,7 @@ end function lattice_applyLatticeSymmetry33
 !> @brief Return stiffness matrix in 6x6 notation with symmetry according to given crystal structure
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
-function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
+pure function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
 
   real(pReal), dimension(6,6) :: C66_sym
 
@@ -1730,8 +1727,6 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
       C66_sym(1,3) = C66(1,3); C66_sym(2,3) = C66(1,3)
       C66_sym(4,4) = C66(4,4); C66_sym(5,5) = C66(4,4)
       C66_sym(6,6) = C66(6,6)
-    case default
-      call IO_error(137,ext_msg='applyLatticeSymmetryC66: '//trim(structure))
    end select
 
    do i = 1, 6
