@@ -36,10 +36,10 @@ submodule(phase:plastic) isotropic
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
- type(tParameters),     allocatable, dimension(:) :: param
- type(tIsotropicState), allocatable, dimension(:) :: &
-   dotState, &
-   state
+  type(tParameters),     allocatable, dimension(:) :: param
+  type(tIsotropicState), allocatable, dimension(:) :: &
+    dotState, &
+    state
 
 contains
 
