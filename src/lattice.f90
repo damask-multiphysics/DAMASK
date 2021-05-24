@@ -296,7 +296,6 @@ module lattice
   integer, parameter :: &
     BCT_NSLIP = sum(BCT_NSLIPSYSTEM)                                                                !< total # of slip systems for bct
 
-
   real(pReal), dimension(3+3,BCT_NSLIP), parameter :: &
     BCT_SYSTEMSLIP = reshape(real([&
     ! {100)<001] systems
@@ -366,30 +365,13 @@ module lattice
        1, 1, 1,      1,-2, 1  &
        ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< bct slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
 
-!--------------------------------------------------------------------------------------------------
-! orthorhombic primitive (oP)
-  integer, dimension(*), parameter :: &
-    ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                                 !< # of cleavage systems per family for orthorhombic primitive
-
-  integer, parameter  :: &
-    ORT_NCLEAVAGE = sum(ORT_NCLEAVAGESYSTEM)                                                        !< total # of cleavage systems for orthorhombic primitive
-
-  real(pReal), dimension(3+3,ORT_NCLEAVAGE), parameter :: &
-    ORT_SYSTEMCLEAVAGE = reshape(real([&
-       0, 1, 0,     1, 0, 0, &
-       0, 0, 1,     0, 1, 0, &
-       1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(ORT_SYSTEMCLEAVAGE))                                                           !< orthorhombic primitive cleavage systems
-
 
   enum, bind(c); enumerator :: &
     lattice_UNDEFINED_ID, &
-    lattice_ISO_ID, &
     lattice_FCC_ID, &
     lattice_BCC_ID, &
-    lattice_BCT_ID, &
     lattice_HEX_ID, &
-    lattice_ORT_ID
+    lattice_BCT_ID
   end enum
 
 ! SHOULD NOT BE PART OF LATTICE BEGIN
@@ -414,12 +396,10 @@ module lattice
 
   public :: &
     lattice_init, &
-    lattice_ISO_ID, &
     lattice_FCC_ID, &
     lattice_BCC_ID, &
-    lattice_BCT_ID, &
     lattice_HEX_ID, &
-    lattice_ORT_ID, &
+    lattice_BCT_ID, &
     lattice_equivalent_nu, &
     lattice_equivalent_mu, &
     lattice_applyLatticeSymmetry33, &
@@ -479,12 +459,12 @@ subroutine lattice_init
     elasticity => mech%get('elastic')
     lattice_C66(1,1,ph) = elasticity%get_asFloat('C_11')
     lattice_C66(1,2,ph) = elasticity%get_asFloat('C_12')
+    lattice_C66(4,4,ph) = elasticity%get_asFloat('C_44')
 
     lattice_C66(1,3,ph) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
     lattice_C66(2,2,ph) = elasticity%get_asFloat('C_22',defaultVal=0.0_pReal)
     lattice_C66(2,3,ph) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
     lattice_C66(3,3,ph) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
-    lattice_C66(4,4,ph) = elasticity%get_asFloat('C_44',defaultVal=0.0_pReal)
     lattice_C66(5,5,ph) = elasticity%get_asFloat('C_55',defaultVal=0.0_pReal)
     lattice_C66(6,6,ph) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
 
@@ -497,10 +477,6 @@ subroutine lattice_init
         lattice_structure(ph) = lattice_HEX_ID
       case('tI')
         lattice_structure(ph) = lattice_BCT_ID
-      case('oP')
-        lattice_structure(ph) = lattice_ORT_ID
-      case('aP')
-        lattice_structure(ph) = lattice_ISO_ID
       case default
         call IO_error(130,ext_msg='lattice_init: '//phase%get_asString('lattice'))
     end select
@@ -1565,9 +1541,6 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
   integer                                                :: i
 
   select case(structure)
-    case('oP')
-      NcleavageMax    = ORT_NCLEAVAGESYSTEM
-      cleavageSystems = ORT_SYSTEMCLEAVAGE
     case('cF')
       NcleavageMax    = FCC_NCLEAVAGESYSTEM
       cleavageSystems = FCC_SYSTEMCLEAVAGE
@@ -1705,15 +1678,15 @@ function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
   T_sym = 0.0_pReal
 
   select case(structure)
-    case('aP','cF','cI')
+    case('cF','cI')
       do k=1,3
         T_sym(k,k) = T(1,1)
       enddo
-    case('hP')
+    case('hP') ! MD TODO: I think that 'tI' has the same symmetry as 'hP' for 2nd order tensors
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
       T_sym(3,3) = T(3,3)
-    case('oP','tI')
+    case('tI')
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(2,2)
       T_sym(3,3) = T(3,3)
@@ -1740,21 +1713,13 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
   C66_sym = 0.0_pReal
 
   select case(structure)
-    case ('aP')
-      do k=1,3
-        do j=1,3
-          C66_sym(k,j) = C66(1,2)
-        enddo
-        C66_sym(k,k)     = C66(1,1)
-        C66_sym(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
-      enddo
     case ('cF','cI')
       do k=1,3
         do j=1,3
           C66_sym(k,j) = C66(1,2)
         enddo
         C66_sym(k,k)     = C66(1,1)
-        C66_sym(k+3,k+3) = C66(4,4)
+        C66_sym(k+3,k+3) = C66(4,4) ! isotropic C_44 = .5*(C_11-C_12)
       enddo
     case ('hP')
       C66_sym(1,1) = C66(1,1)
@@ -1769,19 +1734,6 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
       C66_sym(4,4) = C66(4,4)
       C66_sym(5,5) = C66(4,4)
       C66_sym(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
-    case ('oP')
-      C66_sym(1,1) = C66(1,1)
-      C66_sym(2,2) = C66(2,2)
-      C66_sym(3,3) = C66(3,3)
-      C66_sym(1,2) = C66(1,2)
-      C66_sym(2,1) = C66(1,2)
-      C66_sym(1,3) = C66(1,3)
-      C66_sym(3,1) = C66(1,3)
-      C66_sym(2,3) = C66(2,3)
-      C66_sym(3,2) = C66(2,3)
-      C66_sym(4,4) = C66(4,4)
-      C66_sym(5,5) = C66(5,5)
-      C66_sym(6,6) = C66(6,6)
     case ('tI')
       C66_sym(1,1) = C66(1,1)
       C66_sym(2,2) = C66(1,1)
@@ -2012,7 +1964,7 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
 
       select case(structure)
 
-        case ('cF','cI','aP','oP','tI')
+        case ('cF','cI','tI')
           direction = system(1:3,p)
           normal    = system(4:6,p)
 
@@ -2247,7 +2199,6 @@ function lattice_equivalent_nu(C,assumption) result(nu)
       / (S(1,1)+S(2,2)+S(3,3) +2.0_pReal*(S(1,2)+S(2,3)+S(1,3)))
   else
     error stop 'invalid assumption'
-    K = 0.0_pReal
   endif
 
   mu = lattice_equivalent_mu(C,assumption)
@@ -2280,7 +2231,6 @@ function lattice_equivalent_mu(C,assumption) result(mu)
        / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
   else
     error stop 'invalid assumption'
-    mu = 0.0_pReal
   endif
 
 end function lattice_equivalent_mu
@@ -2298,6 +2248,7 @@ subroutine selfTest
   real(pReal), dimension(2)   :: r
   real(pReal)                 :: lambda
 
+
   call random_number(r)
 
   system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
@@ -2305,10 +2256,11 @@ subroutine selfTest
   if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
 
   call random_number(C)
-  C(1,1) = C(1,1) + 1.0_pReal
-  C = applyLatticeSymmetryC66(C,'aP')
-  if(dNeq(C(6,6),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
-  if(dNeq(C(6,6),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
+  C(1,1) = C(1,1) + C(1,2) + 0.1_pReal
+  C(4,4) = 0.5_pReal * (C(1,1) - C(1,2))
+  C = applyLatticeSymmetryC66(C,'cI')
+  if(dNeq(C(4,4),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
+  if(dNeq(C(4,4),lattice_equivalent_mu(C,'reuss'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
 
   lambda = C(1,2)
   if(dNeq(lambda*0.5_pReal/(lambda+lattice_equivalent_mu(C,'voigt')), &

@@ -4,7 +4,7 @@
 Ferrite:
   lattice: cI
   mechanical:
-    elastic: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: hooke}
+    elastic: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: Hooke}
     plastic:
       N_sl: [12, 12]
       a_sl: 2.0
