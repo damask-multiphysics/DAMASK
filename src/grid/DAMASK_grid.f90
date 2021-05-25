@@ -107,9 +107,7 @@ program DAMASK_grid
     thermal, &
     step_bc, &
     step_mech, &
-    step_discretization, &
-    step_deformation, &
-    step_stress
+    step_discretization
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -198,26 +196,10 @@ program DAMASK_grid
       select case (step_mech%getKey(m))
         case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
           loadCases(l)%deformation%myType = step_mech%getKey(m)
-          step_deformation => step_mech%get(m)
-
-          temp_valueVector = 0.0_pReal
-          do j = 1, 9
-            temp_maskVector(j) = step_deformation%get_asString(j) /= 'x'
-            if (temp_maskVector(j)) temp_valueVector(j) = step_deformation%get_asFloat(j)
-          enddo
-          loadCases(l)%deformation%mask   = transpose(reshape(temp_maskVector,[3,3]))
-          loadCases(l)%deformation%values = math_9to33(temp_valueVector)
+          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get(m))
         case ('dot_P','P')
           loadCases(l)%stress%myType = step_mech%getKey(m)
-          step_stress => step_mech%get(m)
-
-          temp_valueVector = 0.0_pReal
-          do j = 1, 9
-            temp_maskVector(j) = step_stress%get_asString(j) /= 'x'
-            if (temp_maskVector(j)) temp_valueVector(j) = step_stress%get_asFloat(j)
-          enddo
-          loadCases(l)%stress%mask   = transpose(reshape(temp_maskVector,[3,3]))
-          loadCases(l)%stress%values = math_9to33(temp_valueVector)
+          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get(m))
       end select
       call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dFloat('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
     enddo readMech
@@ -486,5 +468,36 @@ program DAMASK_grid
   if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)
+
+
+contains
+
+subroutine getMaskedTensor(values,mask,tensor)
+
+  real(pReal), intent(out), dimension(3,3) :: values
+  logical,     intent(out), dimension(3,3) :: mask
+  class (tNode), pointer :: tensor
+
+  class (tNode), pointer :: row
+  integer :: i,j
+
+
+  values = 0.0
+  if (tensor%length == 9) then ! temporary support for deprecated 1D tensor
+    do i = 1,9
+      mask((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asString(i) /= 'x'
+      if (mask((i-1)/3+1,mod(i-1,3)+1)) values((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asFloat(i)
+    enddo
+  else
+    do i = 1,3
+      row => tensor%get(i)
+      do j = 1,3
+        mask(i,j) = row%get_asString(j) /= 'x'                      ! ToDo change to np.masked behavior
+        if (mask(i,j)) values(i,j) = row%get_asFloat(j)
+      enddo
+    enddo
+  endif
+
+end subroutine
 
 end program DAMASK_grid
