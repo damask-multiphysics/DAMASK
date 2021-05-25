@@ -2228,10 +2228,12 @@ subroutine selfTest
   real(pReal), dimension(:,:,:), allocatable :: CoSy
   real(pReal), dimension(:,:),   allocatable :: system
 
-  real(pReal), dimension(6,6) :: C
+  real(pReal), dimension(6,6) :: C, C_cF, C_cI, C_hP, C_tI
+  real(pReal), dimension(3,3) :: T, T_cF, T_cI, T_hP, T_tI
   real(pReal), dimension(2)   :: r
   real(pReal) :: lambda
   integer     :: i
+
 
   call random_number(r)
 
@@ -2241,14 +2243,42 @@ subroutine selfTest
 
   do i = 1, 10
     call random_number(C)
-    if (any(dNeq(applyLatticeSymmetryC66(C,'cI'),transpose(applyLatticeSymmetryC66(C,'cF'))))) &
-                                                              error stop 'applyLatticeSymmetryC66/cI-cF'
-    if (any(dNeq(applyLatticeSymmetryC66(C,'cF'),transpose(applyLatticeSymmetryC66(C,'cI'))))) &
-                                                              error stop 'applyLatticeSymmetryC66/cF-cI'
-    if (any(dNeq(applyLatticeSymmetryC66(C,'hP'),transpose(applyLatticeSymmetryC66(C,'hP'))))) &
-                                                              error stop 'applyLatticeSymmetryC66/hP'
-    if (any(dNeq(applyLatticeSymmetryC66(C,'tI'),transpose(applyLatticeSymmetryC66(C,'tI'))))) &
-                                                              error stop 'applyLatticeSymmetryC66/tI'
+    C_cF = applyLatticeSymmetryC66(C,'cI')
+    C_cI = applyLatticeSymmetryC66(C,'cF')
+    C_hP = applyLatticeSymmetryC66(C,'hP')
+    C_tI = applyLatticeSymmetryC66(C,'tI')
+
+    if (any(dNeq(C_cI,transpose(C_cF))))                   error stop 'SymmetryC66/cI-cF'
+    if (any(dNeq(C_cF,transpose(C_cI))))                   error stop 'SymmetryC66/cF-cI'
+    if (any(dNeq(C_hP,transpose(C_hP))))                   error stop 'SymmetryC66/hP'
+    if (any(dNeq(C_tI,transpose(C_tI))))                   error stop 'SymmetryC66/tI'
+
+    if (any(dNeq(C(1,1),[C_cF(1,1),C_cF(2,2),C_cF(3,3)]))) error stop 'SymmetryC_11-22-33/c'
+    if (any(dNeq(C(1,2),[C_cF(1,2),C_cF(1,3),C_cF(2,3)]))) error stop 'SymmetryC_12-13-23/c'
+    if (any(dNeq(C(4,4),[C_cF(4,4),C_cF(5,5),C_cF(6,6)]))) error stop 'SymmetryC_44-55-66/c'
+
+    if (any(dNeq(C(1,1),[C_hP(1,1),C_hP(2,2)])))           error stop 'SymmetryC_11-22/hP'
+    if (any(dNeq(C(1,3),[C_hP(1,3),C_hP(2,3)])))           error stop 'SymmetryC_13-23/hP'
+    if (any(dNeq(C(4,4),[C_hP(4,4),C_hP(5,5)])))           error stop 'SymmetryC_44-55/hP'
+
+    if (any(dNeq(C(1,1),[C_tI(1,1),C_tI(2,2)])))           error stop 'SymmetryC_11-22/tI'
+    if (any(dNeq(C(1,3),[C_tI(1,3),C_tI(2,3)])))           error stop 'SymmetryC_13-23/tI'
+    if (any(dNeq(C(4,4),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
+
+    call random_number(T)
+    T_cF = lattice_applyLatticeSymmetry33(T,'cI')
+    T_cI = lattice_applyLatticeSymmetry33(T,'cF')
+    T_hP = lattice_applyLatticeSymmetry33(T,'hP')
+    T_tI = lattice_applyLatticeSymmetry33(T,'tI')
+
+    if (any(dNeq0(T_cF) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/c'
+    if (any(dNeq0(T_hP) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/hP'
+    if (any(dNeq0(T_tI) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/tI'
+
+    if (any(dNeq(T(1,1),[T_cI(1,1),T_cI(2,2),T_cI(3,3)]))) error stop 'Symmetry33_11-22-33/c'
+    if (any(dNeq(T(1,1),[T_hP(1,1),T_hP(2,2)])))           error stop 'Symmetry33_11-22/hP'
+    !if (any(dNeq(T(1,1),[T_tI(1,1),T_tI(2,2))))           error stop 'Symmetry33_11-22/tI'
+
   enddo
 
   call random_number(C)

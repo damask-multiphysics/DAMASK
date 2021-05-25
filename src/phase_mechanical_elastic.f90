@@ -45,7 +45,6 @@ module subroutine elastic_init(phases)
 
       if (struct == 'hP' .or. struct == 'tI') then
         prm%C66(1,3) = elastic%get_asFloat('C_13')
-        prm%C66(2,3) = elastic%get_asFloat('C_23')
         prm%C66(3,3) = elastic%get_asFloat('C_33')
       endif
       if (struct == 'tI') prm%C66(6,6) = elastic%get_asFloat('C_66')
