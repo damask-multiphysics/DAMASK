@@ -64,8 +64,6 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
         ! read up to three parameters (constant, linear, quadratic with T)
         temp = kinematic_type%get_as1dFloat('A_11')
         prm%A(1,1,1:size(temp)) = temp
-        temp = kinematic_type%get_as1dFloat('A_22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-        prm%A(2,2,1:size(temp)) = temp
         temp = kinematic_type%get_as1dFloat('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
         prm%A(3,3,1:size(temp)) = temp
         do i=1, size(prm%A,3)

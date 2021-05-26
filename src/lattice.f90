@@ -1679,13 +1679,9 @@ pure function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
       T_sym(3,3) = T(1,1)
-    case('hP') ! MD TODO: I think that 'tI' has the same symmetry as 'hP' for 2nd order tensors
+    case('hP','tI')
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
-      T_sym(3,3) = T(3,3)
-    case('tI')
-      T_sym(1,1) = T(1,1)
-      T_sym(2,2) = T(2,2)
       T_sym(3,3) = T(3,3)
    end select
 
@@ -2277,7 +2273,7 @@ subroutine selfTest
 
     if (any(dNeq(T(1,1),[T_cI(1,1),T_cI(2,2),T_cI(3,3)]))) error stop 'Symmetry33_11-22-33/c'
     if (any(dNeq(T(1,1),[T_hP(1,1),T_hP(2,2)])))           error stop 'Symmetry33_11-22/hP'
-    !if (any(dNeq(T(1,1),[T_tI(1,1),T_tI(2,2))))           error stop 'Symmetry33_11-22/tI'
+    if (any(dNeq(T(1,1),[T_tI(1,1),T_tI(2,2)])))           error stop 'Symmetry33_11-22/tI'
 
   enddo
 

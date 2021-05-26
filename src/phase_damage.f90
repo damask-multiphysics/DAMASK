@@ -121,7 +121,6 @@ module subroutine damage_init
       source => sources%get(1)
       param(ph)%mu     = source%get_asFloat('M',defaultVal=0.0_pReal)
       param(ph)%K(1,1) = source%get_asFloat('D_11',defaultVal=0.0_pReal)
-      param(ph)%K(2,2) = source%get_asFloat('D_22',defaultVal=0.0_pReal)
       param(ph)%K(3,3) = source%get_asFloat('D_33',defaultVal=0.0_pReal)
       param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase%get_asString('lattice'))
     endif
