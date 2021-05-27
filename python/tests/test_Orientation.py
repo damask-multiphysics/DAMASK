@@ -511,12 +511,12 @@ class TestOrientation:
             == o.shape + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF'])
-    def test_Schmid(self,update,ref_path,lattice):
+    @pytest.mark.parametrize('mode',['slip','twin'])
+    def test_Schmid(self,update,ref_path,lattice,mode):
         L = Orientation(lattice=lattice)
-        for mode in L.kinematics:
-            reference = ref_path/f'{lattice}_{mode}.txt'
-            P = L.Schmid(mode)
-            if update:
-                table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
-                table.save(reference)
-            assert np.allclose(P,Table.load(reference).get('Schmid'))
+        reference = ref_path/f'{lattice}_{mode}.txt'
+        P = L.Schmid(mode)
+        if update:
+            table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
+            table.save(reference)
+        assert np.allclose(P,Table.load(reference).get('Schmid'))

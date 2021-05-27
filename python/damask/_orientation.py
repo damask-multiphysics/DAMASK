@@ -128,8 +128,6 @@ class Orientation(Rotation):
         """
         Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
 
-        self.kinematics = None
-
         if lattice in lattice_symmetries:
             self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
@@ -171,14 +169,6 @@ class Orientation(Rotation):
               > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('Each lattice angle must be less than sum of others')
 
-            if self.lattice in lattice_.kinematics:
-                master = lattice_.kinematics[self.lattice]
-                self.kinematics = {}
-                for m in master:
-                    self.kinematics[m] = {'direction':master[m][:,0:3],'plane':master[m][:,3:6]} \
-                                         if master[m].shape[-1] == 6 else \
-                                         {'direction':lattice_.Bravais_to_Miller(uvtw=master[m][:,0:4]),
-                                          'plane':    lattice_.Bravais_to_Miller(hkil=master[m][:,4:8])}
         elif lattice in set(lattice_symmetries.values()):
             self.family  = lattice
             self.lattice = None
@@ -309,7 +299,7 @@ class Orientation(Rotation):
         if isinstance(other,Orientation) or isinstance(other,Rotation):
             return self.copy(rotation=Rotation.__mul__(self,Rotation(other.quaternion)))
         else:
-            raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
+            raise TypeError('use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
     @staticmethod
@@ -514,7 +504,7 @@ class Orientation(Rotation):
                           [ 1.0,0.0,0.0,0.0 ],
                         ]
         else:
-            raise KeyError(f'Crystal family "{self.family}" is unknown')
+            raise KeyError(f'unknown crystal family "{self.family}"')
 
         return Rotation.from_quaternion(sym_quats,accept_homomorph=True)
 
@@ -664,11 +654,11 @@ class Orientation(Rotation):
 
         """
         if model not in lattice_.relations:
-            raise KeyError(f'Orientation relationship "{model}" is unknown')
+            raise KeyError(f'unknown orientation relationship "{model}"')
         r = lattice_.relations[model]
 
         if self.lattice not in r:
-            raise KeyError(f'Relationship "{model}" not supported for lattice "{self.lattice}"')
+            raise KeyError(f'relationship "{model}" not supported for lattice "{self.lattice}"')
 
         sl = self.lattice
         ol = (set(r)-{sl}).pop()
@@ -779,7 +769,7 @@ class Orientation(Rotation):
 
         """
         if None in self.parameters:
-            raise KeyError('Missing crystal lattice parameters')
+            raise KeyError('missing crystal lattice parameters')
         return np.array([
                           [1,0,0],
                           [np.cos(self.gamma),np.sin(self.gamma),0],
@@ -835,7 +825,7 @@ class Orientation(Rotation):
 
         """
         if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors.')
+            raise ValueError('input is not a field of three-dimensional vectors')
 
         if self.family == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
@@ -938,7 +928,7 @@ class Orientation(Rotation):
 
         """
         if np.array(vector).shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors.')
+            raise ValueError('input is not a field of three-dimensional vectors')
 
         vector_ = self.to_SST(vector,proper) if in_SST else \
                   self @ np.broadcast_to(vector,self.shape+(3,))
@@ -1175,7 +1165,7 @@ class Orientation(Rotation):
 
         """
         if (direction is not None) ^ (plane is None):
-            raise KeyError('Specify either "direction" or "plane"')
+            raise KeyError('specify either "direction" or "plane"')
         axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
                       if plane is None else \
                       (np.array(plane),self.basis_real.T)
@@ -1200,7 +1190,7 @@ class Orientation(Rotation):
 
         """
         if (uvw is not None) ^ (hkl is None):
-            raise KeyError('Specify either "uvw" or "hkl"')
+            raise KeyError('specify either "uvw" or "hkl"')
         axis,basis  = (np.array(uvw),self.basis_real) \
                       if hkl is None else \
                       (np.array(hkl),self.basis_reciprocal)
@@ -1238,8 +1228,8 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        mode : str
-            Type of kinematics, i.e. 'slip' or 'twin'.
+        mode : {'slip', 'twin'}
+            Type of kinematics.
 
         Returns
         -------
@@ -1260,8 +1250,16 @@ class Orientation(Rotation):
                [ 0.000,  0.000,  0.000]])
 
         """
-        d = self.to_frame(uvw=self.kinematics[mode]['direction'],with_symmetry=False)
-        p = self.to_frame(hkl=self.kinematics[mode]['plane']    ,with_symmetry=False)
+        try:
+            master = lattice_.kinematics[self.lattice][mode]
+            kinematics = {'direction':master[:,0:3],'plane':master[:,3:6]} \
+                          if master.shape[-1] == 6 else \
+                         {'direction':lattice_.Bravais_to_Miller(uvtw=master[:,0:4]),
+                          'plane':    lattice_.Bravais_to_Miller(hkil=master[:,4:8])}
+        except KeyError:
+            raise (f'"{mode}" not defined for lattice "{self.lattice}"')
+        d = self.to_frame(uvw=kinematics['direction'],with_symmetry=False)
+        p = self.to_frame(hkl=kinematics['plane']    ,with_symmetry=False)
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
                                   p/np.linalg.norm(p,axis=-1,keepdims=True))
 
