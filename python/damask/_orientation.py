@@ -177,8 +177,8 @@ class Orientation(Rotation):
                 for m in master:
                     self.kinematics[m] = {'direction':master[m][:,0:3],'plane':master[m][:,3:6]} \
                                          if master[m].shape[-1] == 6 else \
-                                         {'direction':self.Bravais_to_Miller(uvtw=master[m][:,0:4]),
-                                          'plane':    self.Bravais_to_Miller(hkil=master[m][:,4:8])}
+                                         {'direction':lattice_.Bravais_to_Miller(uvtw=master[m][:,0:4]),
+                                          'plane':    lattice_.Bravais_to_Miller(hkil=master[m][:,4:8])}
         elif lattice in set(lattice_symmetries.values()):
             self.family  = lattice
             self.lattice = None
@@ -676,10 +676,10 @@ class Orientation(Rotation):
         o = r[ol]
 
         p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
-        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else self.Bravais_to_Miller(uvtw=m[...,0,0:4])
-        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else self.Bravais_to_Miller(hkil=m[...,1,0:4])
-        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else self.Bravais_to_Miller(uvtw=o[...,0,0:4])
-        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else self.Bravais_to_Miller(hkil=o[...,1,0:4])
+        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=m[...,0,0:4])
+        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=m[...,1,0:4])
+        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=o[...,0,0:4])
+        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=o[...,1,0:4])
 
         return (Rotation.from_parallel(p_,_p),ol) \
                 if return_lattice else \
@@ -1156,64 +1156,6 @@ class Orientation(Rotation):
                 if return_operators else
                 poles[ok][sort].reshape(blend[1:]+(3,))
                )
-
-
-    @classmethod
-    def Bravais_to_Miller(cls,*,uvtw=None,hkil=None):
-        """
-        Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
-
-        Parameters
-        ----------
-        uvtw|hkil : numpy.ndarray of shape (...,4)
-            Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
-
-        Returns
-        -------
-        uvw|hkl : numpy.ndarray of shape (...,3)
-            Miller indices of [uvw] direction or (hkl) plane normal.
-
-        """
-        if (uvtw is not None) ^ (hkil is None):
-            raise KeyError('Specify either "uvtw" or "hkil"')
-        axis,basis  = (np.array(uvtw),np.array([[1,0,-1,0],
-                                                [0,1,-1,0],
-                                                [0,0, 0,1]])) \
-                      if hkil is None else \
-                      (np.array(hkil),np.array([[1,0,0,0],
-                                                [0,1,0,0],
-                                                [0,0,0,1]]))
-        return np.einsum('il,...l',basis,axis)
-
-
-    @classmethod
-    def Miller_to_Bravais(cls,*,uvw=None,hkl=None):
-        """
-        Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
-
-        Parameters
-        ----------
-        uvw|hkl : numpy.ndarray of shape (...,3)
-            Miller indices of crystallographic direction [uvw] or plane normal (hkl).
-
-        Returns
-        -------
-        uvtw|hkil : numpy.ndarray of shape (...,4)
-            Miller–Bravais indices of [uvtw] direction or (hkil) plane normal.
-
-        """
-        if (uvw is not None) ^ (hkl is None):
-            raise KeyError('Specify either "uvw" or "hkl"')
-        axis,basis  = (np.array(uvw),np.array([[ 2,-1, 0],
-                                               [-1, 2, 0],
-                                               [-1,-1, 0],
-                                               [ 0, 0, 3]])/3) \
-                      if hkl is None else \
-                      (np.array(hkl),np.array([[ 1, 0, 0],
-                                               [ 0, 1, 0],
-                                               [-1,-1, 0],
-                                               [ 0, 0, 1]]))
-        return np.einsum('il,...l',basis,axis)
 
 
     def to_lattice(self,*,direction=None,plane=None):
