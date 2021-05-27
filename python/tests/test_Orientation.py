@@ -7,8 +7,8 @@ from damask import Orientation
 from damask import Table
 from damask import util
 from damask import grid_filters
-from damask import _lattice as lattice
-from damask._orientation import _crystal_families as crystal_families
+from damask import lattice
+from damask._orientation import crystal_families
 
 
 @pytest.fixture

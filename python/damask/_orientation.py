@@ -5,16 +5,16 @@ import numpy as np
 from . import Rotation
 from . import util
 from . import tensor
-from . import _lattice
+from . import lattice as lattice_
 
-_crystal_families = ['triclinic',
-                     'monoclinic',
-                     'orthorhombic',
-                     'tetragonal',
-                     'hexagonal',
-                     'cubic']
+crystal_families = ['triclinic',
+                    'monoclinic',
+                    'orthorhombic',
+                    'tetragonal',
+                    'hexagonal',
+                    'cubic']
 
-_lattice_symmetries = {
+lattice_symmetries = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -136,8 +136,8 @@ class Orientation(Rotation):
 
         self.kinematics = None
 
-        if lattice in _lattice_symmetries:
-            self.family  = _lattice_symmetries[lattice]
+        if lattice in lattice_symmetries:
+            self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
 
             self.a = 1 if a is None else a
@@ -177,15 +177,15 @@ class Orientation(Rotation):
               > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('Each lattice angle must be less than sum of others')
 
-            if self.lattice in _lattice.kinematics:
-                master = _lattice.kinematics[self.lattice]
+            if self.lattice in lattice_.kinematics:
+                master = lattice_.kinematics[self.lattice]
                 self.kinematics = {}
                 for m in master:
                     self.kinematics[m] = {'direction':master[m][:,0:3],'plane':master[m][:,3:6]} \
                                          if master[m].shape[-1] == 6 else \
                                          {'direction':self.Bravais_to_Miller(uvtw=master[m][:,0:4]),
                                           'plane':    self.Bravais_to_Miller(hkil=master[m][:,4:8])}
-        elif lattice in _crystal_families:
+        elif lattice in crystal_families:
             self.family  = lattice
             self.lattice = None
 
@@ -669,9 +669,9 @@ class Orientation(Rotation):
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        if model not in _lattice.relations:
+        if model not in lattice_.relations:
             raise KeyError(f'Orientation relationship "{model}" is unknown')
-        r = _lattice.relations[model]
+        r = lattice_.relations[model]
 
         if self.lattice not in r:
             raise KeyError(f'Relationship "{model}" not supported for lattice "{self.lattice}"')
