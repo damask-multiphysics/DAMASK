@@ -7,12 +7,6 @@ from . import util
 from . import tensor
 from . import lattice as lattice_
 
-crystal_families = ['triclinic',
-                    'monoclinic',
-                    'orthorhombic',
-                    'tetragonal',
-                    'hexagonal',
-                    'cubic']
 
 lattice_symmetries = {
                 'aP': 'triclinic',
@@ -185,7 +179,7 @@ class Orientation(Rotation):
                                          if master[m].shape[-1] == 6 else \
                                          {'direction':self.Bravais_to_Miller(uvtw=master[m][:,0:4]),
                                           'plane':    self.Bravais_to_Miller(hkil=master[m][:,4:8])}
-        elif lattice in crystal_families:
+        elif lattice in set(lattice_symmetries.values()):
             self.family  = lattice
             self.lattice = None
 
