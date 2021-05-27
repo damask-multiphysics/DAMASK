@@ -70,7 +70,6 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
           prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),&
                                                    phase%get_asString('lattice'))
         enddo
-        print*, prm%A
         end associate
       endif
     enddo

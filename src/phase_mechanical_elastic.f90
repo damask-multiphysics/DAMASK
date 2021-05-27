@@ -25,6 +25,9 @@ module subroutine elastic_init(phases)
 
 
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
+  print'(/,a)', ' <<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
+
+  print'(a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
   allocate(param(phases%length))
   
