@@ -947,18 +947,14 @@ subroutine crystallite_results(group,ph)
                                    'second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(ph))
-            case(lattice_ISO_ID)
-              structureLabel = 'aP'
             case(lattice_FCC_ID)
               structureLabel = 'cF'
             case(lattice_BCC_ID)
               structureLabel = 'cI'
-            case(lattice_BCT_ID)
-              structureLabel = 'tI'
             case(lattice_HEX_ID)
               structureLabel = 'hP'
-            case(lattice_ORT_ID)
-              structureLabel = 'oP'
+            case(lattice_BCT_ID)
+              structureLabel = 'tI'
           end select
           selected_rotations = select_rotations(crystallite_orientation,ph)
           call results_writeDataset(group//'/mechanical',selected_rotations,output_constituent(ph)%label(ou),&

@@ -19,7 +19,7 @@ module subroutine pass_init
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:pass init  -+>>>'
 
-  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_NONE_ID)
+  print'(a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_NONE_ID)
   flush(IO_STDOUT)
 
   do ho = 1, size(homogenization_type)

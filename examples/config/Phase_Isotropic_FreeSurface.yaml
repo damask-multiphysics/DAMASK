@@ -1,8 +1,8 @@
 FreeSurface:
-  lattice: aP
+  lattice: cI
   mechanical:
     output: [F, P, F_e, F_p, L_p]
-    elastic: {type: hooke, C_11: 1e8, C_12: 1e6}
+    elastic: {type: Hooke, C_11: 1e8, C_12: 1e6, C_44: 4.95e7}
     plastic:
       type: isotropic
       output: [xi]

@@ -36,9 +36,9 @@ phase:
     lattice: cF
     mechanics:
       output: [F, P, F_e, F_p, L_p]
-      elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
   Steel:
     lattice: cI
     mechanics:
       output: [F, P, F_e, F_p, L_p]
-      elasticity: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: hooke}
+      elasticity: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: Hooke}
