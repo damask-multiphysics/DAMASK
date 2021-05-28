@@ -26,6 +26,8 @@ from . import util
 
 h5py3 = h5py.__version__[0] == '3'
 
+chunk_size = 1024**2//8                                                                             # for compression in HDF5
+
 
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -1124,8 +1126,8 @@ class Result:
                 'label': f"{t}({F['label']})",
                 'meta':  {
                           'unit':        F['meta']['unit'],
-                          'description': '{} stretch tensor of {} ({})'.format('left' if t.upper() == 'V' else 'right',
-                                                                               F['label'],F['meta']['description']),
+                          'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "\
+                                        +f"of {F['label']} ({F['meta']['description']})",
                           'creator':     'add_stretch_tensor'
                           }
                  }
@@ -1145,7 +1147,7 @@ class Result:
         self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
 
 
-    def _job(self,group,func,datasets,args,lock):
+    def _job_pointwise(self,group,func,datasets,args,lock):
         """Execute job for _add_generic_pointwise."""
         try:
             datasets_in = {}
@@ -1163,7 +1165,6 @@ class Result:
             print(f'Error during calculation: {err}.')
             return None
 
-
     def _add_generic_pointwise(self,func,datasets,args={}):
         """
         General function to add pointwise data.
@@ -1180,7 +1181,6 @@ class Result:
             Arguments parsed to func.
 
         """
-        chunk_size = 1024**2//8
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
         lock = mp.Manager().Lock()
 
@@ -1197,34 +1197,34 @@ class Result:
             print('No matching dataset found, no data was added.')
             return
 
-        default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
+        default_arg = partial(self._job_pointwise,func=func,datasets=datasets,args=args,lock=lock)
 
-        for result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
+        for group,result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
             if not result:
                 continue
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
-                    if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
-                        dataset = f[result[0]+'/'+result[1]['label']]
-                        dataset[...] = result[1]['data']
+                    if self._allow_modification and '/'.join([group,result['label']]) in f:
+                        dataset = f['/'.join([group,result['label']])]
+                        dataset[...] = result['data']
                         dataset.attrs['overwritten'] = True
                     else:
-                        if result[1]['data'].size >= chunk_size*2:
-                            shape  = result[1]['data'].shape
+                        if result['data'].size >= chunk_size*2:
+                            shape  = result['data'].shape
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
-                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
-                                                                  maxshape=shape, chunks=chunks,
-                                                                  compression='gzip', compression_opts=6,
-                                                                  shuffle=True,fletcher32=True)
+                            dataset = f[group].create_dataset(result['label'],data=result['data'],
+                                                              maxshape=shape, chunks=chunks,
+                                                              compression='gzip', compression_opts=6,
+                                                              shuffle=True,fletcher32=True)
                         else:
-                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                            dataset = f[group].create_dataset(result['label'],data=result['data'])
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
                                                now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
-                    for l,v in result[1]['meta'].items():
+                    for l,v in result['meta'].items():
                         dataset.attrs[l.lower()]=v if h5py3 else v.encode()
                     creator = dataset.attrs['creator'] if h5py3 else \
                               dataset.attrs['creator'].decode()
