@@ -193,13 +193,8 @@ module subroutine mechanical_init(materials,phases)
     phases
 
   integer :: &
-    el, &
-    ip, &
-    co, &
-    ce, &
     ph, &
     en, &
-    stiffDegradationCtr, &
     Nmembers
   class(tNode), pointer :: &
     num_crystallite, &

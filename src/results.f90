@@ -595,7 +595,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, i, ce
+  integer         :: hdferr, ierr, ce
 
 
   writeSize = 0
