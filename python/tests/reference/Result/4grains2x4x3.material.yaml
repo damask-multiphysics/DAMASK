@@ -641,7 +641,7 @@ phase:
     lattice: cF
     mechanical:
       output: [F, F_e, F_p, L_p]
-      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
       plastic:
         N_sl: [12]
         a_sl: 2.25
@@ -658,7 +658,7 @@ phase:
     lattice: cI
     mechanical:
       output: [F, P, F_e, F_p, L_p, O]
-      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}
       plastic:
         N_sl: [12]
         a_sl: 2.25
@@ -675,4 +675,4 @@ phase:
     lattice: cI
     mechanical:
       output: [F]
-      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
+      elastic: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: Hooke}

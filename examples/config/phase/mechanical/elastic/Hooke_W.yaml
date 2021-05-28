@@ -1,0 +1,8 @@
+type: Hooke
+references:
+  - D. Cereceda et al.,
+    International Journal of Plasticity, 78, 242-265, 2016,
+    10.1016/j.ijplas.2015.09.002
+C_11: 523.e9
+C_12: 202.e9
+C_44: 161.e9

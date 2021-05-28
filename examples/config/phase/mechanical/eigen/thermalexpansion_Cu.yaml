@@ -1,0 +1,5 @@
+type: thermalexpansion
+references:
+  - en.wikipedia.org/wiki/Thermal_expansion
+A_11: [17e-6]
+T_ref: 293.15

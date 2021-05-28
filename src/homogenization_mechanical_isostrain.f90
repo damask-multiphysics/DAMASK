@@ -19,7 +19,7 @@ module subroutine isostrain_init
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:isostrain init  -+>>>'
 
-  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
+  print'(a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   flush(IO_STDOUT)
 
   do ho = 1, size(homogenization_type)

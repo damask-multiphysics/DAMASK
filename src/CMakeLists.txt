@@ -14,23 +14,23 @@ list(FILTER damask-sources EXCLUDE REGEX ".*commercialFEM_fileList.*.f90")
 
 if (PROJECT_NAME STREQUAL "damask-grid")
 
-      file(GLOB grid-sources grid/*.f90)
+    file(GLOB grid-sources grid/*.f90)
 
-      if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
+    if (NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
         add_executable(DAMASK_grid ${damask-sources} ${grid-sources})
         install (TARGETS DAMASK_grid RUNTIME DESTINATION bin)
-      else()
+    else ()
         add_library(DAMASK_grid OBJECT ${damask-sources} ${grid-sources})
         exec_program (mktemp OUTPUT_VARIABLE nothing)
         exec_program (mktemp ARGS -d OUTPUT_VARIABLE black_hole)
         install (PROGRAMS ${nothing} DESTINATION ${black_hole})
-      endif()
+    endif ()
 
 elseif (PROJECT_NAME STREQUAL "damask-mesh")
       
-      file(GLOB mesh-sources mesh/*.f90)
+    file(GLOB mesh-sources mesh/*.f90)
 
-      add_executable(DAMASK_mesh ${damask-sources} ${mesh-sources})
-      install (TARGETS DAMASK_mesh RUNTIME DESTINATION bin)
+    add_executable(DAMASK_mesh ${damask-sources} ${mesh-sources})
+    install (TARGETS DAMASK_mesh RUNTIME DESTINATION bin)
       
-endif()
+endif ()

@@ -100,11 +100,9 @@ module subroutine thermal_init(phases)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
     phase => phases%get(ph)
     thermal => phase%get('thermal',defaultVal=emptyDict)
-    param(ph)%C_p = thermal%get_asFloat('c_p',defaultVal=0.0_pReal)
-    if (param(ph)%C_p <= 0) param(ph)%C_p = thermal%get_asFloat('C_p',defaultVal=0.0_pReal)
-    param(ph)%K(1,1) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
-    param(ph)%K(2,2) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
-    param(ph)%K(3,3) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
+    param(ph)%C_p = thermal%get_asFloat('C_p',defaultVal=0.0_pReal)
+    param(ph)%K(1,1) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)                             ! ToDo: make mandatory?
+    param(ph)%K(3,3) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)                             ! ToDo: depends on symmtery
     param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase%get_asString('lattice'))
 
     sources => thermal%get('source',defaultVal=emptyList)

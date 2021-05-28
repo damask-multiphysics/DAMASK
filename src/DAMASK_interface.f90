@@ -96,15 +96,10 @@ subroutine DAMASK_interface_init
 
   print'(/,a)', ' Version: '//DAMASKVERSION
 
-  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-#if defined(__PGI)
-  print'(/,a,i4.4,a,i8.8)',   ' Compiled with PGI fortran version :', __PGIC__,&
-                                                                    '.', __PGIC_MINOR__
-#else
   print'(/,a)', ' Compiled with: '//compiler_version()
   print'(a)',   ' Compiler options: '//compiler_options()
-#endif
 
+  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
   print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
 
   print'(/,a,i0,a,i0,a,i0)', &

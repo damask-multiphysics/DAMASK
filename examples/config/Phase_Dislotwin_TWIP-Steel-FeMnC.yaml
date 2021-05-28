@@ -1,7 +1,7 @@
 TWIP_Steel_FeMnC:
   lattice: cF
   mechanical:
-    elastic: {type: hooke, C_11: 175.0e9, C_12: 115.0e9, C_44: 135.0e9}
+    elastic: {type: Hooke, C_11: 175.0e9, C_12: 115.0e9, C_44: 135.0e9}
     plastic:
       type: dislotwin
       output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, tau_hat_tw, f_tr]

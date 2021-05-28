@@ -4,7 +4,7 @@
 Martensite:
   lattice: cI
   mechanical:
-    elastic: {C_11: 417.4e9, C_12: 242.4e9, C_44: 211.1e9, type: hooke}
+    elastic: {C_11: 417.4e9, C_12: 242.4e9, C_44: 211.1e9, type: Hooke}
     plastic:
       N_sl: [12, 12]
       a_sl: 2.0

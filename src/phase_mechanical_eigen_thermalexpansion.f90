@@ -33,14 +33,15 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     kinematics, &
     kinematic_type
 
   print'(/,a)', ' <<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
 
-  myKinematics = kinematics_active('thermal_expansion',kinematics_length)
+  myKinematics = kinematics_active('thermalexpansion',kinematics_length)
   Ninstances = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  print'(a,i2)', ' # phases: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
 
   phases => config_material%get('phase')
@@ -51,7 +52,8 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
     if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
-    kinematics => phase%get('kinematics')
+    mech => phase%get('mechanical')
+    kinematics => mech%get('eigen')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
@@ -62,15 +64,12 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
         ! read up to three parameters (constant, linear, quadratic with T)
         temp = kinematic_type%get_as1dFloat('A_11')
         prm%A(1,1,1:size(temp)) = temp
-        temp = kinematic_type%get_as1dFloat('A_22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-        prm%A(2,2,1:size(temp)) = temp
         temp = kinematic_type%get_as1dFloat('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
         prm%A(3,3,1:size(temp)) = temp
         do i=1, size(prm%A,3)
           prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),&
                                                    phase%get_asString('lattice'))
         enddo
-
         end associate
       endif
     enddo
@@ -93,21 +92,22 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   real(pReal) :: T, dot_T
 
+  
   T     = thermal_T(ph,me)
   dot_T = thermal_dot_T(ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
     Li = dot_T * ( &
-                  prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
-                + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
-                + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient
+                  prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                             ! constant  coefficient
+                + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                             ! linear    coefficient
+                + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                             ! quadratic coefficient
                 ) / &
          (1.0_pReal &
                + prm%A(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
                + prm%A(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
                + prm%A(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
          )
-    end associate
+  end associate
   dLi_dTstar = 0.0_pReal
 
 end subroutine thermalexpansion_LiAndItsTangent

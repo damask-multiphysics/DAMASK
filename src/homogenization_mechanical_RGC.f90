@@ -89,7 +89,7 @@ module subroutine RGC_init(num_homogMech)
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:RGC init  -+>>>'
 
-  print'(a,i2)', ' # instances: ',count(homogenization_type == HOMOGENIZATION_RGC_ID)
+  print'(a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_RGC_ID)
   flush(IO_STDOUT)
 
   print*, 'D.D. Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'

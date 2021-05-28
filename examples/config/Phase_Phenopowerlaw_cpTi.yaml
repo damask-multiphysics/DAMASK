@@ -6,7 +6,7 @@ cpTi:
   c/a: 1.587
   mechanical:
     output: [F, P, F_e, F_p, L_p, O]
-    elastic: {C_11: 160.0e9, C_12: 90.0e9, C_13: 66.0e9, C_33: 181.7e9, C_44: 46.5e9, type: hooke}
+    elastic: {C_11: 160.0e9, C_12: 90.0e9, C_13: 66.0e9, C_33: 181.7e9, C_44: 46.5e9, type: Hooke}
     plastic:
       N_sl: [3, 3, 0, 6, 12]
       a_sl: 2.0
