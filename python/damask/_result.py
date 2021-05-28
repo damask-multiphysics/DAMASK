@@ -109,10 +109,8 @@ class Result:
                 self.cells  = f['geometry'].attrs['cells']
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
-
-                self.add_divergence = self._add_divergence
-                self.add_curl       = self._add_curl
-                self.add_gradient   = self._add_gradient
+            else:
+                self.add_curl = self.add_divergence = self.add_gradient = None
 
             r=re.compile('increment_[0-9]+')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
@@ -1152,7 +1150,7 @@ class Result:
 
 
     @staticmethod
-    def _add_curl_(f,size):
+    def _add_curl(f,size):
         return {
                 'data':  grid_filters.curl(size,f['data']),
                 'label': f"curl({f['label']})",
@@ -1162,7 +1160,7 @@ class Result:
                           'creator':     'add_curl'
                           }
                  }
-    def _add_curl(self,f):
+    def add_curl(self,f):
         """
         Add curl of a field.
 
@@ -1171,12 +1169,17 @@ class Result:
         f : str
             Name of vector or tensor field dataset.
 
+        Notes
+        -----
+        This function is only available for structured grids,
+        i.e. results from the grid solver.
+
         """
-        self._add_generic_grid(self._add_curl_,{'f':f},{'size':self.size})
+        self._add_generic_grid(self._add_curl,{'f':f},{'size':self.size})
 
 
     @staticmethod
-    def _add_divergence_(f,size):
+    def _add_divergence(f,size):
         return {
                 'data':  grid_filters.divergence(size,f['data']),
                 'label': f"divergence({f['label']})",
@@ -1186,7 +1189,7 @@ class Result:
                           'creator':     'add_divergence'
                           }
                  }
-    def _add_divergence(self,f):
+    def add_divergence(self,f):
         """
         Add divergence of a field.
 
@@ -1195,12 +1198,17 @@ class Result:
         f : str
             Name of vector or tensor field dataset.
 
+        Notes
+        -----
+        This function is only available for structured grids,
+        i.e. results from the grid solver.
+
         """
-        self._add_generic_grid(self._add_divergence_,{'f':f},{'size':self.size})
+        self._add_generic_grid(self._add_divergence,{'f':f},{'size':self.size})
 
 
     @staticmethod
-    def _add_gradient_(f,size):
+    def _add_gradient(f,size):
         return {
                 'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
                                                     f['data'].reshape(f['data'].shape+(1,))),
@@ -1211,7 +1219,7 @@ class Result:
                           'creator':     'add_gradient'
                           }
                  }
-    def _add_gradient(self,f):
+    def add_gradient(self,f):
         """
         Add gradient of a field.
 
@@ -1220,8 +1228,13 @@ class Result:
         f : str
             Name of scalar or vector field dataset.
 
+        Notes
+        -----
+        This function is only available for structured grids,
+        i.e. results from the grid solver.
+
         """
-        self._add_generic_grid(self._add_gradient_,{'f':f},{'size':self.size})
+        self._add_generic_grid(self._add_gradient,{'f':f},{'size':self.size})
 
 
     def _add_generic_grid(self,func,datasets,args={},constituents=None):
