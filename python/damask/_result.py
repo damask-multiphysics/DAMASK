@@ -110,6 +110,10 @@ class Result:
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
 
+                self.add_divergence = self._add_divergence
+                self.add_curl       = self._add_curl
+                self.add_gradient   = self._add_gradient
+
             r=re.compile('increment_[0-9]+')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
             self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
@@ -1127,7 +1131,7 @@ class Result:
                 'meta':  {
                           'unit':        F['meta']['unit'],
                           'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "\
-                                        +f"of {F['label']} ({F['meta']['description']})",
+                                        +f"of {F['label']} ({F['meta']['description']})",           # noqa
                           'creator':     'add_stretch_tensor'
                           }
                  }
@@ -1147,6 +1151,132 @@ class Result:
         self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
 
 
+    @staticmethod
+    def _add_curl_(f,size):
+        return {
+                'data':  grid_filters.curl(size,f['data']),
+                'label': f"curl({f['label']})",
+                'meta':  {
+                          'unit':        f['meta']['unit']+'/m',
+                          'description': f"curl of {f['label']} ({f['meta']['description']})",
+                          'creator':     'add_curl'
+                          }
+                 }
+    def _add_curl(self,f):
+        """
+        Add curl of a field.
+
+        Parameters
+        ----------
+        f : str
+            Name of vector or tensor field dataset.
+
+        """
+        self._add_generic_grid(self._add_curl_,{'f':f},{'size':self.size})
+
+
+    @staticmethod
+    def _add_divergence_(f,size):
+        return {
+                'data':  grid_filters.divergence(size,f['data']),
+                'label': f"divergence({f['label']})",
+                'meta':  {
+                          'unit':        f['meta']['unit']+'/m',
+                          'description': f"divergence of {f['label']} ({f['meta']['description']})",
+                          'creator':     'add_divergence'
+                          }
+                 }
+    def _add_divergence(self,f):
+        """
+        Add divergence of a field.
+
+        Parameters
+        ----------
+        f : str
+            Name of vector or tensor field dataset.
+
+        """
+        self._add_generic_grid(self._add_divergence_,{'f':f},{'size':self.size})
+
+
+    @staticmethod
+    def _add_gradient_(f,size):
+        return {
+                'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
+                                                    f['data'].reshape(f['data'].shape+(1,))),
+                'label': f"gradient({f['label']})",
+                'meta':  {
+                          'unit':        f['meta']['unit']+'/m',
+                          'description': f"gradient of {f['label']} ({f['meta']['description']})",
+                          'creator':     'add_gradient'
+                          }
+                 }
+    def _add_gradient(self,f):
+        """
+        Add gradient of a field.
+
+        Parameters
+        ----------
+        f : str
+            Name of scalar or vector field dataset.
+
+        """
+        self._add_generic_grid(self._add_gradient_,{'f':f},{'size':self.size})
+
+
+    def _add_generic_grid(self,func,datasets,args={},constituents=None):
+        """
+        General function to add data on a regular grid.
+
+        Parameters
+        ----------
+        func : function
+            Callback function that calculates a new dataset from one or
+            more datasets per HDF5 group.
+        datasets : dictionary
+            Details of the datasets to be used:
+            {arg (name to which the data is passed in func): label (in HDF5 file)}.
+        args : dictionary, optional
+            Arguments parsed to func.
+
+        """
+        if len(datasets) != 1 or self.N_constituents !=1:
+            raise NotImplementedError
+
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
+
+        with h5py.File(self.fname, 'a') as f:
+            for increment in self.place(datasets.values(),False).items():
+                for ty in increment[1].items():
+                    for field in ty[1].items():
+                        d = list(field[1].values())[0]
+                        if np.any(d.mask): continue
+                        dataset = {'f':{'data':np.reshape(d.data,tuple(self.cells)+d.data.shape[1:]),
+                                        'label':list(datasets.values())[0],
+                                        'meta':d.data.dtype.metadata}}
+                        r = func(**dataset,**args)
+                        result = r['data'].reshape((-1,)+r['data'].shape[3:])
+                        for x in self.visible[ty[0]+'s']:
+                            if ty[0] == 'phase':
+                                result1 = result[at_cell_ph[0][x]]
+                            if ty[0] == 'homogenization':
+                                result1 = result[at_cell_ho[x]]
+
+                            path = '/'.join(['/',increment[0],ty[0],x,field[0]])
+                            dataset = f[path].create_dataset(r['label'],data=result1)
+
+                            now = datetime.datetime.now().astimezone()
+                            dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
+                                                       now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+
+                            for l,v in r['meta'].items():
+                                dataset.attrs[l.lower()]=v if h5py3 else v.encode()
+                            creator = dataset.attrs['creator'] if h5py3 else \
+                                      dataset.attrs['creator'].decode()
+                            dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
+                                                       f'damask.Result.{creator} v{damask.version}'.encode()
+
+
     def _job_pointwise(self,group,func,datasets,args,lock):
         """Execute job for _add_generic_pointwise."""
         try:
@@ -1163,7 +1293,7 @@ class Result:
             return [group,r]
         except Exception as err:
             print(f'Error during calculation: {err}.')
-            return None
+            return [None,None]
 
     def _add_generic_pointwise(self,func,datasets,args={}):
         """

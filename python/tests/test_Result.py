@@ -269,6 +269,38 @@ class TestResult:
         with pytest.raises(TypeError):
             default.add_calculation('#invalid#*2')
 
+
+    @pytest.mark.parametrize('shape',['vector','tensor'])
+    def test_add_curl(self,default,shape):
+        if shape == 'vector': default.add_calculation('#F#[:,:,0]','x','1','just a vector')
+        if shape == 'tensor': default.add_calculation('#F#[:,:,:]','x','1','just a tensor')
+        x = default.place('x')
+        default.add_curl('x')
+        in_file   = default.place('curl(x)')
+        in_memory = grid_filters.curl(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
+        assert (in_file==in_memory).all()
+
+    @pytest.mark.parametrize('shape',['vector','tensor'])
+    def test_add_divergence(self,default,shape):
+        if shape == 'vector': default.add_calculation('#F#[:,:,0]','x','1','just a vector')
+        if shape == 'tensor': default.add_calculation('#F#[:,:,:]','x','1','just a tensor')
+        x = default.place('x')
+        default.add_divergence('x')
+        in_file   = default.place('divergence(x)')
+        in_memory = grid_filters.divergence(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
+        assert (in_file==in_memory).all()
+
+    @pytest.mark.parametrize('shape',['scalar','pseudo_scalar','vector'])
+    def test_add_gradient(self,default,shape):
+        if shape == 'pseudo_scalar': default.add_calculation('#F#[:,0,0:1]','x','1','a pseudo scalar')
+        if shape == 'scalar': default.add_calculation('#F#[:,0,0]','x','1','just a scalar')
+        if shape == 'vector': default.add_calculation('#F#[:,:,1]','x','1','just a vector')
+        x = default.place('x').reshape((np.product(default.cells),-1))
+        default.add_gradient('x')
+        in_file   = default.place('gradient(x)')
+        in_memory = grid_filters.gradient(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
+        assert (in_file==in_memory).all()
+
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
         last = default.view('increments',-1)
