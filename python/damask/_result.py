@@ -187,12 +187,14 @@ class Result:
         choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
 
-        if   what == 'increments':
+        what_ = what if what.endswith('s') else what+'s'
+
+        if   what_ == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('increment_') else
                       self.increments[c] if isinstance(c,int) and c<0 else
                       f'increment_{c}' for c in choice]
-        elif what == 'times':
-            what = 'increments'
+        elif what_ == 'times':
+            what_ = 'increments'
             if choice == ['*']:
                 choice = self.increments
             else:
@@ -206,18 +208,18 @@ class Result:
                     elif np.isclose(c,self.times[idx+1]):
                         choice.append(self.increments[idx+1])
 
-        valid = _match(choice,getattr(self,what))
-        existing = set(self.visible[what])
+        valid = _match(choice,getattr(self,what_))
+        existing = set(self.visible[what_])
 
         dup = self.copy()
         if   action == 'set':
-            dup.visible[what] = sorted(set(valid), key=util.natural_sort)
+            dup.visible[what_] = sorted(set(valid), key=util.natural_sort)
         elif action == 'add':
             add = existing.union(valid)
-            dup.visible[what] = sorted(add, key=util.natural_sort)
+            dup.visible[what_] = sorted(add, key=util.natural_sort)
         elif action == 'del':
             diff = existing.difference(valid)
-            dup.visible[what] = sorted(diff, key=util.natural_sort)
+            dup.visible[what_] = sorted(diff, key=util.natural_sort)
 
         return dup
 
