@@ -7,7 +7,6 @@ import numpy as np
 import yaml
 
 from . import Rotation
-from . import Orientation
 
 class NiceDumper(yaml.SafeDumper):
     """Make YAML readable for humans."""
@@ -25,8 +24,10 @@ class NiceDumper(yaml.SafeDumper):
         """Cast Config objects and its subclasses to dict."""
         if isinstance(data, dict) and type(data) != dict:
             return self.represent_data(dict(data))
-        if isinstance(data, (Rotation, Orientation)):
-            return self.represent_data(data.as_quaternion())
+        if isinstance(data, np.ndarray):
+            return self.represent_data(data.tolist())
+        if isinstance(data, Rotation):
+            return self.represent_data(data.quaternion.tolist())
         else:
             return super().represent_data(data)
 
