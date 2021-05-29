@@ -49,10 +49,12 @@ class TestConfig:
         assert Config({'A':np.ones(3,'i')}).__repr__() == Config({'A':[1,1,1]}).__repr__()
 
     def test_abstract_is_valid(self):
-        assert Config().is_valid is None
+        with pytest.raises(NotImplementedError):
+            Config().is_valid
 
     def test_abstract_is_complete(self):
-        assert Config().is_complete is None
+        with pytest.raises(NotImplementedError):
+            Config().is_complete
 
     @pytest.mark.parametrize('data',[Rotation.from_random(),Orientation.from_random(lattice='cI')])
     def test_rotation_orientation(self,data):
