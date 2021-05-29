@@ -415,16 +415,15 @@ end subroutine results_writeTensorDataset_int
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
+subroutine results_mapping_phase(ID,entry,label)
 
-  integer,          dimension(:,:),   intent(in) :: phaseAt                                         !< phase section at (constituent,element)
-  integer,          dimension(:,:,:), intent(in) :: memberAtLocal                                   !< phase member at (constituent,IP,element)
-  character(len=*), dimension(:),     intent(in) :: label                                           !< label of each phase section
+  integer,          dimension(:,:), intent(in) :: ID                                                !< phase ID at (co,ce)
+  integer,          dimension(:,:), intent(in) :: entry                                             !< phase entry at (co,ce)
+  character(len=*), dimension(:),   intent(in) :: label                                             !< label of each phase section
 
-  integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2),size(memberAtLocal,3)) :: &
-    phaseAtMaterialpoint, &
-    memberAtGlobal
-  integer, dimension(size(label),0:worldsize-1) :: memberOffset                                     !< offset in member counting per process
+  integer, dimension(size(entry,1),size(entry,2)) :: &
+    entryGlobal
+  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
@@ -443,51 +442,48 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, i
+  integer         :: hdferr, ierr, ce, co
 
-!--------------------------------------------------------------------------------------------------
-! prepare MPI communication (transparent for non-MPI runs)
+
+  writeSize = 0
+  writeSize(worldrank) = size(entry(1,:))                                                           ! total number of entries of this process
+
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  memberOffset = 0
-  do i=1, size(label)
-    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                           ! number of points/instance of this process
-  enddo
-  writeSize = 0
-  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                 ! total number of points by this process
 
+#ifndef PETSc
+  entryGlobal = entry -1                                                                            ! 0-based
+#else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
-#ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
-  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  entryOffset = 0
+  do co = 1, size(ID,1)
+    do ce = 1, size(ID,2)
+      entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
+    enddo
+  enddo
+  call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
+  entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
+  do co = 1, size(ID,1)
+    do ce = 1, size(ID,2)
+      entryGlobal(co,ce) = entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank)
+    enddo
+  enddo
 #endif
 
-  myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
-  myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
-  totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
-
-
-!---------------------------------------------------------------------------------------------------
-! expand phaseAt to consider IPs (is not stored per IP)
-  do i = 1, size(phaseAtMaterialpoint,2)
-    phaseAtMaterialpoint(:,i,:) = phaseAt
-  enddo
+  myShape = int([size(ID,1),writeSize(worldrank)], HSIZE_T)
+  myOffset = int([0,sum(writeSize(0:worldrank-1))], HSIZE_T)
+  totalShape = int([size(ID,1),sum(writeSize)], HSIZE_T)
 
 !---------------------------------------------------------------------------------------------------
-! renumber member from my process to all processes
-  do i = 1, size(label)
-    where(phaseAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
-  enddo
-
-!---------------------------------------------------------------------------------------------------
-! compound type: name of phase section + position/index within results array
+! compound type: label(ID) + entry
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
@@ -540,10 +536,10 @@ subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
   call h5dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5dwrite_f(dset_id, label_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
+  call h5dwrite_f(dset_id, label_id, reshape(label(pack(ID,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5dwrite_f(dset_id, entry_id, reshape(pack(memberAtGlobal,.true.),myShape), &
+  call h5dwrite_f(dset_id, entry_id, reshape(pack(entryGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -572,16 +568,15 @@ end subroutine results_mapping_phase
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
+subroutine results_mapping_homogenization(ID,entry,label)
 
-  integer,          dimension(:),   intent(in) :: homogenizationAt                                  !< homogenization section at (element)
-  integer,          dimension(:,:), intent(in) :: memberAtLocal                                     !< homogenization member at (IP,element)
-  character(len=*), dimension(:),   intent(in) :: label                                             !< label of each homogenization section
+  integer,          dimension(:), intent(in) :: ID                                                  !< homogenization ID at (ce)
+  integer,          dimension(:), intent(in) :: entry                                               !< homogenization entry at (ce)
+  character(len=*), dimension(:), intent(in) :: label                                               !< label of each homogenization section
 
-  integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2)) :: &
-    homogenizationAtMaterialpoint, &
-    memberAtGlobal
-  integer, dimension(size(label),0:worldsize-1) :: memberOffset                                     !< offset in member counting per process
+  integer, dimension(size(entry,1)) :: &
+    entryGlobal
+  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
   integer(HSIZE_T), dimension(1) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
@@ -600,52 +595,44 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, i
+  integer         :: hdferr, ierr, ce
 
 
-!--------------------------------------------------------------------------------------------------
-! prepare MPI communication (transparent for non-MPI runs)
+  writeSize = 0
+  writeSize(worldrank) = size(entry)                                                                ! total number of entries of this process
+
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  memberOffset = 0
-  do i=1, size(label)
-    memberOffset(i,worldrank) = count(homogenizationAt == i)*size(memberAtLocal,1)                  ! number of points/instance of this process
-  enddo
-  writeSize = 0
-  writeSize(worldrank) = size(memberAtLocal)                                                        ! total number of points by this process
 
+#ifndef PETSc
+  entryGlobal = entry -1                                                                            ! 0-based
+#else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
-#ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
-  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  entryOffset = 0
+  do ce = 1, size(ID,1)
+    entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
+  enddo
+  call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
+  entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
+  do ce = 1, size(ID,1)
+    entryGlobal(ce) = entry(ce) -1 + entryOffset(ID(ce),worldrank)
+  enddo
 #endif
 
-  myShape    = int([writeSize(worldrank)],          HSIZE_T)
-  myOffset   = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
-  totalShape = int([sum(writeSize)],                HSIZE_T)
-
-
-!---------------------------------------------------------------------------------------------------
-! expand phaseAt to consider IPs (is not stored per IP)
-  do i = 1, size(homogenizationAtMaterialpoint,1)
-    homogenizationAtMaterialpoint(i,:) = homogenizationAt
-  enddo
+  myShape = int([writeSize(worldrank)], HSIZE_T)
+  myOffset = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
+  totalShape = int([sum(writeSize)], HSIZE_T)
 
 !---------------------------------------------------------------------------------------------------
-! renumber member from my process to all processes
-  do i = 1, size(label)
-    where(homogenizationAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
-  enddo
-
-!---------------------------------------------------------------------------------------------------
-! compound type: name of phase section + position/index within results array
+! compound type: label(ID) + entry
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
@@ -698,10 +685,10 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5dwrite_f(dset_id, label_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
+  call h5dwrite_f(dset_id, label_id, reshape(label(pack(ID,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5dwrite_f(dset_id, entry_id, reshape(pack(memberAtGlobal,.true.),myShape), &
+  call h5dwrite_f(dset_id, entry_id, reshape(pack(entryGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
@@ -733,19 +720,18 @@ end subroutine results_mapping_homogenization
 !--------------------------------------------------------------------------------------------------
 subroutine executionStamp(path,description,SIunit)
 
-
   character(len=*), intent(in)           :: path,description
   character(len=*), intent(in), optional :: SIunit
 
 
   if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'description',description,path)
-  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
-    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
-  if (HDF5_objectExists(resultsFile,path)) &
     call HDF5_addAttribute(resultsFile,'creator','DAMASK '//DAMASKVERSION,path)
   if (HDF5_objectExists(resultsFile,path)) &
     call HDF5_addAttribute(resultsFile,'created',now(),path)
+  if (HDF5_objectExists(resultsFile,path)) &
+    call HDF5_addAttribute(resultsFile,'description',description,path)
+  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
+    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
 
 end subroutine executionStamp
 

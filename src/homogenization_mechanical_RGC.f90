@@ -78,7 +78,7 @@ module subroutine RGC_init(num_homogMech)
 
   integer :: &
     ho, &
-    Nmaterialpoints, &
+    Nmembers, &
     sizeState, nIntFaceTot
 
   class (tNode), pointer :: &
@@ -161,28 +161,28 @@ module subroutine RGC_init(num_homogMech)
     prm%D_alpha  = homogMech%get_as1dFloat('D_alpha', requiredSize=3)
     prm%a_g      = homogMech%get_as1dFloat('a_g',     requiredSize=3)
 
-    Nmaterialpoints = count(material_homogenizationAt == ho)
+    Nmembers = count(material_homogenizationID == ho)
     nIntFaceTot = 3*(  (prm%N_constituents(1)-1)*prm%N_constituents(2)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*(prm%N_constituents(2)-1)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*prm%N_constituents(2)*(prm%N_constituents(3)-1))
     sizeState = nIntFaceTot
 
     homogState(ho)%sizeState = sizeState
-    allocate(homogState(ho)%state0   (sizeState,Nmaterialpoints), source=0.0_pReal)
-    allocate(homogState(ho)%state    (sizeState,Nmaterialpoints), source=0.0_pReal)
+    allocate(homogState(ho)%state0   (sizeState,Nmembers), source=0.0_pReal)
+    allocate(homogState(ho)%state    (sizeState,Nmembers), source=0.0_pReal)
 
     stt%relaxationVector   => homogState(ho)%state(1:nIntFaceTot,:)
     st0%relaxationVector   => homogState(ho)%state0(1:nIntFaceTot,:)
 
-    allocate(dst%volumeDiscrepancy(   Nmaterialpoints), source=0.0_pReal)
-    allocate(dst%relaxationRate_avg(  Nmaterialpoints), source=0.0_pReal)
-    allocate(dst%relaxationRate_max(  Nmaterialpoints), source=0.0_pReal)
-    allocate(dst%mismatch(          3,Nmaterialpoints), source=0.0_pReal)
+    allocate(dst%volumeDiscrepancy(   Nmembers), source=0.0_pReal)
+    allocate(dst%relaxationRate_avg(  Nmembers), source=0.0_pReal)
+    allocate(dst%relaxationRate_max(  Nmembers), source=0.0_pReal)
+    allocate(dst%mismatch(          3,Nmembers), source=0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
-    dependentState(ho)%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints)
-    !dst%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints) ifort version 18.0.1 crashes (for whatever reason)
+    dependentState(ho)%orientation = spread(eu2om(prm%a_g*inRad),3,Nmembers)
+    !dst%orientation = spread(eu2om(prm%a_g*inRad),3,Nmembers) ifort version 18.0.1 crashes (for whatever reason)
 
     end associate
 

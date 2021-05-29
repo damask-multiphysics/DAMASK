@@ -15,7 +15,7 @@ module subroutine pass_init
 
   integer :: &
     ho, &
-    Nmaterialpoints
+    Nmembers
 
   print'(/,a)', ' <<<+-  homogenization:mechanical:pass init  -+>>>'
 
@@ -28,10 +28,10 @@ module subroutine pass_init
     if(homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='N_constituents (pass)')
 
-    Nmaterialpoints = count(material_homogenizationAt == ho)
+    Nmembers = count(material_homogenizationID == ho)
     homogState(ho)%sizeState = 0
-    allocate(homogState(ho)%state0(0,Nmaterialpoints))
-    allocate(homogState(ho)%state (0,Nmaterialpoints))
+    allocate(homogState(ho)%state0(0,Nmembers))
+    allocate(homogState(ho)%state (0,Nmembers))
 
   enddo
 

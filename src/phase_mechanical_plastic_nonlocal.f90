@@ -506,7 +506,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
     end associate
 
     if (Nmembers > 0) call stateInit(ini,ph,Nmembers)
-    plasticState(ph)%state0 = plasticState(ph)%state
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -623,7 +622,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
 
   ! coefficients are corrected for the line tension effect
   ! (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
-  if (any(lattice_structure(material_phaseAt(1,el)) == [LATTICE_bcc_ID,LATTICE_fcc_ID])) then
+  if (any(lattice_structure(ph) == [LATTICE_bcc_ID,LATTICE_fcc_ID])) then
     myInteractionMatrix = prm%h_sl_sl &
                         * spread((  1.0_pReal - prm%f_F &
                                    + prm%f_F &
@@ -644,7 +643,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
   !#################################################################################################
 
   rho0 = getRho0(ph,en)
-  if (.not. phase_localPlasticity(material_phaseAt(1,el)) .and. prm%shortRangeStressCorrection) then
+  if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
     invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,en))
     invFe = math_inv33(phase_mechanical_Fe(ph)%data(1:3,1:3,en))
 
@@ -1238,7 +1237,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
   rhoDotFlux = 0.0_pReal
-  if (.not. phase_localPlasticity(material_phaseAt(1,el))) then
+  if (.not. phase_localPlasticity(ph)) then
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
@@ -1394,7 +1393,7 @@ end function rhoDotFlux
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
-  type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
+  type(tRotationContainer), dimension(:), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
     ph, &
@@ -1450,8 +1449,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     elseif (prm%chi_GB >= 0.0_pReal) then
       !* GRAIN BOUNDARY !
       !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
-      if (any(dNeq(material_orientation0(1,ph,en)%asQuaternion(), &
-                   material_orientation0(1,neighbor_phase,neighbor_me)%asQuaternion())) .and. &
+      if (any(dNeq(phase_orientation0(ph)%data(en)%asQuaternion(), &
+                   phase_orientation0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
           (.not. phase_localPlasticity(neighbor_phase))) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else
@@ -1464,7 +1463,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
       !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
       !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
       !* All values below the threshold are set to zero.
-      mis = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
+      mis = orientation(ph)%data(en)%misorientation(orientation(neighbor_phase)%data(neighbor_me))
       mySlipSystems: do s1 = 1,ns
         neighborSlipSystems: do s2 = 1,ns
           my_compatibility(1,s2,s1,n) =     math_inner(prm%slip_normal(1:3,s1), &
@@ -1579,21 +1578,20 @@ end subroutine plastic_nonlocal_results
 !--------------------------------------------------------------------------------------------------
 !> @brief populates the initial dislocation density
 !--------------------------------------------------------------------------------------------------
-subroutine stateInit(ini,phase,Nmembers)
+subroutine stateInit(ini,phase,Nentries)
 
   type(tInitialParameters) :: &
     ini
   integer,intent(in) :: &
     phase, &
-    Nmembers
+    Nentries
+
   integer :: &
-    i, &
     e, &
     f, &
     from, &
     upto, &
-    s, &
-    phasemember
+    s
   real(pReal), dimension(2) :: &
     noise, &
     rnd
@@ -1602,49 +1600,42 @@ subroutine stateInit(ini,phase,Nmembers)
     totalVolume, &
     densityBinning, &
     minimumIpVolume
-  real(pReal), dimension(Nmembers) :: &
-    volume
 
 
   associate(stt => state(phase))
 
-  if (ini%random_rho_u > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
-    do e = 1,discretization_Nelems
-      do i = 1,discretization_nIPs
-        if (material_phaseAt(1,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
-      enddo
-    enddo
-    totalVolume     = sum(volume)
-    minimumIPVolume = minval(volume)
-    densityBinning  = ini%random_rho_u_binning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
+    if (ini%random_rho_u > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
+      totalVolume     = sum(geom(phase)%V_0)
+      minimumIPVolume = minval(geom(phase)%V_0)
+      densityBinning  = ini%random_rho_u_binning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
 
-    ! fill random material points with dislocation segments until the desired overall density is reached
-    meanDensity = 0.0_pReal
-    do while(meanDensity < ini%random_rho_u)
-      call random_number(rnd)
-      phasemember = nint(rnd(1)*real(Nmembers,pReal) + 0.5_pReal)
-      s           = nint(rnd(2)*real(sum(ini%N_sl),pReal)*4.0_pReal + 0.5_pReal)
-      meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
-      stt%rhoSglMobile(s,phasemember) = densityBinning
-    enddo
-  else                                ! homogeneous distribution with noise
-    do e = 1, Nmembers
-      do f = 1,size(ini%N_sl,1)
-        from = 1 + sum(ini%N_sl(1:f-1))
-        upto = sum(ini%N_sl(1:f))
-        do s = from,upto
-          noise = [math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u), &
-                   math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u)]
-          stt%rho_sgl_mob_edg_pos(s,e) = ini%rho_u_ed_pos_0(f) + noise(1)
-          stt%rho_sgl_mob_edg_neg(s,e) = ini%rho_u_ed_neg_0(f) + noise(1)
-          stt%rho_sgl_mob_scr_pos(s,e) = ini%rho_u_sc_pos_0(f) + noise(2)
-          stt%rho_sgl_mob_scr_neg(s,e) = ini%rho_u_sc_neg_0(f) + noise(2)
-        enddo
-        stt%rho_dip_edg(from:upto,e)   = ini%rho_d_ed_0(f)
-        stt%rho_dip_scr(from:upto,e)   = ini%rho_d_sc_0(f)
+      ! fill random material points with dislocation segments until the desired overall density is reached
+      meanDensity = 0.0_pReal
+      do while(meanDensity < ini%random_rho_u)
+        call random_number(rnd)
+        e = nint(rnd(1)*real(Nentries,pReal) + 0.5_pReal)
+        s = nint(rnd(2)*real(sum(ini%N_sl),pReal)*4.0_pReal + 0.5_pReal)
+        meanDensity = meanDensity + densityBinning * geom(phase)%V_0(e) / totalVolume
+        stt%rhoSglMobile(s,e) = densityBinning
       enddo
-    enddo
-  endif
+    else                                ! homogeneous distribution with noise
+      do e = 1, Nentries
+        do f = 1,size(ini%N_sl,1)
+          from = 1 + sum(ini%N_sl(1:f-1))
+          upto = sum(ini%N_sl(1:f))
+          do s = from,upto
+            noise = [math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u), &
+                     math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u)]
+            stt%rho_sgl_mob_edg_pos(s,e) = ini%rho_u_ed_pos_0(f) + noise(1)
+            stt%rho_sgl_mob_edg_neg(s,e) = ini%rho_u_ed_neg_0(f) + noise(1)
+            stt%rho_sgl_mob_scr_pos(s,e) = ini%rho_u_sc_pos_0(f) + noise(2)
+            stt%rho_sgl_mob_scr_neg(s,e) = ini%rho_u_sc_neg_0(f) + noise(2)
+          enddo
+          stt%rho_dip_edg(from:upto,e)   = ini%rho_d_ed_0(f)
+          stt%rho_dip_scr(from:upto,e)   = ini%rho_d_sc_0(f)
+        enddo
+      enddo
+    endif
 
   end associate
 

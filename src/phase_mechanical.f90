@@ -193,19 +193,13 @@ module subroutine mechanical_init(materials,phases)
     phases
 
   integer :: &
-    el, &
-    ip, &
-    co, &
-    ce, &
     ph, &
     en, &
-    stiffDegradationCtr, &
     Nmembers
   class(tNode), pointer :: &
     num_crystallite, &
     material, &
     constituents, &
-    constituent, &
     phase, &
     mech
 
@@ -229,8 +223,6 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
 
-  allocate(material_orientation0(homogenization_maxNconstituents,phases%length,maxVal(material_phaseEntry)))
-
   do ph = 1, phases%length
     Nmembers = count(material_phaseID == ph)
 
@@ -252,37 +244,28 @@ module subroutine mechanical_init(materials,phases)
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
 #if defined(__GFORTRAN__)
-    output_constituent(ph)%label  = output_as1dString(mech)
+    output_constituent(ph)%label = output_as1dString(mech)
 #else
-    output_constituent(ph)%label  = mech%get_as1dString('output',defaultVal=emptyStringArray)
+    output_constituent(ph)%label = mech%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
-  do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
-    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-      material     => materials%get(discretization_materialAt(el))
-      constituents => material%get('constituents')
-      constituent => constituents%get(co)
+  do ph = 1, phases%length
+    do en = 1, count(material_phaseID == ph)
 
-      ph = material_phaseAt(co,el)
-      en = material_phaseMemberAt(co,ip,el)
-
-      call material_orientation0(co,ph,en)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-
-      phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = material_orientation0(co,ph,en)%asMatrix()                         ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_orientation0(ph)%data(en)%asMatrix()        ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en) &
                                                 / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,en))**(1.0_pReal/3.0_pReal)
       phase_mechanical_Fi0(ph)%data(1:3,1:3,en) = math_I3
       phase_mechanical_F0(ph)%data(1:3,1:3,en)  = math_I3
 
       phase_mechanical_Fe(ph)%data(1:3,1:3,en) = math_inv33(matmul(phase_mechanical_Fi0(ph)%data(1:3,1:3,en), &
-                                                                   phase_mechanical_Fp0(ph)%data(1:3,1:3,en)))           ! assuming that euler angles are given in internal strain free configuration
-      phase_mechanical_Fp(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
-      phase_mechanical_Fi(ph)%data(1:3,1:3,en) = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
-      phase_mechanical_F(ph)%data(1:3,1:3,en)  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
-
+                                                                   phase_mechanical_Fp0(ph)%data(1:3,1:3,en)))  ! assuming that euler angles are given in internal strain free configuration
     enddo
-  enddo; enddo
+    phase_mechanical_Fp(ph)%data = phase_mechanical_Fp0(ph)%data
+    phase_mechanical_Fi(ph)%data = phase_mechanical_Fi0(ph)%data
+    phase_mechanical_F(ph)%data  = phase_mechanical_F0(ph)%data
+  enddo
 
 
 ! initialize elasticity
@@ -433,8 +416,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
   broken = .true.
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   call plastic_dependentState(co,ip,el)
 
@@ -609,8 +592,8 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     dotState
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
   if(broken) return
@@ -694,8 +677,8 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) res
     sizeDotState
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
   if(broken) return
@@ -734,8 +717,8 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
   real(pReal), dimension(phase_plasticity_maxSizeDotState) :: residuum_plastic
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
   if(broken) return
@@ -852,8 +835,8 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
   real(pReal), dimension(phase_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   broken = plastic_dotState(Delta_t,co,ip,el,ph,en)
   if(broken) return
@@ -956,7 +939,7 @@ subroutine crystallite_results(group,ph)
             case(lattice_BCT_ID)
               structureLabel = 'tI'
           end select
-          selected_rotations = select_rotations(crystallite_orientation,ph)
+          selected_rotations = select_rotations(phase_orientation(ph)%data)
           call results_writeDataset(group//'/mechanical',selected_rotations,output_constituent(ph)%label(ou),&
                                    'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
           call results_addAttribute('lattice',structureLabel,group//'/mechanical/'//output_constituent(ph)%label(ou))
@@ -967,27 +950,16 @@ subroutine crystallite_results(group,ph)
   contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief select rotations for output
+!> @brief Convert orientation for output: ToDo: implement in HDF5/results
 !--------------------------------------------------------------------------------------------------
-  function select_rotations(dataset,ph)
+  function select_rotations(dataset)
 
-    integer, intent(in) :: ph
-    type(rotation), dimension(:,:,:), intent(in) :: dataset
-    real(pReal), allocatable, dimension(:,:) :: select_rotations
-    integer :: el,ip,co,j
+    type(rotation), dimension(:), intent(in) :: dataset
+    real(pReal), dimension(4,size(dataset,1)) :: select_rotations
+    integer :: en
 
-    allocate(select_rotations(4,count(material_phaseAt==ph)*homogenization_maxNconstituents*discretization_nIPs))
-
-    j=0
-    do el = 1, size(material_phaseAt,2)
-      do ip = 1, discretization_nIPs
-        do co = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-           if (material_phaseAt(co,el) == ph) then
-             j = j + 1
-             select_rotations(1:4,j) = dataset(co,ip,el)%asQuaternion()
-           endif
-        enddo
-      enddo
+    do en = 1, size(dataset,1)
+      select_rotations(:,en) = dataset(en)%asQuaternion()
    enddo
 
  end function select_rotations
@@ -1045,8 +1017,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   real(pReal), dimension(:), allocatable :: subState0
 
 
-  ph = material_phaseAt(co,el)
-  en = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
   sizeDotState = plasticState(ph)%sizeDotState
 
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)
@@ -1109,7 +1081,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
-      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
+      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,(el-1)*discretization_nIPs + ip)
     endif
 
   enddo cutbackLooping

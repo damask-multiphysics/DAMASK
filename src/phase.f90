@@ -19,11 +19,9 @@ module phase
   implicit none
   private
 
-  type(Rotation), dimension(:,:,:), allocatable :: &
-    material_orientation0                                                                           !< initial orientation of each grain,IP,element
-
-  type(rotation),            dimension(:,:,:),        allocatable :: &
-    crystallite_orientation                                                                         !< current orientation
+  type(tRotationContainer), dimension(:), allocatable :: &
+    phase_orientation0, &
+    phase_orientation
 
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
@@ -216,12 +214,11 @@ module phase
 
     end function thermal_stress
 
-    module function integrateDamageState(dt,co,ip,el) result(broken)
+    module function integrateDamageState(dt,co,ce) result(broken)
       real(pReal), intent(in) :: dt
       integer, intent(in) :: &
-        el, &                                                                                            !< element index in element loop
-        ip, &                                                                                            !< integration point index in ip loop
-        co                                                                                               !< grain index in grain loop
+        ce, &
+        co
       logical :: broken
     end function integrateDamageState
 
@@ -260,8 +257,7 @@ module phase
         ph, &
         i, &
         e
-      type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
-        orientation                                                                                 !< crystal orientation
+        type(tRotationContainer), dimension(:), intent(in) :: orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
     module subroutine plastic_dependentState(co,ip,el)
@@ -348,7 +344,7 @@ contains
 subroutine phase_init
 
   integer :: &
-    ph
+    ph, ce, co, ma
   class (tNode), pointer :: &
     debug_constitutive, &
     materials, &
@@ -368,6 +364,25 @@ subroutine phase_init
 
   materials => config_material%get('material')
   phases    => config_material%get('phase')
+
+
+  allocate(phase_orientation0(phases%length))
+  do ph = 1,phases%length
+    allocate(phase_orientation0(ph)%data(count(material_phaseID==ph)))
+  enddo
+
+  do ce = 1, size(material_phaseID,2)
+    ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
+    do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+      ph = material_phaseID(co,ce)
+      phase_orientation0(ph)%data(material_phaseEntry(co,ce)) = material_orientation0(ma)%data(co)
+    enddo
+  enddo
+
+  allocate(phase_orientation(phases%length))
+  do ph = 1,phases%length
+    phase_orientation(ph)%data = phase_orientation0(ph)%data
+  enddo
 
   call mechanical_init(materials,phases)
   call damage_init
@@ -474,6 +489,7 @@ subroutine crystallite_init()
 
   integer :: &
     ph, &
+    ce, &
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
@@ -491,8 +507,6 @@ subroutine crystallite_init()
   cMax = homogenization_maxNconstituents
   iMax = discretization_nIPs
   eMax = discretization_Nelems
-
-  allocate(crystallite_orientation(cMax,iMax,eMax))
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
@@ -537,10 +551,11 @@ subroutine crystallite_init()
   flush(IO_STDOUT)
 
 
-  !$OMP PARALLEL DO
-  do el = 1, size(material_phaseMemberAt,3)
-    do ip = 1, size(material_phaseMemberAt,2)
-      do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+  !$OMP PARALLEL DO PRIVATE(ce)
+  do el = 1, eMax
+    do ip = 1, iMax
+      ce = (el-1)*discretization_nIPs + ip
+      do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(co,ip,el)                                                       ! update dependent state variables to be consistent with basic states
      enddo
@@ -562,13 +577,16 @@ subroutine crystallite_orientations(co,ip,el)
     ip, &                                                                                           !< counter in integration point loop
     el                                                                                              !< counter in element loop
 
+  integer :: ph, en
 
-  call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(&
-    mechanical_F_e(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))))
+
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+
+  call phase_orientation(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
-                                              material_phaseAt(1,el),ip,el)
+    call plastic_nonlocal_updateCompatibility(phase_orientation,material_phaseAt(1,el),ip,el)
 
 
 end subroutine crystallite_orientations
@@ -590,7 +608,7 @@ function crystallite_push33ToRef(co,ce, tensor33)
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
-  T = matmul(material_orientation0(co,ph,en)%asMatrix(),transpose(math_inv33(phase_F(co,ce)))) ! ToDo: initial orientation correct?
+  T = matmul(phase_orientation0(ph)%data(en)%asMatrix(),transpose(math_inv33(phase_F(co,ce))))      ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 

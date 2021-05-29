@@ -1140,8 +1140,7 @@ end function math_areaTriangle
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief limits a scalar value to a certain range (either one or two sided)
-! Will return NaN if left > right
+!> @brief Limit a scalar value to a certain range (either one or two sided).
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure elemental function math_clip(a, left, right)
 

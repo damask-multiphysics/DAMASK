@@ -92,7 +92,7 @@ end subroutine parse_debug
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Deallocate config_material.
-!ToDo: deallocation of numerics debug (optional)
+!ToDo: deallocation of numerics and debug (optional)
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate
 

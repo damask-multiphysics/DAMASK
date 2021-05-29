@@ -177,11 +177,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) call CPFEM_forward
 
-    !chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
-    !  case (THERMAL_conduction_ID) chosenThermal1
-    !    temperature(material_homogenizationAt(elCP))%p(material_homogenizationMemberAt(ip,elCP)) = &
-    !      temperature_inp
-    !end select chosenThermal1
     homogenization_F0(1:3,1:3,ce) = ffn
     homogenization_F(1:3,1:3,ce) = ffn1
 

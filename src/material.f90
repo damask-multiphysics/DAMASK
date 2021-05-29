@@ -16,30 +16,33 @@ module material
   implicit none
   private
 
+  type :: tRotationContainer
+    type(Rotation), dimension(:),  allocatable :: data
+  end type
+
+  type(tRotationContainer), dimension(:), allocatable :: material_orientation0
+
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
+  integer, public, protected :: &
+    homogenization_maxNconstituents                                                                 !< max number of grains in any homogenization
 
   character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
 
-  integer, public, protected :: &
-    homogenization_maxNconstituents                                                                 !< max number of grains in any USED homogenization
-
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
-    material_homogenizationAt, &                                                                    !< homogenization ID of each element
-    material_homogenizationID, &                                                                    !< per cell
-    material_homogenizationEntry                                                                    !< per cell
-  integer, dimension(:,:),   allocatable :: &                                                       ! (ip,elem)
-    material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
+    material_homogenizationID, &                                                                    !< per cell TODO: material_ID_homogenization
+    material_homogenizationEntry                                                                    !< per cell TODO: material_entry_homogenization
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
-    material_phaseAt, &                                                                             !< phase ID of each element
-    material_phaseID, &                                                                             !< per (constituent,cell)
-    material_phaseEntry                                                                             !< per (constituent,cell)
+    material_phaseAt, &                                                                             !< phase ID of each element TODO: remove
+    material_phaseID, &                                                                             !< per (constituent,cell) TODO: material_ID_phase
+    material_phaseEntry                                                                             !< per (constituent,cell) TODO: material_entry_phase
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
-    material_phaseMemberAt                                                                          !< position of the element within its phase instance
-
+    material_phaseMemberAt                                                                          !TODO: remove
   public :: &
+    tRotationContainer, &
+    material_orientation0, &
     material_init
 
 contains
@@ -55,25 +58,24 @@ subroutine material_init(restart)
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
 
-  call material_parseMaterial
-  print*, 'Material parsed'
+  call parse
+  print*, 'parsed material.yaml'
 
 
   if (.not. restart) then
     call results_openJobFile
-    call results_mapping_phase(material_phaseAt,material_phaseMemberAt,material_name_phase)
-    call results_mapping_homogenization(material_homogenizationAt,material_homogenizationMemberAt,material_name_homogenization)
+    call results_mapping_phase(material_phaseID,material_phaseEntry,material_name_phase)
+    call results_mapping_homogenization(material_homogenizationID,material_homogenizationEntry,material_name_homogenization)
     call results_closeJobFile
   endif
 
 end subroutine material_init
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief parses the material part in the material configuration file
+!> @brief Parse material.yaml to get the global structure
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseMaterial
+subroutine parse()
 
   class(tNode), pointer :: materials, &                                                             !> list of materials
                            material, &                                                              !> material definition
@@ -90,7 +92,7 @@ subroutine material_parseMaterial
   real(pReal) :: &
     frac
   integer :: &
-    el, ip, co, &
+    el, ip, co, ma, &
     h, ce
 
   materials       => config_material%get('material')
@@ -111,8 +113,6 @@ subroutine material_parseMaterial
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  allocate(material_homogenizationAt(discretization_Nelems),source=0)
-  allocate(material_homogenizationMemberAt(discretization_nIPs,discretization_Nelems),source=0)
   allocate(material_phaseAt(homogenization_maxNconstituents,discretization_Nelems),source=0)
   allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
 
@@ -126,13 +126,11 @@ subroutine material_parseMaterial
     material     => materials%get(discretization_materialAt(el))
     constituents => material%get('constituents')
 
-    material_homogenizationAt(el) = homogenizations%getIndex(material%get_asString('homogenization'))
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
-      counterHomogenization(material_homogenizationAt(el)) = counterHomogenization(material_homogenizationAt(el)) + 1
-      material_homogenizationMemberAt(ip,el)               = counterHomogenization(material_homogenizationAt(el))
-      material_homogenizationID(ce)    = material_homogenizationAt(el)
-      material_homogenizationEntry(ce) = material_homogenizationMemberAt(ip,el)
+      material_homogenizationID(ce) = homogenizations%getIndex(material%get_asString('homogenization'))
+      counterHomogenization(material_homogenizationID(ce)) = counterHomogenization(material_homogenizationID(ce)) + 1
+      material_homogenizationEntry(ce) = counterHomogenization(material_homogenizationID(ce))
     enddo
 
     frac = 0.0_pReal
@@ -144,10 +142,9 @@ subroutine material_parseMaterial
       do ip = 1, discretization_nIPs
         ce = (el-1)*discretization_nIPs + ip
         counterPhase(material_phaseAt(co,el)) = counterPhase(material_phaseAt(co,el)) + 1
-        material_phaseMemberAt(co,ip,el)       = counterPhase(material_phaseAt(co,el))
-
-        material_phaseID(co,ce)    = material_phaseAt(co,el)
-        material_phaseEntry(co,ce) = material_phaseMemberAt(co,ip,el)
+        material_phaseMemberAt(co,ip,el)      = counterPhase(material_phaseAt(co,el))
+        material_phaseEntry(co,ce) = counterPhase(material_phaseAt(co,el))
+        material_phaseID(co,ce) = material_phaseAt(co,el)
       enddo
 
     enddo
@@ -155,7 +152,19 @@ subroutine material_parseMaterial
 
   enddo
 
-end subroutine material_parseMaterial
+  allocate(material_orientation0(materials%length))
+
+  do ma = 1, materials%length
+    material     => materials%get(ma)
+    constituents => material%get('constituents')
+    allocate(material_orientation0(ma)%data(constituents%length))
+    do co = 1, constituents%length
+      constituent => constituents%get(co)
+      call material_orientation0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+    enddo
+ enddo
+
+end subroutine parse
 
 
 !--------------------------------------------------------------------------------------------------

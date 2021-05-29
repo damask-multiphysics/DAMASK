@@ -236,20 +236,20 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co, ce, ho, en, ph
+    co, ce, ho, en, ph
   logical :: &
     converged
   logical, dimension(2) :: &
     doneAndHappy
 
   !$OMP PARALLEL
-  !$OMP DO PRIVATE(ce,en,ho,myNgrains,NiterationMPstate,converged,doneAndHappy)
+  !$OMP DO PRIVATE(ce,en,ho,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    ho = material_homogenizationAt(el)
-    myNgrains = homogenization_Nconstituents(ho)
+
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
       en = material_homogenizationEntry(ce)
+      ho = material_homogenizationID(ce)
 
       call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
@@ -266,7 +266,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
         converged = .true.
-        do co = 1, myNgrains
+        do co = 1, homogenization_Nconstituents(ho)
           converged = converged .and. crystallite_stress(dt,co,ip,el)
         enddo
 
@@ -290,12 +290,12 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     !$OMP DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
-      ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
+        ho = material_homogenizationID(ce)
         call thermal_partition(ce)
         do co = 1, homogenization_Nconstituents(ho)
-          ph = material_phaseAt(co,el)
+          ph = material_phaseID(co,ce)
           if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
             if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
@@ -308,9 +308,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
     !$OMP DO PRIVATE(ho,ce)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-      ho = material_homogenizationAt(el)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
+        ho = material_homogenizationID(ce)
         do co = 1, homogenization_Nconstituents(ho)
           call crystallite_orientations(co,ip,el)
         enddo
