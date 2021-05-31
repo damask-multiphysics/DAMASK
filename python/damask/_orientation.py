@@ -5,16 +5,10 @@ import numpy as np
 from . import Rotation
 from . import util
 from . import tensor
-from . import _lattice
+from . import lattice as lattice_
 
-_crystal_families = ['triclinic',
-                     'monoclinic',
-                     'orthorhombic',
-                     'tetragonal',
-                     'hexagonal',
-                     'cubic']
 
-_lattice_symmetries = {
+lattice_symmetries = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -134,10 +128,8 @@ class Orientation(Rotation):
         """
         Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
 
-        self.kinematics = None
-
-        if lattice in _lattice_symmetries:
-            self.family  = _lattice_symmetries[lattice]
+        if lattice in lattice_symmetries:
+            self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
 
             self.a = 1 if a is None else a
@@ -177,15 +169,7 @@ class Orientation(Rotation):
               > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('Each lattice angle must be less than sum of others')
 
-            if self.lattice in _lattice.kinematics:
-                master = _lattice.kinematics[self.lattice]
-                self.kinematics = {}
-                for m in master:
-                    self.kinematics[m] = {'direction':master[m][:,0:3],'plane':master[m][:,3:6]} \
-                                         if master[m].shape[-1] == 6 else \
-                                         {'direction':self.Bravais_to_Miller(uvtw=master[m][:,0:4]),
-                                          'plane':    self.Bravais_to_Miller(hkil=master[m][:,4:8])}
-        elif lattice in _crystal_families:
+        elif lattice in set(lattice_symmetries.values()):
             self.family  = lattice
             self.lattice = None
 
@@ -315,7 +299,7 @@ class Orientation(Rotation):
         if isinstance(other,Orientation) or isinstance(other,Rotation):
             return self.copy(rotation=Rotation.__mul__(self,Rotation(other.quaternion)))
         else:
-            raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
+            raise TypeError('use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
     @staticmethod
@@ -520,7 +504,7 @@ class Orientation(Rotation):
                           [ 1.0,0.0,0.0,0.0 ],
                         ]
         else:
-            raise KeyError(f'Crystal family "{self.family}" is unknown')
+            raise KeyError(f'unknown crystal family "{self.family}"')
 
         return Rotation.from_quaternion(sym_quats,accept_homomorph=True)
 
@@ -669,12 +653,12 @@ class Orientation(Rotation):
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        if model not in _lattice.relations:
-            raise KeyError(f'Orientation relationship "{model}" is unknown')
-        r = _lattice.relations[model]
+        if model not in lattice_.relations:
+            raise KeyError(f'unknown orientation relationship "{model}"')
+        r = lattice_.relations[model]
 
         if self.lattice not in r:
-            raise KeyError(f'Relationship "{model}" not supported for lattice "{self.lattice}"')
+            raise KeyError(f'relationship "{model}" not supported for lattice "{self.lattice}"')
 
         sl = self.lattice
         ol = (set(r)-{sl}).pop()
@@ -682,10 +666,10 @@ class Orientation(Rotation):
         o = r[ol]
 
         p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
-        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else self.Bravais_to_Miller(uvtw=m[...,0,0:4])
-        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else self.Bravais_to_Miller(hkil=m[...,1,0:4])
-        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else self.Bravais_to_Miller(uvtw=o[...,0,0:4])
-        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else self.Bravais_to_Miller(hkil=o[...,1,0:4])
+        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=m[...,0,0:4])
+        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=m[...,1,0:4])
+        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=o[...,0,0:4])
+        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=o[...,1,0:4])
 
         return (Rotation.from_parallel(p_,_p),ol) \
                 if return_lattice else \
@@ -785,7 +769,7 @@ class Orientation(Rotation):
 
         """
         if None in self.parameters:
-            raise KeyError('Missing crystal lattice parameters')
+            raise KeyError('missing crystal lattice parameters')
         return np.array([
                           [1,0,0],
                           [np.cos(self.gamma),np.sin(self.gamma),0],
@@ -841,7 +825,7 @@ class Orientation(Rotation):
 
         """
         if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors.')
+            raise ValueError('input is not a field of three-dimensional vectors')
 
         if self.family == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
@@ -944,7 +928,7 @@ class Orientation(Rotation):
 
         """
         if np.array(vector).shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors.')
+            raise ValueError('input is not a field of three-dimensional vectors')
 
         vector_ = self.to_SST(vector,proper) if in_SST else \
                   self @ np.broadcast_to(vector,self.shape+(3,))
@@ -1164,64 +1148,6 @@ class Orientation(Rotation):
                )
 
 
-    @classmethod
-    def Bravais_to_Miller(cls,*,uvtw=None,hkil=None):
-        """
-        Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
-
-        Parameters
-        ----------
-        uvtw|hkil : numpy.ndarray of shape (...,4)
-            Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
-
-        Returns
-        -------
-        uvw|hkl : numpy.ndarray of shape (...,3)
-            Miller indices of [uvw] direction or (hkl) plane normal.
-
-        """
-        if (uvtw is not None) ^ (hkil is None):
-            raise KeyError('Specify either "uvtw" or "hkil"')
-        axis,basis  = (np.array(uvtw),np.array([[1,0,-1,0],
-                                                [0,1,-1,0],
-                                                [0,0, 0,1]])) \
-                      if hkil is None else \
-                      (np.array(hkil),np.array([[1,0,0,0],
-                                                [0,1,0,0],
-                                                [0,0,0,1]]))
-        return np.einsum('il,...l',basis,axis)
-
-
-    @classmethod
-    def Miller_to_Bravais(cls,*,uvw=None,hkl=None):
-        """
-        Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
-
-        Parameters
-        ----------
-        uvw|hkl : numpy.ndarray of shape (...,3)
-            Miller indices of crystallographic direction [uvw] or plane normal (hkl).
-
-        Returns
-        -------
-        uvtw|hkil : numpy.ndarray of shape (...,4)
-            Miller–Bravais indices of [uvtw] direction or (hkil) plane normal.
-
-        """
-        if (uvw is not None) ^ (hkl is None):
-            raise KeyError('Specify either "uvw" or "hkl"')
-        axis,basis  = (np.array(uvw),np.array([[ 2,-1, 0],
-                                               [-1, 2, 0],
-                                               [-1,-1, 0],
-                                               [ 0, 0, 3]])/3) \
-                      if hkl is None else \
-                      (np.array(hkl),np.array([[ 1, 0, 0],
-                                               [ 0, 1, 0],
-                                               [-1,-1, 0],
-                                               [ 0, 0, 1]]))
-        return np.einsum('il,...l',basis,axis)
-
-
     def to_lattice(self,*,direction=None,plane=None):
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
@@ -1239,7 +1165,7 @@ class Orientation(Rotation):
 
         """
         if (direction is not None) ^ (plane is None):
-            raise KeyError('Specify either "direction" or "plane"')
+            raise KeyError('specify either "direction" or "plane"')
         axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
                       if plane is None else \
                       (np.array(plane),self.basis_real.T)
@@ -1264,7 +1190,7 @@ class Orientation(Rotation):
 
         """
         if (uvw is not None) ^ (hkl is None):
-            raise KeyError('Specify either "uvw" or "hkl"')
+            raise KeyError('specify either "uvw" or "hkl"')
         axis,basis  = (np.array(uvw),self.basis_real) \
                       if hkl is None else \
                       (np.array(hkl),self.basis_reciprocal)
@@ -1302,8 +1228,8 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        mode : str
-            Type of kinematics, i.e. 'slip' or 'twin'.
+        mode : {'slip', 'twin'}
+            Type of kinematics.
 
         Returns
         -------
@@ -1324,8 +1250,16 @@ class Orientation(Rotation):
                [ 0.000,  0.000,  0.000]])
 
         """
-        d = self.to_frame(uvw=self.kinematics[mode]['direction'],with_symmetry=False)
-        p = self.to_frame(hkl=self.kinematics[mode]['plane']    ,with_symmetry=False)
+        try:
+            master = lattice_.kinematics[self.lattice][mode]
+            kinematics = {'direction':master[:,0:3],'plane':master[:,3:6]} \
+                          if master.shape[-1] == 6 else \
+                         {'direction':lattice_.Bravais_to_Miller(uvtw=master[:,0:4]),
+                          'plane':    lattice_.Bravais_to_Miller(hkil=master[:,4:8])}
+        except KeyError:
+            raise (f'"{mode}" not defined for lattice "{self.lattice}"')
+        d = self.to_frame(uvw=kinematics['direction'],with_symmetry=False)
+        p = self.to_frame(hkl=kinematics['plane']    ,with_symmetry=False)
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
                                   p/np.linalg.norm(p,axis=-1,keepdims=True))
 

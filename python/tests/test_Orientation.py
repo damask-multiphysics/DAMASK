@@ -7,8 +7,10 @@ from damask import Orientation
 from damask import Table
 from damask import util
 from damask import grid_filters
-from damask import _lattice as lattice
-from damask._orientation import _crystal_families as crystal_families
+from damask import lattice
+from damask import _orientation
+
+crystal_families = set(_orientation.lattice_symmetries.values())
 
 
 @pytest.fixture
@@ -358,14 +360,6 @@ class TestOrientation:
         with pytest.raises(KeyError):
             Orientation(lattice=None).basis_reciprocal                                              # noqa
 
-    def test_double_Bravais_to_Miller(self):
-        with pytest.raises(KeyError):
-            Orientation.Bravais_to_Miller(uvtw=np.ones(4),hkil=np.ones(4))                          # noqa
-
-    def test_double_Miller_to_Bravais(self):
-        with pytest.raises(KeyError):
-            Orientation.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))                            # noqa
-
     def test_double_to_lattice(self):
         with pytest.raises(KeyError):
             Orientation().to_lattice(direction=np.ones(3),plane=np.ones(3))                         # noqa
@@ -490,26 +484,6 @@ class TestOrientation:
         assert np.allclose(vector,
                            L.to_frame(**{keyFrame:L.to_lattice(**{keyLattice:vector})}))
 
-    @pytest.mark.parametrize('vector',np.array([
-                                                [1,0,0],
-                                                [1,1,0],
-                                                [1,1,1],
-                                                [1,0,-2],
-                                               ]))
-    @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
-    def test_Miller_Bravais_Miller(self,vector,kw_Miller,kw_Bravais):
-        assert np.all(vector == Orientation.Bravais_to_Miller(**{kw_Bravais:Orientation.Miller_to_Bravais(**{kw_Miller:vector})}))
-
-    @pytest.mark.parametrize('vector',np.array([
-                                                [1,0,-1,2],
-                                                [1,-1,0,3],
-                                                [1,1,-2,-3],
-                                                [0,0,0,1],
-                                               ]))
-    @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
-    def test_Bravais_Miller_Bravais(self,vector,kw_Miller,kw_Bravais):
-        assert np.all(vector == Orientation.Miller_to_Bravais(**{kw_Miller:Orientation.Bravais_to_Miller(**{kw_Bravais:vector})}))
-
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
                             [
                              ('aP',0.5,2.0,3.0,0.8,0.5,1.2),
@@ -537,12 +511,12 @@ class TestOrientation:
             == o.shape + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF'])
-    def test_Schmid(self,update,ref_path,lattice):
+    @pytest.mark.parametrize('mode',['slip','twin'])
+    def test_Schmid(self,update,ref_path,lattice,mode):
         L = Orientation(lattice=lattice)
-        for mode in L.kinematics:
-            reference = ref_path/f'{lattice}_{mode}.txt'
-            P = L.Schmid(mode)
-            if update:
-                table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
-                table.save(reference)
-            assert np.allclose(P,Table.load(reference).get('Schmid'))
+        reference = ref_path/f'{lattice}_{mode}.txt'
+        P = L.Schmid(mode)
+        if update:
+            table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
+            table.save(reference)
+        assert np.allclose(P,Table.load(reference).get('Schmid'))
