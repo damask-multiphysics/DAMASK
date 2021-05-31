@@ -163,11 +163,11 @@ class Config(dict):
     @abc.abstractmethod
     def is_complete(self):
         """Check for completeness."""
-        pass
+        raise NotImplementedError
 
 
     @property
     @abc.abstractmethod
     def is_valid(self):
         """Check for valid file layout."""
-        pass
+        raise NotImplementedError

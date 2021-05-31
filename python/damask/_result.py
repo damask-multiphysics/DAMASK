@@ -26,6 +26,8 @@ from . import util
 
 h5py3 = h5py.__version__[0] == '3'
 
+chunk_size = 1024**2//8                                                                             # for compression in HDF5
+
 
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -107,6 +109,8 @@ class Result:
                 self.cells  = f['geometry'].attrs['cells']
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
+            else:
+                self.add_curl = self.add_divergence = self.add_gradient = None
 
             r=re.compile('increment_[0-9]+')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
@@ -187,12 +191,14 @@ class Result:
         choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
 
-        if   what == 'increments':
+        what_ = what if what.endswith('s') else what+'s'
+
+        if   what_ == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('increment_') else
                       self.increments[c] if isinstance(c,int) and c<0 else
                       f'increment_{c}' for c in choice]
-        elif what == 'times':
-            what = 'increments'
+        elif what_ == 'times':
+            what_ = 'increments'
             if choice == ['*']:
                 choice = self.increments
             else:
@@ -206,18 +212,18 @@ class Result:
                     elif np.isclose(c,self.times[idx+1]):
                         choice.append(self.increments[idx+1])
 
-        valid = _match(choice,getattr(self,what))
-        existing = set(self.visible[what])
+        valid = _match(choice,getattr(self,what_))
+        existing = set(self.visible[what_])
 
         dup = self.copy()
         if   action == 'set':
-            dup.visible[what] = sorted(set(valid), key=util.natural_sort)
+            dup.visible[what_] = sorted(set(valid), key=util.natural_sort)
         elif action == 'add':
             add = existing.union(valid)
-            dup.visible[what] = sorted(add, key=util.natural_sort)
+            dup.visible[what_] = sorted(add, key=util.natural_sort)
         elif action == 'del':
             diff = existing.difference(valid)
-            dup.visible[what] = sorted(diff, key=util.natural_sort)
+            dup.visible[what_] = sorted(diff, key=util.natural_sort)
 
         return dup
 
@@ -1122,8 +1128,8 @@ class Result:
                 'label': f"{t}({F['label']})",
                 'meta':  {
                           'unit':        F['meta']['unit'],
-                          'description': '{} stretch tensor of {} ({})'.format('left' if t.upper() == 'V' else 'right',
-                                                                               F['label'],F['meta']['description']),
+                          'description': f"{'left' if t.upper() == 'V' else 'right'} stretch tensor "\
+                                        +f"of {F['label']} ({F['meta']['description']})",           # noqa
                           'creator':     'add_stretch_tensor'
                           }
                  }
@@ -1143,7 +1149,148 @@ class Result:
         self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
 
 
-    def _job(self,group,func,datasets,args,lock):
+    @staticmethod
+    def _add_curl(f,size):
+        return {
+                'data':  grid_filters.curl(size,f['data']),
+                'label': f"curl({f['label']})",
+                'meta':  {
+                          'unit':        f['meta']['unit']+'/m',
+                          'description': f"curl of {f['label']} ({f['meta']['description']})",
+                          'creator':     'add_curl'
+                          }
+                 }
+    def add_curl(self,f):
+        """
+        Add curl of a field.
+
+        Parameters
+        ----------
+        f : str
+            Name of vector or tensor field dataset.
+
+        Notes
+        -----
+        This function is only available for structured grids,
+        i.e. results from the grid solver.
+
+        """
+        self._add_generic_grid(self._add_curl,{'f':f},{'size':self.size})
+
+
+    @staticmethod
+    def _add_divergence(f,size):
+        return {
+                'data':  grid_filters.divergence(size,f['data']),
+                'label': f"divergence({f['label']})",
+                'meta':  {
+                          'unit':        f['meta']['unit']+'/m',
+                          'description': f"divergence of {f['label']} ({f['meta']['description']})",
+                          'creator':     'add_divergence'
+                          }
+                 }
+    def add_divergence(self,f):
+        """
+        Add divergence of a field.
+
+        Parameters
+        ----------
+        f : str
+            Name of vector or tensor field dataset.
+
+        Notes
+        -----
+        This function is only available for structured grids,
+        i.e. results from the grid solver.
+
+        """
+        self._add_generic_grid(self._add_divergence,{'f':f},{'size':self.size})
+
+
+    @staticmethod
+    def _add_gradient(f,size):
+        return {
+                'data':  grid_filters.gradient(size,f['data'] if len(f['data'].shape) == 4 else \
+                                                    f['data'].reshape(f['data'].shape+(1,))),
+                'label': f"gradient({f['label']})",
+                'meta':  {
+                          'unit':        f['meta']['unit']+'/m',
+                          'description': f"gradient of {f['label']} ({f['meta']['description']})",
+                          'creator':     'add_gradient'
+                          }
+                 }
+    def add_gradient(self,f):
+        """
+        Add gradient of a field.
+
+        Parameters
+        ----------
+        f : str
+            Name of scalar or vector field dataset.
+
+        Notes
+        -----
+        This function is only available for structured grids,
+        i.e. results from the grid solver.
+
+        """
+        self._add_generic_grid(self._add_gradient,{'f':f},{'size':self.size})
+
+
+    def _add_generic_grid(self,func,datasets,args={},constituents=None):
+        """
+        General function to add data on a regular grid.
+
+        Parameters
+        ----------
+        func : function
+            Callback function that calculates a new dataset from one or
+            more datasets per HDF5 group.
+        datasets : dictionary
+            Details of the datasets to be used:
+            {arg (name to which the data is passed in func): label (in HDF5 file)}.
+        args : dictionary, optional
+            Arguments parsed to func.
+
+        """
+        if len(datasets) != 1 or self.N_constituents !=1:
+            raise NotImplementedError
+
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
+
+        with h5py.File(self.fname, 'a') as f:
+            for increment in self.place(datasets.values(),False).items():
+                for ty in increment[1].items():
+                    for field in ty[1].items():
+                        d = list(field[1].values())[0]
+                        if np.any(d.mask): continue
+                        dataset = {'f':{'data':np.reshape(d.data,tuple(self.cells)+d.data.shape[1:]),
+                                        'label':list(datasets.values())[0],
+                                        'meta':d.data.dtype.metadata}}
+                        r = func(**dataset,**args)
+                        result = r['data'].reshape((-1,)+r['data'].shape[3:])
+                        for x in self.visible[ty[0]+'s']:
+                            if ty[0] == 'phase':
+                                result1 = result[at_cell_ph[0][x]]
+                            if ty[0] == 'homogenization':
+                                result1 = result[at_cell_ho[x]]
+
+                            path = '/'.join(['/',increment[0],ty[0],x,field[0]])
+                            dataset = f[path].create_dataset(r['label'],data=result1)
+
+                            now = datetime.datetime.now().astimezone()
+                            dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
+                                                       now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+
+                            for l,v in r['meta'].items():
+                                dataset.attrs[l.lower()]=v if h5py3 else v.encode()
+                            creator = dataset.attrs['creator'] if h5py3 else \
+                                      dataset.attrs['creator'].decode()
+                            dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
+                                                       f'damask.Result.{creator} v{damask.version}'.encode()
+
+
+    def _job_pointwise(self,group,func,datasets,args,lock):
         """Execute job for _add_generic_pointwise."""
         try:
             datasets_in = {}
@@ -1159,8 +1306,7 @@ class Result:
             return [group,r]
         except Exception as err:
             print(f'Error during calculation: {err}.')
-            return None
-
+            return [None,None]
 
     def _add_generic_pointwise(self,func,datasets,args={}):
         """
@@ -1178,7 +1324,6 @@ class Result:
             Arguments parsed to func.
 
         """
-        chunk_size = 1024**2//8
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
         lock = mp.Manager().Lock()
 
@@ -1195,34 +1340,34 @@ class Result:
             print('No matching dataset found, no data was added.')
             return
 
-        default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
+        default_arg = partial(self._job_pointwise,func=func,datasets=datasets,args=args,lock=lock)
 
-        for result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
+        for group,result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
             if not result:
                 continue
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
-                    if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
-                        dataset = f[result[0]+'/'+result[1]['label']]
-                        dataset[...] = result[1]['data']
+                    if self._allow_modification and '/'.join([group,result['label']]) in f:
+                        dataset = f['/'.join([group,result['label']])]
+                        dataset[...] = result['data']
                         dataset.attrs['overwritten'] = True
                     else:
-                        if result[1]['data'].size >= chunk_size*2:
-                            shape  = result[1]['data'].shape
+                        if result['data'].size >= chunk_size*2:
+                            shape  = result['data'].shape
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
-                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
-                                                                  maxshape=shape, chunks=chunks,
-                                                                  compression='gzip', compression_opts=6,
-                                                                  shuffle=True,fletcher32=True)
+                            dataset = f[group].create_dataset(result['label'],data=result['data'],
+                                                              maxshape=shape, chunks=chunks,
+                                                              compression='gzip', compression_opts=6,
+                                                              shuffle=True,fletcher32=True)
                         else:
-                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                            dataset = f[group].create_dataset(result['label'],data=result['data'])
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
                                                now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
-                    for l,v in result[1]['meta'].items():
+                    for l,v in result['meta'].items():
                         dataset.attrs[l.lower()]=v if h5py3 else v.encode()
                     creator = dataset.attrs['creator'] if h5py3 else \
                               dataset.attrs['creator'].decode()
