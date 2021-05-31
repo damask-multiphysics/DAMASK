@@ -19,6 +19,11 @@ module phase
   implicit none
   private
 
+
+  character(len=2), allocatable, dimension(:) :: phase_lattice
+  real(pReal),      allocatable, dimension(:) :: phase_cOverA
+  real(pReal),      allocatable, dimension(:) :: phase_rho
+
   type(tRotationContainer), dimension(:), allocatable :: &
     phase_orientation0, &
     phase_orientation
@@ -348,7 +353,8 @@ subroutine phase_init
   class (tNode), pointer :: &
     debug_constitutive, &
     materials, &
-    phases
+    phases, &
+    phase
 
 
   print'(/,a)', ' <<<+-  phase init  -+>>>'; flush(IO_STDOUT)
@@ -365,9 +371,19 @@ subroutine phase_init
   materials => config_material%get('material')
   phases    => config_material%get('phase')
 
-
+  allocate(phase_lattice(phases%length))
+  allocate(phase_cOverA(phases%length),source=-1.0_pReal)
+  allocate(phase_rho(phases%length))
   allocate(phase_orientation0(phases%length))
+
   do ph = 1,phases%length
+    phase => phases%get(ph)
+    phase_lattice(ph) = phase%get_asString('lattice')
+    if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
+      call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
+    if (any(phase_lattice(ph) == ['hP','tI'])) &
+      phase_cOverA(ph) = phase%get_asFloat('c/a')
+    phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
     allocate(phase_orientation0(ph)%data(count(material_phaseID==ph)))
   enddo
 

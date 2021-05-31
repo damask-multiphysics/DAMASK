@@ -202,7 +202,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       prm%n0_sl            = lattice_slip_normal(N_sl,phase%get_asString('lattice'),&
                                                  phase%get_asFloat('c/a',defaultVal=0.0_pReal))
-      prm%fccTwinTransNucleation = lattice_structure(ph) == lattice_FCC_ID .and. (N_sl(1) == 12)
+      prm%fccTwinTransNucleation = phase_lattice(ph) == 'cF' .and. (N_sl(1) == 12)
       if(prm%fccTwinTransNucleation) prm%fcc_twinNucleationSlipPair = lattice_FCC_TWINNUCLEATIONSLIPPAIR
 
       rho_mob_0                = pl%get_as1dFloat('rho_mob_0',   requiredSize=size(N_sl))
@@ -231,7 +231,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
       ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
       prm%omega = pl%get_asFloat('omega',  defaultVal = 1000.0_pReal) &
-                * merge(12.0_pReal,8.0_pReal,any(lattice_structure(ph) == [lattice_FCC_ID,lattice_HEX_ID]))
+                * merge(12.0_pReal,8.0_pReal,any(phase_lattice(ph) == ['cF','hP']))
 
       ! expand: family => system
       rho_mob_0        = math_expand(rho_mob_0,       N_sl)
@@ -340,7 +340,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                                pl%get_asFloat('a_cI', defaultVal=0.0_pReal), &
                                                pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
-      if (lattice_structure(ph) /= lattice_FCC_ID) then
+      if (phase_lattice(ph) /= 'cF') then
         prm%dot_N_0_tr = pl%get_as1dFloat('dot_N_0_tr')
         prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,N_tr)
       endif
@@ -355,7 +355,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
       if (any(prm%s             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tr'
-      if (lattice_structure(ph) /= lattice_FCC_ID) then
+      if (phase_lattice(ph) /= 'cF') then
         if (any(prm%dot_N_0_tr  < 0.0_pReal)) extmsg = trim(extmsg)//' dot_N_0_tr'
       endif
     else transActive

@@ -622,7 +622,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
 
   ! coefficients are corrected for the line tension effect
   ! (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
-  if (any(lattice_structure(ph) == [LATTICE_bcc_ID,LATTICE_fcc_ID])) then
+  if (any(phase_lattice(ph) == ['cI','cF'])) then
     myInteractionMatrix = prm%h_sl_sl &
                         * spread((  1.0_pReal - prm%f_F &
                                    + prm%f_F &
@@ -1055,7 +1055,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   !****************************************************************************
   !*** dislocation multiplication
   rhoDotMultiplication = 0.0_pReal
-  isBCC: if (lattice_structure(ph) == LATTICE_bcc_ID) then
+  isBCC: if (phase_lattice(ph) == 'cI') then
     forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
       rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / prm%b_sl(s) &                           ! assuming double-cross-slip of screws to be decisive for multiplication
                                   * sqrt(stt%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
@@ -1111,7 +1111,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
           + rhoDip(:,c) * (abs(gdot(:,2*c-1)) + abs(gdot(:,2*c))))                                  ! single knocks dipole constituent
 
   ! annihilated screw dipoles leave edge jogs behind on the colinear system
-  if (lattice_structure(ph) == LATTICE_fcc_ID) &
+  if (phase_lattice(ph) == 'cF') &
     forall (s = 1:ns, prm%colinearSystem(s) > 0) &
       rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
         * 0.25_pReal * sqrt(stt%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
