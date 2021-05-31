@@ -144,10 +144,10 @@ subroutine discretization_mesh_init(restart)
   CHKERRQ(ierr)
 
 ! Get initial nodal coordinates
-  call DMGetCoordinates(geomMesh,coords,ierr)
+  call DMGetCoordinates(geomMesh,coords_node0,ierr)
   CHKERRQ(ierr)
   allocate(mesh_node0_temp(dimPlex*mesh_Nnodes))
-  call VecGetArrayF90(coords, mesh_node0_temp,ierr)
+  call VecGetArrayF90(coords_node0, mesh_node0_temp,ierr)
   CHKERRQ(ierr)
   
   mesh_maxNips = FEM_nQuadrature(dimPlex,integrationOrder)
@@ -167,7 +167,6 @@ subroutine discretization_mesh_init(restart)
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
   mesh_node0 = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
-  deallocate(mesh_node0_temp)
 
   call discretization_init(materialAt,&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
