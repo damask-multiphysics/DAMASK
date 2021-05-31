@@ -41,6 +41,9 @@ module discretization_mesh
     mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
     mesh_node0                                                                                      !< node x,y,z coordinates (initially!)
 
+  real(pReal), pointer, dimension(:) :: &
+    mesh_node0_temp
+  
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
@@ -82,7 +85,7 @@ subroutine discretization_mesh_init(restart)
   class(tNode), pointer :: &
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
-
+  type(tvec)  :: coords_node0
 
   print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
 
@@ -140,6 +143,13 @@ subroutine discretization_mesh_init(restart)
   call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
   CHKERRQ(ierr)
 
+! Get initial nodal coordinates
+  call DMGetCoordinates(geomMesh,coords,ierr)
+  CHKERRQ(ierr)
+  allocate(mesh_node0_temp(dimPlex*mesh_Nnodes))
+  call VecGetArrayF90(coords, mesh_node0_temp,ierr)
+  CHKERRQ(ierr)
+  
   mesh_maxNips = FEM_nQuadrature(dimPlex,integrationOrder)
 
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,integrationOrder)%p)
@@ -156,14 +166,14 @@ subroutine discretization_mesh_init(restart)
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
+  mesh_node0 = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
+  deallocate(mesh_node0_temp)
 
   call discretization_init(materialAt,&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
-  call results_closeJobFile
+  call writeGeometry(reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]),mesh_node0)  
 
 end subroutine discretization_mesh_init
 
@@ -230,5 +240,27 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   enddo
 
 end subroutine mesh_FEM_build_ipCoordinates
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write all information needed for the DADF5 geometry
+!--------------------------------------------------------------------------------------------------
+subroutine writeGeometry(coordinates_points,coordinates_nodes)
+
+  real(pReal), dimension(:,:), intent(in) :: &
+  coordinates_nodes, &
+  coordinates_points
+  
+  call results_openJobFile
+  call results_closeGroup(results_addGroup('geometry'))
+  
+  call results_writeDataset('geometry',coordinates_nodes,'x_n', &
+        'initial coordinates of the nodes','m')
+  
+  call results_writeDataset('geometry',coordinates_points,'x_p', &
+        'initial coordinates of the materialpoints (cell centers)','m')
+  
+  call results_closeJobFile
+  
+  end subroutine writeGeometry
 
 end module discretization_mesh
