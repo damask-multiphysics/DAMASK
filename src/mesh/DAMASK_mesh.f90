@@ -252,6 +252,10 @@ program DAMASK_mesh
     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
   endif
 
+  print'(/,a)', ' ... writing initial configuration to file ........................'
+  flush(IO_STDOUT)
+  call CPFEM_results(0,0.0_pReal)
+
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
     guess = loadCases(currentLoadCase)%followFormerTrajectory                                       ! change of load case? homogeneous guess for the first inc
