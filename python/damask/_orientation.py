@@ -666,10 +666,10 @@ class Orientation(Rotation):
         o = r[ol]
 
         p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
-        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=m[...,0,0:4])
-        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=m[...,1,0:4])
-        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=o[...,0,0:4])
-        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=o[...,1,0:4])
+        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=m[...,0,0:4])
+        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(hkil=m[...,1,0:4])
+        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=o[...,0,0:4])
+        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(hkil=o[...,1,0:4])
 
         return (Rotation.from_parallel(p_,_p),ol) \
                 if return_lattice else \
@@ -1254,8 +1254,8 @@ class Orientation(Rotation):
             master = lattice_.kinematics[self.lattice][mode]
             kinematics = {'direction':master[:,0:3],'plane':master[:,3:6]} \
                           if master.shape[-1] == 6 else \
-                         {'direction':lattice_.Bravais_to_Miller(uvtw=master[:,0:4]),
-                          'plane':    lattice_.Bravais_to_Miller(hkil=master[:,4:8])}
+                         {'direction':util.Bravais_to_Miller(uvtw=master[:,0:4]),
+                          'plane':    util.Bravais_to_Miller(hkil=master[:,4:8])}
         except KeyError:
             raise (f'"{mode}" not defined for lattice "{self.lattice}"')
         d = self.to_frame(uvw=kinematics['direction'],with_symmetry=False)

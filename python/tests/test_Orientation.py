@@ -484,6 +484,7 @@ class TestOrientation:
         assert np.allclose(vector,
                            L.to_frame(**{keyFrame:L.to_lattice(**{keyLattice:vector})}))
 
+
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
                             [
                              ('aP',0.5,2.0,3.0,0.8,0.5,1.2),

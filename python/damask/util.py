@@ -27,6 +27,7 @@ __all__=[
          'execution_stamp',
          'shapeshifter', 'shapeblender',
          'extend_docstring', 'extended_docstring',
+         'Bravais_to_Miller', 'Miller_to_Bravais',
          'DREAM3D_base_group', 'DREAM3D_cell_data_group',
          'dict_prune', 'dict_flatten'
         ]
@@ -497,6 +498,62 @@ def DREAM3D_cell_data_group(fname):
         raise ValueError(f'Could not determine cell data group in file {fname}/{base_group}.')
 
     return cell_data_group
+
+
+def Bravais_to_Miller(*,uvtw=None,hkil=None):
+    """
+    Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
+
+    Parameters
+    ----------
+    uvtw|hkil : numpy.ndarray of shape (...,4)
+        Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
+
+    Returns
+    -------
+    uvw|hkl : numpy.ndarray of shape (...,3)
+        Miller indices of [uvw] direction or (hkl) plane normal.
+
+    """
+    if (uvtw is not None) ^ (hkil is None):
+        raise KeyError('Specify either "uvtw" or "hkil"')
+    axis,basis  = (np.array(uvtw),np.array([[1,0,-1,0],
+                                            [0,1,-1,0],
+                                            [0,0, 0,1]])) \
+                  if hkil is None else \
+                  (np.array(hkil),np.array([[1,0,0,0],
+                                            [0,1,0,0],
+                                            [0,0,0,1]]))
+    return np.einsum('il,...l',basis,axis)
+
+
+def Miller_to_Bravais(*,uvw=None,hkl=None):
+    """
+    Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
+
+    Parameters
+    ----------
+    uvw|hkl : numpy.ndarray of shape (...,3)
+        Miller indices of crystallographic direction [uvw] or plane normal (hkl).
+
+    Returns
+    -------
+    uvtw|hkil : numpy.ndarray of shape (...,4)
+        Miller–Bravais indices of [uvtw] direction or (hkil) plane normal.
+
+    """
+    if (uvw is not None) ^ (hkl is None):
+        raise KeyError('Specify either "uvw" or "hkl"')
+    axis,basis  = (np.array(uvw),np.array([[ 2,-1, 0],
+                                           [-1, 2, 0],
+                                           [-1,-1, 0],
+                                           [ 0, 0, 3]])/3) \
+                  if hkl is None else \
+                  (np.array(hkl),np.array([[ 1, 0, 0],
+                                           [ 0, 1, 0],
+                                           [-1,-1, 0],
+                                           [ 0, 0, 1]]))
+    return np.einsum('il,...l',basis,axis)
 
 
 def dict_prune(d):
