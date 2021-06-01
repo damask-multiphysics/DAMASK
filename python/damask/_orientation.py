@@ -30,10 +30,12 @@ lattice_symmetries = {
                }
 
 _parameter_doc = \
-       """lattice : str
-            Either a crystal family  out of {triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic}
-            or     a Bravais lattice out of {aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF}.
-            When specifying a Bravais lattice, additional lattice parameters might be required.
+       """
+       family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
+            Crystal family. Mutual exclusive with 'lattice' parameter.
+       lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}.
+            Bravais lattice in Pearson notation.
+            Mutual exclusive with 'family' parameter.
         a : float, optional
             Length of lattice parameter 'a'.
         b : float, optional
@@ -110,7 +112,8 @@ class Orientation(Rotation):
 
     @util.extend_docstring(_parameter_doc)
     def __init__(self,
-                 rotation = None,
+                 rotation = np.array([1.0,0.0,0.0,0.0]), *,
+                 family = None,
                  lattice = None,
                  a = None,b = None,c = None,
                  alpha = None,beta = None,gamma = None,
@@ -126,9 +129,16 @@ class Orientation(Rotation):
             Defaults to no rotation.
 
         """
-        Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
+        Rotation.__init__(self,rotation=rotation)
 
-        if lattice in lattice_symmetries:
+        if family in  set(lattice_symmetries.values()) and lattice is None:
+            self.family  = family
+            self.lattice = None
+
+            self.a = self.b = self.c = None
+            self.alpha = self.beta = self.gamma = None
+
+        elif lattice in lattice_symmetries:
             self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
 
@@ -169,14 +179,8 @@ class Orientation(Rotation):
               > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('Each lattice angle must be less than sum of others')
 
-        elif lattice in set(lattice_symmetries.values()):
-            self.family  = lattice
-            self.lattice = None
-
-            self.a = self.b = self.c = None
-            self.alpha = self.beta = self.gamma = None
         else:
-            raise KeyError(f'Lattice "{lattice}" is unknown')
+            raise KeyError(f'no valid family or lattice')
 
 
     def __repr__(self):
@@ -188,16 +192,16 @@ class Orientation(Rotation):
 
     def __copy__(self,**kwargs):
         """Create deep copy."""
-        return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion,
-                              lattice =kwargs['lattice']  if 'lattice'  in kwargs else self.lattice
-                                                                                    if self.lattice is not None else self.family,
-                              a       =kwargs['a']        if 'a'        in kwargs else self.a,
-                              b       =kwargs['b']        if 'b'        in kwargs else self.b,
-                              c       =kwargs['c']        if 'c'        in kwargs else self.c,
-                              alpha   =kwargs['alpha']    if 'alpha'    in kwargs else self.alpha,
-                              beta    =kwargs['beta']     if 'beta'     in kwargs else self.beta,
-                              gamma   =kwargs['gamma']    if 'gamma'    in kwargs else self.gamma,
-                              degrees =kwargs['degrees']  if 'degrees'  in kwargs else None,
+        return self.__class__(rotation= kwargs['rotation'] if 'rotation' in kwargs else self.quaternion,
+                              family  = kwargs['family']   if 'family'   in kwargs else self.family,
+                              lattice = kwargs['lattice']  if 'lattice'  in kwargs else self.lattice,
+                              a       = kwargs['a']        if 'a'        in kwargs else self.a,
+                              b       = kwargs['b']        if 'b'        in kwargs else self.b,
+                              c       = kwargs['c']        if 'c'        in kwargs else self.c,
+                              alpha   = kwargs['alpha']    if 'alpha'    in kwargs else self.alpha,
+                              beta    = kwargs['beta']     if 'beta'     in kwargs else self.beta,
+                              gamma   = kwargs['gamma']    if 'gamma'    in kwargs else self.gamma,
+                              degrees = kwargs['degrees']  if 'degrees'  in kwargs else None,
                              )
 
     copy = __copy__
