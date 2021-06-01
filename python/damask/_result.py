@@ -14,7 +14,6 @@ from collections.abc import Iterable
 import h5py
 import numpy as np
 import numpy.ma as ma
-from numpy.lib import recfunctions as rfn
 
 import damask
 from . import VTK
@@ -111,6 +110,8 @@ class Result:
             r=re.compile('increment_[0-9]+')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
             self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
+            if len(self.increments) == 0:
+                raise ValueError('incomplete DADF5 file')
 
             self.N_materialpoints, self.N_constituents = np.shape(f['cell_to/phase'])
 
@@ -727,8 +728,8 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-        eigenvalue : str, optional
-            Eigenvalue. Select from 'max', 'mid', 'min'. Defaults to 'max'.
+        eigenvalue : {'max', 'mid', 'min'}
+            Eigenvalue. Defaults to 'max'.
 
         """
         self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
@@ -760,9 +761,9 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-        eigenvalue : str, optional
+        eigenvalue : {'max', 'mid', 'min'}
             Eigenvalue to which the eigenvector corresponds.
-            Select from 'max', 'mid', 'min'. Defaults to 'max'.
+            Defaults to 'max'.
 
         """
         self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
@@ -771,14 +772,8 @@ class Result:
     @staticmethod
     def _add_IPF_color(l,q):
         m = util.scale_to_coprime(np.array(l))
-        try:
-            lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['lattice']]
-        except KeyError:
-            lattice =  q['meta']['lattice']
-        try:
-            o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
-        except ValueError:
-            o = Orientation(rotation = q['data'],lattice=lattice)
+        lattice =  q['meta']['lattice']
+        o = Orientation(rotation = q['data'],lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),
@@ -901,7 +896,7 @@ class Result:
             t = 'tensor'
             if o is None: o = 'fro'
         else:
-            raise ValueError
+            raise ValueError(f'invalid norm order {ord}')
 
         return {
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
@@ -1407,6 +1402,9 @@ class Result:
             v = self.geometry0
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
+        else:
+            raise ValueError(f'invalid mode {mode}')
+
         v.set_comments(util.execution_stamp('Result','save_VTK'))
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
