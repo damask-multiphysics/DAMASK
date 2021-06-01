@@ -294,7 +294,7 @@ end subroutine results_removeLink
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real scalar dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeScalarDataset_real(group,dataset,label,description,SIunit)
+subroutine results_writeScalarDataset_real(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
@@ -314,7 +314,7 @@ end subroutine results_writeScalarDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_real(group,dataset,label,description,SIunit)
+subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
@@ -335,7 +335,7 @@ end subroutine results_writeVectorDataset_real
 !> @brief Store real tensor dataset with associated metadata.
 !> @details Data is transposed to compenstate transposed storage order.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit,transposed)
+subroutine results_writeTensorDataset_real(dataset,group,label,description,SIunit,transposed)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
@@ -374,7 +374,7 @@ end subroutine results_writeTensorDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
+subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                 :: label,group,description
   character(len=*), intent(in), optional       :: SIunit
@@ -394,7 +394,7 @@ end subroutine results_writeVectorDataset_int
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer tensor dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
+subroutine results_writeTensorDataset_int(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit

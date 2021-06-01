@@ -82,11 +82,11 @@ subroutine discretization_results
 
   u = discretization_NodeCoords (1:3,:discretization_sharedNodesBegin) &
     - discretization_NodeCoords0(1:3,:discretization_sharedNodesBegin)
-  call results_writeDataset('current/geometry',u,'u_n','displacements of the nodes','m')
+  call results_writeDataset(u,'current/geometry','u_n','displacements of the nodes','m')
 
   u = discretization_IPcoords &
     - discretization_IPcoords0
-  call results_writeDataset('current/geometry',u,'u_p','displacements of the materialpoints (cell centers)','m')
+  call results_writeDataset(u,'current/geometry','u_p','displacements of the materialpoints (cell centers)','m')
 
 end subroutine discretization_results
 

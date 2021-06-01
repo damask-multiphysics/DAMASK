@@ -1518,55 +1518,55 @@ module subroutine plastic_nonlocal_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case('rho_u_ed_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_mob_edg_pos, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(o)), &
                                                      'positive mobile edge density','1/m²')
       case('rho_b_ed_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_imm_edg_pos, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(o)), &
                                                      'positive immobile edge density','1/m²')
       case('rho_u_ed_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_mob_edg_neg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(o)), &
                                                      'negative mobile edge density','1/m²')
       case('rho_b_ed_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_imm_edg_neg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(o)), &
                                                      'negative immobile edge density','1/m²')
       case('rho_d_ed')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip_edg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip_edg,group,trim(prm%output(o)), &
                                                      'edge dipole density','1/m²')
       case('rho_u_sc_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_mob_scr_pos, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(o)), &
                                                      'positive mobile screw density','1/m²')
       case('rho_b_sc_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_imm_scr_pos, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(o)), &
                                                      'positive immobile screw density','1/m²')
       case('rho_u_sc_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_mob_scr_neg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(o)), &
                                                      'negative mobile screw density','1/m²')
       case('rho_b_sc_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_sgl_imm_scr_neg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(o)), &
                                                      'negative immobile screw density','1/m²')
       case('rho_d_sc')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip_scr, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip_scr,group,trim(prm%output(o)), &
                                                      'screw dipole density','1/m²')
       case('rho_f')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_forest, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_forest,group,trim(prm%output(o)), &
                                                      'forest density','1/m²')
       case('v_ed_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%v_edg_pos, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_edg_pos,group,trim(prm%output(o)), &
                                                      'positive edge velocity','m/s')
       case('v_ed_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%v_edg_neg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_edg_neg,group,trim(prm%output(o)), &
                                                      'negative edge velocity','m/s')
       case('v_sc_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%v_scr_pos, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_scr_pos,group,trim(prm%output(o)), &
                                                      'positive srew velocity','m/s')
       case('v_sc_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%v_scr_neg, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_scr_neg,group,trim(prm%output(o)), &
                                                      'negative screw velocity','m/s')
       case('gamma')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma,group,trim(prm%output(o)), &
                                                      'plastic shear','1')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%tau_pass, trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
                                                      'passing stress for slip','Pa')
     end select
   enddo outputsLoop

@@ -401,17 +401,17 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
     select case(trim(prm%output(o)))
 
       case('xi_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%xi_slip,   trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%xi_slip,group,trim(prm%output(o)), &
                                                      'resistance against plastic slip','Pa')
       case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_slip,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_slip,group,trim(prm%output(o)), &
                                                      'plastic shear','1')
 
       case('xi_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,stt%xi_twin,   trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(stt%xi_twin,group,trim(prm%output(o)), &
                                                      'resistance against twinning','Pa')
       case('gamma_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,stt%gamma_twin,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(stt%gamma_twin,group,trim(prm%output(o)), &
                                                      'twinning shear','1')
 
     end select

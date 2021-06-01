@@ -815,33 +815,33 @@ module subroutine plastic_dislotwin_results(ph,group)
     select case(trim(prm%output(o)))
 
       case('rho_mob')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_mob,group,trim(prm%output(o)), &
                                                      'mobile dislocation density','1/m²')
       case('rho_dip')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip,group,trim(prm%output(o)), &
                                                      'dislocation dipole density','1/m²')
       case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_sl,group,trim(prm%output(o)), &
                                                      'plastic shear','1')
       case('Lambda_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%tau_pass,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
                                                      'passing stress for slip','Pa')
 
       case('f_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,stt%f_tw,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(stt%f_tw,group,trim(prm%output(o)), &
                                                      'twinned volume fraction','m³/m³')
       case('Lambda_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,dst%Lambda_tw,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(o)), &
                                                      'mean free path for twinning','m')
       case('tau_hat_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,dst%tau_hat_tw,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(dst%tau_hat_tw,group,trim(prm%output(o)), &
                                                      'threshold stress for twinning','Pa')
 
       case('f_tr')
-        if(prm%sum_N_tr>0) call results_writeDataset(group,stt%f_tr,trim(prm%output(o)), &
+        if(prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(o)), &
                                                      'martensite volume fraction','m³/m³')
 
     end select
