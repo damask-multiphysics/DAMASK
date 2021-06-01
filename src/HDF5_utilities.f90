@@ -17,7 +17,7 @@ module HDF5_utilities
   public
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer or float data of defined shape from file                                    ! ToDo: order of arguments wrong
+!> @brief reads integer or float data of defined shape from file
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_read
@@ -39,7 +39,7 @@ module HDF5_utilities
   end interface HDF5_read
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes integer or real data of defined shape to file                                      ! ToDo: order of arguments wrong
+!> @brief writes integer or real data of defined shape to file
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_write
@@ -525,7 +525,7 @@ end subroutine HDF5_setLink
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 1 dimension
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real1(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real1(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:) :: dataset                                            !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -565,7 +565,7 @@ end subroutine HDF5_read_real1
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 2 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real2(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real2(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:,:) :: dataset                                          !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -605,7 +605,7 @@ end subroutine HDF5_read_real2
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 2 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real3(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real3(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -645,7 +645,7 @@ end subroutine HDF5_read_real3
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 4 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real4(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real4(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:,:,:,:) :: dataset                                      !< read data
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -685,7 +685,7 @@ end subroutine HDF5_read_real4
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 5 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real5(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -725,7 +725,7 @@ end subroutine HDF5_read_real5
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 6 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real6(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real6(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -765,7 +765,7 @@ end subroutine HDF5_read_real6
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type real with 7 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_real7(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_real7(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -806,7 +806,7 @@ end subroutine HDF5_read_real7
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 1 dimension
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int1(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int1(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:) :: dataset                                            !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -847,7 +847,7 @@ end subroutine HDF5_read_int1
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 2 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int2(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int2(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:,:) :: dataset                                          !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -887,7 +887,7 @@ end subroutine HDF5_read_int2
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 3 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int3(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int3(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -927,7 +927,7 @@ end subroutine HDF5_read_int3
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer withh 4 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int4(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int4(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:,:,:,:) :: dataset                                      !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -967,7 +967,7 @@ end subroutine HDF5_read_int4
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 5 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int5(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int5(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -1007,7 +1007,7 @@ end subroutine HDF5_read_int5
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 6 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int6(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int6(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -1047,7 +1047,7 @@ end subroutine HDF5_read_int6
 !--------------------------------------------------------------------------------------------------
 !> @brief read dataset of type integer with 7 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_read_int7(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_read_int7(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
@@ -1088,7 +1088,7 @@ end subroutine HDF5_read_int7
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 1 dimension
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real1(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:) :: dataset                                             !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1129,7 +1129,7 @@ end subroutine HDF5_write_real1
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 2 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real2(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:,:) :: dataset                                           !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1170,7 +1170,7 @@ end subroutine HDF5_write_real2
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 3 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real3(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1211,7 +1211,7 @@ end subroutine HDF5_write_real3
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 4 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real4(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1253,7 +1253,7 @@ end subroutine HDF5_write_real4
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 5 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real5(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1294,7 +1294,7 @@ end subroutine HDF5_write_real5
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 6 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real6(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real6(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1335,7 +1335,7 @@ end subroutine HDF5_write_real6
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 7 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_real7(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
 
   real(pReal),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1377,7 +1377,7 @@ end subroutine HDF5_write_real7
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 1 dimension
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int1(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:) :: dataset                                             !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1418,7 +1418,7 @@ end subroutine HDF5_write_int1
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 2 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int2(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:,:) :: dataset                                           !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1459,7 +1459,7 @@ end subroutine HDF5_write_int2
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 3 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int3(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1500,7 +1500,7 @@ end subroutine HDF5_write_int3
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 4 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int4(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1541,7 +1541,7 @@ end subroutine HDF5_write_int4
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 5 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int5(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1582,7 +1582,7 @@ end subroutine HDF5_write_int5
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 6 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int6(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
@@ -1623,7 +1623,7 @@ end subroutine HDF5_write_int6
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 7 dimensions
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_write_int7(loc_id,dataset,datasetName,parallel)
+subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
 
   integer,          intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle

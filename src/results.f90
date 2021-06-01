@@ -304,7 +304,7 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -324,7 +324,7 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -361,9 +361,9 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
     enddo
-    call HDF5_write(groupHandle,dataset_transposed,label)
+    call HDF5_write(dataset_transposed,groupHandle,label)
   else
-    call HDF5_write(groupHandle,dataset,label)
+    call HDF5_write(dataset,groupHandle,label)
   endif
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
@@ -384,7 +384,7 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -404,7 +404,7 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
