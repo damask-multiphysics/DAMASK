@@ -336,17 +336,10 @@ class TestOrientation:
         for r,v in zip(result,vecs.reshape((-1,3))):
             assert np.all(r == Orientation(family=family).in_SST(v,proper))
 
-    @pytest.mark.parametrize('invalid_family',['fcc','bcc','hello'])
+    @pytest.mark.parametrize('invalid_family',[None,'fcc','bcc','hello'])
     def test_invalid_lattice_init(self,invalid_family):
         with pytest.raises(KeyError):
-            Orientation(family=invalid_family)                                                      # noqa
-
-    @pytest.mark.parametrize('invalid_family',[None,'fcc','bcc','hello'])
-    def test_invalid_symmetry_family(self,invalid_family):
-        with pytest.raises(KeyError):
-            o = Orientation(family='cubic')
-            o.family = invalid_family
-            o.symmetry_operations                                                                   # noqa
+            Orientation(family=invalid_family)
 
     def test_invalid_rot(self):
         with pytest.raises(TypeError):
