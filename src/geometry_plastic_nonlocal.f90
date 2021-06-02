@@ -11,22 +11,22 @@ module geometry_plastic_nonlocal
 
   implicit none
   public
-  
+
   integer, protected :: &
     geometry_plastic_nonlocal_nIPneighbors
-  
+
   integer,     dimension(:,:,:,:), allocatable, protected :: &
     geometry_plastic_nonlocal_IPneighborhood                                                        !< 6 or less neighboring IPs as [element ID, IP ID, face ID that point to me]
 
   real(pReal), dimension(:,:),     allocatable, protected :: &
     geometry_plastic_nonlocal_IPvolume0                                                             !< volume associated with IP (initially!)
- 
+
   real(pReal), dimension(:,:,:),   allocatable, protected :: &
     geometry_plastic_nonlocal_IParea0                                                               !< area of interface to neighboring IP (initially!)
-  
+
   real(pReal), dimension(:,:,:,:), allocatable, protected :: &
     geometry_plastic_nonlocal_IPareaNormal0                                                         !< area normal of interface to neighboring IP (initially!)
-  
+
 
 contains
 
@@ -44,7 +44,7 @@ subroutine geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood)
 
   geometry_plastic_nonlocal_IPneighborhood = IPneighborhood
   geometry_plastic_nonlocal_nIPneighbors   = size(IPneighborhood,2)
-  
+
 
 end subroutine geometry_plastic_nonlocal_setIPneighborhood
 
@@ -94,16 +94,16 @@ subroutine geometry_plastic_nonlocal_disable
 
   if(allocated(geometry_plastic_nonlocal_IPneighborhood)) &
     deallocate(geometry_plastic_nonlocal_IPneighborhood)
-    
+
   if(allocated(geometry_plastic_nonlocal_IPvolume0)) &
     deallocate(geometry_plastic_nonlocal_IPvolume0)
-    
+
   if(allocated(geometry_plastic_nonlocal_IParea0)) &
     deallocate(geometry_plastic_nonlocal_IParea0)
-    
+
   if(allocated(geometry_plastic_nonlocal_IPareaNormal0)) &
     deallocate(geometry_plastic_nonlocal_IPareaNormal0)
-  
+
 end subroutine geometry_plastic_nonlocal_disable
 
 
@@ -111,7 +111,7 @@ end subroutine geometry_plastic_nonlocal_disable
 !> @brief Write geometry data to results file
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_results
-  
+
   integer,     dimension(:),   allocatable :: shp
 
   call results_openJobFile
@@ -120,7 +120,7 @@ subroutine geometry_plastic_nonlocal_results
     real(pReal), dimension(:), allocatable :: temp
     shp = shape(geometry_plastic_nonlocal_IPvolume0)
     temp = reshape(geometry_plastic_nonlocal_IPvolume0,[shp(1)*shp(2)])
-    call results_writeDataset('geometry',temp,'v_0',&
+    call results_writeDataset(temp,'geometry','v_0',&
                               'initial cell volume','m³')
   end block writeVolume
 
@@ -128,7 +128,7 @@ subroutine geometry_plastic_nonlocal_results
     real(pReal), dimension(:,:), allocatable :: temp
     shp = shape(geometry_plastic_nonlocal_IParea0)
     temp = reshape(geometry_plastic_nonlocal_IParea0,[shp(1),shp(2)*shp(3)])
-    call results_writeDataset('geometry',temp,'a_0',&
+    call results_writeDataset(temp,'geometry','a_0',&
                               'initial cell face area','m²')
   end block writeAreas
 
@@ -136,13 +136,13 @@ subroutine geometry_plastic_nonlocal_results
     real(pReal), dimension(:,:,:), allocatable :: temp
     shp = shape(geometry_plastic_nonlocal_IPareaNormal0)
     temp = reshape(geometry_plastic_nonlocal_IPareaNormal0,[shp(1),shp(2),shp(3)*shp(4)])
-    call results_writeDataset('geometry',temp,'n_0',&
+    call results_writeDataset(temp,'geometry','n_0',&
                               'initial cell face normals','-',transposed=.false.)
   end block writeNormals
 
 
   call results_closeJobFile
-  
+
 end subroutine geometry_plastic_nonlocal_results
 
 end module geometry_plastic_nonlocal

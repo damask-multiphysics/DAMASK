@@ -307,7 +307,7 @@ module subroutine plastic_isotropic_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('xi')
-        call results_writeDataset(group,stt%xi,trim(prm%output(o)), &
+        call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
                                     'resistance against plastic flow','Pa')
     end select
   enddo outputsLoop

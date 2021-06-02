@@ -363,23 +363,23 @@ module subroutine plastic_kinehardening_results(ph,group)
   associate(prm => param(ph), stt => state(ph))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-     case('xi')
-       if(prm%sum_N_sl>0) call results_writeDataset(group,stt%crss,trim(prm%output(o)), &
+     case ('xi')
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%crss,group,trim(prm%output(o)), &
                                                     'resistance against plastic slip','Pa')
-     case('tau_b')
-       if(prm%sum_N_sl>0) call results_writeDataset(group,stt%crss_back,trim(prm%output(o)), &
+     case ('tau_b')
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%crss_back,group,trim(prm%output(o)), &
                                                     'back stress against plastic slip','Pa')
      case ('sgn(gamma)')
-       if(prm%sum_N_sl>0) call results_writeDataset(group,stt%sense,trim(prm%output(o)), & ! ToDo: could be int
-                                                    'tbd','1')
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%sense,group,trim(prm%output(o)), & ! ToDo: could be int
+                                                    'sense of shear','1')
      case ('chi_0')
-       if(prm%sum_N_sl>0) call results_writeDataset(group,stt%chi0,trim(prm%output(o)), &
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%chi0,group,trim(prm%output(o)), &
                                                     'tbd','Pa')
      case ('gamma_0')
-       if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma0,trim(prm%output(o)), &
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma0,group,trim(prm%output(o)), &
                                                     'tbd','1')
      case ('gamma')
-       if(prm%sum_N_sl>0) call results_writeDataset(group,stt%accshear,trim(prm%output(o)), &
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%accshear,group,trim(prm%output(o)), &
                                                     'plastic shear','1')
     end select
   enddo outputsLoop

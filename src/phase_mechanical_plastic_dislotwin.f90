@@ -202,7 +202,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       prm%n0_sl            = lattice_slip_normal(N_sl,phase%get_asString('lattice'),&
                                                  phase%get_asFloat('c/a',defaultVal=0.0_pReal))
-      prm%fccTwinTransNucleation = lattice_structure(ph) == lattice_FCC_ID .and. (N_sl(1) == 12)
+      prm%fccTwinTransNucleation = phase_lattice(ph) == 'cF' .and. (N_sl(1) == 12)
       if(prm%fccTwinTransNucleation) prm%fcc_twinNucleationSlipPair = lattice_FCC_TWINNUCLEATIONSLIPPAIR
 
       rho_mob_0                = pl%get_as1dFloat('rho_mob_0',   requiredSize=size(N_sl))
@@ -231,7 +231,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
       ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
       prm%omega = pl%get_asFloat('omega',  defaultVal = 1000.0_pReal) &
-                * merge(12.0_pReal,8.0_pReal,any(lattice_structure(ph) == [lattice_FCC_ID,lattice_HEX_ID]))
+                * merge(12.0_pReal,8.0_pReal,any(phase_lattice(ph) == ['cF','hP']))
 
       ! expand: family => system
       rho_mob_0        = math_expand(rho_mob_0,       N_sl)
@@ -340,7 +340,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                                pl%get_asFloat('a_cI', defaultVal=0.0_pReal), &
                                                pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
-      if (lattice_structure(ph) /= lattice_FCC_ID) then
+      if (phase_lattice(ph) /= 'cF') then
         prm%dot_N_0_tr = pl%get_as1dFloat('dot_N_0_tr')
         prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,N_tr)
       endif
@@ -355,7 +355,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
       if (any(prm%s             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tr'
-      if (lattice_structure(ph) /= lattice_FCC_ID) then
+      if (phase_lattice(ph) /= 'cF') then
         if (any(prm%dot_N_0_tr  < 0.0_pReal)) extmsg = trim(extmsg)//' dot_N_0_tr'
       endif
     else transActive
@@ -815,33 +815,33 @@ module subroutine plastic_dislotwin_results(ph,group)
     select case(trim(prm%output(o)))
 
       case('rho_mob')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_mob,group,trim(prm%output(o)), &
                                                      'mobile dislocation density','1/m²')
       case('rho_dip')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip,group,trim(prm%output(o)), &
                                                      'dislocation dipole density','1/m²')
       case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_sl,group,trim(prm%output(o)), &
                                                      'plastic shear','1')
       case('Lambda_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%tau_pass,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
                                                      'passing stress for slip','Pa')
 
       case('f_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,stt%f_tw,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(stt%f_tw,group,trim(prm%output(o)), &
                                                      'twinned volume fraction','m³/m³')
       case('Lambda_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,dst%Lambda_tw,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(o)), &
                                                      'mean free path for twinning','m')
       case('tau_hat_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(group,dst%tau_hat_tw,trim(prm%output(o)), &
+        if(prm%sum_N_tw>0) call results_writeDataset(dst%tau_hat_tw,group,trim(prm%output(o)), &
                                                      'threshold stress for twinning','Pa')
 
       case('f_tr')
-        if(prm%sum_N_tr>0) call results_writeDataset(group,stt%f_tr,trim(prm%output(o)), &
+        if(prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(o)), &
                                                      'martensite volume fraction','m³/m³')
 
     end select

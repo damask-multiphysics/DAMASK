@@ -408,19 +408,19 @@ module subroutine plastic_dislotungsten_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case('rho_mob')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_mob,group,trim(prm%output(o)), &
                                                      'mobile dislocation density','1/m²')
       case('rho_dip')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip,group,trim(prm%output(o)), &
                                                      'dislocation dipole density','1/m²')
       case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_sl,group,trim(prm%output(o)), &
                                                      'plastic shear','1')
       case('Lambda_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%threshold_stress,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%threshold_stress,group,trim(prm%output(o)), &
                                                      'threshold stress for slip','Pa')
     end select
   enddo outputsLoop
