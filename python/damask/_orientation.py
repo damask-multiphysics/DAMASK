@@ -132,7 +132,7 @@ class Orientation(Rotation):
         """
         super().__init__(rotation)
 
-        if family in  set(lattice_symmetries.values()) and lattice is None:
+        if family in set(lattice_symmetries.values()) and lattice is None:
             self.family = family
             self.lattice = None
 
@@ -177,6 +177,11 @@ class Orientation(Rotation):
         return '\n'.join(([] if self.lattice is None else [f'Bravais lattice {self.lattice}'])
                        + ([f'Crystal family {self.family}'])
                        + [super().__repr__()])
+
+    @property
+    def parameters(self):
+        """Return lattice parameters a, b, c, alpha, beta, gamma."""
+        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
 
 
     def __copy__(self,**kwargs):
@@ -533,193 +538,6 @@ class Orientation(Rotation):
                 return np.ones_like(rho[...,0],dtype=bool)
 
 
-    def relation_operations(self,model,return_lattice=False):
-        """
-        Crystallographic orientation relationships for phase transformations.
-
-        Parameters
-        ----------
-        model : str
-            Name of orientation relationship.
-        return_lattice : bool, optional
-            Return the target lattice in addition.
-
-        Returns
-        -------
-        operations : Rotations
-            Rotations characterizing the orientation relationship.
-
-        References
-        ----------
-        S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
-        https://doi.org/10.1016/j.jallcom.2012.02.004
-
-        K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
-        https://doi.org/10.1016/j.actamat.2005.11.001
-
-        Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-        https://doi.org/10.1107/S0021889805038276
-
-        H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
-        https://doi.org/10.1016/j.matchar.2004.12.015
-
-        Y. He et al., Acta Materialia 53(4):1179-1190, 2005
-        https://doi.org/10.1016/j.actamat.2004.11.021
-
-        """
-        if model not in self.orientation_relationships:
-            raise KeyError(f'unknown orientation relationship "{model}"')
-        r = self.orientation_relationships[model]
-
-        sl = self.lattice
-        ol = (set(r)-{sl}).pop()
-        m = r[sl]
-        o = r[ol]
-
-        p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
-        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=m[...,0,0:4])
-        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(hkil=m[...,1,0:4])
-        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=o[...,0,0:4])
-        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(hkil=o[...,1,0:4])
-
-        return (Rotation.from_parallel(p_,_p),ol) \
-                if return_lattice else \
-                Rotation.from_parallel(p_,_p)
-
-
-    def related(self,model):
-        """
-        Orientations derived from the given relationship.
-
-        One dimension (length according to number of related orientations)
-        is added to the left of the Rotation array.
-
-        """
-        o,lattice = self.relation_operations(model,return_lattice=True)
-        target = Orientation(lattice=lattice)
-        o = o.broadcast_to(o.shape+self.shape,mode='right')
-        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
-                         lattice=lattice,
-                         b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
-                         c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
-                         alpha = None if 'alpha' in target.immutable else self.alpha,
-                         beta  = None if 'beta'  in target.immutable else self.beta,
-                         gamma = None if 'gamma' in target.immutable else self.gamma,
-                        )
-
-
-    @property
-    def parameters(self):
-        """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
-
-
-    def in_SST(self,vector,proper=False):
-        """
-        Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
-
-        Parameters
-        ----------
-        vector : numpy.ndarray of shape (...,3)
-            Vector to check.
-        proper : bool, optional
-            Consider only vectors with z >= 0, hence combine two neighboring SSTs.
-            Defaults to False.
-
-        Returns
-        -------
-        in : numpy.ndarray of shape (...)
-           Boolean array indicating whether vector falls into SST.
-
-        """
-        if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
-            raise ValueError('input is not a field of three-dimensional vectors')
-
-        if self.basis is None:                                                                      # direct exit for no symmetry
-            return  np.ones_like(vector[...,0],bool)
-
-        if proper:
-            components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['proper'], vector.shape+(3,)),
-                                                      vector), 12)
-            components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
-                                                      vector), 12)
-            return   np.all(components_proper   >= 0.0,axis=-1) \
-                   | np.all(components_improper >= 0.0,axis=-1)
-        else:
-            components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
-                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
-
-            return np.all(components >= 0.0,axis=-1)
-
-
-    def IPF_color(self,vector,in_SST=True,proper=False):
-        """
-        Map vector to RGB color within standard stereographic triangle of own symmetry.
-
-        Parameters
-        ----------
-        vector : numpy.ndarray of shape (...,3)
-            Vector to colorize.
-        in_SST : bool, optional
-            Consider symmetrically equivalent orientations such that poles are located in SST.
-            Defaults to True.
-        proper : bool, optional
-            Consider only vectors with z >= 0, hence combine two neighboring SSTs (with mirrored colors).
-            Defaults to False.
-
-        Returns
-        -------
-        rgb : numpy.ndarray of shape (...,3)
-           RGB array of IPF colors.
-
-        Examples
-        --------
-        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
-
-        >>> o = damask.Orientation(lattice='cubic')
-        >>> o.IPF_color([0,0,1])
-        array([1., 0., 0.])
-
-        """
-        if np.array(vector).shape[-1] != 3:
-            raise ValueError('input is not a field of three-dimensional vectors')
-
-        vector_ = self.to_SST(vector,proper) if in_SST else \
-                  self @ np.broadcast_to(vector,self.shape+(3,))
-
-        if self.basis is None:                                                                      # direct exit for no symmetry
-            return np.zeros_like(vector_)
-
-        if proper:
-            components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['proper'], vector_.shape+(3,)),
-                                                      vector_), 12)
-            components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['improper'], vector_.shape+(3,)),
-                                                      vector_), 12)
-            in_SST = np.all(components_proper   >= 0.0,axis=-1) \
-                   | np.all(components_improper >= 0.0,axis=-1)
-            components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
-                                  components_proper,components_improper)
-        else:
-            components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self.basis['improper'], vector_.shape+(3,)),
-                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
-
-            in_SST = np.all(components >= 0.0,axis=-1)
-
-        with np.errstate(invalid='ignore',divide='ignore'):
-            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5                # smoothen color ramps
-            rgb = np.clip(rgb,0.,1.)                                                                # clip intensity
-            rgb /= np.max(rgb,axis=-1,keepdims=True)                                                # normalize to (HS)V = 1
-        rgb[np.broadcast_to(~in_SST[...,np.newaxis],rgb.shape)] = 0.0
-
-        return rgb
-
-
     def disorientation(self,other,return_operators=False):
         """
         Calculate disorientation between myself and given other orientation.
@@ -874,6 +692,114 @@ class Orientation(Rotation):
                )
 
 
+    def in_SST(self,vector,proper=False):
+        """
+        Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
+
+        Parameters
+        ----------
+        vector : numpy.ndarray of shape (...,3)
+            Vector to check.
+        proper : bool, optional
+            Consider only vectors with z >= 0, hence combine two neighboring SSTs.
+            Defaults to False.
+
+        Returns
+        -------
+        in : numpy.ndarray of shape (...)
+           Boolean array indicating whether vector falls into SST.
+
+        """
+        if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
+            raise ValueError('input is not a field of three-dimensional vectors')
+
+        if self.basis is None:                                                                      # direct exit for no symmetry
+            return  np.ones_like(vector[...,0],bool)
+
+        if proper:
+            components_proper   = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.basis['proper'], vector.shape+(3,)),
+                                                      vector), 12)
+            components_improper = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
+                                                      vector), 12)
+            return   np.all(components_proper   >= 0.0,axis=-1) \
+                   | np.all(components_improper >= 0.0,axis=-1)
+        else:
+            components = np.around(np.einsum('...ji,...i',
+                                             np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
+                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
+
+            return np.all(components >= 0.0,axis=-1)
+
+
+    def IPF_color(self,vector,in_SST=True,proper=False):
+        """
+        Map vector to RGB color within standard stereographic triangle of own symmetry.
+
+        Parameters
+        ----------
+        vector : numpy.ndarray of shape (...,3)
+            Vector to colorize.
+        in_SST : bool, optional
+            Consider symmetrically equivalent orientations such that poles are located in SST.
+            Defaults to True.
+        proper : bool, optional
+            Consider only vectors with z >= 0, hence combine two neighboring SSTs (with mirrored colors).
+            Defaults to False.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (...,3)
+           RGB array of IPF colors.
+
+        Examples
+        --------
+        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
+
+        >>> o = damask.Orientation(lattice='cubic')
+        >>> o.IPF_color([0,0,1])
+        array([1., 0., 0.])
+
+        """
+        if np.array(vector).shape[-1] != 3:
+            raise ValueError('input is not a field of three-dimensional vectors')
+
+        vector_ = self.to_SST(vector,proper) if in_SST else \
+                  self @ np.broadcast_to(vector,self.shape+(3,))
+
+        if self.basis is None:                                                                      # direct exit for no symmetry
+            return np.zeros_like(vector_)
+
+        if proper:
+            components_proper   = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.basis['proper'], vector_.shape+(3,)),
+                                                      vector_), 12)
+            components_improper = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.basis['improper'], vector_.shape+(3,)),
+                                                      vector_), 12)
+            in_SST = np.all(components_proper   >= 0.0,axis=-1) \
+                   | np.all(components_improper >= 0.0,axis=-1)
+            components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
+                                  components_proper,components_improper)
+        else:
+            components = np.around(np.einsum('...ji,...i',
+                                             np.broadcast_to(self.basis['improper'], vector_.shape+(3,)),
+                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
+
+            in_SST = np.all(components >= 0.0,axis=-1)
+
+        with np.errstate(invalid='ignore',divide='ignore'):
+            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5                # smoothen color ramps
+            rgb = np.clip(rgb,0.,1.)                                                                # clip intensity
+            rgb /= np.max(rgb,axis=-1,keepdims=True)                                                # normalize to (HS)V = 1
+        rgb[np.broadcast_to(~in_SST[...,np.newaxis],rgb.shape)] = 0.0
+
+        return rgb
+
+
+    # functions that require lattice, not just family
+
     def to_pole(self,*,uvw=None,hkl=None,with_symmetry=False):
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
@@ -938,3 +864,78 @@ class Orientation(Rotation):
 
         return ~self.broadcast_to( self.shape+P.shape[:-2],mode='right') \
                @ np.broadcast_to(P,self.shape+P.shape)
+
+
+    def relation_operations(self,model,return_lattice=False):
+        """
+        Crystallographic orientation relationships for phase transformations.
+
+        Parameters
+        ----------
+        model : str
+            Name of orientation relationship.
+        return_lattice : bool, optional
+            Return the target lattice in addition.
+
+        Returns
+        -------
+        operations : Rotations
+            Rotations characterizing the orientation relationship.
+
+        References
+        ----------
+        S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
+        https://doi.org/10.1016/j.jallcom.2012.02.004
+
+        K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
+        https://doi.org/10.1016/j.actamat.2005.11.001
+
+        Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+        https://doi.org/10.1107/S0021889805038276
+
+        H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
+        https://doi.org/10.1016/j.matchar.2004.12.015
+
+        Y. He et al., Acta Materialia 53(4):1179-1190, 2005
+        https://doi.org/10.1016/j.actamat.2004.11.021
+
+        """
+        if model not in self.orientation_relationships:
+            raise KeyError(f'unknown orientation relationship "{model}"')
+        r = self.orientation_relationships[model]
+
+        sl = self.lattice
+        ol = (set(r)-{sl}).pop()
+        m = r[sl]
+        o = r[ol]
+
+        p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
+        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=m[...,0,0:4])
+        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(hkil=m[...,1,0:4])
+        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=o[...,0,0:4])
+        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(hkil=o[...,1,0:4])
+
+        return (Rotation.from_parallel(p_,_p),ol) \
+                if return_lattice else \
+                Rotation.from_parallel(p_,_p)
+
+
+    def related(self,model):
+        """
+        Orientations derived from the given relationship.
+
+        One dimension (length according to number of related orientations)
+        is added to the left of the Rotation array.
+
+        """
+        o,lattice = self.relation_operations(model,return_lattice=True)
+        target = Orientation(lattice=lattice)
+        o = o.broadcast_to(o.shape+self.shape,mode='right')
+        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
+                         lattice=lattice,
+                         b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
+                         c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
+                         alpha = None if 'alpha' in target.immutable else self.alpha,
+                         beta  = None if 'beta'  in target.immutable else self.beta,
+                         gamma = None if 'gamma' in target.immutable else self.gamma,
+                        )
