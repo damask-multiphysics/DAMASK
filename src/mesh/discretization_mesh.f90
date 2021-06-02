@@ -252,10 +252,10 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
   
-  call results_writeDataset(coordinates_nodes,'geometry','x_n', &
+  call results_writeDataset('geometry',coordinates_nodes,'x_n', &
         'initial coordinates of the nodes','m')
   
-  call results_writeDataset(coordinates_points,'geometry','x_p', &
+  call results_writeDataset('geometry',coordinates_points,'x_p', &
         'initial coordinates of the materialpoints (cell centers)','m')
   
   call results_closeJobFile
