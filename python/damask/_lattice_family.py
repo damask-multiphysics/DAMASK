@@ -5,7 +5,15 @@ from . import Rotation
 class LatticeFamily():
 
     def __init__(self,family):
-        """Symmetry-related operations for crystal families."""
+        """
+        Symmetry-related operations for crystal families.
+
+        Parameters
+        ----------
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
+            Name of the crystal family.
+
+        """
         if family not in self._immutable.keys():
             raise KeyError(f'invalid lattice family "{family}"')
         self.family = family
@@ -121,41 +129,36 @@ class LatticeFamily():
 
 
     _immutable = {
-        'cubic':
-                   {
+        'cubic': {
                      'b': 1.0,
                      'c': 1.0,
                      'alpha': np.pi/2.,
                      'beta':  np.pi/2.,
                      'gamma': np.pi/2.,
                    },
-        'hexagonal':
-                   {
+        'hexagonal': {
                      'b': 1.0,
                      'alpha': np.pi/2.,
                      'beta':  np.pi/2.,
                      'gamma': 2.*np.pi/3.,
                    },
-        'tetragonal':
-                   {
+        'tetragonal': {
                      'b': 1.0,
                      'alpha': np.pi/2.,
                      'beta':  np.pi/2.,
                      'gamma': np.pi/2.,
                    },
-        'orthorhombic':
-                   {
+        'orthorhombic': {
                      'alpha': np.pi/2.,
                      'beta':  np.pi/2.,
                      'gamma': np.pi/2.,
                    },
-        'monoclinic':
-                   {
+        'monoclinic': {
                      'alpha': np.pi/2.,
                      'gamma': np.pi/2.,
                    },
-         'triclinic': {}
-                   }
+        'triclinic': {}
+                 }
 
 
     _basis  = {

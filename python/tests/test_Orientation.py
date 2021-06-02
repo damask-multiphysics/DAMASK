@@ -7,7 +7,6 @@ from damask import Orientation
 from damask import Table
 from damask import util
 from damask import grid_filters
-from damask import lattice
 from damask import _orientation
 
 crystal_families = set(_orientation.lattice_symmetries.values())
@@ -341,29 +340,6 @@ class TestOrientation:
         with pytest.raises(KeyError):
             Orientation(family=invalid_family)
 
-    def test_invalid_rot(self):
-        with pytest.raises(TypeError):
-            Orientation.from_random(family='cubic') * np.ones(3)
-
-    def test_missing_symmetry_immutable(self):
-        with pytest.raises(KeyError):
-            Orientation(lattice=None).immutable                                                     # noqa
-
-    def test_missing_symmetry_basis_real(self):
-        with pytest.raises(KeyError):
-            Orientation(lattice=None).basis_real                                                    # noqa
-
-    def test_missing_symmetry_basis_reciprocal(self):
-        with pytest.raises(KeyError):
-            Orientation(lattice=None).basis_reciprocal                                              # noqa
-
-    def test_double_to_lattice(self):
-        with pytest.raises(KeyError):
-            Orientation().to_lattice(direction=np.ones(3),plane=np.ones(3))                         # noqa
-
-    def test_double_to_frame(self):
-        with pytest.raises(KeyError):
-            Orientation().to_frame(uvw=np.ones(3),hkl=np.ones(3))                                   # noqa
 
     @pytest.mark.parametrize('relation',[None,'Peter','Paul'])
     def test_unknown_relation(self,relation):
@@ -395,12 +371,6 @@ class TestOrientation:
         o = Orientation(family='cubic')                                                             # noqa
         with pytest.raises(ValueError):
             eval(f'o.{function}(np.ones(4))')
-
-    @pytest.mark.parametrize('model',lattice.relations)
-    def test_relationship_definition(self,model):
-        m,o = list(lattice.relations[model])
-        assert lattice.relations[model][m].shape[:-1] == lattice.relations[model][o].shape[:-1]
-
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])
     def test_relationship_vectorize(self,set_of_quaternions,lattice,model):
@@ -440,46 +410,6 @@ class TestOrientation:
                             **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
                             )
             assert np.allclose(o.to_frame(uvw=np.eye(3)),basis), 'Lattice basis disagrees with initialization'
-
-    @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
-                            [
-                             ('aP',0.5,2.0,3.0,0.8,0.5,1.2),
-                             ('mP',1.0,2.0,3.0,np.pi/2,0.5,np.pi/2),
-                             ('oI',0.5,1.5,3.0,np.pi/2,np.pi/2,np.pi/2),
-                             ('tP',0.5,0.5,3.0,np.pi/2,np.pi/2,np.pi/2),
-                             ('hP',1.0,None,1.6,np.pi/2,np.pi/2,2*np.pi/3),
-                             ('cF',1.0,1.0,None,np.pi/2,np.pi/2,np.pi/2),
-                            ])
-    def test_bases_contraction(self,lattice,a,b,c,alpha,beta,gamma):
-        L = Orientation(lattice=lattice,
-                        a=a,b=b,c=c,
-                        alpha=alpha,beta=beta,gamma=gamma)
-        assert np.allclose(np.eye(3),np.einsum('ik,jk',L.basis_real,L.basis_reciprocal))
-
-    @pytest.mark.parametrize('keyFrame,keyLattice',[('uvw','direction'),('hkl','plane'),])
-    @pytest.mark.parametrize('vector',np.array([
-                                                [1.,1.,1.],
-                                                [-2.,3.,0.5],
-                                                [0.,0.,1.],
-                                                [1.,1.,1.],
-                                                [2.,2.,2.],
-                                                [0.,1.,1.],
-                                               ]))
-    @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
-                            [
-                             ('aP',0.5,2.0,3.0,0.8,0.5,1.2),
-                             ('mP',1.0,2.0,3.0,np.pi/2,0.5,np.pi/2),
-                             ('oI',0.5,1.5,3.0,np.pi/2,np.pi/2,np.pi/2),
-                             ('tP',0.5,0.5,3.0,np.pi/2,np.pi/2,np.pi/2),
-                             ('hP',1.0,1.0,1.6,np.pi/2,np.pi/2,2*np.pi/3),
-                             ('cF',1.0,1.0,1.0,np.pi/2,np.pi/2,np.pi/2),
-                            ])
-    def test_to_frame_to_lattice(self,lattice,a,b,c,alpha,beta,gamma,vector,keyFrame,keyLattice):
-        L = Orientation(lattice=lattice,
-                        a=a,b=b,c=c,
-                        alpha=alpha,beta=beta,gamma=gamma)
-        assert np.allclose(vector,
-                           L.to_frame(**{keyFrame:L.to_lattice(**{keyLattice:vector})}))
 
 
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',

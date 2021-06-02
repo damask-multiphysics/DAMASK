@@ -4,9 +4,9 @@ import numpy as np
 
 from . import Rotation
 from . import LatticeFamily
+from . import Lattice
 from . import util
 from . import tensor
-from . import lattice as lattice_
 
 
 lattice_symmetries = {
@@ -130,13 +130,13 @@ class Orientation(Rotation):
             Defaults to no rotation.
 
         """
-        Rotation.__init__(self,rotation=rotation)
+        super().__init__(rotation)
 
         if family in  set(lattice_symmetries.values()) and lattice is None:
             self.family = family
             self.lattice = None
 
-            l = LatticeFamily(self.family)
+            l = LatticeFamily(self.family)  # noqa
             self.immutable = l.immutable
             self.basis = l.basis
             self.symmetry_operations = l.symmetry_operations
@@ -149,48 +149,25 @@ class Orientation(Rotation):
             self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
 
-            l = LatticeFamily(self.family)
+            l = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees) # noqa
             self.immutable = l.immutable
             self.basis = l.basis
             self.symmetry_operations = l.symmetry_operations
 
-            self.a = 1 if a is None else a
-            self.b = b
-            self.c = c
-            self.a = float(self.a) if self.a is not None else \
-                     (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
-                      self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
-            self.b = float(self.b) if self.b is not None else \
-                     (self.a * self.ratio['b'] if self.a is not None and self.ratio['b'] is not None else
-                      self.c / self.ratio['c'] * self.ratio['b']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-            self.c = float(self.c) if self.c is not None else \
-                     (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
-                      self.b / self.ratio['b'] * self.ratio['c']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
+            self.a = l.a
+            self.b = l.b
+            self.c = l.c
 
-            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
-            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
-            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
-            if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
-            if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
-            if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
+            self.alpha = l.alpha
+            self.beta = l.beta
+            self.gamma = l.gamma
 
-            if \
-                (self.a     is None) \
-             or (self.b     is None or ('b'     in self.immutable and self.b     != self.immutable['b'] * self.a)) \
-             or (self.c     is None or ('c'     in self.immutable and self.c     != self.immutable['c'] * self.b)) \
-             or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
-             or (self.beta  is None or ( 'beta' in self.immutable and self.beta  != self.immutable['beta'])) \
-             or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
-                raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
+            self.ratio = l.ratio
 
-            if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
-                raise ValueError ('Lattice angles must be positive')
-            if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
-              > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
-                raise ValueError ('Each lattice angle must be less than sum of others')
+            self.to_frame = l.to_frame
 
+            self.kinematics = l.kinematics
+            self.orientation_relationships = l.orientation_relationships
         else:
             raise KeyError(f'no valid family or lattice')
 
@@ -590,12 +567,9 @@ class Orientation(Rotation):
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        if model not in lattice_.relations:
+        if model not in self.orientation_relationships:
             raise KeyError(f'unknown orientation relationship "{model}"')
-        r = lattice_.relations[model]
-
-        if self.lattice not in r:
-            raise KeyError(f'relationship "{model}" not supported for lattice "{self.lattice}"')
+        r = self.orientation_relationships[model]
 
         sl = self.lattice
         ol = (set(r)-{sl}).pop()
@@ -638,50 +612,6 @@ class Orientation(Rotation):
     def parameters(self):
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
         return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
-
-
-    @property
-    def ratio(self):
-        """Return axes ratios of own lattice."""
-        _ratio = { 'hexagonal': {'c': np.sqrt(8./3.)}}
-
-        return dict(b = self.immutable['b']
-                        if 'b' in self.immutable else
-                        _ratio[self.family]['b'] if self.family in _ratio and 'b' in _ratio[self.family] else None,
-                    c = self.immutable['c']
-                        if 'c' in self.immutable else
-                        _ratio[self.family]['c'] if self.family in _ratio and 'c' in _ratio[self.family] else None,
-                   )
-
-
-    @property
-    def basis_real(self):
-        """
-        Calculate orthogonal real space crystal basis.
-
-        References
-        ----------
-        C.T. Young and J.L. Lytton, Journal of Applied Physics 43:1408–1417, 1972
-        https://doi.org/10.1063/1.1661333
-
-        """
-        if None in self.parameters:
-            raise KeyError('missing crystal lattice parameters')
-        return np.array([
-                          [1,0,0],
-                          [np.cos(self.gamma),np.sin(self.gamma),0],
-                          [np.cos(self.beta),
-                           (np.cos(self.alpha)-np.cos(self.beta)*np.cos(self.gamma))                     /np.sin(self.gamma),
-                           np.sqrt(1 - np.cos(self.alpha)**2 - np.cos(self.beta)**2 - np.cos(self.gamma)**2
-                                 + 2 * np.cos(self.alpha)    * np.cos(self.beta)    * np.cos(self.gamma))/np.sin(self.gamma)],
-                         ],dtype=float).T \
-             * np.array([self.a,self.b,self.c])
-
-
-    @property
-    def basis_reciprocal(self):
-        """Calculate reciprocal (dual) crystal basis."""
-        return np.linalg.inv(self.basis_real.T)
 
 
     def in_SST(self,vector,proper=False):
@@ -944,58 +874,6 @@ class Orientation(Rotation):
                )
 
 
-    def to_lattice(self,*,direction=None,plane=None):
-        """
-        Calculate lattice vector corresponding to crystal frame direction or plane normal.
-
-        Parameters
-        ----------
-        direction|normal : numpy.ndarray of shape (...,3)
-            Vector along direction or plane normal.
-
-        Returns
-        -------
-        Miller : numpy.ndarray of shape (...,3)
-            lattice vector of direction or plane.
-            Use util.scale_to_coprime to convert to (integer) Miller indices.
-
-        """
-        if (direction is not None) ^ (plane is None):
-            raise KeyError('specify either "direction" or "plane"')
-        axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
-                      if plane is None else \
-                      (np.array(plane),self.basis_real.T)
-        return np.einsum('il,...l',basis,axis)
-
-
-    def to_frame(self,*,uvw=None,hkl=None,with_symmetry=False):
-        """
-        Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
-
-        Parameters
-        ----------
-        uvw|hkl : numpy.ndarray of shape (...,3)
-            Miller indices of crystallographic direction or plane normal.
-        with_symmetry : bool, optional
-            Calculate all N symmetrically equivalent vectors.
-
-        Returns
-        -------
-        vector : numpy.ndarray of shape (...,3) or (N,...,3)
-            Crystal frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
-
-        """
-        if (uvw is not None) ^ (hkl is None):
-            raise KeyError('specify either "uvw" or "hkl"')
-        axis,basis  = (np.array(uvw),self.basis_real) \
-                      if hkl is None else \
-                      (np.array(hkl),self.basis_reciprocal)
-        return (self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+axis.shape[:-1],mode='right')
-              @ np.broadcast_to(np.einsum('il,...l',basis,axis),self.symmetry_operations.shape+axis.shape)
-                if with_symmetry else
-                np.einsum('il,...l',basis,axis))
-
-
     def to_pole(self,*,uvw=None,hkl=None,with_symmetry=False):
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
@@ -1013,7 +891,11 @@ class Orientation(Rotation):
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
-        v = self.to_frame(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
+        # ToDo: simplify 'with_symmetry'
+        v = self.to_frame(uvw=uvw,hkl=hkl)
+        if with_symmetry:
+            v = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+v.shape[:-1],mode='right') \
+              @ np.broadcast_to(v,self.symmetry_operations.shape+v.shape)
         return ~(self if self.shape+v.shape[:-1] == () else self.broadcast_to(self.shape+v.shape[:-1],mode='right')) \
                @ np.broadcast_to(v,self.shape+v.shape)
 
@@ -1047,15 +929,10 @@ class Orientation(Rotation):
 
         """
         try:
-            master = lattice_.kinematics[self.lattice][mode]
-            kinematics = {'direction':master[:,0:3],'plane':master[:,3:6]} \
-                          if master.shape[-1] == 6 else \
-                         {'direction':util.Bravais_to_Miller(uvtw=master[:,0:4]),
-                          'plane':    util.Bravais_to_Miller(hkil=master[:,4:8])}
+            d = self.to_frame(uvw=self.kinematics(mode)['direction'])
+            p = self.to_frame(hkl=self.kinematics(mode)['plane'])
         except KeyError:
             raise (f'"{mode}" not defined for lattice "{self.lattice}"')
-        d = self.to_frame(uvw=kinematics['direction'],with_symmetry=False)
-        p = self.to_frame(hkl=kinematics['plane']    ,with_symmetry=False)
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
                                   p/np.linalg.norm(p,axis=-1,keepdims=True))
 
