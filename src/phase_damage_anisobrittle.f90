@@ -160,7 +160,7 @@ module subroutine anisobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
+          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³')
       end select
     enddo outputsLoop
   end associate

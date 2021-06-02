@@ -187,7 +187,7 @@ module subroutine thermal_results(ho,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case('T')
-          call results_writeDataset(group,current(ho)%T,'T','temperature','K')
+          call results_writeDataset(current(ho)%T,group,'T','temperature','K')
       end select
     enddo outputsLoop
   end associate

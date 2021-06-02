@@ -365,25 +365,11 @@ module lattice
        1, 1, 1,      1,-2, 1  &
        ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< bct slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
 
-
-  enum, bind(c); enumerator :: &
-    lattice_UNDEFINED_ID, &
-    lattice_FCC_ID, &
-    lattice_BCC_ID, &
-    lattice_HEX_ID, &
-    lattice_BCT_ID
-  end enum
-
 ! SHOULD NOT BE PART OF LATTICE BEGIN
   real(pReal),                        dimension(:),     allocatable, public, protected :: &
-    lattice_mu, lattice_nu, &
-    lattice_mu_phi, &
-    lattice_rho, &
-    lattice_c_p
+    lattice_mu, lattice_nu
    real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
     lattice_C66
- integer(kind(lattice_UNDEFINED_ID)), dimension(:),     allocatable, public, protected :: &
-    lattice_structure
 ! SHOULD NOT BE PART OF LATTICE END
 
   interface lattice_forestProjection_edge
@@ -396,10 +382,6 @@ module lattice
 
   public :: &
     lattice_init, &
-    lattice_FCC_ID, &
-    lattice_BCC_ID, &
-    lattice_HEX_ID, &
-    lattice_BCT_ID, &
     lattice_equivalent_nu, &
     lattice_equivalent_mu, &
     lattice_applyLatticeSymmetry33, &
@@ -446,11 +428,9 @@ subroutine lattice_init
   phases => config_material%get('phase')
   Nphases = phases%length
 
-  allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)
-  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
+  allocate(lattice_C66(6,6,Nphases), source=0.0_pReal)
 
-  allocate(lattice_rho, &
-           lattice_mu, lattice_nu,&
+  allocate(lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
 
   do ph = 1, phases%length
@@ -466,19 +446,6 @@ subroutine lattice_init
     lattice_C66(3,3,ph) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
     lattice_C66(6,6,ph) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
 
-    select case(phase%get_asString('lattice'))
-      case('cF')
-        lattice_structure(ph) = lattice_FCC_ID
-      case('cI')
-        lattice_structure(ph) = lattice_BCC_ID
-      case('hP')
-        lattice_structure(ph) = lattice_HEX_ID
-      case('tI')
-        lattice_structure(ph) = lattice_BCT_ID
-      case default
-        call IO_error(130,ext_msg='lattice_init: '//phase%get_asString('lattice'))
-    end select
-
     lattice_C66(1:6,1:6,ph) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,ph),phase%get_asString('lattice'))
 
     lattice_nu(ph) = lattice_equivalent_nu(lattice_C66(1:6,1:6,ph),'voigt')
@@ -489,8 +456,6 @@ subroutine lattice_init
       if (abs(lattice_C66(i,i,ph))<tol_math_check) &
         call IO_error(135,el=i,ip=ph,ext_msg='matrix diagonal "el"ement of phase "ip"')
     enddo
-
-    lattice_rho(ph) = phase%get_asFloat('rho', defaultVal=0.0_pReal)
 ! SHOULD NOT BE PART OF LATTICE END
 
     call selfTest
@@ -794,7 +759,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
        9,12,15,16,16,15,12, 9,10, 8,19,19,  21,23,22, 2, 2,23,22,21,24, 1,20,24,  28,26,28,28,26,28,28,28,28,26,28,28,26,28,28,28,28,28,28,26,28,28,28,26, &
       16,15,12, 9, 9,12,15,16, 8,10,19,19,   2,22,23,21,21,22,23, 2,24,20, 1,24,  28,28,26,28,28,28,28,26,28,28,26,28,28,28,28,26,26,28,28,28,26,28,28,28, &
       15,16, 9,12,15,16, 9,12,19,19, 8,10,  22, 2,21,23,22,21, 2,23,20,24,24, 1,  28,28,28,26,28,28,26,28,28,28,28,26,28,28,26,28,28,26,28,28,28,26,28,28, &
-                                                                                                                                  
+
       28,25,28,28,28,25,28,28,28,28,28,25,  28,28,26,28,28,26,28,28,26,28,28,28,   1,28,28,28,28,27,28,28,27,28,28,28,28,27,28,28,28,28,27,28,28,28,27,28, &
       25,28,28,28,28,28,28,25,28,25,28,28,  28,28,28,26,26,28,28,28,28,26,28,28,  28, 1,28,28,27,28,28,28,28,27,28,28,27,28,28,28,28,28,28,27,28,28,28,27, &
       28,28,28,25,25,28,28,28,25,28,28,28,  26,28,28,28,28,28,28,26,28,28,26,28,  28,28, 1,28,28,28,28,27,28,28,27,28,28,28,28,27,27,28,28,28,27,28,28,28, &

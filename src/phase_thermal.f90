@@ -196,8 +196,8 @@ module function phase_mu_T(co,ce) result(mu)
   real(pReal) :: mu
 
 
-  mu = lattice_rho(material_phaseID(co,ce)) &
-     *  param(material_phaseID(co,ce))%C_p
+  mu = phase_rho(material_phaseID(co,ce)) &
+     * param(material_phaseID(co,ce))%C_p
 
 end function phase_mu_T
 

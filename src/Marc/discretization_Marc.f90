@@ -173,17 +173,17 @@ subroutine writeGeometry(elem, &
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
 
-  call results_writeDataset('geometry',connectivity_elem,'T_e',&
+  call results_writeDataset(connectivity_elem,'geometry','T_e',&
                             'connectivity of the elements','-')
 
-  call results_writeDataset('geometry',connectivity_cell_reshaped,'T_c', &
+  call results_writeDataset(connectivity_cell_reshaped,'geometry','T_c', &
                             'connectivity of the cells','-')
   call results_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
 
-  call results_writeDataset('geometry',coordinates_nodes,'x_n', &
+  call results_writeDataset(coordinates_nodes,'geometry','x_n', &
                             'initial coordinates of the nodes','m')
 
-  call results_writeDataset('geometry',coordinates_points,'x_p', &
+  call results_writeDataset(coordinates_points,'geometry','x_p', &
                             'initial coordinates of the materialpoints (cell centers)','m')
 
   call results_closeJobFile
