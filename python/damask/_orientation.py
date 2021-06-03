@@ -167,7 +167,7 @@ class Orientation(Rotation):
             self.to_frame = l.to_frame
 
             self.kinematics = l.kinematics
-            self.orientation_relationships = l.orientation_relationships
+            self.relation_operations = l.relation_operations
         else:
             raise KeyError(f'no valid family or lattice')
 
@@ -866,60 +866,6 @@ class Orientation(Rotation):
                @ np.broadcast_to(P,self.shape+P.shape)
 
 
-    def relation_operations(self,model,return_lattice=False):
-        """
-        Crystallographic orientation relationships for phase transformations.
-
-        Parameters
-        ----------
-        model : str
-            Name of orientation relationship.
-        return_lattice : bool, optional
-            Return the target lattice in addition.
-
-        Returns
-        -------
-        operations : Rotations
-            Rotations characterizing the orientation relationship.
-
-        References
-        ----------
-        S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
-        https://doi.org/10.1016/j.jallcom.2012.02.004
-
-        K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
-        https://doi.org/10.1016/j.actamat.2005.11.001
-
-        Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-        https://doi.org/10.1107/S0021889805038276
-
-        H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
-        https://doi.org/10.1016/j.matchar.2004.12.015
-
-        Y. He et al., Acta Materialia 53(4):1179-1190, 2005
-        https://doi.org/10.1016/j.actamat.2004.11.021
-
-        """
-        if model not in self.orientation_relationships:
-            raise KeyError(f'unknown orientation relationship "{model}"')
-        r = self.orientation_relationships[model]
-
-        sl = self.lattice
-        ol = (set(r)-{sl}).pop()
-        m = r[sl]
-        o = r[ol]
-
-        p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
-        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=m[...,0,0:4])
-        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(hkil=m[...,1,0:4])
-        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=o[...,0,0:4])
-        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(hkil=o[...,1,0:4])
-
-        return (Rotation.from_parallel(p_,_p),ol) \
-                if return_lattice else \
-                Rotation.from_parallel(p_,_p)
-
-
     def related(self,model):
         """
         Orientations derived from the given relationship.
@@ -928,7 +874,7 @@ class Orientation(Rotation):
         is added to the left of the Rotation array.
 
         """
-        o,lattice = self.relation_operations(model,return_lattice=True)
+        lattice,o = self.relation_operations(model)
         target = Orientation(lattice=lattice)
         o = o.broadcast_to(o.shape+self.shape,mode='right')
         return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),

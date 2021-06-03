@@ -2,6 +2,7 @@ import numpy as np
 
 from . import util
 from . import LatticeFamily
+from . import Rotation
 
 lattice_symmetries = {
                 'aP': 'triclinic',
@@ -203,6 +204,56 @@ class Lattice(LatticeFamily):
         else:
             return {'direction':master[:,0:3],
                     'plane':    master[:,3:6]}
+
+
+    def relation_operations(self,model):
+        """
+        Crystallographic orientation relationships for phase transformations.
+
+        Parameters
+        ----------
+        model : str
+            Name of orientation relationship.
+
+        Returns
+        -------
+        operations : (string, damask.Rotation)
+            Rotations characterizing the orientation relationship.
+
+        References
+        ----------
+        S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
+        https://doi.org/10.1016/j.jallcom.2012.02.004
+
+        K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
+        https://doi.org/10.1016/j.actamat.2005.11.001
+
+        Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+        https://doi.org/10.1107/S0021889805038276
+
+        H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
+        https://doi.org/10.1016/j.matchar.2004.12.015
+
+        Y. He et al., Acta Materialia 53(4):1179-1190, 2005
+        https://doi.org/10.1016/j.actamat.2004.11.021
+
+        """
+        if model not in self.orientation_relationships:
+            raise KeyError(f'unknown orientation relationship "{model}"')
+        r = self.orientation_relationships[model]
+
+        sl = self.lattice
+        ol = (set(r)-{sl}).pop()
+        m = r[sl]
+        o = r[ol]
+
+        p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
+        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=m[...,0,0:4])
+        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else util.Bravais_to_Miller(hkil=m[...,1,0:4])
+        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(uvtw=o[...,0,0:4])
+        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else util.Bravais_to_Miller(hkil=o[...,1,0:4])
+
+        return (ol,Rotation.from_parallel(p_,_p))
 
 
     @property
@@ -620,12 +671,12 @@ class Lattice(LatticeFamily):
             [[ -1,  1, -1],[  1,  1,  0]],
             [[  1,  1,  1],[  1, -1,  0]],
             [[  1,  1, -1],[  1, -1,  0]],
-    
+
             [[  1,  1, -1],[  1,  0,  1]],
             [[ -1,  1,  1],[  1,  0,  1]],
             [[  1,  1,  1],[ -1,  0,  1]],
             [[  1, -1,  1],[ -1,  0,  1]],
-    
+
             [[ -1,  1, -1],[  0,  1,  1]],
             [[  1,  1, -1],[  0,  1,  1]],
             [[ -1,  1,  1],[  0, -1,  1]],
@@ -636,12 +687,12 @@ class Lattice(LatticeFamily):
             [[  -1, -1,   2, 0],[  0,  0,  0,  1]],
             [[  -1,  2,  -1, 0],[  0,  0,  0,  1]],
             [[  -1, -1,   2, 0],[  0,  0,  0,  1]],
-    
+
             [[  -1,  2,  -1, 0],[  0,  0,  0,  1]],
             [[  -1, -1,   2, 0],[  0,  0,  0,  1]],
             [[  -1,  2,  -1, 0],[  0,  0,  0,  1]],
             [[  -1, -1,   2, 0],[  0,  0,  0,  1]],
-    
+
             [[  -1,  2,  -1, 0],[  0,  0,  0,  1]],
             [[  -1, -1,   2, 0],[  0,  0,  0,  1]],
             [[  -1,  2,  -1, 0],[  0,  0,  0,  1]],
