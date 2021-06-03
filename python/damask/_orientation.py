@@ -32,9 +32,9 @@ lattice_symmetries = {
 
 _parameter_doc = \
        """
-       family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
             Crystal family. Mutual exclusive with 'lattice' parameter.
-       lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}.
             Bravais lattice in Pearson notation.
             Mutual exclusive with 'family' parameter.
         a : float, optional
@@ -139,7 +139,6 @@ class Orientation(Rotation):
             self.structure = l = LatticeFamily(self.family)  # noqa
             self.immutable = l.immutable
             self.basis = l.basis
-            self.symmetry_operations = l.symmetry_operations
 
             self.a = self.b = self.c = None
             self.alpha = self.beta = self.gamma = None
@@ -152,7 +151,6 @@ class Orientation(Rotation):
             self.structure = l = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees) # noqa
             self.immutable = l.immutable
             self.basis = l.basis
-            self.symmetry_operations = l.symmetry_operations
 
             self.a = l.a
             self.b = l.b
@@ -177,11 +175,6 @@ class Orientation(Rotation):
         return '\n'.join(([] if self.lattice is None else [f'Bravais lattice {self.lattice}'])
                        + ([f'Crystal family {self.family}'])
                        + [super().__repr__()])
-
-    @property
-    def parameters(self):
-        """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
 
 
     def __copy__(self,**kwargs):
@@ -437,7 +430,8 @@ class Orientation(Rotation):
         is added to the left of the Rotation array.
 
         """
-        o = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+self.shape,mode='right')
+        sym_ops = self.structure.symmetry_operations
+        o = sym_ops.broadcast_to(sym_ops.shape+self.shape,mode='right')
         return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
 
@@ -817,11 +811,12 @@ class Orientation(Rotation):
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
+        sym_ops = self.structure.symmetry_operations
         # ToDo: simplify 'with_symmetry'
         v = self.to_frame(uvw=uvw,hkl=hkl)
         if with_symmetry:
-            v = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+v.shape[:-1],mode='right') \
-              @ np.broadcast_to(v,self.symmetry_operations.shape+v.shape)
+            v = sym_ops.broadcast_to(sym_ops.shape+v.shape[:-1],mode='right') \
+              @ np.broadcast_to(v,sym_ops.shape+v.shape)
         return ~(self if self.shape+v.shape[:-1] == () else self.broadcast_to(self.shape+v.shape[:-1],mode='right')) \
                @ np.broadcast_to(v,self.shape+v.shape)
 

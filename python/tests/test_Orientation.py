@@ -75,7 +75,7 @@ class TestOrientation:
                                       ])
     def test_invalid_init(self,kwargs):
         with pytest.raises(ValueError):
-            Orientation(**kwargs).parameters                                                        # noqa
+            Orientation(**kwargs)
 
     @pytest.mark.parametrize('kwargs',[
                                         dict(lattice='aP',a=1.0,b=1.1,c=1.2,alpha=np.pi/4,beta=np.pi/3,gamma=np.pi/2),
@@ -436,7 +436,7 @@ class TestOrientation:
                                     a=a,b=b,c=c,
                                     alpha=alpha,beta=beta,gamma=gamma)
         assert o.to_pole(**{kw:vector,'with_symmetry':with_symmetry}).shape \
-            == o.shape + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape
+            == o.shape + (o.structure.symmetry_operations.shape if with_symmetry else ()) + vector.shape
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF'])
     def test_Schmid(self,update,ref_path,lattice):
