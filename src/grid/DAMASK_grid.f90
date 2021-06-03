@@ -42,11 +42,6 @@ program DAMASK_grid
   integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
 
 !--------------------------------------------------------------------------------------------------
-! variables related to information from load case and geom file
-  real(pReal), dimension(9) :: temp_valueVector                                                     !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
-  logical,     dimension(9) :: temp_maskVector                                                      !< temporarily from loadcase file when reading in tensors
-
-!--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
   real(pReal), dimension(3,3), parameter :: &
     ones  = 1.0_pReal, &
