@@ -409,7 +409,7 @@ class TestOrientation:
                             **dict(zip(['a','b','c'],lengths)),
                             **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
                             )
-            assert np.allclose(o.to_frame(uvw=np.eye(3)),basis), 'Lattice basis disagrees with initialization'
+            assert np.allclose(o.structure.to_frame(uvw=np.eye(3)),basis), 'Lattice basis disagrees with initialization'
 
 
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
