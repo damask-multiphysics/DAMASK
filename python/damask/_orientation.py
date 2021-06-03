@@ -137,10 +137,11 @@ class Orientation(Rotation):
             self.family = family
             self.lattice = None
             self.structure = LatticeFamily(self.family)
+            self.related = self.Schmid = self.to_pole = None
         elif lattice in lattice_symmetries:
             self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
-            self.structure = l = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees)
+            self.structure = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees)
         else:
             raise KeyError(f'no valid family or lattice')
 
