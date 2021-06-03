@@ -136,7 +136,7 @@ class Orientation(Rotation):
             self.family = family
             self.lattice = None
 
-            l = LatticeFamily(self.family)  # noqa
+            self.structure = l = LatticeFamily(self.family)  # noqa
             self.immutable = l.immutable
             self.basis = l.basis
             self.symmetry_operations = l.symmetry_operations
@@ -149,7 +149,7 @@ class Orientation(Rotation):
             self.family  = lattice_symmetries[lattice]
             self.lattice = lattice
 
-            l = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees) # noqa
+            self.structure = l = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees) # noqa
             self.immutable = l.immutable
             self.basis = l.basis
             self.symmetry_operations = l.symmetry_operations
@@ -210,8 +210,8 @@ class Orientation(Rotation):
             Orientation to check for equality.
 
         """
-        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
-                             for attr in ['family','lattice','parameters']])
+        matching_type = self.structure == other.structure if hasattr(other,'structure') else \
+                        False
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
     def __ne__(self,other):
@@ -248,8 +248,8 @@ class Orientation(Rotation):
             Mask indicating where corresponding orientations are close.
 
         """
-        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
-                             for attr in ['family','lattice','parameters']])
+        matching_type = self.structure == other.structure if hasattr(other,'structure') else \
+                        False
         return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
 
 

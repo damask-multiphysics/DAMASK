@@ -19,6 +19,19 @@ class LatticeFamily():
         self.family = family
 
 
+    def __eq__(self,other):
+        """
+        Equal to other.
+
+        Parameters
+        ----------
+        other : LatticeFamily
+            Lattice family to check for equality.
+
+        """
+        return self.family == other.family
+
+
     @property
     def symmetry_operations(self):
         """Symmetry operations as Rotations."""

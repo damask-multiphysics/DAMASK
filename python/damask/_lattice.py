@@ -99,6 +99,18 @@ class Lattice(LatticeFamily):
             raise ValueError ('Each lattice angle must be less than sum of others')
 
 
+    def __eq__(self,other):
+        """
+        Equal to other.
+
+        Parameters
+        ----------
+        other : Lattice
+            Lattice to check for equality.
+
+        """
+        return self.lattice == other.lattice and self.parameters == other.parameters
+
     @property
     def parameters(self):
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
