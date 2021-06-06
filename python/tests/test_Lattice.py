@@ -6,12 +6,12 @@ from damask import Lattice
 class TestLattice:
 
     def test_double_to_lattice(self):
-        L = Lattice('cF')
+        L = Lattice(lattice='cF')
         with pytest.raises(KeyError):
             L.to_lattice(direction=np.ones(3),plane=np.ones(3))
 
     def test_double_to_frame(self):
-        L = Lattice('cF')
+        L = Lattice(lattice='cF')
         with pytest.raises(KeyError):
             L.to_frame(uvw=np.ones(3),hkl=np.ones(3))
 

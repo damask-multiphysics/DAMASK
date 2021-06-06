@@ -4,7 +4,6 @@ import copy
 import numpy as np
 
 from . import Rotation
-from . import LatticeFamily
 from . import Lattice
 from . import util
 from . import tensor
@@ -56,7 +55,7 @@ _parameter_doc = \
        """
 
 
-class Orientation(Rotation):
+class Orientation(Rotation,Lattice):
     """
     Representation of crystallographic orientation as combination of rotation and either crystal family or Bravais lattice.
 
@@ -131,19 +130,9 @@ class Orientation(Rotation):
             Defaults to no rotation.
 
         """
-        super().__init__(rotation)
-
-        if family in set(lattice_symmetries.values()) and lattice is None:
-            self.family = family
-            self.lattice = None
-            self.structure = LatticeFamily(self.family)
-            self.related = self.Schmid = self.to_pole = None
-        elif lattice in lattice_symmetries:
-            self.family  = lattice_symmetries[lattice]
-            self.lattice = lattice
-            self.structure = Lattice(self.lattice, a,b,c, alpha,beta,gamma, degrees)
-        else:
-            raise KeyError(f'no valid family or lattice')
+        Rotation.__init__(self,rotation)
+        Lattice.__init__(self,family=family, lattice=lattice,
+                              a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma, degrees=degrees)
 
 
     def __repr__(self):
@@ -173,8 +162,9 @@ class Orientation(Rotation):
             Orientation to check for equality.
 
         """
-        matching_type = self.structure == other.structure if hasattr(other,'structure') else \
-                        False
+        matching_type = self.family == other.family and \
+                        self.lattice == other.lattice and \
+                        self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
     def __ne__(self,other):
@@ -211,8 +201,9 @@ class Orientation(Rotation):
             Mask indicating where corresponding orientations are close.
 
         """
-        matching_type = self.structure == other.structure if hasattr(other,'structure') else \
-                        False
+        matching_type = self.family == other.family and \
+                        self.lattice == other.lattice and \
+                        self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
 
 
@@ -385,8 +376,8 @@ class Orientation(Rotation):
 
         """
         o = cls(**kwargs)
-        x = o.structure.to_frame(uvw=uvw)
-        z = o.structure.to_frame(hkl=hkl)
+        x = o.to_frame(uvw=uvw)
+        z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
         return o.copy(rotation=Rotation.from_matrix(tensor.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
 
@@ -400,7 +391,7 @@ class Orientation(Rotation):
         is added to the left of the Rotation array.
 
         """
-        sym_ops = self.structure.symmetry_operations
+        sym_ops = self.symmetry_operations
         o = sym_ops.broadcast_to(sym_ops.shape+self.shape,mode='right')
         return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
@@ -677,21 +668,21 @@ class Orientation(Rotation):
         if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
-        if self.structure.basis is None:                                                            # direct exit for no symmetry
+        if self.basis is None:                                                                      # direct exit for no symmetry
             return  np.ones_like(vector[...,0],bool)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.structure.basis['proper'], vector.shape+(3,)),
+                                                      np.broadcast_to(self.basis['proper'], vector.shape+(3,)),
                                                       vector), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.structure.basis['improper'], vector.shape+(3,)),
+                                                      np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
                                                       vector), 12)
             return   np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self.structure.basis['improper'], vector.shape+(3,)),
+                                             np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
                                              np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
 
             return np.all(components >= 0.0,axis=-1)
@@ -732,15 +723,15 @@ class Orientation(Rotation):
         vector_ = self.to_SST(vector,proper) if in_SST else \
                   self @ np.broadcast_to(vector,self.shape+(3,))
 
-        if self.structure.basis is None:                                                            # direct exit for no symmetry
+        if self.basis is None:                                                                      # direct exit for no symmetry
             return np.zeros_like(vector_)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.structure.basis['proper'], vector_.shape+(3,)),
+                                                      np.broadcast_to(self.basis['proper'], vector_.shape+(3,)),
                                                       vector_), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.structure.basis['improper'], vector_.shape+(3,)),
+                                                      np.broadcast_to(self.basis['improper'], vector_.shape+(3,)),
                                                       vector_), 12)
             in_SST = np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
@@ -748,7 +739,7 @@ class Orientation(Rotation):
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self.structure.basis['improper'], vector_.shape+(3,)),
+                                             np.broadcast_to(self .basis['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             in_SST = np.all(components >= 0.0,axis=-1)
@@ -781,9 +772,9 @@ class Orientation(Rotation):
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
-        sym_ops = self.structure.symmetry_operations
+        sym_ops = self.symmetry_operations
         # ToDo: simplify 'with_symmetry'
-        v = self.structure.to_frame(uvw=uvw,hkl=hkl)
+        v = self.to_frame(uvw=uvw,hkl=hkl)
         if with_symmetry:
             v = sym_ops.broadcast_to(sym_ops.shape+v.shape[:-1],mode='right') \
               @ np.broadcast_to(v,sym_ops.shape+v.shape)
@@ -820,8 +811,8 @@ class Orientation(Rotation):
 
         """
         try:
-            d = self.structure.to_frame(uvw=self.structure.kinematics(mode)['direction'])
-            p = self.structure.to_frame(hkl=self.structure.kinematics(mode)['plane'])
+            d = self.to_frame(uvw=self.kinematics(mode)['direction'])
+            p = self.to_frame(hkl=self.kinematics(mode)['plane'])
         except KeyError:
             raise (f'"{mode}" not defined for lattice "{self.lattice}"')
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
@@ -839,15 +830,14 @@ class Orientation(Rotation):
         is added to the left of the Rotation array.
 
         """
-        lattice,o = self.structure.relation_operations(model)
+        lattice,o = self.relation_operations(model)
         target = Lattice(lattice=lattice)
-        struct = self.structure
         o = o.broadcast_to(o.shape+self.shape,mode='right')
         return Orientation(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
                           lattice=lattice,
-                          b = struct.b if target.ratio['b'] is None else struct.a*target.ratio['b'],
-                          c = struct.c if target.ratio['c'] is None else struct.a*target.ratio['c'],
-                          alpha = None if 'alpha' in target.immutable else struct.alpha,
-                          beta  = None if 'beta'  in target.immutable else struct.beta,
-                          gamma = None if 'gamma' in target.immutable else struct.gamma,
+                          b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
+                          c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
+                          alpha = None if 'alpha' in target.immutable else self.alpha,
+                          beta  = None if 'beta'  in target.immutable else self.beta,
+                          gamma = None if 'gamma' in target.immutable else self.gamma,
                          )

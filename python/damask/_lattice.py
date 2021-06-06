@@ -29,7 +29,8 @@ lattice_symmetries = {
 class Lattice(LatticeFamily):
     """Lattice."""
 
-    def __init__(self,
+    def __init__(self,*,
+                 family = None,
                  lattice = None,
                  a = None,b = None,c = None,
                  alpha = None,beta = None,gamma = None,
@@ -57,46 +58,50 @@ class Lattice(LatticeFamily):
             Angles are given in degrees. Defaults to False.
 
         """
-        super().__init__(lattice_symmetries[lattice])
+        super().__init__(family = lattice_symmetries[lattice] if family is None else family)
+
         self.lattice = lattice
 
+        if self.lattice is not None:
+            self.a = 1 if a is None else a
+            self.b = b
+            self.c = c
+            self.a = float(self.a) if self.a is not None else \
+                     (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
+                      self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
+            self.b = float(self.b) if self.b is not None else \
+                     (self.a * self.ratio['b'] if self.a is not None and self.ratio['b'] is not None else
+                      self.c / self.ratio['c'] * self.ratio['b']
+                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
+            self.c = float(self.c) if self.c is not None else \
+                     (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
+                      self.b / self.ratio['b'] * self.ratio['c']
+                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
 
-        self.a = 1 if a is None else a
-        self.b = b
-        self.c = c
-        self.a = float(self.a) if self.a is not None else \
-                 (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
-                  self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
-        self.b = float(self.b) if self.b is not None else \
-                 (self.a * self.ratio['b'] if self.a is not None and self.ratio['b'] is not None else
-                  self.c / self.ratio['c'] * self.ratio['b']
-                  if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-        self.c = float(self.c) if self.c is not None else \
-                 (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
-                  self.b / self.ratio['b'] * self.ratio['c']
-                  if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
+            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
+            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
+            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
+            if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
+            if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
+            if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
 
-        self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
-        self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
-        self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
-        if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
-        if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
-        if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
+            if \
+                (self.a     is None) \
+             or (self.b     is None or ('b'     in self.immutable and self.b     != self.immutable['b'] * self.a)) \
+             or (self.c     is None or ('c'     in self.immutable and self.c     != self.immutable['c'] * self.b)) \
+             or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
+             or (self.beta  is None or ( 'beta' in self.immutable and self.beta  != self.immutable['beta'])) \
+             or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
+                raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
 
-        if \
-            (self.a     is None) \
-         or (self.b     is None or ('b'     in self.immutable and self.b     != self.immutable['b'] * self.a)) \
-         or (self.c     is None or ('c'     in self.immutable and self.c     != self.immutable['c'] * self.b)) \
-         or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
-         or (self.beta  is None or ( 'beta' in self.immutable and self.beta  != self.immutable['beta'])) \
-         or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
-            raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
-
-        if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
-            raise ValueError ('Lattice angles must be positive')
-        if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
-          > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
-            raise ValueError ('Each lattice angle must be less than sum of others')
+            if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
+                raise ValueError ('Lattice angles must be positive')
+            if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
+              > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
+                raise ValueError ('Each lattice angle must be less than sum of others')
+        else:
+            self.a = self.b = self.c = None
+            self.alpha = self.beta = self.gamma = None
 
 
     def __eq__(self,other):

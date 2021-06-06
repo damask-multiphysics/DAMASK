@@ -409,7 +409,7 @@ class TestOrientation:
                             **dict(zip(['a','b','c'],lengths)),
                             **dict(zip(['alpha','beta','gamma'],np.arccos(cosines))),
                             )
-            assert np.allclose(o.structure.to_frame(uvw=np.eye(3)),basis), 'Lattice basis disagrees with initialization'
+            assert np.allclose(o.to_frame(uvw=np.eye(3)),basis), 'Lattice basis disagrees with initialization'
 
 
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
@@ -436,7 +436,7 @@ class TestOrientation:
                                     a=a,b=b,c=c,
                                     alpha=alpha,beta=beta,gamma=gamma)
         assert o.to_pole(**{kw:vector,'with_symmetry':with_symmetry}).shape \
-            == o.shape + (o.structure.symmetry_operations.shape if with_symmetry else ()) + vector.shape
+            == o.shape + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF'])
     def test_Schmid(self,update,ref_path,lattice):
