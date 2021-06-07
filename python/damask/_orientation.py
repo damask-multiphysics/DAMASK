@@ -4,7 +4,7 @@ import copy
 import numpy as np
 
 from . import Rotation
-from . import Lattice
+from . import Crystal
 from . import util
 from . import tensor
 
@@ -55,7 +55,7 @@ _parameter_doc = \
        """
 
 
-class Orientation(Rotation,Lattice):
+class Orientation(Rotation,Crystal):
     """
     Representation of crystallographic orientation as combination of rotation and either crystal family or Bravais lattice.
 
@@ -131,7 +131,7 @@ class Orientation(Rotation,Lattice):
 
         """
         Rotation.__init__(self,rotation)
-        Lattice.__init__(self,family=family, lattice=lattice,
+        Crystal.__init__(self,family=family, lattice=lattice,
                               a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma, degrees=degrees)
 
 
@@ -831,7 +831,7 @@ class Orientation(Rotation,Lattice):
 
         """
         lattice,o = self.relation_operations(model)
-        target = Lattice(lattice=lattice)
+        target = Crystal(lattice=lattice)
         o = o.broadcast_to(o.shape+self.shape,mode='right')
         return Orientation(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
                           lattice=lattice,

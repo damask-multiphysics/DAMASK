@@ -26,7 +26,7 @@ lattice_symmetries = {
                }
 
 
-class Lattice(LatticeFamily):
+class Crystal(LatticeFamily):
     """Lattice."""
 
     def __init__(self,*,

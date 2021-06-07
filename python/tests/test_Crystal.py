@@ -1,19 +1,19 @@
 import pytest
 import numpy as np
 
-from damask import Lattice
+from damask import Crystal
 
-class TestLattice:
+class TestCrystal:
 
     def test_double_to_lattice(self):
-        L = Lattice(lattice='cF')
+        c = Crystal(lattice='cF')
         with pytest.raises(KeyError):
-            L.to_lattice(direction=np.ones(3),plane=np.ones(3))
+            c.to_lattice(direction=np.ones(3),plane=np.ones(3))
 
     def test_double_to_frame(self):
-        L = Lattice(lattice='cF')
+        c = Crystal(lattice='cF')
         with pytest.raises(KeyError):
-            L.to_frame(uvw=np.ones(3),hkl=np.ones(3))
+            c.to_frame(uvw=np.ones(3),hkl=np.ones(3))
 
     @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma',
                             [
@@ -25,10 +25,10 @@ class TestLattice:
                              ('cF',1.0,1.0,None,np.pi/2,np.pi/2,np.pi/2),
                             ])
     def test_bases_contraction(self,lattice,a,b,c,alpha,beta,gamma):
-        L = Lattice(lattice=lattice,
+        c = Crystal(lattice=lattice,
                     a=a,b=b,c=c,
                     alpha=alpha,beta=beta,gamma=gamma)
-        assert np.allclose(np.eye(3),np.einsum('ik,jk',L.basis_real,L.basis_reciprocal))
+        assert np.allclose(np.eye(3),np.einsum('ik,jk',c.basis_real,c.basis_reciprocal))
 
 
     @pytest.mark.parametrize('keyFrame,keyLattice',[('uvw','direction'),('hkl','plane'),])
@@ -50,15 +50,15 @@ class TestLattice:
                              ('cF',1.0,1.0,1.0,np.pi/2,np.pi/2,np.pi/2),
                             ])
     def test_to_frame_to_lattice(self,lattice,a,b,c,alpha,beta,gamma,vector,keyFrame,keyLattice):
-        L = Lattice(lattice=lattice,
+        c = Crystal(lattice=lattice,
                     a=a,b=b,c=c,
                     alpha=alpha,beta=beta,gamma=gamma)
         assert np.allclose(vector,
-                           L.to_frame(**{keyFrame:L.to_lattice(**{keyLattice:vector})}))
+                           c.to_frame(**{keyFrame:c.to_lattice(**{keyLattice:vector})}))
 
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch','Burgers'])
     def test_relationship_definition(self,model):
-        m,o = list(Lattice._orientation_relationships[model])
-        assert Lattice._orientation_relationships[model][m].shape[:-1] == \
-               Lattice._orientation_relationships[model][o].shape[:-1]
+        m,o = list(Crystal._orientation_relationships[model])
+        assert Crystal._orientation_relationships[model][m].shape[:-1] == \
+               Crystal._orientation_relationships[model][o].shape[:-1]
