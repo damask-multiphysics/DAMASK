@@ -439,3 +439,11 @@ class TestGrid:
             current.save(ref_path/'measured.vti')
 
         assert grid_equal(current,reference)
+
+    def test_load_Neper_reference(self,ref_path,update):
+        current   = Grid.load_Neper(ref_path/'n10-id1_scaled.vtk')
+        reference = Grid.load(ref_path/'n10-id1_scaled.vti')
+        if update:
+            current.save(ref_path/'n10-id1_scaled.vti')
+
+        assert grid_equal(current,reference)
