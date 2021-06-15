@@ -250,6 +250,30 @@ class Grid:
 
 
     @staticmethod
+    def load_Neper(fname):
+        """
+        Load from Neper VTK file.
+
+        Parameters
+        ----------
+        fname : str, pathlib.Path, or file handle
+            Geometry file to read.
+
+        Returns
+        -------
+        loaded : damask.Grid
+            Grid-based geometry from file.
+
+        """
+        v = VTK.load(fname,'vtkImageData')
+        cells = np.array(v.vtk_data.GetDimensions())-1
+        bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+
+        return Grid(v.get('MaterialId').reshape(cells,order='F') - 1, bbox[1] - bbox[0], bbox[0],
+                    util.execution_stamp('Grid','load_Neper'))
+
+
+    @staticmethod
     def load_DREAM3D(fname,
                      feature_IDs=None,cell_data=None,
                      phases='Phases',Euler_angles='EulerAngles',

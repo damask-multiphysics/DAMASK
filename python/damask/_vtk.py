@@ -199,7 +199,7 @@ class VTK:
                 raise TypeError('Dataset type for *.vtk file not given.')
             elif dataset_type.lower().endswith(('imagedata','image_data')):
                 reader.Update()
-                vtk_data = reader.GetImageDataOutput()
+                vtk_data = reader.GetStructuredPointsOutput()
             elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
                 reader.Update()
                 vtk_data = reader.GetRectilinearGridOutput()
