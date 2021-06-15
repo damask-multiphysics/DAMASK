@@ -9,7 +9,7 @@ from . import grid_filters as _grid_filters
 
 def from_random(size,N_seeds,cells=None,rng_seed=None):
     """
-    Random seeding in space.
+    Place seeds randomly in space.
 
     Parameters
     ----------
@@ -43,7 +43,7 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
 
 def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=None):
     """
-    Seeding in space according to a Poisson disc distribution.
+    Place seeds according to a Poisson disc distribution.
 
     Parameters
     ----------
@@ -96,7 +96,7 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
 
 def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
     """
-    Create seed from existing grid description.
+    Create seeds from grid description.
 
     Parameters
     ----------

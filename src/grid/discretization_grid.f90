@@ -69,7 +69,7 @@ subroutine discretization_grid_init(restart)
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
   if(worldrank == 0) then
-    call readVTR(grid,geomSize,origin,materialAt_global)
+    call readVTI(grid,geomSize,origin,materialAt_global)
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
   endif
@@ -151,10 +151,10 @@ end subroutine discretization_grid_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse vtk rectilinear grid (.vtr)
+!> @brief Parse vtk image data (.vti)
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine readVTR(grid,geomSize,origin,material)
+subroutine readVTI(grid,geomSize,origin,material)
 
   integer,     dimension(3), intent(out) :: &
     grid                                                                                            ! grid   (across all processes!)
@@ -164,7 +164,7 @@ subroutine readVTR(grid,geomSize,origin,material)
   integer,     dimension(:), intent(out), allocatable :: &
     material
 
-  character(len=:), allocatable :: fileContent, dataType, headerType
+  character(len=:), allocatable :: fileContent, dataType, headerType, temp
   logical :: inFile,inGrid,gotCoordinates,gotCellData,compressed
   integer :: fileUnit, myStat, coord
   integer(pI64) :: &
@@ -205,8 +205,12 @@ subroutine readVTR(grid,geomSize,origin,material)
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
       endif
     else
-      if(.not. inGrid) then
-        if(index(fileContent(startPos:endPos),'<RectilinearGrid',kind=pI64) /= 0_pI64) inGrid = .true.
+      if (.not. inGrid) then
+        if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
+          inGrid = .true.
+          print*, 'x'
+          call cellsSizeOrigin(fileContent(startPos:endPos))
+        endif
       else
         if(index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
           gotCellData = .true.
@@ -215,7 +219,7 @@ subroutine readVTR(grid,geomSize,origin,material)
                  getXMLValue(fileContent(startPos:endPos),'Name') == 'material' ) then
 
               if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
-                call IO_error(error_ID = 844, ext_msg='format (materialpoint)')
+                call IO_error(error_ID = 844, ext_msg='format (material)')
               dataType = getXMLValue(fileContent(startPos:endPos),'type')
 
               startPos = endPos + 2_pI64
@@ -227,30 +231,6 @@ subroutine readVTR(grid,geomSize,origin,material)
             startPos = endPos + 2_pI64
             endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
           enddo
-        elseif(index(fileContent(startPos:endPos),'<Coordinates>',kind=pI64) /= 0_pI64) then
-          gotCoordinates = .true.
-          startPos = endPos + 2_pI64
-
-          coord = 0
-          do while (startPos<fileLength)
-            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
-            if(index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64) then
-
-              if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
-                call IO_error(error_ID = 844, ext_msg='format (coordinates)')
-              dataType = getXMLValue(fileContent(startPos:endPos),'type')
-
-              startPos = endPos + 2_pI64
-              endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
-              s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
-
-              coord = coord + 1
-
-              call gridSizeOrigin(fileContent(s:endPos),headerType,compressed,dataType,coord)
-            endif
-            if(index(fileContent(startPos:endPos),'</Coordinates>',kind=pI64) /= 0_pI64) exit
-            startPos = endPos + 2_pI64
-          enddo
         endif
       endif
     endif
@@ -259,11 +239,12 @@ subroutine readVTR(grid,geomSize,origin,material)
     startPos = endPos + 2_pI64
 
   end do
-  material = material + 1
+
   if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
   if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
   if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
   if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
+  material = material + 1
   if(any(material<0))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
   contains
@@ -271,25 +252,28 @@ subroutine readVTR(grid,geomSize,origin,material)
   !------------------------------------------------------------------------------------------------
   !> @brief determine size and origin from coordinates
   !------------------------------------------------------------------------------------------------
-  subroutine gridSizeOrigin(base64_str,headerType,compressed,dataType,direction)
+  subroutine cellsSizeOrigin(header)
 
-    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string of 1D coordinates
-                                    headerType, &                                                   ! header type (UInt32 or Uint64)
-                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
-    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
-    integer,          intent(in) :: direction                                                       ! direction (1=x,2=y,3=z)
+    character(len=*), intent(in) :: header
 
-    real(pReal), dimension(:), allocatable :: coords,delta
+    character(len=:), allocatable :: temp
+    real(pReal), dimension(:), allocatable :: coords,delta,origin
+    integer, dimension(:), allocatable :: stringPos
+    integer :: i
 
-    coords = as_pReal(base64_str,headerType,compressed,dataType)
 
-    delta = coords(2:) - coords(:size(coords)-1)
-    if(any(delta<0.0_pReal) .or. dNeq(maxval(delta),minval(delta),1.0e-8_pReal*maxval(abs(coords)))) &
-      call IO_error(error_ID = 844, ext_msg = 'grid spacing')
+    if (getXMLValue(header,'Direction') /= '1 0 0 0 1 0 0 0 1') &
+      call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
-    grid(direction)     = size(coords)-1
-    origin(direction)   = coords(1)
-    geomSize(direction) = coords(size(coords)) - coords(1)
+    temp = getXMLValue(header,'Origin')
+    origin = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+    temp = getXMLValue(header,'Spacing')
+    delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+    temp = getXMLValue(header,'WholeExtent')
+    grid = [(IO_floatValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+
+
+    geomSize = delta * real(grid,pReal)
 
   end subroutine
 
@@ -494,14 +478,14 @@ subroutine readVTR(grid,geomSize,origin,material)
     character(len=*),intent(in) :: line
     logical :: fileFormatOk
 
-    fileFormatOk = getXMLValue(line,'type')       == 'RectilinearGrid' .and. &
+    fileFormatOk = getXMLValue(line,'type')       == 'ImageData' .and. &
                    getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
                    getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
                    getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
 
   end function fileFormatOk
 
-end subroutine readVTR
+end subroutine readVTI
 
 
 !---------------------------------------------------------------------------------------------------

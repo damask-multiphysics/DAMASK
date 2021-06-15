@@ -35,6 +35,36 @@ class VTK:
 
 
     @staticmethod
+    def from_image_data(cells,size,origin=np.zeros(3)):
+        """
+        Create VTK of type vtk.vtkImageData.
+
+        This is the common type for grid solver results.
+
+        Parameters
+        ----------
+        cells : iterable of int, len (3)
+            Number of cells along each dimension.
+        size : iterable of float, len (3)
+            Physical length along each dimension.
+        origin : iterable of float, len (3), optional
+            Coordinates of grid origin.
+
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
+
+        """
+        vtk_data = vtk.vtkImageData()
+        vtk_data.SetDimensions(*(np.array(cells)+1))
+        vtk_data.SetOrigin(*(np.array(origin)))
+        vtk_data.SetSpacing(*(size/cells))
+
+        return VTK(vtk_data)
+
+
+    @staticmethod
     def from_rectilinear_grid(grid,size,origin=np.zeros(3)):
         """
         Create VTK of type vtk.vtkRectilinearGrid.
@@ -167,6 +197,9 @@ class VTK:
             reader.SetFileName(str(fname))
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
+            elif dataset_type.lower().endswith(('imagedata','image_data')):
+                reader.Update()
+                vtk_data = reader.GetImageDataOutput()
             elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
                 reader.Update()
                 vtk_data = reader.GetRectilinearGridOutput()
@@ -179,7 +212,9 @@ class VTK:
             else:
                 raise TypeError(f'Unknown dataset type {dataset_type} for vtk file')
         else:
-            if   ext == '.vtr':
+            if   ext == '.vti':
+                reader = vtk.vtkXMLImageDataReader()
+            elif ext == '.vtr':
                 reader = vtk.vtkXMLRectilinearGridReader()
             elif ext == '.vtu':
                 reader = vtk.vtkXMLUnstructuredGridReader()
@@ -213,7 +248,9 @@ class VTK:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        if   isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
+        if   isinstance(self.vtk_data,vtk.vtkImageData):
+            writer = vtk.vtkXMLImageDataWriter()
+        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
             writer = vtk.vtkXMLRectilinearGridWriter()
         elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
             writer = vtk.vtkXMLUnstructuredGridWriter()

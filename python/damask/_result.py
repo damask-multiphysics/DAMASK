@@ -527,7 +527,7 @@ class Result:
     def geometry0(self):
         """Initial/undeformed geometry."""
         if self.structured:
-            return VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
+            return VTK.from_image_data(self.cells,self.size,self.origin)
         else:
             with h5py.File(self.fname,'r') as f:
                 return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
@@ -1516,7 +1516,7 @@ class Result:
         Export to VTK cell/point data.
 
         One VTK file per visible increment is created.
-        For cell data, the VTK format is a rectilinear grid (.vtr) for
+        For cell data, the VTK format is a image data (.vti) for
         grid-based simulations and an unstructured grid (.vtu) for
         mesh-baed simulations. For point data, the VTK format is poly
         data (.vtp).
