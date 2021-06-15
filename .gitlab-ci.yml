@@ -3,6 +3,7 @@ stages:
   - prepare
   - python
   - compile
+  - setup
   - fortran
   - performance
   - deploy
@@ -161,8 +162,10 @@ compile_Marc:
     - master
     - release
 
+
+###################################################################################################
 setup_grid:
-  stage: compile
+  stage: setup
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
@@ -174,7 +177,7 @@ setup_grid:
     - release
 
 setup_mesh:
-  stage: compile
+  stage: setup
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)

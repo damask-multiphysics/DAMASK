@@ -1,4 +1,5 @@
 import os
+import warnings
 import multiprocessing as mp
 from pathlib import Path
 
@@ -69,8 +70,6 @@ class VTK:
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
-        This is the common type for grid solver results.
-
         Parameters
         ----------
         grid : iterable of int, len (3)
@@ -86,6 +85,7 @@ class VTK:
             VTK-based geometry without nodal or cell data.
 
         """
+        warnings.warn('Support for vtr files will be removed in DAMASK 3.1.0', DeprecationWarning,2)
         vtk_data = vtk.vtkRectilinearGrid()
         vtk_data.SetDimensions(*(np.array(grid)+1))
         coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
@@ -179,8 +179,8 @@ class VTK:
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
-        dataset_type : {'vtkRectilinearGrid', 'vtkUnstructuredGrid', 'vtkPolyData'}, optional
+            Filename for reading. Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
+        dataset_type : {'vtkImageData', ''vtkRectilinearGrid', 'vtkUnstructuredGrid', 'vtkPolyData'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
 
         Returns

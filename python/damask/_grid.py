@@ -1,8 +1,8 @@
+import os
 import copy
+import warnings
 import multiprocessing as mp
 from functools import partial
-import os
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,7 @@ class Grid:
     Geometry definition for grid solvers.
 
     Create and manipulate geometry definitions for storage as VTK
-    image data files ('.vit' extension). A grid contains the
+    image data files ('.vti' extension). A grid contains the
     material ID (referring to the entry in 'material.yaml') and
     the physical size.
     """
@@ -166,9 +166,7 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        if str(fname).endswith('.vtr'):
-            warnings.warn('Support for vtr files will be removed in DAMASK 3.1.0', DeprecationWarning,2)
-        v = VTK.load(fname)
+        v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T

@@ -164,9 +164,9 @@ subroutine readVTI(grid,geomSize,origin,material)
   integer,     dimension(:), intent(out), allocatable :: &
     material
 
-  character(len=:), allocatable :: fileContent, dataType, headerType, temp
-  logical :: inFile,inGrid,gotCoordinates,gotCellData,compressed
-  integer :: fileUnit, myStat, coord
+  character(len=:), allocatable :: fileContent, dataType, headerType
+  logical :: inFile,inImage,gotCellData,compressed
+  integer :: fileUnit, myStat
   integer(pI64) :: &
     fileLength, &                                                                                   !< length of the geom file (in characters)
     startPos, endPos, &
@@ -186,39 +186,37 @@ subroutine readVTI(grid,geomSize,origin,material)
   close(fileUnit)
 
   inFile         = .false.
-  inGrid         = .false.
-  gotCoordinates = .false.
+  inImage        = .false.
   gotCelldata    = .false.
 
 !--------------------------------------------------------------------------------------------------
-! interpret XML file
+! parse XML file
   startPos = 1_pI64
   do while (startPos < len(fileContent,kind=pI64))
     endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
     if (endPos < startPos) endPos = len(fileContent,kind=pI64)                                      ! end of file without new line
 
-    if(.not. inFile) then
+    if (.not. inFile) then
       if(index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
         inFile = .true.
-        if(.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        if (.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
         headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
       endif
     else
-      if (.not. inGrid) then
+      if (.not. inImage) then
         if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
-          inGrid = .true.
-          print*, 'x'
-          call cellsSizeOrigin(fileContent(startPos:endPos))
+          inImage = .true.
+          call cellsSizeOrigin(grid,geomSize,origin,fileContent(startPos:endPos))
         endif
       else
-        if(index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
+        if (index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
           gotCellData = .true.
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
-            if(index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
+            if (index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
                  getXMLValue(fileContent(startPos:endPos),'Name') == 'material' ) then
 
-              if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
+              if (getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
                 call IO_error(error_ID = 844, ext_msg='format (material)')
               dataType = getXMLValue(fileContent(startPos:endPos),'type')
 
@@ -235,7 +233,7 @@ subroutine readVTI(grid,geomSize,origin,material)
       endif
     endif
 
-    if(gotCellData .and. gotCoordinates) exit
+    if (gotCellData) exit
     startPos = endPos + 2_pI64
 
   end do
@@ -245,19 +243,21 @@ subroutine readVTI(grid,geomSize,origin,material)
   if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
   if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
   material = material + 1
-  if(any(material<0))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
+  if(any(material<1))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
   contains
 
   !------------------------------------------------------------------------------------------------
   !> @brief determine size and origin from coordinates
   !------------------------------------------------------------------------------------------------
-  subroutine cellsSizeOrigin(header)
+  subroutine cellsSizeOrigin(c,s,o,header)
 
-    character(len=*), intent(in) :: header
+    integer, dimension(3),     intent(out) :: c
+    real(pReal), dimension(3), intent(out) :: s,o
+    character(len=*),          intent(in) :: header
 
     character(len=:), allocatable :: temp
-    real(pReal), dimension(:), allocatable :: coords,delta,origin
+    real(pReal), dimension(:), allocatable :: delta
     integer, dimension(:), allocatable :: stringPos
     integer :: i
 
@@ -265,15 +265,17 @@ subroutine readVTI(grid,geomSize,origin,material)
     if (getXMLValue(header,'Direction') /= '1 0 0 0 1 0 0 0 1') &
       call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
-    temp = getXMLValue(header,'Origin')
-    origin = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+    temp = getXMLValue(header,'WholeExtent')
+    if (any([(IO_floatValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
+      call IO_error(error_ID = 844, ext_msg = 'coordinate start')
+    c = [(IO_floatValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+
     temp = getXMLValue(header,'Spacing')
     delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
-    temp = getXMLValue(header,'WholeExtent')
-    grid = [(IO_floatValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+    s = delta * real(c,pReal)
 
-
-    geomSize = delta * real(grid,pReal)
+    temp = getXMLValue(header,'Origin')
+    o = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
 
   end subroutine
 
