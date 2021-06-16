@@ -226,7 +226,7 @@ pure function permutationStar111(point) result(qPt)
 
   temp(:,1) = [point(1), point(2), 1.0_pReal - point(1) - point(2)]
   temp(:,2) = [point(1), 1.0_pReal - point(1) - point(2), point(2)]
-  temp(:,3) = 0.0_pReal
+  temp(:,3) = [point(2), point(1), 1.0_pReal - point(1) - point(2)]
   temp(:,4) = [point(2), 1.0_pReal - point(1) - point(2), point(1)]
   temp(:,5) = [1.0_pReal - point(1) - point(2), point(2), point(1)]
   temp(:,6) = [1.0_pReal - point(1) - point(2), point(1), point(2)]
