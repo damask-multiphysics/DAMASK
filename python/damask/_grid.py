@@ -166,7 +166,7 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
+        v = VTK.load(fname if str(fname).endswith(('.vti','.vtr')) else str(fname)+'.vti')          # compatibility hack
         comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
