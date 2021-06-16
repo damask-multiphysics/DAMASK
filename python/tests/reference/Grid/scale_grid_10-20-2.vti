@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <ImageData WholeExtent="0 10 0 20 0 2" Origin="0 0 0" Spacing="8e-7 2.5000000000000004e-7 0.000002" Direction="1 0 0 0 1 0 0 0 1">
+    <FieldData>
+      <Array type="String" Name="comments" NumberOfTuples="1" format="binary">
+        AQAAAACAAAA+AAAAQQAAAA==eF5LScxNLM7Wc0/Nz9UrTk7MSVUos7TUAyNdSyDQLagsSS0uUdAwMjC01DU01DUwUjA0tDK1sDIw0GQAAFYKEKs=
+      </Array>
+    </FieldData>
+  <Piece Extent="0 10 0 20 0 2">
+    <PointData>
+    </PointData>
+    <CellData>
+      <DataArray type="Int64" Name="material" format="binary" RangeMin="1" RangeMax="40">
+        AQAAAACAAACADAAAdgAAAA==eF7tzMsWgQAYReEuKJUoRKGLS3n/JzSwJ51ZRq3l35Nvtl3nm2uapmmaP+ihLy5wiSsxwBDn/ltjhLGY4AZTcYs7tN/Yqb8Mc9yLBzxiIZ7wjP/2K7HCi3jFG9Zigy3ab+zUX4d3fIhPfGEvDvjGuf8+MEUQzQ==
+      </DataArray>
+    </CellData>
+  </Piece>
+  </ImageData>
+</VTKFile>

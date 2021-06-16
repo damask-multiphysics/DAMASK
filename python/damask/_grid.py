@@ -1,14 +1,13 @@
+import os
 import copy
+import warnings
 import multiprocessing as mp
 from functools import partial
-import os
-import warnings
 
 import numpy as np
 import pandas as pd
 import h5py
 from scipy import ndimage, spatial
-from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
 from . import VTK
 from . import util
@@ -21,7 +20,7 @@ class Grid:
     Geometry definition for grid solvers.
 
     Create and manipulate geometry definitions for storage as VTK
-    rectiliear grid files ('.vtr' extension). A grid contains the
+    image data files ('.vti' extension). A grid contains the
     material ID (referring to the entry in 'material.yaml') and
     the physical size.
     """
@@ -153,12 +152,12 @@ class Grid:
     @staticmethod
     def load(fname):
         """
-        Load from VTK rectilinear grid file.
+        Load from VTK image data file.
 
         Parameters
         ----------
         fname : str or or pathlib.Path
-            Grid file to read. Valid extension is .vtr, which will be appended
+            Grid file to read. Valid extension is .vti, which will be appended
             if not given.
 
         Returns
@@ -167,14 +166,10 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        v = VTK.load(fname if str(fname).endswith(('.vti','.vtr')) else str(fname)+'.vti')          # compatibility hack
         comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-
-        for i,c in enumerate([v.vtk_data.GetXCoordinates(),v.vtk_data.GetYCoordinates(),v.vtk_data.GetZCoordinates()]):
-            if not np.allclose(vtk_to_np(c),np.linspace(bbox[0][i],bbox[1][i],cells[i]+1)):
-                raise ValueError('regular grid spacing violated')
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
@@ -255,6 +250,30 @@ class Grid:
 
 
     @staticmethod
+    def load_Neper(fname):
+        """
+        Load from Neper VTK file.
+
+        Parameters
+        ----------
+        fname : str, pathlib.Path, or file handle
+            Geometry file to read.
+
+        Returns
+        -------
+        loaded : damask.Grid
+            Grid-based geometry from file.
+
+        """
+        v = VTK.load(fname,'vtkImageData')
+        cells = np.array(v.vtk_data.GetDimensions())-1
+        bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+
+        return Grid(v.get('MaterialId').reshape(cells,order='F') - 1, bbox[1] - bbox[0], bbox[0],
+                    util.execution_stamp('Grid','load_Neper'))
+
+
+    @staticmethod
     def load_DREAM3D(fname,
                      feature_IDs=None,cell_data=None,
                      phases='Phases',Euler_angles='EulerAngles',
@@ -320,7 +339,7 @@ class Grid:
     @staticmethod
     def from_table(table,coordinates,labels):
         """
-        Generate grid from ASCII table.
+        Create grid from ASCII table.
 
         Parameters
         ----------
@@ -357,7 +376,7 @@ class Grid:
     @staticmethod
     def from_Laguerre_tessellation(cells,size,seeds,weights,material=None,periodic=True):
         """
-        Generate grid from Laguerre tessellation.
+        Create grid from Laguerre tessellation.
 
         Parameters
         ----------
@@ -413,7 +432,7 @@ class Grid:
     @staticmethod
     def from_Voronoi_tessellation(cells,size,seeds,material=None,periodic=True):
         """
-        Generate grid from Voronoi tessellation.
+        Create grid from Voronoi tessellation.
 
         Parameters
         ----------
@@ -494,7 +513,7 @@ class Grid:
     @staticmethod
     def from_minimal_surface(cells,size,surface,threshold=0.0,periods=1,materials=(0,1)):
         """
-        Generate grid from definition of triply periodic minimal surface.
+        Create grid from definition of triply periodic minimal surface.
 
         Parameters
         ----------
@@ -556,21 +575,21 @@ class Grid:
 
     def save(self,fname,compress=True):
         """
-        Save as VTK rectilinear grid file.
+        Save as VTK image data file.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename to write. Valid extension is .vtr, it will be appended if not given.
+            Filename to write. Valid extension is .vti, it will be appended if not given.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
 
         """
-        v = VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
+        v = VTK.from_image_data(self.cells,self.size,self.origin)
         v.add(self.material.flatten(order='F'),'material')
         v.add_comments(self.comments)
 
-        v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
+        v.save(fname if str(fname).endswith('.vti') else str(fname)+'.vti',parallel=False,compress=compress)
 
 
     def save_ASCII(self,fname):
