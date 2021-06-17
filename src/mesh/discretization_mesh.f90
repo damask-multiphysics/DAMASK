@@ -164,13 +164,15 @@ subroutine discretization_mesh_init(restart)
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
 
-  mesh_node0 = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
+  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
+  mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
+
 
   call discretization_init(materialAt,&
-                           reshape(mesh_ipCoordinates,[dimPlex,mesh_maxNips*mesh_NcpElems]), &
+                           reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 
-  call writeGeometry(reshape(mesh_ipCoordinates,[dimPlex,mesh_maxNips*mesh_NcpElems]),mesh_node0)  
+  call writeGeometry(reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]),mesh_node0)  
 
 end subroutine discretization_mesh_init
 
@@ -214,7 +216,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   PetscErrorCode            :: ierr
 
 
-  allocate(mesh_ipCoordinates(dimPlex,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
+  allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
 
   allocate(pV0(dimPlex))
   allocatE(pCellJ(dimPlex**2))
