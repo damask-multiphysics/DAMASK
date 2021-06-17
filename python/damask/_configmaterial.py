@@ -108,6 +108,10 @@ class ConfigMaterial(Config):
             and grain- or cell-wise data. Defaults to None, in which case
             it is set as the path that contains _SIMPL_GEOMETRY/SPACING.
 
+        Notes
+        -----
+        Homogenization and phase entries are emtpy and need to be defined separately.
+
         Returns
         -------
         loaded : damask.ConfigMaterial
