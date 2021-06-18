@@ -8,6 +8,7 @@ import hashlib
 from datetime import datetime
 
 import pytest
+import vtk
 import numpy as np
 
 from damask import Result
@@ -410,10 +411,27 @@ class TestResult:
                  single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         os.chdir(tmp_path)
+
         single_phase.save_XDMF()
+        single_phase.view('increments',0).save_VTK()
+
+        reader_xdmf = vtk.vtkXdmfReader()
+        reader_xdmf.SetFileName(fname)
+        reader_xdmf.Update()
+        dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
+        bounds_xdmf = reader_xdmf.GetOutput().GetBounds()
+
+        reader_vti = vtk.vtkXMLImageDataReader()
+        reader_vti.SetFileName(os.path.splitext(fname)[0]+'_inc00.vti')
+        reader_vti.Update()
+        dim_vti = reader_vti.GetOutput().GetDimensions()
+        bounds_vti = reader_vti.GetOutput().GetBounds()
+
         if update:
             shutil.copy(tmp_path/fname,ref_path/fname)
-        assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
+
+        assert dim_vti == dim_xdmf and bounds_vti == bounds_xdmf and \
+               sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):

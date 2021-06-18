@@ -1517,7 +1517,7 @@ class Result:
 
         One VTK file per visible increment is created.
         For point data, the VTK format is poly data (.vtp).
-        For cell data, either a rectilinear (.vtr) or unstructured (.vtu) dataset
+        For cell data, either an image (.vti) or unstructured (.vtu) dataset
         is written for grid-based or mesh-based simulations, respectively.
 
         Parameters
