@@ -33,9 +33,9 @@ class Grid:
         ----------
         material : numpy.ndarray of shape (:,:,:)
             Material indices.
-        size : list or numpy.ndarray
+        size : list or numpy.ndarray of shape (3)
             Physical size of grid in meter.
-        origin : list or numpy.ndarray, optional
+        origin : list or numpy.ndarray of shape (3), optional
             Coordinates of grid origin in meter.
         comments : list of str, optional
             Comments, e.g. history of operations.

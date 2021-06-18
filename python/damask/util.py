@@ -588,9 +588,11 @@ class _ProgressBar:
         fraction = (iteration+1) / self.total
         filled_length = int(self.bar_length * fraction)
 
-        if filled_length > int(self.bar_length * self.last_fraction):
+        delta_time = datetime.datetime.now() - self.start_time
+
+        if filled_length > int(self.bar_length * self.last_fraction) or \
+            delta_time > datetime.timedelta(minutes=1):
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
-            delta_time = datetime.datetime.now() - self.start_time
             remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
             remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)          # remove μs
             sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
