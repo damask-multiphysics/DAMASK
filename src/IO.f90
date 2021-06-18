@@ -521,7 +521,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (839)
       msg = 'non-positive restart frequency in grid load case'
     case (844)
-      msg = 'invalid VTR file'
+      msg = 'invalid VTI file'
     case (891)
       msg = 'unknown solver type selected'
     case (892)

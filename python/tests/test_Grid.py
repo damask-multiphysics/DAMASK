@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-from vtk.util.numpy_support import numpy_to_vtk as np_to_vtk
 
 from damask import VTK
 from damask import Grid
@@ -50,22 +49,14 @@ class TestGrid:
 
     def test_read_write_vtr(self,default,tmp_path):
         default.save(tmp_path/'default')
-        new = Grid.load(tmp_path/'default.vtr')
+        new = Grid.load(tmp_path/'default.vti')
         assert grid_equal(new,default)
 
     def test_invalid_no_material(self,tmp_path):
-        v = VTK.from_rectilinear_grid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.save(tmp_path/'no_materialpoint.vtr',parallel=False)
+        v = VTK.from_image_data(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
+        v.save(tmp_path/'no_materialpoint.vti',parallel=False)
         with pytest.raises(ValueError):
-            Grid.load(tmp_path/'no_materialpoint.vtr')
-
-    def test_invalid_spacing(self,tmp_path,default):
-        default.save(tmp_path/'spacing_ok.vtr')
-        vtk = VTK.load(tmp_path/'spacing_ok.vtr')
-        vtk.vtk_data.SetXCoordinates(np_to_vtk(np.sort(np.random.random(default.cells[0]))))
-        vtk.save(tmp_path/'invalid_spacing.vtr',parallel=False)
-        with pytest.raises(ValueError):
-            Grid.load(tmp_path/'invalid_spacing.vtr')
+            Grid.load(tmp_path/'no_materialpoint.vti')
 
     def test_invalid_material_type(self):
         with pytest.raises(TypeError):
@@ -115,7 +106,7 @@ class TestGrid:
     def test_mirror(self,default,update,ref_path,directions,reflect):
         modified = default.mirror(directions,reflect)
         tag = f'directions_{"-".join(directions)}+reflect_{reflect}'
-        reference = ref_path/f'mirror_{tag}.vtr'
+        reference = ref_path/f'mirror_{tag}.vti'
         if update: modified.save(reference)
         assert grid_equal(Grid.load(reference),
                           modified)
@@ -137,7 +128,7 @@ class TestGrid:
     def test_flip(self,default,update,ref_path,directions):
         modified = default.flip(directions)
         tag = f'directions_{"-".join(directions)}'
-        reference = ref_path/f'flip_{tag}.vtr'
+        reference = ref_path/f'flip_{tag}.vti'
         if update: modified.save(reference)
         assert grid_equal(Grid.load(reference),
                           modified)
@@ -163,7 +154,7 @@ class TestGrid:
     @pytest.mark.parametrize('periodic',[True,False])
     def test_clean(self,default,update,ref_path,stencil,selection,periodic):
         current = default.clean(stencil,selection,periodic)
-        reference = ref_path/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
+        reference = ref_path/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}.vti'
         if update and stencil > 1:
             current.save(reference)
         assert grid_equal(Grid.load(reference) if stencil > 1 else default,
@@ -183,7 +174,7 @@ class TestGrid:
     def test_scale(self,default,update,ref_path,cells):
         modified = default.scale(cells)
         tag = f'grid_{util.srepr(cells,"-")}'
-        reference = ref_path/f'scale_{tag}.vtr'
+        reference = ref_path/f'scale_{tag}.vti'
         if update: modified.save(reference)
         assert grid_equal(Grid.load(reference),
                           modified)
@@ -239,7 +230,7 @@ class TestGrid:
     def test_rotate(self,default,update,ref_path,Eulers):
         modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
-        reference = ref_path/f'rotate_{tag}.vtr'
+        reference = ref_path/f'rotate_{tag}.vti'
         if update: modified.save(reference)
         assert grid_equal(Grid.load(reference),
                           modified)
@@ -420,7 +411,7 @@ class TestGrid:
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
     def test_get_grain_boundaries(self,update,ref_path,periodic,direction):
-        grid = Grid.load(ref_path/'get_grain_boundaries_8g12x15x20.vtr')
+        grid = Grid.load(ref_path/'get_grain_boundaries_8g12x15x20.vti')
         current = grid.get_grain_boundaries(periodic,direction)
         if update:
             current.save(ref_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
@@ -443,8 +434,16 @@ class TestGrid:
 
     def test_load_DREAM3D_reference(self,ref_path,update):
         current   = Grid.load_DREAM3D(ref_path/'measured.dream3d')
-        reference = Grid.load(ref_path/'measured')
+        reference = Grid.load(ref_path/'measured.vti')
         if update:
-            current.save(ref_path/'measured.vtr')
+            current.save(ref_path/'measured.vti')
+
+        assert grid_equal(current,reference)
+
+    def test_load_Neper_reference(self,ref_path,update):
+        current   = Grid.load_Neper(ref_path/'n10-id1_scaled.vtk')
+        reference = Grid.load(ref_path/'n10-id1_scaled.vti')
+        if update:
+            current.save(ref_path/'n10-id1_scaled.vti')
 
         assert grid_equal(current,reference)

@@ -369,7 +369,7 @@ class TestResult:
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
         result.save_VTK(output)
-        fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vtr'
+        fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
         last = ''
         for i in range(10):
             if os.path.isfile(tmp_path/fname):
