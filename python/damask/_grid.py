@@ -32,7 +32,8 @@ class Grid:
         Parameters
         ----------
         material : numpy.ndarray of shape (:,:,:)
-            Material indices.
+            Material indices. The shape of the material array defines
+            the number of cells.
         size : list or numpy.ndarray of shape (3)
             Physical size of grid in meter.
         origin : list or numpy.ndarray of shape (3), optional

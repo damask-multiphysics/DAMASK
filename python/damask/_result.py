@@ -1437,7 +1437,7 @@ class Result:
 
                 topology = ET.SubElement(grid, 'Topology')
                 topology.attrib = {'TopologyType': '3DCoRectMesh',
-                                   'Dimensions':   '{} {} {}'.format(*(self.cells+1))}
+                                   'Dimensions':   '{} {} {}'.format(*(self.cells[::-1]+1))}
 
                 geometry = ET.SubElement(grid, 'Geometry')
                 geometry.attrib = {'GeometryType':'Origin_DxDyDz'}
@@ -1446,13 +1446,13 @@ class Result:
                 origin.attrib = {'Format':     'XML',
                                  'NumberType': 'Float',
                                  'Dimensions': '3'}
-                origin.text = "{} {} {}".format(*self.origin)
+                origin.text = "{} {} {}".format(*self.origin[::-1])
 
                 delta = ET.SubElement(geometry, 'DataItem')
                 delta.attrib = {'Format':     'XML',
                                 'NumberType': 'Float',
                                 'Dimensions': '3'}
-                delta.text="{} {} {}".format(*(self.size/self.cells))
+                delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
 
                 attributes.append(ET.SubElement(grid, 'Attribute'))
                 attributes[-1].attrib = {'Name':          'u / m',
@@ -1461,7 +1461,7 @@ class Result:
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                 data_items[-1].attrib = {'Format':     'HDF',
                                          'Precision':  '8',
-                                         'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
+                                         'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
                 data_items[-1].text = f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
                 for ty in ['phase','homogenization']:
@@ -1483,7 +1483,7 @@ class Result:
                                 data_items[-1].attrib = {'Format':     'HDF',
                                                          'NumberType': number_type_map(dtype),
                                                          'Precision':  f'{dtype.itemsize}',
-                                                         'Dimensions': '{} {} {} {}'.format(*self.cells,1 if shape == () else
+                                                         'Dimensions': '{} {} {} {}'.format(*self.cells[::-1],1 if shape == () else
                                                                                                         np.prod(shape))}
                                 data_items[-1].text = f'{os.path.split(self.fname)[1]}:{name}'
 
@@ -1516,10 +1516,9 @@ class Result:
         Export to VTK cell/point data.
 
         One VTK file per visible increment is created.
-        For cell data, the VTK format is a image data (.vti) for
-        grid-based simulations and an unstructured grid (.vtu) for
-        mesh-baed simulations. For point data, the VTK format is poly
-        data (.vtp).
+        For point data, the VTK format is poly data (.vtp).
+        For cell data, either an image (.vti) or unstructured (.vtu) dataset
+        is written for grid-based or mesh-based simulations, respectively.
 
         Parameters
         ----------
@@ -1539,7 +1538,7 @@ class Result:
             Fill value for non-existent entries of integer type.
             Defaults to 0.
         parallel : bool
-            Write out VTK files in parallel in a separate background process.
+            Write VTK files in parallel in a separate background process.
             Defaults to True.
 
         """
