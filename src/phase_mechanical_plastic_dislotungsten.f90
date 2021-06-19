@@ -149,7 +149,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
         prm%nonSchmid_neg = prm%P_sl
       endif
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl_sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
                                                    phase%get_asString('lattice'))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
                                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))

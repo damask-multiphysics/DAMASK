@@ -125,7 +125,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
         prm%nonSchmid_neg  = prm%P
       endif
       prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(N_sl, &
-                                                                pl%get_as1dFloat('h_sl_sl'), &
+                                                                pl%get_as1dFloat('h_sl-sl'), &
                                                                 phase%get_asString('lattice'))
 
       xi_0          = pl%get_as1dFloat('xi_0',       requiredSize=size(N_sl))
