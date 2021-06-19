@@ -405,7 +405,7 @@ class TestResult:
         os.chdir(tmp_path)
         single_phase.save_VTK(mode=mode)
 
-    def test_XDMF(self,tmp_path,single_phase,update,ref_path):
+    def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
             for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
                  single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')
@@ -413,25 +413,37 @@ class TestResult:
         os.chdir(tmp_path)
 
         single_phase.save_XDMF()
-        single_phase.view('increments',0).save_VTK()
 
+        if update:
+            shutil.copy(tmp_path/fname,ref_path/fname)
+
+        assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
+
+    @pytest.mark.skipif(not hasattr(vtk,'vtkXdmfReader'),reason='https://discourse.vtk.org/t/2450')
+    def test_XDMF_shape(self,tmp_path,single_phase):
+        os.chdir(tmp_path)
+
+        single_phase.save_XDMF()
+        fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         reader_xdmf = vtk.vtkXdmfReader()
         reader_xdmf.SetFileName(fname)
         reader_xdmf.Update()
         dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
         bounds_xdmf = reader_xdmf.GetOutput().GetBounds()
 
-        reader_vti = vtk.vtkXMLImageDataReader()
-        reader_vti.SetFileName(os.path.splitext(fname)[0]+'_inc00.vti')
-        reader_vti.Update()
-        dim_vti = reader_vti.GetOutput().GetDimensions()
-        bounds_vti = reader_vti.GetOutput().GetBounds()
+        single_phase.view('increments',0).save_VTK()
+        fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'_inc00.vti'
+        for i in range(10):                                                                         # waiting for parallel IO
+            reader_vti = vtk.vtkXMLImageDataReader()
+            reader_vti.SetFileName(fname)
+            reader_vti.Update()
+            dim_vti = reader_vti.GetOutput().GetDimensions()
+            bounds_vti = reader_vti.GetOutput().GetBounds()
+            if dim_vti == dim_xdmf and bounds_vti == bounds_xdmf:
+                return
+            time.sleep(.5)
 
-        if update:
-            shutil.copy(tmp_path/fname,ref_path/fname)
-
-        assert dim_vti == dim_xdmf and bounds_vti == bounds_xdmf and \
-               sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
+        assert False
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
