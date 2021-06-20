@@ -31,14 +31,15 @@ class Grid:
 
         Parameters
         ----------
-        material : numpy.ndarray
-            Material index array (3D).
-        size : list or numpy.ndarray
-            Physical size of the grid in meter.
-        origin : list or numpy.ndarray, optional
-            Physical origin of the grid in meter.
+        material : numpy.ndarray of shape (:,:,:)
+            Material indices. The shape of the material array defines
+            the number of cells.
+        size : list or numpy.ndarray of shape (3)
+            Physical size of grid in meter.
+        origin : list or numpy.ndarray of shape (3), optional
+            Coordinates of grid origin in meter.
         comments : list of str, optional
-            Comment lines.
+            Comments, e.g. history of operations.
 
         """
         self.material = material

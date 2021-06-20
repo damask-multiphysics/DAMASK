@@ -128,7 +128,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
         prm%nonSchmid_neg  = prm%P_sl
       endif
       prm%h_sl_sl   = lattice_interaction_SlipBySlip(N_sl, &
-                                                     pl%get_as1dFloat('h_sl_sl'), &
+                                                     pl%get_as1dFloat('h_sl-sl'), &
                                                      phase%get_asString('lattice'))
 
       xi_0_sl             = pl%get_as1dFloat('xi_0_sl',   requiredSize=size(N_sl))
@@ -139,7 +139,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%dot_gamma_0_sl  = pl%get_asFloat('dot_gamma_0_sl')
       prm%n_sl            = pl%get_asFloat('n_sl')
       prm%a_sl            = pl%get_asFloat('a_sl')
-      prm%h_0_sl_sl       = pl%get_asFloat('h_0_sl_sl')
+      prm%h_0_sl_sl       = pl%get_asFloat('h_0_sl-sl')
 
       ! expand: family => system
       xi_0_sl             = math_expand(xi_0_sl,      N_sl)
@@ -167,7 +167,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%P_tw            = lattice_SchmidMatrix_twin(N_tw,phase%get_asString('lattice'),&
                                                       phase%get_asFloat('c/a',defaultVal=0.0_pReal))
       prm%h_tw_tw         = lattice_interaction_TwinByTwin(N_tw,&
-                                                           pl%get_as1dFloat('h_tw_tw'), &
+                                                           pl%get_as1dFloat('h_tw-tw'), &
                                                            phase%get_asString('lattice'))
       prm%gamma_char      = lattice_characteristicShear_twin(N_tw,phase%get_asString('lattice'),&
                                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
@@ -180,8 +180,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%c_4             = pl%get_asFloat('c_4',defaultVal=0.0_pReal)
       prm%dot_gamma_0_tw  = pl%get_asFloat('dot_gamma_0_tw')
       prm%n_tw            = pl%get_asFloat('n_tw')
-      prm%f_sat_sl_tw     = pl%get_asFloat('f_sat_sl_tw')
-      prm%h_0_tw_tw       = pl%get_asFloat('h_0_tw_tw')
+      prm%f_sat_sl_tw     = pl%get_asFloat('f_sat_sl-tw')
+      prm%h_0_tw_tw       = pl%get_asFloat('h_0_tw-tw')
 
       ! expand: family => system
       xi_0_tw       = math_expand(xi_0_tw,N_tw)
@@ -199,12 +199,12 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
     slipAndTwinActive: if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
-      prm%h_0_tw_sl  = pl%get_asFloat('h_0_tw_sl')
+      prm%h_0_tw_sl  = pl%get_asFloat('h_0_tw-sl')
       prm%h_sl_tw    = lattice_interaction_SlipByTwin(N_sl,N_tw,&
-                                                      pl%get_as1dFloat('h_sl_tw'), &
+                                                      pl%get_as1dFloat('h_sl-tw'), &
                                                       phase%get_asString('lattice'))
       prm%h_tw_sl    = lattice_interaction_TwinBySlip(N_tw,N_sl,&
-                                                      pl%get_as1dFloat('h_tw_sl'), &
+                                                      pl%get_as1dFloat('h_tw-sl'), &
                                                       phase%get_asString('lattice'))
     else slipAndTwinActive
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0

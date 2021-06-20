@@ -78,7 +78,7 @@ class Result:
     >>> r = damask.Result('my_file.hdf5')
     >>> r.add_Cauchy()
     >>> r.add_equivalent_Mises('sigma')
-    >>> r.save_VTK()
+    >>> r.export_VTK()
     >>> r_last = r.view('increments',-1)
     >>> sigma_vM_last = r_last.get('sigma_vM')
 
@@ -1377,13 +1377,13 @@ class Result:
         pool.join()
 
 
-    def save_XDMF(self,output='*'):
+    def export_XDMF(self,output='*'):
         """
         Write XDMF file to directly visualize data in DADF5 file.
 
         The XDMF format is only supported for structured grids
         with single phase and single constituent.
-        For other cases use `save_VTK`.
+        For other cases use `export_VTK`.
 
         Parameters
         ----------
@@ -1511,7 +1511,7 @@ class Result:
         return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
 
 
-    def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
+    def export_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
         """
         Export to VTK cell/point data.
 
@@ -1549,7 +1549,7 @@ class Result:
         else:
             raise ValueError(f'invalid mode {mode}')
 
-        v.set_comments(util.execution_stamp('Result','save_VTK'))
+        v.set_comments(util.execution_stamp('Result','export_VTK'))
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
 
@@ -1732,3 +1732,6 @@ class Result:
         if flatten: r = util.dict_flatten(r)
 
         return None if (type(r) == dict and r == {}) else r
+
+    save_VTK = export_VTK
+    save_XDMF = export_XDMF

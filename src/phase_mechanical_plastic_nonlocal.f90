@@ -261,7 +261,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl, &
-                                                   pl%get_as1dFloat('h_sl_sl'), &
+                                                   pl%get_as1dFloat('h_sl-sl'), &
                                                    phase%get_asString('lattice'))
 
       prm%forestProjection_edge  = lattice_forestProjection_edge (ini%N_sl,phase%get_asString('lattice'),&

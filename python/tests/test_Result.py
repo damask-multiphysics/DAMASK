@@ -369,7 +369,7 @@ class TestResult:
     def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
-        result.save_VTK(output)
+        result.export_VTK(output)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
         last = ''
         for i in range(10):
@@ -382,9 +382,9 @@ class TestResult:
                         last = cur
             time.sleep(.5)
         if update:
-            with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
+            with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur)
-        with open((ref_path/'save_VTK'/request.node.name).with_suffix('.md5')) as f:
+        with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5')) as f:
             assert cur == f.read()
 
     @pytest.mark.parametrize('mode',['point','cell'])
@@ -392,7 +392,7 @@ class TestResult:
     def test_vtk_marc(self,tmp_path,ref_path,mode,output):
         os.chdir(tmp_path)
         result = Result(ref_path/'check_compile_job1.hdf5')
-        result.save_VTK(output,mode)
+        result.export_VTK(output,mode)
 
     def test_marc_coordinates(self,ref_path):
         result = Result(ref_path/'check_compile_job1.hdf5').view('increments',-1)
@@ -403,7 +403,7 @@ class TestResult:
     @pytest.mark.parametrize('mode',['point','cell'])
     def test_vtk_mode(self,tmp_path,single_phase,mode):
         os.chdir(tmp_path)
-        single_phase.save_VTK(mode=mode)
+        single_phase.export_VTK(mode=mode)
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
@@ -411,9 +411,7 @@ class TestResult:
                  single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         os.chdir(tmp_path)
-
-        single_phase.save_XDMF()
-
+        single_phase.export_XDMF()
         if update:
             shutil.copy(tmp_path/fname,ref_path/fname)
 
@@ -423,7 +421,7 @@ class TestResult:
     def test_XDMF_shape(self,tmp_path,single_phase):
         os.chdir(tmp_path)
 
-        single_phase.save_XDMF()
+        single_phase.export_XDMF()
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         reader_xdmf = vtk.vtkXdmfReader()
         reader_xdmf.SetFileName(fname)
@@ -431,7 +429,7 @@ class TestResult:
         dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
         bounds_xdmf = reader_xdmf.GetOutput().GetBounds()
 
-        single_phase.view('increments',0).save_VTK()
+        single_phase.view('increments',0).export_VTK()
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'_inc00.vti'
         for i in range(10):                                                                         # waiting for parallel IO
             reader_vti = vtk.vtkXMLImageDataReader()
@@ -447,7 +445,7 @@ class TestResult:
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
-            default.save_XDMF()
+            default.export_XDMF()
 
     @pytest.mark.parametrize('view,output,flatten,prune',
             [({},['F','P','F','L_p','F_e','F_p'],True,True),

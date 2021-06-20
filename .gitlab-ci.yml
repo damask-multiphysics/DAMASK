@@ -87,7 +87,6 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
-    - ./installation/symlink_Processing.py
   except:
     - master
     - release
