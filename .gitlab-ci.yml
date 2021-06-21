@@ -198,13 +198,15 @@ core:
     - master
     - release
 
-Phenopowerlaw_singleSlip:
-  stage: fortran
-  script: Phenopowerlaw_singleSlip/test.py
-  except:
-    - master
-    - release
+# Needs closer look
+#Phenopowerlaw_singleSlip:
+#  stage: fortran
+#  script: Phenopowerlaw_singleSlip/test.py
+#  except:
+#    - master
+#    - release
 
+# Conversion to pytest ongoing
 J2_plasticBehavior:
   stage: fortran
   script:
