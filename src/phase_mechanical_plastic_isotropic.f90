@@ -15,6 +15,7 @@ submodule(phase:plastic) isotropic
       dot_gamma_0, &                                                                                !< reference strain rate
       n, &                                                                                          !< stress exponent
       h_0, &
+      h, &                                                                                          !< hardening pre-factor
       h_ln, &
       xi_inf, &                                                                                     !< maximum critical stress
       a, &
@@ -99,6 +100,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     prm%dot_gamma_0 = pl%get_asFloat('dot_gamma_0')
     prm%n           = pl%get_asFloat('n')
     prm%h_0         = pl%get_asFloat('h_0')
+    prm%h           = pl%get_asFloat('h',    defaultVal=3.0_pReal)                                  ! match for fcc random polycrystal
     prm%M           = pl%get_asFloat('M')
     prm%h_ln        = pl%get_asFloat('h_ln', defaultVal=0.0_pReal)
     prm%c_1         = pl%get_asFloat('c_1',  defaultVal=0.0_pReal)
@@ -280,7 +282,7 @@ module subroutine isotropic_dotState(Mp,ph,en)
     endif
     dot%xi(en) = dot_gamma &
                * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
-               * abs( 1.0_pReal - stt%xi(en)/xi_inf_star )**prm%a &
+               * abs( 1.0_pReal - stt%xi(en)/xi_inf_star )**prm%a *prm%h &
                * sign(1.0_pReal, 1.0_pReal - stt%xi(en)/xi_inf_star)
   else
     dot%xi(en) = 0.0_pReal
