@@ -364,8 +364,8 @@ module subroutine phenopowerlaw_dotState(Mp,ph,en)
 !  calculate left and right vectors
   left_SlipSlip  = 1.0_pReal + prm%h_int
   xi_slip_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
-  right_SlipSlip = abs(1.0_pReal-stt%xi_slip(:,en) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl &
-                 * sign(1.0_pReal,1.0_pReal-stt%xi_slip(:,en) / (prm%xi_inf_sl+xi_slip_sat_offset))
+  right_SlipSlip = sign(abs(1.0_pReal-stt%xi_slip(:,en) / (prm%xi_inf_sl+xi_slip_sat_offset)) **prm%a_sl, &
+                        1.0_pReal-stt%xi_slip(:,en) / (prm%xi_inf_sl+xi_slip_sat_offset))
 
 !--------------------------------------------------------------------------------------------------
 ! shear rates

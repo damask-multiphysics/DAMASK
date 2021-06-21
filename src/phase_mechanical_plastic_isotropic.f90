@@ -282,8 +282,7 @@ module subroutine isotropic_dotState(Mp,ph,en)
     endif
     dot%xi(en) = dot_gamma &
                * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
-               * abs( 1.0_pReal - stt%xi(en)/xi_inf_star )**prm%a *prm%h &
-               * sign(1.0_pReal, 1.0_pReal - stt%xi(en)/xi_inf_star)
+               * sign(abs(1.0_pReal - stt%xi(en)/xi_inf_star)**prm%a *prm%h, 1.0_pReal-stt%xi(en)/xi_inf_star)
   else
     dot%xi(en) = 0.0_pReal
   endif
