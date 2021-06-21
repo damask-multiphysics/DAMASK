@@ -185,14 +185,14 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   if (norm_Mp_dev > 0.0_pReal) then
     dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(en))) **prm%n
 
-    Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
+    Lp = dot_gamma * Mp_dev/norm_Mp_dev
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
     forall (k=1:3,l=1:3) &
       dLp_dMp(k,l,k,l) = dLp_dMp(k,l,k,l) + 1.0_pReal
     forall (k=1:3,m=1:3) &
       dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pReal/3.0_pReal
-    dLp_dMp = dot_gamma / prm%M * dLp_dMp / norm_Mp_dev
+    dLp_dMp = dot_gamma * dLp_dMp / norm_Mp_dev
   else
     Lp = 0.0_pReal
     dLp_dMp = 0.0_pReal
@@ -230,7 +230,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
 
   if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
-       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(en))**(-prm%n) &
+       * prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(en))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
   else
