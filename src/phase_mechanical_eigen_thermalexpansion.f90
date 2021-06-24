@@ -29,7 +29,6 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances,p,i,k
-  real(pReal), dimension(:), allocatable :: temp
   class(tNode), pointer :: &
     phases, &
     phase, &
@@ -57,24 +56,25 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
-        kinematic_type => kinematics%get(k)
+          kinematic_type => kinematics%get(k)
 
-        prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=0.0_pReal)
+          prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=0.0_pReal)
 
-        ! read up to three parameters (constant, linear, quadratic with T)
-        temp = kinematic_type%get_as1dFloat('A_11')
-        prm%A(1,1,1:size(temp)) = temp
-        temp = kinematic_type%get_as1dFloat('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-        prm%A(3,3,1:size(temp)) = temp
-        do i=1, size(prm%A,3)
-          prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),&
-                                                   phase%get_asString('lattice'))
-        enddo
+          prm%A(1,1,1) = kinematic_type%get_asFloat('A_11')
+          prm%A(1,1,2) = kinematic_type%get_asFloat('A_11,T',defaultVal=0.0_pReal)
+          prm%A(1,1,3) = kinematic_type%get_asFloat('A_11,T^2',defaultVal=0.0_pReal)
+          if (any(phase_lattice(p) == ['hP','tI'])) then
+            prm%A(3,3,1) = kinematic_type%get_asFloat('A_33')
+            prm%A(3,3,2) = kinematic_type%get_asFloat('A_33,T',defaultVal=0.0_pReal)
+            prm%A(3,3,3) = kinematic_type%get_asFloat('A_33,T^2',defaultVal=0.0_pReal)
+          endif
+          do i=1, size(prm%A,3)
+            prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),phase_lattice(p))
+          enddo
         end associate
       endif
     enddo
   enddo
-
 
 end function thermalexpansion_init
 
