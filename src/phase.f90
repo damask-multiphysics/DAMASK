@@ -410,7 +410,7 @@ end subroutine phase_init
 subroutine phase_allocateState(state, &
                                NEntries,sizeState,sizeDotState,sizeDeltaState)
 
-  class(tState), intent(out) :: &
+  class(tState), intent(inout) :: &
     state
   integer, intent(in) :: &
     NEntries, &

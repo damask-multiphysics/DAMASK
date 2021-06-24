@@ -13,9 +13,6 @@ submodule(phase:plastic) nonlocal
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0, &
     geometry_plastic_nonlocal_disable
 
-  logical, dimension(:), allocatable :: &
-    phase_localPlasticity
-
   type :: tGeometry
     real(pReal), dimension(:), allocatable :: V_0
   end type tGeometry
@@ -215,8 +212,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
   phases => config_material%get('phase')
 
-  allocate(phase_localPlasticity(phases%length),source=.true.)
-
   allocate(geom(phases%length))
 
   allocate(param(phases%length))
@@ -237,7 +232,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
     pl  => mech%get('plastic')
 
     plasticState(ph)%nonlocal = pl%get_asBool('nonlocal')
-    phase_localPlasticity(ph) = .not. plasticState(ph)%nonlocal
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
@@ -648,7 +642,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
   !#################################################################################################
 
   rho0 = getRho0(ph,en)
-  if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
+  if (plasticState(ph)%nonlocal .and. prm%shortRangeStressCorrection) then
     invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,en))
     invFe = math_inv33(phase_mechanical_Fe(ph)%data(1:3,1:3,en))
 
@@ -1217,13 +1211,12 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)                   !ToDo: MD: I think we should use state0 here
   gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
-
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
 
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
   rhoDotFlux = 0.0_pReal
-  if (.not. phase_localPlasticity(ph)) then
+  if (plasticState(ph)%nonlocal) then
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
@@ -1422,22 +1415,16 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
     if (neighbor_e <= 0 .or. neighbor_i <= 0) then
       !* FREE SURFACE
-      !* Set surface transmissivity to the value specified in the material.config
       forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
     elseif (neighbor_phase /= ph) then
       !* PHASE BOUNDARY
-      !* If we encounter a different nonlocal phase at the neighbor,
-      !* we consider this to be a real "physical" phase boundary, so completely incompatible.
-      !* If one of the two phases has a local plasticity law,
-      !* we do not consider this to be a phase boundary, so completely compatible.
-      if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) &
+      if (plasticState(neighbor_phase)%nonlocal .and. plasticState(ph)%nonlocal) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
     elseif (prm%chi_GB >= 0.0_pReal) then
-      !* GRAIN BOUNDARY !
-      !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
+      !* GRAIN BOUNDARY
       if (any(dNeq(phase_orientation0(ph)%data(en)%asQuaternion(), &
                    phase_orientation0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
-          (.not. phase_localPlasticity(neighbor_phase))) &
+          plasticState(neighbor_phase)%nonlocal) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else
       !* GRAIN BOUNDARY ?
