@@ -744,17 +744,6 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
     enddo
   endif
 
-#ifdef DEBUG
-  if (debugConstitutive%extensive &
-      .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip)&
-             .or. .not. debugConstitutive%selective)) then
-    print'(/,a,i8,1x,i2,1x,i1,/)', '<< CONST >> nonlocal_microstructure at el ip ',el,ip
-    print'(a,/,12x,12(e10.3,1x))', '<< CONST >> rhoForest', stt%rho_forest(:,en)
-    print'(a,/,12x,12(f10.5,1x))', '<< CONST >> tauThreshold / MPa', dst%tau_pass(:,en)*1e-6
-    print'(a,/,12x,12(f10.5,1x),/)', '<< CONST >> tauBack / MPa', dst%tau_back(:,en)*1e-6
-  endif
-#endif
-
  end associate
 
 end subroutine nonlocal_dependentState
@@ -1030,17 +1019,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
   gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
-#ifdef DEBUG
-    if (debugConstitutive%basic &
-        .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip) &
-               .or. .not. debugConstitutive%selective)) then
-      print'(a,/,10(12x,12(e12.5,1x),/))', '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
-      print'(a,/,4(12x,12(e12.5,1x),/))', '<< CONST >> gdot / 1/s',gdot
-    endif
-#endif
 
-  !****************************************************************************
-  !*** limits for stable dipole height
+
+  ! limits for stable dipole height
   do s = 1,ns
     tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,en)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
@@ -1057,8 +1038,8 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   dUpper = max(dUpper,dLower)
 
-  !****************************************************************************
-  !*** dislocation multiplication
+
+  ! dislocation multiplication
   rhoDotMultiplication = 0.0_pReal
   isBCC: if (phase_lattice(ph) == 'cI') then
     forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
@@ -1080,9 +1061,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
 
   !****************************************************************************
-  !*** calculate dipole formation and annihilation
+  ! dipole formation and annihilation
 
-  !*** formation by glide
+  ! formation by glide
   do c = 1,2
     rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
                                                    * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &   ! negative mobile --> positive mobile
@@ -1107,7 +1088,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   enddo
 
 
-  !*** athermal annihilation
+  ! athermal annihilation
   rhoDotAthermalAnnihilation = 0.0_pReal
   forall (c=1:2) &
     rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%b_sl &
@@ -1122,7 +1103,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
         * 0.25_pReal * sqrt(stt%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
 
 
-  !*** thermally activated annihilation of edge dipoles by climb
+  ! thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
   selfDiffusion = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))
   vClimb = prm%V_at * selfDiffusion * prm%mu &
@@ -1650,13 +1631,13 @@ end subroutine stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates kinetics
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, ph)
+pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, ph)
 
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
     ph
   real(pReal), intent(in) :: &
-    Temperature                                                                                     !< temperature
+    T                                                                                     !< T
   real(pReal), dimension(param(ph)%sum_N_sl), intent(in) :: &
     tau, &                                                                                          !< resolved external shear stress (without non Schmid effects)
     tauNS, &                                                                                        !< resolved external shear stress (including non Schmid effects)
@@ -1677,16 +1658,11 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
     vViscous, &                                                                                     !< viscous glide velocity
     dtPeierls_dtau, &                                                                               !< derivative with respect to resolved shear stress
     dtSolidSolution_dtau, &                                                                         !< derivative with respect to resolved shear stress
-    meanfreepath_S, &                                                                               !< mean free travel distance for dislocations between two solid solution obstacles
-    meanfreepath_P, &                                                                               !< mean free travel distance for dislocations between two Peierls barriers
-    jumpWidth_P, &                                                                                  !< depth of activated area
-    jumpWidth_S, &                                                                                  !< depth of activated area
-    activationLength_P, &                                                                           !< length of activated dislocation line
-    activationLength_S, &                                                                           !< length of activated dislocation line
+    lambda_S, &                                                                                     !< mean free distance between two solid solution obstacles
+    lambda_P, &                                                                                     !< mean free distance between two Peierls barriers
     activationVolume_P, &                                                                           !< volume that needs to be activated to overcome barrier
     activationVolume_S, &                                                                           !< volume that needs to be activated to overcome barrier
     activationEnergy_P, &                                                                           !< energy that is needed to overcome barrier
-    activationEnergy_S, &                                                                           !< energy that is needed to overcome barrier
     criticalStress_P, &                                                                             !< maximum obstacle strength
     criticalStress_S, &                                                                             !< maximum obstacle strength
     mobility                                                                                        !< dislocation mobility
@@ -1700,40 +1676,32 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
     if (abs(tau(s)) > tauThreshold(s)) then
 
       !* Peierls contribution
-      !* Effective stress includes non Schmid constributions
-      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
-      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                      ! ensure that the effective stress is positive
-      meanfreepath_P = prm%b_sl(s)
-      jumpWidth_P = prm%b_sl(s)
-      activationLength_P = prm%w *prm%b_sl(s)
-      activationVolume_P = activationLength_P * jumpWidth_P * prm%b_sl(s)
+      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))
+      lambda_P = prm%b_sl(s)
+      activationVolume_P = prm%w *prm%b_sl(s)**3.0_pReal
       criticalStress_P = prm%peierlsStress(s,c)
       activationEnergy_P = criticalStress_P * activationVolume_P
-      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
+      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)
       tPeierls = 1.0_pReal / prm%nu_a &
-               * exp(activationEnergy_P / (kB * Temperature) &
+               * exp(activationEnergy_P / (kB * T) &
                      * (1.0_pReal - tauRel_P**prm%p)**prm%q)
       if (tauEff < criticalStress_P) then
-        dtPeierls_dtau = tPeierls * prm%p * prm%q * activationVolume_P / (kB * Temperature) &
+        dtPeierls_dtau = tPeierls * prm%p * prm%q * activationVolume_P / (kB * T) &
                        * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal)
       else
         dtPeierls_dtau = 0.0_pReal
       endif
 
-      !* Contribution from solid solution strengthening
-      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
+      ! Contribution from solid solution strengthening
       tauEff = abs(tau(s)) - tauThreshold(s)
-      meanfreepath_S = prm%b_sl(s) / sqrt(prm%c_sol)
-      jumpWidth_S = prm%f_sol * prm%b_sl(s)
-      activationLength_S = prm%b_sl(s) / sqrt(prm%c_sol)
-      activationVolume_S = activationLength_S * jumpWidth_S * prm%b_sl(s)
-      activationEnergy_S = prm%Q_sol
-      criticalStress_S = activationEnergy_S / activationVolume_S
-      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                          ! ensure that the activation probability cannot become greater than one
+      lambda_S = prm%b_sl(s) / sqrt(prm%c_sol)
+      activationVolume_S = prm%f_sol * prm%b_sl(s)**3.0_pReal / sqrt(prm%c_sol)
+      criticalStress_S = prm%Q_sol / activationVolume_S
+      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
       tSolidSolution = 1.0_pReal /  prm%nu_a &
-                     * exp(activationEnergy_S / (kB * Temperature)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
+                     * exp(prm%Q_sol / (kB * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
       if (tauEff < criticalStress_S) then
-        dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * Temperature) &
+        dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * T) &
                              * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal)
       else
         dtSolidSolution_dtau = 0.0_pReal
@@ -1744,13 +1712,10 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
       mobility = prm%b_sl(s) / prm%eta
       vViscous = mobility * tauEff
 
-      !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of
-      !* free flight at glide velocity in between.
-      !* adopt sign from resolved stress
       v(s) = sign(1.0_pReal,tau(s)) &
-           / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
-      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / meanfreepath_S + mobility /vViscous**2.0_pReal)
-      dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / meanfreepath_P
+           / (tPeierls / lambda_P + tSolidSolution / lambda_S + 1.0_pReal / vViscous)
+      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + mobility /vViscous**2.0_pReal)
+      dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / lambda_P
     endif
   enddo
 
