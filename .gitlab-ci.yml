@@ -206,17 +206,6 @@ core:
 #    - master
 #    - release
 
-# Conversion to pytest ongoing
-J2_plasticBehavior:
-  stage: fortran
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - MSC_VERSION=2020 J2_plasticBehavior/test.py
-  except:
-    - master
-    - release
-
-
 ###################################################################################################
 SpectralRuntime:
   stage: performance
