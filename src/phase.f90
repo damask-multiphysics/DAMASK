@@ -61,9 +61,6 @@ module phase
       grain
   end type tDebugOptions
 
-  logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
-    phase_localPlasticity                                                                           !< flags phases with local constitutive law
-
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tState),  allocatable, dimension(:), public :: &

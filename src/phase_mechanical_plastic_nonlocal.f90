@@ -13,6 +13,9 @@ submodule(phase:plastic) nonlocal
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0, &
     geometry_plastic_nonlocal_disable
 
+  logical, dimension(:), allocatable :: &
+    phase_localPlasticity
+
   type :: tGeometry
     real(pReal), dimension(:), allocatable :: V_0
   end type tGeometry
@@ -211,6 +214,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 
   phases => config_material%get('phase')
+
+  allocate(phase_localPlasticity(phases%length),source=.true.)
+
   allocate(geom(phases%length))
 
   allocate(param(phases%length))
@@ -230,8 +236,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech  => phase%get('mechanical')
     pl  => mech%get('plastic')
 
-    phase_localPlasticity(ph) = .not. pl%get_asBool('nonlocal')
-
+    plasticState(ph)%nonlocal = pl%get_asBool('nonlocal')
+    phase_localPlasticity(ph) = .not. plasticState(ph)%nonlocal
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
@@ -417,7 +423,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(geom(ph)%V_0(Nmembers))
     call storeGeometry(ph)
 
-    plasticState(ph)%nonlocal         = pl%get_asBool('nonlocal')
     if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
       call IO_error(212,ext_msg='IPneighborhood does not exist')
 

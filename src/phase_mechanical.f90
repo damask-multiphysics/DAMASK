@@ -274,7 +274,6 @@ module subroutine mechanical_init(materials,phases)
 ! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
-  allocate(phase_localPlasticity(phases%length),   source=.true.)
 
   call plastic_init()
 
