@@ -84,7 +84,7 @@ submodule(phase:plastic) nonlocal
       c_sol, &                                                                                      !< concentration of solid solution in atomic parts
       p, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
       q, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
-      eta, &                                                                                        !< viscosity for dislocation glide in Pa s
+      B, &                                                                                          !< drag coefficient in Pa s
       nu_a, &                                                                                       !< attack frequency in Hz
       chi_surface, &                                                                                !< transmissivity at free surface
       chi_GB, &                                                                                     !< transmissivity at grain boundary (identified by different texture)
@@ -337,7 +337,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
       prm%p                     = pl%get_asFloat('p_sl')
       prm%q                     = pl%get_asFloat('q_sl')
-      prm%eta                   = pl%get_asFloat('eta')
+      prm%B                     = pl%get_asFloat('B')
       prm%nu_a                  = pl%get_asFloat('nu_a')
 
       ! ToDo: discuss logic
@@ -369,7 +369,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (any(prm%peierlsstress    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
       if (any(prm%minDipoleHeight  <  0.0_pReal)) extmsg = trim(extmsg)//' d_ed or d_sc'
 
-      if (prm%eta                 <=  0.0_pReal)  extmsg = trim(extmsg)//' eta'
+      if (prm%B                   <=  0.0_pReal)  extmsg = trim(extmsg)//' B'
       if (prm%Q_cl                <=  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
       if (prm%nu_a                <=  0.0_pReal)  extmsg = trim(extmsg)//' nu_a'
       if (prm%w                   <=  0.0_pReal)  extmsg = trim(extmsg)//' w'
@@ -1706,8 +1706,8 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
 
 
       v(s) = sign(1.0_pReal,tau(s)) &
-           / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%eta /(prm%b_sl(s) * tauEff))
-      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + prm%eta / (prm%b_sl(s) * tauEff**2.0_pReal))
+           / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%B /(prm%b_sl(s) * tauEff))
+      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + prm%B / (prm%b_sl(s) * tauEff**2.0_pReal))
       dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / lambda_P
 
     endif
