@@ -85,7 +85,7 @@ submodule(phase:plastic) nonlocal
       nu_a, &                                                                                       !< attack frequency in Hz
       chi_surface, &                                                                                !< transmissivity at free surface
       chi_GB, &                                                                                     !< transmissivity at grain boundary (identified by different texture)
-      f_c, &                                                                                        !< safety factor for CFL flux condition
+      C_CFL, &                                                                                      !< safety factor for CFL flux condition
       f_ed_mult, &                                                                                  !< factor that determines how much edge dislocations contribute to multiplication (0...1)
       f_F, &
       f_ed, &
@@ -317,7 +317,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
       prm%rho_significant       = pl%get_asFloat('rho_significant')
       prm%rho_min               = pl%get_asFloat('rho_min', 0.0_pReal)
-      prm%f_c                   = pl%get_asFloat('f_c',defaultVal=2.0_pReal)
+      prm%C_CFL                 = pl%get_asFloat('C_CFL',defaultVal=2.0_pReal)
 
       prm%V_at                  = pl%get_asFloat('V_at')
       prm%D_0                   = pl%get_asFloat('D_0')
@@ -373,7 +373,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (prm%rho_min             <   0.0_pReal)  extmsg = trim(extmsg)//' rho_min'
       if (prm%rho_significant     <   0.0_pReal)  extmsg = trim(extmsg)//' rho_significant'
       if (prm%atol_rho            <   0.0_pReal)  extmsg = trim(extmsg)//' atol_rho'
-      if (prm%f_c                 <   0.0_pReal)  extmsg = trim(extmsg)//' f_c'
+      if (prm%C_CFL               <   0.0_pReal)  extmsg = trim(extmsg)//' C_CFL'
 
       if (prm%p    <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p_sl'
       if (prm%q    <  1.0_pReal .or. prm%q > 2.0_pReal) extmsg = trim(extmsg)//' q_sl'
@@ -1220,14 +1220,14 @@ function rhoDotFlux(timestep,ph,en,ip,el)
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
-            .and. prm%f_c * abs(v0) * timestep &
+            .and. prm%C_CFL * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
       print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(gdot) > 0.0_pReal &
-                       .and.  prm%f_c * abs(v0) * timestep &
+                       .and.  prm%C_CFL * abs(v0) * timestep &
                              > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       print*, '<< CONST >> enforcing cutback !!!'
