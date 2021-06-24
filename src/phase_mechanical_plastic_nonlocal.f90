@@ -230,7 +230,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech  => phase%get('mechanical')
     pl  => mech%get('plastic')
 
-    phase_localPlasticity(ph) = .not. pl%contains('nonlocal')
+    phase_localPlasticity(ph) = .not. pl%get_asBool('nonlocal')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
