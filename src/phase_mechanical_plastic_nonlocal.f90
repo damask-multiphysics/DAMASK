@@ -1655,7 +1655,6 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
     tauEff, &                                                                                       !< effective shear stress
     tPeierls, &                                                                                     !< waiting time in front of a peierls barriers
     tSolidSolution, &                                                                               !< waiting time in front of a solid solution obstacle
-    vViscous, &                                                                                     !< viscous glide velocity
     dtPeierls_dtau, &                                                                               !< derivative with respect to resolved shear stress
     dtSolidSolution_dtau, &                                                                         !< derivative with respect to resolved shear stress
     lambda_S, &                                                                                     !< mean free distance between two solid solution obstacles
@@ -1664,8 +1663,7 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
     activationVolume_S, &                                                                           !< volume that needs to be activated to overcome barrier
     activationEnergy_P, &                                                                           !< energy that is needed to overcome barrier
     criticalStress_P, &                                                                             !< maximum obstacle strength
-    criticalStress_S, &                                                                             !< maximum obstacle strength
-    mobility                                                                                        !< dislocation mobility
+    criticalStress_S                                                                                !< maximum obstacle strength
 
   associate(prm => param(ph))
   v = 0.0_pReal
@@ -1685,12 +1683,10 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
       tPeierls = 1.0_pReal / prm%nu_a &
                * exp(activationEnergy_P / (kB * T) &
                      * (1.0_pReal - tauRel_P**prm%p)**prm%q)
-      if (tauEff < criticalStress_P) then
-        dtPeierls_dtau = tPeierls * prm%p * prm%q * activationVolume_P / (kB * T) &
-                       * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal)
-      else
-        dtPeierls_dtau = 0.0_pReal
-      endif
+      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (kB * T) &
+                             * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal), &
+                             0.0_pReal, &
+                             tauEff < criticalStress_P)
 
       ! Contribution from solid solution strengthening
       tauEff = abs(tau(s)) - tauThreshold(s)
@@ -1700,22 +1696,20 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
       tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
       tSolidSolution = 1.0_pReal /  prm%nu_a &
                      * exp(prm%Q_sol / (kB * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
-      if (tauEff < criticalStress_S) then
-        dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * T) &
-                             * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal)
-      else
-        dtSolidSolution_dtau = 0.0_pReal
-      endif
+      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * T) &
+                                   * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal), &
+                                   0.0_pReal, &
+                                   tauEff < criticalStress_S)
 
       !* viscous glide velocity
       tauEff = abs(tau(s)) - tauThreshold(s)
-      mobility = prm%b_sl(s) / prm%eta
-      vViscous = mobility * tauEff
+
 
       v(s) = sign(1.0_pReal,tau(s)) &
-           / (tPeierls / lambda_P + tSolidSolution / lambda_S + 1.0_pReal / vViscous)
-      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + mobility /vViscous**2.0_pReal)
+           / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%eta /(prm%b_sl(s) * tauEff))
+      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + prm%eta / (prm%b_sl(s) * tauEff**2.0_pReal))
       dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / lambda_P
+
     endif
   enddo
 
