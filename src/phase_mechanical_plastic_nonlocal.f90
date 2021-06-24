@@ -112,7 +112,7 @@ submodule(phase:plastic) nonlocal
       nonSchmid_pos, &
       nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
-      sum_N_sl
+      sum_N_sl = 0
     integer,     dimension(:),     allocatable :: &
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
     character(len=pStringLen), dimension(:), allocatable :: &
