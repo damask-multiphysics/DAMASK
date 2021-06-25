@@ -70,7 +70,7 @@ module function isoductile_init() result(mySources)
 
         Nmembers=count(material_phaseID==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,0)
-        damageState(ph)%atol = src%get_asFloat('isoductile_atol',defaultVal=1.0e-3_pReal)
+        damageState(ph)%atol = src%get_asFloat('isoductile_atol',defaultVal=1.0e-9_pReal)
         if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
 
         end associate

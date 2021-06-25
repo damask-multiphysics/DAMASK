@@ -94,7 +94,7 @@ module function anisobrittle_init() result(mySources)
 
         Nmembers = count(material_phaseID==p)
         call phase_allocateState(damageState(p),Nmembers,1,1,0)
-        damageState(p)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
+        damageState(p)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-9_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 
         end associate

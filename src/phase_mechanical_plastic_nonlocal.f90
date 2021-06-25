@@ -231,14 +231,14 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech  => phase%get('mechanical')
     pl  => mech%get('plastic')
 
-    plasticState(ph)%nonlocal = pl%get_asBool('nonlocal')
+    plasticState(ph)%nonlocal = pl%get_asBool('flux')
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    prm%atol_rho   = pl%get_asFloat('atol_rho',defaultVal=1.0e4_pReal)
+    prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     ! This data is read in already in lattice
     prm%mu = lattice_mu(ph)
@@ -488,10 +488,11 @@ module function plastic_nonlocal_init() result(myPlasticity)
     stt%gamma => plasticState(ph)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
-    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
+    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-6_pReal)
     if(any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    plasticState(ph)%slipRate => plasticState(ph)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
+    ! global alias
+    plasticState(ph)%slipRate => plasticState(ph)%dotState   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
 
     stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
     stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)

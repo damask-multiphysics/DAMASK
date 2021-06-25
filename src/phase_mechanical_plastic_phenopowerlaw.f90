@@ -247,7 +247,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     stt%xi_twin =  spread(xi_0_tw, 2, Nmembers)
     dot%xi_twin => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
@@ -263,7 +262,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     stt%gamma_twin => plasticState(ph)%state   (startIndex:endIndex,:)
     dot%gamma_twin => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     end associate
 
