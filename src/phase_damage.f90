@@ -242,7 +242,7 @@ module function integrateDamageState(dt,co,ce) result(broken)
 
       zeta = damper(damageState(ph)%dotState(:,me),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
       damageState(ph)%dotState(:,me) = damageState(ph)%dotState(:,me) * zeta &
-                                    + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
+                                     + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
       r(1:size_so) = damageState(ph)%state    (1:size_so,me)  &
                    - damageState(ph)%subState0(1:size_so,me)  &
                    - damageState(ph)%dotState (1:size_so,me) * dt
