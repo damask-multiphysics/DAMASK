@@ -983,13 +983,13 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     gdot                                                                                            !< shear rates
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
-    vClimb                                                                                          !< climb velocity of edge dipoles
+    v_climb                                                                                         !< climb velocity of edge dipoles
   real(pReal), dimension(param(ph)%sum_N_sl,2) :: &
     rhoDip, &                                                                                       !< current dipole dislocation densities (screw and edge dipoles)
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
   real(pReal) :: &
-    selfDiffusion                                                                                   !< self diffusion
+    D_SD
 
   if (timestep <= 0.0_pReal) then
     plasticState(ph)%dotState = 0.0_pReal
@@ -1049,7 +1049,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   else isBCC
     rhoDotMultiplication(:,1:4) = spread( &
           (sum(abs(gdot(:,1:2)),2) * prm%f_ed_mult + sum(abs(gdot(:,3:4)),2)) &
-        * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)
+        * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
   endif isBCC
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
@@ -1100,11 +1100,11 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   ! thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
-  selfDiffusion = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))
-  vClimb = prm%V_at * selfDiffusion * prm%mu &
-         / ( kB * Temperature  * PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)))
+  D_SD = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))                                              ! eq. 3.53
+  v_climb = D_SD * prm%mu * prm%V_at &
+          / (PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
   forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
-    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
+    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
