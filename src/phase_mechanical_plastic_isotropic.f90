@@ -139,8 +139,6 @@ module function plastic_isotropic_init() result(myPlasticity)
     dot%gamma  => plasticState(ph)%dotState(2,:)
     plasticState(ph)%atol(2) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if (plasticState(ph)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
-    ! global alias
-    plasticState(ph)%slipRate => plasticState(ph)%dotState(2:2,:)
 
     end associate
 

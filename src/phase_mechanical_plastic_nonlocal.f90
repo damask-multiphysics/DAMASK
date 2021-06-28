@@ -491,8 +491,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
     plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-6_pReal)
     if(any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    ! global alias
-    plasticState(ph)%slipRate => plasticState(ph)%dotState   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
 
     stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
     stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)

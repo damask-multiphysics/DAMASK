@@ -280,16 +280,6 @@ module phase
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine damage_anisobrittle_LiAndItsTangent
 
-    module subroutine damage_isoductile_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine damage_isoductile_LiAndItsTangent
-
   end interface
 
 

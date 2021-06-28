@@ -254,8 +254,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     dot%gamma_slip => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
-    ! global alias
-    plasticState(ph)%slipRate => plasticState(ph)%dotState(startIndex:endIndex,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
