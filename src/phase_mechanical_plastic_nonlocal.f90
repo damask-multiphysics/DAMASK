@@ -323,7 +323,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%D_0                   = pl%get_asFloat('D_0')
       prm%Q_cl                  = pl%get_asFloat('Q_cl')
       prm%f_F                   = pl%get_asFloat('f_F')
-      prm%f_ed                  = pl%get_asFloat('f_ed') !,'edgejogs'
+      prm%f_ed                  = pl%get_asFloat('f_ed')
       prm%w                     = pl%get_asFloat('w')
       prm%Q_sol                 = pl%get_asFloat('Q_sol')
       prm%f_sol                 = pl%get_asFloat('f_sol')
@@ -363,8 +363,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (any(prm%peierlsstress    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
       if (any(prm%minDipoleHeight  <  0.0_pReal)) extmsg = trim(extmsg)//' d_ed or d_sc'
 
-      if (prm%B                   <=  0.0_pReal)  extmsg = trim(extmsg)//' B'
-      if (prm%Q_cl                <=  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
+      if (prm%B                    <  0.0_pReal)  extmsg = trim(extmsg)//' B'
+      if (prm%Q_cl                 <  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
       if (prm%nu_a                <=  0.0_pReal)  extmsg = trim(extmsg)//' nu_a'
       if (prm%w                   <=  0.0_pReal)  extmsg = trim(extmsg)//' w'
       if (prm%D_0                 <   0.0_pReal)  extmsg = trim(extmsg)//' D_0'
