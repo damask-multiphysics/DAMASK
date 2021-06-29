@@ -2,7 +2,7 @@ FreeSurface:
   lattice: cI
   mechanical:
     output: [F, P, F_e, F_p, L_p]
-    elastic: {type: Hooke, C_11: 1e8, C_12: 1e6, C_44: 4.95e7}
+    elastic: {type: Hooke, C_11: 1.e+8, C_12: 1.e+6, C_44: 4.95e+7}
     plastic:
       type: isotropic
       output: [xi]
@@ -11,6 +11,6 @@ FreeSurface:
       dot_gamma_0: 0.001
       n: 5
       M: 3
-      h_0: 1e6
+      h_0: 1.e+6
       a: 2
       dilatation: True

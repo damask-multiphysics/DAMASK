@@ -46,4 +46,4 @@ sigma_rho_u: 0   # no random distribution
 
 
 short_range_stress_correction: false
-rho_significant: 1e6
+rho_significant: 1.e6

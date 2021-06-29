@@ -12,4 +12,4 @@ h_0_sl-sl: 2.4e+8
 xi_0_sl: [1.5e+6]
 xi_inf_sl: [112.5e+6]
 h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
-dot_gamma_0_sl: 3e-3
+dot_gamma_0_sl: 3.e-3
