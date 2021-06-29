@@ -1,0 +1,15 @@
+type: phenopowerlaw
+references:
+  - W.F. Hosford et al.,
+    Acta Metallurgica, 8(3), 187-199, 1960,
+    10.1016/0001-6160(60)90127-9,
+    fitted from Fig. 5
+output: [xi_sl, gamma_sl]
+N_sl: [12]
+n_sl: 20
+a_sl: 3.1
+h_0_sl-sl: 1.7e8
+xi_0_sl: [5.0e6]
+xi_inf_sl: [37.5e6]
+h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
+dot_gamma_0_sl: 4.5e-3

@@ -247,9 +247,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
     dot%gamma_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = 1.0e-2_pReal
-    ! global alias
-    plasticState(ph)%slipRate        => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
     allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)

@@ -1,0 +1,49 @@
+type: nonlocal
+references:
+  C. Kords,
+  On the role of dislocation transport in the constitutive description of crystal plasticity,
+  RWTH Aachen 2013
+output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc]
+N_sl: [12]
+
+b_sl: [2.48e-10]
+V_at: 0.012e-27 # Omega
+d_ed: [2.6e-9]
+d_sc: [12.e-9]
+i_sl: [45]      # k_2
+f_ed_mult: 0.1  # k_1
+
+rho_u_ed_neg_0: [6.e10] # 2.88e12 / (12*4)
+rho_u_ed_pos_0: [6.e10] # 2.88e12 / (12*4)
+rho_u_sc_neg_0: [6.e10] # 2.88e12 / (12*4)
+rho_u_sc_pos_0: [6.e10] # 2.88e12 / (12*4)
+rho_d_ed_0: [0]
+rho_d_sc_0: [0]
+
+D_0: 3.e-53
+Q_cl: 0.0 # no temperature dependency
+Q_sol: 1.79444e-19 # 1.12 eV
+c_sol: 5.e-7       # correct unit?
+f_sol: 1.          # d_obst
+tau_Peierls_ed: [.1e6]
+tau_Peierls_sc: [.1e6]
+w: 10              # w_k
+
+p_sl: 1
+q_sl: 1
+
+nu_a: 50.e9
+B: 1.e-3
+f_ed: 0.01  # k_3
+
+h_sl-sl: [0, 0, 0.625, 0.07, 0.137, 0.137, 0.122] # Table 3.4
+
+chi_GB: 0.0      # full blocking at GB
+chi_surface: 1.0 # no blocking at surface
+
+f_F: 0.0         # no line tension correction
+sigma_rho_u: 0   # no random distribution
+
+
+short_range_stress_correction: false
+rho_significant: 1e6

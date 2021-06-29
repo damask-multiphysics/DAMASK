@@ -81,11 +81,11 @@ submodule(phase:plastic) nonlocal
       c_sol, &                                                                                      !< concentration of solid solution in atomic parts
       p, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
       q, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
-      eta, &                                                                                        !< viscosity for dislocation glide in Pa s
+      B, &                                                                                          !< drag coefficient in Pa s
       nu_a, &                                                                                       !< attack frequency in Hz
       chi_surface, &                                                                                !< transmissivity at free surface
       chi_GB, &                                                                                     !< transmissivity at grain boundary (identified by different texture)
-      f_c, &                                                                                        !< safety factor for CFL flux condition
+      C_CFL, &                                                                                      !< safety factor for CFL flux condition
       f_ed_mult, &                                                                                  !< factor that determines how much edge dislocations contribute to multiplication (0...1)
       f_F, &
       f_ed, &
@@ -112,7 +112,7 @@ submodule(phase:plastic) nonlocal
       nonSchmid_pos, &
       nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
-      sum_N_sl
+      sum_N_sl = 0
     integer,     dimension(:),     allocatable :: &
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
     character(len=pStringLen), dimension(:), allocatable :: &
@@ -211,6 +211,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 
   phases => config_material%get('phase')
+
   allocate(geom(phases%length))
 
   allocate(param(phases%length))
@@ -230,15 +231,14 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech  => phase%get('mechanical')
     pl  => mech%get('plastic')
 
-    phase_localPlasticity(ph) = .not. pl%contains('nonlocal')
-
+    plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    prm%atol_rho   = pl%get_asFloat('atol_rho',defaultVal=1.0e4_pReal)
+    prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     ! This data is read in already in lattice
     prm%mu = lattice_mu(ph)
@@ -317,13 +317,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
       prm%rho_significant       = pl%get_asFloat('rho_significant')
       prm%rho_min               = pl%get_asFloat('rho_min', 0.0_pReal)
-      prm%f_c                   = pl%get_asFloat('f_c',defaultVal=2.0_pReal)
+      prm%C_CFL                 = pl%get_asFloat('C_CFL',defaultVal=2.0_pReal)
 
       prm%V_at                  = pl%get_asFloat('V_at')
       prm%D_0                   = pl%get_asFloat('D_0')
       prm%Q_cl                  = pl%get_asFloat('Q_cl')
       prm%f_F                   = pl%get_asFloat('f_F')
-      prm%f_ed                  = pl%get_asFloat('f_ed') !,'edgejogs'
+      prm%f_ed                  = pl%get_asFloat('f_ed')
       prm%w                     = pl%get_asFloat('w')
       prm%Q_sol                 = pl%get_asFloat('Q_sol')
       prm%f_sol                 = pl%get_asFloat('f_sol')
@@ -331,7 +331,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
       prm%p                     = pl%get_asFloat('p_sl')
       prm%q                     = pl%get_asFloat('q_sl')
-      prm%eta                   = pl%get_asFloat('eta')
+      prm%B                     = pl%get_asFloat('B')
       prm%nu_a                  = pl%get_asFloat('nu_a')
 
       ! ToDo: discuss logic
@@ -363,8 +363,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (any(prm%peierlsstress    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
       if (any(prm%minDipoleHeight  <  0.0_pReal)) extmsg = trim(extmsg)//' d_ed or d_sc'
 
-      if (prm%eta                 <=  0.0_pReal)  extmsg = trim(extmsg)//' eta'
-      if (prm%Q_cl                <=  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
+      if (prm%B                    <  0.0_pReal)  extmsg = trim(extmsg)//' B'
+      if (prm%Q_cl                 <  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
       if (prm%nu_a                <=  0.0_pReal)  extmsg = trim(extmsg)//' nu_a'
       if (prm%w                   <=  0.0_pReal)  extmsg = trim(extmsg)//' w'
       if (prm%D_0                 <   0.0_pReal)  extmsg = trim(extmsg)//' D_0'
@@ -373,7 +373,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (prm%rho_min             <   0.0_pReal)  extmsg = trim(extmsg)//' rho_min'
       if (prm%rho_significant     <   0.0_pReal)  extmsg = trim(extmsg)//' rho_significant'
       if (prm%atol_rho            <   0.0_pReal)  extmsg = trim(extmsg)//' atol_rho'
-      if (prm%f_c                 <   0.0_pReal)  extmsg = trim(extmsg)//' f_c'
+      if (prm%C_CFL               <   0.0_pReal)  extmsg = trim(extmsg)//' C_CFL'
 
       if (prm%p    <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p_sl'
       if (prm%q    <  1.0_pReal .or. prm%q > 2.0_pReal) extmsg = trim(extmsg)//' q_sl'
@@ -417,7 +417,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(geom(ph)%V_0(Nmembers))
     call storeGeometry(ph)
 
-    plasticState(ph)%nonlocal         = pl%get_asBool('nonlocal')
     if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
       call IO_error(212,ext_msg='IPneighborhood does not exist')
 
@@ -489,10 +488,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     stt%gamma => plasticState(ph)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
-    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
+    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-6_pReal)
     if(any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    plasticState(ph)%slipRate => plasticState(ph)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
 
     stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
     stt%v          => plasticState(ph)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nmembers)
@@ -643,7 +641,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
   !#################################################################################################
 
   rho0 = getRho0(ph,en)
-  if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
+  if (plasticState(ph)%nonlocal .and. prm%shortRangeStressCorrection) then
     invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,en))
     invFe = math_inv33(phase_mechanical_Fe(ph)%data(1:3,1:3,en))
 
@@ -738,17 +736,6 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
                             + rhoExcessGradient_over_rho(2))
     enddo
   endif
-
-#ifdef DEBUG
-  if (debugConstitutive%extensive &
-      .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip)&
-             .or. .not. debugConstitutive%selective)) then
-    print'(/,a,i8,1x,i2,1x,i1,/)', '<< CONST >> nonlocal_microstructure at el ip ',el,ip
-    print'(a,/,12x,12(e10.3,1x))', '<< CONST >> rhoForest', stt%rho_forest(:,en)
-    print'(a,/,12x,12(f10.5,1x))', '<< CONST >> tauThreshold / MPa', dst%tau_pass(:,en)*1e-6
-    print'(a,/,12x,12(f10.5,1x),/)', '<< CONST >> tauBack / MPa', dst%tau_back(:,en)*1e-6
-  endif
-#endif
 
  end associate
 
@@ -994,13 +981,13 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     gdot                                                                                            !< shear rates
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
-    vClimb                                                                                          !< climb velocity of edge dipoles
+    v_climb                                                                                         !< climb velocity of edge dipoles
   real(pReal), dimension(param(ph)%sum_N_sl,2) :: &
     rhoDip, &                                                                                       !< current dipole dislocation densities (screw and edge dipoles)
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
   real(pReal) :: &
-    selfDiffusion                                                                                   !< self diffusion
+    D_SD
 
   if (timestep <= 0.0_pReal) then
     plasticState(ph)%dotState = 0.0_pReal
@@ -1025,17 +1012,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
   gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
-#ifdef DEBUG
-    if (debugConstitutive%basic &
-        .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip) &
-               .or. .not. debugConstitutive%selective)) then
-      print'(a,/,10(12x,12(e12.5,1x),/))', '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
-      print'(a,/,4(12x,12(e12.5,1x),/))', '<< CONST >> gdot / 1/s',gdot
-    endif
-#endif
 
-  !****************************************************************************
-  !*** limits for stable dipole height
+
+  ! limits for stable dipole height
   do s = 1,ns
     tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,en)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
@@ -1052,8 +1031,8 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   dUpper = max(dUpper,dLower)
 
-  !****************************************************************************
-  !*** dislocation multiplication
+
+  ! dislocation multiplication
   rhoDotMultiplication = 0.0_pReal
   isBCC: if (phase_lattice(ph) == 'cI') then
     forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
@@ -1068,16 +1047,16 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   else isBCC
     rhoDotMultiplication(:,1:4) = spread( &
           (sum(abs(gdot(:,1:2)),2) * prm%f_ed_mult + sum(abs(gdot(:,3:4)),2)) &
-        * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)
+        * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
   endif isBCC
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
 
 
   !****************************************************************************
-  !*** calculate dipole formation and annihilation
+  ! dipole formation and annihilation
 
-  !*** formation by glide
+  ! formation by glide
   do c = 1,2
     rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
                                                    * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &   ! negative mobile --> positive mobile
@@ -1102,7 +1081,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   enddo
 
 
-  !*** athermal annihilation
+  ! athermal annihilation
   rhoDotAthermalAnnihilation = 0.0_pReal
   forall (c=1:2) &
     rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%b_sl &
@@ -1117,13 +1096,13 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
         * 0.25_pReal * sqrt(stt%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
 
 
-  !*** thermally activated annihilation of edge dipoles by climb
+  ! thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
-  selfDiffusion = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))
-  vClimb = prm%V_at * selfDiffusion * prm%mu &
-         / ( kB * Temperature  * PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)))
+  D_SD = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))                                              ! eq. 3.53
+  v_climb = D_SD * prm%mu * prm%V_at &
+          / (PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
   forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
-    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
+    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
@@ -1231,24 +1210,23 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)                   !ToDo: MD: I think we should use state0 here
   gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
-
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
 
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
   rhoDotFlux = 0.0_pReal
-  if (.not. phase_localPlasticity(ph)) then
+  if (plasticState(ph)%nonlocal) then
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
-            .and. prm%f_c * abs(v0) * timestep &
+            .and. prm%C_CFL * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
       print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(gdot) > 0.0_pReal &
-                       .and.  prm%f_c * abs(v0) * timestep &
+                       .and.  prm%C_CFL * abs(v0) * timestep &
                              > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       print*, '<< CONST >> enforcing cutback !!!'
@@ -1436,22 +1414,16 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
     if (neighbor_e <= 0 .or. neighbor_i <= 0) then
       !* FREE SURFACE
-      !* Set surface transmissivity to the value specified in the material.config
       forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
     elseif (neighbor_phase /= ph) then
       !* PHASE BOUNDARY
-      !* If we encounter a different nonlocal phase at the neighbor,
-      !* we consider this to be a real "physical" phase boundary, so completely incompatible.
-      !* If one of the two phases has a local plasticity law,
-      !* we do not consider this to be a phase boundary, so completely compatible.
-      if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) &
+      if (plasticState(neighbor_phase)%nonlocal .and. plasticState(ph)%nonlocal) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
     elseif (prm%chi_GB >= 0.0_pReal) then
-      !* GRAIN BOUNDARY !
-      !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
+      !* GRAIN BOUNDARY
       if (any(dNeq(phase_orientation0(ph)%data(en)%asQuaternion(), &
                    phase_orientation0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
-          (.not. phase_localPlasticity(neighbor_phase))) &
+          plasticState(neighbor_phase)%nonlocal) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else
       !* GRAIN BOUNDARY ?
@@ -1645,13 +1617,13 @@ end subroutine stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates kinetics
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, ph)
+pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, ph)
 
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
     ph
   real(pReal), intent(in) :: &
-    Temperature                                                                                     !< temperature
+    T                                                                                     !< T
   real(pReal), dimension(param(ph)%sum_N_sl), intent(in) :: &
     tau, &                                                                                          !< resolved external shear stress (without non Schmid effects)
     tauNS, &                                                                                        !< resolved external shear stress (including non Schmid effects)
@@ -1669,22 +1641,15 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
     tauEff, &                                                                                       !< effective shear stress
     tPeierls, &                                                                                     !< waiting time in front of a peierls barriers
     tSolidSolution, &                                                                               !< waiting time in front of a solid solution obstacle
-    vViscous, &                                                                                     !< viscous glide velocity
     dtPeierls_dtau, &                                                                               !< derivative with respect to resolved shear stress
     dtSolidSolution_dtau, &                                                                         !< derivative with respect to resolved shear stress
-    meanfreepath_S, &                                                                               !< mean free travel distance for dislocations between two solid solution obstacles
-    meanfreepath_P, &                                                                               !< mean free travel distance for dislocations between two Peierls barriers
-    jumpWidth_P, &                                                                                  !< depth of activated area
-    jumpWidth_S, &                                                                                  !< depth of activated area
-    activationLength_P, &                                                                           !< length of activated dislocation line
-    activationLength_S, &                                                                           !< length of activated dislocation line
+    lambda_S, &                                                                                     !< mean free distance between two solid solution obstacles
+    lambda_P, &                                                                                     !< mean free distance between two Peierls barriers
     activationVolume_P, &                                                                           !< volume that needs to be activated to overcome barrier
     activationVolume_S, &                                                                           !< volume that needs to be activated to overcome barrier
     activationEnergy_P, &                                                                           !< energy that is needed to overcome barrier
-    activationEnergy_S, &                                                                           !< energy that is needed to overcome barrier
     criticalStress_P, &                                                                             !< maximum obstacle strength
-    criticalStress_S, &                                                                             !< maximum obstacle strength
-    mobility                                                                                        !< dislocation mobility
+    criticalStress_S                                                                                !< maximum obstacle strength
 
   associate(prm => param(ph))
   v = 0.0_pReal
@@ -1695,57 +1660,42 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
     if (abs(tau(s)) > tauThreshold(s)) then
 
       !* Peierls contribution
-      !* Effective stress includes non Schmid constributions
-      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
-      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                      ! ensure that the effective stress is positive
-      meanfreepath_P = prm%b_sl(s)
-      jumpWidth_P = prm%b_sl(s)
-      activationLength_P = prm%w *prm%b_sl(s)
-      activationVolume_P = activationLength_P * jumpWidth_P * prm%b_sl(s)
+      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))
+      lambda_P = prm%b_sl(s)
+      activationVolume_P = prm%w *prm%b_sl(s)**3.0_pReal
       criticalStress_P = prm%peierlsStress(s,c)
       activationEnergy_P = criticalStress_P * activationVolume_P
-      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
+      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)
       tPeierls = 1.0_pReal / prm%nu_a &
-               * exp(activationEnergy_P / (kB * Temperature) &
+               * exp(activationEnergy_P / (kB * T) &
                      * (1.0_pReal - tauRel_P**prm%p)**prm%q)
-      if (tauEff < criticalStress_P) then
-        dtPeierls_dtau = tPeierls * prm%p * prm%q * activationVolume_P / (kB * Temperature) &
-                       * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal)
-      else
-        dtPeierls_dtau = 0.0_pReal
-      endif
+      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (kB * T) &
+                             * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal), &
+                             0.0_pReal, &
+                             tauEff < criticalStress_P)
 
-      !* Contribution from solid solution strengthening
-      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
+      ! Contribution from solid solution strengthening
       tauEff = abs(tau(s)) - tauThreshold(s)
-      meanfreepath_S = prm%b_sl(s) / sqrt(prm%c_sol)
-      jumpWidth_S = prm%f_sol * prm%b_sl(s)
-      activationLength_S = prm%b_sl(s) / sqrt(prm%c_sol)
-      activationVolume_S = activationLength_S * jumpWidth_S * prm%b_sl(s)
-      activationEnergy_S = prm%Q_sol
-      criticalStress_S = activationEnergy_S / activationVolume_S
-      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                          ! ensure that the activation probability cannot become greater than one
+      lambda_S = prm%b_sl(s) / sqrt(prm%c_sol)
+      activationVolume_S = prm%f_sol * prm%b_sl(s)**3.0_pReal / sqrt(prm%c_sol)
+      criticalStress_S = prm%Q_sol / activationVolume_S
+      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
       tSolidSolution = 1.0_pReal /  prm%nu_a &
-                     * exp(activationEnergy_S / (kB * Temperature)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
-      if (tauEff < criticalStress_S) then
-        dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * Temperature) &
-                             * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal)
-      else
-        dtSolidSolution_dtau = 0.0_pReal
-      endif
+                     * exp(prm%Q_sol / (kB * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
+      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * T) &
+                                   * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal), &
+                                   0.0_pReal, &
+                                   tauEff < criticalStress_S)
 
       !* viscous glide velocity
       tauEff = abs(tau(s)) - tauThreshold(s)
-      mobility = prm%b_sl(s) / prm%eta
-      vViscous = mobility * tauEff
 
-      !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of
-      !* free flight at glide velocity in between.
-      !* adopt sign from resolved stress
+
       v(s) = sign(1.0_pReal,tau(s)) &
-           / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
-      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / meanfreepath_S + mobility /vViscous**2.0_pReal)
-      dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / meanfreepath_P
+           / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%B /(prm%b_sl(s) * tauEff))
+      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + prm%B / (prm%b_sl(s) * tauEff**2.0_pReal))
+      dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / lambda_P
+
     endif
   enddo
 

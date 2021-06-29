@@ -61,9 +61,6 @@ module phase
       grain
   end type tDebugOptions
 
-  logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
-    phase_localPlasticity                                                                           !< flags phases with local constitutive law
-
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tState),  allocatable, dimension(:), public :: &
@@ -283,16 +280,6 @@ module phase
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine damage_anisobrittle_LiAndItsTangent
 
-    module subroutine damage_isoductile_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine damage_isoductile_LiAndItsTangent
-
   end interface
 
 
@@ -413,7 +400,7 @@ end subroutine phase_init
 subroutine phase_allocateState(state, &
                                NEntries,sizeState,sizeDotState,sizeDeltaState)
 
-  class(tState), intent(out) :: &
+  class(tState), intent(inout) :: &
     state
   integer, intent(in) :: &
     NEntries, &

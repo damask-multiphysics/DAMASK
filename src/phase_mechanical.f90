@@ -15,7 +15,6 @@ submodule(phase) mechanical
     PLASTICITY_NONLOCAL_ID, &
     KINEMATICS_UNDEFINED_ID, &
     KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
     KINEMATICS_THERMAL_EXPANSION_ID
   end enum
 
@@ -274,7 +273,6 @@ module subroutine mechanical_init(materials,phases)
 ! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
-  allocate(phase_localPlasticity(phases%length),   source=.true.)
 
   call plastic_init()
 

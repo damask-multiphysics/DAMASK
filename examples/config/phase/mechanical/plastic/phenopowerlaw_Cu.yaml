@@ -1,0 +1,15 @@
+type: phenopowerlaw
+references:
+  - T Takeuchi,
+    Transactions of the Japan Institute of Metals 16(10), 629-640, 1975,
+    10.2320/matertrans1960.16.629,
+    fitted from Fig. 3b
+output: [xi_sl, gamma_sl]
+N_sl: [12]
+n_sl: 20
+a_sl: 1.0
+h_0_sl-sl: 2.4e8
+xi_0_sl: [1.5e6]
+xi_inf_sl: [112.5e6]
+h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
+dot_gamma_0_sl: 3e-3
