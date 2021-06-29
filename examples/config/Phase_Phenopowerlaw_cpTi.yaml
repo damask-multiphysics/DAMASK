@@ -6,7 +6,7 @@ cpTi:
   c/a: 1.587
   mechanical:
     output: [F, P, F_e, F_p, L_p, O]
-    elastic: {C_11: 160.0e9, C_12: 90.0e9, C_13: 66.0e9, C_33: 181.7e9, C_44: 46.5e9, type: Hooke}
+    elastic: {C_11: 160.0e+9, C_12: 90.0e+9, C_13: 66.0e+9, C_33: 181.7e+9, C_44: 46.5e+9, type: Hooke}
     plastic:
       N_sl: [3, 3, 0, 6, 12]
       a_sl: 2.0
@@ -17,4 +17,4 @@ cpTi:
       output: [gamma_sl]
       type: phenopowerlaw
       xi_0_sl: [0.15e9, 0.09e9, 0, 0.20e9, 0.25e9]
-      xi_inf_sl: [0.24e9, 0.5e9, 0, 0.6e9, 0.8e9]
+      xi_inf_sl: [0.24e9, 0.5e+9, 0, 0.6e+9, 0.8e+9]

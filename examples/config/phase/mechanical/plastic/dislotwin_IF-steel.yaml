@@ -8,9 +8,9 @@ references:
 output: [rho_dip, rho_mob]
 N_sl: [12, 12]
 b_sl: [2.49e-10, 2.49e-10]
-rho_mob_0: [2.81e12, 2.8e12]
+rho_mob_0: [2.81e12, 2.8e+12]
 rho_dip_0: [1.0, 1.0] # not given
-v_0: [1.4e3, 1.4e3]
+v_0: [1.4e+3, 1.4e+3]
 Q_s: [1.57e-19, 1.57e-19] # Delta_F
 tau_0: [454e6, 454e6]
 p_sl: [0.325, 0.325]

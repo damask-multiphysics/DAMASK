@@ -6,8 +6,8 @@ FreeSurface:
     plastic:
       type: isotropic
       output: [xi]
-      xi_0: 0.3e6
-      xi_inf: 0.6e6
+      xi_0: 0.3e+6
+      xi_inf: 0.6e+6
       dot_gamma_0: 0.001
       n: 5
       M: 3

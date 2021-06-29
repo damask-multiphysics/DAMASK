@@ -32,7 +32,7 @@ w: 10              # w_k in multiple of b
 p_sl: 1
 q_sl: 1
 
-nu_a: 50.e9
+nu_a: 50.e+9
 B: 1.e-2
 f_ed: 1.0  # k_3
 
