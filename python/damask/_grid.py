@@ -413,7 +413,7 @@ class Grid:
             coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
+        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), coords)
         pool.close()
         pool.join()
         material_ = np.array(result.get())
