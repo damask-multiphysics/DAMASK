@@ -661,6 +661,30 @@ class Grid:
         updated : damask.Grid
             Updated grid-based geometry.
 
+        Examples
+        --------
+        Add a sphere at the center.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
+        Add a cube at the origin.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
         """
         # radius and center
         r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
@@ -705,6 +729,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Mirror along x- and y-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int), np.ones(3)*1e-4)
+        >>> g.mirror('xy',True)
+        cells  a b c: 64 x 64 x 32
+        size   x y z: 0.0002 x 0.0002 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         valid = ['x','y','z']
@@ -772,6 +809,20 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Double resolution.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> cells = np.array([32]*3,int)
+        >>> g = damask.Grid(np.zeros(cells,int),np.ones(3)*1e-4)
+        >>> g.scale(cells*2)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         return Grid(material = ndimage.interpolation.zoom(
@@ -902,6 +953,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Remove 1/2 of the microstructure in z-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.canvas(np.array([32,32,16],int))
+        cells  a b c: 33 x 32 x 16
+        size   x y z: 0.0001 x 0.0001 x 5e-05
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         if offset is None: offset = 0
