@@ -9,9 +9,9 @@ references:
 output: [xi_sl, gamma_sl]
 N_sl: [12]
 n_sl: 83.3
-dot_gamma_0_sl: 0.001
-h_0_sl-sl: 75.0e6
-h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
 a_sl: 1.0
+h_0_sl-sl: 75.0e6
 xi_0_sl: [26.25e6]
 xi_inf_sl: [53.0e6]
+h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
+dot_gamma_0_sl: 0.001

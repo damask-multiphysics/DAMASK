@@ -51,10 +51,7 @@ module prec
   end type
 
   type, extends(tState) :: tPlasticState
-    logical :: &
-      nonlocal = .false.
-    real(pReal), pointer, dimension(:,:) :: &
-      slipRate                                                                                      !< slip rate
+    logical :: nonlocal = .false.
   end type
 
   type :: tSourceState

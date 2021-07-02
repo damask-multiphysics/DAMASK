@@ -633,7 +633,7 @@ homogenization:
       a_g: [0.0, 0.0, 0.0]
       c_alpha: 2.0
       cluster_size: [2, 2, 2]
-      output: [M, Delta_V, avg_a_dot, max_a_dot]
+      output: [M, Delta_V, avg_dot_a, max_dot_a]
       xi_alpha: 10.0
 
 phase:

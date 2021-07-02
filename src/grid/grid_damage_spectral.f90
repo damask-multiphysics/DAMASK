@@ -261,6 +261,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscErrorCode :: ierr
   integer :: i, j, k, ce
 
+
   phi_current = x_scal
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field

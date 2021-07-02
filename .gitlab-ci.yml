@@ -199,23 +199,12 @@ core:
     - release
 
 # Needs closer look
-#Phenopowerlaw_singleSlip:
-#  stage: fortran
-#  script: Phenopowerlaw_singleSlip/test.py
-#  except:
-#    - master
-#    - release
-
-# Conversion to pytest ongoing
-J2_plasticBehavior:
-  stage: fortran
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - MSC_VERSION=2020 J2_plasticBehavior/test.py
-  except:
-    - master
-    - release
-
+# Phenopowerlaw_singleSlip:
+#   stage: fortran
+#   script: Phenopowerlaw_singleSlip/test.py
+#   except:
+#     - master
+#     - release
 
 ###################################################################################################
 SpectralRuntime:
@@ -270,7 +259,9 @@ merge_into_master:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
     - echo $TESTEDREV > python/damask/VERSION
-    - git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - >
+        git diff-index --quiet HEAD ||
+        git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
     - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state

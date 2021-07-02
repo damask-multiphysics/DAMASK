@@ -258,7 +258,6 @@ subroutine readVTI(grid,geomSize,origin,material)
 
     character(len=:), allocatable :: temp
     real(pReal), dimension(:), allocatable :: delta
-    integer, dimension(:), allocatable :: stringPos
     integer :: i
 
 
@@ -266,9 +265,9 @@ subroutine readVTI(grid,geomSize,origin,material)
       call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
     temp = getXMLValue(header,'WholeExtent')
-    if (any([(IO_floatValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
+    if (any([(IO_intValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
       call IO_error(error_ID = 844, ext_msg = 'coordinate start')
-    c = [(IO_floatValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+    c = [(IO_intValue(temp,IO_stringPos(temp),i),i=2,6,2)]
 
     temp = getXMLValue(header,'Spacing')
     delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]

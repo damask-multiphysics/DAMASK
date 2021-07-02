@@ -11,7 +11,6 @@ submodule(phase) damage
   enum, bind(c); enumerator :: &
     DAMAGE_UNDEFINED_ID, &
     DAMAGE_ISOBRITTLE_ID, &
-    DAMAGE_ISODUCTILE_ID, &
     DAMAGE_ANISOBRITTLE_ID
   end enum
 
@@ -39,10 +38,6 @@ submodule(phase) damage
       logical, dimension(:), allocatable :: mySources
     end function isobrittle_init
 
-    module function isoductile_init() result(mySources)
-      logical, dimension(:), allocatable :: mySources
-    end function isoductile_init
-
 
     module subroutine isobrittle_deltaState(C, Fe, ph, me)
       integer, intent(in) :: ph,me
@@ -59,10 +54,6 @@ submodule(phase) damage
         S
     end subroutine anisobrittle_dotState
 
-    module subroutine isoductile_dotState(ph,me)
-      integer, intent(in) :: ph,me
-    end subroutine isoductile_dotState
-
     module subroutine anisobrittle_results(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
@@ -72,11 +63,6 @@ submodule(phase) damage
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
     end subroutine isobrittle_results
-
-    module subroutine isoductile_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine isoductile_results
 
  end interface
 
@@ -131,7 +117,6 @@ module subroutine damage_init
 
   if (damage_active) then
     where(isobrittle_init()  ) phase_damage = DAMAGE_ISOBRITTLE_ID
-    where(isoductile_init()  ) phase_damage = DAMAGE_ISODUCTILE_ID
     where(anisobrittle_init()) phase_damage = DAMAGE_ANISOBRITTLE_ID
   endif
 
@@ -178,7 +163,7 @@ module function phase_f_phi(phi,co,ce) result(f)
   en = material_phaseEntry(co,ce)
 
   select case(phase_damage(ph))
-    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ISODUCTILE_ID,DAMAGE_ANISOBRITTLE_ID)
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
       f = 1.0_pReal &
         - phi*damageState(ph)%state(1,en)
     case default
@@ -242,7 +227,7 @@ module function integrateDamageState(dt,co,ce) result(broken)
 
       zeta = damper(damageState(ph)%dotState(:,me),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
       damageState(ph)%dotState(:,me) = damageState(ph)%dotState(:,me) * zeta &
-                                    + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
+                                     + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
       r(1:size_so) = damageState(ph)%state    (1:size_so,me)  &
                    - damageState(ph)%subState0(1:size_so,me)  &
                    - damageState(ph)%dotState (1:size_so,me) * dt
@@ -304,9 +289,6 @@ module subroutine damage_results(group,ph)
     case (DAMAGE_ISOBRITTLE_ID) sourceType
       call isobrittle_results(ph,group//'damage/')
 
-    case (DAMAGE_ISODUCTILE_ID) sourceType
-      call isoductile_results(ph,group//'damage/')
-
     case (DAMAGE_ANISOBRITTLE_ID) sourceType
       call anisobrittle_results(ph,group//'damage/')
 
@@ -331,9 +313,6 @@ function phase_damage_collectDotState(ph,me) result(broken)
   if (damageState(ph)%sizeState > 0) then
 
     sourceType: select case (phase_damage(ph))
-
-      case (DAMAGE_ISODUCTILE_ID) sourceType
-        call isoductile_dotState(ph,me)
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
         call anisobrittle_dotState(mechanical_S(ph,me), ph,me) ! correct stress?

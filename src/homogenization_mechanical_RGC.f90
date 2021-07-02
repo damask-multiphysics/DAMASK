@@ -720,10 +720,10 @@ module subroutine RGC_results(ho,group)
       case('Delta_V')
         call results_writeDataset(dst%volumeDiscrepancy,group,trim(prm%output(o)), &
                                   'volume discrepancy','m³')
-      case('max_a_dot')
+      case('max_dot_a')
         call results_writeDataset(dst%relaxationrate_max,group,trim(prm%output(o)), &
                                   'maximum relaxation rate','m/s')
-      case('avg_a_dot')
+      case('avg_dot_a')
         call results_writeDataset(dst%relaxationrate_avg,group,trim(prm%output(o)), &
                                   'average relaxation rate','m/s')
     end select
