@@ -816,9 +816,8 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> cells = np.array([32]*3,int)
-        >>> g = damask.Grid(np.zeros(cells,int),np.ones(3)*1e-4)
-        >>> g.scale(cells*2)
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.scale(g.cells*2)
         cells  a b c: 64 x 64 x 64
         size   x y z: 0.0001 x 0.0001 x 0.0001
         origin x y z: 0.0   0.0   0.0
