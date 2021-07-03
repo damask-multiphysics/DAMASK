@@ -36,7 +36,8 @@ submodule(phase:plastic) dislotwin
       dGamma_sf_dT        = 1.0_pReal, &                                                            !< temperature dependence of stacking fault energy
       delta_G             = 1.0_pReal, &                                                            !< Free energy difference between austensite and martensite
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
-      h                   = 1.0_pReal                                                               !< Stack height of hex nucleus
+      h                   = 1.0_pReal, &                                                            !< Stack height of hex nucleus
+      T_ref
     real(pReal),               allocatable, dimension(:) :: &
       b_sl, &                                                                                       !< absolute length of Burgers vector [m] for each slip system
       b_tw, &                                                                                       !< absolute length of Burgers vector [m] for each twin system
@@ -220,13 +221,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%D_a                  = pl%get_asFloat('D_a')
       prm%D_0                  = pl%get_asFloat('D_0')
       prm%Q_cl                 = pl%get_asFloat('Q_cl')
-      prm%ExtendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
-      if (prm%ExtendedDislocations) then
-        prm%Gamma_sf_0K        = pl%get_asFloat('Gamma_sf_0K')
-        prm%dGamma_sf_dT       = pl%get_asFloat('dGamma_sf_dT')
-      endif
 
-      prm%omitDipoles = pl%get_asBool('omit_dipoles',defaultVal = .false.)
+      prm%ExtendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
+      prm%omitDipoles          = pl%get_asBool('omit_dipoles',defaultVal = .false.)
 
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
       ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
@@ -384,11 +381,13 @@ module function plastic_dislotwin_init() result(myPlasticity)
     if(prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
       prm%D = pl%get_asFloat('D')
 
-    twinOrSlipActive: if (prm%sum_N_tw + prm%sum_N_tr > 0) then
+    if (prm%sum_N_tw + prm%sum_N_tr > 0) &
+      prm%V_cs = pl%get_asFloat('V_cs')
+
+    if (prm%sum_N_tw + prm%sum_N_tr > 0 .or. prm%ExtendedDislocations) then
       prm%Gamma_sf_0K  = pl%get_asFloat('Gamma_sf_0K')
       prm%dGamma_sf_dT = pl%get_asFloat('dGamma_sf_dT')
-      prm%V_cs    = pl%get_asFloat('V_cs')
-    endif twinOrSlipActive
+    endif
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,N_tw,&
