@@ -372,6 +372,7 @@ program DAMASK_mesh
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
         print'(/,a)', ' ... writing results to file ......................................'
+        call FEM_mechanical_updateCoords
         call CPFEM_results(totalIncsCounter,time)
       endif
 

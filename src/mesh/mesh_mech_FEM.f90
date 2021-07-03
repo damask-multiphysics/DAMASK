@@ -16,6 +16,7 @@ module mesh_mechanical_FEM
 
   use prec
   use FEM_utilities
+  use discretization
   use discretization_mesh
   use DAMASK_interface
   use config
@@ -67,7 +68,8 @@ module mesh_mechanical_FEM
   public :: &
     FEM_mechanical_init, &
     FEM_mechanical_solution, &
-    FEM_mechanical_forward
+    FEM_mechanical_forward, &
+    FEM_mechanical_updateCoords
 
 contains
 
@@ -663,5 +665,41 @@ subroutine FEM_mechanical_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reaso
   flush(IO_STDOUT)
 
 end subroutine FEM_mechanical_converged
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate current coordinates (FEM nodal coordinates only at the moment)
+!--------------------------------------------------------------------------------------------------
+subroutine FEM_mechanical_updateCoords()
+
+  real(pReal), pointer, dimension(:) :: &
+    nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
+  real(pReal), pointer, dimension(:,:) :: &
+    nodeCoords                                                                                      !< nodal coordinates (3,Nnodes)
+
+  DM  :: dm_local
+  Vec :: x_local
+  PetscErrorCode :: ierr
+  PetscInt :: dimPlex, pStart, pEnd, p, s, e
+  PetscSection :: section
+
+  call SNESGetDM(mechanical_snes,dm_local,ierr); CHKERRQ(ierr)
+  call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
+  call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
+  call DMGetDimension(dm_local,dimPlex,ierr); CHKERRQ(ierr)
+  call DMPlexGetDepthStratum(dm_local,0,pStart,pEnd,ierr); CHKERRQ(ierr)
+  allocate(nodeCoords(3,pStart:pEnd-1),source=0.0_pReal)
+  call VecGetArrayF90(x_local,nodeCoords_linear,ierr); CHKERRQ(ierr)
+
+  do p=pStart, pEnd-1
+    call DMPlexGetPointLocal(dm_local, p, s, e, ierr); CHKERRQ(ierr)
+    nodeCoords(1:dimPlex,p)=nodeCoords_linear(s+1:e)
+  end do
+
+  call discretization_setNodeCoords(nodeCoords)
+  call VecRestoreArrayF90(x_local,nodeCoords_linear,ierr); CHKERRQ(ierr)
+  call DMRestoreLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
+
+end subroutine FEM_mechanical_updateCoords
 
 end module mesh_mechanical_FEM
