@@ -31,5 +31,6 @@ TWIP_Steel_FeMnC:
       i_tw: 1.0                    # Adj. parameter controlling twin mean free path
       h_sl-tw: [0.0, 1.0, 1.0]     # dislocation-twin interaction coefficients
       h_tw-tw: [0.0, 1.0]          # twin-twin interaction coefficients
-      Gamma_sf_0K: -0.0396         # stacking fault energy / J/m^2 at zero K; TWIP steel: -0.0526; Cu: -0.0396
-      dGamma_sf_dT: 0.0002         # temperature dependence / J/(m^2 K) of stacking fault energy
+      T_ref: 0.0
+      Gamma_sf: -0.0396            # stacking fault energy / J/m^2 at zero K; TWIP steel: -0.0526; Cu: -0.0396
+      Gamma_sf,T: 0.0002         # temperature dependence / J/(m^2 K) of stacking fault energy

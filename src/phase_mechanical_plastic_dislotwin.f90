@@ -385,9 +385,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%V_cs = pl%get_asFloat('V_cs')
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0 .or. prm%ExtendedDislocations) then
-      prm%T_ref       = pl%get_asFloat('T_ref',defaultVal=0.0_pReal)
-      prm%Gamma_sf(1) = pl%get_asFloat('Gamma_sf_0K')
-      prm%Gamma_sf(2) = pl%get_asFloat('dGamma_sf_dT',defaultVal=0.0_pReal)
+      prm%T_ref       = pl%get_asFloat('T_ref')
+      prm%Gamma_sf(1) = pl%get_asFloat('Gamma_sf')
+      prm%Gamma_sf(2) = pl%get_asFloat('Gamma_sf,T',defaultVal=0.0_pReal)
     endif
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
