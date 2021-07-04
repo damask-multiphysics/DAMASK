@@ -20,10 +20,10 @@ module CPFEM2
   use HDF5_utilities
   use homogenization
   use phase
-#if    defined(Mesh)
+#if   defined(MESH)
   use FEM_quadrature
   use discretization_mesh
-#elif defined(Grid)
+#elif defined(GRID)
   use discretization_grid
 #endif
 
@@ -43,7 +43,7 @@ subroutine CPFEM_initAll
   call prec_init
   call IO_init
   call base64_init
-#ifdef Mesh
+#ifdef MESH
   call FEM_quadrature_init
 #endif
   call YAML_types_init
@@ -54,9 +54,9 @@ subroutine CPFEM_initAll
   call lattice_init
   call HDF5_utilities_init
   call results_init(restart=interface_restartInc>0)
-#if    defined(Mesh)
+#if   defined(MESH)
   call discretization_mesh_init(restart=interface_restartInc>0)
-#elif defined(Grid)
+#elif defined(GRID)
   call discretization_grid_init(restart=interface_restartInc>0)
 #endif
   call material_init(restart=interface_restartInc>0)

@@ -15,16 +15,15 @@ pkg_get_variable (CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable (CMAKE_C_COMPILER PETSc ccompiler)
 
 # Solver determines name of project
-string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER)
-if (DAMASK_SOLVER STREQUAL "grid")
+string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER)
+if (DAMASK_SOLVER STREQUAL "GRID")
     project (damask-grid HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
-    add_definitions (-DGrid)
-elseif (DAMASK_SOLVER STREQUAL "mesh")
+elseif (DAMASK_SOLVER STREQUAL "MESH")
     project (damask-mesh HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
-    add_definitions (-DMesh)
 else ()
     message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
+add_definitions ("-D${DAMASK_SOLVER}")
 
 file (STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
