@@ -56,15 +56,12 @@ echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 echo System report for \'$(hostname)\' created on $(date '+%Y-%m-%d %H:%M:%S') by \'$(whoami)\'
 echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-firstLevel "DAMASK settings"
+firstLevel "DAMASK"
 secondLevel "DAMASK_ROOT"
 echo $DAMASK_ROOT
 echo
 secondLevel "Version"
 cat  VERSION
-echo
-secondLevel "Settings in CONFIG"
-cat  env/CONFIG
 
 firstLevel "System"
 uname -a
