@@ -31,8 +31,7 @@ submodule(phase:plastic) isotropic
 
   type :: tIsotropicState
     real(pReal), pointer, dimension(:) :: &
-      xi, &
-      gamma
+      xi
   end type tIsotropicState
 
 !--------------------------------------------------------------------------------------------------
@@ -122,7 +121,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     Nmembers = count(material_phaseID == ph)
-    sizeDotState = size(['xi   ','gamma'])
+    sizeDotState = size(['xi'])
     sizeState = sizeDotState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
@@ -134,11 +133,6 @@ module function plastic_isotropic_init() result(myPlasticity)
     dot%xi  => plasticState(ph)%dotState(1,:)
     plasticState(ph)%atol(1) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if (plasticState(ph)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
-
-    stt%gamma  => plasticState(ph)%state   (2,:)
-    dot%gamma  => plasticState(ph)%dotState(2,:)
-    plasticState(ph)%atol(2) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if (plasticState(ph)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
 
     end associate
 
@@ -284,8 +278,6 @@ module subroutine isotropic_dotState(Mp,ph,en)
   else
     dot%xi(en) = 0.0_pReal
   endif
-
-  dot%gamma(en) = dot_gamma                                                                         ! ToDo: not really used
 
   end associate
 
