@@ -72,7 +72,13 @@ echo PYTHONPATH: $PYTHONPATH
 echo SHELL: $SHELL
 echo PETSC_ARCH: $PETSC_ARCH
 echo PETSC_DIR: $PETSC_DIR
-ls $PETSC_DIR/lib
+echo
+echo $PETSC_DIR/$PETSC_ARCH/lib:
+ls $PETSC_DIR/$PETSC_ARCH/lib
+echo
+echo $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables:
+cat $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables
+
 
 firstLevel "Python"
 DEFAULT_PYTHON=python3
