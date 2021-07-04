@@ -74,7 +74,7 @@ echo PETSC_ARCH: $PETSC_ARCH
 echo PETSC_DIR: $PETSC_DIR
 echo
 echo $PETSC_DIR/$PETSC_ARCH/lib:
-ls $PETSC_DIR/$PETSC_ARCH/lib
+/s $PETSC_DIR/$PETSC_ARCH/lib
 echo
 echo $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables:
 cat $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables
@@ -82,16 +82,16 @@ cat $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables
 
 firstLevel "Python"
 DEFAULT_PYTHON=python3
-for executable in python python3; do
-  getDetails $executable '--version'
+for EXECUTABLE in python python3; do
+  getDetails $EXECUTABLE '--version'
 done
 secondLevel "Details on $DEFAULT_PYTHON:"
 echo $(ls -la $(which $DEFAULT_PYTHON))
-for module in numpy scipy pandas matplotlib yaml h5py;do
+for MODULE in numpy scipy pandas matplotlib yaml h5py;do
   thirdLevel $module
-  $DEFAULT_PYTHON -c "import $module; \
-                      print('Version: {}'.format($module.__version__)); \
-                      print('Location: {}'.format($module.__file__))"
+  $DEFAULT_PYTHON -c "import $MODULE; \
+                      print('Version: {}'.format($MODULE.__version__)); \
+                      print('Location: {}'.format($MODULE.__file__))"
 done
 thirdLevel vtk
 $DEFAULT_PYTHON -c "import vtk; \
@@ -99,23 +99,23 @@ $DEFAULT_PYTHON -c "import vtk; \
                     print('Location: {}'.format(vtk.__file__))"
 
 firstLevel "GNU Compiler Collection"
-for executable in gcc g++ gfortran ;do
-  getDetails $executable '--version'
+for EXECUTABLE in gcc g++ gfortran ;do
+  getDetails $EXECUTABLE '--version'
 done
 
 firstLevel "Intel Compiler Suite"
-for executable in icc icpc ifort ;do
-  getDetails $executable '--version'
+for EXECUTABLE in icc icpc ifort ;do
+  getDetails $EXECUTABLE '--version'
 done
 
 firstLevel "MPI Wrappers"
-for executable in mpicc mpiCC mpiicc   mpic++ mpiicpc mpicxx    mpifort mpiifort mpif90 mpif77; do
-  getDetails $executable '-show'
+for EXECUTABLE in mpicc mpiCC mpiicc   mpic++ mpiicpc mpicxx    mpifort mpiifort mpif90 mpif77; do
+  getDetails $EXECUTABLE '-show'
 done
 
 firstLevel "MPI Launchers"
-for executable in mpirun mpiexec; do
-  getDetails $executable '--version'
+for EXECUTABLE in mpirun mpiexec; do
+  getDetails $EXECUTABLE '--version'
 done
 
 firstLevel "CMake"
