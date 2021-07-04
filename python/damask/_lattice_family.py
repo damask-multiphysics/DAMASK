@@ -6,7 +6,7 @@ class LatticeFamily():
 
     def __init__(self,family):
         """
-        Symmetry-related operations for crystal families.
+        Symmetry-related operations for crystal family.
 
         Parameters
         ----------
@@ -15,7 +15,7 @@ class LatticeFamily():
 
         """
         if family not in self._immutable.keys():
-            raise KeyError(f'invalid lattice family "{family}"')
+            raise KeyError(f'invalid crystal family "{family}"')
         self.family = family
 
 
@@ -40,7 +40,7 @@ class LatticeFamily():
 
     @property
     def immutable(self):
-        """Return immutable parameters lattice parameters."""
+        """Return immutable lattice parameters."""
         return self._immutable[self.family]
 
 

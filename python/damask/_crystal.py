@@ -90,7 +90,7 @@ class Crystal(LatticeFamily):
              or (self.b     is None or ('b'     in self.immutable and self.b     != self.immutable['b'] * self.a)) \
              or (self.c     is None or ('c'     in self.immutable and self.c     != self.immutable['c'] * self.b)) \
              or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
-             or (self.beta  is None or ( 'beta' in self.immutable and self.beta  != self.immutable['beta'])) \
+             or (self.beta  is None or ('beta'  in self.immutable and self.beta  != self.immutable['beta'])) \
              or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
                 raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
 
@@ -139,7 +139,7 @@ class Crystal(LatticeFamily):
     @property
     def basis_real(self):
         """
-        Calculate orthogonal real space crystal basis.
+        Return orthogonal real space crystal basis.
 
         References
         ----------
@@ -162,7 +162,7 @@ class Crystal(LatticeFamily):
 
     @property
     def basis_reciprocal(self):
-        """Calculate reciprocal (dual) crystal basis."""
+        """Return reciprocal (dual) crystal basis."""
         return np.linalg.inv(self.basis_real.T)
 
 
@@ -172,13 +172,13 @@ class Crystal(LatticeFamily):
 
         Parameters
         ----------
-        direction|normal : numpy.ndarray of shape (...,3)
+        direction|plane : numpy.ndarray of shape (...,3)
             Vector along direction or plane normal.
 
         Returns
         -------
         Miller : numpy.ndarray of shape (...,3)
-            lattice vector of direction or plane.
+            Lattice vector of direction or plane.
             Use util.scale_to_coprime to convert to (integer) Miller indices.
 
         """
