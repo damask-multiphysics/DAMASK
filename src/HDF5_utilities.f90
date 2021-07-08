@@ -14,7 +14,7 @@ module HDF5_utilities
   use parallelization
 
   implicit none
-  public
+  private
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads integer or float data of defined shape from file
@@ -76,6 +76,18 @@ module HDF5_utilities
 #else
   logical, parameter, private :: parallel_default = .false.
 #endif
+  public :: &
+    HDF5_utilities_init, &
+    HDF5_read, &
+    HDF5_write, &
+    HDF5_addAttribute, &
+    HDF5_addGroup, &
+    HDF5_openGroup, &
+    HDF5_closeGroup, &
+    HDF5_openFile, &
+    HDF5_closeFile, &
+    HDF5_objectExists, &
+    HDF5_setLink
 
 contains
 

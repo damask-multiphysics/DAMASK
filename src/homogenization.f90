@@ -12,6 +12,7 @@ module homogenization
   use material
   use phase
   use discretization
+  use HDF5
   use HDF5_utilities
   use results
   use lattice

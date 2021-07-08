@@ -5,10 +5,12 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module results
+  use prec
   use DAMASK_interface
   use parallelization
   use IO
   use HDF5_utilities
+  use HDF5
 #ifdef PETSc
   use PETSC
 #endif

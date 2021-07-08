@@ -14,6 +14,7 @@ module grid_mechanical_FEM
   use parallelization
   use DAMASK_interface
   use IO
+  use HDF5
   use HDF5_utilities
   use math
   use rotations

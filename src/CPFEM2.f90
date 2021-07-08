@@ -5,6 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM2
   use prec
+  use parallelization
   use config
   use math
   use rotations
@@ -15,9 +16,10 @@ module CPFEM2
   use IO
   use base64
   use DAMASK_interface
-  use results
   use discretization
+  use HDF5
   use HDF5_utilities
+  use results
   use homogenization
   use phase
 #if   defined(MESH)
