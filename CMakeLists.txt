@@ -29,7 +29,7 @@ file (STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
 message ("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 
-add_definitions (-DPETSc)
+add_definitions (-DPETSC)
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "")

@@ -11,8 +11,8 @@ module results
   use IO
   use HDF5_utilities
   use HDF5
-#ifdef PETSc
-  use PETSC
+#ifdef PETSC
+  use PETSc
 #endif
 
   implicit none

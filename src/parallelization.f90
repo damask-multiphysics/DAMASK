@@ -6,7 +6,7 @@ module parallelization
   use, intrinsic :: ISO_fortran_env, only: &
     OUTPUT_UNIT
 
-#ifdef PETSc
+#ifdef PETSC
 #include <petsc/finclude/petscsys.h>
    use petscsys
 !$ use OMP_LIB
@@ -20,7 +20,7 @@ module parallelization
     worldrank = 0, &                                                                                !< MPI worldrank (/=0 for MPI simulations only)
     worldsize = 1                                                                                   !< MPI worldsize (/=1 for MPI simulations only)
 
-#ifdef PETSc
+#ifdef PETSC
   public :: &
     parallelization_init
 
