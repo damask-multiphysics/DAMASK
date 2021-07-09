@@ -14,6 +14,7 @@ module phase
   use lattice
   use discretization
   use parallelization
+  use HDF5
   use HDF5_utilities
 
   implicit none

@@ -88,7 +88,7 @@ subroutine DAMASK_interface_init
   print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
 #if   defined(GRID)
   print*, ' Grid solver'
-#elif defined(Mesh)
+#elif defined(MESH)
   print*, ' Mesh solver'
 #endif
 #ifdef DEBUG

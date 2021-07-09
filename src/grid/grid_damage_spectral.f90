@@ -7,8 +7,11 @@
 module grid_damage_spectral
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
-  use PETScdmda
-  use PETScsnes
+  use PETScDMDA
+  use PETScSNES
+#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+  use MPI_f08
+#endif
 
   use prec
   use parallelization
@@ -107,7 +110,7 @@ subroutine grid_damage_spectral_init()
   call SNESSetOptionsPrefix(damage_snes,'damage_',ierr);CHKERRQ(ierr)
   localK            = 0
   localK(worldrank) = grid3
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -187,9 +190,9 @@ function grid_damage_spectral_solution(timeinc) result(solution)
   endif
   stagNorm = maxval(abs(phi_current - phi_stagInc))
   solnNorm = maxval(abs(phi_current))
-  call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,ierr)
   solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*solnNorm)
-  call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,ierr)
   phi_stagInc = phi_current
 
 !--------------------------------------------------------------------------------------------------
@@ -320,9 +323,9 @@ subroutine updateReference()
   enddo
 
   K_ref = K_ref*wgt
-  call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
   mu_ref = mu_ref*wgt
-  call MPI_Allreduce(MPI_IN_PLACE,mu_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,mu_ref,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
 
 end subroutine updateReference
 
