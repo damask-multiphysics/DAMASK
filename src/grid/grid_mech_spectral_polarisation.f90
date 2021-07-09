@@ -9,7 +9,7 @@ module grid_mechanical_spectral_polarisation
 #include <petsc/finclude/petscdmda.h>
   use PETScDMDA
   use PETScSNES
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
 
@@ -115,7 +115,7 @@ subroutine grid_mechanical_spectral_polarisation_init
     F_tau                                                                                           ! specific (sub)pointer
   PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   type(MPI_File) :: fileUnit
 #else
   integer :: fileUnit

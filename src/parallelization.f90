@@ -9,11 +9,12 @@ module parallelization
 #ifdef PETSC
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
 !$ use OMP_LIB
 #endif
+
   use prec
 
   implicit none

@@ -8,7 +8,7 @@ module spectral_utilities
 
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
 
@@ -985,7 +985,7 @@ subroutine utilities_updateCoords(F)
     rank_t, rank_b, &
     c, &
     ierr
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   type(MPI_Request), dimension(4) :: request
   type(MPI_Status),  dimension(4) :: status
 #else
@@ -1050,7 +1050,7 @@ subroutine utilities_updateCoords(F)
 
   call MPI_Waitall(4,request,status,ierr)
   if(ierr /=0) error stop 'MPI error'
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   ! ToDo
 #else
   if(any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'

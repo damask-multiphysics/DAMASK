@@ -8,12 +8,11 @@ module mesh_mechanical_FEM
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petsc.h>
-
   use PETScSNES
   use PETScDM
   use PETScDMplex
   use PETScDT
-#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
 
