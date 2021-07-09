@@ -1,7 +1,7 @@
 type: phenopowerlaw
 references:
   - C.C. Tasan et al.,
-    Acta Materialia 81:386-400, 2014,
+    Acta Materialia 81/386-400, 2014,
     10.1016/j.actamat.2014.07.071
 output: [xi_sl, gamma_sl]
 N_sl: [12, 12]

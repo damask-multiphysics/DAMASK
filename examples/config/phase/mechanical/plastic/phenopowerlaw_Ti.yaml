@@ -1,10 +1,10 @@
 type: phenopowerlaw
 references:
   - C. Zambaldi et al.,
-    Journal of Materials Research 27(1):356-367, 2021,
+    Journal of Materials Research 27(1)/356-367, 2021,
     10.1557/jmr.2011.334
   - L. Wang et al.,
-    Acta Materialia 132:598-610, 2017,
+    Acta Materialia 132/598-610, 2017,
     10.1016/j.actamat.2017.05.015
 output: [gamma_sl]
 N_sl: [3, 3, 0, 0, 12]
