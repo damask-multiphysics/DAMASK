@@ -7,7 +7,7 @@
 module discretization_grid
 #include <petsc/finclude/petscsys.h>
   use PETScSys
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
   use MPI_f08
 #endif
 

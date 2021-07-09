@@ -13,7 +13,7 @@ module mesh_mechanical_FEM
   use PETScDM
   use PETScDMplex
   use PETScDT
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
   use MPI_f08
 #endif
 

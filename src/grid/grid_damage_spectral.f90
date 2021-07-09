@@ -9,7 +9,7 @@ module grid_damage_spectral
 #include <petsc/finclude/petscdmda.h>
   use PETScDMDA
   use PETScSNES
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
+#if !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY) && !defined(PETSC_HAVE_MPI_F90MODULE)
   use MPI_f08
 #endif
 
