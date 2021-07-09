@@ -60,7 +60,7 @@ print('compiling Mentat menu binaries...')
 
 executable = msc_root/f'mentat{msc_version}/bin/mentat'
 menu_file  = msc_root/f'mentat{msc_version}/menus/linux64/main.msb'
-os.system(f'xvfb-run {executable} -compile {menu_file}')
+os.system(f'xvfb-run -a {executable} -compile {menu_file}')
 
 
 print('setting file access rights...\n')
