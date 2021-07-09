@@ -13,9 +13,6 @@ module results
   use HDF5
 #ifdef PETSC
   use PETSc
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
-  use MPI_f08
-#endif
 #endif
 
   implicit none
@@ -464,7 +461,7 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)          ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
   entryOffset = 0
@@ -473,7 +470,7 @@ subroutine results_mapping_phase(ID,entry,label)
       entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
     enddo
   enddo
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
@@ -617,14 +614,14 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)          ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
   entryOffset = 0
   do ce = 1, size(ID,1)
     entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
   enddo
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)

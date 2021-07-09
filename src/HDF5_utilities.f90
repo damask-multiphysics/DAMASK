@@ -8,9 +8,6 @@ module HDF5_utilities
   use HDF5
 #ifdef PETSC
   use PETSc
-#ifndef PETSC_HAVE_MPI_F90MODULE_VISIBILITY
-  use MPI
-#endif
 #endif
 
   use prec
