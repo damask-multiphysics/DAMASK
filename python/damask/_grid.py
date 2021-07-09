@@ -406,23 +406,19 @@ class Grid:
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            coords  = grid_filters.coordinates0_point(cells*3,size*3,-size).reshape(-1,3)
         else:
             weights_p = weights
             seeds_p   = seeds
-            coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
         result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), coords)
         pool.close()
         pool.join()
-        material_ = np.array(result.get())
+        material_ = np.array(result.get()).reshape(cells)
 
-        if periodic:
-            material_ = material_.reshape(cells*3)
-            material_ = material_[cells[0]:cells[0]*2,cells[1]:cells[1]*2,cells[2]:cells[2]*2]%seeds.shape[0]
-        else:
-            material_ = material_.reshape(cells)
+        if periodic: material_ %= len(weights)
 
         return Grid(material = material_ if material is None else material[material_],
                     size     = size,
