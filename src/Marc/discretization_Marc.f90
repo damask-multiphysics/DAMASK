@@ -698,6 +698,7 @@ end function inputRead_connectivityElem
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store material ID
+!> @details 0-based ID in file is converted to 1-based ID used in DAMASK
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_material(materialAt,&
                               nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileContent)
@@ -709,8 +710,8 @@ subroutine inputRead_material(materialAt,&
     nNodes, &                                                                                       !< number of nodes per element
     initialcondTableStyle
   character(len=*), dimension(:), intent(in) :: nameElemSet
-  integer, dimension(:,:),        intent(in) :: mapElemSet                                         !< list of elements in elementSet
-  character(len=*), dimension(:), intent(in) :: fileContent                                        !< file content, separated per lines
+  integer, dimension(:,:),        intent(in) :: mapElemSet                                          !< list of elements in elementSet
+  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
 
@@ -718,7 +719,7 @@ subroutine inputRead_material(materialAt,&
   integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead,l,k,m
 
 
-  allocate(materialAt(nElem),source=0)
+  allocate(materialAt(nElem),source=1)
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
@@ -737,7 +738,7 @@ subroutine inputRead_material(materialAt,&
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
             e = discretization_Marc_FEM2DAMASK_elem(contInts(1+i))
-            materialAt(e) = myVal
+            materialAt(e) = materialAt(e) + myVal
           enddo
           if (initialcondTableStyle == 0) m = m + 1
         enddo

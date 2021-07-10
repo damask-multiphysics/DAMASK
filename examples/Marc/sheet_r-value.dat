@@ -345,7 +345,7 @@ oben_ziehen_nodes
 initial state
 
          2         6         1         0         0         0DAMASK
- 1.000000000000000+0
+ 0.000000000000000+0
          0
          1
 DAMASK_elements
