@@ -37,7 +37,7 @@ msc_version = args.msc_version
 
 print('adapting Marc tools...\n')
 
-src = damask_root/f'installation/MarcMentat/{msc_version}/Marc_tools'
+src = damask_root/f'install/MarcMentat/{msc_version}/Marc_tools'
 dst = msc_root/f'marc{msc_version}/tools'
 for in_file in glob.glob(str(src/'*damask*')) + [str(src/'include_linux64')]:
     copy_and_replace(in_file,dst,args.msc_root,args.editor)
@@ -45,12 +45,12 @@ for in_file in glob.glob(str(src/'*damask*')) + [str(src/'include_linux64')]:
 
 print('adapting Mentat scripts and menus...\n')
 
-src = damask_root/f'installation/MarcMentat/{msc_version}/Mentat_bin'
+src = damask_root/f'install/MarcMentat/{msc_version}/Mentat_bin'
 dst = msc_root/f'mentat{msc_version}/bin'
 for in_file in glob.glob(str(src/'*[!.original]')):
     copy_and_replace(in_file,dst,args.msc_root,args.editor)
 
-src = damask_root/f'installation/MarcMentat/{msc_version}/Mentat_menus'
+src = damask_root/f'install/MarcMentat/{msc_version}/Mentat_menus'
 dst = msc_root/f'mentat{msc_version}/menus'
 for in_file in glob.glob(str(src/'job_run.ms')):
     copy_and_replace(in_file,dst,args.msc_root,args.editor)
