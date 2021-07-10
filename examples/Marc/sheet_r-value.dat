@@ -14,7 +14,7 @@ $no list
 large stra                   2         1         0         0         0         0         0
 all points
 no echo                      1         2         3         4
-state vars                   3
+state vars                   2
 end
 $...................
 solver
@@ -283,8 +283,6 @@ define              node                set                 unten_z_nodes
            7          to           9
 define              node                set                 oben_z_nodes
          157          to         159
-define              element             set                 texture_elements
-           1          to          80
 hypoelastic
 
          1         0         1         0         1TKS                              0
@@ -351,17 +349,9 @@ initial state
          0
          1
 Material_Nummer_elements
-initial state
-
-         3         6         1         0         0         0texture
- 1.000000000000000+0
-         0
-         1
-texture_elements
 loadcase            r-value
          5
 Material_Nummer
-texture
 unten_z
 unten_y
 unten_fest
