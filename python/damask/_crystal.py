@@ -1,7 +1,6 @@
 import numpy as np
 
 from . import util
-from . import LatticeFamily
 from . import Rotation
 
 lattice_symmetries = {
@@ -26,7 +25,7 @@ lattice_symmetries = {
                }
 
 
-class Crystal(LatticeFamily):
+class Crystal():
     """Lattice."""
 
     def __init__(self,*,
@@ -42,6 +41,8 @@ class Crystal(LatticeFamily):
         ----------
         lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}.
             Name of the Bravais lattice in Pearson notation.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
+            Name of the crystal family.
         a : float, optional
             Length of lattice parameter 'a'.
         b : float, optional
@@ -58,8 +59,10 @@ class Crystal(LatticeFamily):
             Angles are given in degrees. Defaults to False.
 
         """
-        super().__init__(family = lattice_symmetries[lattice] if family is None else family)
+        if family not in [None] + list(self._immutable.keys()):
+            raise KeyError(f'invalid crystal family "{family}"')
 
+        self.family = lattice_symmetries[lattice] if family is None else family
         self.lattice = lattice
 
         if self.lattice is not None:
@@ -114,12 +117,83 @@ class Crystal(LatticeFamily):
             Lattice to check for equality.
 
         """
-        return self.lattice == other.lattice and self.parameters == other.parameters
+        return self.lattice == other.lattice and \
+               self.parameters == other.parameters and \
+               self.family == other.family
 
     @property
     def parameters(self):
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
         return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
+
+
+    @property
+    def immutable(self):
+        """Return immutable lattice parameters."""
+        return self._immutable[self.family]
+
+
+    @property
+    def basis(self):
+        """
+        Corners of the standard triangle.
+
+        Not yet defined for monoclinic.
+
+
+        References
+        ----------
+        Bases are computed from
+
+        >>> basis = {
+        ...    'cubic' :       np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                            [1.,0.,1.]/np.sqrt(2.),                #              green
+        ...                                            [1.,1.,1.]/np.sqrt(3.)]).T),           #              blue
+        ...    'hexagonal' :   np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                            [1.,0.,0.],                            #              green
+        ...                                            [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),  #              blue
+        ...    'tetragonal' :  np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                            [1.,0.,0.],                            #              green
+        ...                                            [1.,1.,0.]/np.sqrt(2.)]).T),           #              blue
+        ...    'orthorhombic': np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                            [1.,0.,0.],                            #              green
+        ...                                            [0.,1.,0.]]).T),                       #              blue
+        ...    }
+
+        """
+        _basis  = {
+            'cubic':    {'improper':np.array([ [-1.            ,  0.            ,  1. ],
+                                               [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
+                                               [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
+                           'proper':np.array([ [ 0.            , -1.            ,  1. ],
+                                               [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
+                                               [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
+                        },
+            'hexagonal':
+                        {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                               [ 1.            , -np.sqrt(3.)   ,  0. ],
+                                               [ 0.            ,  2.            ,  0. ] ]),
+                           'proper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                               [-1.            ,  np.sqrt(3.)   ,  0. ],
+                                               [ np.sqrt(3.)   , -1.            ,  0. ] ]),
+                        },
+            'tetragonal':
+                        {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                               [ 1.            , -1.            ,  0. ],
+                                               [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
+                           'proper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                               [-1.            ,  1.            ,  0. ],
+                                               [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
+                        },
+            'orthorhombic':
+                        {'improper':np.array([ [ 0., 0., 1.],
+                                               [ 1., 0., 0.],
+                                               [ 0., 1., 0.] ]),
+                           'proper':np.array([ [ 0., 0., 1.],
+                                               [-1., 0., 0.],
+                                               [ 0., 1., 0.] ]),
+                        }}
+        return _basis.get(self.family,None)
 
 
     @property
@@ -717,3 +791,35 @@ class Crystal(LatticeFamily):
           ],dtype=float),
       },
     }
+
+    _immutable = {
+        'cubic': {
+                     'b': 1.0,
+                     'c': 1.0,
+                     'alpha': np.pi/2.,
+                     'beta':  np.pi/2.,
+                     'gamma': np.pi/2.,
+                   },
+        'hexagonal': {
+                     'b': 1.0,
+                     'alpha': np.pi/2.,
+                     'beta':  np.pi/2.,
+                     'gamma': 2.*np.pi/3.,
+                   },
+        'tetragonal': {
+                     'b': 1.0,
+                     'alpha': np.pi/2.,
+                     'beta':  np.pi/2.,
+                     'gamma': np.pi/2.,
+                   },
+        'orthorhombic': {
+                     'alpha': np.pi/2.,
+                     'beta':  np.pi/2.,
+                     'gamma': np.pi/2.,
+                   },
+        'monoclinic': {
+                     'alpha': np.pi/2.,
+                     'gamma': np.pi/2.,
+                   },
+        'triclinic': {}
+                 }

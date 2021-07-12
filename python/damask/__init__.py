@@ -17,7 +17,6 @@ from .                 import grid_filters     # noqa
 #Modules that contain only one class (of the same name), are prefixed by a '_'.
 #For example, '_colormap' containsa class called 'Colormap' which is imported as 'damask.Colormap'.
 from ._rotation        import Rotation         # noqa
-from ._lattice_family  import LatticeFamily    # noqa
 from ._crystal         import Crystal          # noqa
 from ._orientation     import Orientation      # noqa
 from ._table           import Table            # noqa
