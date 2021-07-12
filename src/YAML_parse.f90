@@ -199,11 +199,7 @@ logical function isKeyValue(line)
   isKeyValue = .false.
 
   if( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
-    if(index(IO_rmComment(line),': ') > 0) then
-      isKeyValue = .true.
-    else
-      call IO_error(704,ext_msg=line)
-    endif
+    if(index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
   endif
 
 end function isKeyValue
