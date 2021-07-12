@@ -414,6 +414,7 @@ recursive subroutine keyValue_toFlow(flow,s_flow,line)
     offset_value
 
   col_pos = index(line,':')
+  if(line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
   if(isFlow(line(col_pos+1:))) then
     d_flow = len_trim(adjustl(line(:col_pos)))
     flow(s_flow:s_flow+d_flow+1) = trim(adjustl(line(:col_pos)))//' '
