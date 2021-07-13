@@ -13,10 +13,10 @@ d_sc: [12.e-9]
 i_sl: [45]      # k_2
 f_ed_mult: 0.1  # k_1
 
-rho_u_ed_neg_0: [6.e10] # 2.88e12 / (12*4)
-rho_u_ed_pos_0: [6.e10] # 2.88e12 / (12*4)
-rho_u_sc_neg_0: [6.e10] # 2.88e12 / (12*4)
-rho_u_sc_pos_0: [6.e10] # 2.88e12 / (12*4)
+rho_u_ed_neg_0: [6.e+10] # 2.88e12 / (12*4)
+rho_u_ed_pos_0: [6.e+10] # 2.88e12 / (12*4)
+rho_u_sc_neg_0: [6.e+10] # 2.88e12 / (12*4)
+rho_u_sc_pos_0: [6.e+10] # 2.88e12 / (12*4)
 rho_d_ed_0: [0]
 rho_d_sc_0: [0]
 
@@ -32,7 +32,7 @@ w: 10              # w_k
 p_sl: 1
 q_sl: 1
 
-nu_a: 50.e9
+nu_a: 50.e+9
 B: 1.e-3
 f_ed: 0.01  # k_3
 
@@ -46,4 +46,4 @@ sigma_rho_u: 0   # no random distribution
 
 
 short_range_stress_correction: false
-rho_significant: 1e6
+rho_significant: 1.e6

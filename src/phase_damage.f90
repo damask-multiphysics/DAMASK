@@ -74,7 +74,7 @@ contains
 module subroutine damage_init
 
   integer :: &
-    ph, &                                                                                           !< counter in phase loop
+    ph, &
     Nmembers
   class(tNode), pointer :: &
    phases, &
@@ -105,10 +105,10 @@ module subroutine damage_init
     if (sources%length == 1) then
       damage_active = .true.
       source => sources%get(1)
-      param(ph)%mu     = source%get_asFloat('M',defaultVal=0.0_pReal)
-      param(ph)%K(1,1) = source%get_asFloat('D_11',defaultVal=0.0_pReal)
-      param(ph)%K(3,3) = source%get_asFloat('D_33',defaultVal=0.0_pReal)
-      param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase%get_asString('lattice'))
+      param(ph)%mu     = source%get_asFloat('mu',defaultVal=0.0_pReal)                              ! ToDo: make mandatory?
+      param(ph)%K(1,1) = source%get_asFloat('K_11',defaultVal=0.0_pReal)                            ! ToDo: make mandatory?
+      param(ph)%K(3,3) = source%get_asFloat('K_33',defaultVal=0.0_pReal)                            ! ToDo: depends on symmetry
+      param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase_lattice(ph))
     endif
 
   enddo

@@ -11,15 +11,17 @@
 #define QUOTE(x) #x
 #define PASTE(x,y) x ## y
 
+#ifdef Marc4DAMASK
+#define MARC4DAMASK Marc4DAMASK
+#endif
+
 #include "prec.f90"
 
 module DAMASK_interface
   use prec
-#if __INTEL_COMPILER >= 1800
   use, intrinsic :: ISO_fortran_env, only: &
     compiler_version, &
     compiler_options
-#endif
   use ifport, only: &
     CHDIR
 
@@ -212,8 +214,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
 
-#include QUOTE(PASTE(./Marc/include/concom,Marc4DAMASK))                                            ! concom is needed for inc, lovl
-#include QUOTE(PASTE(./Marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(./Marc/include/concom,MARC4DAMASK))                                            ! concom is needed for inc, lovl
+#include QUOTE(PASTE(./Marc/include/creeps,MARC4DAMASK))                                            ! creeps is needed for timinc (time increment)
 
   logical :: cutBack
   real(pReal), dimension(6) ::   stress
@@ -365,7 +367,7 @@ subroutine uedinc(inc,incsub)
   integer :: n, nqncomp, nqdatatype
   integer, save :: inc_written
   real(pReal), allocatable, dimension(:,:) :: d_n
-#include QUOTE(PASTE(./Marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(./Marc/include/creeps,MARC4DAMASK))                                            ! creeps is needed for timinc (time increment)
 
 
   if (inc > inc_written) then

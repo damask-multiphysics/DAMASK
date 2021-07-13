@@ -267,15 +267,11 @@ module subroutine mechanical_init(materials,phases)
   enddo
 
 
-! initialize elasticity
   call elastic_init(phases)
 
-! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
-
   call plastic_init()
-
   do ph = 1,phases%length
     plasticState(ph)%state0 = plasticState(ph)%state
   enddo

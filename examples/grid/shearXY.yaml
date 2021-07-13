@@ -6,7 +6,7 @@ solver:
 loadstep:
   - boundary_conditions:
       mechanical:
-        dot_F: [ [0, 0, 0], [1e-3, 0, 0], [0, 0, 0] ]
+        dot_F: [ [0, 0, 0], [1.e-3, 0, 0], [0, 0, 0] ]
     discretization:
       t: 60
       N: 120

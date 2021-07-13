@@ -86,6 +86,11 @@ subroutine DAMASK_interface_init
   print*, '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
   print*, '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
   print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
+#if   defined(GRID)
+  print*, ' Grid solver'
+#elif defined(MESH)
+  print*, ' Mesh solver'
+#endif
 #ifdef DEBUG
   print'(/,a)', ' debug version - debug version - debug version - debug version - debug version'
 #endif

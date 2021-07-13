@@ -8,11 +8,13 @@ module mesh_mechanical_FEM
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petsc.h>
-
-  use PETScsnes
+  use PETScSNES
   use PETScDM
   use PETScDMplex
   use PETScDT
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 
   use prec
   use FEM_utilities
@@ -396,7 +398,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
   call Utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
   ForwardData = .false.
 
 !--------------------------------------------------------------------------------------------------

@@ -28,6 +28,7 @@ Smoothen interface roughness by simulated curvature flow.
 This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain
 up to a given distance 'd' voxels.
 The final geometry is assembled by selecting at each voxel that grain index for which the concentration remains largest.
+References 10.1073/pnas.1111557108 (10.1006/jcph.1994.1105)
 
 """, version = scriptID)
 

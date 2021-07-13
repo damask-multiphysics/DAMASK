@@ -6,15 +6,19 @@
 !--------------------------------------------------------------------------------------------------
 module HDF5_utilities
   use HDF5
-#ifdef PETSc
-  use PETSC
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+  use PETScSys
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI
+#endif
 #endif
 
   use prec
   use parallelization
 
   implicit none
-  public
+  private
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads integer or float data of defined shape from file
@@ -71,11 +75,23 @@ module HDF5_utilities
     module procedure HDF5_addAttribute_real_array
   end interface HDF5_addAttribute
 
-#ifdef PETSc
+#ifdef PETSC
   logical, parameter, private :: parallel_default = .true.
 #else
   logical, parameter, private :: parallel_default = .false.
 #endif
+  public :: &
+    HDF5_utilities_init, &
+    HDF5_read, &
+    HDF5_write, &
+    HDF5_addAttribute, &
+    HDF5_addGroup, &
+    HDF5_openGroup, &
+    HDF5_closeGroup, &
+    HDF5_openFile, &
+    HDF5_closeFile, &
+    HDF5_objectExists, &
+    HDF5_setLink
 
 contains
 
@@ -130,7 +146,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode)
   call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-#ifdef PETSc
+#ifdef PETSC
   call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
@@ -187,7 +203,7 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 
 !-------------------------------------------------------------------------------------------------
 ! setting I/O mode to collective
-#ifdef PETSc
+#ifdef PETSC
   call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
@@ -223,7 +239,7 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
 
  !-------------------------------------------------------------------------------------------------
  ! setting I/O mode to collective
-#ifdef PETSc
+#ifdef PETSC
   call h5pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
@@ -1692,7 +1708,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 !--------------------------------------------------------------------------------------------------
   readSize = 0
   readSize(worldrank+1) = int(localShape(ubound(localShape,1)))
-#ifdef PETSc
+#ifdef PETSC
   if (parallel) then
     call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
@@ -1713,7 +1729,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 ! creating a property list for IO and set it to collective
   call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-#ifdef PETSc
+#ifdef PETSC
   call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
@@ -1782,7 +1798,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 ! creating a property list for transfer properties (is collective when reading in parallel)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-#ifdef PETSc
+#ifdef PETSC
   if (parallel) then
     call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
@@ -1793,7 +1809,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 ! determine the global data layout among all processes
   writeSize              = 0
   writeSize(worldrank+1) = int(myShape(ubound(myShape,1)))
-#ifdef PETSc
+#ifdef PETSC
   if (parallel) then
     call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)      ! get total output size over each process
     if (ierr /= 0) error stop 'MPI error'

@@ -4,6 +4,6 @@ references:
     Theory of Dislocations, 1982,
     John Wiley & Sons,
     page 837
-C_11: 242e9
-C_12: 146.5e9
-C_44: 112e9
+C_11: 242.e9
+C_12: 146.5e+9
+C_44: 112.e9

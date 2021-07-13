@@ -577,8 +577,8 @@ class _ProgressBar:
         self.total = total
         self.prefix = prefix
         self.bar_length = bar_length
-        self.start_time = datetime.datetime.now()
-        self.last_fraction = 0.0
+        self.time_start = self.time_last_update = datetime.datetime.now()
+        self.fraction_last = 0.0
 
         sys.stderr.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
         sys.stderr.flush()
@@ -588,17 +588,17 @@ class _ProgressBar:
         fraction = (iteration+1) / self.total
         filled_length = int(self.bar_length * fraction)
 
-        delta_time = datetime.datetime.now() - self.start_time
-
-        if filled_length > int(self.bar_length * self.last_fraction) or \
-            delta_time > datetime.timedelta(minutes=1):
+        if filled_length > int(self.bar_length * self.fraction_last) or \
+            datetime.datetime.now() - self.time_last_update > datetime.timedelta(seconds=10):
+            self.time_last_update = datetime.datetime.now()
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
-            remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
+            remaining_time = (datetime.datetime.now() - self.time_start) \
+                           * (self.total - (iteration+1)) / (iteration+1)
             remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)          # remove μs
             sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
             sys.stderr.flush()
 
-        self.last_fraction = fraction
+        self.fraction_last = fraction
 
         if iteration == self.total - 1:
             sys.stderr.write('\n')

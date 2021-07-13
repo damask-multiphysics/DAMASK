@@ -15,27 +15,27 @@ pkg_get_variable (CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable (CMAKE_C_COMPILER PETSc ccompiler)
 
 # Solver determines name of project
-string(TOLOWER "${DAMASK_SOLVER}" DAMASK_SOLVER)
-if (DAMASK_SOLVER STREQUAL "grid")
+string(TOUPPER "${DAMASK_SOLVER}" DAMASK_SOLVER)
+if (DAMASK_SOLVER STREQUAL "GRID")
     project (damask-grid HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
-    add_definitions (-DGrid)
-elseif (DAMASK_SOLVER STREQUAL "mesh")
+elseif (DAMASK_SOLVER STREQUAL "MESH")
     project (damask-mesh HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
-    add_definitions (-DMesh)
 else ()
-    message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
+    message (FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif ()
+add_definitions ("-D${DAMASK_SOLVER}")
 
 file (STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
 message ("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 
-add_definitions (-DPETSc)
+add_definitions (-DPETSC)
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set (CMAKE_BUILD_TYPE "RELEASE")
 endif ()
+string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE)
 
 # Predefined sets for OPTIMIZATION/OPENMP based on BUILD_TYPE
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" OR CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
@@ -45,9 +45,15 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" OR CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
 elseif (CMAKE_BUILD_TYPE STREQUAL "RELEASE")
     set (PARALLEL "ON")
     set (OPTI "DEFENSIVE")
+elseif (CMAKE_BUILD_TYPE STREQUAL "DEBUGRELEASE")
+    set (DEBUG_FLAGS "${DEBUG_FLAGS} -DDEBUG")
+    set (PARALLEL "ON")
+    set (OPTI "DEFENSIVE")
 elseif (CMAKE_BUILD_TYPE STREQUAL "PERFORMANCE")
     set (PARALLEL "ON")
     set (OPTI "AGGRESSIVE")
+else ()
+    message (FATAL_ERROR "Invalid build type: CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 endif ()
 
 # $OPTIMIZATION takes precedence over $BUILD_TYPE defaults
