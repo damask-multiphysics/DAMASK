@@ -30,7 +30,7 @@ grid:
   eps_div_rtol:                5.0e-4       # relative tolerance for fulfillment of stress equilibrium
   eps_curl_atol:               1.0e-12      # absolute tolerance for fulfillment of strain compatibility
   eps_curl_rtol:               5.0e-4       # relative tolerance for fulfillment of strain compatibility
-  eps_stress_atol:             1.0e3        # absolute tolerance for fulfillment of stress BC
+  eps_stress_atol:             1.0e+3        # absolute tolerance for fulfillment of stress BC
   eps_stress_rtol:             0.01         # relative tolerance for fulfillment of stress BC
   eps_damage_atol:             1.0e-2       # absolute tolerance for damage evolution
   eps_damage_rtol:             1.0e-6       # relative tolerance for damage evolution

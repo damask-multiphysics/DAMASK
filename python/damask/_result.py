@@ -1732,6 +1732,3 @@ class Result:
         if flatten: r = util.dict_flatten(r)
 
         return None if (type(r) == dict and r == {}) else r
-
-    save_VTK = export_VTK
-    save_XDMF = export_XDMF

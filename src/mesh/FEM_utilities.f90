@@ -6,11 +6,13 @@ module FEM_utilities
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdmda.h>
 #include <petsc/finclude/petscis.h>
+  use PETScDMplex
+  use PETScDMDA
+  use PETScIS
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 
-  use PETScdmplex
-  use PETScdmda
-  use PETScis
-  
   use prec
   use config
   use math
@@ -165,7 +167,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
   cutBack = .false.                                                                                 ! reset cutBack status
   
   P_av = sum(homogenization_P,dim=3) * wgt
-  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
 
 end subroutine utilities_constitutiveResponse
 

@@ -32,7 +32,7 @@ w: 10              # w_k in multiple of b
 p_sl: 1
 q_sl: 1
 
-nu_a: 50.e9
+nu_a: 50.e+9
 B: 1.e-2
 f_ed: 1.0  # k_3
 
@@ -46,4 +46,4 @@ sigma_rho_u: 0   # no random distribution
 
 
 short_range_stress_correction: false
-rho_significant: 1e6
+rho_significant: 1.e6

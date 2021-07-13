@@ -232,6 +232,8 @@ module subroutine plastic_init
   where(plastic_dislotungsten_init())     phase_plasticity = PLASTICITY_DISLOTUNGSTEN_ID
   where(plastic_nonlocal_init())          phase_plasticity = PLASTICITY_NONLOCAL_ID
 
+  if (any(phase_plasticity == PLASTICITY_undefined_ID)) call IO_error(201)
+
 end subroutine plastic_init
 
 !--------------------------------------------------------------------------------------------------

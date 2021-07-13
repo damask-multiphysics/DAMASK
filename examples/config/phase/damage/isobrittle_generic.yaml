@@ -5,5 +5,5 @@ isoBrittle_atol: 0.01
 
 output: [f_phi]
 
-D_11: 1.0
-M: 0.001
+K_11: 1.0
+mu: 0.001
