@@ -1,11 +1,11 @@
 type: phenopowerlaw
 references:
   - D. Ma et al.,
-    Acta Materialia 103/796-808, 2016,
-    10.1016/j.actamat.2015.11.016
+    Acta Materialia 103:796-808, 2016,
+    https://doi.org/10.1016/j.actamat.2015.11.016
   - I. Kovács and G.Vörös,
-    International Journal of Plasticity 12/35-43, 1996,
-    10.1016/S0749-6419(95)00043-7
+    International Journal of Plasticity 12:35-43, 1996,
+    https://doi.org/10.1016/S0749-6419(95)00043-7
 output: [xi_sl, gamma_sl]
 N_sl: [12]
 n_sl: 83.3

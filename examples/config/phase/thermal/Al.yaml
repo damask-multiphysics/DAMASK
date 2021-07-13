@@ -1,5 +1,5 @@
 references:
-  - www.engineeringtoolbox.com/thermal-conductivity-metals-d_858.html
-  - www.engineeringtoolbox.com/specific-heat-metals-d_152.html
+  - https://www.engineeringtoolbox.com/thermal-conductivity-metals-d_858.html
+  - https://www.engineeringtoolbox.com/specific-heat-metals-d_152.html
 C_p: 910.0
 K_11: 236.0
