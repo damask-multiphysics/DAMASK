@@ -10,7 +10,7 @@ import damask
 
 def copy_and_replace(patch,orig,msc_root,editor):
     try:
-        shutil.copyfile(orig,orig.parent/patch.stem) 
+        shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
         pass
     damask.execute(f'patch {orig.parent/patch.stem} {patch} -b}')
