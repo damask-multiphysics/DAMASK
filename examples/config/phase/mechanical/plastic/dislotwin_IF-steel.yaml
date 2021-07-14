@@ -1,8 +1,8 @@
 type: dislotwin
 references:
   - K. Sedighiani et al.,
-    International Journal of Plasticity 134/102779, 2020,
-    10.1016/j.ijplas.2020.102779
+    International Journal of Plasticity 134:102779, 2020,
+    https://doi.org/10.1016/j.ijplas.2020.102779
   - K. Sedighiani et al.,
     Mechanics of Materials, submitted
 output: [rho_dip, rho_mob]
