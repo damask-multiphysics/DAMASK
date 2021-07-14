@@ -32,11 +32,12 @@ submodule(phase:plastic) dislotwin
       xi_sb               = 1.0_pReal, &                                                            !< value for shearband resistance
       v_sb                = 1.0_pReal, &                                                            !< value for shearband velocity_0
       E_sb                = 1.0_pReal, &                                                            !< activation energy for shear bands
-      Gamma_sf_0K         = 1.0_pReal, &                                                            !< stacking fault energy at zero K
-      dGamma_sf_dT        = 1.0_pReal, &                                                            !< temperature dependence of stacking fault energy
       delta_G             = 1.0_pReal, &                                                            !< Free energy difference between austensite and martensite
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
-      h                   = 1.0_pReal                                                               !< Stack height of hex nucleus
+      h                   = 1.0_pReal, &                                                            !< Stack height of hex nucleus
+      T_ref               = 0.0_pReal
+    real(pReal),                            dimension(2) :: &
+      Gamma_sf = 0.0_pReal
     real(pReal),               allocatable, dimension(:) :: &
       b_sl, &                                                                                       !< absolute length of Burgers vector [m] for each slip system
       b_tw, &                                                                                       !< absolute length of Burgers vector [m] for each twin system
@@ -220,13 +221,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%D_a                  = pl%get_asFloat('D_a')
       prm%D_0                  = pl%get_asFloat('D_0')
       prm%Q_cl                 = pl%get_asFloat('Q_cl')
-      prm%ExtendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
-      if (prm%ExtendedDislocations) then
-        prm%Gamma_sf_0K        = pl%get_asFloat('Gamma_sf_0K')
-        prm%dGamma_sf_dT       = pl%get_asFloat('dGamma_sf_dT')
-      endif
 
-      prm%omitDipoles = pl%get_asBool('omit_dipoles',defaultVal = .false.)
+      prm%ExtendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
+      prm%omitDipoles          = pl%get_asBool('omit_dipoles',defaultVal = .false.)
 
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
       ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
@@ -384,11 +381,14 @@ module function plastic_dislotwin_init() result(myPlasticity)
     if(prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
       prm%D = pl%get_asFloat('D')
 
-    twinOrSlipActive: if (prm%sum_N_tw + prm%sum_N_tr > 0) then
-      prm%Gamma_sf_0K  = pl%get_asFloat('Gamma_sf_0K')
-      prm%dGamma_sf_dT = pl%get_asFloat('dGamma_sf_dT')
-      prm%V_cs    = pl%get_asFloat('V_cs')
-    endif twinOrSlipActive
+    if (prm%sum_N_tw + prm%sum_N_tr > 0) &
+      prm%V_cs = pl%get_asFloat('V_cs')
+
+    if (prm%sum_N_tw + prm%sum_N_tr > 0 .or. prm%ExtendedDislocations) then
+      prm%T_ref       = pl%get_asFloat('T_ref')
+      prm%Gamma_sf(1) = pl%get_asFloat('Gamma_sf')
+      prm%Gamma_sf(2) = pl%get_asFloat('Gamma_sf,T',defaultVal=0.0_pReal)
+    endif
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,N_tw,&
@@ -689,7 +689,7 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
         ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
         sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
         b_d = merge(24.0_pReal*PI*(1.0_pReal - prm%nu)/(2.0_pReal + prm%nu) &
-                      * (prm%Gamma_sf_0K + prm%dGamma_sf_dT * T) / (prm%mu*prm%b_sl(i)), &
+                      * (prm%Gamma_sf(1) + prm%Gamma_sf(2) * T) / (prm%mu*prm%b_sl(i)), &
                     1.0_pReal, &
                     prm%ExtendedDislocations)
         v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Q_cl/(kB*T)) &
@@ -752,7 +752,7 @@ module subroutine dislotwin_dependentState(T,ph,en)
   sumf_tw  = sum(stt%f_tw(1:prm%sum_N_tw,en))
   sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-  Gamma = prm%Gamma_sf_0K + prm%dGamma_sf_dT * T
+  Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * T
 
   !* rescaled volume fraction for topology
   f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,en)/prm%t_tw                                                ! this is per system ...

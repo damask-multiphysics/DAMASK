@@ -6,7 +6,10 @@
 !--------------------------------------------------------------------------------------------------
 module discretization_grid
 #include <petsc/finclude/petscsys.h>
-  use PETScsys
+  use PETScSys
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 
   use prec
   use parallelization
@@ -75,12 +78,12 @@ subroutine discretization_grid_init(restart)
   endif
 
 
-  call MPI_Bcast(grid,3,MPI_INTEGER,0,PETSC_COMM_WORLD, ierr)
+  call MPI_Bcast(grid,3,MPI_INTEGER,0,MPI_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
   if (grid(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
-  call MPI_Bcast(geomSize,3,MPI_DOUBLE,0,PETSC_COMM_WORLD, ierr)
+  call MPI_Bcast(geomSize,3,MPI_DOUBLE,0,MPI_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
-  call MPI_Bcast(origin,3,MPI_DOUBLE,0,PETSC_COMM_WORLD, ierr)
+  call MPI_Bcast(origin,3,MPI_DOUBLE,0,MPI_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
 
   print'(/,a,3(i12  ))',  ' cells    a b c: ', grid
@@ -105,13 +108,13 @@ subroutine discretization_grid_init(restart)
   myGrid = [grid(1:2),grid3]
   mySize = [geomSize(1:2),size3]
 
-  call MPI_Gather(product(grid(1:2))*grid3Offset,1,MPI_INTEGER,displs,    1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  call MPI_Gather(product(grid(1:2))*grid3Offset,1,MPI_INTEGER,displs,    1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   if (ierr /= 0) error stop 'MPI error'
-  call MPI_Gather(product(myGrid),               1,MPI_INTEGER,sendcounts,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  call MPI_Gather(product(myGrid),               1,MPI_INTEGER,sendcounts,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   if (ierr /= 0) error stop 'MPI error'
 
   allocate(materialAt(product(myGrid)))
-  call MPI_scatterv(materialAt_global,sendcounts,displs,MPI_INTEGER,materialAt,size(materialAt),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  call MPI_Scatterv(materialAt_global,sendcounts,displs,MPI_INTEGER,materialAt,size(materialAt),MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   if (ierr /= 0) error stop 'MPI error'
 
   call discretization_init(materialAt, &

@@ -1,41 +1,31 @@
-TWIP_Steel_FeMnC:
-  lattice: cF
-  mechanical:
-    elastic: {type: Hooke, C_11: 175.0e9, C_12: 115.0e9, C_44: 135.0e9}
-    plastic:
-      type: dislotwin
-      output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, tau_hat_tw, f_tr]
-      D: 2.0e-5
-      N_sl: [12]
-      b_sl: [2.56e-10]
-      rho_mob_0: [1.0e12]
-      rho_dip_0: [1.0]
-      v_0: [1.0e4]
-      Q_s: [3.7e-19]
-      p_sl: [1.0]
-      q_sl: [1.0]
-      tau_0: [1.5e8]
-      i_sl: [10.0]                 # Adj. parameter controlling dislocation mean free path
-      D_0: 4.0e-5                  # Vacancy diffusion prefactor  / m^2/s
-      D_a: 1.0                     # minimum dipole distance / b
-      Q_cl: 4.5e-19                # Activation energy for climb / J
-      h_sl-sl: [0.122, 0.122, 0.625, 0.07, 0.137, 0.137, 0.122]  # Interaction coefficients (Kubin et al. 2008)
-# shear band parameters
-      xi_sb: 180.0e6
-      Q_sb: 3.7e-19
-      p_sb: 1.0
-      q_sb: 1.0
-      v_sb: 0.0                    # set to 0, to turn it off
+type: dislotwin
+output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, tau_hat_tw, f_tr]
+D: 2.0e-5
+N_sl: [12]
+b_sl: [2.56e-10]
+rho_mob_0: [1.0e+12]
+rho_dip_0: [1.0]
+v_0: [1.0e+4]
+Q_s: [3.7e-19]
+p_sl: [1.0]
+q_sl: [1.0]
+tau_0: [1.5e+8]
+i_sl: [10.0]                 # Adj. parameter controlling dislocation mean free path
+D_0: 4.0e-5                  # Vacancy diffusion prefactor  / m^2/s
+D_a: 1.0                     # minimum dipole distance / b
+Q_cl: 4.5e-19                # Activation energy for climb / J
+h_sl-sl: [0.122, 0.122, 0.625, 0.07, 0.137, 0.137, 0.122]  # Interaction coefficients (Kubin et al. 2008)
 # twinning parameters
-      N_tw: [12]
-      b_tw: [1.47e-10]             # Burgers vector length of twin system / b
-      t_tw: [5.0e-8]               # Twin stack mean thickness / m
-      L_tw: 442.0                  # Length of twin nuclei / b
-      x_c_tw: 1.0e-9               # critical distance for formation of twin nucleus / m
-      V_cs:  1.67e-29              # cross slip volume / m^3
-      p_tw: [10.0]                 # r-exponent in twin formation probability
-      i_tw: 1.0                    # Adj. parameter controlling twin mean free path
-      h_sl-tw: [0.0, 1.0, 1.0]     # dislocation-twin interaction coefficients
-      h_tw-tw: [0.0, 1.0]          # twin-twin interaction coefficients
-      Gamma_sf_0K: -0.0396         # stacking fault energy / J/m^2 at zero K; TWIP steel: -0.0526; Cu: -0.0396
-      dGamma_sf_dT: 0.0002         # temperature dependence / J/(m^2 K) of stacking fault energy
+N_tw: [12]
+b_tw: [1.47e-10]             # Burgers vector length of twin system / b
+t_tw: [5.0e-8]               # Twin stack mean thickness / m
+L_tw: 442.0                  # Length of twin nuclei / b
+x_c_tw: 1.0e-9               # critical distance for formation of twin nucleus / m
+V_cs:  1.67e-29              # cross slip volume / m^3
+p_tw: [10.0]                 # r-exponent in twin formation probability
+i_tw: 1.0                    # Adj. parameter controlling twin mean free path
+h_sl-tw: [0.0, 1.0, 1.0]     # dislocation-twin interaction coefficients
+h_tw-tw: [0.0, 1.0]          # twin-twin interaction coefficients
+T_ref: 0.0
+Gamma_sf: -0.0396            # stacking fault energy / J/m^2 at zero K; TWIP steel: -0.0526; Cu: -0.0396
+Gamma_sf,T: 0.0002         # temperature dependence / J/(m^2 K) of stacking fault energy

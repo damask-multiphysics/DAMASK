@@ -6,11 +6,15 @@ module parallelization
   use, intrinsic :: ISO_fortran_env, only: &
     OUTPUT_UNIT
 
-#ifdef PETSc
+#ifdef PETSC
 #include <petsc/finclude/petscsys.h>
-   use petscsys
+  use PETScSys
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 !$ use OMP_LIB
 #endif
+
   use prec
 
   implicit none
@@ -20,7 +24,7 @@ module parallelization
     worldrank = 0, &                                                                                !< MPI worldrank (/=0 for MPI simulations only)
     worldsize = 1                                                                                   !< MPI worldsize (/=1 for MPI simulations only)
 
-#ifdef PETSc
+#ifdef PETSC
   public :: &
     parallelization_init
 
@@ -60,12 +64,12 @@ subroutine parallelization_init
 #endif
   CHKERRQ(petsc_err)
 
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
+  call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err)
   if (err /= 0)                              error stop 'Could not determine worldrank'
 
   if (worldrank == 0) print'(/,a)',  ' <<<+-  parallelization init  -+>>>'
 
-  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,err)
+  call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err)
   if (err /= 0)                              error stop 'Could not determine worldsize'
   if (worldrank == 0) print'(a,i3)', ' MPI processes: ',worldsize
 

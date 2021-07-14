@@ -1,0 +1,10 @@
+type: Hooke
+references:
+  - D. Tromans,
+    International Journal of Recent Research and Applied Studies 6(4):462-483, 2011,
+    https://www.arpapress.com/Volumes/Vol6Issue4/IJRRAS_6_4_14.pdf
+C_11: 59.3e+9
+C_33: 61.5e+9
+C_44: 16.4e+9
+C_12: 25.7e+9
+C_13: 21.4e+9

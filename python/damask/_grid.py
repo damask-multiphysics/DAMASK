@@ -406,23 +406,19 @@ class Grid:
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            coords  = grid_filters.coordinates0_point(cells*3,size*3,-size).reshape(-1,3)
         else:
             weights_p = weights
             seeds_p   = seeds
-            coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
+        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), coords)
         pool.close()
         pool.join()
-        material_ = np.array(result.get())
+        material_ = np.array(result.get()).reshape(cells)
 
-        if periodic:
-            material_ = material_.reshape(cells*3)
-            material_ = material_[cells[0]:cells[0]*2,cells[1]:cells[1]*2,cells[2]:cells[2]*2]%seeds.shape[0]
-        else:
-            material_ = material_.reshape(cells)
+        if periodic: material_ %= len(weights)
 
         return Grid(material = material_ if material is None else material[material_],
                     size     = size,
@@ -661,6 +657,30 @@ class Grid:
         updated : damask.Grid
             Updated grid-based geometry.
 
+        Examples
+        --------
+        Add a sphere at the center.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
+        Add a cube at the origin.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
         """
         # radius and center
         r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
@@ -705,6 +725,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Mirror along x- and y-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int), np.ones(3)*1e-4)
+        >>> g.mirror('xy',True)
+        cells  a b c: 64 x 64 x 32
+        size   x y z: 0.0002 x 0.0002 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         valid = ['x','y','z']
@@ -772,6 +805,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Double resolution.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.scale(g.cells*2)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         return Grid(material = ndimage.interpolation.zoom(
@@ -902,6 +948,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Remove 1/2 of the microstructure in z-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.canvas(np.array([32,32,16],int))
+        cells  a b c: 33 x 32 x 16
+        size   x y z: 0.0001 x 0.0001 x 5e-05
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         if offset is None: offset = 0
