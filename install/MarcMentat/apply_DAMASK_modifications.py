@@ -8,7 +8,7 @@ from pathlib import Path
 
 import damask
 
-def copy_and_replace(patch,orig,msc_root,editor):
+def copy_and_patch(patch,orig,msc_root,editor):
     try:
         shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
@@ -56,19 +56,10 @@ for directory in glob.glob(str(damask_root/f'install/MarcMentat/{msc_version}/*'
         dirs = (msc_root/Path(directory)).name.lower().split('_')
         orig = msc_root/f'{dirs[0]}{msc_version}/{dirs[1]}/{orig}'
         for patch in glob.glob(f'{directory}/{mods}.patch'):
-            copy_and_replace(Path(patch),orig,msc_root,editor)
+            copy_and_patch(Path(patch),orig,msc_root,editor)
 
 print('compiling Mentat menu binaries...')
 
 executable = msc_root/f'mentat{msc_version}/bin/mentat'
 menu_file  = msc_root/f'mentat{msc_version}/menus/linux64/main.msb'
 os.system(f'xvfb-run -a {executable} -compile {menu_file}')
-
-
-print('setting file access rights...\n')
-
-for pattern in [msc_root/f'marc{msc_version}/tools/*damask*',
-                msc_root/f'mentat{msc_version}/bin/submit?',
-                msc_root/f'mentat{msc_version}/bin/kill?']:
-    for f in glob.glob(str(pattern)):
-        os.chmod(f,0o755)
