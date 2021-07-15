@@ -5,7 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
-module discretization_marc
+module discretization_Marc
   use IO
   use prec
   use math
@@ -72,15 +72,12 @@ subroutine discretization_Marc_init
   class(tNode), pointer :: &
     num_commercialFEM
 
-  print'(/,a)', ' <<<+-  discretization_marc init  -+>>>'; flush(6)
 
-!---------------------------------------------------------------------------------
-! read debug parameters
+  print'(/,a)', ' <<<+-  discretization_Marc init  -+>>>'; flush(6)
+
   debug_e = config_debug%get_asInt('element',defaultVal=1)
   debug_i = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
-!--------------------------------------------------------------------------------
-! read numerics parameter and do sanity check
   num_commercialFEM => config_numerics%get('commercialFEM',defaultVal = emptyDict)
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
@@ -318,6 +315,7 @@ subroutine inputRead_matNumber(matNumber, &
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, j, data_blocks, l
 
+
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
@@ -381,6 +379,7 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
 
   integer, allocatable, dimension(:) :: chunkPos
   integer                            :: i,l,elemInCurrentSet
+
 
   nElemSets     = 0
   maxNelemInSet = 0
@@ -465,6 +464,7 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,l,nNodesAlreadyRead
 
+
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
@@ -508,6 +508,7 @@ subroutine inputRead_mapNodes(FEM2DAMASK, &
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, l
 
+
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
@@ -542,6 +543,7 @@ subroutine inputRead_elemNodes(nodes, &
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,m,l
 
+
   allocate(nodes(3,nNode))
 
   do l = 1, size(fileContent)
@@ -551,9 +553,7 @@ subroutine inputRead_elemNodes(nodes, &
       chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
         m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
-        do j = 1,3
-          nodes(j,m) = mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1)
-        enddo
+        nodes(1:3,m) = [(mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
       enddo
       exit
     endif
@@ -574,6 +574,7 @@ subroutine inputRead_elemType(elem, &
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,t,l,remainingChunks
+
 
   t = -1
   do l = 1, size(fileContent)
@@ -664,6 +665,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
   integer, dimension(1+nElem) :: contInts
   integer :: i,k,j,t,e,l,nNodesAlreadyRead
 
+
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
@@ -698,6 +700,7 @@ end function inputRead_connectivityElem
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store material ID
+!> @details 0-based ID in file is converted to 1-based ID used in DAMASK
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_material(materialAt,&
                               nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileContent)
@@ -709,16 +712,16 @@ subroutine inputRead_material(materialAt,&
     nNodes, &                                                                                       !< number of nodes per element
     initialcondTableStyle
   character(len=*), dimension(:), intent(in) :: nameElemSet
-  integer, dimension(:,:),        intent(in) :: mapElemSet                                         !< list of elements in elementSet
-  character(len=*), dimension(:), intent(in) :: fileContent                                        !< file content, separated per lines
+  integer, dimension(:,:),        intent(in) :: mapElemSet                                          !< list of elements in elementSet
+  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
 
   integer, dimension(1+nElem) :: contInts
-  integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead,l,k,m
+  integer :: i,j,t,sv,ID,e,nNodesAlreadyRead,l,k,m
 
 
-  allocate(materialAt(nElem),source=0)
+  allocate(materialAt(nElem))
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
@@ -727,17 +730,17 @@ subroutine inputRead_material(materialAt,&
        IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'state') then
       k = merge(2,1,initialcondTableStyle == 2)
       chunkPos = IO_stringPos(fileContent(l+k))
-      sv = IO_IntValue(fileContent(l+k),chunkPos,1)                                                 ! figure state variable index
-      if( (sv == 2)) then                                                                           ! state var 2 is used to identify material from material.yaml
+      sv = IO_IntValue(fileContent(l+k),chunkPos,1)                                                 ! # of state variable
+      if (sv == 2) then                                                                             ! state var 2 gives material ID
         m = 1
         chunkPos = IO_stringPos(fileContent(l+k+m))
         do while (scan(IO_stringValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)           ! is noEfloat value?
-          myVal = nint(IO_floatValue(fileContent(l+k+m),chunkPos,1))
+          ID = nint(IO_floatValue(fileContent(l+k+m),chunkPos,1))
           if (initialcondTableStyle == 2) m = m + 2
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
             e = discretization_Marc_FEM2DAMASK_elem(contInts(1+i))
-            materialAt(e) = myVal
+            materialAt(e) = ID + 1
           enddo
           if (initialcondTableStyle == 0) m = m + 1
         enddo
@@ -861,7 +864,7 @@ pure subroutine buildCells(connectivity,definition, &
       do while (n+j<= size(candidates_local)*Nelem)
         if (any(candidates_global(1:2*nParentNodes,n+j)/=candidates_global(1:2*nParentNodes,n))) exit
         where (connectivity(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
-          connectivity(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + 1                                   ! gets current new cell node id
+          connectivity(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + 1                                   ! get current new cell node id
         end where
 
         j = j+1
@@ -1195,12 +1198,13 @@ logical function containsRange(str,chunkPos)
   character(len=*),      intent(in) :: str
   integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
 
+
   containsRange = .False.
   if(chunkPos(1) == 3) then
-     if(IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
+    if(IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
   endif
 
 end function containsRange
 
 
-end module discretization_marc
+end module discretization_Marc

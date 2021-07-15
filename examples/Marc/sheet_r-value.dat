@@ -14,7 +14,7 @@ $no list
 large stra                   2         1         0         0         0         0         0
 all points
 no echo                      1         2         3         4
-state vars                   3
+state vars                   2
 end
 $...................
 solver
@@ -269,7 +269,7 @@ coordinates
        163 3.999999999999999+1 9.999999999999996+0-5.000000000000000-1
        164 3.999999999999999+1 9.999999999999996+0 0.000000000000000+0
        165 3.999999999999999+1 9.999999999999996+0 5.000000000000000-1
-define              element             set                 Material_Nummer_elements
+define              element             set                 DAMASK_elements
            1          to          80
 define              node                set                 unten_y_nodes
            2           5           8          11          14
@@ -283,8 +283,6 @@ define              node                set                 unten_z_nodes
            7          to           9
 define              node                set                 oben_z_nodes
          157          to         159
-define              element             set                 texture_elements
-           1          to          80
 hypoelastic
 
          1         0         1         0         1TKS                              0
@@ -346,22 +344,14 @@ unten_fest_nodes
 oben_ziehen_nodes
 initial state
 
-         2         6         1         0         0         0Material_Nummer
- 1.000000000000000+0
+         2         6         1         0         0         0DAMASK
+ 0.000000000000000+0
          0
          1
-Material_Nummer_elements
-initial state
-
-         3         6         1         0         0         0texture
- 1.000000000000000+0
-         0
-         1
-texture_elements
+DAMASK_elements
 loadcase            r-value
          5
-Material_Nummer
-texture
+DAMASK
 unten_z
 unten_y
 unten_fest
