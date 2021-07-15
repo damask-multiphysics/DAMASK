@@ -83,7 +83,7 @@ checkout:
     - mkdir -p $DAMASKROOT
     - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
+    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
