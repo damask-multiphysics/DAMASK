@@ -684,7 +684,6 @@ subroutine FEM_mechanical_updateCoords()
   integer :: &
     qPt, &
     comp, &
-    nc, &
     qOffset, &
     nOffset
 
@@ -692,7 +691,7 @@ subroutine FEM_mechanical_updateCoords()
   Vec :: x_local
   PetscErrorCode :: ierr
   PetscInt :: dimPlex, pStart, pEnd, p, s, e, q, &
-              cellStart, cellEnd, c, qPt, comp, nc, nqpoints,qOffset,nOffset,n,Nnodes
+              cellStart, cellEnd, c, nqpoints,n
   PetscSection :: section
   PetscFE :: mechFE
   PetscDS :: mechDS
