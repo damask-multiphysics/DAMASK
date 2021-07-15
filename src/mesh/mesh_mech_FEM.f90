@@ -681,10 +681,17 @@ subroutine FEM_mechanical_updateCoords()
   real(pReal), pointer, dimension(:,:,:) :: &                                                       
     ipCoords                                                                                        !< ip coordinates (3,nQuadrature,mesh_NcpElems)
 
+  integer :: &
+    qPt, &
+    comp, &
+    nc, &
+    qOffset, &
+    nOffset
+
   DM  :: dm_local
   Vec :: x_local
   PetscErrorCode :: ierr
-  PetscInt :: dimPlex, pStart, pEnd, p, s, e,&
+  PetscInt :: dimPlex, pStart, pEnd, p, s, e, q, &
               cellStart, cellEnd, c, qPt, comp, nc, nqpoints,qOffset,nOffset,n,Nnodes
   PetscSection :: section
   PetscFE :: mechFE
@@ -713,23 +720,22 @@ subroutine FEM_mechanical_updateCoords()
   ! write ip displacements
   call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(mechQuad,0,basisField,basisFieldDer,ierr); CHKERRQ(ierr)
-  allocate(ipCoords(0:2,0:nQuadrature-1,0:mesh_NcpElems-1),source=0.0_pReal)
-  ipCoords=0.0_pReal
+  allocate(ipCoords(3,nQuadrature,mesh_NcpElems),source=0.0_pReal)
   do c=cellStart,cellEnd-1                                                                                      
     qOffset=0
     call DMPlexVecGetClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)                             !< get nodal coordinates of each element
-    Nnodes=size(x_scal)/dimplex                                                                                 !< no. of nodes for each element
     do qPt=0,nQuadrature-1
-      qOffset=qPt*(cellDof*dimPlex)
+      qOffset= qPt * (size(basisField)/nQuadrature)
       do comp=0,dimPlex-1                                                                                       !< loop over components
         nOffset=0
-        do n=0,Nnodes-1
-          ipCoords(comp,qPt,c)=ipCoords(comp,qPt,c)+sum(basisField(qOffset*dimplex+1:qOffset*dimplex+2)*&
-          x_scal(nOffset+1:nOffset+2))
-          qOffset=qOffset+dimplex
-          nOffset=nOffset+dimPlex
+        q = comp
+        do n=0,nBasis-1
+          ipCoords(comp+1,qPt+1,c+1)=ipCoords(comp+1,qPt+1,c+1)+&
+                                     sum(basisField(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
+                                     x_scal(nOffset+1:nOffset+dimPlex))
+          q = q+dimPlex
+          nOffset = nOffset+dimPlex
         enddo
-        qOffset=qPt*(cellDof*dimPlex)+1
       enddo
     enddo
     call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)     
