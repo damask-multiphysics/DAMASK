@@ -144,6 +144,26 @@ module function phase_damage_C(C_homogenized,ph,en) result(C)
 end function phase_damage_C
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Restore data after homog cutback.
+!--------------------------------------------------------------------------------------------------
+module subroutine damage_restore(ce)
+
+  integer, intent(in) :: ce
+
+  integer :: &
+    co
+
+
+  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
+    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
+      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
+  enddo
+
+end subroutine damage_restore
+
+
 !----------------------------------------------------------------------------------------------
 !< @brief returns local part of nonlocal damage driving force
 !----------------------------------------------------------------------------------------------
@@ -171,7 +191,6 @@ module function phase_f_phi(phi,co,ce) result(f)
   end select
 
 end function phase_f_phi
-
 
 
 !--------------------------------------------------------------------------------------------------

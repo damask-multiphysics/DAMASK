@@ -121,12 +121,11 @@ module subroutine isobrittle_results(phase,group)
   integer :: o
 
 
-  associate(prm => param(phase), &
-            stt => damageState(phase)%state)
+  associate(prm => param(phase), stt => damageState(phase)%state)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³')
+          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³') ! Wrong, this is dimensionless
       end select
     enddo outputsLoop
   end associate

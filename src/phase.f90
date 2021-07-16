@@ -108,6 +108,10 @@ module phase
       logical, intent(in) :: includeL
     end subroutine mechanical_restore
 
+    module subroutine damage_restore(ce)
+      integer, intent(in) :: ce
+    end subroutine damage_restore
+
 
     module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
       real(pReal), intent(in) :: dt
@@ -435,17 +439,9 @@ subroutine phase_restore(ce,includeL)
   logical, intent(in) :: includeL
   integer, intent(in) :: ce
 
-  integer :: &
-    co
-
-
-  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
-    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
-      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
-  enddo
 
   call mechanical_restore(ce,includeL)
+  call damage_restore(ce)
 
 end subroutine phase_restore
 
