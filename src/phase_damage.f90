@@ -212,8 +212,8 @@ module function integrateDamageState(dt,co,ce) result(broken)
   if(broken) return
 
     size_so = damageState(ph)%sizeDotState
-    damageState(ph)%state(1:size_so,me) = damageState(ph)%subState0(1:size_so,me) &
-                                        + damageState(ph)%dotState (1:size_so,me) * dt
+    damageState(ph)%state(1:size_so,me) = damageState(ph)%state0  (1:size_so,me) &
+                                        + damageState(ph)%dotState(1:size_so,me) * dt
     source_dotState(1:size_so,2) = 0.0_pReal
 
   iteration: do NiterationState = 1, num%nState
@@ -228,9 +228,9 @@ module function integrateDamageState(dt,co,ce) result(broken)
       zeta = damper(damageState(ph)%dotState(:,me),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
       damageState(ph)%dotState(:,me) = damageState(ph)%dotState(:,me) * zeta &
                                      + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
-      r(1:size_so) = damageState(ph)%state    (1:size_so,me)  &
-                   - damageState(ph)%subState0(1:size_so,me)  &
-                   - damageState(ph)%dotState (1:size_so,me) * dt
+      r(1:size_so) = damageState(ph)%state   (1:size_so,me)  &
+                   - damageState(ph)%State0  (1:size_so,me)  &
+                   - damageState(ph)%dotState(1:size_so,me) * dt
       damageState(ph)%state(1:size_so,me) = damageState(ph)%state(1:size_so,me) - r(1:size_so)
       converged_ = converged_  .and. converged(r(1:size_so), &
                                                damageState(ph)%state(1:size_so,me), &

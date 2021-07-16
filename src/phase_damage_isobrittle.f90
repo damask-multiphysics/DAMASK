@@ -103,9 +103,8 @@ module subroutine isobrittle_deltaState(C, Fe, ph,me)
   associate(prm => param(ph))
     strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
-    damageState(ph)%deltaState(1,me) = merge(strainenergy - damageState(ph)%state(1,me), &
-                                             damageState(ph)%subState0(1,me) - damageState(ph)%state(1,me), &
-                                             strainenergy > damageState(ph)%subState0(1,me))
+    damageState(ph)%deltaState(1,me) = merge(strainenergy - damageState(ph)%state(1,me), 0.0_pReal, &
+                                             strainenergy > damageState(ph)%state(1,me))
   end associate
 
 end subroutine isobrittle_deltaState

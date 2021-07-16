@@ -197,8 +197,7 @@ module subroutine mechanical_init(materials,phases)
     Nmembers
   class(tNode), pointer :: &
     num_crystallite, &
-    material, &
-    constituents, &
+
     phase, &
     mech
 
@@ -1060,7 +1059,6 @@ module function phase_mechanical_constitutive(dt,co,ip,el) result(converged_)
 
   enddo cutbackLooping
 
-  if (damageState(ph)%sizeState > 0) damageState(ph)%subState0(:,en) = damageState(ph)%state0(:,en)
   converged_ = converged_ .and. .not. integrateDamageState(dt,co,(el-1)*discretization_nIPs + ip)
 
 end function phase_mechanical_constitutive

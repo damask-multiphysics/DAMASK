@@ -545,10 +545,6 @@ subroutine crystallite_init()
 
   phases => config_material%get('phase')
 
-  do ph = 1, phases%length
-    if (damageState(ph)%sizeState > 0) allocate(damageState(ph)%subState0,source=damageState(ph)%state0)  ! ToDo: hack
-  enddo
-
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
   print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
   print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
