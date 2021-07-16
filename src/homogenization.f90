@@ -179,6 +179,7 @@ module homogenization
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
+    materialpoint_stressAndItsTangent2, &
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
@@ -227,7 +228,7 @@ end subroutine homogenization_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  parallelized calculation of stress and corresponding tangent at material points
+!> @brief
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execElem)
 
@@ -243,8 +244,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   logical, dimension(2) :: &
     doneAndHappy
 
-  !$OMP PARALLEL
-  !$OMP DO PRIVATE(ce,en,ho,NiterationMPstate,converged,doneAndHappy)
+
+  !$OMP PARALLEL DO PRIVATE(ce,en,ho,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
 
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -285,10 +286,30 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       endif
     enddo
   enddo
-  !$OMP END DO
+  !$OMP END PARALLEL DO
+
+end subroutine materialpoint_stressAndItsTangent
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief
+!--------------------------------------------------------------------------------------------------
+subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_execElem)
+
+  real(pReal), intent(in) :: dt                                                                     !< time increment
+  integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
+  integer :: &
+    NiterationMPstate, &
+    ip, &                                                                                            !< integration point number
+    el, &                                                                                            !< element number
+    co, ce, ho, en, ph
+  logical :: &
+    converged
+  logical, dimension(2) :: &
+    doneAndHappy
 
   if (.not. terminallyIll) then
-    !$OMP DO PRIVATE(ho,ph,ce)
+    !$OMP PARALLEL DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -305,9 +326,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         enddo
       enddo
     enddo
-    !$OMP END DO
+    !$OMP END PARALLEL DO
 
-    !$OMP DO PRIVATE(ho,ce)
+    !$OMP PARALLEL DO PRIVATE(ho,ce)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
@@ -318,13 +339,12 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         call mechanical_homogenize(dt,ce)
       enddo IpLooping3
     enddo elementLooping3
-    !$OMP END DO
+    !$OMP END PARALLEL DO
   else
     print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
   endif
-  !$OMP END PARALLEL
 
-end subroutine materialpoint_stressAndItsTangent
+end subroutine materialpoint_stressAndItsTangent2
 
 
 !--------------------------------------------------------------------------------------------------
