@@ -209,13 +209,13 @@ module phase
 
 ! == cleaned:end ===================================================================================
 
-    module function thermal_stress(Delta_t,ph,en) result(converged_)
+    module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
 
       real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: ph, en
       logical :: converged_
 
-    end function thermal_stress
+    end function phase_thermal_constitutive
 
     module function integrateDamageState(dt,co,ce) result(broken)
       real(pReal), intent(in) :: dt
@@ -225,11 +225,11 @@ module phase
       logical :: broken
     end function integrateDamageState
 
-    module function crystallite_stress(dt,co,ip,el) result(converged_)
+    module function phase_mechanical_constitutive(dt,co,ip,el) result(converged_)
       real(pReal), intent(in) :: dt
       integer, intent(in) :: co, ip, el
       logical :: converged_
-    end function crystallite_stress
+    end function phase_mechanical_constitutive
 
     !ToDo: Try to merge the all stiffness functions
     module function phase_homogenizedC(ph,en) result(C)
@@ -315,8 +315,8 @@ module phase
     plastic_nonlocal_updateCompatibility, &
     converged, &
     crystallite_init, &
-    crystallite_stress, &
-    thermal_stress, &
+    phase_mechanical_constitutive, &
+    phase_thermal_constitutive, &
     phase_mechanical_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &

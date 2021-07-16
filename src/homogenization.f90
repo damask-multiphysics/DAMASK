@@ -270,7 +270,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
         converged = .true.
         do co = 1, homogenization_Nconstituents(ho)
-          converged = converged .and. crystallite_stress(dt,co,ip,el)
+          converged = converged .and. phase_mechanical_constitutive(dt,co,ip,el)
         enddo
 
         if (converged) then
@@ -318,7 +318,7 @@ subroutine materialpoint_stressAndItsTangent3(dt,FEsolving_execIP,FEsolving_exec
       call thermal_partition(ce)
       do co = 1, homogenization_Nconstituents(ho)
         ph = material_phaseID(co,ce)
-        if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
+        if (.not. phase_thermal_constitutive(dt,ph,material_phaseMemberAt(co,ip,el))) then
           if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
             print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
           terminallyIll = .true.                                                                  ! ...and kills all others

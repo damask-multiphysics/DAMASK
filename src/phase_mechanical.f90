@@ -977,7 +977,7 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function crystallite_stress(dt,co,ip,el) result(converged_)
+module function phase_mechanical_constitutive(dt,co,ip,el) result(converged_)
 
   real(pReal), intent(in) :: dt
   integer, intent(in) :: &
@@ -1071,7 +1071,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 
   enddo cutbackLooping
 
-end function crystallite_stress
+end function phase_mechanical_constitutive
 
 
 !--------------------------------------------------------------------------------------------------
