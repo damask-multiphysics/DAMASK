@@ -309,29 +309,27 @@ subroutine materialpoint_stressAndItsTangent3(dt,FEsolving_execIP,FEsolving_exec
   logical, dimension(2) :: &
     doneAndHappy
 
-  if (.not. terminallyIll) then
-    !$OMP PARALLEL DO PRIVATE(ho,ph,ce)
-    do el = FEsolving_execElem(1),FEsolving_execElem(2)
-      if (terminallyIll) continue
-      do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-        ce = (el-1)*discretization_nIPs + ip
-        ho = material_homogenizationID(ce)
-        call thermal_partition(ce)
-        do co = 1, homogenization_Nconstituents(ho)
-          ph = material_phaseID(co,ce)
-          if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
-            if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
-              print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
-            terminallyIll = .true.                                                                  ! ...and kills all others
-          endif
-        enddo
+  !$OMP PARALLEL DO PRIVATE(ho,ph,ce)
+  do el = FEsolving_execElem(1),FEsolving_execElem(2)
+    if (terminallyIll) continue
+    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+      ce = (el-1)*discretization_nIPs + ip
+      ho = material_homogenizationID(ce)
+      call thermal_partition(ce)
+      do co = 1, homogenization_Nconstituents(ho)
+        ph = material_phaseID(co,ce)
+        if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
+          if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
+            print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
+          terminallyIll = .true.                                                                  ! ...and kills all others
+        endif
       enddo
     enddo
-    !$OMP END PARALLEL DO
-  else
-    print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
-  endif
+  enddo
+  !$OMP END PARALLEL DO
+
 end subroutine materialpoint_stressAndItsTangent3
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief
@@ -351,22 +349,19 @@ subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_exec
     doneAndHappy
 
 
-  if (.not. terminallyIll) then
-    !$OMP PARALLEL DO PRIVATE(ho,ce)
-    elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-      IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-        ce = (el-1)*discretization_nIPs + ip
-        ho = material_homogenizationID(ce)
-        do co = 1, homogenization_Nconstituents(ho)
-          call crystallite_orientations(co,ip,el)
-        enddo
-        call mechanical_homogenize(dt,ce)
-      enddo IpLooping3
-    enddo elementLooping3
-    !$OMP END PARALLEL DO
-  else
-    print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
-  endif
+  !$OMP PARALLEL DO PRIVATE(ho,ce)
+  elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
+    IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+      ce = (el-1)*discretization_nIPs + ip
+      ho = material_homogenizationID(ce)
+      do co = 1, homogenization_Nconstituents(ho)
+        call crystallite_orientations(co,ip,el)
+      enddo
+      call mechanical_homogenize(dt,ce)
+    enddo IpLooping3
+  enddo elementLooping3
+  !$OMP END PARALLEL DO
+
 
 end subroutine materialpoint_stressAndItsTangent2
 

@@ -163,8 +163,9 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
   print'(/,a)', ' ... evaluating constitutive response ......................................'
 
   call materialpoint_stressAndItsTangent(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
-  call materialpoint_stressAndItsTangent2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
-  cutBack = .false.                                                                                 ! reset cutBack status
+  if (.not. terminallyIll) &
+    call materialpoint_stressAndItsTangent2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
+  cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
