@@ -180,6 +180,7 @@ module homogenization
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
     materialpoint_stressAndItsTangent2, &
+    materialpoint_stressAndItsTangent3, &
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
@@ -294,7 +295,7 @@ end subroutine materialpoint_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_execElem)
+subroutine materialpoint_stressAndItsTangent3(dt,FEsolving_execIP,FEsolving_execElem)
 
   real(pReal), intent(in) :: dt                                                                     !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
@@ -327,7 +328,30 @@ subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_exec
       enddo
     enddo
     !$OMP END PARALLEL DO
+  else
+    print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
+  endif
+end subroutine materialpoint_stressAndItsTangent3
 
+!--------------------------------------------------------------------------------------------------
+!> @brief
+!--------------------------------------------------------------------------------------------------
+subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_execElem)
+
+  real(pReal), intent(in) :: dt                                                                     !< time increment
+  integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
+  integer :: &
+    NiterationMPstate, &
+    ip, &                                                                                            !< integration point number
+    el, &                                                                                            !< element number
+    co, ce, ho, en, ph
+  logical :: &
+    converged
+  logical, dimension(2) :: &
+    doneAndHappy
+
+
+  if (.not. terminallyIll) then
     !$OMP PARALLEL DO PRIVATE(ho,ce)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)

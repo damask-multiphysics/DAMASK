@@ -816,6 +816,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                     ! set materialpoint target F to estimated field
 
   call materialpoint_stressAndItsTangent(timeinc,[1,1],[1,product(grid(1:2))*grid3])                ! calculate P field
+  call materialpoint_stressAndItsTangent3(timeinc,[1,1],[1,product(grid(1:2))*grid3])
   call materialpoint_stressAndItsTangent2(timeinc,[1,1],[1,product(grid(1:2))*grid3])
 
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
