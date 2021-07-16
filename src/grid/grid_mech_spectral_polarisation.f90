@@ -487,9 +487,9 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     divTol, &
     BCTol
 
-  curlTol    = max(maxval(abs(F_aim-math_I3))*num%eps_curl_rtol  ,num%eps_curl_atol)
-  divTol     = max(maxval(abs(P_av))         *num%eps_div_rtol   ,num%eps_div_atol)
-  BCTol      = max(maxval(abs(P_av))         *num%eps_stress_rtol,num%eps_stress_atol)
+  curlTol = max(maxval(abs(F_aim-math_I3))*num%eps_curl_rtol, num%eps_curl_atol)
+  divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
+  BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_curl/curlTol, err_BC/BCTol] < 1.0_pReal)) &
        .or. terminallyIll) then
@@ -500,8 +500,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     reason = 0
   endif
 
-!--------------------------------------------------------------------------------------------------
-! report
   print'(1/,a)', ' ... reporting .............................................................'
   print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
@@ -542,13 +540,13 @@ subroutine formResidual(in, FandF_tau, &
 !---------------------------------------------------------------------------------------------------
 
   F              => FandF_tau(1:3,1:3,1,&
-                                 XG_RANGE,YG_RANGE,ZG_RANGE)
+                              XG_RANGE,YG_RANGE,ZG_RANGE)
   F_tau          => FandF_tau(1:3,1:3,2,&
-                                 XG_RANGE,YG_RANGE,ZG_RANGE)
+                              XG_RANGE,YG_RANGE,ZG_RANGE)
   residual_F     => residuum(1:3,1:3,1,&
-                                 X_RANGE, Y_RANGE, Z_RANGE)
+                             X_RANGE, Y_RANGE, Z_RANGE)
   residual_F_tau => residuum(1:3,1:3,2,&
-                                 X_RANGE, Y_RANGE, Z_RANGE)
+                             X_RANGE, Y_RANGE, Z_RANGE)
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)

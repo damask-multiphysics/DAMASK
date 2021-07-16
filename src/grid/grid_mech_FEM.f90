@@ -490,8 +490,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
     BCTol
 
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
-  divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
-  BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol,num%eps_stress_atol)
+  divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
+  BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pReal)) &
        .or. terminallyIll) then
@@ -502,8 +502,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
     reason = 0
   endif
 
-!--------------------------------------------------------------------------------------------------
-! report
   print'(1/,a)', ' ... reporting .............................................................'
   print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
