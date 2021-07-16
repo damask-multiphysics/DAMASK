@@ -47,10 +47,10 @@ module function isobrittle_init() result(mySources)
 
   do ph = 1, phases%length
     if(mySources(ph)) then
-    phase => phases%get(ph)
-    sources => phase%get('damage')
+      phase => phases%get(ph)
+      sources => phase%get('damage')
 
-        associate(prm  => param(ph))
+      associate(prm  => param(ph))
         src => sources%get(1)
 
         prm%W_crit = src%get_asFloat('W_crit')
@@ -69,12 +69,11 @@ module function isobrittle_init() result(mySources)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
-        end associate
+      end associate
 
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isobrittle)')
-      endif
+
+      if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isobrittle)')
+    endif
 
   enddo
 
@@ -102,8 +101,7 @@ module subroutine isobrittle_deltaState(C, Fe, ph,me)
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
   associate(prm => param(ph))
-    strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
-    ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
+    strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
     damageState(ph)%deltaState(1,me) = merge(strainenergy - damageState(ph)%state(1,me), &
                                              damageState(ph)%subState0(1,me) - damageState(ph)%state(1,me), &

@@ -58,10 +58,10 @@ module function anisobrittle_init() result(mySources)
 
   do p = 1, phases%length
     if(mySources(p)) then
-    phase => phases%get(p)
-    sources => phase%get('damage')
+      phase => phases%get(p)
+      sources => phase%get('damage')
 
-        associate(prm  => param(p))
+      associate(prm  => param(p))
         src => sources%get(1)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
@@ -97,12 +97,10 @@ module function anisobrittle_init() result(mySources)
         damageState(p)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
-        end associate
+      end associate
 
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
-      endif
+      if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
+    endif
 
   enddo
 
