@@ -840,7 +840,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
       dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
       dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
     endif
-  end do
+  enddo
 
   valueAndRank = [dPdF_norm_max,real(worldrank,pReal)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
