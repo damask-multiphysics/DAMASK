@@ -32,7 +32,7 @@ submodule(phase:mechanical) eigen
 contains
 
 
-module subroutine eigendeformation_init(phases)
+module subroutine eigen_init(phases)
 
   class(tNode), pointer :: &
     phases
@@ -68,7 +68,7 @@ module subroutine eigendeformation_init(phases)
   where(damage_anisobrittle_init())  model_damage = KINEMATICS_cleavage_opening_ID
 
 
-end subroutine eigendeformation_init
+end subroutine eigen_init
 
 
 !--------------------------------------------------------------------------------------------------

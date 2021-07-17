@@ -101,8 +101,8 @@ module homogenization
       integer,     intent(in) :: ce
     end subroutine damage_partition
 
-    module subroutine mechanical_homogenize(dt,ce)
-     real(pReal), intent(in) :: dt
+    module subroutine mechanical_homogenize(Delta_t,ce)
+     real(pReal), intent(in) :: Delta_t
      integer, intent(in) :: &
        ce                                                                                           !< cell
     end subroutine mechanical_homogenize
@@ -178,9 +178,9 @@ module homogenization
 
   public ::  &
     homogenization_init, &
-    materialpoint_stressAndItsTangent, &
-    materialpoint_stressAndItsTangent2, &
-    materialpoint_stressAndItsTangent3, &
+    homogenization_mechanical_response, &
+    homogenization_mechanical_response2, &
+    homogenization_thermal_response, &
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
@@ -231,15 +231,15 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execElem)
+subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving_execElem)
 
-  real(pReal), intent(in) :: dt                                                                     !< time increment
+  real(pReal), intent(in) :: Delta_t                                                                     !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    co, ce, ho, en, ph
+    co, ce, ho, en
   logical :: &
     converged
   logical, dimension(2) :: &
@@ -268,13 +268,10 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         NiterationMPstate = NiterationMPstate + 1
 
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-        converged = .true.
-        do co = 1, homogenization_Nconstituents(ho)
-          converged = converged .and. phase_mechanical_constitutive(dt,co,ip,el)
-        enddo
+        converged = all([(phase_mechanical_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
 
         if (converged) then
-          doneAndHappy = mechanical_updateState(dt,homogenization_F(1:3,1:3,ce),ce)
+          doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
           converged = all(doneAndHappy)
         else
           doneAndHappy = [.true.,.false.]
@@ -282,34 +279,30 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
       enddo convergenceLooping
       if (.not. converged) then
-        if (.not. terminallyIll) print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
+        if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
         terminallyIll = .true.
       endif
     enddo
   enddo
   !$OMP END PARALLEL DO
 
-end subroutine materialpoint_stressAndItsTangent
+end subroutine homogenization_mechanical_response
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_stressAndItsTangent3(dt,FEsolving_execIP,FEsolving_execElem)
+subroutine homogenization_thermal_response(Delta_t,FEsolving_execIP,FEsolving_execElem)
 
-  real(pReal), intent(in) :: dt                                                                     !< time increment
+  real(pReal), intent(in) :: Delta_t                                                                !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
-    NiterationMPstate, &
-    ip, &                                                                                            !< integration point number
-    el, &                                                                                            !< element number
-    co, ce, ho, en, ph
-  logical :: &
-    converged
-  logical, dimension(2) :: &
-    doneAndHappy
+    ip, &                                                                                           !< integration point number
+    el, &                                                                                           !< element number
+    co, ce, ho
 
-  !$OMP PARALLEL DO PRIVATE(ho,ph,ce)
+
+  !$OMP PARALLEL DO PRIVATE(ho,ce)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     if (terminallyIll) continue
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -317,36 +310,29 @@ subroutine materialpoint_stressAndItsTangent3(dt,FEsolving_execIP,FEsolving_exec
       ho = material_homogenizationID(ce)
       call thermal_partition(ce)
       do co = 1, homogenization_Nconstituents(ho)
-        ph = material_phaseID(co,ce)
-        if (.not. phase_thermal_constitutive(dt,ph,material_phaseMemberAt(co,ip,el))) then
-          if (.not. terminallyIll) &                                                              ! so first signals terminally ill...
-            print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
-          terminallyIll = .true.                                                                  ! ...and kills all others
+        if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
+          if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
+          terminallyIll = .true.
         endif
       enddo
     enddo
   enddo
   !$OMP END PARALLEL DO
 
-end subroutine materialpoint_stressAndItsTangent3
+end subroutine homogenization_thermal_response
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_execElem)
+subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolving_execElem)
 
-  real(pReal), intent(in) :: dt                                                                     !< time increment
+  real(pReal), intent(in) :: Delta_t                                                                !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
-    NiterationMPstate, &
-    ip, &                                                                                            !< integration point number
-    el, &                                                                                            !< element number
-    co, ce, ho, en, ph
-  logical :: &
-    converged
-  logical, dimension(2) :: &
-    doneAndHappy
+    ip, &                                                                                           !< integration point number
+    el, &                                                                                           !< element number
+    co, ce, ho
 
 
   !$OMP PARALLEL DO PRIVATE(ho,ce)
@@ -357,13 +343,13 @@ subroutine materialpoint_stressAndItsTangent2(dt,FEsolving_execIP,FEsolving_exec
       do co = 1, homogenization_Nconstituents(ho)
         call crystallite_orientations(co,ip,el)
       enddo
-      call mechanical_homogenize(dt,ce)
+      call mechanical_homogenize(Delta_t,ce)
     enddo IpLooping3
   enddo elementLooping3
   !$OMP END PARALLEL DO
 
 
-end subroutine materialpoint_stressAndItsTangent2
+end subroutine homogenization_mechanical_response2
 
 
 !--------------------------------------------------------------------------------------------------

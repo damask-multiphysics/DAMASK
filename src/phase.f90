@@ -113,8 +113,8 @@ module phase
     end subroutine damage_restore
 
 
-    module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
-      real(pReal), intent(in) :: dt
+    module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
+      real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: &
         co, &                                                                                       !< counter in constituent loop
         ce
@@ -221,21 +221,21 @@ module phase
 
     end function phase_thermal_constitutive
 
-    module function integrateDamageState(dt,co,ce) result(broken)
-      real(pReal), intent(in) :: dt
+    module function integrateDamageState(Delta_t,co,ce) result(broken)
+      real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: &
         ce, &
         co
       logical :: broken
     end function integrateDamageState
 
-    module function phase_mechanical_constitutive(dt,co,ip,el) result(converged_)
-      real(pReal), intent(in) :: dt
+    module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
+      real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: co, ip, el
       logical :: converged_
     end function phase_mechanical_constitutive
 
-    !ToDo: Try to merge the all stiffness functions
+    !ToDo: Merge all the stiffness functions
     module function phase_homogenizedC(ph,en) result(C)
       integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C

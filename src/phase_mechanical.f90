@@ -44,9 +44,9 @@ submodule(phase) mechanical
 
   interface
 
-    module subroutine eigendeformation_init(phases)
+    module subroutine eigen_init(phases)
       class(tNode), pointer :: phases
-    end subroutine eigendeformation_init
+    end subroutine eigen_init
 
     module subroutine elastic_init(phases)
       class(tNode), pointer :: phases
@@ -302,7 +302,7 @@ module subroutine mechanical_init(materials,phases)
   end select
 
 
-  call eigendeformation_init(phases)
+  call eigen_init(phases)
 
 
 end subroutine mechanical_init
@@ -976,9 +976,9 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_constitutive(dt,co,ip,el) result(converged_)
+module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
 
-  real(pReal), intent(in) :: dt
+  real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
     ip, &
@@ -1054,12 +1054,12 @@ module function phase_mechanical_constitutive(dt,co,ip,el) result(converged_)
     if (todo) then
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
-      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
+      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * Delta_t,co,ip,el)
     endif
 
   enddo cutbackLooping
 
-  converged_ = converged_ .and. .not. integrateDamageState(dt,co,(el-1)*discretization_nIPs + ip)
+  converged_ = converged_ .and. .not. integrateDamageState(Delta_t,co,(el-1)*discretization_nIPs + ip)
 
 end function phase_mechanical_constitutive
 
@@ -1094,12 +1094,13 @@ module subroutine mechanical_restore(ce,includeL)
 
 end subroutine mechanical_restore
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
+module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
 
-  real(pReal), intent(in) :: dt
+  real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &                                                                                            !< counter in constituent loop
     ce
@@ -1149,11 +1150,11 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
     lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
     do o=1,3; do p=1,3
       lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
-                            + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * dt
+                            + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * Delta_t
       lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
                             + invFi*invFi(p,o)
       rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
-                            - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * dt
+                            - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * Delta_t
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
@@ -1182,7 +1183,7 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
     temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                            + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
   enddo; enddo
-  lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * dt &
+  lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * Delta_t &
            + math_mul3333xx3333(dSdFi,dFidS)
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
@@ -1198,7 +1199,7 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
 ! calculate dFpinvdF
   temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
   do o=1,3; do p=1,3
-    dFpinvdF(1:3,1:3,p,o) = - matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi)) * dt
+    dFpinvdF(1:3,1:3,p,o) = - matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi)) * Delta_t
   enddo; enddo
 
 !--------------------------------------------------------------------------------------------------

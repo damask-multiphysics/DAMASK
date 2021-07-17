@@ -162,9 +162,9 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   print'(/,a)', ' ... evaluating constitutive response ......................................'
 
-  call materialpoint_stressAndItsTangent(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
+  call homogenization_mechanical_response(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
   if (.not. terminallyIll) &
-    call materialpoint_stressAndItsTangent2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
+    call homogenization_mechanical_response2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt

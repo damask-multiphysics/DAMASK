@@ -40,7 +40,7 @@ module function anisobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Nmembers,p
+  integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
@@ -56,12 +56,12 @@ module function anisobrittle_init() result(mySources)
   allocate(param(phases%length))
 
 
-  do p = 1, phases%length
-    if(mySources(p)) then
-      phase => phases%get(p)
+  do ph = 1, phases%length
+    if(mySources(ph)) then
+      phase => phases%get(ph)
       sources => phase%get('damage')
 
-      associate(prm  => param(p))
+      associate(prm  => param(ph))
         src => sources%get(1)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
@@ -92,10 +92,10 @@ module function anisobrittle_init() result(mySources)
         if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
-        Nmembers = count(material_phaseID==p)
-        call phase_allocateState(damageState(p),Nmembers,1,1,0)
-        damageState(p)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
-        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+        Nmembers = count(material_phaseID==ph)
+        call phase_allocateState(damageState(ph),Nmembers,1,1,0)
+        damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
       end associate
 

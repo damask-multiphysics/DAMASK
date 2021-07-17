@@ -197,9 +197,9 @@ end function phase_f_phi
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-module function integrateDamageState(dt,co,ce) result(broken)
+module function integrateDamageState(Delta_t,co,ce) result(broken)
 
-  real(pReal), intent(in) :: dt
+  real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     ce, &
     co
@@ -230,10 +230,10 @@ module function integrateDamageState(dt,co,ce) result(broken)
   broken = phase_damage_collectDotState(ph,me)
   if(broken) return
 
-    size_so = damageState(ph)%sizeDotState
-    damageState(ph)%state(1:size_so,me) = damageState(ph)%state0  (1:size_so,me) &
-                                        + damageState(ph)%dotState(1:size_so,me) * dt
-    source_dotState(1:size_so,2) = 0.0_pReal
+  size_so = damageState(ph)%sizeDotState
+  damageState(ph)%state(1:size_so,me) = damageState(ph)%state0  (1:size_so,me) &
+                                      + damageState(ph)%dotState(1:size_so,me) * Delta_t
+  source_dotState(1:size_so,2) = 0.0_pReal
 
   iteration: do NiterationState = 1, num%nState
 
@@ -249,7 +249,7 @@ module function integrateDamageState(dt,co,ce) result(broken)
                                      + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
       r(1:size_so) = damageState(ph)%state   (1:size_so,me)  &
                    - damageState(ph)%State0  (1:size_so,me)  &
-                   - damageState(ph)%dotState(1:size_so,me) * dt
+                   - damageState(ph)%dotState(1:size_so,me) * Delta_t
       damageState(ph)%state(1:size_so,me) = damageState(ph)%state(1:size_so,me) - r(1:size_so)
       converged_ = converged_  .and. converged(r(1:size_so), &
                                                damageState(ph)%state(1:size_so,me), &
