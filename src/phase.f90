@@ -221,13 +221,11 @@ module phase
 
     end function phase_thermal_constitutive
 
-    module function integrateDamageState(Delta_t,co,ce) result(broken)
+    module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: &
-        ce, &
-        co
-      logical :: broken
-    end function integrateDamageState
+      integer, intent(in) :: co, ip, el
+      logical :: converged_
+    end function phase_damage_constitutive
 
     module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
       real(pReal), intent(in) :: Delta_t
@@ -321,12 +319,12 @@ module phase
     crystallite_init, &
     phase_mechanical_constitutive, &
     phase_thermal_constitutive, &
+    phase_damage_constitutive, &
     phase_mechanical_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
     phase_restartWrite, &
     phase_restartRead, &
-    integrateDamageState, &
     phase_thermal_setField, &
     phase_set_phi, &
     phase_P, &

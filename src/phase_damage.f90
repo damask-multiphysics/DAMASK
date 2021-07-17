@@ -126,6 +126,27 @@ end subroutine damage_init
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief calculate stress (P)
+!--------------------------------------------------------------------------------------------------
+module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
+
+  real(pReal), intent(in) :: Delta_t
+  integer, intent(in) :: &
+    co, &
+    ip, &
+    el
+  logical :: converged_
+
+  integer :: &
+    ph, en
+
+
+  converged_ = .not. integrateDamageState(Delta_t,co,(el-1)*discretization_nIPs + ip)
+
+end function phase_damage_constitutive
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief returns the degraded/modified elasticity matrix
 !--------------------------------------------------------------------------------------------------
 module function phase_damage_C(C_homogenized,ph,en) result(C)
@@ -197,7 +218,7 @@ end function phase_f_phi
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-module function integrateDamageState(Delta_t,co,ce) result(broken)
+function integrateDamageState(Delta_t,co,ce) result(broken)
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &

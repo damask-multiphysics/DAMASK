@@ -233,7 +233,7 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving_execElem)
 
-  real(pReal), intent(in) :: Delta_t                                                                     !< time increment
+  real(pReal), intent(in) :: Delta_t                                                                !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
     NiterationMPstate, &
@@ -269,7 +269,7 @@ subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving
 
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
         converged = all([(phase_mechanical_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
-
+        converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
         if (converged) then
           doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
           converged = all(doneAndHappy)

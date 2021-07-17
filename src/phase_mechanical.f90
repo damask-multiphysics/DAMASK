@@ -1059,8 +1059,6 @@ module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged
 
   enddo cutbackLooping
 
-  converged_ = converged_ .and. .not. integrateDamageState(Delta_t,co,(el-1)*discretization_nIPs + ip)
-
 end function phase_mechanical_constitutive
 
 
