@@ -140,8 +140,10 @@ module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
   integer :: &
     ph, en
 
+  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
+  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
-  converged_ = .not. integrateDamageState(Delta_t,co,(el-1)*discretization_nIPs + ip)
+  converged_ = .not. integrateDamageState(Delta_t,ph,en)
 
 end function phase_damage_constitutive
 
@@ -218,18 +220,16 @@ end function phase_f_phi
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-function integrateDamageState(Delta_t,co,ce) result(broken)
+function integrateDamageState(Delta_t,ph,en) result(broken)
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
-    ce, &
-    co
+    ph, &
+    en
   logical :: broken
 
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
-    ph, &
-    en, &
     size_so
   real(pReal) :: &
     zeta
@@ -239,8 +239,6 @@ function integrateDamageState(Delta_t,co,ce) result(broken)
   logical :: &
     converged_
 
-  ph = material_phaseID(co,ce)
-  en = material_phaseEntry(co,ce)
 
   if (damageState(ph)%sizeState == 0) then
     broken = .false.
