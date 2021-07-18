@@ -60,7 +60,7 @@ class Crystal():
             Angles are given in degrees. Defaults to False.
 
         """
-        if family not in [None] + list(self._immutable.keys()):
+        if family not in [None] + list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
             raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
@@ -133,7 +133,38 @@ class Crystal():
     @property
     def immutable(self):
         """Return immutable lattice parameters."""
-        return self._immutable[self.family]
+        _immutable = {
+            'cubic': {
+                         'b': 1.0,
+                         'c': 1.0,
+                         'alpha': np.pi/2.,
+                         'beta':  np.pi/2.,
+                         'gamma': np.pi/2.,
+                       },
+            'hexagonal': {
+                         'b': 1.0,
+                         'alpha': np.pi/2.,
+                         'beta':  np.pi/2.,
+                         'gamma': 2.*np.pi/3.,
+                       },
+            'tetragonal': {
+                         'b': 1.0,
+                         'alpha': np.pi/2.,
+                         'beta':  np.pi/2.,
+                         'gamma': np.pi/2.,
+                       },
+            'orthorhombic': {
+                         'alpha': np.pi/2.,
+                         'beta':  np.pi/2.,
+                         'gamma': np.pi/2.,
+                       },
+            'monoclinic': {
+                         'alpha': np.pi/2.,
+                         'gamma': np.pi/2.,
+                       },
+            'triclinic': {}
+                     }
+        return _immutable[self.family]
 
 
     @property
@@ -795,34 +826,4 @@ class Crystal():
       },
     }
 
-    _immutable = {
-        'cubic': {
-                     'b': 1.0,
-                     'c': 1.0,
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': np.pi/2.,
-                   },
-        'hexagonal': {
-                     'b': 1.0,
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': 2.*np.pi/3.,
-                   },
-        'tetragonal': {
-                     'b': 1.0,
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': np.pi/2.,
-                   },
-        'orthorhombic': {
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': np.pi/2.,
-                   },
-        'monoclinic': {
-                     'alpha': np.pi/2.,
-                     'gamma': np.pi/2.,
-                   },
-        'triclinic': {}
-                 }
+

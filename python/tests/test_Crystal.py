@@ -55,10 +55,3 @@ class TestCrystal:
                     alpha=alpha,beta=beta,gamma=gamma)
         assert np.allclose(vector,
                            c.to_frame(**{keyFrame:c.to_lattice(**{keyLattice:vector})}))
-
-
-    @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch','Burgers'])
-    def test_relationship_definition(self,model):
-        m,o = list(Crystal._orientation_relationships[model])
-        assert Crystal._orientation_relationships[model][m].shape[:-1] == \
-               Crystal._orientation_relationships[model][o].shape[:-1]
