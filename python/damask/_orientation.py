@@ -843,10 +843,9 @@ class Orientation(Rotation,Crystal):
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
-        sym_ops = self.symmetry_operations
-        # ToDo: simplify 'with_symmetry'
         v = self.to_frame(uvw=uvw,hkl=hkl)
         if with_symmetry:
+            sym_ops = self.symmetry_operations
             v = sym_ops.broadcast_to(sym_ops.shape+v.shape[:-1],mode='right') \
               @ np.broadcast_to(v,sym_ops.shape+v.shape)
         return ~(self if self.shape+v.shape[:-1] == () else self.broadcast_to(self.shape+v.shape[:-1],mode='right')) \

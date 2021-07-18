@@ -979,47 +979,35 @@ class Result:
         self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
 
 
-# The add_pole functionality needs discussion.
-# The new Crystal object can perform such a calculation but the outcome depends on the lattice parameters
-# as well as on whether a direction or plane is concerned (see the DAMASK_examples/pole_figure notebook).
-# Below code appears to be too simplistic.
 
-    # @staticmethod
-    # def _add_pole(q,p,polar):
-    #     pole      = np.array(p)
-    #     unit_pole = pole/np.linalg.norm(pole)
-    #     m         = util.scale_to_coprime(pole)
-    #     rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
-    #
-    #     rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
-    #     xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
-    #     coords = xy if not polar else \
-    #              np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
-    #     return {
-    #             'data': coords,
-    #             'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
-    #             'meta' : {
-    #                       'unit':        '1',
-    #                       'description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
-    #                                      .format('Polar' if polar else 'Cartesian'),
-    #                       'creator':     'add_pole'
-    #                      }
-    #            }
-    # def add_pole(self,q,p,polar=False):
-    #     """
-    #     Add coordinates of stereographic projection of given pole in crystal frame.
-    #
-    #     Parameters
-    #     ----------
-    #     q : str
-    #         Name of the dataset containing the crystallographic orientation as quaternions.
-    #     p : numpy.array of shape (3)
-    #         Crystallographic direction or plane.
-    #     polar : bool, optional
-    #         Give pole in polar coordinates. Defaults to False.
-    #
-    #     """
-    #     self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
+    @staticmethod
+    def _add_pole(q,uvw,hkl):
+        c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
+        pole = Orientation(q['data'], lattice=q['meta']['lattice'], a=1, c=c).to_pole(uvw=uvw,hkl=hkl)
+
+        return {
+                'data': pole,
+                'label': 'p^[{} {} {}]'.format(*uvw) if uvw else 'p^({} {} {})'.format(*hkl),
+                'meta' : {
+                           'unit':        '1',
+                           'description': f"lab frame vector along lattice {'direction' if uvw else 'plane'}",
+                           'creator':     'add_pole'
+                          }
+                }
+    def add_pole(self,q='O',*,uvw=None,hkl=None):
+        """
+        Add lab frame vector along lattice direction [uvw] or plane normal (hkl).
+
+        Parameters
+        ----------
+        q : str
+            Name of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
+        uvw|hkl : numpy.ndarray of shape (...,3)
+            Miller indices of crystallographic direction or plane normal.
+
+        """
+        self._add_generic_pointwise(self._add_pole,{'q':q},{'uvw':uvw,'hkl':hkl})
 
 
     @staticmethod

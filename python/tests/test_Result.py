@@ -12,7 +12,6 @@ import vtk
 import numpy as np
 
 from damask import Result
-from damask import Rotation
 from damask import Orientation
 from damask import tensor
 from damask import mechanics
@@ -220,17 +219,15 @@ class TestResult:
         in_file   = default.place('S')
         assert np.allclose(in_memory,in_file)
 
-    @pytest.mark.skip(reason='requires rework of lattice.f90')
-    @pytest.mark.parametrize('polar',[True,False])
-    def test_add_pole(self,default,polar):
-        pole = np.array([1.,0.,0.])
-        default.add_pole('O',pole,polar)
-        rot = Rotation(default.place('O'))
-        rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
-        xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
-        in_memory = xy if not polar else \
-                    np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
-        in_file = default.place('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))
+    @pytest.mark.parametrize('options',[{'uvw':[1,0,0]},{'hkl':[0,1,1]}])
+    def test_add_pole(self,default,options):
+        default.add_pole(**options)
+        rot = default.place('O')
+        in_memory = Orientation(rot,lattice=rot.dtype.metadata['lattice']).to_pole(**options)
+        brackets = ['[[]','[]]'] if 'uvw' in options.keys() else ['(',')']                          # escape fnmatch
+        label = '{}{} {} {}{}'.format(brackets[0],*(list(options.values())[0]),brackets[1])
+        in_file = default.place(f'p^{label}')
+        print(in_file - in_memory)
         assert np.allclose(in_memory,in_file)
 
     def test_add_rotation(self,default):
