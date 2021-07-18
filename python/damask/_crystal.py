@@ -35,14 +35,15 @@ class Crystal():
                  alpha = None,beta = None,gamma = None,
                  degrees = False):
         """
-        Lattice.
+        Representation of crystal in terms of crystal family or Bravais lattice.
 
         Parameters
         ----------
-        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}.
-            Name of the Bravais lattice in Pearson notation.
-        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
             Name of the crystal family.
+            Will be infered if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
         a : float, optional
             Length of lattice parameter 'a'.
         b : float, optional
@@ -61,6 +62,8 @@ class Crystal():
         """
         if family not in [None] + list(self._immutable.keys()):
             raise KeyError(f'invalid crystal family "{family}"')
+        if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
+            raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
 
         self.family = lattice_symmetries[lattice] if family is None else family
         self.lattice = lattice

@@ -32,11 +32,11 @@ lattice_symmetries = {
 
 _parameter_doc = \
        """
-        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}
-            Crystal family. Mutually exclusive with 'lattice' parameter.
-        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}.
-            Bravais lattice in Pearson notation.
-            Mutually exclusive with 'family' parameter.
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be infered if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
         a : float, optional
             Length of lattice parameter 'a'.
         b : float, optional
