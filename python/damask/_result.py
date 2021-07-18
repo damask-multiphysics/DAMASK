@@ -78,7 +78,7 @@ class Result:
     >>> r = damask.Result('my_file.hdf5')
     >>> r.add_Cauchy()
     >>> r.add_equivalent_Mises('sigma')
-    >>> r.save_VTK()
+    >>> r.export_VTK()
     >>> r_last = r.view('increments',-1)
     >>> sigma_vM_last = r_last.get('sigma_vM')
 
@@ -527,7 +527,7 @@ class Result:
     def geometry0(self):
         """Initial/undeformed geometry."""
         if self.structured:
-            return VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
+            return VTK.from_image_data(self.cells,self.size,self.origin)
         else:
             with h5py.File(self.fname,'r') as f:
                 return VTK.from_unstructured_grid(f['/geometry/x_n'][()],
@@ -704,6 +704,14 @@ class Result:
         T : str
             Name of tensor dataset.
 
+        Examples
+        --------
+        Add the deviatoric part of Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_deviator('sigma')
+
         """
         self._add_generic_pointwise(self._add_deviator,{'T':T})
 
@@ -736,6 +744,14 @@ class Result:
             Name of symmetric tensor dataset.
         eigenvalue : {'max', 'mid', 'min'}
             Eigenvalue. Defaults to 'max'.
+
+        Examples
+        --------
+        Add the minimum eigenvalue of Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_eigenvalue('sigma','min')
 
         """
         self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
@@ -1377,13 +1393,13 @@ class Result:
         pool.join()
 
 
-    def save_XDMF(self,output='*'):
+    def export_XDMF(self,output='*'):
         """
         Write XDMF file to directly visualize data in DADF5 file.
 
         The XDMF format is only supported for structured grids
         with single phase and single constituent.
-        For other cases use `save_VTK`.
+        For other cases use `export_VTK`.
 
         Parameters
         ----------
@@ -1437,7 +1453,7 @@ class Result:
 
                 topology = ET.SubElement(grid, 'Topology')
                 topology.attrib = {'TopologyType': '3DCoRectMesh',
-                                   'Dimensions':   '{} {} {}'.format(*(self.cells+1))}
+                                   'Dimensions':   '{} {} {}'.format(*(self.cells[::-1]+1))}
 
                 geometry = ET.SubElement(grid, 'Geometry')
                 geometry.attrib = {'GeometryType':'Origin_DxDyDz'}
@@ -1446,13 +1462,13 @@ class Result:
                 origin.attrib = {'Format':     'XML',
                                  'NumberType': 'Float',
                                  'Dimensions': '3'}
-                origin.text = "{} {} {}".format(*self.origin)
+                origin.text = "{} {} {}".format(*self.origin[::-1])
 
                 delta = ET.SubElement(geometry, 'DataItem')
                 delta.attrib = {'Format':     'XML',
                                 'NumberType': 'Float',
                                 'Dimensions': '3'}
-                delta.text="{} {} {}".format(*(self.size/self.cells))
+                delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
 
                 attributes.append(ET.SubElement(grid, 'Attribute'))
                 attributes[-1].attrib = {'Name':          'u / m',
@@ -1461,7 +1477,7 @@ class Result:
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                 data_items[-1].attrib = {'Format':     'HDF',
                                          'Precision':  '8',
-                                         'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
+                                         'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
                 data_items[-1].text = f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
                 for ty in ['phase','homogenization']:
@@ -1483,7 +1499,7 @@ class Result:
                                 data_items[-1].attrib = {'Format':     'HDF',
                                                          'NumberType': number_type_map(dtype),
                                                          'Precision':  f'{dtype.itemsize}',
-                                                         'Dimensions': '{} {} {} {}'.format(*self.cells,1 if shape == () else
+                                                         'Dimensions': '{} {} {} {}'.format(*self.cells[::-1],1 if shape == () else
                                                                                                         np.prod(shape))}
                                 data_items[-1].text = f'{os.path.split(self.fname)[1]}:{name}'
 
@@ -1511,15 +1527,14 @@ class Result:
         return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
 
 
-    def save_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
+    def export_VTK(self,output='*',mode='cell',constituents=None,fill_float=np.nan,fill_int=0,parallel=True):
         """
         Export to VTK cell/point data.
 
         One VTK file per visible increment is created.
-        For cell data, the VTK format is a rectilinear grid (.vtr) for
-        grid-based simulations and an unstructured grid (.vtu) for
-        mesh-baed simulations. For point data, the VTK format is poly
-        data (.vtp).
+        For point data, the VTK format is poly data (.vtp).
+        For cell data, either an image (.vti) or unstructured (.vtu) dataset
+        is written for grid-based or mesh-based simulations, respectively.
 
         Parameters
         ----------
@@ -1539,7 +1554,7 @@ class Result:
             Fill value for non-existent entries of integer type.
             Defaults to 0.
         parallel : bool
-            Write out VTK files in parallel in a separate background process.
+            Write VTK files in parallel in a separate background process.
             Defaults to True.
 
         """
@@ -1550,7 +1565,7 @@ class Result:
         else:
             raise ValueError(f'invalid mode {mode}')
 
-        v.set_comments(util.execution_stamp('Result','save_VTK'))
+        v.set_comments(util.execution_stamp('Result','export_VTK'))
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
 

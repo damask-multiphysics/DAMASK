@@ -15,7 +15,6 @@ submodule(phase) mechanical
     PLASTICITY_NONLOCAL_ID, &
     KINEMATICS_UNDEFINED_ID, &
     KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
     KINEMATICS_THERMAL_EXPANSION_ID
   end enum
 
@@ -268,16 +267,11 @@ module subroutine mechanical_init(materials,phases)
   enddo
 
 
-! initialize elasticity
   call elastic_init(phases)
 
-! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
-  allocate(phase_localPlasticity(phases%length),   source=.true.)
-
   call plastic_init()
-
   do ph = 1,phases%length
     plasticState(ph)%state0 = plasticState(ph)%state
   enddo
@@ -896,55 +890,46 @@ subroutine crystallite_results(group,ph)
 
   integer :: ou
   real(pReal), allocatable, dimension(:,:)   :: selected_rotations
-  character(len=:), allocatable              :: structureLabel
 
 
-    call results_closeGroup(results_addGroup(group//'/mechanical'))
+  call results_closeGroup(results_addGroup(group//'/mechanical'))
 
-    do ou = 1, size(output_constituent(ph)%label)
+  do ou = 1, size(output_constituent(ph)%label)
 
-      select case (output_constituent(ph)%label(ou))
-        case('F')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_F(ph)%data,'F',&
-                                   'deformation gradient','1')
-        case('F_e')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fe(ph)%data,'F_e',&
-                                   'elastic deformation gradient','1')
-        case('F_p')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fp(ph)%data,'F_p', &
-                                   'plastic deformation gradient','1')
-        case('F_i')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Fi(ph)%data,'F_i', &
-                                   'inelastic deformation gradient','1')
-        case('L_p')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Lp(ph)%data,'L_p', &
-                                   'plastic velocity gradient','1/s')
-        case('L_i')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_Li(ph)%data,'L_i', &
-                                   'inelastic velocity gradient','1/s')
-        case('P')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_P(ph)%data,'P', &
-                                   'first Piola-Kirchhoff stress','Pa')
-        case('S')
-          call results_writeDataset(group//'/mechanical/',phase_mechanical_S(ph)%data,'S', &
-                                   'second Piola-Kirchhoff stress','Pa')
-        case('O')
-          select case(lattice_structure(ph))
-            case(lattice_FCC_ID)
-              structureLabel = 'cF'
-            case(lattice_BCC_ID)
-              structureLabel = 'cI'
-            case(lattice_HEX_ID)
-              structureLabel = 'hP'
-            case(lattice_BCT_ID)
-              structureLabel = 'tI'
-          end select
-          selected_rotations = select_rotations(phase_orientation(ph)%data)
-          call results_writeDataset(group//'/mechanical',selected_rotations,output_constituent(ph)%label(ou),&
-                                   'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
-          call results_addAttribute('lattice',structureLabel,group//'/mechanical/'//output_constituent(ph)%label(ou))
-      end select
-    enddo
+    select case (output_constituent(ph)%label(ou))
+      case('F')
+        call results_writeDataset(phase_mechanical_F(ph)%data,group//'/mechanical/','F',&
+                                 'deformation gradient','1')
+      case('F_e')
+        call results_writeDataset(phase_mechanical_Fe(ph)%data,group//'/mechanical/','F_e',&
+                                 'elastic deformation gradient','1')
+      case('F_p')
+        call results_writeDataset(phase_mechanical_Fp(ph)%data,group//'/mechanical/','F_p', &
+                                 'plastic deformation gradient','1')
+      case('F_i')
+        call results_writeDataset(phase_mechanical_Fi(ph)%data,group//'/mechanical/','F_i', &
+                                 'inelastic deformation gradient','1')
+      case('L_p')
+        call results_writeDataset(phase_mechanical_Lp(ph)%data,group//'/mechanical/','L_p', &
+                                 'plastic velocity gradient','1/s')
+      case('L_i')
+        call results_writeDataset(phase_mechanical_Li(ph)%data,group//'/mechanical/','L_i', &
+                                 'inelastic velocity gradient','1/s')
+      case('P')
+        call results_writeDataset(phase_mechanical_P(ph)%data,group//'/mechanical/','P', &
+                                 'first Piola-Kirchhoff stress','Pa')
+      case('S')
+        call results_writeDataset(phase_mechanical_S(ph)%data,group//'/mechanical/','S', &
+                                 'second Piola-Kirchhoff stress','Pa')
+      case('O')
+        selected_rotations = select_rotations(phase_orientation(ph)%data)
+        call results_writeDataset(selected_rotations,group//'/mechanical',output_constituent(ph)%label(ou),&
+                                 'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
+        call results_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/'//output_constituent(ph)%label(ou))
+        if (any(phase_lattice(ph) == ['hP', 'tI'])) &
+          call results_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/'//output_constituent(ph)%label(ou))
+    end select
+  enddo
 
 
   contains
@@ -1252,13 +1237,13 @@ module subroutine mechanical_restartWrite(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  call HDF5_write(groupHandle,plasticState(ph)%state,'omega')
-  call HDF5_write(groupHandle,phase_mechanical_Fi(ph)%data,'F_i')
-  call HDF5_write(groupHandle,phase_mechanical_Li(ph)%data,'L_i')
-  call HDF5_write(groupHandle,phase_mechanical_Lp(ph)%data,'L_p')
-  call HDF5_write(groupHandle,phase_mechanical_Fp(ph)%data,'F_p')
-  call HDF5_write(groupHandle,phase_mechanical_S(ph)%data,'S')
-  call HDF5_write(groupHandle,phase_mechanical_F(ph)%data,'F')
+  call HDF5_write(plasticState(ph)%state,groupHandle,'omega')
+  call HDF5_write(phase_mechanical_Fi(ph)%data,groupHandle,'F_i')
+  call HDF5_write(phase_mechanical_Li(ph)%data,groupHandle,'L_i')
+  call HDF5_write(phase_mechanical_Lp(ph)%data,groupHandle,'L_p')
+  call HDF5_write(phase_mechanical_Fp(ph)%data,groupHandle,'F_p')
+  call HDF5_write(phase_mechanical_S(ph)%data,groupHandle,'S')
+  call HDF5_write(phase_mechanical_F(ph)%data,groupHandle,'F')
 
 end subroutine mechanical_restartWrite
 
@@ -1269,13 +1254,13 @@ module subroutine mechanical_restartRead(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  call HDF5_read(groupHandle,plasticState(ph)%state0,'omega')
-  call HDF5_read(groupHandle,phase_mechanical_Fi0(ph)%data,'F_i')
-  call HDF5_read(groupHandle,phase_mechanical_Li0(ph)%data,'L_i')
-  call HDF5_read(groupHandle,phase_mechanical_Lp0(ph)%data,'L_p')
-  call HDF5_read(groupHandle,phase_mechanical_Fp0(ph)%data,'F_p')
-  call HDF5_read(groupHandle,phase_mechanical_S0(ph)%data,'S')
-  call HDF5_read(groupHandle,phase_mechanical_F0(ph)%data,'F')
+  call HDF5_read(plasticState(ph)%state0,groupHandle,'omega')
+  call HDF5_read(phase_mechanical_Fi0(ph)%data,groupHandle,'F_i')
+  call HDF5_read(phase_mechanical_Li0(ph)%data,groupHandle,'L_i')
+  call HDF5_read(phase_mechanical_Lp0(ph)%data,groupHandle,'L_p')
+  call HDF5_read(phase_mechanical_Fp0(ph)%data,groupHandle,'F_p')
+  call HDF5_read(phase_mechanical_S0(ph)%data,groupHandle,'S')
+  call HDF5_read(phase_mechanical_F0(ph)%data,groupHandle,'F')
 
 end subroutine mechanical_restartRead
 

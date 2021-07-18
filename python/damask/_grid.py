@@ -1,14 +1,13 @@
+import os
 import copy
+import warnings
 import multiprocessing as mp
 from functools import partial
-import os
-import warnings
 
 import numpy as np
 import pandas as pd
 import h5py
 from scipy import ndimage, spatial
-from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
 from . import VTK
 from . import util
@@ -21,7 +20,7 @@ class Grid:
     Geometry definition for grid solvers.
 
     Create and manipulate geometry definitions for storage as VTK
-    rectiliear grid files ('.vtr' extension). A grid contains the
+    image data files ('.vti' extension). A grid contains the
     material ID (referring to the entry in 'material.yaml') and
     the physical size.
     """
@@ -32,14 +31,15 @@ class Grid:
 
         Parameters
         ----------
-        material : numpy.ndarray
-            Material index array (3D).
-        size : list or numpy.ndarray
-            Physical size of the grid in meter.
-        origin : list or numpy.ndarray, optional
-            Physical origin of the grid in meter.
+        material : numpy.ndarray of shape (:,:,:)
+            Material indices. The shape of the material array defines
+            the number of cells.
+        size : list or numpy.ndarray of shape (3)
+            Physical size of grid in meter.
+        origin : list or numpy.ndarray of shape (3), optional
+            Coordinates of grid origin in meter.
         comments : list of str, optional
-            Comment lines.
+            Comments, e.g. history of operations.
 
         """
         self.material = material
@@ -153,12 +153,12 @@ class Grid:
     @staticmethod
     def load(fname):
         """
-        Load from VTK rectilinear grid file.
+        Load from VTK image data file.
 
         Parameters
         ----------
         fname : str or or pathlib.Path
-            Grid file to read. Valid extension is .vtr, which will be appended
+            Grid file to read. Valid extension is .vti, which will be appended
             if not given.
 
         Returns
@@ -167,14 +167,10 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        v = VTK.load(fname if str(fname).endswith(('.vti','.vtr')) else str(fname)+'.vti')          # compatibility hack
         comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-
-        for i,c in enumerate([v.vtk_data.GetXCoordinates(),v.vtk_data.GetYCoordinates(),v.vtk_data.GetZCoordinates()]):
-            if not np.allclose(vtk_to_np(c),np.linspace(bbox[0][i],bbox[1][i],cells[i]+1)):
-                raise ValueError('regular grid spacing violated')
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
@@ -255,6 +251,30 @@ class Grid:
 
 
     @staticmethod
+    def load_Neper(fname):
+        """
+        Load from Neper VTK file.
+
+        Parameters
+        ----------
+        fname : str, pathlib.Path, or file handle
+            Geometry file to read.
+
+        Returns
+        -------
+        loaded : damask.Grid
+            Grid-based geometry from file.
+
+        """
+        v = VTK.load(fname,'vtkImageData')
+        cells = np.array(v.vtk_data.GetDimensions())-1
+        bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+
+        return Grid(v.get('MaterialId').reshape(cells,order='F') - 1, bbox[1] - bbox[0], bbox[0],
+                    util.execution_stamp('Grid','load_Neper'))
+
+
+    @staticmethod
     def load_DREAM3D(fname,
                      feature_IDs=None,cell_data=None,
                      phases='Phases',Euler_angles='EulerAngles',
@@ -320,7 +340,7 @@ class Grid:
     @staticmethod
     def from_table(table,coordinates,labels):
         """
-        Generate grid from ASCII table.
+        Create grid from ASCII table.
 
         Parameters
         ----------
@@ -357,7 +377,7 @@ class Grid:
     @staticmethod
     def from_Laguerre_tessellation(cells,size,seeds,weights,material=None,periodic=True):
         """
-        Generate grid from Laguerre tessellation.
+        Create grid from Laguerre tessellation.
 
         Parameters
         ----------
@@ -386,23 +406,19 @@ class Grid:
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            coords  = grid_filters.coordinates0_point(cells*3,size*3,-size).reshape(-1,3)
         else:
             weights_p = weights
             seeds_p   = seeds
-            coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
+
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',4)))
-        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
+        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), coords)
         pool.close()
         pool.join()
-        material_ = np.array(result.get())
+        material_ = np.array(result.get()).reshape(cells)
 
-        if periodic:
-            material_ = material_.reshape(cells*3)
-            material_ = material_[cells[0]:cells[0]*2,cells[1]:cells[1]*2,cells[2]:cells[2]*2]%seeds.shape[0]
-        else:
-            material_ = material_.reshape(cells)
+        if periodic: material_ %= len(weights)
 
         return Grid(material = material_ if material is None else material[material_],
                     size     = size,
@@ -413,7 +429,7 @@ class Grid:
     @staticmethod
     def from_Voronoi_tessellation(cells,size,seeds,material=None,periodic=True):
         """
-        Generate grid from Voronoi tessellation.
+        Create grid from Voronoi tessellation.
 
         Parameters
         ----------
@@ -494,7 +510,7 @@ class Grid:
     @staticmethod
     def from_minimal_surface(cells,size,surface,threshold=0.0,periods=1,materials=(0,1)):
         """
-        Generate grid from definition of triply periodic minimal surface.
+        Create grid from definition of triply periodic minimal surface.
 
         Parameters
         ----------
@@ -509,7 +525,7 @@ class Grid:
         periods : integer, optional.
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
-            Material IDs. Defaults to (1,2).
+            Material IDs. Defaults to (0,1).
 
         Returns
         -------
@@ -543,6 +559,30 @@ class Grid:
         M.-T. Hsieh and L. Valdevit, Software Impacts 6:100026, 2020
         https://doi.org/10.1016/j.simpa.2020.100026
 
+        Examples
+        --------
+        Minimal surface of 'Gyroid' type.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> damask.Grid.from_minimal_surface(np.array([64]*3,int),np.ones(3),
+        ...                                  'Gyroid')
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 1.0 x 1.0 x 1.0
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
+        Minimal surface of 'Neovius' type. non-default material IDs.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> damask.Grid.from_minimal_surface(np.array([80]*3,int),np.ones(3),
+        ...                                  'Neovius',materials=(1,5))
+        cells  a b c: 80 x 80 x 80
+        size   x y z: 1.0 x 1.0 x 1.0
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2 (min: 1, max: 5)
+
         """
         x,y,z = np.meshgrid(periods*2.0*np.pi*(np.arange(cells[0])+0.5)/cells[0],
                             periods*2.0*np.pi*(np.arange(cells[1])+0.5)/cells[1],
@@ -556,21 +596,21 @@ class Grid:
 
     def save(self,fname,compress=True):
         """
-        Save as VTK rectilinear grid file.
+        Save as VTK image data file.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename to write. Valid extension is .vtr, it will be appended if not given.
+            Filename to write. Valid extension is .vti, it will be appended if not given.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
 
         """
-        v = VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
+        v = VTK.from_image_data(self.cells,self.size,self.origin)
         v.add(self.material.flatten(order='F'),'material')
         v.add_comments(self.comments)
 
-        v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
+        v.save(fname if str(fname).endswith('.vti') else str(fname)+'.vti',parallel=False,compress=compress)
 
 
     def save_ASCII(self,fname):
@@ -641,6 +681,30 @@ class Grid:
         updated : damask.Grid
             Updated grid-based geometry.
 
+        Examples
+        --------
+        Add a sphere at the center.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
+        Add a cube at the origin.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
+        >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
         """
         # radius and center
         r = np.array(dimension)/2.0*self.size/self.cells if np.array(dimension).dtype in np.sctypes['int'] else \
@@ -685,6 +749,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Mirror along x- and y-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int), np.ones(3)*1e-4)
+        >>> g.mirror('xy',True)
+        cells  a b c: 64 x 64 x 32
+        size   x y z: 0.0002 x 0.0002 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         valid = ['x','y','z']
@@ -752,6 +829,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Double resolution.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.scale(g.cells*2)
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 0.0001 x 0.0001 x 0.0001
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         return Grid(material = ndimage.interpolation.zoom(
@@ -882,6 +972,19 @@ class Grid:
         -------
         updated : damask.Grid
             Updated grid-based geometry.
+
+        Examples
+        --------
+        Remove 1/2 of the microstructure in z-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.canvas(np.array([32,32,16],int))
+        cells  a b c: 33 x 32 x 16
+        size   x y z: 0.0001 x 0.0001 x 5e-05
+        origin x y z: 0.0   0.0   0.0
+        # materials: 1
 
         """
         if offset is None: offset = 0

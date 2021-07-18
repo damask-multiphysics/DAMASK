@@ -11,7 +11,7 @@
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 14
+#define PETSC_MINOR_MAX 15
 
 module DAMASK_interface
   use, intrinsic :: ISO_fortran_env
@@ -86,6 +86,11 @@ subroutine DAMASK_interface_init
   print*, '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
   print*, '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
   print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
+#if   defined(GRID)
+  print*, ' Grid solver'
+#elif defined(MESH)
+  print*, ' Mesh solver'
+#endif
 #ifdef DEBUG
   print'(/,a)', ' debug version - debug version - debug version - debug version - debug version'
 #endif

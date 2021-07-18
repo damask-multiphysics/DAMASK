@@ -715,16 +715,16 @@ module subroutine RGC_results(ho,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case('M')
-        call results_writeDataset(group,dst%mismatch,trim(prm%output(o)), &
+        call results_writeDataset(dst%mismatch,group,trim(prm%output(o)), &
                                   'average mismatch tensor','1')
       case('Delta_V')
-        call results_writeDataset(group,dst%volumeDiscrepancy,trim(prm%output(o)), &
+        call results_writeDataset(dst%volumeDiscrepancy,group,trim(prm%output(o)), &
                                   'volume discrepancy','m³')
-      case('max_a_dot')
-        call results_writeDataset(group,dst%relaxationrate_max,trim(prm%output(o)), &
+      case('max_dot_a')
+        call results_writeDataset(dst%relaxationrate_max,group,trim(prm%output(o)), &
                                   'maximum relaxation rate','m/s')
-      case('avg_a_dot')
-        call results_writeDataset(group,dst%relaxationrate_avg,trim(prm%output(o)), &
+      case('avg_dot_a')
+        call results_writeDataset(dst%relaxationrate_avg,group,trim(prm%output(o)), &
                                   'average relaxation rate','m/s')
     end select
   enddo outputsLoop

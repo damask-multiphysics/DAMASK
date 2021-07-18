@@ -4,7 +4,7 @@ submodule(phase:mechanical) elastic
     real(pReal), dimension(6,6) :: &
       C66                                                                                           !< Elastic constants in Voig notation
   end type tParameters
- 
+
   type(tParameters), allocatable, dimension(:) :: param
 
 contains
@@ -21,7 +21,6 @@ module subroutine elastic_init(phases)
     phase, &
     mech, &
     elastic
-  character(len=:), allocatable :: struct
 
 
   print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
@@ -30,27 +29,23 @@ module subroutine elastic_init(phases)
   print'(a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
   allocate(param(phases%length))
-  
+
   do ph = 1, phases%length
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
     elastic => mech%get('elastic')
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
-    
-    associate(prm => param(ph))
-      struct = phase%get_asString('lattice')
-      if (struct /= 'cI' .and. struct /= 'cF' .and. struct /= 'hP' .and. struct /= 'tI') &
-        call IO_error(137,ext_msg=trim(struct))
 
+    associate(prm => param(ph))
       prm%C66(1,1) = elastic%get_asFloat('C_11')
       prm%C66(1,2) = elastic%get_asFloat('C_12')
       prm%C66(4,4) = elastic%get_asFloat('C_44')
 
-      if (struct == 'hP' .or. struct == 'tI') then
+      if (any(phase_lattice(ph) == ['hP','tI'])) then
         prm%C66(1,3) = elastic%get_asFloat('C_13')
         prm%C66(3,3) = elastic%get_asFloat('C_33')
       endif
-      if (struct == 'tI') prm%C66(6,6) = elastic%get_asFloat('C_66')
+      if (phase_lattice(ph) == 'tI') prm%C66(6,6) = elastic%get_asFloat('C_66')
     end associate
   enddo
 

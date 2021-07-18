@@ -7,13 +7,17 @@
 module grid_mechanical_spectral_basic
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
-  use PETScdmda
-  use PETScsnes
+  use PETScDMDA
+  use PETScSNES
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 
   use prec
   use parallelization
   use DAMASK_interface
   use IO
+  use HDF5
   use HDF5_utilities
   use math
   use rotations
@@ -98,7 +102,11 @@ subroutine grid_mechanical_spectral_basic_init
     F                                                                                               ! pointer to solution data
   PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
-  integer        :: fileUnit
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  type(MPI_File) :: fileUnit
+#else
+  integer :: fileUnit
+#endif
   class (tNode), pointer :: &
     num_grid, &
     debug_grid
@@ -153,7 +161,7 @@ subroutine grid_mechanical_spectral_basic_init
   call SNESSetOptionsPrefix(snes,'mechanical_',ierr);CHKERRQ(ierr)
   localK            = 0
   localK(worldrank) = grid3
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
@@ -183,20 +191,20 @@ subroutine grid_mechanical_spectral_basic_init
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(groupHandle,P_aim,        'P_aim',.false.)
-    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
+    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F_aim,        'F_aim',.false.)
-    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
+    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
-    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot',.false.)
-    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
+    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F,            'F')
-    call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
+    call HDF5_read(F,groupHandle,'F')
+    call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
 
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -212,17 +220,17 @@ subroutine grid_mechanical_spectral_basic_init
 
   restartRead2: if (interface_restartInc > 0) then
     print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
-    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg',.false.)
-    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
+    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
-    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
-    call MPI_File_open(PETSC_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
+    call MPI_File_open(MPI_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
                        MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,ierr)
     call MPI_File_read(fileUnit,C_minMaxAvg,81,MPI_DOUBLE,MPI_STATUS_IGNORE,ierr)
     call MPI_File_close(fileUnit,ierr)
@@ -382,16 +390,16 @@ subroutine grid_mechanical_spectral_basic_restartWrite
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
-  call HDF5_write(groupHandle,P_aim,        'P_aim',.false.)
-  call HDF5_write(groupHandle,F_aim,        'F_aim',.false.)
-  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
-  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot',.false.)
-  call HDF5_write(groupHandle,F,            'F')
-  call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
+  call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
+  call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
+  call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+  call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
+  call HDF5_write(F,groupHandle,'F')
+  call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
 
-  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg',.false.)
-  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
-  call HDF5_write(groupHandle,C_minMaxAvg,    'C_minMaxAvg',.false.)
+  call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
+  call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+  call HDF5_write(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
 
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
@@ -487,7 +495,7 @@ subroutine formResidual(in, F, &
   call utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
                                       F,params%timeinc,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling

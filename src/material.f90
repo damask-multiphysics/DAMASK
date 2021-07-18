@@ -148,7 +148,7 @@ subroutine parse()
       enddo
 
     enddo
-    if (dNeq(frac,1.0_pReal)) call IO_error(153,ext_msg='constituent')
+    if (dNeq(frac,1.0_pReal,1.e-12_pReal)) call IO_error(153,ext_msg='constituent')
 
   enddo
 

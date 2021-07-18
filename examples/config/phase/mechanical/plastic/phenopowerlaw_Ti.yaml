@@ -1,0 +1,20 @@
+type: phenopowerlaw
+references:
+  - C. Zambaldi et al.,
+    Journal of Materials Research 27(1):356-367, 2021,
+    https://doi.org/10.1557/jmr.2011.334
+  - L. Wang et al.,
+    Acta Materialia 132:598-610, 2017,
+    https://doi.org/10.1016/j.actamat.2017.05.015
+output: [gamma_sl]
+N_sl: [3, 3, 0, 0, 12]
+n_sl: 20
+a_sl: 2.0
+dot_gamma_0_sl: 0.001
+h_0_sl-sl: 200.e+6
+# C. Zambaldi et al.:
+xi_0_sl:   [349.e+6, 150.e+6, 0.0, 0.0, 1107.e+6]
+xi_inf_sl: [568.e+6, 150.e+7, 0.0, 0.0, 3420.e+6]
+# L. Wang et al. :
+# xi_0_sl:   [127.e+6, 96.e+6, 0.0, 0.0, 240.e+6]
+h_sl-sl: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

@@ -66,8 +66,8 @@ module function isobrittle_init() result(mySources)
 
         Nmembers = count(material_phaseID==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,1)
-        damageState(ph)%atol = src%get_asFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
-        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
+        damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
         end associate
 
@@ -129,7 +129,7 @@ module subroutine isobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
+          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³')
       end select
     enddo outputsLoop
   end associate

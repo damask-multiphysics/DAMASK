@@ -7,13 +7,17 @@
 module grid_mechanical_FEM
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
-  use PETScdmda
-  use PETScsnes
+  use PETScDMDA
+  use PETScSNES
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 
   use prec
   use parallelization
   use DAMASK_interface
   use IO
+  use HDF5
   use HDF5_utilities
   use math
   use rotations
@@ -162,7 +166,7 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(ierr)
   localK            = 0
   localK(worldrank) = grid3
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
@@ -235,22 +239,22 @@ subroutine grid_mechanical_FEM_init
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(groupHandle,P_aim,        'P_aim',.false.)
-    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
+    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F_aim,        'F_aim',.false.)
-    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
+    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
-    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F_aimDot,     'F_aimDot',.false.)
-    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
+    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,F,            'F')
-    call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
-    call HDF5_read(groupHandle,u_current,    'u')
-    call HDF5_read(groupHandle,u_lastInc,    'u_lastInc')
+    call HDF5_read(F,groupHandle,'F')
+    call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
+    call HDF5_read(u_current,groupHandle,'u')
+    call HDF5_read(u_lastInc,groupHandle,'u_lastInc')
 
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
@@ -269,11 +273,11 @@ subroutine grid_mechanical_FEM_init
 
   restartRead2: if (interface_restartInc > 0) then
     print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
-    call HDF5_read(groupHandle,C_volAvg,       'C_volAvg',.false.)
-    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
+    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
-    call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
-    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
+    call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
@@ -443,17 +447,17 @@ subroutine grid_mechanical_FEM_restartWrite
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
-  call HDF5_write(groupHandle,P_aim,        'P_aim',.false.)
-  call HDF5_write(groupHandle,F_aim,        'F_aim',.false.)
-  call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc',.false.)
-  call HDF5_write(groupHandle,F_aimDot,     'F_aimDot',.false.)
-  call HDF5_write(groupHandle,F,            'F')
-  call HDF5_write(groupHandle,F_lastInc,    'F_lastInc')
-  call HDF5_write(groupHandle,u_current,    'u')
-  call HDF5_write(groupHandle,u_lastInc,    'u_lastInc')
+  call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
+  call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
+  call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+  call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
+  call HDF5_write(F,groupHandle,'F')
+  call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
+  call HDF5_write(u_current,groupHandle,'u')
+  call HDF5_write(u_lastInc,groupHandle,'u_lastInc')
 
-  call HDF5_write(groupHandle,C_volAvg,       'C_volAvg',.false.)
-  call HDF5_write(groupHandle,C_volAvgLastInc,'C_volAvgLastInc',.false.)
+  call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
+  call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
 
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
@@ -567,7 +571,7 @@ subroutine formResidual(da_local,x_local, &
   call utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%timeinc,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling

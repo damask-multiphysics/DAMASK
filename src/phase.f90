@@ -14,10 +14,16 @@ module phase
   use lattice
   use discretization
   use parallelization
+  use HDF5
   use HDF5_utilities
 
   implicit none
   private
+
+
+  character(len=2), allocatable, dimension(:) :: phase_lattice
+  real(pReal),      allocatable, dimension(:) :: phase_cOverA
+  real(pReal),      allocatable, dimension(:) :: phase_rho
 
   type(tRotationContainer), dimension(:), allocatable :: &
     phase_orientation0, &
@@ -55,9 +61,6 @@ module phase
       ip, &
       grain
   end type tDebugOptions
-
-  logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
-    phase_localPlasticity                                                                           !< flags phases with local constitutive law
 
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
@@ -278,16 +281,6 @@ module phase
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine damage_anisobrittle_LiAndItsTangent
 
-    module subroutine damage_isoductile_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
-    end subroutine damage_isoductile_LiAndItsTangent
-
   end interface
 
 
@@ -348,7 +341,8 @@ subroutine phase_init
   class (tNode), pointer :: &
     debug_constitutive, &
     materials, &
-    phases
+    phases, &
+    phase
 
 
   print'(/,a)', ' <<<+-  phase init  -+>>>'; flush(IO_STDOUT)
@@ -365,9 +359,19 @@ subroutine phase_init
   materials => config_material%get('material')
   phases    => config_material%get('phase')
 
-
+  allocate(phase_lattice(phases%length))
+  allocate(phase_cOverA(phases%length),source=-1.0_pReal)
+  allocate(phase_rho(phases%length))
   allocate(phase_orientation0(phases%length))
+
   do ph = 1,phases%length
+    phase => phases%get(ph)
+    phase_lattice(ph) = phase%get_asString('lattice')
+    if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
+      call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
+    if (any(phase_lattice(ph) == ['hP','tI'])) &
+      phase_cOverA(ph) = phase%get_asFloat('c/a')
+    phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
     allocate(phase_orientation0(ph)%data(count(material_phaseID==ph)))
   enddo
 
@@ -397,7 +401,7 @@ end subroutine phase_init
 subroutine phase_allocateState(state, &
                                NEntries,sizeState,sizeDotState,sizeDeltaState)
 
-  class(tState), intent(out) :: &
+  class(tState), intent(inout) :: &
     state
   integer, intent(in) :: &
     NEntries, &

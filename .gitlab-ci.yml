@@ -3,6 +3,7 @@ stages:
   - prepare
   - python
   - compile
+  - setup
   - fortran
   - performance
   - deploy
@@ -63,9 +64,9 @@ variables:
   PETSc_Intel:                     "$PETSc3_14_2IMPI2020Intel19_1"
   PETSc_GNU:                       "$PETSc3_14_2OMPI4_0GNU10"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2020:                         "FEM/MSC/2020"
+  MSC2021:                         "FEM/MSC/2021.2"
   # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2020"
+  MSC:                             "$MSC2021"
   IntelMarc:                       "$IntelCompiler19_1"
   HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
 
@@ -82,11 +83,10 @@ checkout:
     - mkdir -p $DAMASKROOT
     - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
+    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
-    - ./installation/symlink_Processing.py
   except:
     - master
     - release
@@ -161,8 +161,10 @@ compile_Marc:
     - master
     - release
 
+
+###################################################################################################
 setup_grid:
-  stage: compile
+  stage: setup
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
@@ -174,7 +176,7 @@ setup_grid:
     - release
 
 setup_mesh:
-  stage: compile
+  stage: setup
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
@@ -196,22 +198,13 @@ core:
     - master
     - release
 
-Phenopowerlaw_singleSlip:
-  stage: fortran
-  script: Phenopowerlaw_singleSlip/test.py
-  except:
-    - master
-    - release
-
-J2_plasticBehavior:
-  stage: fortran
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - MSC_VERSION=2020 J2_plasticBehavior/test.py
-  except:
-    - master
-    - release
-
+# Needs closer look
+# Phenopowerlaw_singleSlip:
+#   stage: fortran
+#   script: Phenopowerlaw_singleSlip/test.py
+#   except:
+#     - master
+#     - release
 
 ###################################################################################################
 SpectralRuntime:
@@ -265,8 +258,10 @@ merge_into_master:
   script:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
-    - echo $TESTEDREV > VERSION
-    - git commit VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - echo $TESTEDREV > python/damask/VERSION
+    - >
+        git diff-index --quiet HEAD ||
+        git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
     - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state

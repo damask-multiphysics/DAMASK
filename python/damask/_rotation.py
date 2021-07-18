@@ -502,6 +502,15 @@ class Rotation:
             Bunge-Euler angles: (φ_1, ϕ, φ_2), φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]
             unless degrees == True: φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]
 
+        Examples
+        --------
+        Cube orientation as Bunge-Euler angles.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> damask.Rotation(np.array([1,0,0,0])).as_Euler_angles()
+        array([0., 0., 0.])
+
         """
         eu = Rotation._qu2eu(self.quaternion)
         if degrees: eu = np.degrees(eu)
@@ -527,6 +536,15 @@ class Rotation:
             Axis angle pair: (n_1, n_2, n_3, ω), ǀnǀ = 1 and ω ∈ [0,π]
             unless degrees = True: ω ∈ [0,180].
 
+        Examples
+        --------
+        Cube orientation as axis angle pair.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> damask.Rotation(np.array([1,0,0,0])).as_axis_angle()
+        array([0., 0., 1., 0.])
+
         """
         ax = Rotation._qu2ax(self.quaternion)
         if degrees: ax[...,3] = np.degrees(ax[...,3])
@@ -540,6 +558,17 @@ class Rotation:
         -------
         R : numpy.ndarray of shape (...,3,3)
             Rotation matrix R, det(R) = 1, R.T∙R=I.
+
+        Examples
+        --------
+        Cube orientation as rotation matrix.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> damask.Rotation(np.array([1,0,0,0])).as_matrix()
+        array([[1., 0., 0.],
+               [0., 1., 0.],
+               [0., 0., 1.]])
 
         """
         return Rotation._qu2om(self.quaternion)
@@ -563,6 +592,15 @@ class Rotation:
             numpy.ndarray of shape (...,3) containing
             tan(ω/2) [n_1, n_2, n_3], ω ∈ [0,π].
 
+        Examples
+        --------
+        Cube orientation as 'real' Rodrigues-Frank vector.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> damask.Rotation(np.array([1,0,0,0])).as_Rodrigues_vector(compact=True)
+        array([ 0.,  0., 0.])
+
         """
         ro = Rotation._qu2ro(self.quaternion)
         if compact:
@@ -580,6 +618,15 @@ class Rotation:
         h : numpy.ndarray of shape (...,3)
             Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
 
+        Examples
+        --------
+        Cube orientation as homochoric vector.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> damask.Rotation(np.array([1,0,0,0])).as_homochoric()
+        array([0., 0., 0.])
+
         """
         return Rotation._qu2ho(self.quaternion)
 
@@ -591,6 +638,15 @@ class Rotation:
         -------
         x : numpy.ndarray of shape (...,3)
               Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
+
+        Examples
+        --------
+        Cube orientation as cubochoric vector.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> damask.Rotation(np.array([1,0,0,0])).as_cubochoric()
+        array([0., 0., 0.])
 
         """
         return Rotation._qu2cu(self.quaternion)

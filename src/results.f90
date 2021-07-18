@@ -5,12 +5,18 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module results
+  use prec
   use DAMASK_interface
   use parallelization
   use IO
   use HDF5_utilities
-#ifdef PETSc
-  use PETSC
+  use HDF5
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+  use PETScSys
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
 #endif
 
   implicit none
@@ -294,7 +300,7 @@ end subroutine results_removeLink
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real scalar dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeScalarDataset_real(group,dataset,label,description,SIunit)
+subroutine results_writeScalarDataset_real(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
@@ -304,7 +310,7 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -314,7 +320,7 @@ end subroutine results_writeScalarDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_real(group,dataset,label,description,SIunit)
+subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
@@ -324,7 +330,7 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -335,7 +341,7 @@ end subroutine results_writeVectorDataset_real
 !> @brief Store real tensor dataset with associated metadata.
 !> @details Data is transposed to compenstate transposed storage order.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_real(group,dataset,label,description,SIunit,transposed)
+subroutine results_writeTensorDataset_real(dataset,group,label,description,SIunit,transposed)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
@@ -361,9 +367,9 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
     enddo
-    call HDF5_write(groupHandle,dataset_transposed,label)
+    call HDF5_write(dataset_transposed,groupHandle,label)
   else
-    call HDF5_write(groupHandle,dataset,label)
+    call HDF5_write(dataset,groupHandle,label)
   endif
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
@@ -374,7 +380,7 @@ end subroutine results_writeTensorDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit)
+subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                 :: label,group,description
   character(len=*), intent(in), optional       :: SIunit
@@ -384,7 +390,7 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -394,7 +400,7 @@ end subroutine results_writeVectorDataset_int
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer tensor dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit)
+subroutine results_writeTensorDataset_int(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
@@ -404,7 +410,7 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
 
 
   groupHandle = results_openGroup(group)
-  call HDF5_write(groupHandle,dataset,label)
+  call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -451,7 +457,7 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-#ifndef PETSc
+#ifndef PETSC
   entryGlobal = entry -1                                                                            ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
@@ -459,7 +465,7 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
   entryOffset = 0
@@ -468,7 +474,7 @@ subroutine results_mapping_phase(ID,entry,label)
       entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
     enddo
   enddo
-  call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
@@ -604,7 +610,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-#ifndef PETSc
+#ifndef PETSC
   entryGlobal = entry -1                                                                            ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
@@ -612,14 +618,14 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
   entryOffset = 0
   do ce = 1, size(ID,1)
     entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
   enddo
-  call MPI_allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr) ! get offset at each process
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)

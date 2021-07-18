@@ -7,9 +7,6 @@
 subroutine quit(stop_id)
 #include <petsc/finclude/petscsys.h>
   use PetscSys
-#ifdef _OPENMP
-   use MPI
-#endif
   use HDF5
 
   implicit none

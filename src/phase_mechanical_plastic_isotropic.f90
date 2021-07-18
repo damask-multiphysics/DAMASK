@@ -15,6 +15,7 @@ submodule(phase:plastic) isotropic
       dot_gamma_0, &                                                                                !< reference strain rate
       n, &                                                                                          !< stress exponent
       h_0, &
+      h, &                                                                                          !< hardening pre-factor
       h_ln, &
       xi_inf, &                                                                                     !< maximum critical stress
       a, &
@@ -30,8 +31,7 @@ submodule(phase:plastic) isotropic
 
   type :: tIsotropicState
     real(pReal), pointer, dimension(:) :: &
-      xi, &
-      gamma
+      xi
   end type tIsotropicState
 
 !--------------------------------------------------------------------------------------------------
@@ -99,6 +99,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     prm%dot_gamma_0 = pl%get_asFloat('dot_gamma_0')
     prm%n           = pl%get_asFloat('n')
     prm%h_0         = pl%get_asFloat('h_0')
+    prm%h           = pl%get_asFloat('h',    defaultVal=3.0_pReal)                                  ! match for fcc random polycrystal
     prm%M           = pl%get_asFloat('M')
     prm%h_ln        = pl%get_asFloat('h_ln', defaultVal=0.0_pReal)
     prm%c_1         = pl%get_asFloat('c_1',  defaultVal=0.0_pReal)
@@ -120,7 +121,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     Nmembers = count(material_phaseID == ph)
-    sizeDotState = size(['xi   ','gamma'])
+    sizeDotState = size(['xi'])
     sizeState = sizeDotState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
@@ -132,13 +133,6 @@ module function plastic_isotropic_init() result(myPlasticity)
     dot%xi  => plasticState(ph)%dotState(1,:)
     plasticState(ph)%atol(1) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if (plasticState(ph)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
-
-    stt%gamma  => plasticState(ph)%state   (2,:)
-    dot%gamma  => plasticState(ph)%dotState(2,:)
-    plasticState(ph)%atol(2) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if (plasticState(ph)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
-    ! global alias
-    plasticState(ph)%slipRate => plasticState(ph)%dotState(2:2,:)
 
     end associate
 
@@ -185,14 +179,14 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   if (norm_Mp_dev > 0.0_pReal) then
     dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(en))) **prm%n
 
-    Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
+    Lp = dot_gamma * Mp_dev/norm_Mp_dev
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = (prm%n-1.0_pReal) * Mp_dev(k,l)*Mp_dev(m,n) / squarenorm_Mp_dev
     forall (k=1:3,l=1:3) &
       dLp_dMp(k,l,k,l) = dLp_dMp(k,l,k,l) + 1.0_pReal
     forall (k=1:3,m=1:3) &
       dLp_dMp(k,k,m,m) = dLp_dMp(k,k,m,m) - 1.0_pReal/3.0_pReal
-    dLp_dMp = dot_gamma / prm%M * dLp_dMp / norm_Mp_dev
+    dLp_dMp = dot_gamma * dLp_dMp / norm_Mp_dev
   else
     Lp = 0.0_pReal
     dLp_dMp = 0.0_pReal
@@ -230,7 +224,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
 
   if (prm%dilatation .and. abs(tr) > 0.0_pReal) then                                                ! no stress or J2 plasticity --> Li and its derivative are zero
     Li = math_I3 &
-       * prm%dot_gamma_0/prm%M * (3.0_pReal*prm%M*stt%xi(en))**(-prm%n) &
+       * prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(en))**(-prm%n) &
        * tr * abs(tr)**(prm%n-1.0_pReal)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) dLi_dMi(k,l,m,n) = prm%n / tr * Li(k,l) * math_I3(m,n)
   else
@@ -280,13 +274,10 @@ module subroutine isotropic_dotState(Mp,ph,en)
     endif
     dot%xi(en) = dot_gamma &
                * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
-               * abs( 1.0_pReal - stt%xi(en)/xi_inf_star )**prm%a &
-               * sign(1.0_pReal, 1.0_pReal - stt%xi(en)/xi_inf_star)
+               * sign(abs(1.0_pReal - stt%xi(en)/xi_inf_star)**prm%a *prm%h, 1.0_pReal-stt%xi(en)/xi_inf_star)
   else
     dot%xi(en) = 0.0_pReal
   endif
-
-  dot%gamma(en) = dot_gamma                                                                         ! ToDo: not really used
 
   end associate
 
@@ -307,7 +298,7 @@ module subroutine plastic_isotropic_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('xi')
-        call results_writeDataset(group,stt%xi,trim(prm%output(o)), &
+        call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
                                     'resistance against plastic flow','Pa')
     end select
   enddo outputsLoop

@@ -149,7 +149,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
         prm%nonSchmid_neg = prm%P_sl
       endif
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl_sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
                                                    phase%get_asString('lattice'))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
                                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
@@ -247,9 +247,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
     dot%gamma_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = 1.0e-2_pReal
-    ! global alias
-    plasticState(ph)%slipRate        => plasticState(ph)%dotState(startIndex:endIndex,:)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
     allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
@@ -408,19 +407,19 @@ module subroutine plastic_dislotungsten_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case('rho_mob')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_mob,group,trim(prm%output(o)), &
                                                      'mobile dislocation density','1/m²')
       case('rho_dip')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip,group,trim(prm%output(o)), &
                                                      'dislocation dipole density','1/m²')
       case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_sl,group,trim(prm%output(o)), &
                                                      'plastic shear','1')
       case('Lambda_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%threshold_stress,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%threshold_stress,group,trim(prm%output(o)), &
                                                      'threshold stress for slip','Pa')
     end select
   enddo outputsLoop

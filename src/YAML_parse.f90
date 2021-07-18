@@ -79,7 +79,7 @@ recursive function parse_flow(YAML_flow) result(node)
         class is (tDict)
           call node%set(key,myVal)
       end select
-    end do
+    enddo
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
     e = 1
     allocate(tList::node)
@@ -92,7 +92,7 @@ recursive function parse_flow(YAML_flow) result(node)
         class is (tList)
           call node%append(myVal)
       end select
-    end do
+    enddo
   else                                                                                              ! scalar value
     allocate(tScalar::node)
       select type (node)
@@ -199,11 +199,7 @@ logical function isKeyValue(line)
   isKeyValue = .false.
 
   if( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
-    if(index(IO_rmComment(line),': ') > 0) then
-      isKeyValue = .true.
-    else
-      call IO_error(704,ext_msg=line)
-    endif
+    if(index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
   endif
 
 end function isKeyValue
@@ -418,6 +414,7 @@ recursive subroutine keyValue_toFlow(flow,s_flow,line)
     offset_value
 
   col_pos = index(line,':')
+  if(line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
   if(isFlow(line(col_pos+1:))) then
     d_flow = len_trim(adjustl(line(:col_pos)))
     flow(s_flow:s_flow+d_flow+1) = trim(adjustl(line(:col_pos)))//' '
@@ -536,7 +533,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       s_flow = s_flow + 2
     endif
 
-  end do
+  enddo
 
   s_flow = s_flow - 1
   if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
@@ -623,7 +620,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
     flow(s_flow:s_flow) = ' '
     s_flow = s_flow + 1
     offset = 0
-  end do
+  enddo
 
   s_flow = s_flow - 1
   if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
