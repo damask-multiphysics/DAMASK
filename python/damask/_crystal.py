@@ -168,7 +168,7 @@ class Crystal():
 
 
     @property
-    def basis(self):
+    def standard_triangle(self):
         """
         Corners of the standard triangle.
 

@@ -668,21 +668,21 @@ class Orientation(Rotation,Crystal):
         if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
-        if self.basis is None:                                                                      # direct exit for no symmetry
+        if self.standard_triangle is None:                                                          # direct exit for no symmetry
             return  np.ones_like(vector[...,0],bool)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['proper'], vector.shape+(3,)),
+                                                      np.broadcast_to(self.standard_triangle['proper'], vector.shape+(3,)),
                                                       vector), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
+                                                      np.broadcast_to(self.standard_triangle['improper'], vector.shape+(3,)),
                                                       vector), 12)
             return   np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self.basis['improper'], vector.shape+(3,)),
+                                             np.broadcast_to(self.standard_triangle['improper'], vector.shape+(3,)),
                                              np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
 
             return np.all(components >= 0.0,axis=-1)
@@ -723,15 +723,15 @@ class Orientation(Rotation,Crystal):
         vector_ = self.to_SST(vector,proper) if in_SST else \
                   self @ np.broadcast_to(vector,self.shape+(3,))
 
-        if self.basis is None:                                                                      # direct exit for no symmetry
+        if self.standard_triangle is None:                                                          # direct exit for no symmetry
             return np.zeros_like(vector_)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['proper'], vector_.shape+(3,)),
+                                                      np.broadcast_to(self.standard_triangle['proper'], vector_.shape+(3,)),
                                                       vector_), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.basis['improper'], vector_.shape+(3,)),
+                                                      np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                                       vector_), 12)
             in_SST = np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
@@ -739,7 +739,7 @@ class Orientation(Rotation,Crystal):
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self .basis['improper'], vector_.shape+(3,)),
+                                             np.broadcast_to(self .standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             in_SST = np.all(components >= 0.0,axis=-1)
