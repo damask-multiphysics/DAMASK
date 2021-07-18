@@ -20,6 +20,10 @@ module FEM_quadrature
                            -1.0_pReal,  1.0_pReal, -1.0_pReal, &
                            -1.0_pReal, -1.0_pReal,  1.0_pReal], shape=[3,4])
 
+  type :: group_float                                                                               !< variable length datatype used for storage of state
+    real(pReal), dimension(:), pointer :: p
+  end type group_float
+
   integer,             dimension(2:3,maxOrder), public, protected :: &
     FEM_nQuadrature                                                                                 !< number of quadrature points for a given spatial dimension(2-3) and interpolation order(1-maxOrder)
   type(group_float),   dimension(2:3,maxOrder), public, protected :: &
@@ -38,6 +42,9 @@ contains
 subroutine FEM_quadrature_init
 
   print'(/,a)', ' <<<+-  FEM_quadrature init  -+>>>'; flush(6)
+
+  print*, 'L. Zhang et al., Journal of Computational Mathematics 27(1):89-96, 2009'
+  print*, 'https://www.jstor.org/stable/43693493'
 
 !--------------------------------------------------------------------------------------------------
 ! 2D linear
