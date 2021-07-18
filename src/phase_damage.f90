@@ -39,8 +39,8 @@ submodule(phase) damage
     end function isobrittle_init
 
 
-    module subroutine isobrittle_deltaState(C, Fe, ph, me)
-      integer, intent(in) :: ph,me
+    module subroutine isobrittle_deltaState(C, Fe, ph, en)
+      integer, intent(in) :: ph,en
       real(pReal),  intent(in), dimension(3,3) :: &
         Fe
       real(pReal),  intent(in), dimension(6,6) :: &
@@ -48,8 +48,8 @@ submodule(phase) damage
     end subroutine isobrittle_deltaState
 
 
-    module subroutine anisobrittle_dotState(S, ph, me)
-      integer, intent(in) :: ph,me
+    module subroutine anisobrittle_dotState(S, ph, en)
+      integer, intent(in) :: ph,en
       real(pReal),  intent(in), dimension(3,3) :: &
         S
     end subroutine anisobrittle_dotState
@@ -229,7 +229,7 @@ function integrateDamageState(Delta_t,co,ce) result(broken)
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
-    me, &
+    en, &
     size_so
   real(pReal) :: &
     zeta
@@ -240,7 +240,7 @@ function integrateDamageState(Delta_t,co,ce) result(broken)
     converged_
 
   ph = material_phaseID(co,ce)
-  me = material_phaseEntry(co,ce)
+  en = material_phaseEntry(co,ce)
 
   if (damageState(ph)%sizeState == 0) then
     broken = .false.
@@ -248,37 +248,37 @@ function integrateDamageState(Delta_t,co,ce) result(broken)
   endif
 
   converged_ = .true.
-  broken = phase_damage_collectDotState(ph,me)
+  broken = phase_damage_collectDotState(ph,en)
   if(broken) return
 
   size_so = damageState(ph)%sizeDotState
-  damageState(ph)%state(1:size_so,me) = damageState(ph)%state0  (1:size_so,me) &
-                                      + damageState(ph)%dotState(1:size_so,me) * Delta_t
+  damageState(ph)%state(1:size_so,en) = damageState(ph)%state0  (1:size_so,en) &
+                                      + damageState(ph)%dotState(1:size_so,en) * Delta_t
   source_dotState(1:size_so,2) = 0.0_pReal
 
   iteration: do NiterationState = 1, num%nState
 
     if(nIterationState > 1) source_dotState(1:size_so,2) = source_dotState(1:size_so,1)
-    source_dotState(1:size_so,1) = damageState(ph)%dotState(:,me)
+    source_dotState(1:size_so,1) = damageState(ph)%dotState(:,en)
 
-    broken = phase_damage_collectDotState(ph,me)
+    broken = phase_damage_collectDotState(ph,en)
     if(broken) exit iteration
 
 
-      zeta = damper(damageState(ph)%dotState(:,me),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
-      damageState(ph)%dotState(:,me) = damageState(ph)%dotState(:,me) * zeta &
+      zeta = damper(damageState(ph)%dotState(:,en),source_dotState(1:size_so,1),source_dotState(1:size_so,2))
+      damageState(ph)%dotState(:,en) = damageState(ph)%dotState(:,en) * zeta &
                                      + source_dotState(1:size_so,1)* (1.0_pReal - zeta)
-      r(1:size_so) = damageState(ph)%state   (1:size_so,me)  &
-                   - damageState(ph)%State0  (1:size_so,me)  &
-                   - damageState(ph)%dotState(1:size_so,me) * Delta_t
-      damageState(ph)%state(1:size_so,me) = damageState(ph)%state(1:size_so,me) - r(1:size_so)
+      r(1:size_so) = damageState(ph)%state   (1:size_so,en)  &
+                   - damageState(ph)%State0  (1:size_so,en)  &
+                   - damageState(ph)%dotState(1:size_so,en) * Delta_t
+      damageState(ph)%state(1:size_so,en) = damageState(ph)%state(1:size_so,en) - r(1:size_so)
       converged_ = converged_  .and. converged(r(1:size_so), &
-                                               damageState(ph)%state(1:size_so,me), &
+                                               damageState(ph)%state(1:size_so,en), &
                                                damageState(ph)%atol(1:size_so))
 
 
     if(converged_) then
-      broken = phase_damage_deltaState(mechanical_F_e(ph,me),ph,me)
+      broken = phase_damage_deltaState(mechanical_F_e(ph,en),ph,en)
       exit iteration
     endif
 
@@ -340,11 +340,11 @@ end subroutine damage_results
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function phase_damage_collectDotState(ph,me) result(broken)
+function phase_damage_collectDotState(ph,en) result(broken)
 
   integer, intent(in) :: &
     ph, &
-    me                                                                                         !< counter in source loop
+    en                                                                                         !< counter in source loop
   logical :: broken
 
 
@@ -355,11 +355,11 @@ function phase_damage_collectDotState(ph,me) result(broken)
     sourceType: select case (phase_damage(ph))
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_dotState(mechanical_S(ph,me), ph,me) ! correct stress?
+        call anisobrittle_dotState(mechanical_S(ph,en), ph,en) ! correct stress?
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%dotState(:,me)))
+    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%dotState(:,en)))
 
   endif
 
@@ -398,11 +398,11 @@ end function phase_K_phi
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function phase_damage_deltaState(Fe, ph, me) result(broken)
+function phase_damage_deltaState(Fe, ph, en) result(broken)
 
   integer, intent(in) :: &
     ph, &
-    me
+    en
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
   integer :: &
@@ -419,13 +419,13 @@ function phase_damage_deltaState(Fe, ph, me) result(broken)
    sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
-      call isobrittle_deltaState(phase_homogenizedC(ph,me), Fe, ph,me)
-      broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,me)))
+      call isobrittle_deltaState(phase_homogenizedC(ph,en), Fe, ph,en)
+      broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))
       if(.not. broken) then
         myOffset = damageState(ph)%offsetDeltaState
         mySize   = damageState(ph)%sizeDeltaState
-        damageState(ph)%state(myOffset + 1: myOffset + mySize,me) = &
-        damageState(ph)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%deltaState(1:mySize,me)
+        damageState(ph)%state(myOffset + 1: myOffset + mySize,en) = &
+        damageState(ph)%state(myOffset + 1: myOffset + mySize,en) + damageState(ph)%deltaState(1:mySize,en)
       endif
 
   end select sourceType
@@ -476,13 +476,13 @@ module subroutine phase_set_phi(phi,co,ce)
 end subroutine phase_set_phi
 
 
-module function damage_phi(ph,me) result(phi)
+module function damage_phi(ph,en) result(phi)
 
-  integer, intent(in) :: ph, me
+  integer, intent(in) :: ph, en
   real(pReal) :: phi
 
 
-  phi = current(ph)%phi(me)
+  phi = current(ph)%phi(en)
 
 end function damage_phi
 

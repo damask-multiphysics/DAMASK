@@ -168,8 +168,8 @@ module phase
       real(pReal) :: dot_T
     end function thermal_dot_T
 
-    module function damage_phi(ph,me) result(phi)
-      integer, intent(in) :: ph,me
+    module function damage_phi(ph,en) result(phi)
+      integer, intent(in) :: ph,en
       real(pReal) :: phi
     end function damage_phi
 
@@ -273,8 +273,8 @@ module phase
     end subroutine plastic_dependentState
 
 
-    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
+    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
+      integer, intent(in) :: ph, en
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
       real(pReal),   intent(out), dimension(3,3) :: &

@@ -110,10 +110,10 @@ end function anisobrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_dotState(S, ph,me)
+module subroutine anisobrittle_dotState(S, ph,en)
 
   integer, intent(in) :: &
-    ph,me
+    ph,en
   real(pReal),  intent(in), dimension(3,3) :: &
     S
 
@@ -124,15 +124,15 @@ module subroutine anisobrittle_dotState(S, ph,me)
 
 
   associate(prm => param(ph))
-    damageState(ph)%dotState(1,me) = 0.0_pReal
+    damageState(ph)%dotState(1,en) = 0.0_pReal
     do i = 1, prm%sum_N_cl
       traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
       traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
       traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-      traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
+      traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2.0_pReal
 
-      damageState(ph)%dotState(1,me) = damageState(ph)%dotState(1,me) &
+      damageState(ph)%dotState(1,en) = damageState(ph)%dotState(1,en) &
           + prm%dot_o / prm%s_crit(i) &
             * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
                (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
@@ -169,10 +169,10 @@ end subroutine anisobrittle_results
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
 
   integer, intent(in) :: &
-    ph,me
+    ph,en
   real(pReal),   intent(in),  dimension(3,3) :: &
     S
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -191,7 +191,7 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
   dLd_dTstar = 0.0_pReal
   associate(prm => param(ph))
   do i = 1,prm%sum_N_cl
-    traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2.0_pReal
 
     traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     if (abs(traction_d) > traction_crit + tol_math_check) then

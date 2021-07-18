@@ -97,9 +97,9 @@ end function isobrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine isobrittle_deltaState(C, Fe, ph,me)
+module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
-  integer, intent(in) :: ph,me
+  integer, intent(in) :: ph,en
   real(pReal),  intent(in), dimension(3,3) :: &
     Fe
   real(pReal),  intent(in), dimension(6,6) :: &
@@ -116,7 +116,7 @@ module subroutine isobrittle_deltaState(C, Fe, ph,me)
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
     r_W = 2.0_pReal*dot_product(epsilon,matmul(C,epsilon))/prm%W_crit
-    dlt%r_W(me) = merge(r_W - stt%r_W(me), 0.0_pReal, r_W > stt%r_W(me))
+    dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
 
   end associate
 
