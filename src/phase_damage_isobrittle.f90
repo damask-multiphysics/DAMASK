@@ -13,7 +13,15 @@ submodule(phase:damage) isobrittle
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
+  type :: tIsobrittleState
+    real(pReal), pointer, dimension(:) :: &                                                         !< vectors along Nmembers
+      r_W                                                                                           !< ratio between actual and critical strain energy density
+  end type tIsobrittleState
+
+  type(tParameters),      allocatable, dimension(:) :: param                                        !< containers of constitutive parameters (len Ninstances)
+  type(tIsobrittleState), allocatable, dimension(:) :: &
+    deltaState, &
+    state
 
 contains
 
@@ -44,13 +52,15 @@ module function isobrittle_init() result(mySources)
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
+  allocate(state(phases%length))
+  allocate(deltaState(phases%length))
 
   do ph = 1, phases%length
     if(mySources(ph)) then
       phase => phases%get(ph)
       sources => phase%get('damage')
 
-      associate(prm  => param(ph))
+      associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
         src => sources%get(1)
 
         prm%W_crit = src%get_asFloat('W_crit')
@@ -68,6 +78,9 @@ module function isobrittle_init() result(mySources)
         call phase_allocateState(damageState(ph),Nmembers,1,1,1)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+
+        stt%r_W => damageState(ph)%state(1,:)
+        dlt%r_W => damageState(ph)%deltaState(1,:)
 
       end associate
 
@@ -93,18 +106,18 @@ module subroutine isobrittle_deltaState(C, Fe, ph,me)
     C
 
   real(pReal), dimension(6) :: &
-    strain
+    epsilon
   real(pReal) :: &
-    strainenergy
+    r_W
 
 
-  strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
+  epsilon = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
-  associate(prm => param(ph))
-    strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
+  associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    damageState(ph)%deltaState(1,me) = merge(strainenergy - damageState(ph)%state(1,me), 0.0_pReal, &
-                                             strainenergy > damageState(ph)%state(1,me))
+    r_W = 2.0_pReal*dot_product(epsilon,matmul(C,epsilon))/prm%W_crit
+    dlt%r_W(me) = merge(r_W - stt%r_W(me), 0.0_pReal, r_W > stt%r_W(me))
+
   end associate
 
 end subroutine isobrittle_deltaState
@@ -121,13 +134,15 @@ module subroutine isobrittle_results(phase,group)
   integer :: o
 
 
-  associate(prm => param(phase), stt => damageState(phase)%state)
+  associate(prm => param(phase), stt => damageState(phase)%state) ! point to state and output r_W (is scalar, not 1D vector)
+
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
           call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³') ! Wrong, this is dimensionless
       end select
     enddo outputsLoop
+
   end associate
 
 end subroutine isobrittle_results
