@@ -108,9 +108,13 @@ module phase
       logical, intent(in) :: includeL
     end subroutine mechanical_restore
 
+    module subroutine damage_restore(ce)
+      integer, intent(in) :: ce
+    end subroutine damage_restore
 
-    module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
-      real(pReal), intent(in) :: dt
+
+    module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
+      real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: &
         co, &                                                                                       !< counter in constituent loop
         ce
@@ -164,8 +168,8 @@ module phase
       real(pReal) :: dot_T
     end function thermal_dot_T
 
-    module function damage_phi(ph,me) result(phi)
-      integer, intent(in) :: ph,me
+    module function damage_phi(ph,en) result(phi)
+      integer, intent(in) :: ph,en
       real(pReal) :: phi
     end function damage_phi
 
@@ -209,29 +213,27 @@ module phase
 
 ! == cleaned:end ===================================================================================
 
-    module function thermal_stress(Delta_t,ph,en) result(converged_)
+    module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
 
       real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: ph, en
       logical :: converged_
 
-    end function thermal_stress
+    end function phase_thermal_constitutive
 
-    module function integrateDamageState(dt,co,ce) result(broken)
-      real(pReal), intent(in) :: dt
-      integer, intent(in) :: &
-        ce, &
-        co
-      logical :: broken
-    end function integrateDamageState
-
-    module function crystallite_stress(dt,co,ip,el) result(converged_)
-      real(pReal), intent(in) :: dt
+    module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
+      real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: co, ip, el
       logical :: converged_
-    end function crystallite_stress
+    end function phase_damage_constitutive
 
-    !ToDo: Try to merge the all stiffness functions
+    module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
+      real(pReal), intent(in) :: Delta_t
+      integer, intent(in) :: co, ip, el
+      logical :: converged_
+    end function phase_mechanical_constitutive
+
+    !ToDo: Merge all the stiffness functions
     module function phase_homogenizedC(ph,en) result(C)
       integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C
@@ -271,8 +273,8 @@ module phase
     end subroutine plastic_dependentState
 
 
-    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
-      integer, intent(in) :: ph, me
+    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
+      integer, intent(in) :: ph, en
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
       real(pReal),   intent(out), dimension(3,3) :: &
@@ -315,14 +317,14 @@ module phase
     plastic_nonlocal_updateCompatibility, &
     converged, &
     crystallite_init, &
-    crystallite_stress, &
-    thermal_stress, &
+    phase_mechanical_constitutive, &
+    phase_thermal_constitutive, &
+    phase_damage_constitutive, &
     phase_mechanical_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
     phase_restartWrite, &
     phase_restartRead, &
-    integrateDamageState, &
     phase_thermal_setField, &
     phase_set_phi, &
     phase_P, &
@@ -435,17 +437,9 @@ subroutine phase_restore(ce,includeL)
   logical, intent(in) :: includeL
   integer, intent(in) :: ce
 
-  integer :: &
-    co
-
-
-  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
-    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
-      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
-  enddo
 
   call mechanical_restore(ce,includeL)
+  call damage_restore(ce)
 
 end subroutine phase_restore
 
@@ -544,10 +538,6 @@ subroutine crystallite_init()
 
 
   phases => config_material%get('phase')
-
-  do ph = 1, phases%length
-    if (damageState(ph)%sizeState > 0) allocate(damageState(ph)%subState0,source=damageState(ph)%state0)  ! ToDo: hack
-  enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
   print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
