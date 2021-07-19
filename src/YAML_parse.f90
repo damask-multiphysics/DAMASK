@@ -79,7 +79,7 @@ recursive function parse_flow(YAML_flow) result(node)
         class is (tDict)
           call node%set(key,myVal)
       end select
-    end do
+    enddo
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
     e = 1
     allocate(tList::node)
@@ -92,7 +92,7 @@ recursive function parse_flow(YAML_flow) result(node)
         class is (tList)
           call node%append(myVal)
       end select
-    end do
+    enddo
   else                                                                                              ! scalar value
     allocate(tScalar::node)
       select type (node)
@@ -533,7 +533,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       s_flow = s_flow + 2
     endif
 
-  end do
+  enddo
 
   s_flow = s_flow - 1
   if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
@@ -620,7 +620,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
     flow(s_flow:s_flow) = ' '
     s_flow = s_flow + 1
     offset = 0
-  end do
+  enddo
 
   s_flow = s_flow - 1
   if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1

@@ -239,7 +239,7 @@ subroutine readVTI(grid,geomSize,origin,material)
     if (gotCellData) exit
     startPos = endPos + 2_pI64
 
-  end do
+  enddo
 
   if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
   if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')

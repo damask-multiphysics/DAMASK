@@ -211,7 +211,7 @@ subroutine grid_mechanical_spectral_basic_init
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
   endif restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -429,8 +429,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     divTol, &
     BCTol
 
-  divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
-  BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol,num%eps_stress_atol)
+  divTol = max(maxval(abs(P_av))*num%eps_div_rtol, num%eps_div_atol)
+  BCTol = max(maxval(abs(P_av))*num%eps_stress_rtol, num%eps_stress_atol)
 
   if ((totalIter >= num%itmin .and. all([err_div/divTol, err_BC/BCTol] < 1.0_pReal)) &
        .or. terminallyIll) then
@@ -441,8 +441,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     reason = 0
   endif
 
-!--------------------------------------------------------------------------------------------------
-! report
   print'(1/,a)', ' ... reporting .............................................................'
   print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'

@@ -525,7 +525,7 @@ class Grid:
         periods : integer, optional.
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
-            Material IDs. Defaults to (1,2).
+            Material IDs. Defaults to (0,1).
 
         Returns
         -------
@@ -558,6 +558,30 @@ class Grid:
 
         M.-T. Hsieh and L. Valdevit, Software Impacts 6:100026, 2020
         https://doi.org/10.1016/j.simpa.2020.100026
+
+        Examples
+        --------
+        Minimal surface of 'Gyroid' type.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> damask.Grid.from_minimal_surface(np.array([64]*3,int),np.ones(3),
+        ...                                  'Gyroid')
+        cells  a b c: 64 x 64 x 64
+        size   x y z: 1.0 x 1.0 x 1.0
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2
+
+        Minimal surface of 'Neovius' type. non-default material IDs.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> damask.Grid.from_minimal_surface(np.array([80]*3,int),np.ones(3),
+        ...                                  'Neovius',materials=(1,5))
+        cells  a b c: 80 x 80 x 80
+        size   x y z: 1.0 x 1.0 x 1.0
+        origin x y z: 0.0   0.0   0.0
+        # materials: 2 (min: 1, max: 5)
 
         """
         x,y,z = np.meshgrid(periods*2.0*np.pi*(np.arange(cells[0])+0.5)/cells[0],

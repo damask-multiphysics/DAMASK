@@ -189,9 +189,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      if (debugCPFEM%extensive) &
-        print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
-      call materialpoint_stressAndItsTangent(dt,[ip,ip],[elCP,elCP])
+      if (debugCPFEM%extensive)  print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
+      call homogenization_mechanical_response(dt,[ip,ip],[elCP,elCP])
+      if (.not. terminallyIll) &
+        call homogenization_mechanical_response2(dt,[ip,ip],[elCP,elCP])
+
 
       terminalIllness: if (terminallyIll) then
 

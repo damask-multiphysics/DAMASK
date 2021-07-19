@@ -44,9 +44,9 @@ submodule(phase) mechanical
 
   interface
 
-    module subroutine eigendeformation_init(phases)
+    module subroutine eigen_init(phases)
       class(tNode), pointer :: phases
-    end subroutine eigendeformation_init
+    end subroutine eigen_init
 
     module subroutine elastic_init(phases)
       class(tNode), pointer :: phases
@@ -197,8 +197,7 @@ module subroutine mechanical_init(materials,phases)
     Nmembers
   class(tNode), pointer :: &
     num_crystallite, &
-    material, &
-    constituents, &
+
     phase, &
     mech
 
@@ -303,7 +302,7 @@ module subroutine mechanical_init(materials,phases)
   end select
 
 
-  call eigendeformation_init(phases)
+  call eigen_init(phases)
 
 
 end subroutine mechanical_init
@@ -977,9 +976,9 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function crystallite_stress(dt,co,ip,el) result(converged_)
+module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
 
-  real(pReal), intent(in) :: dt
+  real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
     ip, &
@@ -1009,17 +1008,13 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,en)
   subState0 = plasticState(ph)%State0(:,en)
-
-  if (damageState(ph)%sizeState > 0) &
-    damageState(ph)%subState0(:,en) = damageState(ph)%state0(:,en)
-
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
   subFrac = 0.0_pReal
-  subStep = 1.0_pReal/num%subStepSizeCryst
   todo = .true.
-  converged_ = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
+  subStep = 1.0_pReal/num%subStepSizeCryst
+  converged_ = .false.                                                                              ! pretend failed step of 1/subStepSizeCryst
 
   todo = .true.
   cutbackLooping: do while (todo)
@@ -1038,9 +1033,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subFp0 = phase_mechanical_Fp(ph)%data(1:3,1:3,en)
         subFi0 = phase_mechanical_Fi(ph)%data(1:3,1:3,en)
         subState0 = plasticState(ph)%state(:,en)
-        if (damageState(ph)%sizeState > 0) &
-          damageState(ph)%subState0(:,en) = damageState(ph)%state(:,en)
-
       endif
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
@@ -1048,16 +1040,13 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       subStep       = num%subStepSizeCryst * subStep
       phase_mechanical_Fp(ph)%data(1:3,1:3,en) = subFp0
       phase_mechanical_Fi(ph)%data(1:3,1:3,en) = subFi0
-      phase_mechanical_S(ph)%data(1:3,1:3,en) = phase_mechanical_S0(ph)%data(1:3,1:3,en)          ! why no subS0 ? is S0 of any use?
+      phase_mechanical_S(ph)%data(1:3,1:3,en) = phase_mechanical_S0(ph)%data(1:3,1:3,en)            ! why no subS0 ? is S0 of any use?
       if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
         phase_mechanical_Lp(ph)%data(1:3,1:3,en) = subLp0
         phase_mechanical_Li(ph)%data(1:3,1:3,en) = subLi0
       endif
       plasticState(ph)%state(:,en) = subState0
-      if (damageState(ph)%sizeState > 0) &
-        damageState(ph)%state(:,en) = damageState(ph)%subState0(:,en)
-
-      todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
+      todo = subStep > num%subStepMinCryst                                                          ! still on track or already done (beyond repair)
     endif
 
 !--------------------------------------------------------------------------------------------------
@@ -1065,13 +1054,12 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
     if (todo) then
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
-      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
-      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,(el-1)*discretization_nIPs + ip)
+      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * Delta_t,co,ip,el)
     endif
 
   enddo cutbackLooping
 
-end function crystallite_stress
+end function phase_mechanical_constitutive
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1104,12 +1092,13 @@ module subroutine mechanical_restore(ce,includeL)
 
 end subroutine mechanical_restore
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
+module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
 
-  real(pReal), intent(in) :: dt
+  real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &                                                                                            !< counter in constituent loop
     ce
@@ -1159,11 +1148,11 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
     lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
     do o=1,3; do p=1,3
       lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
-                            + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * dt
+                            + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * Delta_t
       lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
                             + invFi*invFi(p,o)
       rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
-                            - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * dt
+                            - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * Delta_t
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
@@ -1192,7 +1181,7 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
     temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                            + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
   enddo; enddo
-  lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * dt &
+  lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * Delta_t &
            + math_mul3333xx3333(dSdFi,dFidS)
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
@@ -1208,7 +1197,7 @@ module function phase_mechanical_dPdF(dt,co,ce) result(dPdF)
 ! calculate dFpinvdF
   temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
   do o=1,3; do p=1,3
-    dFpinvdF(1:3,1:3,p,o) = - matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi)) * dt
+    dFpinvdF(1:3,1:3,p,o) = - matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi)) * Delta_t
   enddo; enddo
 
 !--------------------------------------------------------------------------------------------------

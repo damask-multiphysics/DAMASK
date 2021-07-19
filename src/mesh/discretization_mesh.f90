@@ -161,7 +161,7 @@ subroutine discretization_mesh_init(restart)
   do j = 1, mesh_NcpElems
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),ierr)
     CHKERRQ(ierr)
-  end do
+  enddo
   materialAt = materialAt + 1
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')

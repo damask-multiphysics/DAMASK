@@ -1,0 +1,42 @@
+--- 
++++ 
+@@ -4,7 +4,8 @@
+ # Normal exit status is 0.
+ #
+ 
+-DIR=/nethome/f.roters/temp/msc/Marc2021.2/marc2021.2
++DIR=%INSTALLDIR%/marc2021.2
++
+ if test $MARCDIR1
+ then
+  DIR=$MARCDIR1
+@@ -59,10 +60,10 @@
+ if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
+   slv="-iam sfm"
+ fi
+-if [ "$slv" == "marc" ]; then
++if [ "$slv" = "marc" ]; then
+   slv=""
+ fi
+-if [ "$slv" == "datfit" ]; then
++if [ "$slv" = "datfit" ]; then
+   slv="-iam datfit"
+ fi
+ 
+@@ -87,6 +88,7 @@
+       srcfile="-u $srcfile -save y"
+       ;;
+     runsaved)
++      srcfile=${srcfile%.*}".marc"
+       srcfile="-prog $srcfile"
+       ;;
+   esac
+@@ -181,7 +183,7 @@
+ unset PYTHONHOME
+ unset PYTHONPATH
+ 
+-"${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd \
++"${DIR}/tools/run_damask_hmp" $slv -j $job -v n -b y $nprocds $nprocd \
+                         $srcfile $restart $postfile $viewfactorsfile $hostfile \
+                         $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
+                         $assem_recov_nthread $nthread $nsolver $mode $gpu > /dev/null 2>&1

@@ -216,7 +216,7 @@ module function phase_K_T(co,ce) result(K)
 end function phase_K_T
 
 
-module function thermal_stress(Delta_t,ph,en) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??
+module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
@@ -225,7 +225,7 @@ module function thermal_stress(Delta_t,ph,en) result(converged_)           ! ?? 
 
   converged_ = .not. integrateThermalState(Delta_t,ph,en)
 
-end function thermal_stress
+end function phase_thermal_constitutive
 
 
 !--------------------------------------------------------------------------------------------------
