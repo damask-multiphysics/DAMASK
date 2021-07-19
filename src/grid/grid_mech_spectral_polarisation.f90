@@ -309,7 +309,7 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
   solution%iterationsNeeded = totalIter
   solution%termIll = terminallyIll
   terminallyIll = .false.
-  P_aim = merge(P_aim,P_av,params%stress_mask)
+  P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_spectral_polarisation_solution
 
@@ -350,20 +350,20 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
-    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/Delta_t_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)  ! estimate deformation rate for prescribed stress components
+    F_aimDot = merge(merge(.0_pReal,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pReal,guess)  ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
-               + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,matmul(deformation_BC%values, F_aim_lastInc),deformation_BC%mask)
     elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
-               + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,deformation_BC%values,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
-               + merge((deformation_BC%values - F_aim_lastInc)/t_remaining,.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
     endif
 
     Fdot     = utilities_calculateRate(guess, &
@@ -382,9 +382,9 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
   if(stress_BC%myType=='P')     P_aim = P_aim &
-                                      + merge((stress_BC%values - P_aim)/t_remaining,0.0_pReal,stress_BC%mask)*Delta_t
+                                      + merge(.0_pReal,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if(stress_BC%myType=='dot_P') P_aim = P_aim &
-                                      + merge(stress_BC%values,0.0_pReal,stress_BC%mask)*Delta_t
+                                      + merge(.0_pReal,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
                                      rotation_BC%rotate(F_aim,active=.true.)),&
@@ -598,8 +598,8 @@ subroutine formResidual(in, FandF_tau, &
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
-  err_BC = maxval(abs(merge(P_av-P_aim, &
-                            math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)),&
+  err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
+                            P_av-P_aim, &
                             params%stress_mask)))
 ! calculate divergence
   tensorField_real = 0.0_pReal

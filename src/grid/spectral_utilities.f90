@@ -88,7 +88,7 @@ module spectral_utilities
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
     real(pReal), dimension(3,3)   :: values = 0.0_pReal
-    logical,     dimension(3,3)   :: mask   = .false.
+    logical,     dimension(3,3)   :: mask   = .true.
     character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
@@ -684,7 +684,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   logical :: errmatinv
   character(len=pStringLen):: formatString
 
-  mask_stressVector = reshape(transpose(mask_stress), [9])
+  mask_stressVector = .not. reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)
   if(size_reduced > 0) then
     temp99_real = math_3333to99(rot_BC%rotate(C))

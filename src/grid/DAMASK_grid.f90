@@ -231,14 +231,14 @@ program DAMASK_grid
       endif
       do i = 1, 3; do j = 1, 3
         if (loadCases(l)%deformation%mask(i,j)) then
-          write(IO_STDOUT,'(2x,f12.7)',advance='no') loadCases(l)%deformation%values(i,j)
-        else
           write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+        else
+          write(IO_STDOUT,'(2x,f12.7)',advance='no') loadCases(l)%deformation%values(i,j)
         endif
         enddo; write(IO_STDOUT,'(/)',advance='no')
       enddo
       if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
-      if (any(loadCases(l)%stress%mask .and. transpose(loadCases(l)%stress%mask) .and. (math_I3<1))) &
+      if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
         errorID = 838                                                                               ! no rotation is allowed by stress BC
 
       if (loadCases(l)%stress%myType == 'P')     print*, ' P / MPa:'
@@ -247,9 +247,9 @@ program DAMASK_grid
       if (loadCases(l)%stress%myType /= '') then
         do i = 1, 3; do j = 1, 3
           if (loadCases(l)%stress%mask(i,j)) then
-            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pReal
-          else
             write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+          else
+            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pReal
           endif
           enddo; write(IO_STDOUT,'(/)',advance='no')
         enddo
@@ -484,15 +484,15 @@ subroutine getMaskedTensor(values,mask,tensor)
   values = 0.0
   if (tensor%length == 9) then ! temporary support for deprecated 1D tensor
     do i = 1,9
-      mask((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asString(i) /= 'x'
-      if (mask((i-1)/3+1,mod(i-1,3)+1)) values((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asFloat(i)
+      mask((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asString(i) == 'x'
+      if (.not. mask((i-1)/3+1,mod(i-1,3)+1)) values((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asFloat(i)
     enddo
   else
     do i = 1,3
       row => tensor%get(i)
       do j = 1,3
-        mask(i,j) = row%get_asString(j) /= 'x'                      ! ToDo change to np.masked behavior
-        if (mask(i,j)) values(i,j) = row%get_asFloat(j)
+        mask(i,j) = row%get_asString(j) == 'x'
+        if (.not. mask(i,j)) values(i,j) = row%get_asFloat(j)
       enddo
     enddo
   endif
