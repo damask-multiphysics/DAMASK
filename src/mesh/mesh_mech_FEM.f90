@@ -690,13 +690,11 @@ subroutine FEM_mechanical_updateCoords()
   DM  :: dm_local
   Vec :: x_local
   PetscErrorCode :: ierr
-  PetscInt :: dimPlex, pStart, pEnd, p, s, e, q, &
-              cellStart, cellEnd, c, nqpoints,n
+  PetscInt :: pStart, pEnd, p, s, e, q, &
+              cellStart, cellEnd, c, n
   PetscSection :: section
-  PetscFE :: mechFE
-  PetscDS :: mechDS
   PetscQuadrature :: mechQuad
-  PetscReal,      dimension(:),  pointer :: qPoints, qWeights, basisField, basisFieldDer
+  PetscReal,      dimension(:),  pointer :: basisField, basisFieldDer
   PetscScalar, dimension(:),   pointer :: x_scal
 
   call SNESGetDM(mechanical_snes,dm_local,ierr); CHKERRQ(ierr)
