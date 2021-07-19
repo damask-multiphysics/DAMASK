@@ -412,7 +412,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 ! set module wide available data
   params%stress_mask = stress_BC%mask
   params%rotation_BC = rotation_BC
-  params%timeinc     = Delta_t
+  params%Delta_t     = Delta_t
 
 end subroutine grid_mechanical_FEM_forward
 
@@ -568,7 +568,7 @@ subroutine formResidual(da_local,x_local, &
 ! evaluate constitutive response
   call utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
-                                      F,params%timeinc,params%rotation_BC)
+                                      F,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------

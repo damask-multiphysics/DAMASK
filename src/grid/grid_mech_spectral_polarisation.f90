@@ -408,7 +408,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
 ! set module wide available data
   params%stress_mask = stress_BC%mask
   params%rotation_BC = rotation_BC
-  params%timeinc     = Delta_t
+  params%Delta_t     = Delta_t
 
 end subroutine grid_mechanical_spectral_polarisation_forward
 
@@ -592,7 +592,7 @@ subroutine formResidual(in, FandF_tau, &
 ! evaluate constitutive response
   call utilities_constitutiveResponse(residual_F, &                                                 ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
-                                      F - residual_F_tau/num%beta,params%timeinc,params%rotation_BC)
+                                      F - residual_F_tau/num%beta,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------

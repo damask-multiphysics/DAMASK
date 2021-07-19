@@ -56,8 +56,8 @@ program DAMASK_grid
     T_0 = 300.0_pReal, &
     time = 0.0_pReal, &                                                                             !< elapsed time
     time0 = 0.0_pReal, &                                                                            !< begin of interval
-    timeinc = 1.0_pReal, &                                                                          !< current time interval
-    timeIncOld = 0.0_pReal, &                                                                       !< previous time interval
+    Delta_t = 1.0_pReal, &                                                                          !< current time interval
+    Delta_t_prev = 0.0_pReal, &                                                                     !< previous time interval
     remainingLoadCaseTime = 0.0_pReal                                                               !< remaining time of current load case
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
@@ -326,24 +326,24 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-      timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
+      Delta_t_prev = Delta_t                                                                        ! last time intervall that brought former inc to an end
       if (dEq(loadCases(l)%r,1.0_pReal,1.e-9_pReal)) then                                           ! linear scale
-        timeinc = loadCases(l)%t/real(loadCases(l)%N,pReal)
+        Delta_t = loadCases(l)%t/real(loadCases(l)%N,pReal)
       else
-        timeinc = loadCases(l)%t * (loadCases(l)%r**(inc-1)-loadCases(l)%r**inc) &
+        Delta_t = loadCases(l)%t * (loadCases(l)%r**(inc-1)-loadCases(l)%r**inc) &
                                  / (1.0_pReal-loadCases(l)%r**loadCases(l)%N)
       endif
-      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
+      Delta_t = Delta_t * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
 
       skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
-        time = time + timeinc                                                                       ! just advance time, skip already performed calculation
+        time = time + Delta_t                                                                       ! just advance time, skip already performed calculation
         guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
       else skipping
         stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
 
         subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
           remainingLoadCaseTime = loadCases(l)%t+time0 - time
-          time = time + timeinc                                                                     ! forward target time
+          time = time + Delta_t                                                                     ! forward target time
           stepFraction = stepFraction + 1                                                           ! count step
 
 !--------------------------------------------------------------------------------------------------
@@ -365,7 +365,7 @@ program DAMASK_grid
             select case(ID(field))
               case(FIELD_MECH_ID)
                 call mechanical_forward (&
-                        cutBack,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                        cutBack,guess,Delta_t,Delta_t_prev,remainingLoadCaseTime, &
                         deformation_BC     = loadCases(l)%deformation, &
                         stress_BC          = loadCases(l)%stress, &
                         rotation_BC        = loadCases(l)%rot)
@@ -386,9 +386,9 @@ program DAMASK_grid
                 case(FIELD_MECH_ID)
                   solres(field) = mechanical_solution(incInfo)
                 case(FIELD_THERMAL_ID)
-                  solres(field) = grid_thermal_spectral_solution(timeinc)
+                  solres(field) = grid_thermal_spectral_solution(Delta_t)
                 case(FIELD_DAMAGE_ID)
-                  solres(field) = grid_damage_spectral_solution(timeinc)
+                  solres(field) = grid_damage_spectral_solution(Delta_t)
               end select
 
               if (.not. solres(field)%converged) exit                                               ! no solution found
@@ -406,7 +406,7 @@ program DAMASK_grid
           if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
                .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
             call mechanical_updateCoords
-            timeIncOld = timeinc
+            Delta_t_prev = Delta_t
             cutBack = .false.
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
             if (worldrank == 0) then
@@ -418,8 +418,8 @@ program DAMASK_grid
             cutBack = .true.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
-            time    = time - timeinc                                                                ! rewind time
-            timeinc = timeinc/real(subStepFactor,pReal)                                             ! cut timestep
+            time    = time - Delta_t                                                                ! rewind time
+            Delta_t = Delta_t/real(subStepFactor,pReal)                                             ! cut timestep
             print'(/,a)', ' cutting back '
           else                                                                                      ! no more options to continue
             if (worldrank == 0) close(statUnit)
