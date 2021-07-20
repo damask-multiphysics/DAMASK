@@ -1082,7 +1082,7 @@ recursive function tList_asFormattedString(self,indent) result(str)
     if (i /= 1) str = str//repeat(' ',indent_)
     str = str//'- '//item%node%asFormattedString(indent_+2)
     item => item%next
-  end do
+  enddo
 
 end function tList_asFormattedString
 
@@ -1116,7 +1116,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
         str = str//trim(item%key)//':'//IO_EOL//repeat(' ',indent_+2)//item%node%asFormattedString(indent_+2)
     endselect
     item => item%next
-  end do
+  enddo
 
 end function tDict_asFormattedString
 
@@ -1316,7 +1316,7 @@ subroutine tList_append(self,node)
     item => self%first
     do while (associated(item%next))
       item => item%next
-    end do
+    enddo
     allocate(item%next)
     item => item%next
   end if
@@ -1347,7 +1347,7 @@ subroutine tDict_set(self,key,node)
     searchExisting: do while (associated(item%next))
       if (item%key == key) exit
       item => item%next
-    end do searchExisting
+    enddo searchExisting
     if (item%key /= key) then
       allocate(item%next)
       item => item%next

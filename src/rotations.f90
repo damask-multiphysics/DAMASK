@@ -1131,7 +1131,7 @@ pure function ho2ax(ho) result(ax)
     do i=3,16
       hm = hm*hmag_squared
       s  = s + tfit(i) * hm
-    end do
+    enddo
     ax = [ho/sqrt(hmag_squared), 2.0_pReal*acos(s)]
   end if
 

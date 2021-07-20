@@ -1,0 +1,14 @@
+Install DAMASK modifications to use DAMASK_marc
+This is for the Linux64 version of Marc/Mentat
+
+Refer to http://damask.mpie.de for complete installation instructions.
+
+Usually you will need to be root for this to work!
+
+See Marc and Mentat Release Guide for List of Build and Supported Platforms.
+
+The Intel Fortran compiler needs to be installed.
+
+1) Install Marc, Mentat and Documentation as usual
+   Run the test example including subroutines to confirm that the installation of both Marc/Mentat and the Intel Fortran Compiler is ok.
+2) Run the apply_DAMASK_modifications.py script from this directory.

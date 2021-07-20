@@ -64,9 +64,9 @@ variables:
   PETSc_Intel:                     "$PETSc3_14_2IMPI2020Intel19_1"
   PETSc_GNU:                       "$PETSc3_14_2OMPI4_0GNU10"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2020:                         "FEM/MSC/2020"
+  MSC2021:                         "FEM/MSC/2021.2"
   # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2020"
+  MSC:                             "$MSC2021"
   IntelMarc:                       "$IntelCompiler19_1"
   HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
 
@@ -83,7 +83,7 @@ checkout:
     - mkdir -p $DAMASKROOT
     - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
+    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh

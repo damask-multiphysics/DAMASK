@@ -704,6 +704,14 @@ class Result:
         T : str
             Name of tensor dataset.
 
+        Examples
+        --------
+        Add the deviatoric part of Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_deviator('sigma')
+
         """
         self._add_generic_pointwise(self._add_deviator,{'T':T})
 
@@ -736,6 +744,14 @@ class Result:
             Name of symmetric tensor dataset.
         eigenvalue : {'max', 'mid', 'min'}
             Eigenvalue. Defaults to 'max'.
+
+        Examples
+        --------
+        Add the minimum eigenvalue of Cauchy stress 'sigma':
+
+        >>> import damask
+        >>> r = damask.Result('my_file.hdf5')
+        >>> r.add_eigenvalue('sigma','min')
 
         """
         self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})

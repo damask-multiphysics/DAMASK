@@ -710,7 +710,8 @@ subroutine FEM_mechanical_updateCoords()
   do p=pStart, pEnd-1
     call DMPlexGetPointLocal(dm_local, p, s, e, ierr); CHKERRQ(ierr)
     nodeCoords(1:dimPlex,p)=nodeCoords_linear(s+1:e)
-  end do
+  enddo
+
   call discretization_setNodeCoords(nodeCoords)
   call VecRestoreArrayF90(x_local,nodeCoords_linear,ierr); CHKERRQ(ierr)
 

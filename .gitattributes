@@ -12,9 +12,9 @@
 *.pbz2 binary
 
 # ignore files from MSC.Marc in language statistics
-installation/MarcMentat/**     linguist-vendored
+install/MarcMentat/**     linguist-vendored
 src/Marc/include/*             linguist-vendored
-installation/MarcMentat/apply_DAMASK_modifications.py linguist-vendored=false
+install/MarcMentat/apply_DAMASK_modifications.py linguist-vendored=false
 
 # ignore reference files for tests in language statistics
 python/tests/reference/**           linguist-vendored
