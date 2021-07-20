@@ -334,6 +334,36 @@ end subroutine remove_line_break
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief return the scalar list item without line break
+!--------------------------------------------------------------------------------------------------
+subroutine list_item_inline(blck,s_blck,inline)    !ToDo: SR: merge with remove_line_break eventually
+
+  character(len=*), intent(in)               :: blck                                                !< YAML in mixed style
+  integer,          intent(inout)            :: s_blck
+  character(len=:), allocatable, intent(out) :: inline
+
+  character(len=:), allocatable :: line
+  integer :: indent,indent_next
+ 
+  line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  indent = indentDepth(blck(s_blck:))
+  inline = line(indent+3:)
+  s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+
+  indent_next = indentDepth(blck(s_blck:))
+
+  do while(indent_next > indent)
+    inline = inline//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+    s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
+    indent_next = indentDepth(blck(s_blck:))
+  enddo
+
+  if(scan(inline,",") > 0) inline = '"'//inline//'"'     ! ToDO: SR: Parse as string and not multiple list items. To be added later 
+
+end subroutine list_item_inline
+
+
+!--------------------------------------------------------------------------------------------------
 ! @brief reads a line of YAML block which is already in flow style
 ! @details Dicts should be enlcosed within '{}' for it to be consistent with DAMASK YAML parser
 !--------------------------------------------------------------------------------------------------
@@ -463,7 +493,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset                                                         !< stores leading '- ' in nested lists
-  character(len=:), allocatable :: line,flow_line
+  character(len=:), allocatable :: line,flow_line,inline
   integer :: e_blck,indent
 
   indent = indentDepth(blck(s_blck:),offset)
@@ -509,8 +539,8 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       else                                                                                          ! list item in the same line
         line = line(indentDepth(line)+3:)
         if(isScalar(line)) then
-          call line_toFlow(flow,s_flow,line)
-          s_blck = e_blck +2
+          call list_item_inline(blck,s_blck,inline)
+          call line_toFlow(flow,s_flow,inline)
           offset = 0
         elseif(isFlow(line)) then
           s_blck = s_blck + index(blck(s_blck:),'-')
@@ -848,14 +878,15 @@ subroutine selfTest
     " "//IO_EOL//&
     " "//IO_EOL//&
     "                 param_1: [a:                   b, c, {d: {e: [f: g, h]}}]"//IO_EOL//&
-    " - c: d"//IO_EOL//&
+    " - c:d"//IO_EOL//&
+    "  e.f,"//IO_EOL//&
     " bb:"//IO_EOL//&
     " "//IO_EOL//&
     "  - "//IO_EOL//&
     "   {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL//&
     "..."//IO_EOL
   character(len=*), parameter :: mixed_flow = &
-    "{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, {c: d}], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}"
+    '{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, "c:d  e.f,"], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}'
 
   if(.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
   end block basic_mixed
