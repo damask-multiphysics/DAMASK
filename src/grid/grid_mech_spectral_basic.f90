@@ -321,7 +321,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
     ! calculate rate for aim
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
-               + merge(.0_pReal,matmul(deformation_BC%values, F_aim_lastInc),deformation_BC%mask)
+               + matmul(merge(.0_pReal,deformation_BC%values,deformation_BC%mask),F_aim_lastInc)
     elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
                + merge(.0_pReal,deformation_BC%values,deformation_BC%mask)

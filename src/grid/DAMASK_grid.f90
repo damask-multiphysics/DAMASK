@@ -218,12 +218,6 @@ program DAMASK_grid
     reportAndCheck: if (worldrank == 0) then
       print'(/,a,i0)', ' load case: ', l
       print*, ' estimate_rate:', loadCases(l)%estimate_rate
-      if (loadCases(l)%deformation%myType == 'L') then
-        do j = 1, 3
-          if (any(loadCases(l)%deformation%mask(j,1:3) .eqv. .true.) .and. &
-              any(loadCases(l)%deformation%mask(j,1:3) .eqv. .false.)) errorID = 832                ! each row should be either fully or not at all defined
-        enddo
-      endif
       if (loadCases(l)%deformation%myType == 'F') then
         print*, ' F:'
       else
