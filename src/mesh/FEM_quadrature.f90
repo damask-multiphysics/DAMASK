@@ -50,7 +50,7 @@ subroutine FEM_quadrature_init()
 ! 2D linear
   FEM_nQuadrature(2,1) = 1
 
-  allocate(FEM_quadrature_weights(2,1)%p(1))
+  allocate(FEM_quadrature_weights(2,1)%p(FEM_nQuadrature(2,1)))
   FEM_quadrature_weights(2,1)%p(1)   = 1._pReal
 
   allocate(FEM_quadrature_points (2,1)%p(2))
@@ -60,7 +60,7 @@ subroutine FEM_quadrature_init()
 ! 2D quadratic
   FEM_nQuadrature(2,2) = 3
 
-  allocate(FEM_quadrature_weights(2,2)%p(3))
+  allocate(FEM_quadrature_weights(2,2)%p(FEM_nQuadrature(2,2)))
   FEM_quadrature_weights(2,2)%p(1:3) = 1._pReal/3._pReal
 
   allocate(FEM_quadrature_points (2,2)%p(6))
@@ -70,7 +70,7 @@ subroutine FEM_quadrature_init()
 ! 2D cubic
   FEM_nQuadrature(2,3) = 6
 
-  allocate(FEM_quadrature_weights(2,3)%p(6))                                    
+  allocate(FEM_quadrature_weights(2,3)%p(FEM_nQuadrature(2,3)))
   FEM_quadrature_weights(2,3)%p(1:3) = 2.2338158967801147e-1_pReal
   FEM_quadrature_weights(2,3)%p(4:6) = 1.0995174365532187e-1_pReal
 
@@ -82,7 +82,7 @@ subroutine FEM_quadrature_init()
 ! 2D quartic
   FEM_nQuadrature(2,4) = 12
 
-  allocate(FEM_quadrature_weights(2,4)%p(12))                                     
+  allocate(FEM_quadrature_weights(2,4)%p(FEM_nQuadrature(2,4)))
   FEM_quadrature_weights(2,4)%p(1:3)  = 1.1678627572637937e-1_pReal
   FEM_quadrature_weights(2,4)%p(4:6)  = 5.0844906370206817e-2_pReal
   FEM_quadrature_weights(2,4)%p(7:12) = 8.285107561837358e-2_pReal
@@ -96,7 +96,7 @@ subroutine FEM_quadrature_init()
 ! 2D quintic
   FEM_nQuadrature(2,5) = 16
 
-  allocate(FEM_quadrature_weights(2,5)%p(16))
+  allocate(FEM_quadrature_weights(2,5)%p(FEM_nQuadrature(2,5)))
   FEM_quadrature_weights(2,5)%p(1  )  = 1.4431560767778717e-1_pReal
   FEM_quadrature_weights(2,5)%p(2:4)  = 9.509163426728463e-2_pReal
   FEM_quadrature_weights(2,5)%p(5:7)  = 1.0321737053471825e-1_pReal
@@ -114,7 +114,7 @@ subroutine FEM_quadrature_init()
 ! 3D linear
   FEM_nQuadrature(3,1) = 1
 
-  allocate(FEM_quadrature_weights(3,1)%p(1))
+  allocate(FEM_quadrature_weights(3,1)%p(FEM_nQuadrature(3,1)))
   FEM_quadrature_weights(3,1)%p(1)  = 1.0_pReal
 
   allocate(FEM_quadrature_points (3,1)%p(3))
@@ -124,7 +124,7 @@ subroutine FEM_quadrature_init()
 ! 3D quadratic
   FEM_nQuadrature(3,2) = 4
 
-  allocate(FEM_quadrature_weights(3,2)%p(4))
+  allocate(FEM_quadrature_weights(3,2)%p(FEM_nQuadrature(3,2)))
   FEM_quadrature_weights(3,2)%p(1:4) = 0.25_pReal
 
   allocate(FEM_quadrature_points (3,2)%p(12))
@@ -134,7 +134,7 @@ subroutine FEM_quadrature_init()
 ! 3D cubic
   FEM_nQuadrature(3,3) = 14
 
-  allocate(FEM_quadrature_weights(3,3)%p(14))
+  allocate(FEM_quadrature_weights(3,3)%p(FEM_nQuadrature(3,3)))
   FEM_quadrature_weights(3,3)%p(5:8)  = 1.1268792571801585e-1_pReal
   FEM_quadrature_weights(3,3)%p(1:4)  = 7.3493043116361949e-2_pReal
   FEM_quadrature_weights(3,3)%p(9:14) = 4.2546020777081467e-2_pReal
@@ -148,7 +148,7 @@ subroutine FEM_quadrature_init()
 ! 3D quartic
   FEM_nQuadrature(3,4) = 35
 
-  allocate(FEM_quadrature_weights(3,4)%p(35))
+  allocate(FEM_quadrature_weights(3,4)%p(FEM_nQuadrature(3,4)))
   FEM_quadrature_weights(3,4)%p(1:4)    = 0.0021900463965388_pReal
   FEM_quadrature_weights(3,4)%p(5:16)   = 0.0143395670177665_pReal
   FEM_quadrature_weights(3,4)%p(17:22)  = 0.0250305395686746_pReal
@@ -166,7 +166,7 @@ subroutine FEM_quadrature_init()
 ! 3D quintic
   FEM_nQuadrature(3,5) = 56
 
-  allocate(FEM_quadrature_weights(3,5)%p(56))
+  allocate(FEM_quadrature_weights(3,5)%p(FEM_nQuadrature(3,5)))
   FEM_quadrature_weights(3,5)%p(1:4)    = 0.0010373112336140_pReal
   FEM_quadrature_weights(3,5)%p(5:16)   = 0.0096016645399480_pReal
   FEM_quadrature_weights(3,5)%p(17:28)  = 0.0164493976798232_pReal
