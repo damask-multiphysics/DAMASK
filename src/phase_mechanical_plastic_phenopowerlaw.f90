@@ -33,8 +33,8 @@ submodule(phase:plastic) phenopowerlaw
     real(pReal),               allocatable, dimension(:,:,:) :: &
       P_sl, &
       P_tw, &
-      nonSchmid_pos, &
-      nonSchmid_neg
+      P_nS_pos, &
+      P_nS_neg
     integer :: &
       sum_N_sl, &                                                                                   !< total number of active slip system
       sum_N_tw                                                                                      !< total number of active twin systems
@@ -120,11 +120,11 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal=emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        prm%nonSchmid_pos  = prm%P_sl
-        prm%nonSchmid_neg  = prm%P_sl
+        prm%P_nS_pos = prm%P_sl
+        prm%P_nS_neg = prm%P_sl
       endif
       prm%h_sl_sl   = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
                                                      phase_lattice(ph))
@@ -302,8 +302,8 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     Lp = Lp + (gdot_sl_pos(i)+gdot_sl_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + dgdot_dtauslip_pos(i) * prm%P_sl(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                       + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                       + dgdot_dtauslip_pos(i) * prm%P_sl(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo slipSystems
 
   call kinetics_tw(Mp,ph,en,gdot_tw,dgdot_dtautwin)
@@ -429,8 +429,8 @@ pure subroutine kinetics_sl(Mp,ph,en, &
   associate(prm => param(ph), stt => state(ph))
 
   do i = 1, prm%sum_N_sl
-    tau_sl_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-    tau_sl_neg(i) = merge(math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
+    tau_sl_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i))
+    tau_sl_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)), &
                           0.0_pReal, prm%nonSchmidActive)
   enddo
 

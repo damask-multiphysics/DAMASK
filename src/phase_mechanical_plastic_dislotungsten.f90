@@ -36,8 +36,8 @@ submodule(phase:plastic) dislotungsten
       forestProjection
     real(pReal),               allocatable, dimension(:,:,:) :: &
       P_sl, &
-      nonSchmid_pos, &
-      nonSchmid_neg
+      P_nS_pos, &
+      P_nS_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
     character(len=pStringLen), allocatable, dimension(:) :: &
@@ -140,11 +140,11 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
-        prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        prm%nonSchmid_pos = prm%P_sl
-        prm%nonSchmid_neg = prm%P_sl
+        prm%P_nS_pos = prm%P_sl
+        prm%P_nS_neg = prm%P_sl
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
@@ -296,8 +296,8 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
     Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_pos(i) * prm%P_sl(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                       + ddot_gamma_dtau_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                       + ddot_gamma_dtau_pos(i) * prm%P_sl(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + ddot_gamma_dtau_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo
 
   end associate
@@ -464,8 +464,8 @@ pure subroutine kinetics(Mp,T,ph,en, &
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
   do j = 1, prm%sum_N_sl
-    tau_pos(j) = math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,j))
-    tau_neg(j) = math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,j))
+    tau_pos(j) = math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,j))
+    tau_neg(j) = math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,j))
   enddo
 
 

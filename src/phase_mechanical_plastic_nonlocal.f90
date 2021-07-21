@@ -109,8 +109,8 @@ submodule(phase:plastic) nonlocal
       forestProjection_Screw                                                                        !< matrix of forest projections of screw dislocations
     real(pReal), dimension(:,:,:), allocatable :: &
       Schmid, &                                                                                     !< Schmid contribution
-      nonSchmid_pos, &
-      nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
+      P_nS_pos, &
+      P_nS_neg                                                                                      !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
       sum_N_sl = 0
     integer,     dimension(:),     allocatable :: &
@@ -251,11 +251,11 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
-        prm%nonSchmid_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
-        prm%nonSchmid_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
+        prm%P_nS_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
+        prm%P_nS_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
       else
-        prm%nonSchmid_pos = prm%Schmid
-        prm%nonSchmid_neg = prm%Schmid
+        prm%P_nS_pos = prm%Schmid
+        prm%P_nS_neg = prm%Schmid
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl,pl%get_as1dFloat('h_sl-sl'), &
@@ -788,11 +788,11 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     tauNS(s,1) = tau(s)
     tauNS(s,2) = tau(s)
     if (tau(s) > 0.0_pReal) then
-      tauNS(s,3) = math_tensordot(Mp, +prm%nonSchmid_pos(1:3,1:3,s))
-      tauNS(s,4) = math_tensordot(Mp, -prm%nonSchmid_neg(1:3,1:3,s))
+      tauNS(s,3) = math_tensordot(Mp, +prm%P_nS_pos(1:3,1:3,s))
+      tauNS(s,4) = math_tensordot(Mp, -prm%P_nS_neg(1:3,1:3,s))
     else
-      tauNS(s,3) = math_tensordot(Mp, +prm%nonSchmid_neg(1:3,1:3,s))
-      tauNS(s,4) = math_tensordot(Mp, -prm%nonSchmid_pos(1:3,1:3,s))
+      tauNS(s,3) = math_tensordot(Mp, +prm%P_nS_neg(1:3,1:3,s))
+      tauNS(s,4) = math_tensordot(Mp, -prm%P_nS_pos(1:3,1:3,s))
     endif
   enddo
   tauNS = tauNS + spread(dst%tau_back(:,en),2,4)
@@ -834,8 +834,8 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
           + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
           * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
           + prm%Schmid(i,j,s) &
-          * (+ prm%nonSchmid_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
-             - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
+          * (+ prm%P_nS_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
+             - prm%P_nS_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
   enddo
 
   end associate

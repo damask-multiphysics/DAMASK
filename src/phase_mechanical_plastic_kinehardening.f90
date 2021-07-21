@@ -22,8 +22,8 @@ submodule(phase:plastic) kinehardening
       h_sl_sl                                                                                       !< slip resistance from slip activity
     real(pReal),              allocatable, dimension(:,:,:) :: &
       P, &
-      nonSchmid_pos, &
-      nonSchmid_neg
+      P_nS_pos, &
+      P_nS_neg
     integer :: &
       sum_N_sl
     logical :: &
@@ -117,11 +117,11 @@ module function plastic_kinehardening_init() result(myPlasticity)
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        prm%nonSchmid_pos  = prm%P
-        prm%nonSchmid_neg  = prm%P
+        prm%P_nS_pos = prm%P
+        prm%P_nS_neg = prm%P
       endif
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
                                                    phase_lattice(ph))
@@ -254,8 +254,8 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%P(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + dgdot_dtau_pos(i) * prm%P(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                       + dgdot_dtau_neg(i) * prm%P(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                       + dgdot_dtau_pos(i) * prm%P(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + dgdot_dtau_neg(i) * prm%P(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo
 
   end associate
@@ -415,8 +415,8 @@ pure subroutine kinetics(Mp,ph,en, &
   associate(prm => param(ph), stt => state(ph))
 
   do i = 1, prm%sum_N_sl
-    tau_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,en)
-    tau_neg(i) = merge(math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,en), &
+    tau_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)) - stt%crss_back(i,en)
+    tau_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)) - stt%crss_back(i,en), &
                        0.0_pReal, prm%nonSchmidActive)
   enddo
 
