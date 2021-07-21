@@ -71,16 +71,14 @@ subroutine discretization_mesh_init(restart)
 
   logical, intent(in) :: restart
 
-  integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, l, &
+    j, &
     debug_element, debug_ip
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets
   PetscInt, pointer, dimension(:) :: pFaceSets
-  character(len=pStringLen), dimension(:), allocatable :: fileContent
   IS :: faceSetIS
   PetscErrorCode :: ierr
   integer, dimension(:), allocatable :: &
@@ -88,7 +86,7 @@ subroutine discretization_mesh_init(restart)
   class(tNode), pointer :: &
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
-  type(tvec)  :: coords_node0
+  type(tvec) :: coords_node0
 
   print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
 
