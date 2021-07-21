@@ -394,14 +394,14 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,N_tw,&
                                                    pl%get_as1dFloat('h_sl-tw'), &
                                                    phase%get_asString('lattice'))
-      if (prm%fccTwinTransNucleation .and. size(N_tw) /= 1) extmsg = trim(extmsg)//' interaction_sliptwin'
+      if (prm%fccTwinTransNucleation .and. size(N_tw) /= 1) extmsg = trim(extmsg)//' N_tw: nucleation'
     endif slipAndTwinActive
 
     slipAndTransActive: if (prm%sum_N_sl * prm%sum_N_tr > 0) then
       prm%h_sl_tr = lattice_interaction_SlipByTrans(N_sl,N_tr,&
                                                     pl%get_as1dFloat('h_sl-tr'), &
                                                     phase%get_asString('lattice'))
-      if (prm%fccTwinTransNucleation .and. size(N_tr) /= 1) extmsg = trim(extmsg)//' interaction_sliptrans'
+      if (prm%fccTwinTransNucleation .and. size(N_tr) /= 1) extmsg = trim(extmsg)//' N_tr: nucleation'
     endif slipAndTransActive
 
 !--------------------------------------------------------------------------------------------------
@@ -531,7 +531,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
      ddot_gamma_dtau, &
      tau
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    dot_gamma_sl,ddot_gamma_dtau_slip
+    dot_gamma_sl,ddot_gamma_dtau_sl
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
     dot_gamma_tw,ddot_gamma_dtau_tw
   real(pReal), dimension(param(ph)%sum_N_tr) :: &
@@ -568,15 +568,15 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  call kinetics_slip(Mp,T,ph,en,dot_gamma_sl,ddot_gamma_dtau_slip)
+  call kinetics_sl(Mp,T,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
   slipContribution: do i = 1, prm%sum_N_sl
     Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
+                       + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
   enddo slipContribution
 
-  call kinetics_twin(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
+  call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
   twinContibution: do i = 1, prm%sum_N_tw
     Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -584,7 +584,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
                        + ddot_gamma_dtau_tw(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
   enddo twinContibution
 
-  call kinetics_trans(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr,ddot_gamma_dtau_tr)
+  call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr,ddot_gamma_dtau_tr)
   transContibution: do i = 1, prm%sum_N_tr
     Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -664,7 +664,7 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
               - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
               - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-  call kinetics_slip(Mp,T,ph,en,dot_gamma_sl)
+  call kinetics_sl(Mp,T,ph,en,dot_gamma_sl)
   dot%gamma_sl(:,en) = abs(dot_gamma_sl)
 
   rho_dip_distance_min = prm%D_a*prm%b_sl
@@ -709,10 +709,10 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
                     - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_dip(:,en)*abs(dot_gamma_sl) &
                     - dot_rho_dip_climb
 
-  call kinetics_twin(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw)
+  call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw)
   dot%f_tw(:,en) = f_unrotated*dot_gamma_tw/prm%gamma_char
 
-  call kinetics_trans(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr)
+  call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr)
   dot%f_tr(:,en) = f_unrotated*dot_gamma_tr
 
   end associate
@@ -857,8 +857,8 @@ end subroutine plastic_dislotwin_results
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_slip(Mp,T,ph,en, &
-                              dot_gamma_sl,ddot_gamma_dtau_slip,tau_slip)
+pure subroutine kinetics_sl(Mp,T,ph,en, &
+                            dot_gamma_sl,ddot_gamma_dtau_sl,tau_sl)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -871,8 +871,8 @@ pure subroutine kinetics_slip(Mp,T,ph,en, &
   real(pReal), dimension(param(ph)%sum_N_sl), intent(out) :: &
     dot_gamma_sl
   real(pReal), dimension(param(ph)%sum_N_sl), optional, intent(out) :: &
-    ddot_gamma_dtau_slip, &
-    tau_slip
+    ddot_gamma_dtau_sl, &
+    tau_sl
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     ddot_gamma_dtau
 
@@ -921,10 +921,10 @@ pure subroutine kinetics_slip(Mp,T,ph,en, &
 
   end associate
 
-  if(present(ddot_gamma_dtau_slip)) ddot_gamma_dtau_slip = ddot_gamma_dtau
-  if(present(tau_slip))             tau_slip             = tau
+  if(present(ddot_gamma_dtau_sl)) ddot_gamma_dtau_sl = ddot_gamma_dtau
+  if(present(tau_sl))             tau_sl             = tau
 
-end subroutine kinetics_slip
+end subroutine kinetics_sl
 
 
 !--------------------------------------------------------------------------------------------------
@@ -934,8 +934,8 @@ end subroutine kinetics_slip
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,ph,en,&
-                              dot_gamma_tw,ddot_gamma_dtau_tw)
+pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
+                            dot_gamma_tw,ddot_gamma_dtau_tw)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -993,7 +993,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,ph,en,&
 
   if(present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw = ddot_gamma_dtau
 
-end subroutine kinetics_twin
+end subroutine kinetics_tw
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1003,8 +1003,8 @@ end subroutine kinetics_twin
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
-pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,ph,en,&
-                              dot_gamma_tr,ddot_gamma_dtau_tr)
+pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
+                            dot_gamma_tr,ddot_gamma_dtau_tr)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -1061,6 +1061,6 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,ph,en,&
 
   if(present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr = ddot_gamma_dtau
 
-end subroutine kinetics_trans
+end subroutine kinetics_tr
 
 end submodule dislotwin

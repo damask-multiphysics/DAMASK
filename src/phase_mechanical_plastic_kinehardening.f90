@@ -18,8 +18,6 @@ submodule(phase:plastic) kinehardening
       h_inf_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip
       xi_inf_f, &
       xi_inf_b
-    real(pReal),              allocatable, dimension(:,:) :: &
-      interaction_slipslip                                                                          !< slip resistance from slip activity
     real(pReal),              allocatable, dimension(:,:,:) :: &
       P, &
       nonSchmid_pos, &
