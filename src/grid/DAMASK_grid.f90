@@ -53,12 +53,11 @@ program DAMASK_grid
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pReal) :: &
-    T_0 = 300.0_pReal, &
-    time = 0.0_pReal, &                                                                             !< elapsed time
-    time0 = 0.0_pReal, &                                                                            !< begin of interval
+    t = 0.0_pReal, &                                                                                !< elapsed time
+    t_0 = 0.0_pReal, &                                                                              !< begin of interval
     Delta_t = 1.0_pReal, &                                                                          !< current time interval
     Delta_t_prev = 0.0_pReal, &                                                                     !< previous time interval
-    remainingLoadCaseTime = 0.0_pReal                                                               !< remaining time of current load case
+    t_remaining = 0.0_pReal                                                                         !< remaining time of current load case
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
@@ -285,7 +284,7 @@ program DAMASK_grid
       case(FIELD_THERMAL_ID)
         initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
         thermal            => initial_conditions%get('thermal',defaultVal=emptyDict)
-        call grid_thermal_spectral_init(thermal%get_asFloat('T',defaultVal = T_0))
+        call grid_thermal_spectral_init(thermal%get_asFloat('T'))
 
       case(FIELD_DAMAGE_ID)
         call grid_damage_spectral_init
@@ -312,7 +311,7 @@ program DAMASK_grid
   endif writeUndeformed
 
   loadCaseLooping: do l = 1, size(loadCases)
-    time0 = time                                                                                    ! load case start time
+    t_0 = t                                                                                         ! load case start time
     guess = loadCases(l)%estimate_rate                                                              ! change of load case? homogeneous guess for the first inc
 
     incLooping: do inc = 1, loadCases(l)%N
@@ -330,21 +329,21 @@ program DAMASK_grid
       Delta_t = Delta_t * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
 
       skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
-        time = time + Delta_t                                                                       ! just advance time, skip already performed calculation
+        t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
         guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
       else skipping
         stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
 
         subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
-          remainingLoadCaseTime = loadCases(l)%t+time0 - time
-          time = time + Delta_t                                                                     ! forward target time
+          t_remaining = loadCases(l)%t + t_0 - t
+          t = t + Delta_t                                                                           ! forward target time
           stepFraction = stepFraction + 1                                                           ! count step
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
           print'(/,a)', ' ###########################################################################'
           print'(1x,a,es12.5,6(a,i0))', &
-                  'Time', time, &
+                  'Time', t, &
                   's: Increment ', inc,'/',loadCases(l)%N,&
                   '-', stepFraction,'/',subStepFactor**cutBackLevel,&
                   ' of load case ', l,'/',size(loadCases)
@@ -359,10 +358,10 @@ program DAMASK_grid
             select case(ID(field))
               case(FIELD_MECH_ID)
                 call mechanical_forward (&
-                        cutBack,guess,Delta_t,Delta_t_prev,remainingLoadCaseTime, &
-                        deformation_BC     = loadCases(l)%deformation, &
-                        stress_BC          = loadCases(l)%stress, &
-                        rotation_BC        = loadCases(l)%rot)
+                        cutBack,guess,Delta_t,Delta_t_prev,t_remaining, &
+                        deformation_BC = loadCases(l)%deformation, &
+                        stress_BC      = loadCases(l)%stress, &
+                        rotation_BC    = loadCases(l)%rot)
 
               case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
               case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
@@ -404,7 +403,7 @@ program DAMASK_grid
             cutBack = .false.
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
             if (worldrank == 0) then
-              write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+              write(statUnit,*) totalIncsCounter, t, cutBackLevel, &
                                 solres(1)%converged, solres(1)%iterationsNeeded
               flush(statUnit)
             endif
@@ -412,7 +411,7 @@ program DAMASK_grid
             cutBack = .true.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
-            time    = time - Delta_t                                                                ! rewind time
+            t = t - Delta_t
             Delta_t = Delta_t/real(subStepFactor,pReal)                                             ! cut timestep
             print'(/,a)', ' cutting back '
           else                                                                                      ! no more options to continue
@@ -435,7 +434,7 @@ program DAMASK_grid
         if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
-          call CPFEM_results(totalIncsCounter,time)
+          call CPFEM_results(totalIncsCounter,t)
         endif
         if(signal) call interface_setSIGUSR1(.false.)
         call MPI_Allreduce(interface_SIGUSR2,signal,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
