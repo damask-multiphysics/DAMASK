@@ -129,8 +129,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    ! This data is read in already in lattice
-    prm%mu = lattice_mu(ph)
+    prm%mu = elastic_mu(ph)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters

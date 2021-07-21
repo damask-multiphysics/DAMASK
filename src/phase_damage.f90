@@ -107,7 +107,7 @@ module subroutine damage_init
       param(ph)%mu     = source%get_asFloat('mu')
       param(ph)%D(1,1) = source%get_asFloat('D_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%D(3,3) = source%get_asFloat('D_33')
-      param(ph)%D = lattice_applyLatticeSymmetry33(param(ph)%D,phase_lattice(ph))
+      param(ph)%D = lattice_symmetrize_33(param(ph)%D,phase_lattice(ph))
     endif
 
   enddo

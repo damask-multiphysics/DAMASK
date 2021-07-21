@@ -365,12 +365,6 @@ module lattice
        1, 1, 1,      1,-2, 1  &
        ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< bct slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
 
-! SHOULD NOT BE PART OF LATTICE BEGIN
-  real(pReal),                        dimension(:),     allocatable, public, protected :: &
-    lattice_mu, lattice_nu
-   real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
-    lattice_C66
-! SHOULD NOT BE PART OF LATTICE END
 
   interface lattice_forestProjection_edge
     module procedure slipProjection_transverse
@@ -384,7 +378,8 @@ module lattice
     lattice_init, &
     lattice_equivalent_nu, &
     lattice_equivalent_mu, &
-    lattice_applyLatticeSymmetry33, &
+    lattice_symmetrize_33, &
+    lattice_symmetrize_C66, &
     lattice_SchmidMatrix_slip, &
     lattice_SchmidMatrix_twin, &
     lattice_SchmidMatrix_trans, &
@@ -414,53 +409,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
-  integer :: Nphases, ph,i
-  class(tNode), pointer :: &
-    phases, &
-    phase, &
-    mech, &
-    elasticity
-
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
-! SHOULD NOT BE PART OF LATTICE BEGIN
-
-  phases => config_material%get('phase')
-  Nphases = phases%length
-
-  allocate(lattice_C66(6,6,Nphases), source=0.0_pReal)
-
-  allocate(lattice_mu, lattice_nu,&
-           source=[(0.0_pReal,i=1,Nphases)])
-
-  do ph = 1, phases%length
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    elasticity => mech%get('elastic')
-    lattice_C66(1,1,ph) = elasticity%get_asFloat('C_11')
-    lattice_C66(1,2,ph) = elasticity%get_asFloat('C_12')
-    lattice_C66(4,4,ph) = elasticity%get_asFloat('C_44')
-
-    lattice_C66(1,3,ph) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
-    lattice_C66(2,3,ph) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
-    lattice_C66(3,3,ph) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
-    lattice_C66(6,6,ph) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
-
-    lattice_C66(1:6,1:6,ph) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,ph),phase%get_asString('lattice'))
-
-    lattice_nu(ph) = lattice_equivalent_nu(lattice_C66(1:6,1:6,ph),'voigt')
-    lattice_mu(ph) = lattice_equivalent_mu(lattice_C66(1:6,1:6,ph),'voigt')
-
-    lattice_C66(1:6,1:6,ph) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,ph)))         ! Literature data is in Voigt notation
-    do i = 1, 6
-      if (abs(lattice_C66(i,i,ph))<tol_math_check) &
-        call IO_error(135,el=i,ip=ph,ext_msg='matrix diagonal "el"ement of phase "ip"')
-    enddo
-! SHOULD NOT BE PART OF LATTICE END
-
-    call selfTest
-
-  enddo
+  call selfTest
 
 end subroutine lattice_init
 
@@ -611,7 +562,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = applyLatticeSymmetryC66(C_target_unrotated66,'hP')
+    C_target_unrotated66 = lattice_symmetrize_C66(C_target_unrotated66,'hP')
   elseif (structure_target  == 'cI') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(structure_target))
@@ -1628,17 +1579,17 @@ end function lattice_labels_slip
 !--------------------------------------------------------------------------------------------------
 !> @brief Return 3x3 tensor with symmetry according to given crystal structure
 !--------------------------------------------------------------------------------------------------
-pure function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
+pure function lattice_symmetrize_33(T,lattice) result(T_sym)
 
   real(pReal), dimension(3,3) :: T_sym
 
   real(pReal), dimension(3,3), intent(in) :: T
-  character(len=*),            intent(in) :: structure
+  character(len=2),            intent(in) :: lattice
 
 
   T_sym = 0.0_pReal
 
-  select case(structure)
+  select case(lattice)
     case('cF','cI')
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
@@ -1649,26 +1600,26 @@ pure function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
       T_sym(3,3) = T(3,3)
    end select
 
-end function lattice_applyLatticeSymmetry33
+end function lattice_symmetrize_33
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return stiffness matrix in 6x6 notation with symmetry according to given crystal structure
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
-pure function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
+pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
 
   real(pReal), dimension(6,6) :: C66_sym
 
   real(pReal), dimension(6,6), intent(in) :: C66
-  character(len=*),            intent(in) :: structure
+  character(len=*),            intent(in) :: lattice
 
   integer :: i,j
 
 
   C66_sym = 0.0_pReal
 
-  select case(structure)
+  select case(lattice)
     case ('cF','cI')
       C66_sym(1,1) = C66(1,1); C66_sym(2,2) = C66(1,1); C66_sym(3,3) = C66(1,1)
       C66_sym(1,2) = C66(1,2); C66_sym(1,3) = C66(1,2); C66_sym(2,3) = C66(1,2)
@@ -1695,7 +1646,7 @@ pure function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
      enddo
    enddo
 
-end function applyLatticeSymmetryC66
+end function lattice_symmetrize_C66
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2203,10 +2154,10 @@ subroutine selfTest
 
   do i = 1, 10
     call random_number(C)
-    C_cF = applyLatticeSymmetryC66(C,'cI')
-    C_cI = applyLatticeSymmetryC66(C,'cF')
-    C_hP = applyLatticeSymmetryC66(C,'hP')
-    C_tI = applyLatticeSymmetryC66(C,'tI')
+    C_cF = lattice_symmetrize_C66(C,'cI')
+    C_cI = lattice_symmetrize_C66(C,'cF')
+    C_hP = lattice_symmetrize_C66(C,'hP')
+    C_tI = lattice_symmetrize_C66(C,'tI')
 
     if (any(dNeq(C_cI,transpose(C_cF))))                   error stop 'SymmetryC66/cI-cF'
     if (any(dNeq(C_cF,transpose(C_cI))))                   error stop 'SymmetryC66/cF-cI'
@@ -2226,10 +2177,10 @@ subroutine selfTest
     if (any(dNeq(C(4,4),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
 
     call random_number(T)
-    T_cF = lattice_applyLatticeSymmetry33(T,'cI')
-    T_cI = lattice_applyLatticeSymmetry33(T,'cF')
-    T_hP = lattice_applyLatticeSymmetry33(T,'hP')
-    T_tI = lattice_applyLatticeSymmetry33(T,'tI')
+    T_cF = lattice_symmetrize_33(T,'cI')
+    T_cI = lattice_symmetrize_33(T,'cF')
+    T_hP = lattice_symmetrize_33(T,'hP')
+    T_tI = lattice_symmetrize_33(T,'tI')
 
     if (any(dNeq0(T_cF) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/c'
     if (any(dNeq0(T_hP) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/hP'
@@ -2244,7 +2195,7 @@ subroutine selfTest
   call random_number(C)
   C(1,1) = C(1,1) + C(1,2) + 0.1_pReal
   C(4,4) = 0.5_pReal * (C(1,1) - C(1,2))
-  C = applyLatticeSymmetryC66(C,'cI')
+  C = lattice_symmetrize_C66(C,'cI')
   if(dNeq(C(4,4),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
   if(dNeq(C(4,4),lattice_equivalent_mu(C,'reuss'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
 

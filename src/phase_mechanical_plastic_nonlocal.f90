@@ -240,9 +240,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
-    ! This data is read in already in lattice
-    prm%mu = lattice_mu(ph)
-    prm%nu = lattice_nu(ph)
+    prm%mu = elastic_mu(ph)
+    prm%nu = elastic_nu(ph)
 
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))

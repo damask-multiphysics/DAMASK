@@ -184,9 +184,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
 #endif
 
     ! This data is read in already in lattice
-    prm%mu  = lattice_mu(ph)
-    prm%nu  = lattice_nu(ph)
-    prm%C66 = lattice_C66(1:6,1:6,ph)
+    prm%mu  = elastic_mu(ph)
+    prm%nu  = elastic_nu(ph)
+    prm%C66 = elastic_C66(ph)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -481,22 +481,21 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
   real(pReal) :: f_unrotated
 
 
-  associate(prm => param(ph),&
-            stt => state(ph))
+  associate(prm => param(ph), stt => state(ph))
 
-  f_unrotated = 1.0_pReal &
-              - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
-              - sum(stt%f_tr(1:prm%sum_N_tr,en))
+    f_unrotated = 1.0_pReal &
+                - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
+                - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-  homogenizedC = f_unrotated * prm%C66
-  do i=1,prm%sum_N_tw
-    homogenizedC = homogenizedC &
-                 + stt%f_tw(i,en)*prm%C66_tw(1:6,1:6,i)
-  enddo
-  do i=1,prm%sum_N_tr
-    homogenizedC = homogenizedC &
-                 + stt%f_tr(i,en)*prm%C66_tr(1:6,1:6,i)
-  enddo
+    homogenizedC = f_unrotated * prm%C66
+    do i=1,prm%sum_N_tw
+      homogenizedC = homogenizedC &
+                   + stt%f_tw(i,en)*prm%C66_tw(1:6,1:6,i)
+    enddo
+    do i=1,prm%sum_N_tr
+      homogenizedC = homogenizedC &
+                   + stt%f_tr(i,en)*prm%C66_tr(1:6,1:6,i)
+    enddo
 
   end associate
 
