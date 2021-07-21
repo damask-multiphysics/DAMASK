@@ -37,8 +37,7 @@ module subroutine damage_init()
   class(tNode), pointer :: &
     configHomogenizations, &
     configHomogenization, &
-    configHomogenizationDamage, &
-    num_generic
+    configHomogenizationDamage
   integer :: ho,Nmembers
 
 
@@ -69,11 +68,6 @@ module subroutine damage_init()
       endif
     end associate
   enddo
-
-!------------------------------------------------------------------------------------
-! read numerics parameter
-  num_generic => config_numerics%get('generic',defaultVal= emptyDict)
-  num_damage%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
   call pass_init()
 
@@ -119,8 +113,7 @@ module function homogenization_K_phi(ce) result(K)
   real(pReal), dimension(3,3) :: K
 
 
-  K = phase_K_phi(1,ce) &
-    * num_damage%charLength**2
+  K = phase_K_phi(1,ce)
 
 end function homogenization_K_phi
 
