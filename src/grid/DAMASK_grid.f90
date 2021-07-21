@@ -475,20 +475,13 @@ subroutine getMaskedTensor(values,mask,tensor)
 
 
   values = 0.0
-  if (tensor%length == 9) then ! temporary support for deprecated 1D tensor
-    do i = 1,9
-      mask((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asString(i) == 'x'
-      if (.not. mask((i-1)/3+1,mod(i-1,3)+1)) values((i-1)/3+1,mod(i-1,3)+1) = tensor%get_asFloat(i)
+  do i = 1,3
+    row => tensor%get(i)
+    do j = 1,3
+      mask(i,j) = row%get_asString(j) == 'x'
+      if (.not. mask(i,j)) values(i,j) = row%get_asFloat(j)
     enddo
-  else
-    do i = 1,3
-      row => tensor%get(i)
-      do j = 1,3
-        mask(i,j) = row%get_asString(j) == 'x'
-        if (.not. mask(i,j)) values(i,j) = row%get_asFloat(j)
-      enddo
-    enddo
-  endif
+  enddo
 
 end subroutine
 
