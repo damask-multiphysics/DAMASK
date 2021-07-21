@@ -51,7 +51,7 @@ subroutine FEM_quadrature_init()
   FEM_nQuadrature(2,1) = 1
 
   allocate(FEM_quadrature_weights(2,1)%p(FEM_nQuadrature(2,1)))
-  FEM_quadrature_weights(2,1)%p(1)   = 1._pReal
+  FEM_quadrature_weights(2,1)%p(1) = 1._pReal
 
   FEM_quadrature_points (2,1)%p = permutationStar3([1._pReal/3._pReal])
 
@@ -95,11 +95,11 @@ subroutine FEM_quadrature_init()
   FEM_nQuadrature(2,5) = 16
 
   allocate(FEM_quadrature_weights(2,5)%p(FEM_nQuadrature(2,5)))
-  FEM_quadrature_weights(2,5)%p(1  )  = 1.4431560767778717e-1_pReal
-  FEM_quadrature_weights(2,5)%p(2:4)  = 9.509163426728463e-2_pReal
-  FEM_quadrature_weights(2,5)%p(5:7)  = 1.0321737053471825e-1_pReal
-  FEM_quadrature_weights(2,5)%p(8:10) = 3.2458497623198080e-2_pReal
-  FEM_quadrature_weights(2,5)%p(11:16)= 2.7230314174434994e-2_pReal
+  FEM_quadrature_weights(2,5)%p(1:1)   = 1.4431560767778717e-1_pReal
+  FEM_quadrature_weights(2,5)%p(2:4)   = 9.509163426728463e-2_pReal
+  FEM_quadrature_weights(2,5)%p(5:7)   = 1.0321737053471825e-1_pReal
+  FEM_quadrature_weights(2,5)%p(8:10)  = 3.2458497623198080e-2_pReal
+  FEM_quadrature_weights(2,5)%p(11:16) = 2.7230314174434994e-2_pReal
 
   FEM_quadrature_points (2,5)%p = [ &
     permutationStar3([1._pReal/3._pReal]), &
@@ -193,7 +193,9 @@ pure function permutationStar3(point) result(qPt)
 
   real(pReal), dimension(3,1) :: temp
 
-  temp(:,1) = [point(1), point(1), point(1)]
+
+  temp = reshape([ &
+    point(1), point(1), point(1)],shape(temp))
 
   qPt = reshape(matmul(triangle, temp),[2])
 
@@ -210,9 +212,11 @@ pure function permutationStar21(point) result(qPt)
 
   real(pReal), dimension(3,3) :: temp
 
-  temp(:,1) = [point(1), point(1), 1.0_pReal - 2.0_pReal*point(1)]
-  temp(:,2) = [point(1), 1.0_pReal - 2.0_pReal*point(1), point(1)]
-  temp(:,3) = [1.0_pReal - 2.0_pReal*point(1), point(1), point(1)]
+
+  temp = reshape([ &
+    point(1), point(1), 1.0_pReal - 2.0_pReal*point(1), &
+    point(1), 1.0_pReal - 2.0_pReal*point(1), point(1), &
+    1.0_pReal - 2.0_pReal*point(1), point(1), point(1)],shape(temp))
 
   qPt = reshape(matmul(triangle, temp),[6])
 
@@ -229,12 +233,14 @@ pure function permutationStar111(point) result(qPt)
 
   real(pReal), dimension(3,6) :: temp
 
-  temp(:,1) = [point(1), point(2), 1.0_pReal - point(1) - point(2)]
-  temp(:,2) = [point(1), 1.0_pReal - point(1) - point(2), point(2)]
-  temp(:,3) = [point(2), point(1), 1.0_pReal - point(1) - point(2)]
-  temp(:,4) = [point(2), 1.0_pReal - point(1) - point(2), point(1)]
-  temp(:,5) = [1.0_pReal - point(1) - point(2), point(2), point(1)]
-  temp(:,6) = [1.0_pReal - point(1) - point(2), point(1), point(2)]
+
+  temp = reshape([ &
+    point(1), point(2), 1.0_pReal - point(1) - point(2), &
+    point(1), 1.0_pReal - point(1) - point(2), point(2), &
+    point(2), point(1), 1.0_pReal - point(1) - point(2), &
+    point(2), 1.0_pReal - point(1) - point(2), point(1), &
+    1.0_pReal - point(1) - point(2), point(2), point(1), &
+    1.0_pReal - point(1) - point(2), point(1), point(2)],shape(temp))
 
   qPt = reshape(matmul(triangle, temp),[12])
 
@@ -251,7 +257,9 @@ pure function permutationStar4(point) result(qPt)
 
   real(pReal), dimension(4,1) :: temp
 
-  temp(:,1) = [point(1), point(1), point(1), point(1)]
+
+  temp = reshape([ &
+    point(1), point(1), point(1), point(1)],shape(temp))
 
   qPt = reshape(matmul(tetrahedron, temp),[3])
 
@@ -268,10 +276,12 @@ pure function permutationStar31(point) result(qPt)
 
   real(pReal), dimension(4,4) :: temp
 
-  temp(:,1) = [point(1), point(1), point(1), 1.0_pReal - 3.0_pReal*point(1)]
-  temp(:,2) = [point(1), point(1), 1.0_pReal - 3.0_pReal*point(1), point(1)]
-  temp(:,3) = [point(1), 1.0_pReal - 3.0_pReal*point(1), point(1), point(1)]
-  temp(:,4) = [1.0_pReal - 3.0_pReal*point(1), point(1), point(1), point(1)]
+
+  temp = reshape([ &
+    point(1), point(1), point(1), 1.0_pReal - 3.0_pReal*point(1), &
+    point(1), point(1), 1.0_pReal - 3.0_pReal*point(1), point(1), &
+    point(1), 1.0_pReal - 3.0_pReal*point(1), point(1), point(1), &
+    1.0_pReal - 3.0_pReal*point(1), point(1), point(1), point(1)],shape(temp))
 
   qPt = reshape(matmul(tetrahedron, temp),[12])
 
@@ -281,19 +291,21 @@ end function permutationStar31
 !--------------------------------------------------------------------------------------------------
 !> @brief star 22 permutation of input
 !--------------------------------------------------------------------------------------------------
-pure function permutationStar22(point) result(qPt)
+function permutationStar22(point) result(qPt)
 
   real(pReal), dimension(18)            :: qPt
   real(pReal), dimension(1), intent(in) :: point
 
   real(pReal), dimension(4,6) :: temp
 
-  temp(:,1) = [point(1), point(1), 0.5_pReal - point(1), 0.5_pReal - point(1)]
-  temp(:,2) = [point(1), 0.5_pReal - point(1), point(1), 0.5_pReal - point(1)]
-  temp(:,3) = [0.5_pReal - point(1), point(1), point(1), 0.5_pReal - point(1)]
-  temp(:,4) = [0.5_pReal - point(1), point(1), 0.5_pReal - point(1), point(1)]
-  temp(:,5) = [0.5_pReal - point(1), 0.5_pReal - point(1), point(1), point(1)]
-  temp(:,6) = [point(1), 0.5_pReal - point(1), 0.5_pReal - point(1), point(1)]
+
+  temp = reshape([ &
+    point(1), point(1), 0.5_pReal - point(1), 0.5_pReal - point(1), &
+    point(1), 0.5_pReal - point(1), point(1), 0.5_pReal - point(1), &
+    0.5_pReal - point(1), point(1), point(1), 0.5_pReal - point(1), &
+    0.5_pReal - point(1), point(1), 0.5_pReal - point(1), point(1), &
+    0.5_pReal - point(1), 0.5_pReal - point(1), point(1), point(1), &
+    point(1), 0.5_pReal - point(1), 0.5_pReal - point(1), point(1)],shape(temp))
 
   qPt = reshape(matmul(tetrahedron, temp),[18])
 
@@ -310,18 +322,20 @@ pure function permutationStar211(point) result(qPt)
 
   real(pReal), dimension(4,12) :: temp
 
-  temp(:,1 ) = [point(1), point(1), point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2)]
-  temp(:,2 ) = [point(1), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(2)]
-  temp(:,3 ) = [point(1), point(2), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2)]
-  temp(:,4 ) = [point(1), point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1)]
-  temp(:,5 ) = [point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(2)]
-  temp(:,6 ) = [point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), point(1)]
-  temp(:,7 ) = [point(2), point(1), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2)]
-  temp(:,8 ) = [point(2), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1)]
-  temp(:,9 ) = [point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(1)]
-  temp(:,10) = [1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(1), point(2)]
-  temp(:,11) = [1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(2), point(1)]
-  temp(:,12) = [1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), point(1), point(1)]
+
+  temp = reshape([ &
+    point(1), point(1), point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), &
+    point(1), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), &
+    point(1), point(2), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), &
+    point(1), point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), &
+    point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(2), &
+    point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), point(1), &
+    point(2), point(1), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), &
+    point(2), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), &
+    point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(1), &
+    1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(1), point(2), &
+    1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(2), point(1), &
+    1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), point(1), point(1)],shape(temp))
 
   qPt = reshape(matmul(tetrahedron, temp),[36])
 
@@ -338,30 +352,32 @@ pure function permutationStar1111(point) result(qPt)
 
   real(pReal), dimension(4,24) :: temp
 
-  temp(:,1 ) = [point(1), point(2), point(3), 1.0_pReal - point(1) - point(2)- point(3)]
-  temp(:,2 ) = [point(1), point(2), 1.0_pReal - point(1) - point(2)- point(3), point(3)]
-  temp(:,3 ) = [point(1), point(3), point(2), 1.0_pReal - point(1) - point(2)- point(3)]
-  temp(:,4 ) = [point(1), point(3), 1.0_pReal - point(1) - point(2)- point(3), point(2)]
-  temp(:,5 ) = [point(1), 1.0_pReal - point(1) - point(2)- point(3), point(2), point(3)]
-  temp(:,6 ) = [point(1), 1.0_pReal - point(1) - point(2)- point(3), point(3), point(2)]
-  temp(:,7 ) = [point(2), point(1), point(3), 1.0_pReal - point(1) - point(2)- point(3)]
-  temp(:,8 ) = [point(2), point(1), 1.0_pReal - point(1) - point(2)- point(3), point(3)]
-  temp(:,9 ) = [point(2), point(3), point(1), 1.0_pReal - point(1) - point(2)- point(3)]
-  temp(:,10) = [point(2), point(3), 1.0_pReal - point(1) - point(2)- point(3), point(1)]
-  temp(:,11) = [point(2), 1.0_pReal - point(1) - point(2)- point(3), point(1), point(3)]
-  temp(:,12) = [point(2), 1.0_pReal - point(1) - point(2)- point(3), point(3), point(1)]
-  temp(:,13) = [point(3), point(1), point(2), 1.0_pReal - point(1) - point(2)- point(3)]
-  temp(:,14) = [point(3), point(1), 1.0_pReal - point(1) - point(2)- point(3), point(2)]
-  temp(:,15) = [point(3), point(2), point(1), 1.0_pReal - point(1) - point(2)- point(3)]
-  temp(:,16) = [point(3), point(2), 1.0_pReal - point(1) - point(2)- point(3), point(1)]
-  temp(:,17) = [point(3), 1.0_pReal - point(1) - point(2)- point(3), point(1), point(2)]
-  temp(:,18) = [point(3), 1.0_pReal - point(1) - point(2)- point(3), point(2), point(1)]
-  temp(:,19) = [1.0_pReal - point(1) - point(2)- point(3), point(1), point(2), point(3)]
-  temp(:,20) = [1.0_pReal - point(1) - point(2)- point(3), point(1), point(3), point(2)]
-  temp(:,21) = [1.0_pReal - point(1) - point(2)- point(3), point(2), point(1), point(3)]
-  temp(:,22) = [1.0_pReal - point(1) - point(2)- point(3), point(2), point(3), point(1)]
-  temp(:,23) = [1.0_pReal - point(1) - point(2)- point(3), point(3), point(1), point(2)]
-  temp(:,24) = [1.0_pReal - point(1) - point(2)- point(3), point(3), point(2), point(1)]
+
+  temp = reshape([ &
+    point(1), point(2), point(3), 1.0_pReal - point(1) - point(2)- point(3), &
+    point(1), point(2), 1.0_pReal - point(1) - point(2)- point(3), point(3), &
+    point(1), point(3), point(2), 1.0_pReal - point(1) - point(2)- point(3), &
+    point(1), point(3), 1.0_pReal - point(1) - point(2)- point(3), point(2), &
+    point(1), 1.0_pReal - point(1) - point(2)- point(3), point(2), point(3), &
+    point(1), 1.0_pReal - point(1) - point(2)- point(3), point(3), point(2), &
+    point(2), point(1), point(3), 1.0_pReal - point(1) - point(2)- point(3), &
+    point(2), point(1), 1.0_pReal - point(1) - point(2)- point(3), point(3), &
+    point(2), point(3), point(1), 1.0_pReal - point(1) - point(2)- point(3), &
+    point(2), point(3), 1.0_pReal - point(1) - point(2)- point(3), point(1), &
+    point(2), 1.0_pReal - point(1) - point(2)- point(3), point(1), point(3), &
+    point(2), 1.0_pReal - point(1) - point(2)- point(3), point(3), point(1), &
+    point(3), point(1), point(2), 1.0_pReal - point(1) - point(2)- point(3), &
+    point(3), point(1), 1.0_pReal - point(1) - point(2)- point(3), point(2), &
+    point(3), point(2), point(1), 1.0_pReal - point(1) - point(2)- point(3), &
+    point(3), point(2), 1.0_pReal - point(1) - point(2)- point(3), point(1), &
+    point(3), 1.0_pReal - point(1) - point(2)- point(3), point(1), point(2), &
+    point(3), 1.0_pReal - point(1) - point(2)- point(3), point(2), point(1), &
+    1.0_pReal - point(1) - point(2)- point(3), point(1), point(2), point(3), &
+    1.0_pReal - point(1) - point(2)- point(3), point(1), point(3), point(2), &
+    1.0_pReal - point(1) - point(2)- point(3), point(2), point(1), point(3), &
+    1.0_pReal - point(1) - point(2)- point(3), point(2), point(3), point(1), &
+    1.0_pReal - point(1) - point(2)- point(3), point(3), point(1), point(2), &
+    1.0_pReal - point(1) - point(2)- point(3), point(3), point(2), point(1)],shape(temp))
 
   qPt = reshape(matmul(tetrahedron, temp),[72])
 
@@ -369,12 +385,13 @@ end function permutationStar1111
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Check correctness of quadrature weights.
+!> @brief Check correctness of quadrature weights and points.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
   integer :: o, d, n
   real(pReal), dimension(2:3), parameter :: w = [3.0_pReal,2.0_pReal]
+
 
   do d = lbound(FEM_quadrature_weights,1), ubound(FEM_quadrature_weights,1)
     do o = lbound(FEM_quadrature_weights(d,:),1), ubound(FEM_quadrature_weights(d,:),1)
