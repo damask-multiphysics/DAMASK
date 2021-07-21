@@ -108,7 +108,7 @@ submodule(phase:plastic) nonlocal
       forestProjection_Edge, &                                                                      !< matrix of forest projections of edge dislocations
       forestProjection_Screw                                                                        !< matrix of forest projections of screw dislocations
     real(pReal), dimension(:,:,:), allocatable :: &
-      Schmid, &                                                                                     !< Schmid contribution
+      P_sl, &                                                                                       !< Schmid contribution
       P_nS_pos, &
       P_nS_neg                                                                                      !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
@@ -246,7 +246,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%Schmid = lattice_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
+      prm%P_sl = lattice_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
@@ -254,8 +254,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
         prm%P_nS_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
       else
-        prm%P_nS_pos = prm%Schmid
-        prm%P_nS_neg = prm%Schmid
+        prm%P_nS_pos = prm%P_sl
+        prm%P_nS_neg = prm%P_sl
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl,pl%get_as1dFloat('h_sl-sl'), &
@@ -784,7 +784,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   rhoSgl = rho(:,sgl)
 
   do s = 1,ns
-    tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s))
+    tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s))
     tauNS(s,1) = tau(s)
     tauNS(s,2) = tau(s)
     if (tau(s) > 0.0_pReal) then
@@ -828,12 +828,12 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
   do s = 1,ns
-    Lp = Lp + dot_gamma(s) * prm%Schmid(1:3,1:3,s)
+    Lp = Lp + dot_gamma(s) * prm%P_sl(1:3,1:3,s)
     forall (i=1:3,j=1:3,k=1:3,l=1:3) &
       dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
-          + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
+          + prm%P_sl(i,j,s) * prm%P_sl(k,l,s) &
           * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
-          + prm%Schmid(i,j,s) &
+          + prm%P_sl(i,j,s) &
           * (+ prm%P_nS_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
              - prm%P_nS_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
   enddo
@@ -902,7 +902,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
 
   !*** calculate limits for stable dipole height
   do s = 1,prm%sum_N_sl
-    tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s)) +dst%tau_back(s,en)
+    tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s)) +dst%tau_back(s,en)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
 
@@ -1010,7 +1010,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   ! limits for stable dipole height
   do s = 1,ns
-    tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,en)
+    tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s)) + dst%tau_back(s,en)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
 
