@@ -137,10 +137,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
-                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      if(trim(phase%get_asString('lattice')) == 'cI') then
+      if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
@@ -150,9 +149,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
-                                                   phase%get_asString('lattice'))
-      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
-                                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+                                                   phase_lattice(ph))
+      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),&
+                                                           phase_cOverA(ph))
       prm%forestProjection = transpose(prm%forestProjection)
 
       rho_mob_0       = pl%get_as1dFloat('rho_mob_0',     requiredSize=size(N_sl))

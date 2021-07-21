@@ -73,8 +73,7 @@ module function anisobrittle_init() result(mySources)
         prm%s_crit  = src%get_as1dFloat('s_crit',  requiredSize=size(N_cl))
         prm%g_crit  = src%get_as1dFloat('g_crit',  requiredSize=size(N_cl))
 
-        prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
-                                                             phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+        prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase_lattice(ph),phase_cOverA(ph))
 
         ! expand: family => system
         prm%s_crit = math_expand(prm%s_crit,N_cl)

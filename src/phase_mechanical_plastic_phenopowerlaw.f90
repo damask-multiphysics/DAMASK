@@ -115,10 +115,9 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
-                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      if(phase%get_asString('lattice') == 'cI') then
+      if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal=emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
@@ -127,9 +126,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
         prm%nonSchmid_pos  = prm%P_sl
         prm%nonSchmid_neg  = prm%P_sl
       endif
-      prm%h_sl_sl   = lattice_interaction_SlipBySlip(N_sl, &
-                                                     pl%get_as1dFloat('h_sl-sl'), &
-                                                     phase%get_asString('lattice'))
+      prm%h_sl_sl   = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
+                                                     phase_lattice(ph))
 
       xi_0_sl             = pl%get_as1dFloat('xi_0_sl',   requiredSize=size(N_sl))
       prm%xi_inf_sl       = pl%get_as1dFloat('xi_inf_sl', requiredSize=size(N_sl))
@@ -164,13 +162,11 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     N_tw         = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
-      prm%P_tw            = lattice_SchmidMatrix_twin(N_tw,phase%get_asString('lattice'),&
-                                                      phase%get_asFloat('c/a',defaultVal=0.0_pReal))
-      prm%h_tw_tw         = lattice_interaction_TwinByTwin(N_tw,&
-                                                           pl%get_as1dFloat('h_tw-tw'), &
-                                                           phase%get_asString('lattice'))
-      prm%gamma_char      = lattice_characteristicShear_twin(N_tw,phase%get_asString('lattice'),&
-                                                             phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+      prm%P_tw            = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%h_tw_tw         = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dFloat('h_tw-tw'), &
+                                                           phase_lattice(ph))
+      prm%gamma_char      = lattice_characteristicShear_twin(N_tw,phase_lattice(ph),&
+                                                             phase_cOverA(ph))
 
       xi_0_tw             = pl%get_as1dFloat('xi_0_tw',requiredSize=size(N_tw))
 
@@ -200,12 +196,10 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 ! slip-twin related parameters
     slipAndTwinActive: if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
       prm%h_0_tw_sl  = pl%get_asFloat('h_0_tw-sl')
-      prm%h_sl_tw    = lattice_interaction_SlipByTwin(N_sl,N_tw,&
-                                                      pl%get_as1dFloat('h_sl-tw'), &
-                                                      phase%get_asString('lattice'))
-      prm%h_tw_sl    = lattice_interaction_TwinBySlip(N_tw,N_sl,&
-                                                      pl%get_as1dFloat('h_tw-sl'), &
-                                                      phase%get_asString('lattice'))
+      prm%h_sl_tw    = lattice_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dFloat('h_sl-tw'), &
+                                                      phase_lattice(ph))
+      prm%h_tw_sl    = lattice_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dFloat('h_tw-sl'), &
+                                                      phase_lattice(ph))
     else slipAndTwinActive
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0
       allocate(prm%h_tw_sl(prm%sum_N_tw,prm%sum_N_sl))                                              ! at least one dimension is 0
