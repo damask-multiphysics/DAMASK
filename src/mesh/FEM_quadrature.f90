@@ -373,12 +373,21 @@ end function permutationStar1111
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
-  integer :: o, d
-
+  integer :: o, d, n
+  real(pReal), dimension(2:3), parameter :: w = [3.0_pReal,2.0_pReal]
 
   do d = lbound(FEM_quadrature_weights,1), ubound(FEM_quadrature_weights,1)
     do o = lbound(FEM_quadrature_weights(d,:),1), ubound(FEM_quadrature_weights(d,:),1)
-      if (dNeq(sum(FEM_quadrature_weights(d,o)%p),1.0_pReal,5e-15_pReal)) error stop 'quadrature weights'
+      if (dNeq(sum(FEM_quadrature_weights(d,o)%p),1.0_pReal,5e-15_pReal)) &
+        error stop 'quadrature weights'
+    enddo
+  enddo
+
+  do d = lbound(FEM_quadrature_points,1), ubound(FEM_quadrature_points,1)
+    do o = lbound(FEM_quadrature_points(d,:),1), ubound(FEM_quadrature_points(d,:),1)
+      n = size(FEM_quadrature_points(d,o)%p,1)/d
+      if (any(dNeq(sum(reshape(FEM_quadrature_points(d,o)%p,[d,n]),2),-real(n,pReal)/w(d),1.e-14_pReal))) &
+        error stop 'quadrature points'
     enddo
   enddo
 
