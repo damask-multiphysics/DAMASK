@@ -2,7 +2,7 @@ submodule(phase:mechanical) elastic
 
   type :: tParameters
     real(pReal), dimension(6,6) :: &
-      C66                                                                                           !< Elastic constants in Voigt notation
+      C66 = 0.0_pReal                                                                               !< Elastic constants in Voigt notation
     real(pReal) :: &
       mu, &
       nu
