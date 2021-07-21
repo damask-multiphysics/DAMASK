@@ -70,50 +70,46 @@ subroutine FEM_quadrature_init
 ! 2D cubic
   FEM_nQuadrature(2,3) = 6
 
-  allocate(FEM_quadrature_weights(2,3)%p(6))
-                                       
+  allocate(FEM_quadrature_weights(2,3)%p(6))                                    
   FEM_quadrature_weights(2,3)%p(1:3) = 0.2233815896780115_pReal
   FEM_quadrature_weights(2,3)%p(4:6) = 0.1099517436553219_pReal
 
   allocate(FEM_quadrature_points (2,3)%p(12))
-
   FEM_quadrature_points (2,3)%p(1:6) = permutationStar21([0.4459484909159649_pReal])
-  FEM_quadrature_points (2,3)%p(7:12)= permutationStar21([0.0915762135097707_pReal])
+  FEM_quadrature_points (2,3)%p(7:12)= permutationStar21([0.09157621350977074_pReal])
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quartic
   FEM_nQuadrature(2,4) = 12
 
-  allocate(FEM_quadrature_weights(2,4)%p(12))
-                                        
-  FEM_quadrature_weights(2,4)%p(1:3)  = 0.1167862757263800_pReal
-  FEM_quadrature_weights(2,4)%p(4:6)  = 0.0508449063702100_pReal
-  FEM_quadrature_weights(2,4)%p(7:12) = 0.0828510756183700_pReal
+  allocate(FEM_quadrature_weights(2,4)%p(12))                                     
+  FEM_quadrature_weights(2,4)%p(1:3)  = 0.1167862757263794_pReal
+  FEM_quadrature_weights(2,4)%p(4:6)  = 0.0508449063702068_pReal
+  FEM_quadrature_weights(2,4)%p(7:12) = 0.08285107561837358_pReal
 
-  allocate(FEM_quadrature_points (2,4)%p(24))
-                                                           
-  FEM_quadrature_points (2,4)%p(1:6)  = permutationStar21([0.2492867451709100_pReal])
-  FEM_quadrature_points (2,4)%p(7:12) = permutationStar21([0.0630890144915000_pReal])
-  FEM_quadrature_points (2,4)%p(13:24)= permutationStar111([0.3103524510337800_pReal, 0.6365024991214000_pReal])
+  allocate(FEM_quadrature_points (2,4)%p(24))                                                         
+  FEM_quadrature_points (2,4)%p(1:6)  = permutationStar21([0.2492867451709104_pReal])
+  FEM_quadrature_points (2,4)%p(7:12) = permutationStar21([0.06308901449150223_pReal])
+  FEM_quadrature_points (2,4)%p(13:24)= permutationStar111([0.3103524510337844_pReal, 0.05314504984481695_pReal])
 
 !--------------------------------------------------------------------------------------------------
 ! 2D quintic
   FEM_nQuadrature(2,5) = 16
 
   allocate(FEM_quadrature_weights(2,5)%p(16))
-  FEM_quadrature_weights(2,5)%p(1  )  = 0.1443156076777900_pReal
-  FEM_quadrature_weights(2,5)%p(2:4)  = 0.0950916342672800_pReal
-  FEM_quadrature_weights(2,5)%p(5:7)  = 0.1032173705347200_pReal
-  FEM_quadrature_weights(2,5)%p(8:10) = 0.0324584976232000_pReal
-  FEM_quadrature_weights(2,5)%p(11:16)= 0.0272303141744300_pReal
+  FEM_quadrature_weights(2,5)%p(1  )  = 0.1443156076777871_pReal
+  FEM_quadrature_weights(2,5)%p(2:4)  = 0.09509163426728462_pReal
+  FEM_quadrature_weights(2,5)%p(5:7)  = 0.1032173705347183_pReal
+  FEM_quadrature_weights(2,5)%p(8:10) = 0.03245849762319808_pReal
+  FEM_quadrature_weights(2,5)%p(11:16)= 0.02723031417443499_pReal
 
   allocate(FEM_quadrature_points (2,5)%p(32))
                                                           
-  FEM_quadrature_points (2,5)%p(1:2)  = permutationStar3([0.3333333333333300_pReal])
-  FEM_quadrature_points (2,5)%p(3:8)  = permutationStar21([0.4592925882927200_pReal])
-  FEM_quadrature_points (2,5)%p(9:14) = permutationStar21([0.1705693077517600_pReal])
-  FEM_quadrature_points (2,5)%p(15:20)= permutationStar21([0.0505472283170300_pReal])
-  FEM_quadrature_points (2,5)%p(21:32)= permutationStar111([0.2631128296346400_pReal, 0.7284923929554000_pReal])
+  FEM_quadrature_points (2,5)%p(1:2)  = permutationStar3([0.3333333333333333_pReal])
+  FEM_quadrature_points (2,5)%p(3:8)  = permutationStar21([0.4592925882927231_pReal])
+  FEM_quadrature_points (2,5)%p(9:14) = permutationStar21([0.1705693077517602_pReal])
+  FEM_quadrature_points (2,5)%p(15:20)= permutationStar21([0.0505472283170310_pReal])
+  FEM_quadrature_points (2,5)%p(21:32)= permutationStar111([0.2631128296346381_pReal, 0.008394777409957605_pReal])
 
 !--------------------------------------------------------------------------------------------------
 ! 3D linear
@@ -148,9 +144,9 @@ subroutine FEM_quadrature_init
 
   allocate(FEM_quadrature_points (3,3)%p(42))
                                                            
-  FEM_quadrature_points (3,3)%p(1:12) = permutationStar31([0.0927352503108912_pReal])
+  FEM_quadrature_points (3,3)%p(1:12) = permutationStar31([0.09273525031089123_pReal])
   FEM_quadrature_points (3,3)%p(13:24)= permutationStar31([0.3108859192633006_pReal])
-  FEM_quadrature_points (3,3)%p(25:42)= permutationStar22([0.0455037041256497_pReal])
+  FEM_quadrature_points (3,3)%p(25:42)= permutationStar22([0.04550370412564965_pReal])
 
 !--------------------------------------------------------------------------------------------------
 ! 3D quartic
