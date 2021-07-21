@@ -39,7 +39,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief initializes FEM interpolation data
 !--------------------------------------------------------------------------------------------------
-subroutine FEM_quadrature_init
+subroutine FEM_quadrature_init()
 
   print'(/,a)', ' <<<+-  FEM_quadrature init  -+>>>'; flush(6)
 
@@ -181,6 +181,8 @@ subroutine FEM_quadrature_init
   FEM_quadrature_points (3,5)%p(85:120) = permutationStar211([0.2281904610687610_pReal, 0.0055147549744775_pReal])
   FEM_quadrature_points (3,5)%p(121:156)= permutationStar211([0.3523052600879940_pReal, 0.0992057202494530_pReal])
   FEM_quadrature_points (3,5)%p(157:168)= permutationStar31([0.1344783347929940_pReal])
+
+  call selfTest
 
 end subroutine FEM_quadrature_init
 
@@ -368,5 +370,22 @@ pure function permutationStar1111(point) result(qPt)
   qPt = reshape(matmul(tetrahedron, temp),[72])
 
 end function permutationStar1111
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of quadrature weights.
+!--------------------------------------------------------------------------------------------------
+subroutine selfTest
+
+  integer :: o, d
+
+
+  do d = lbound(FEM_quadrature_weights,1), ubound(FEM_quadrature_weights,1)
+    do o = lbound(FEM_quadrature_weights(d,:),1), ubound(FEM_quadrature_weights(d,:),1)
+      if (dNeq(sum(FEM_quadrature_weights(d,o)%p),1.0_pReal,5e-15_pReal)) error stop 'quadrature weights'
+    enddo
+  enddo
+
+end subroutine selfTest
 
 end module FEM_quadrature
