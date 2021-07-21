@@ -773,7 +773,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     dv_dtauNS                                                                                       !< velocity derivative with respect to the shear stress
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< resolved shear stress including backstress terms
-    gdotTotal                                                                                       !< shear rate
+    dot_gamma                                                                                       !< shear rate
 
   associate(prm => param(ph),dst=>microstructure(ph),&
   stt=>state(ph))
@@ -823,12 +823,12 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
     rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
 
-  gdotTotal = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
+  dot_gamma = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
   do s = 1,ns
-    Lp = Lp + gdotTotal(s) * prm%Schmid(1:3,1:3,s)
+    Lp = Lp + dot_gamma(s) * prm%Schmid(1:3,1:3,s)
     forall (i=1:3,j=1:3,k=1:3,l=1:3) &
       dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
           + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
@@ -972,7 +972,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   real(pReal), dimension(param(ph)%sum_N_sl,4) :: &
     v, &                                                                                            !< current dislocation glide velocity
     v0, &
-    gdot                                                                                            !< shear rates
+    dot_gamma                                                                                       !< shear rates
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
     v_climb                                                                                         !< climb velocity of edge dipoles
@@ -995,7 +995,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   ns = prm%sum_N_sl
 
   tau = 0.0_pReal
-  gdot = 0.0_pReal
+  dot_gamma = 0.0_pReal
 
   rho  = getRho(ph,en)
   rhoSgl = rho(:,sgl)
@@ -1004,7 +1004,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
-  gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
+  dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
 
 
@@ -1030,17 +1030,17 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   rhoDotMultiplication = 0.0_pReal
   isBCC: if (phase_lattice(ph) == 'cI') then
     forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
-      rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / prm%b_sl(s) &                           ! assuming double-cross-slip of screws to be decisive for multiplication
+      rhoDotMultiplication(s,1:2) = sum(abs(dot_gamma(s,3:4))) / prm%b_sl(s) &                      ! assuming double-cross-slip of screws to be decisive for multiplication
                                   * sqrt(stt%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))           ! ratio of screw to overall velocity determines edge generation
-      rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) /prm%b_sl(s) &                            ! assuming double-cross-slip of screws to be decisive for multiplication
+      rhoDotMultiplication(s,3:4) = sum(abs(dot_gamma(s,3:4))) /prm%b_sl(s) &                       ! assuming double-cross-slip of screws to be decisive for multiplication
                                   * sqrt(stt%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))           ! ratio of edge to overall velocity determines screw generation
     endforall
 
   else isBCC
     rhoDotMultiplication(:,1:4) = spread( &
-          (sum(abs(gdot(:,1:2)),2) * prm%f_ed_mult + sum(abs(gdot(:,3:4)),2)) &
+          (sum(abs(dot_gamma(:,1:2)),2) * prm%f_ed_mult + sum(abs(dot_gamma(:,3:4)),2)) &
         * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
   endif isBCC
 
@@ -1053,20 +1053,20 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   ! formation by glide
   do c = 1,2
     rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
-                                                   * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &   ! negative mobile --> positive mobile
-                                                      +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) & ! positive mobile --> negative mobile
-                                                      + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)))  ! positive mobile --> negative immobile
+                                                   * (      rhoSgl(:,2*c-1)  * abs(dot_gamma(:,2*c)) &   ! negative mobile --> positive mobile
+                                                      +     rhoSgl(:,2*c)    * abs(dot_gamma(:,2*c-1)) & ! positive mobile --> negative mobile
+                                                      + abs(rhoSgl(:,2*c+4)) * abs(dot_gamma(:,2*c-1)))  ! positive mobile --> negative immobile
 
     rhoDotSingle2DipoleGlide(:,2*c) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
-                                                 * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &     ! negative mobile --> positive mobile
-                                                    +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) &   ! positive mobile --> negative mobile
-                                                    + abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)))      ! negative mobile --> positive immobile
+                                                 * (      rhoSgl(:,2*c-1)  * abs(dot_gamma(:,2*c)) &     ! negative mobile --> positive mobile
+                                                    +     rhoSgl(:,2*c)    * abs(dot_gamma(:,2*c-1)) &   ! positive mobile --> negative mobile
+                                                    + abs(rhoSgl(:,2*c+3)) * abs(dot_gamma(:,2*c)))      ! negative mobile --> positive immobile
 
     rhoDotSingle2DipoleGlide(:,2*c+3) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
-                                                   * rhoSgl(:,2*c+3) * abs(gdot(:,2*c))             ! negative mobile --> positive immobile
+                                                   * rhoSgl(:,2*c+3) * abs(dot_gamma(:,2*c))             ! negative mobile --> positive immobile
 
     rhoDotSingle2DipoleGlide(:,2*c+4) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
-                                                   * rhoSgl(:,2*c+4) * abs(gdot(:,2*c-1))           ! positive mobile --> negative immobile
+                                                   * rhoSgl(:,2*c+4) * abs(dot_gamma(:,2*c-1))           ! positive mobile --> negative immobile
 
     rhoDotSingle2DipoleGlide(:,c+8) = abs(rhoDotSingle2DipoleGlide(:,2*c+3)) &
                                     + abs(rhoDotSingle2DipoleGlide(:,2*c+4)) &
@@ -1079,9 +1079,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   rhoDotAthermalAnnihilation = 0.0_pReal
   forall (c=1:2) &
     rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%b_sl &
-       * (  2.0_pReal * (rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1))) & ! was single hitting single
-          + 2.0_pReal * (abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
-          + rhoDip(:,c) * (abs(gdot(:,2*c-1)) + abs(gdot(:,2*c))))                                  ! single knocks dipole constituent
+       * (  2.0_pReal * (rhoSgl(:,2*c-1) * abs(dot_gamma(:,2*c)) + rhoSgl(:,2*c) * abs(dot_gamma(:,2*c-1))) & ! was single hitting single
+          + 2.0_pReal * (abs(rhoSgl(:,2*c+3)) * abs(dot_gamma(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(dot_gamma(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
+          + rhoDip(:,c) * (abs(dot_gamma(:,2*c-1)) + abs(dot_gamma(:,2*c))))                                  ! single knocks dipole constituent
 
   ! annihilated screw dipoles leave edge jogs behind on the colinear system
   if (phase_lattice(ph) == 'cF') &
@@ -1118,7 +1118,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   else
     dot%rho(:,en) = pack(rhoDot,.true.)
-    dot%gamma(:,en) = sum(gdot,2)
+    dot%gamma(:,en) = sum(dot_gamma,2)
   endif
 
   end associate
@@ -1168,7 +1168,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
     v, &                                                                                            !< current dislocation glide velocity
     v0, &
     neighbor_v0, &                                                                                  !< dislocation glide velocity of enighboring ip
-    gdot                                                                                            !< shear rates
+    dot_gamma                                                                                            !< shear rates
   real(pReal), dimension(3,param(ph)%sum_N_sl,4) :: &
     m                                                                                               !< direction of dislocation motion
   real(pReal), dimension(3,3) :: &
@@ -1194,7 +1194,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
             stt => state(ph))
   ns = prm%sum_N_sl
 
-  gdot = 0.0_pReal
+  dot_gamma = 0.0_pReal
 
   rho  = getRho(ph,en)
   rhoSgl = rho(:,sgl)
@@ -1202,7 +1202,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)                   !ToDo: MD: I think we should use state0 here
-  gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
+  dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
 
@@ -1212,14 +1212,14 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   if (plasticState(ph)%nonlocal) then
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
-    if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
+    if (any( abs(dot_gamma) > 0.0_pReal &                                                                ! any active slip system ...
             .and. prm%C_CFL * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
       print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
-        maxval(abs(v0), abs(gdot) > 0.0_pReal &
+        maxval(abs(v0), abs(dot_gamma) > 0.0_pReal &
                        .and.  prm%C_CFL * abs(v0) * timestep &
                              > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep

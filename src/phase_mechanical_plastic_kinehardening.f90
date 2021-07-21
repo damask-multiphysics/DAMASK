@@ -240,22 +240,22 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   integer :: &
     i,k,l,m,n
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos,gdot_neg, &
-    dgdot_dtau_pos,dgdot_dtau_neg
+    dot_gamma_pos,dot_gamma_neg, &
+    ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
   associate(prm => param(ph))
 
-  call kinetics(Mp,ph,en,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+  call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
 
   do i = 1, prm%sum_N_sl
-    Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%P(1:3,1:3,i)
+    Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + dgdot_dtau_pos(i) * prm%P(k,l,i) * prm%P_nS_pos(m,n,i) &
-                       + dgdot_dtau_neg(i) * prm%P(k,l,i) * prm%P_nS_neg(m,n,i)
+                       + ddot_gamma_dtau_pos(i) * prm%P(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + ddot_gamma_dtau_neg(i) * prm%P(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo
 
   end associate
@@ -277,14 +277,14 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,en)
   real(pReal) :: &
     sumGamma
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos,gdot_neg
+    dot_gamma_pos,dot_gamma_neg
 
 
   associate(prm => param(ph), stt => state(ph),&
             dot => dotState(ph))
 
-  call kinetics(Mp,ph,en,gdot_pos,gdot_neg)
-  dot%accshear(:,en) = abs(gdot_pos+gdot_neg)
+  call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
+  dot%accshear(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
   sumGamma = sum(stt%accshear(:,en))
 
 
@@ -318,15 +318,15 @@ module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
     en
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos,gdot_neg, &
+    dot_gamma_pos,dot_gamma_neg, &
     sense
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-  call kinetics(Mp,ph,en,gdot_pos,gdot_neg)
+  call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
   sense = merge(state(ph)%sense(:,en), &                                                            ! keep existing...
-                sign(1.0_pReal,gdot_pos+gdot_neg), &                                                ! ...or have a defined
-                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                ! current sense of shear direction
+                sign(1.0_pReal,dot_gamma_pos+dot_gamma_neg), &                                                ! ...or have a defined
+                dEq0(dot_gamma_pos+dot_gamma_neg,1e-10_pReal))                                                ! current sense of shear direction
 
 
 !--------------------------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ end subroutine plastic_kinehardening_results
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,ph,en, &
-                         gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+                         dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -401,11 +401,11 @@ pure subroutine kinetics(Mp,ph,en, &
     en
 
   real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos, &
-    gdot_neg
+    dot_gamma_pos, &
+    dot_gamma_neg
   real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
-    dgdot_dtau_pos, &
-    dgdot_dtau_neg
+    ddot_gamma_dtau_pos, &
+    ddot_gamma_dtau_neg
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau_pos, &
@@ -421,31 +421,31 @@ pure subroutine kinetics(Mp,ph,en, &
   enddo
 
   where(dNeq0(tau_pos))
-    gdot_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                  ! 1/2 if non-Schmid active
+    dot_gamma_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                  ! 1/2 if non-Schmid active
              * sign(abs(tau_pos/stt%crss(:,en))**prm%n,  tau_pos)
   else where
-    gdot_pos = 0.0_pReal
+    dot_gamma_pos = 0.0_pReal
   end where
 
   where(dNeq0(tau_neg))
-    gdot_neg = prm%dot_gamma_0 * 0.5_pReal &                                                        ! only used if non-Schmid active, always 1/2
+    dot_gamma_neg = prm%dot_gamma_0 * 0.5_pReal &                                                        ! only used if non-Schmid active, always 1/2
              * sign(abs(tau_neg/stt%crss(:,en))**prm%n,  tau_neg)
   else where
-    gdot_neg = 0.0_pReal
+    dot_gamma_neg = 0.0_pReal
   end where
 
-  if (present(dgdot_dtau_pos)) then
-    where(dNeq0(gdot_pos))
-      dgdot_dtau_pos = gdot_pos*prm%n/tau_pos
+  if (present(ddot_gamma_dtau_pos)) then
+    where(dNeq0(dot_gamma_pos))
+      ddot_gamma_dtau_pos = dot_gamma_pos*prm%n/tau_pos
     else where
-      dgdot_dtau_pos = 0.0_pReal
+      ddot_gamma_dtau_pos = 0.0_pReal
     end where
   endif
-  if (present(dgdot_dtau_neg)) then
-    where(dNeq0(gdot_neg))
-      dgdot_dtau_neg = gdot_neg*prm%n/tau_neg
+  if (present(ddot_gamma_dtau_neg)) then
+    where(dNeq0(dot_gamma_neg))
+      ddot_gamma_dtau_neg = dot_gamma_neg*prm%n/tau_neg
     else where
-      dgdot_dtau_neg = 0.0_pReal
+      ddot_gamma_dtau_neg = 0.0_pReal
     end where
   endif
   end associate

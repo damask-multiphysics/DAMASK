@@ -287,31 +287,31 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   integer :: &
     i,k,l,m,n
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_sl_pos,gdot_sl_neg, &
-    dgdot_dtauslip_pos,dgdot_dtauslip_neg
+    dot_gamma_sl_pos,dot_gamma_sl_neg, &
+    ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
-    gdot_tw,dgdot_dtautwin
+    dot_gamma_tw,ddot_gamma_dtautwin
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
   associate(prm => param(ph))
 
-  call kinetics_sl(Mp,ph,en,gdot_sl_pos,gdot_sl_neg,dgdot_dtauslip_pos,dgdot_dtauslip_neg)
+  call kinetics_sl(Mp,ph,en,dot_gamma_sl_pos,dot_gamma_sl_neg,ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg)
   slipSystems: do i = 1, prm%sum_N_sl
-    Lp = Lp + (gdot_sl_pos(i)+gdot_sl_neg(i))*prm%P_sl(1:3,1:3,i)
+    Lp = Lp + (dot_gamma_sl_pos(i)+dot_gamma_sl_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + dgdot_dtauslip_pos(i) * prm%P_sl(k,l,i) * prm%P_nS_pos(m,n,i) &
-                       + dgdot_dtauslip_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
+                       + ddot_gamma_dtau_sl_pos(i) * prm%P_sl(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + ddot_gamma_dtau_sl_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_tw(Mp,ph,en,gdot_tw,dgdot_dtautwin)
+  call kinetics_tw(Mp,ph,en,dot_gamma_tw,ddot_gamma_dtautwin)
   twinSystems: do i = 1, prm%sum_N_tw
-    Lp = Lp + gdot_tw(i)*prm%P_tw(1:3,1:3,i)
+    Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + dgdot_dtautwin(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
+                       + ddot_gamma_dtautwin(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
   enddo twinSystems
 
   end associate
@@ -334,14 +334,14 @@ module subroutine phenopowerlaw_dotState(Mp,ph,en)
     xi_sl_sat_offset,&
     sumF
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_sl_pos,gdot_sl_neg, &
+    dot_gamma_sl_pos,dot_gamma_sl_neg, &
     right_SlipSlip
 
 
   associate(prm => param(ph), stt => state(ph), dot => dotState(ph))
 
-    call kinetics_sl(Mp,ph,en,gdot_sl_pos,gdot_sl_neg)
-    dot%gamma_sl(:,en) = abs(gdot_sl_pos+gdot_sl_neg)
+    call kinetics_sl(Mp,ph,en,dot_gamma_sl_pos,dot_gamma_sl_neg)
+    dot%gamma_sl(:,en) = abs(dot_gamma_sl_pos+dot_gamma_sl_neg)
     call kinetics_tw(Mp,ph,en,dot%gamma_tw(:,en))
 
 
@@ -406,7 +406,7 @@ end subroutine plastic_phenopowerlaw_results
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,ph,en, &
-                            gdot_sl_pos,gdot_sl_neg,dgdot_dtau_sl_pos,dgdot_dtau_sl_neg)
+                            dot_gamma_sl_pos,dot_gamma_sl_neg,ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -415,11 +415,11 @@ pure subroutine kinetics_sl(Mp,ph,en, &
     en
 
   real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
-    gdot_sl_pos, &
-    gdot_sl_neg
+    dot_gamma_sl_pos, &
+    dot_gamma_sl_neg
   real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
-    dgdot_dtau_sl_pos, &
-    dgdot_dtau_sl_neg
+    ddot_gamma_dtau_sl_pos, &
+    ddot_gamma_dtau_sl_neg
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau_sl_pos, &
@@ -435,31 +435,31 @@ pure subroutine kinetics_sl(Mp,ph,en, &
   enddo
 
   where(dNeq0(tau_sl_pos))
-    gdot_sl_pos = prm%dot_gamma_0_sl * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &            ! 1/2 if non-Schmid active
+    dot_gamma_sl_pos = prm%dot_gamma_0_sl * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &            ! 1/2 if non-Schmid active
                 * sign(abs(tau_sl_pos/stt%xi_sl(:,en))**prm%n_sl,  tau_sl_pos)
   else where
-    gdot_sl_pos = 0.0_pReal
+    dot_gamma_sl_pos = 0.0_pReal
   end where
 
   where(dNeq0(tau_sl_neg))
-    gdot_sl_neg = prm%dot_gamma_0_sl * 0.5_pReal &                                                  ! only used if non-Schmid active, always 1/2
+    dot_gamma_sl_neg = prm%dot_gamma_0_sl * 0.5_pReal &                                                  ! only used if non-Schmid active, always 1/2
                 * sign(abs(tau_sl_neg/stt%xi_sl(:,en))**prm%n_sl,  tau_sl_neg)
   else where
-    gdot_sl_neg = 0.0_pReal
+    dot_gamma_sl_neg = 0.0_pReal
   end where
 
-  if (present(dgdot_dtau_sl_pos)) then
-    where(dNeq0(gdot_sl_pos))
-      dgdot_dtau_sl_pos = gdot_sl_pos*prm%n_sl/tau_sl_pos
+  if (present(ddot_gamma_dtau_sl_pos)) then
+    where(dNeq0(dot_gamma_sl_pos))
+      ddot_gamma_dtau_sl_pos = dot_gamma_sl_pos*prm%n_sl/tau_sl_pos
     else where
-      dgdot_dtau_sl_pos = 0.0_pReal
+      ddot_gamma_dtau_sl_pos = 0.0_pReal
     end where
   endif
-  if (present(dgdot_dtau_sl_neg)) then
-    where(dNeq0(gdot_sl_neg))
-      dgdot_dtau_sl_neg = gdot_sl_neg*prm%n_sl/tau_sl_neg
+  if (present(ddot_gamma_dtau_sl_neg)) then
+    where(dNeq0(dot_gamma_sl_neg))
+      ddot_gamma_dtau_sl_neg = dot_gamma_sl_neg*prm%n_sl/tau_sl_neg
     else where
-      dgdot_dtau_sl_neg = 0.0_pReal
+      ddot_gamma_dtau_sl_neg = 0.0_pReal
     end where
   endif
   end associate
@@ -475,7 +475,7 @@ end subroutine kinetics_sl
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tw(Mp,ph,en,&
-                            gdot_tw,dgdot_dtau_tw)
+                            dot_gamma_tw,ddot_gamma_dtau_tw)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -484,9 +484,9 @@ pure subroutine kinetics_tw(Mp,ph,en,&
     en
 
   real(pReal), dimension(param(ph)%sum_N_tw), intent(out) :: &
-    gdot_tw
+    dot_gamma_tw
   real(pReal), dimension(param(ph)%sum_N_tw), intent(out), optional :: &
-    dgdot_dtau_tw
+    ddot_gamma_dtau_tw
 
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
     tau_tw
@@ -499,17 +499,17 @@ pure subroutine kinetics_tw(Mp,ph,en,&
   enddo
 
   where(tau_tw > 0.0_pReal)
-    gdot_tw = (1.0_pReal-sum(stt%gamma_tw(:,en)/prm%gamma_char)) &                                  ! only twin in untwinned volume fraction
+    dot_gamma_tw = (1.0_pReal-sum(stt%gamma_tw(:,en)/prm%gamma_char)) &                                  ! only twin in untwinned volume fraction
               * prm%dot_gamma_0_tw*(abs(tau_tw)/stt%xi_tw(:,en))**prm%n_tw
   else where
-    gdot_tw = 0.0_pReal
+    dot_gamma_tw = 0.0_pReal
   end where
 
-  if (present(dgdot_dtau_tw)) then
-    where(dNeq0(gdot_tw))
-      dgdot_dtau_tw = gdot_tw*prm%n_tw/tau_tw
+  if (present(ddot_gamma_dtau_tw)) then
+    where(dNeq0(dot_gamma_tw))
+      ddot_gamma_dtau_tw = dot_gamma_tw*prm%n_tw/tau_tw
     else where
-      dgdot_dtau_tw = 0.0_pReal
+      ddot_gamma_dtau_tw = 0.0_pReal
     end where
   endif
 

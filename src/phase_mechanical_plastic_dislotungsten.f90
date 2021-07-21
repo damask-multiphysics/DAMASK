@@ -321,7 +321,7 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
   real(pReal) :: &
     VacancyDiffusion
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos, gdot_neg,&
+    dot_gamma_pos, dot_gamma_neg,&
     tau_pos,&
     tau_neg, &
     v_cl, &
@@ -333,10 +333,10 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
             dot => dotState(ph), dst => dependentState(ph))
 
   call kinetics(Mp,T,ph,en,&
-                gdot_pos,gdot_neg, &
+                dot_gamma_pos,dot_gamma_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
-  dot%gamma_sl(:,en) = (gdot_pos+gdot_neg)                                                          ! ToDo: needs to be abs
+  dot%gamma_sl(:,en) = (dot_gamma_pos+dot_gamma_neg)                                                          ! ToDo: needs to be abs
   VacancyDiffusion = prm%D_0*exp(-prm%Q_cl/(kB*T))
 
   where(dEq0(tau_pos))                                                                              ! ToDo: use avg of pos and neg
