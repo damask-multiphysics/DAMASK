@@ -755,11 +755,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     Mp
                                                                                                     !< derivative of Lp with respect to Mp
   integer :: &
-    ns, &                                                                                           !< short notation for the total number of active slip systems
-    i, &
-    j, &
-    k, &
-    l, &
+    i, j, k, l, &
     t, &                                                                                            !< dislocation type
     s                                                                                               !< index of my current slip system
   real(pReal), dimension(param(ph)%sum_N_sl,8) :: &
@@ -775,15 +771,13 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     dot_gamma                                                                                       !< shear rate
 
-  associate(prm => param(ph),dst=>microstructure(ph),&
-  stt=>state(ph))
-  ns = prm%sum_N_sl
+  associate(prm => param(ph),dst=>microstructure(ph),stt=>state(ph))
 
   !*** shortcut to state variables
   rho = getRho(ph,en)
   rhoSgl = rho(:,sgl)
 
-  do s = 1,ns
+  do s = 1,prm%sum_N_sl
     tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s))
     tauNS(s,1) = tau(s)
     tauNS(s,2) = tau(s)
@@ -820,14 +814,14 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   stt%v(:,en) = pack(v,.true.)
 
   !*** Bauschinger effect
-  forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
+  forall (s = 1:prm%sum_N_sl, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
     rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
 
   dot_gamma = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
-  do s = 1,ns
+  do s = 1,prm%sum_N_sl
     Lp = Lp + dot_gamma(s) * prm%P_sl(1:3,1:3,s)
     forall (i=1:3,j=1:3,k=1:3,l=1:3) &
       dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
@@ -855,7 +849,6 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     en
 
   integer :: &
-    ns, &                                                                                           ! short notation for the total number of active slip systems
     c, &                                                                                            ! character of dislocation
     t, &                                                                                            ! type of dislocation
     s                                                                                               ! index of my current slip system
@@ -875,11 +868,10 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
 
   associate(prm => param(ph),dst => microstructure(ph),del => deltaState(ph))
-  ns = prm%sum_N_sl
 
   !*** shortcut to state variables
-  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
-  forall (s = 1:ns, c = 1:2) dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,ph),en)
+  forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
+  forall (s = 1:prm%sum_N_sl, c = 1:2) dUpperOld(s,c) = plasticState(ph)%state(iD(s,c,ph),en)
 
   rho =  getRho(ph,en)
   rhoDip = rho(:,dip)
@@ -920,16 +912,16 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
 
   !*** dissociation by stress increase
   deltaRhoDipole2SingleStress = 0.0_pReal
-  forall (c=1:2, s=1:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
+  forall (c=1:2, s=1:prm%sum_N_sl, deltaDUpper(s,c) < 0.0_pReal .and. &
                                           dNeq0(dUpperOld(s,c) - prm%minDipoleHeight(s,c))) &
     deltaRhoDipole2SingleStress(s,8+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                        / (dUpperOld(s,c) - prm%minDipoleHeight(s,c))
 
   forall (t=1:4) deltaRhoDipole2SingleStress(:,t) = -0.5_pReal * deltaRhoDipole2SingleStress(:,(t-1)/2+9)
-  forall (s = 1:ns, c = 1:2) plasticState(ph)%state(iD(s,c,ph),en) = dUpper(s,c)
+  forall (s = 1:prm%sum_N_sl, c = 1:2) plasticState(ph)%state(iD(s,c,ph),en) = dUpper(s,c)
 
   plasticState(ph)%deltaState(:,en) = 0.0_pReal
-  del%rho(:,en) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*ns])
+  del%rho(:,en) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*prm%sum_N_sl])
 
   end associate
 
@@ -940,7 +932,7 @@ end subroutine plastic_nonlocal_deltaState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
-                                            ph,en,ip,el)
+                                    ph,en,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
@@ -954,7 +946,6 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     el                                                                                              !< current element number
 
   integer ::  &
-    ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
     t, &                                                                                            !< type of dislocation
     s                                                                                               !< index of my current slip system
@@ -988,11 +979,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     return
   endif
 
-  associate(prm => param(ph), &
-            dst => microstructure(ph), &
-            dot => dotState(ph), &
-            stt => state(ph))
-  ns = prm%sum_N_sl
+  associate(prm => param(ph), dst => microstructure(ph), dot => dotState(ph), stt => state(ph))
 
   tau = 0.0_pReal
   dot_gamma = 0.0_pReal
@@ -1003,13 +990,13 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   rho0 = getRho0(ph,en)
   my_rhoSgl0 = rho0(:,sgl)
 
-  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
+  forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
   dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
 
 
   ! limits for stable dipole height
-  do s = 1,ns
+  do s = 1,prm%sum_N_sl
     tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s)) + dst%tau_back(s,en)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
@@ -1029,7 +1016,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   ! dislocation multiplication
   rhoDotMultiplication = 0.0_pReal
   isBCC: if (phase_lattice(ph) == 'cI') then
-    forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
+    forall (s = 1:prm%sum_N_sl, sum(abs(v(s,1:4))) > 0.0_pReal)
       rhoDotMultiplication(s,1:2) = sum(abs(dot_gamma(s,3:4))) / prm%b_sl(s) &                      ! assuming double-cross-slip of screws to be decisive for multiplication
                                   * sqrt(stt%rho_forest(s,en)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))           ! ratio of screw to overall velocity determines edge generation
@@ -1044,7 +1031,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
         * sqrt(stt%rho_forest(:,en)) / prm%i_sl / prm%b_sl, 2, 4)                                   ! eq. 3.26
   endif isBCC
 
-  forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
+  forall (s = 1:prm%sum_N_sl, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
 
 
   !****************************************************************************
@@ -1085,7 +1072,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   ! annihilated screw dipoles leave edge jogs behind on the colinear system
   if (phase_lattice(ph) == 'cF') &
-    forall (s = 1:ns, prm%colinearSystem(s) > 0) &
+    forall (s = 1:prm%sum_N_sl, prm%colinearSystem(s) > 0) &
       rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
         * 0.25_pReal * sqrt(stt%rho_forest(s,en)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
 
@@ -1095,7 +1082,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   D_SD = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))                                              ! eq. 3.53
   v_climb = D_SD * prm%mu * prm%V_at &
           / (PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
-  forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
+  forall (s = 1:prm%sum_N_sl, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
