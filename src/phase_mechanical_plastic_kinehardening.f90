@@ -18,6 +18,8 @@ submodule(phase:plastic) kinehardening
       h_inf_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip
       xi_inf_f, &
       xi_inf_b
+    real(pReal),              allocatable, dimension(:,:) :: &
+      h_sl_sl                                                                                       !< slip resistance from slip activity
     real(pReal),              allocatable, dimension(:,:,:) :: &
       P, &
       nonSchmid_pos, &
@@ -122,9 +124,9 @@ module function plastic_kinehardening_init() result(myPlasticity)
         prm%nonSchmid_pos  = prm%P
         prm%nonSchmid_neg  = prm%P
       endif
-      prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(N_sl, &
-                                                                pl%get_as1dFloat('h_sl-sl'), &
-                                                                phase%get_asString('lattice'))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl, &
+                                                   pl%get_as1dFloat('h_sl-sl'), &
+                                                   phase%get_asString('lattice'))
 
       xi_0          = pl%get_as1dFloat('xi_0',       requiredSize=size(N_sl))
       prm%xi_inf_f  = pl%get_as1dFloat('xi_inf_f',   requiredSize=size(N_sl))
@@ -158,7 +160,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     else slipActive
       xi_0 = emptyRealArray
       allocate(prm%xi_inf_f,prm%xi_inf_b,prm%h_0_f,prm%h_inf_f,prm%h_0_b,prm%h_inf_b,source=emptyRealArray)
-      allocate(prm%interaction_SlipSlip(0,0))
+      allocate(prm%h_sl_sl(0,0))
     endif slipActive
 
 !--------------------------------------------------------------------------------------------------
@@ -288,7 +290,7 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,en)
   sumGamma = sum(stt%accshear(:,en))
 
 
-  dot%crss(:,en) = matmul(prm%interaction_SlipSlip,dot%accshear(:,en)) &
+  dot%crss(:,en) = matmul(prm%h_sl_sl,dot%accshear(:,en)) &
                  * (  prm%h_inf_f &
                      + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
                      * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
