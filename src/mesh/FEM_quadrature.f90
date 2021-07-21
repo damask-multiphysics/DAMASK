@@ -20,12 +20,12 @@ module FEM_quadrature
                            -1.0_pReal,  1.0_pReal, -1.0_pReal, &
                            -1.0_pReal, -1.0_pReal,  1.0_pReal], shape=[3,4])
 
-  type :: group_float                                                                               !< variable length datatype used for storage of state
+  type :: group_float                                                                               !< variable length datatype
     real(pReal), dimension(:), allocatable :: p
   end type group_float
 
   integer,             dimension(2:3,maxOrder), public, protected :: &
-    FEM_nQuadrature                                                                                 !< number of quadrature points for a given spatial dimension(2-3) and interpolation order(1-maxOrder)
+    FEM_nQuadrature                                                                                 !< number of quadrature points for spatial dimension(2-3) and interpolation order (1-maxOrder)
   type(group_float),   dimension(2:3,maxOrder), public, protected :: &
     FEM_quadrature_weights, &                                                                       !< quadrature weights for each quadrature rule
     FEM_quadrature_points                                                                           !< quadrature point coordinates (in simplical system) for each quadrature rule
@@ -191,13 +191,9 @@ pure function permutationStar3(point) result(qPt)
   real(pReal), dimension(2)             :: qPt
   real(pReal), dimension(1), intent(in) :: point
 
-  real(pReal), dimension(3,1) :: temp
 
-
-  temp = reshape([ &
-    point(1), point(1), point(1)],shape(temp))
-
-  qPt = reshape(matmul(triangle, temp),[2])
+  qPt = pack(matmul(triangle,reshape([ &
+    point(1), point(1), point(1)],[3,1])),.true.)
 
 end function permutationStar3
 
@@ -210,15 +206,11 @@ pure function permutationStar21(point) result(qPt)
   real(pReal), dimension(6)             :: qPt
   real(pReal), dimension(1), intent(in) :: point
 
-  real(pReal), dimension(3,3) :: temp
 
-
-  temp = reshape([ &
+  qPt = pack(matmul(triangle,reshape([ &
     point(1), point(1), 1.0_pReal - 2.0_pReal*point(1), &
     point(1), 1.0_pReal - 2.0_pReal*point(1), point(1), &
-    1.0_pReal - 2.0_pReal*point(1), point(1), point(1)],shape(temp))
-
-  qPt = reshape(matmul(triangle, temp),[6])
+    1.0_pReal - 2.0_pReal*point(1), point(1), point(1)],[3,3])),.true.)
 
 end function permutationStar21
 
@@ -231,18 +223,14 @@ pure function permutationStar111(point) result(qPt)
   real(pReal), dimension(12)            :: qPt
   real(pReal), dimension(2), intent(in) :: point
 
-  real(pReal), dimension(3,6) :: temp
 
-
-  temp = reshape([ &
+  qPt = pack(matmul(triangle,reshape([ &
     point(1), point(2), 1.0_pReal - point(1) - point(2), &
     point(1), 1.0_pReal - point(1) - point(2), point(2), &
     point(2), point(1), 1.0_pReal - point(1) - point(2), &
     point(2), 1.0_pReal - point(1) - point(2), point(1), &
     1.0_pReal - point(1) - point(2), point(2), point(1), &
-    1.0_pReal - point(1) - point(2), point(1), point(2)],shape(temp))
-
-  qPt = reshape(matmul(triangle, temp),[12])
+    1.0_pReal - point(1) - point(2), point(1), point(2)],[3,6])),.true.)
 
 end function permutationStar111
 
@@ -255,13 +243,9 @@ pure function permutationStar4(point) result(qPt)
   real(pReal), dimension(3)             :: qPt
   real(pReal), dimension(1), intent(in) :: point
 
-  real(pReal), dimension(4,1) :: temp
 
-
-  temp = reshape([ &
-    point(1), point(1), point(1), point(1)],shape(temp))
-
-  qPt = reshape(matmul(tetrahedron, temp),[3])
+  qPt = pack(matmul(tetrahedron,reshape([ &
+    point(1), point(1), point(1), point(1)],[4,1])),.true.)
 
 end function permutationStar4
 
@@ -274,16 +258,12 @@ pure function permutationStar31(point) result(qPt)
   real(pReal), dimension(12)            :: qPt
   real(pReal), dimension(1), intent(in) :: point
 
-  real(pReal), dimension(4,4) :: temp
 
-
-  temp = reshape([ &
+  qPt = pack(matmul(tetrahedron,reshape([ &
     point(1), point(1), point(1), 1.0_pReal - 3.0_pReal*point(1), &
     point(1), point(1), 1.0_pReal - 3.0_pReal*point(1), point(1), &
     point(1), 1.0_pReal - 3.0_pReal*point(1), point(1), point(1), &
-    1.0_pReal - 3.0_pReal*point(1), point(1), point(1), point(1)],shape(temp))
-
-  qPt = reshape(matmul(tetrahedron, temp),[12])
+    1.0_pReal - 3.0_pReal*point(1), point(1), point(1), point(1)],[4,4])),.true.)
 
 end function permutationStar31
 
@@ -296,18 +276,14 @@ function permutationStar22(point) result(qPt)
   real(pReal), dimension(18)            :: qPt
   real(pReal), dimension(1), intent(in) :: point
 
-  real(pReal), dimension(4,6) :: temp
 
-
-  temp = reshape([ &
+  qPt = pack(matmul(tetrahedron,reshape([ &
     point(1), point(1), 0.5_pReal - point(1), 0.5_pReal - point(1), &
     point(1), 0.5_pReal - point(1), point(1), 0.5_pReal - point(1), &
     0.5_pReal - point(1), point(1), point(1), 0.5_pReal - point(1), &
     0.5_pReal - point(1), point(1), 0.5_pReal - point(1), point(1), &
     0.5_pReal - point(1), 0.5_pReal - point(1), point(1), point(1), &
-    point(1), 0.5_pReal - point(1), 0.5_pReal - point(1), point(1)],shape(temp))
-
-  qPt = reshape(matmul(tetrahedron, temp),[18])
+    point(1), 0.5_pReal - point(1), 0.5_pReal - point(1), point(1)],[4,6])),.true.)
 
 end function permutationStar22
 
@@ -320,10 +296,8 @@ pure function permutationStar211(point) result(qPt)
   real(pReal), dimension(36)            :: qPt
   real(pReal), dimension(2), intent(in) :: point
 
-  real(pReal), dimension(4,12) :: temp
 
-
-  temp = reshape([ &
+  qPt = pack(matmul(tetrahedron,reshape([ &
     point(1), point(1), point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), &
     point(1), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), &
     point(1), point(2), point(1), 1.0_pReal - 2.0_pReal*point(1) - point(2), &
@@ -335,9 +309,7 @@ pure function permutationStar211(point) result(qPt)
     point(2), 1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(1), &
     1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(1), point(2), &
     1.0_pReal - 2.0_pReal*point(1) - point(2), point(1), point(2), point(1), &
-    1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), point(1), point(1)],shape(temp))
-
-  qPt = reshape(matmul(tetrahedron, temp),[36])
+    1.0_pReal - 2.0_pReal*point(1) - point(2), point(2), point(1), point(1)],[4,12])),.true.)
 
 end function permutationStar211
 
@@ -350,10 +322,8 @@ pure function permutationStar1111(point) result(qPt)
   real(pReal), dimension(72)            :: qPt
   real(pReal), dimension(3), intent(in) :: point
 
-  real(pReal), dimension(4,24) :: temp
 
-
-  temp = reshape([ &
+  qPt = pack(matmul(tetrahedron,reshape([ &
     point(1), point(2), point(3), 1.0_pReal - point(1) - point(2)- point(3), &
     point(1), point(2), 1.0_pReal - point(1) - point(2)- point(3), point(3), &
     point(1), point(3), point(2), 1.0_pReal - point(1) - point(2)- point(3), &
@@ -377,9 +347,7 @@ pure function permutationStar1111(point) result(qPt)
     1.0_pReal - point(1) - point(2)- point(3), point(2), point(1), point(3), &
     1.0_pReal - point(1) - point(2)- point(3), point(2), point(3), point(1), &
     1.0_pReal - point(1) - point(2)- point(3), point(3), point(1), point(2), &
-    1.0_pReal - point(1) - point(2)- point(3), point(3), point(2), point(1)],shape(temp))
-
-  qPt = reshape(matmul(tetrahedron, temp),[72])
+    1.0_pReal - point(1) - point(2)- point(3), point(3), point(2), point(1)],[4,24])),.true.)
 
 end function permutationStar1111
 
