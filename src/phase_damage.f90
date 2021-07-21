@@ -5,7 +5,7 @@ submodule(phase) damage
 
   type :: tDamageParameters
     real(pReal) ::                 mu = 0.0_pReal                                                   !< viscosity
-    real(pReal), dimension(3,3) :: K  = 0.0_pReal                                                   !< conductivity/diffusivity
+    real(pReal), dimension(3,3) :: D  = 0.0_pReal                                                   !< conductivity/diffusivity
   end type tDamageParameters
 
   enum, bind(c); enumerator :: &
@@ -18,7 +18,7 @@ submodule(phase) damage
 
 
   type :: tDataContainer
-    real(pReal), dimension(:), allocatable :: phi, d_phi_d_dot_phi
+    real(pReal), dimension(:), allocatable :: phi
   end type tDataContainer
 
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:), allocatable :: &
@@ -97,7 +97,6 @@ module subroutine damage_init
     Nmembers = count(material_phaseID == ph)
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
-    allocate(current(ph)%d_phi_d_dot_phi(Nmembers),source=0.0_pReal)
 
     phase => phases%get(ph)
     sources => phase%get('damage',defaultVal=emptyList)
@@ -105,10 +104,10 @@ module subroutine damage_init
     if (sources%length == 1) then
       damage_active = .true.
       source => sources%get(1)
-      param(ph)%mu     = source%get_asFloat('mu',defaultVal=0.0_pReal)                              ! ToDo: make mandatory?
-      param(ph)%K(1,1) = source%get_asFloat('K_11',defaultVal=0.0_pReal)                            ! ToDo: make mandatory?
-      param(ph)%K(3,3) = source%get_asFloat('K_33',defaultVal=0.0_pReal)                            ! ToDo: depends on symmetry
-      param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase_lattice(ph))
+      param(ph)%mu     = source%get_asFloat('mu')
+      param(ph)%D(1,1) = source%get_asFloat('D_11')
+      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%D(3,3) = source%get_asFloat('D_33')
+      param(ph)%D = lattice_applyLatticeSymmetry33(param(ph)%D,phase_lattice(ph))
     endif
 
   enddo
@@ -385,9 +384,10 @@ module function phase_K_phi(co,ce) result(K)
 
   integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: K
-
-
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%K)
+  real(pReal), parameter :: l = 1.0_pReal
+  
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D) \
+    * l**2.0_pReal
 
 end function phase_K_phi
 
