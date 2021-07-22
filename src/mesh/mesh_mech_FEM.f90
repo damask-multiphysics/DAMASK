@@ -289,8 +289,8 @@ type(tSolutionState) function FEM_mechanical_solution( &
   params%timeinc = timeinc
   params%fieldBC = fieldBC
 
-  call SNESSolve(mechanical_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                             ! solve mechanical_snes based on solution guess (result in solution)
-  call SNESGetConvergedReason(mechanical_snes,reason,ierr); CHKERRQ(ierr)                                 ! solution converged?
+  call SNESSolve(mechanical_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                       ! solve mechanical_snes based on solution guess (result in solution)
+  call SNESGetConvergedReason(mechanical_snes,reason,ierr); CHKERRQ(ierr)                           ! solution converged?
   terminallyIll = .false.
 
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
