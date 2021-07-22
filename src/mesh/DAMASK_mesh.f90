@@ -21,6 +21,7 @@ program DAMASK_mesh
   use mesh_mechanical_FEM
 
   implicit none
+  integer :: nActiveFields = 0
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file

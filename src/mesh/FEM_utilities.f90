@@ -23,14 +23,8 @@ module FEM_utilities
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-  logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  integer, public, parameter  :: maxFields = 6
-  integer, public             :: nActiveFields = 0
-
-!--------------------------------------------------------------------------------------------------
-! grid related information information
-  real(pReal),   public       :: wgt                                                                !< weighting factor 1/Nelems
+  logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+  real(pReal), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
 
 
 !--------------------------------------------------------------------------------------------------
@@ -49,10 +43,6 @@ module FEM_utilities
     COMPONENT_MECH_Z_ID
   end enum
 
-!--------------------------------------------------------------------------------------------------
-! variables controlling debugging
- logical :: &
-   debugPETSc                                                                                       !< use some in debug defined options for more verbose PETSc solution
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -109,8 +99,9 @@ subroutine FEM_utilities_init
   integer :: structOrder                                                                            !< order of displacement shape functions
   character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
-
   PetscErrorCode            :: ierr
+  logical :: debugPETSc                                                                             !< use some in debug defined options for more verbose PETSc solution
+
 
   print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
 

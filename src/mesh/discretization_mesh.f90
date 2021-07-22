@@ -40,6 +40,11 @@ module discretization_mesh
     mesh_maxNips                                                                                    !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
+  DM, public :: geomMesh
+
+  PetscInt, dimension(:), allocatable, public, protected :: &
+    mesh_boundaries
+
   real(pReal), dimension(:,:), allocatable :: &
     mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
     mesh_node0                                                                                      !< node x,y,z coordinates (initially!)
@@ -49,11 +54,6 @@ module discretization_mesh
   
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
-
-  DM, public :: geomMesh
-
-  PetscInt, dimension(:), allocatable, public, protected :: &
-    mesh_boundaries
 
   public :: &
     discretization_mesh_init, &
