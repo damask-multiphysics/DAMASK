@@ -1007,7 +1007,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged
 
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,en)
-  subState0 = plasticState(ph)%State0(:,en)
+  allocate(subState0,source=plasticState(ph)%State0(:,en))
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
