@@ -53,15 +53,15 @@ module FEM_utilities
   end type tSolutionState
 
   type, public :: tComponentBC
-    integer(kind(COMPONENT_UNDEFINED_ID))          :: ID
-    real(pReal),                       allocatable, dimension(:) :: Value
-    logical,                           allocatable, dimension(:) :: Mask
+    integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
+    real(pReal), allocatable, dimension(:) :: Value
+    logical,     allocatable, dimension(:) :: Mask
   end type tComponentBC
 
   type, public :: tFieldBC
     integer(kind(FIELD_UNDEFINED_ID))  :: ID
     integer                            :: nComponents = 0
-    type(tComponentBC),    allocatable :: componentBC(:)
+    type(tComponentBC), allocatable, dimension(:) :: componentBC
   end type tFieldBC
 
   public :: &
