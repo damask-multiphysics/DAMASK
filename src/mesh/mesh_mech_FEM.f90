@@ -109,7 +109,7 @@ subroutine FEM_mechanical_init(fieldBC)
 
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: ierr
-
+  real(pReal), dimension(3,3) :: devNull
   class(tNode), pointer :: &
     num_mesh
    
@@ -258,6 +258,7 @@ subroutine FEM_mechanical_init(fieldBC)
     call DMPlexVecSetClosure(mechanical_mesh,section,solution_local,cell,px_scal,5,ierr)
     CHKERRQ(ierr)
   enddo
+  call utilities_constitutiveResponse(0.0_pReal,devNull,.true.)
 
 end subroutine FEM_mechanical_init
 
@@ -397,7 +398,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call Utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
+  call utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
   ForwardData = .false.
 
