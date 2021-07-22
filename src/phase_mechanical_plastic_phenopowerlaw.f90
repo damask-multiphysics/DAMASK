@@ -290,7 +290,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     dot_gamma_sl_pos,dot_gamma_sl_neg, &
     ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
-    dot_gamma_tw,ddot_gamma_dtautwin
+    dot_gamma_tw,ddot_gamma_dtau_tw
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
@@ -306,12 +306,12 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
                        + ddot_gamma_dtau_sl_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo slipSystems
 
-  call kinetics_tw(Mp,ph,en,dot_gamma_tw,ddot_gamma_dtautwin)
+  call kinetics_tw(Mp,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
   twinSystems: do i = 1, prm%sum_N_tw
     Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtautwin(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
+                       + ddot_gamma_dtau_tw(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
   enddo twinSystems
 
   end associate
