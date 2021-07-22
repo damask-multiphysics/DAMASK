@@ -64,16 +64,6 @@ module FEM_utilities
     type(tComponentBC),    allocatable :: componentBC(:)
   end type tFieldBC
 
-  type, public :: tLoadCase
-    real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
-    integer      :: incs                   = 0, &                                                   !< number of increments
-                    outputfrequency        = 1, &                                                   !< frequency of result writes
-                    logscale               = 0                                                      !< linear/logarithmic time inc flag
-    logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
-    integer,        allocatable, dimension(:) :: faceID
-    type(tFieldBC), allocatable, dimension(:) :: fieldBC
-  end type tLoadCase
-
   public :: &
     FEM_utilities_init, &
     utilities_constitutiveResponse, &

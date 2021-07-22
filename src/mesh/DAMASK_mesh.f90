@@ -23,6 +23,15 @@ program DAMASK_mesh
   implicit none
   integer :: nActiveFields = 0
 
+  type :: tLoadCase
+    real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
+    integer      :: incs                   = 0, &                                                   !< number of increments
+                    outputfrequency        = 1                                                      !< frequency of result writes
+    logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
+    integer,        allocatable, dimension(:) :: faceID
+    type(tFieldBC), allocatable, dimension(:) :: fieldBC
+  end type tLoadCase
+
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
   integer, allocatable, dimension(:) :: chunkPos                                                    ! this is longer than needed for geometry parsing
@@ -104,8 +113,8 @@ program DAMASK_mesh
 
     chunkPos = IO_stringPos(line)
     do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
-      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-        case('$loadcase')
+      select case (IO_stringValue(line,chunkPos,i))
+        case('$Loadcase')
           N_def = N_def + 1
       end select
     enddo                                                                                           ! count all identifiers to allocate memory and do sanity check
@@ -152,39 +161,36 @@ program DAMASK_mesh
 
     chunkPos = IO_stringPos(line)
     do i = 1, chunkPos(1)
-      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
+      select case (IO_stringValue(line,chunkPos,i))
 !--------------------------------------------------------------------------------------------------
 ! loadcase information
-        case('$loadcase')
+        case('$Loadcase')
           currentLoadCase = IO_intValue(line,chunkPos,i+1)
-        case('face')
+        case('Face')
           currentFace = IO_intValue(line,chunkPos,i+1)
           currentFaceSet = -1
           do faceSet = 1, mesh_Nboundaries
             if (mesh_boundaries(faceSet) == currentFace) currentFaceSet = faceSet
           enddo
           if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
-        case('t','time','delta')                                                                    ! increment time
+        case('t')
           loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1)
-        case('n','incs','increments','steps')                                                       ! number of increments
+        case('N')
           loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1)
-        case('logincs','logincrements','logsteps')                                                  ! number of increments (switch to log time scaling)
-          loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1)
-          loadCases(currentLoadCase)%logscale = 1
-        case('freq','frequency','outputfreq')                                                       ! frequency of result writings
+        case('f_out')
           loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1)
-        case('guessreset','dropguessing')
+        case('estimate_rate')
           loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
 
 !--------------------------------------------------------------------------------------------------
 ! boundary condition information
-        case('x','y','z')
-          select case(IO_lc(IO_stringValue(line,chunkPos,i)))
-            case('x')
+        case('X','Y','Z')
+          select case(IO_stringValue(line,chunkPos,i))
+            case('X')
               ID = COMPONENT_MECH_X_ID
-            case('y')
+            case('Y')
               ID = COMPONENT_MECH_Y_ID
-            case('z')
+            case('Z')
               ID = COMPONENT_MECH_Z_ID
            end select
 
@@ -223,8 +229,8 @@ program DAMASK_mesh
          do component = 1, loadCases(currentLoadCase)%fieldBC(field)%nComponents
            if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask(faceSet)) &
              print'(a,i2,a,i2,a,f12.7)', '    Face  ', mesh_boundaries(faceSet), &
-                                               ' Component ', component, &
-                                               ' Value ', loadCases(currentLoadCase)%fieldBC(field)% &
+                                         ' Component ', component, &
+                                         ' Value ', loadCases(currentLoadCase)%fieldBC(field)% &
                                                             componentBC(component)%Value(faceSet)
          enddo
        enddo
@@ -267,32 +273,14 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
-      if (loadCases(currentLoadCase)%logscale == 0) then                                            ! linear scale
-        timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
-      else
-        if (currentLoadCase == 1) then                                                              ! 1st load case of logarithmic scale
-          if (inc == 1) then                                                                        ! 1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))           ! assume 1st inc is equal to 2nd
-          else                                                                                      ! not-1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1-loadCases(1)%incs ,pReal))
-          endif
-        else                                                                                        ! not-1st load case of logarithmic scale
-          timeinc = time0 * &
-               ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real(          inc,pReal)/&
-                                                     real(loadCases(currentLoadCase)%incs ,pReal))&
-                -(1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc-1  ,pReal)/&
-                                                      real(loadCases(currentLoadCase)%incs ,pReal)))
-        endif
-      endif
+      timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
       timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
-
-
-      stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
+      stepFraction = 0                                                                              ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
         remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
-        time = time + timeinc                                                                     ! forward target time
-        stepFraction = stepFraction + 1                                                           ! count step
+        time = time + timeinc                                                                       ! forward target time
+        stepFraction = stepFraction + 1                                                             ! count step
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
