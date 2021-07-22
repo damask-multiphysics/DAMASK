@@ -55,6 +55,8 @@ module subroutine elastic_init(phases)
 
       prm%nu = lattice_equivalent_nu(prm%C66,'voigt')
       prm%mu = lattice_equivalent_mu(prm%C66,'voigt')
+      
+      prm%C66 = math_sym3333to66(math_Voigt66to3333(prm%C66))                                       ! Literature data is in Voigt notation
 
     end associate
   enddo
