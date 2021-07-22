@@ -598,8 +598,8 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
         StressRatio_p = (abs(tau)/prm%xi_sb)**prm%p_sb
         dot_gamma_sb = sign(prm%v_sb*exp(-BoltzmannRatio*(1-StressRatio_p)**prm%q_sb), tau)
         ddot_gamma_dtau = abs(dot_gamma_sb)*BoltzmannRatio* prm%p_sb*prm%q_sb/ prm%xi_sb &
-                   * (abs(tau)/prm%xi_sb)**(prm%p_sb-1.0_pReal) &
-                   * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
+                        * (abs(tau)/prm%xi_sb)**(prm%p_sb-1.0_pReal) &
+                        * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
 
         Lp = Lp + dot_gamma_sb * P_sb
         forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -734,54 +734,52 @@ module subroutine dislotwin_dependentState(T,ph,en)
     x0
 
 
-  associate(prm => param(ph),&
-            stt => state(ph),&
-            dst => dependentState(ph))
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-  sumf_tw  = sum(stt%f_tw(1:prm%sum_N_tw,en))
-  sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
+    sumf_tw = sum(stt%f_tw(1:prm%sum_N_tw,en))
+    sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-  Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * T
+    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * T
 
-  !* rescaled volume fraction for topology
-  f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,en)/prm%t_tw                                                ! this is per system ...
-  f_over_t_tr = sumf_tr/prm%t_tr                                                                    ! but this not
+    !* rescaled volume fraction for topology
+    f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,en)/prm%t_tw                                              ! this is per system ...
+    f_over_t_tr = sumf_tr/prm%t_tr                                                                  ! but this not
                                                                                                     ! ToDo ...Physically correct, but naming could be adjusted
 
-  inv_lambda_sl = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))/prm%i_sl
-  if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
-    inv_lambda_sl = inv_lambda_sl + matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
-  if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
-    inv_lambda_sl = inv_lambda_sl + matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
-  dst%Lambda_sl(:,en) = prm%D / (1.0_pReal+prm%D*inv_lambda_sl)
+    inv_lambda_sl = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))/prm%i_sl
+    if (prm%sum_N_tw > 0 .and. prm%sum_N_sl > 0) &
+      inv_lambda_sl = inv_lambda_sl + matmul(prm%h_sl_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
+    if (prm%sum_N_tr > 0 .and. prm%sum_N_sl > 0) &
+      inv_lambda_sl = inv_lambda_sl + matmul(prm%h_sl_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
+    dst%Lambda_sl(:,en) = prm%D / (1.0_pReal+prm%D*inv_lambda_sl)
 
-  inv_lambda_tw_tw = matmul(prm%h_tw_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
-  dst%Lambda_tw(:,en) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
+    inv_lambda_tw_tw = matmul(prm%h_tw_tw,f_over_t_tw)/(1.0_pReal-sumf_tw)
+    dst%Lambda_tw(:,en) = prm%i_tw*prm%D/(1.0_pReal+prm%D*inv_lambda_tw_tw)
 
-  inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
-  dst%Lambda_tr(:,en) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
+    inv_lambda_tr_tr = matmul(prm%h_tr_tr,f_over_t_tr)/(1.0_pReal-sumf_tr)
+    dst%Lambda_tr(:,en) = prm%i_tr*prm%D/(1.0_pReal+prm%D*inv_lambda_tr_tr)
 
-  !* threshold stress for dislocation motion
-  dst%tau_pass(:,en) = prm%mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    !* threshold stress for dislocation motion
+    dst%tau_pass(:,en) = prm%mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
-  !* threshold stress for growing twin/martensite
-  if(prm%sum_N_tw == prm%sum_N_sl) &
-    dst%tau_hat_tw(:,en) = Gamma/(3.0_pReal*prm%b_tw) &
-                         + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip Burgers here correct?
-  if(prm%sum_N_tr == prm%sum_N_sl) &
-    dst%tau_hat_tr(:,en) = Gamma/(3.0_pReal*prm%b_tr) &
-                         + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip Burgers here correct?
-                         + prm%h*prm%delta_G/ (3.0_pReal*prm%b_tr)
+    !* threshold stress for growing twin/martensite
+    if(prm%sum_N_tw == prm%sum_N_sl) &
+      dst%tau_hat_tw(:,en) = Gamma/(3.0_pReal*prm%b_tw) &
+                           + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip Burgers here correct?
+    if(prm%sum_N_tr == prm%sum_N_sl) &
+      dst%tau_hat_tr(:,en) = Gamma/(3.0_pReal*prm%b_tr) &
+                           + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip Burgers here correct?
+                           + prm%h*prm%delta_G/ (3.0_pReal*prm%b_tr)
 
-  dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2.0_pReal
-  dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2.0_pReal
+    dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2.0_pReal
+    dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2.0_pReal
 
 
-  x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the Burgers vector for slip and is the same for twin and trans
-  dst%tau_r_tw(:,en) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
+    x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)      ! ToDo: In the paper, this is the Burgers vector for slip and is the same for twin and trans
+    dst%tau_r_tw(:,en) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
-  x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the Burgers vector for slip
-  dst%tau_r_tr(:,en) = prm%mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
+    x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)      ! ToDo: In the paper, this is the Burgers vector for slip
+    dst%tau_r_tr(:,en) = prm%mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
 
   end associate
 
@@ -880,9 +878,7 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-  do i = 1, prm%sum_N_sl
-    tau(i) = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
-  enddo
+  tau = [(math_tensordot(Mp,prm%P_sl(1:3,1:3,i)),i = 1, prm%sum_N_sl)]
 
   tau_eff = abs(tau)-dst%tau_pass(:,en)
 

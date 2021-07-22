@@ -280,26 +280,25 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,en)
     dot_gamma_pos,dot_gamma_neg
 
 
-  associate(prm => param(ph), stt => state(ph),&
-            dot => dotState(ph))
+  associate(prm => param(ph), stt => state(ph),dot => dotState(ph))
 
-  call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
-  dot%accshear(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
-  sumGamma = sum(stt%accshear(:,en))
+    call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
+    dot%accshear(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
+    sumGamma = sum(stt%accshear(:,en))
 
 
-  dot%crss(:,en) = matmul(prm%h_sl_sl,dot%accshear(:,en)) &
-                 * (  prm%h_inf_f &
-                     + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
-                     * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
-                   )
+    dot%crss(:,en) = matmul(prm%h_sl_sl,dot%accshear(:,en)) &
+                   * (  prm%h_inf_f &
+                       + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
+                       * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
+                     )
 
-  dot%crss_back(:,en) = stt%sense(:,en)*dot%accshear(:,en) * &
-           ( prm%h_inf_b + &
-             (prm%h_0_b - prm%h_inf_b &
-               + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi0(:,en))*(stt%accshear(:,en)-stt%gamma0(:,en))&
-             ) *exp(-(stt%accshear(:,en)-stt%gamma0(:,en)) *prm%h_0_b/(prm%xi_inf_b+stt%chi0(:,en))) &
-           )
+    dot%crss_back(:,en) = stt%sense(:,en)*dot%accshear(:,en) * &
+             ( prm%h_inf_b + &
+               (prm%h_0_b - prm%h_inf_b &
+                 + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi0(:,en))*(stt%accshear(:,en)-stt%gamma0(:,en))&
+               ) *exp(-(stt%accshear(:,en)-stt%gamma0(:,en)) *prm%h_0_b/(prm%xi_inf_b+stt%chi0(:,en))) &
+             )
 
   end associate
 
@@ -325,9 +324,8 @@ module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
 
   call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
   sense = merge(state(ph)%sense(:,en), &                                                            ! keep existing...
-                sign(1.0_pReal,dot_gamma_pos+dot_gamma_neg), &                                                ! ...or have a defined
-                dEq0(dot_gamma_pos+dot_gamma_neg,1e-10_pReal))                                                ! current sense of shear direction
-
+                sign(1.0_pReal,dot_gamma_pos+dot_gamma_neg), &                                      ! ...or have a defined
+                dEq0(dot_gamma_pos+dot_gamma_neg,1e-10_pReal))                                      ! current sense of shear direction
 
 !--------------------------------------------------------------------------------------------------
 ! switch in sense of shear?
@@ -412,42 +410,44 @@ pure subroutine kinetics(Mp,ph,en, &
     tau_neg
   integer :: i
 
+
   associate(prm => param(ph), stt => state(ph))
 
-  do i = 1, prm%sum_N_sl
-    tau_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)) - stt%crss_back(i,en)
-    tau_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)) - stt%crss_back(i,en), &
-                       0.0_pReal, prm%nonSchmidActive)
-  enddo
+    do i = 1, prm%sum_N_sl
+      tau_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)) - stt%crss_back(i,en)
+      tau_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)) - stt%crss_back(i,en), &
+                         0.0_pReal, prm%nonSchmidActive)
+    enddo
 
-  where(dNeq0(tau_pos))
-    dot_gamma_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                  ! 1/2 if non-Schmid active
-             * sign(abs(tau_pos/stt%crss(:,en))**prm%n,  tau_pos)
-  else where
-    dot_gamma_pos = 0.0_pReal
-  end where
-
-  where(dNeq0(tau_neg))
-    dot_gamma_neg = prm%dot_gamma_0 * 0.5_pReal &                                                        ! only used if non-Schmid active, always 1/2
-             * sign(abs(tau_neg/stt%crss(:,en))**prm%n,  tau_neg)
-  else where
-    dot_gamma_neg = 0.0_pReal
-  end where
-
-  if (present(ddot_gamma_dtau_pos)) then
-    where(dNeq0(dot_gamma_pos))
-      ddot_gamma_dtau_pos = dot_gamma_pos*prm%n/tau_pos
+    where(dNeq0(tau_pos))
+      dot_gamma_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &           ! 1/2 if non-Schmid active
+                    * sign(abs(tau_pos/stt%crss(:,en))**prm%n,  tau_pos)
     else where
-      ddot_gamma_dtau_pos = 0.0_pReal
+      dot_gamma_pos = 0.0_pReal
     end where
-  endif
-  if (present(ddot_gamma_dtau_neg)) then
-    where(dNeq0(dot_gamma_neg))
-      ddot_gamma_dtau_neg = dot_gamma_neg*prm%n/tau_neg
+
+    where(dNeq0(tau_neg))
+      dot_gamma_neg = prm%dot_gamma_0 * 0.5_pReal &                                                 ! only used if non-Schmid active, always 1/2
+                    * sign(abs(tau_neg/stt%crss(:,en))**prm%n,  tau_neg)
     else where
-      ddot_gamma_dtau_neg = 0.0_pReal
+      dot_gamma_neg = 0.0_pReal
     end where
-  endif
+
+    if (present(ddot_gamma_dtau_pos)) then
+      where(dNeq0(dot_gamma_pos))
+        ddot_gamma_dtau_pos = dot_gamma_pos*prm%n/tau_pos
+      else where
+        ddot_gamma_dtau_pos = 0.0_pReal
+      end where
+    endif
+    if (present(ddot_gamma_dtau_neg)) then
+      where(dNeq0(dot_gamma_neg))
+        ddot_gamma_dtau_neg = dot_gamma_neg*prm%n/tau_neg
+      else where
+        ddot_gamma_dtau_neg = 0.0_pReal
+      end where
+    endif
+
   end associate
 
 end subroutine kinetics

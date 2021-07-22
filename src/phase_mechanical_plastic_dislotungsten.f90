@@ -378,13 +378,14 @@ module subroutine dislotungsten_dependentState(ph,en)
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dislocationSpacing
 
+
   associate(prm => param(ph), stt => state(ph),dst => dependentState(ph))
 
-  dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
-  dst%threshold_stress(:,en) = prm%mu*prm%b_sl &
-                             * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    dst%threshold_stress(:,en) = prm%mu*prm%b_sl &
+                               * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
-  dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
+    dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
 
   end associate
 
