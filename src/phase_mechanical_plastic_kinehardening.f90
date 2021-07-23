@@ -359,13 +359,13 @@ module subroutine plastic_kinehardening_results(ph,group)
      case ('xi')
        if(prm%sum_N_sl>0) call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
                                                     'resistance against plastic slip','Pa')
-     case ('tau_b') !ToDo tbd
+     case ('tau_b') !ToDo: chi
        if(prm%sum_N_sl>0) call results_writeDataset(stt%chi,group,trim(prm%output(o)), &
                                                     'back stress','Pa')
      case ('sgn(gamma)')
        if(prm%sum_N_sl>0) call results_writeDataset(stt%sgn_gamma,group,trim(prm%output(o)), & ! ToDo: could be int
                                                     'sense of shear','1')
-     case ('chi')
+     case ('chi_0')
        if(prm%sum_N_sl>0) call results_writeDataset(stt%chi_0,group,trim(prm%output(o)), &
                                                     'back stress at last switch of stress sense','Pa')
      case ('gamma_0')

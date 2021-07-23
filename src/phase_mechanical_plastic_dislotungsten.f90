@@ -161,39 +161,37 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
       prm%i_sl        = pl%get_as1dFloat('i_sl',          requiredSize=size(N_sl))
       prm%tau_Peierls = pl%get_as1dFloat('tau_Peierls',   requiredSize=size(N_sl))
-      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl), &
-                                         defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl), &
-                                         defaultVal=[(1.0_pReal,i=1,size(N_sl))])
+      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl))
+      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl))
       prm%h           = pl%get_as1dFloat('h',             requiredSize=size(N_sl))
       prm%w           = pl%get_as1dFloat('w',             requiredSize=size(N_sl))
       prm%omega       = pl%get_as1dFloat('omega',         requiredSize=size(N_sl))
       prm%B           = pl%get_as1dFloat('B',             requiredSize=size(N_sl))
 
-      prm%D               = pl%get_asFloat('D')
-      prm%D_0             = pl%get_asFloat('D_0')
-      prm%Q_cl            = pl%get_asFloat('Q_cl')
-      prm%f_at            = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
-      prm%D_a             = pl%get_asFloat('D_a')        * prm%b_sl
+      prm%D    = pl%get_asFloat('D')
+      prm%D_0  = pl%get_asFloat('D_0')
+      prm%Q_cl = pl%get_asFloat('Q_cl')
+      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3.0_pReal
+      prm%D_a  = pl%get_asFloat('D_a') * prm%b_sl
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
       ! expand: family => system
-      rho_mob_0          = math_expand(rho_mob_0,          N_sl)
-      rho_dip_0          = math_expand(rho_dip_0,          N_sl)
-      prm%q              = math_expand(prm%q,              N_sl)
-      prm%p              = math_expand(prm%p,              N_sl)
-      prm%Q_s            = math_expand(prm%Q_s,            N_sl)
-      prm%b_sl           = math_expand(prm%b_sl,           N_sl)
-      prm%h              = math_expand(prm%h,              N_sl)
-      prm%w              = math_expand(prm%w,              N_sl)
-      prm%omega          = math_expand(prm%omega,          N_sl)
-      prm%tau_Peierls    = math_expand(prm%tau_Peierls,    N_sl)
-      prm%v_0            = math_expand(prm%v_0,            N_sl)
-      prm%B              = math_expand(prm%B,              N_sl)
-      prm%i_sl           = math_expand(prm%i_sl,           N_sl)
-      prm%f_at           = math_expand(prm%f_at,           N_sl)
-      prm%D_a            = math_expand(prm%D_a,            N_sl)
+      rho_mob_0          = math_expand(rho_mob_0,       N_sl)
+      rho_dip_0          = math_expand(rho_dip_0,       N_sl)
+      prm%q              = math_expand(prm%q,           N_sl)
+      prm%p              = math_expand(prm%p,           N_sl)
+      prm%Q_s            = math_expand(prm%Q_s,         N_sl)
+      prm%b_sl           = math_expand(prm%b_sl,        N_sl)
+      prm%h              = math_expand(prm%h,           N_sl)
+      prm%w              = math_expand(prm%w,           N_sl)
+      prm%omega          = math_expand(prm%omega,       N_sl)
+      prm%tau_Peierls    = math_expand(prm%tau_Peierls, N_sl)
+      prm%v_0            = math_expand(prm%v_0,         N_sl)
+      prm%B              = math_expand(prm%B,           N_sl)
+      prm%i_sl           = math_expand(prm%i_sl,        N_sl)
+      prm%f_at           = math_expand(prm%f_at,        N_sl)
+      prm%D_a            = math_expand(prm%D_a,         N_sl)
 
       ! sanity checks
       if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
