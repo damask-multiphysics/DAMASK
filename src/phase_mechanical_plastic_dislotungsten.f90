@@ -36,8 +36,8 @@ submodule(phase:plastic) dislotungsten
       forestProjection
     real(pReal),               allocatable, dimension(:,:,:) :: &
       P_sl, &
-      nonSchmid_pos, &
-      nonSchmid_neg
+      P_nS_pos, &
+      P_nS_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
     character(len=pStringLen), allocatable, dimension(:) :: &
@@ -129,30 +129,28 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    ! This data is read in already in lattice
-    prm%mu = lattice_mu(ph)
+    prm%mu = elastic_mu(ph)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
-                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      if(trim(phase%get_asString('lattice')) == 'cI') then
+      if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
-        prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        prm%nonSchmid_pos = prm%P_sl
-        prm%nonSchmid_neg = prm%P_sl
+        prm%P_nS_pos = prm%P_sl
+        prm%P_nS_neg = prm%P_sl
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
-                                                   phase%get_asString('lattice'))
-      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
-                                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+                                                   phase_lattice(ph))
+      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),&
+                                                           phase_cOverA(ph))
       prm%forestProjection = transpose(prm%forestProjection)
 
       rho_mob_0       = pl%get_as1dFloat('rho_mob_0',     requiredSize=size(N_sl))
@@ -163,39 +161,37 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
       prm%i_sl        = pl%get_as1dFloat('i_sl',          requiredSize=size(N_sl))
       prm%tau_Peierls = pl%get_as1dFloat('tau_Peierls',   requiredSize=size(N_sl))
-      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl), &
-                                         defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl), &
-                                         defaultVal=[(1.0_pReal,i=1,size(N_sl))])
+      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl))
+      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl))
       prm%h           = pl%get_as1dFloat('h',             requiredSize=size(N_sl))
       prm%w           = pl%get_as1dFloat('w',             requiredSize=size(N_sl))
       prm%omega       = pl%get_as1dFloat('omega',         requiredSize=size(N_sl))
       prm%B           = pl%get_as1dFloat('B',             requiredSize=size(N_sl))
 
-      prm%D               = pl%get_asFloat('D')
-      prm%D_0             = pl%get_asFloat('D_0')
-      prm%Q_cl            = pl%get_asFloat('Q_cl')
-      prm%f_at            = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
-      prm%D_a             = pl%get_asFloat('D_a')        * prm%b_sl
+      prm%D    = pl%get_asFloat('D')
+      prm%D_0  = pl%get_asFloat('D_0')
+      prm%Q_cl = pl%get_asFloat('Q_cl')
+      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3.0_pReal
+      prm%D_a  = pl%get_asFloat('D_a') * prm%b_sl
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
       ! expand: family => system
-      rho_mob_0          = math_expand(rho_mob_0,          N_sl)
-      rho_dip_0          = math_expand(rho_dip_0,          N_sl)
-      prm%q              = math_expand(prm%q,              N_sl)
-      prm%p              = math_expand(prm%p,              N_sl)
-      prm%Q_s            = math_expand(prm%Q_s,            N_sl)
-      prm%b_sl           = math_expand(prm%b_sl,           N_sl)
-      prm%h              = math_expand(prm%h,              N_sl)
-      prm%w              = math_expand(prm%w,              N_sl)
-      prm%omega          = math_expand(prm%omega,          N_sl)
-      prm%tau_Peierls    = math_expand(prm%tau_Peierls,    N_sl)
-      prm%v_0            = math_expand(prm%v_0,            N_sl)
-      prm%B              = math_expand(prm%B,              N_sl)
-      prm%i_sl           = math_expand(prm%i_sl,           N_sl)
-      prm%f_at           = math_expand(prm%f_at,           N_sl)
-      prm%D_a            = math_expand(prm%D_a,            N_sl)
+      rho_mob_0          = math_expand(rho_mob_0,       N_sl)
+      rho_dip_0          = math_expand(rho_dip_0,       N_sl)
+      prm%q              = math_expand(prm%q,           N_sl)
+      prm%p              = math_expand(prm%p,           N_sl)
+      prm%Q_s            = math_expand(prm%Q_s,         N_sl)
+      prm%b_sl           = math_expand(prm%b_sl,        N_sl)
+      prm%h              = math_expand(prm%h,           N_sl)
+      prm%w              = math_expand(prm%w,           N_sl)
+      prm%omega          = math_expand(prm%omega,       N_sl)
+      prm%tau_Peierls    = math_expand(prm%tau_Peierls, N_sl)
+      prm%v_0            = math_expand(prm%v_0,         N_sl)
+      prm%B              = math_expand(prm%B,           N_sl)
+      prm%i_sl           = math_expand(prm%i_sl,        N_sl)
+      prm%f_at           = math_expand(prm%f_at,        N_sl)
+      prm%D_a            = math_expand(prm%D_a,         N_sl)
 
       ! sanity checks
       if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
@@ -298,8 +294,8 @@ pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
     Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_pos(i) * prm%P_sl(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                       + ddot_gamma_dtau_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                       + ddot_gamma_dtau_pos(i) * prm%P_sl(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + ddot_gamma_dtau_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo
 
   end associate
@@ -323,7 +319,7 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
   real(pReal) :: &
     VacancyDiffusion
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos, gdot_neg,&
+    dot_gamma_pos, dot_gamma_neg,&
     tau_pos,&
     tau_neg, &
     v_cl, &
@@ -335,10 +331,10 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
             dot => dotState(ph), dst => dependentState(ph))
 
   call kinetics(Mp,T,ph,en,&
-                gdot_pos,gdot_neg, &
+                dot_gamma_pos,dot_gamma_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
-  dot%gamma_sl(:,en) = (gdot_pos+gdot_neg)                                                          ! ToDo: needs to be abs
+  dot%gamma_sl(:,en) = (dot_gamma_pos+dot_gamma_neg)                                                          ! ToDo: needs to be abs
   VacancyDiffusion = prm%D_0*exp(-prm%Q_cl/(kB*T))
 
   where(dEq0(tau_pos))                                                                              ! ToDo: use avg of pos and neg
@@ -380,13 +376,14 @@ module subroutine dislotungsten_dependentState(ph,en)
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dislocationSpacing
 
+
   associate(prm => param(ph), stt => state(ph),dst => dependentState(ph))
 
-  dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
-  dst%threshold_stress(:,en) = prm%mu*prm%b_sl &
-                             * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    dst%threshold_stress(:,en) = prm%mu*prm%b_sl &
+                               * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
-  dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
+    dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
 
   end associate
 
@@ -466,8 +463,8 @@ pure subroutine kinetics(Mp,T,ph,en, &
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
   do j = 1, prm%sum_N_sl
-    tau_pos(j) = math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,j))
-    tau_neg(j) = math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,j))
+    tau_pos(j) = math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,j))
+    tau_neg(j) = math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,j))
   enddo
 
 

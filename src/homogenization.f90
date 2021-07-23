@@ -41,15 +41,6 @@ module homogenization
   integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable :: &
     damage_type                                                                                     !< nonlocal damage model
 
-  type, private :: tNumerics_damage
-    real(pReal) :: &
-    charLength                                                                                      !< characteristic length scale for gradient problems
-  end type tNumerics_damage
-
-  type(tNumerics_damage), private :: &
-    num_damage
-
-
   logical, public :: &
     terminallyIll = .false.                                                                         !< at least one material point is terminally ill
 

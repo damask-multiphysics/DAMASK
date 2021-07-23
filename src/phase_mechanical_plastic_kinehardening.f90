@@ -19,11 +19,11 @@ submodule(phase:plastic) kinehardening
       xi_inf_f, &
       xi_inf_b
     real(pReal),              allocatable, dimension(:,:) :: &
-      interaction_slipslip                                                                          !< slip resistance from slip activity
+      h_sl_sl                                                                                       !< slip resistance from slip activity
     real(pReal),              allocatable, dimension(:,:,:) :: &
       P, &
-      nonSchmid_pos, &
-      nonSchmid_neg
+      P_nS_pos, &
+      P_nS_neg
     integer :: &
       sum_N_sl
     logical :: &
@@ -33,13 +33,14 @@ submodule(phase:plastic) kinehardening
   end type tParameters
 
   type :: tKinehardeningState
-    real(pReal), pointer, dimension(:,:) :: &                                                       !< vectors along NipcMyInstance
-      crss, &                                                                                       !< critical resolved stress
-      crss_back, &                                                                                  !< critical resolved back stress
-      sense, &                                                                                      !< sense of acting shear stress (-1 or +1)
-      chi0, &                                                                                       !< backstress at last switch of stress sense
-      gamma0, &                                                                                     !< accumulated shear at last switch of stress sense
-      accshear                                                                                      !< accumulated (absolute) shear
+    real(pReal), pointer, dimension(:,:) :: &
+      xi, &                                                                                         !< resistance against plastic slip
+      chi, &                                                                                        !< back stress
+      chi_0, &                                                                                      !< back stress at last switch of stress sense
+      gamma, &                                                                                      !< accumulated (absolute) shear
+      gamma_0, &                                                                                    !< accumulated shear at last switch of stress sense
+      sgn_gamma                                                                                     !< sense of acting shear stress (-1 or +1)
+
   end type tKinehardeningState
 
 !--------------------------------------------------------------------------------------------------
@@ -112,21 +113,19 @@ module function plastic_kinehardening_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%P = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
-                                        phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+      prm%P = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
-      if(trim(phase%get_asString('lattice')) == 'cI') then
+      if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
+        prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        prm%nonSchmid_pos  = prm%P
-        prm%nonSchmid_neg  = prm%P
+        prm%P_nS_pos = prm%P
+        prm%P_nS_neg = prm%P
       endif
-      prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(N_sl, &
-                                                                pl%get_as1dFloat('h_sl-sl'), &
-                                                                phase%get_asString('lattice'))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
+                                                   phase_lattice(ph))
 
       xi_0          = pl%get_as1dFloat('xi_0',       requiredSize=size(N_sl))
       prm%xi_inf_f  = pl%get_as1dFloat('xi_inf_f',   requiredSize=size(N_sl))
@@ -156,18 +155,17 @@ module function plastic_kinehardening_init() result(myPlasticity)
       if (any(prm%xi_inf_f     <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_f'
       if (any(prm%xi_inf_b     <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_b'
 
-      !ToDo: Any sensible checks for theta?
     else slipActive
       xi_0 = emptyRealArray
       allocate(prm%xi_inf_f,prm%xi_inf_b,prm%h_0_f,prm%h_inf_f,prm%h_0_b,prm%h_inf_b,source=emptyRealArray)
-      allocate(prm%interaction_SlipSlip(0,0))
+      allocate(prm%h_sl_sl(0,0))
     endif slipActive
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     Nmembers = count(material_phaseID == ph)
-    sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
-    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names like in material.yaml
+    sizeDotState   = size(['xi   ','chi  ', 'gamma']) * prm%sum_N_sl
+    sizeDeltaState = size(['sgn_gamma',   'chi_0    ',    'gamma_0  ']) * prm%sum_N_sl
     sizeState = sizeDotState + sizeDeltaState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState)
@@ -176,40 +174,40 @@ module function plastic_kinehardening_init() result(myPlasticity)
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%crss => plasticState(ph)%state   (startIndex:endIndex,:)
-    stt%crss = spread(xi_0, 2, Nmembers)
-    dot%crss => plasticState(ph)%dotState(startIndex:endIndex,:)
+    stt%xi => plasticState(ph)%state   (startIndex:endIndex,:)
+    stt%xi = spread(xi_0, 2, Nmembers)
+    dot%xi => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%crss_back => plasticState(ph)%state   (startIndex:endIndex,:)
-    dot%crss_back => plasticState(ph)%dotState(startIndex:endIndex,:)
+    stt%chi => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%chi => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%accshear => plasticState(ph)%state   (startIndex:endIndex,:)
-    dot%accshear => plasticState(ph)%dotState(startIndex:endIndex,:)
+    stt%gamma => plasticState(ph)%state   (startIndex:endIndex,:)
+    dot%gamma => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     o = plasticState(ph)%offsetDeltaState
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%sense => plasticState(ph)%state     (startIndex  :endIndex  ,:)
-    dlt%sense => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
+    stt%sgn_gamma => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%sgn_gamma => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%chi0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
-    dlt%chi0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
+    stt%chi_0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%chi_0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%gamma0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
-    dlt%gamma0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
+    stt%gamma_0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%gamma_0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     end associate
 
@@ -242,22 +240,22 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
   integer :: &
     i,k,l,m,n
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos,gdot_neg, &
-    dgdot_dtau_pos,dgdot_dtau_neg
+    dot_gamma_pos,dot_gamma_neg, &
+    ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
   associate(prm => param(ph))
 
-  call kinetics(Mp,ph,en,gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+  call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
 
   do i = 1, prm%sum_N_sl
-    Lp = Lp + (gdot_pos(i)+gdot_neg(i))*prm%P(1:3,1:3,i)
+    Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + dgdot_dtau_pos(i) * prm%P(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                       + dgdot_dtau_neg(i) * prm%P(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                       + ddot_gamma_dtau_pos(i) * prm%P(k,l,i) * prm%P_nS_pos(m,n,i) &
+                       + ddot_gamma_dtau_neg(i) * prm%P(k,l,i) * prm%P_nS_neg(m,n,i)
   enddo
 
   end associate
@@ -279,29 +277,28 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,en)
   real(pReal) :: &
     sumGamma
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos,gdot_neg
+    dot_gamma_pos,dot_gamma_neg
 
 
-  associate(prm => param(ph), stt => state(ph),&
-            dot => dotState(ph))
+  associate(prm => param(ph), stt => state(ph),dot => dotState(ph))
 
-  call kinetics(Mp,ph,en,gdot_pos,gdot_neg)
-  dot%accshear(:,en) = abs(gdot_pos+gdot_neg)
-  sumGamma = sum(stt%accshear(:,en))
+    call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
+    dot%gamma(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
+    sumGamma = sum(stt%gamma(:,en))
 
 
-  dot%crss(:,en) = matmul(prm%interaction_SlipSlip,dot%accshear(:,en)) &
-                 * (  prm%h_inf_f &
-                     + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
-                     * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
-                   )
+    dot%xi(:,en) = matmul(prm%h_sl_sl,dot%gamma(:,en)) &
+                   * (  prm%h_inf_f &
+                       + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
+                       * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
+                     )
 
-  dot%crss_back(:,en) = stt%sense(:,en)*dot%accshear(:,en) * &
-           ( prm%h_inf_b + &
-             (prm%h_0_b - prm%h_inf_b &
-               + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi0(:,en))*(stt%accshear(:,en)-stt%gamma0(:,en))&
-             ) *exp(-(stt%accshear(:,en)-stt%gamma0(:,en)) *prm%h_0_b/(prm%xi_inf_b+stt%chi0(:,en))) &
-           )
+    dot%chi(:,en) = stt%sgn_gamma(:,en)*dot%gamma(:,en) * &
+             ( prm%h_inf_b + &
+               (prm%h_0_b - prm%h_inf_b &
+                 + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi_0(:,en))*(stt%gamma(:,en)-stt%gamma_0(:,en))&
+               ) *exp(-(stt%gamma(:,en)-stt%gamma_0(:,en)) *prm%h_0_b/(prm%xi_inf_b+stt%chi_0(:,en))) &
+             )
 
   end associate
 
@@ -320,28 +317,26 @@ module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
     en
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos,gdot_neg, &
-    sense
+    dot_gamma_pos,dot_gamma_neg, &
+    sgn_gamma
+
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-  call kinetics(Mp,ph,en,gdot_pos,gdot_neg)
-  sense = merge(state(ph)%sense(:,en), &                                                            ! keep existing...
-                sign(1.0_pReal,gdot_pos+gdot_neg), &                                                ! ...or have a defined
-                dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                ! current sense of shear direction
+    call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
+    sgn_gamma = merge(state(ph)%sgn_gamma(:,en), &
+                      sign(1.0_pReal,dot_gamma_pos+dot_gamma_neg), &
+                      dEq0(dot_gamma_pos+dot_gamma_neg,1e-10_pReal))
 
-
-!--------------------------------------------------------------------------------------------------
-! switch in sense of shear?
-  where(dNeq(sense,stt%sense(:,en),0.1_pReal))
-    dlt%sense (:,en) = sense - stt%sense(:,en)                                                      ! switch sense
-    dlt%chi0  (:,en) = abs(stt%crss_back(:,en)) - stt%chi0(:,en)                                    ! remember current backstress magnitude
-    dlt%gamma0(:,en) = stt%accshear(:,en) - stt%gamma0(:,en)                                        ! remember current accumulated shear
-  else where
-    dlt%sense (:,en) = 0.0_pReal
-    dlt%chi0  (:,en) = 0.0_pReal
-    dlt%gamma0(:,en) = 0.0_pReal
-  end where
+    where(dNeq(sgn_gamma,stt%sgn_gamma(:,en),0.1_pReal)) ! ToDo sgn_gamma*stt%sgn_gamma(:,en)<0
+      dlt%sgn_gamma (:,en) = sgn_gamma - stt%sgn_gamma(:,en)
+      dlt%chi_0  (:,en) = abs(stt%chi(:,en)) - stt%chi_0(:,en)
+      dlt%gamma_0(:,en) = stt%gamma(:,en) - stt%gamma_0(:,en)
+    else where
+      dlt%sgn_gamma (:,en) = 0.0_pReal
+      dlt%chi_0  (:,en) = 0.0_pReal
+      dlt%gamma_0(:,en) = 0.0_pReal
+    end where
 
   end associate
 
@@ -362,22 +357,22 @@ module subroutine plastic_kinehardening_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
      case ('xi')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%crss,group,trim(prm%output(o)), &
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
                                                     'resistance against plastic slip','Pa')
-     case ('tau_b')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%crss_back,group,trim(prm%output(o)), &
-                                                    'back stress against plastic slip','Pa')
+     case ('tau_b') !ToDo: chi
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%chi,group,trim(prm%output(o)), &
+                                                    'back stress','Pa')
      case ('sgn(gamma)')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%sense,group,trim(prm%output(o)), & ! ToDo: could be int
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%sgn_gamma,group,trim(prm%output(o)), & ! ToDo: could be int
                                                     'sense of shear','1')
      case ('chi_0')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%chi0,group,trim(prm%output(o)), &
-                                                    'tbd','Pa')
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%chi_0,group,trim(prm%output(o)), &
+                                                    'back stress at last switch of stress sense','Pa')
      case ('gamma_0')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma0,group,trim(prm%output(o)), &
-                                                    'tbd','1')
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_0,group,trim(prm%output(o)), &
+                                                    'plastic shear at last switch of stress sense','1')
      case ('gamma')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%accshear,group,trim(prm%output(o)), &
+       if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma,group,trim(prm%output(o)), &
                                                     'plastic shear','1')
     end select
   enddo outputsLoop
@@ -394,62 +389,64 @@ end subroutine plastic_kinehardening_results
 ! have the optional arguments at the end.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,ph,en, &
-                         gdot_pos,gdot_neg,dgdot_dtau_pos,dgdot_dtau_neg)
+                         dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
-  integer,                intent(in) :: &
+  integer,                      intent(in) :: &
     ph, &
     en
 
   real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
-    gdot_pos, &
-    gdot_neg
-  real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
-    dgdot_dtau_pos, &
-    dgdot_dtau_neg
+    dot_gamma_pos, &
+    dot_gamma_neg
+  real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl), optional :: &
+    ddot_gamma_dtau_pos, &
+    ddot_gamma_dtau_neg
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau_pos, &
     tau_neg
   integer :: i
 
+
   associate(prm => param(ph), stt => state(ph))
 
-  do i = 1, prm%sum_N_sl
-    tau_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,en)
-    tau_neg(i) = merge(math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,en), &
-                       0.0_pReal, prm%nonSchmidActive)
-  enddo
+    do i = 1, prm%sum_N_sl
+      tau_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)) - stt%chi(i,en)
+      tau_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)) - stt%chi(i,en), &
+                         0.0_pReal, prm%nonSchmidActive)
+    enddo
 
-  where(dNeq0(tau_pos))
-    gdot_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                  ! 1/2 if non-Schmid active
-             * sign(abs(tau_pos/stt%crss(:,en))**prm%n,  tau_pos)
-  else where
-    gdot_pos = 0.0_pReal
-  end where
-
-  where(dNeq0(tau_neg))
-    gdot_neg = prm%dot_gamma_0 * 0.5_pReal &                                                        ! only used if non-Schmid active, always 1/2
-             * sign(abs(tau_neg/stt%crss(:,en))**prm%n,  tau_neg)
-  else where
-    gdot_neg = 0.0_pReal
-  end where
-
-  if (present(dgdot_dtau_pos)) then
-    where(dNeq0(gdot_pos))
-      dgdot_dtau_pos = gdot_pos*prm%n/tau_pos
+    where(dNeq0(tau_pos))
+      dot_gamma_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &           ! 1/2 if non-Schmid active
+                    * sign(abs(tau_pos/stt%xi(:,en))**prm%n,  tau_pos)
     else where
-      dgdot_dtau_pos = 0.0_pReal
+      dot_gamma_pos = 0.0_pReal
     end where
-  endif
-  if (present(dgdot_dtau_neg)) then
-    where(dNeq0(gdot_neg))
-      dgdot_dtau_neg = gdot_neg*prm%n/tau_neg
+
+    where(dNeq0(tau_neg))
+      dot_gamma_neg = prm%dot_gamma_0 * 0.5_pReal &                                                 ! only used if non-Schmid active, always 1/2
+                    * sign(abs(tau_neg/stt%xi(:,en))**prm%n,  tau_neg)
     else where
-      dgdot_dtau_neg = 0.0_pReal
+      dot_gamma_neg = 0.0_pReal
     end where
-  endif
+
+    if (present(ddot_gamma_dtau_pos)) then
+      where(dNeq0(dot_gamma_pos))
+        ddot_gamma_dtau_pos = dot_gamma_pos*prm%n/tau_pos
+      else where
+        ddot_gamma_dtau_pos = 0.0_pReal
+      end where
+    endif
+    if (present(ddot_gamma_dtau_neg)) then
+      where(dNeq0(dot_gamma_neg))
+        ddot_gamma_dtau_neg = dot_gamma_neg*prm%n/tau_neg
+      else where
+        ddot_gamma_dtau_neg = 0.0_pReal
+      end where
+    endif
+
   end associate
 
 end subroutine kinetics

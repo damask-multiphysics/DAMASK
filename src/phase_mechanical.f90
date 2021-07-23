@@ -168,6 +168,20 @@ submodule(phase) mechanical
       integer,     intent(in) :: ph,en
     end function plastic_dislotwin_homogenizedC
 
+    module function elastic_C66(ph) result(C66)
+      real(pReal), dimension(6,6) :: C66
+      integer,     intent(in) :: ph
+    end function elastic_C66
+
+    module function elastic_mu(ph) result(mu)
+      real(pReal) :: mu
+      integer, intent(in) :: ph
+    end function elastic_mu
+
+    module function elastic_nu(ph) result(nu)
+      real(pReal) :: nu
+      integer, intent(in) :: ph
+    end function elastic_nu
 
   end interface
   type :: tOutput                                                                                   !< new requested output (per phase)
