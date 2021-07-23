@@ -22,7 +22,6 @@ submodule(phase:plastic) dislotwin
       D                   = 1.0_pReal, &                                                            !< grain size
       p_sb                = 1.0_pReal, &                                                            !< p-exponent in shear band velocity
       q_sb                = 1.0_pReal, &                                                            !< q-exponent in shear band velocity
-      D_a                 = 1.0_pReal, &                                                            !< adjustment parameter to calculate minimum dipole distance
       i_tw                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for twinning
       L_tw                = 1.0_pReal, &                                                            !< Length of twin nuclei in Burgers vectors
       L_tr                = 1.0_pReal, &                                                            !< Length of trans nuclei in Burgers vectors
@@ -42,7 +41,7 @@ submodule(phase:plastic) dislotwin
       b_sl, &                                                                                       !< absolute length of Burgers vector [m] for each slip system
       b_tw, &                                                                                       !< absolute length of Burgers vector [m] for each twin system
       b_tr, &                                                                                       !< absolute length of Burgers vector [m] for each transformation system
-      Q_s,&                                                                                         !< activation energy for glide [J] for each slip system
+      Q_sl,&                                                                                        !< activation energy for glide [J] for each slip system
       v_0, &                                                                                        !< dislocation velocity prefactor [m/s] for each slip system
       dot_N_0_tw, &                                                                                 !< twin nucleation rate [1/m³s] for each twin system
       dot_N_0_tr, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
@@ -55,7 +54,8 @@ submodule(phase:plastic) dislotwin
       s, &                                                                                          !< s-exponent in trans nucleation rate
       tau_0, &                                                                                      !< strength due to elements in solid solution
       gamma_char, &                                                                                 !< characteristic shear for twins
-      B                                                                                             !< drag coefficient
+      B, &                                                                                          !< drag coefficient
+      d_caron                                                                                       !< distance of spontaneous annhihilation
     real(pReal),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< components of slip-slip interaction matrix
       h_sl_tw, &                                                                                    !< components of slip-twin interaction matrix
@@ -206,7 +206,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       rho_dip_0                = pl%get_as1dFloat('rho_dip_0',   requiredSize=size(N_sl))
       prm%v_0                  = pl%get_as1dFloat('v_0',         requiredSize=size(N_sl))
       prm%b_sl                 = pl%get_as1dFloat('b_sl',        requiredSize=size(N_sl))
-      prm%Q_s                  = pl%get_as1dFloat('Q_s',         requiredSize=size(N_sl))
+      prm%Q_sl                 = pl%get_as1dFloat('Q_sl',         requiredSize=size(N_sl))
       prm%i_sl                 = pl%get_as1dFloat('i_sl',        requiredSize=size(N_sl))
       prm%p                    = pl%get_as1dFloat('p_sl',        requiredSize=size(N_sl))
       prm%q                    = pl%get_as1dFloat('q_sl',        requiredSize=size(N_sl))
@@ -214,9 +214,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%B                    = pl%get_as1dFloat('B',           requiredSize=size(N_sl), &
                                                   defaultVal=[(0.0_pReal, i=1,size(N_sl))])
 
-      prm%D_a                  = pl%get_asFloat('D_a')
-      prm%D_0                  = pl%get_asFloat('D_0')
-      prm%Q_cl                 = pl%get_asFloat('Q_cl')
+      prm%D_0  = pl%get_asFloat('D_0')
+      prm%Q_cl = pl%get_asFloat('Q_cl')
 
       prm%ExtendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
       prm%omitDipoles          = pl%get_asBool('omit_dipoles',defaultVal = .false.)
@@ -231,12 +230,13 @@ module function plastic_dislotwin_init() result(myPlasticity)
       rho_dip_0        = math_expand(rho_dip_0,       N_sl)
       prm%v_0          = math_expand(prm%v_0,         N_sl)
       prm%b_sl         = math_expand(prm%b_sl,        N_sl)
-      prm%Q_s          = math_expand(prm%Q_s,         N_sl)
+      prm%Q_sl         = math_expand(prm%Q_sl,         N_sl)
       prm%i_sl         = math_expand(prm%i_sl,        N_sl)
       prm%p            = math_expand(prm%p,           N_sl)
       prm%q            = math_expand(prm%q,           N_sl)
       prm%tau_0        = math_expand(prm%tau_0,       N_sl)
       prm%B            = math_expand(prm%B,           N_sl)
+      prm%d_caron      = pl%get_asFloat('D_a') * prm%b_sl
 
       ! sanity checks
       if (    prm%D_0           <= 0.0_pReal)          extmsg = trim(extmsg)//' D_0'
@@ -245,14 +245,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (any(rho_dip_0         <  0.0_pReal))         extmsg = trim(extmsg)//' rho_dip_0'
       if (any(prm%v_0           <  0.0_pReal))         extmsg = trim(extmsg)//' v_0'
       if (any(prm%b_sl          <= 0.0_pReal))         extmsg = trim(extmsg)//' b_sl'
-      if (any(prm%Q_s           <= 0.0_pReal))         extmsg = trim(extmsg)//' Q_s'
+      if (any(prm%Q_sl           <= 0.0_pReal))        extmsg = trim(extmsg)//' Q_sl'
       if (any(prm%i_sl          <= 0.0_pReal))         extmsg = trim(extmsg)//' i_sl'
       if (any(prm%B             <  0.0_pReal))         extmsg = trim(extmsg)//' B'
+      if (any(prm%d_caron       <  0.0_pReal))         extmsg = trim(extmsg)//' d_caron(D_a,b_sl)'
       if (any(prm%p<=0.0_pReal .or. prm%p>1.0_pReal))  extmsg = trim(extmsg)//' p_sl'
       if (any(prm%q< 1.0_pReal .or. prm%q>2.0_pReal))  extmsg = trim(extmsg)//' q_sl'
     else slipActive
       rho_mob_0 = emptyRealArray; rho_dip_0 = emptyRealArray
-      allocate(prm%b_sl,prm%Q_s,prm%v_0,prm%i_sl,prm%p,prm%q,prm%B,source=emptyRealArray)
+      allocate(prm%b_sl,prm%Q_sl,prm%v_0,prm%i_sl,prm%p,prm%q,prm%B,source=emptyRealArray)
       allocate(prm%forestProjection(0,0),prm%h_sl_sl(0,0))
     endif slipActive
 
@@ -631,7 +632,7 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
   integer :: i
   real(pReal) :: &
     f_unrotated, &
-    rho_dip_distance, &
+    d_hat, &
     v_cl, &                                                                                         !< climb velocity
     tau, &
     sigma_cl, &                                                                                     !< climb stress
@@ -639,15 +640,14 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_rho_dip_formation, &
     dot_rho_dip_climb, &
-    rho_dip_distance_min, &
     dot_gamma_sl
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
     dot_gamma_tw
   real(pReal), dimension(param(ph)%sum_N_tr) :: &
     dot_gamma_tr
 
-  associate(prm => param(ph),    stt => state(ph), &
-            dot => dotState(ph), dst => dependentState(ph))
+
+  associate(prm => param(ph), stt => state(ph), dot => dotState(ph), dst => dependentState(ph))
 
   f_unrotated = 1.0_pReal &
               - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
@@ -656,8 +656,6 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
   call kinetics_sl(Mp,T,ph,en,dot_gamma_sl)
   dot%gamma_sl(:,en) = abs(dot_gamma_sl)
 
-  rho_dip_distance_min = prm%D_a*prm%b_sl
-
   slipState: do i = 1, prm%sum_N_sl
     tau = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
 
@@ -665,14 +663,14 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
       dot_rho_dip_formation(i) = 0.0_pReal
       dot_rho_dip_climb(i) = 0.0_pReal
     else significantSlipStress
-      rho_dip_distance = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
-      rho_dip_distance = math_clip(rho_dip_distance, right = dst%Lambda_sl(i,en))
-      rho_dip_distance = math_clip(rho_dip_distance, left  = rho_dip_distance_min(i))
+      d_hat = 3.0_pReal*prm%mu*prm%b_sl(i)/(16.0_pReal*PI*abs(tau))
+      d_hat = math_clip(d_hat, right = dst%Lambda_sl(i,en))
+      d_hat = math_clip(d_hat, left  = prm%d_caron(i))
 
-      dot_rho_dip_formation(i) = 2.0_pReal*(rho_dip_distance-rho_dip_distance_min(i))/prm%b_sl(i) &
+      dot_rho_dip_formation(i) = 2.0_pReal*(d_hat-prm%d_caron(i))/prm%b_sl(i) &
                                * stt%rho_mob(i,en)*abs(dot_gamma_sl(i))
 
-      if (dEq(rho_dip_distance,rho_dip_distance_min(i))) then
+      if (dEq(d_hat,prm%d_caron(i))) then
         dot_rho_dip_climb(i) = 0.0_pReal
       else
         ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
@@ -685,17 +683,17 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
              * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
 
         dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,en) &
-                             / (rho_dip_distance-rho_dip_distance_min(i))
+                             / (d_hat-prm%d_caron(i))
       endif
     endif significantSlipStress
   enddo slipState
 
   dot%rho_mob(:,en) = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,en)) &
                     - dot_rho_dip_formation &
-                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_mob(:,en)*abs(dot_gamma_sl)
+                    - 2.0_pReal*prm%d_caron/prm%b_sl * stt%rho_mob(:,en)*abs(dot_gamma_sl)
 
   dot%rho_dip(:,en) = dot_rho_dip_formation &
-                    - 2.0_pReal*rho_dip_distance_min/prm%b_sl * stt%rho_dip(:,en)*abs(dot_gamma_sl) &
+                    - 2.0_pReal*prm%d_caron/prm%b_sl * stt%rho_dip(:,en)*abs(dot_gamma_sl) &
                     - dot_rho_dip_climb
 
   call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw)
@@ -885,7 +883,7 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
   significantStress: where(tau_eff > tol_math_check)
     stressRatio    = tau_eff/prm%tau_0
     StressRatio_p  = stressRatio** prm%p
-    BoltzmannRatio = prm%Q_s/(kB*T)
+    BoltzmannRatio = prm%Q_sl/(kB*T)
     v_wait_inverse = prm%v_0**(-1.0_pReal) * exp(BoltzmannRatio*(1.0_pReal-StressRatio_p)** prm%q)
     v_run_inverse  = prm%B/(tau_eff*prm%b_sl)
 
