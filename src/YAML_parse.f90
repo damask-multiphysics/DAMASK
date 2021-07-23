@@ -54,7 +54,7 @@ recursive function parse_flow(YAML_flow) result(node)
     myVal
   character(len=:), allocatable   :: &
     flow_string, &
-    key
+    key, line
   integer :: &
     e, &                                                                                            ! end position of dictionary or list
     s, &                                                                                            ! start position of dictionary or list
@@ -97,7 +97,12 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          node = trim(adjustl(flow_string))
+          line = trim(adjustl(flow_string))
+          if(line(1:1) == '"') then
+            node = line(2:len(line)-1)
+          else
+            node = trim(adjustl(flow_string))
+          endif
       end select
   endif
 
@@ -119,12 +124,15 @@ integer function find_end(str,e_char)
 
   N_sq = 0
   N_cu = 0
-  do i = 1, len_trim(str)
+  i = 1
+  do while(i<=len_trim(str))
+    if (str(i:i) == '"') i = i + scan(str(i+1:),'"')
     if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',') == 1) exit
     N_sq = N_sq + merge(1,0,str(i:i) == '[')
     N_cu = N_cu + merge(1,0,str(i:i) == '{')
     N_sq = N_sq - merge(1,0,str(i:i) == ']')
     N_cu = N_cu - merge(1,0,str(i:i) == '}')
+    i = i + 1
   enddo
   find_end = i
 
@@ -353,7 +361,7 @@ subroutine list_item_inline(blck,s_blck,inline)    !ToDo: SR: merge with remove_
   indent_next = indentDepth(blck(s_blck:))
 
   do while(indent_next > indent)
-    inline = inline//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+    inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
     s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
   enddo
@@ -839,14 +847,14 @@ subroutine selfTest
 
   multi_line_flow1: block
   character(len=*), parameter :: flow_multi = &
-    "%YAML 1.1"//IO_EOL//&
-    "---"//IO_EOL//&
-    "a: [b,"//IO_EOL//&
-    "c: "//IO_EOL//&
-    "d, e]"//IO_EOL
+    '%YAML 1.1'//IO_EOL//&
+    '---'//IO_EOL//&
+    'a: ["b",'//IO_EOL//&
+    'c: '//IO_EOL//&
+    '"d", "e"]'//IO_EOL
 
   character(len=*), parameter :: flow = &
-    "{a: [b, {c: d}, e]}"
+    '{a: ["b", {c: "d"}, "e"]}'
   
   if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
   end block multi_line_flow1
@@ -886,7 +894,7 @@ subroutine selfTest
     "   {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL//&
     "..."//IO_EOL
   character(len=*), parameter :: mixed_flow = &
-    '{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, "c:d  e.f,"], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}'
+    '{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, "c:d e.f,"], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}'
 
   if(.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
   end block basic_mixed
