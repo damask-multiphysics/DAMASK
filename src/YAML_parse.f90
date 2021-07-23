@@ -54,7 +54,7 @@ recursive function parse_flow(YAML_flow) result(node)
     myVal
   character(len=:), allocatable   :: &
     flow_string, &
-    key, line
+    key
   integer :: &
     e, &                                                                                            ! end position of dictionary or list
     s, &                                                                                            ! start position of dictionary or list
@@ -97,9 +97,8 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          line = trim(adjustl(flow_string))
-          if(line(1:1) == '"') then
-            node = line(2:len(line)-1)
+          if(flow_string(1:1) == '"') then
+            node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
           endif
@@ -362,7 +361,7 @@ subroutine list_item_inline(blck,s_blck,inline)    !ToDo: SR: merge with remove_
 
   do while(indent_next > indent)
     inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
-    s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
+    s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
   enddo
 
@@ -849,9 +848,9 @@ subroutine selfTest
   character(len=*), parameter :: flow_multi = &
     '%YAML 1.1'//IO_EOL//&
     '---'//IO_EOL//&
-    'a: ["b",'//IO_EOL//&
+    'a:     ["b",'//IO_EOL//&
     'c: '//IO_EOL//&
-    '"d", "e"]'//IO_EOL
+    '"d",                               "e"]'//IO_EOL
 
   character(len=*), parameter :: flow = &
     '{a: ["b", {c: "d"}, "e"]}'
