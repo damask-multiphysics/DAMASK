@@ -69,7 +69,7 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
             prm%A(3,3,3) = kinematic_type%get_asFloat('A_33,T^2',defaultVal=0.0_pReal)
           endif
           do i=1, size(prm%A,3)
-            prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),phase_lattice(p))
+            prm%A(1:3,1:3,i) = lattice_symmetrize_33(prm%A(1:3,1:3,i),phase_lattice(p))
           enddo
         end associate
       endif

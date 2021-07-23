@@ -1068,6 +1068,7 @@ integer pure function math_factorial(n)
 
   integer, intent(in) :: n
 
+
   math_factorial = product(math_range(n))
 
 end function math_factorial
@@ -1080,6 +1081,7 @@ integer pure function math_binomial(n,k)
 
   integer, intent(in) :: n, k
   integer :: i, k_, n_
+
 
   k_ = min(k,n-k)
   n_ = n
@@ -1095,15 +1097,13 @@ end function math_binomial
 !--------------------------------------------------------------------------------------------------
 !> @brief multinomial coefficient
 !--------------------------------------------------------------------------------------------------
-integer pure function math_multinomial(alpha)
+integer pure function math_multinomial(k)
 
-  integer, intent(in), dimension(:) :: alpha
+  integer, intent(in), dimension(:) :: k
   integer :: i
 
-  math_multinomial = 1
-  do i = 1, size(alpha)
-    math_multinomial = math_multinomial*math_binomial(sum(alpha(1:i)),alpha(i))
-  enddo
+
+  math_multinomial = product([(math_binomial(sum(k(1:i)),k(i)),i=1,size(k))])
 
 end function math_multinomial
 
@@ -1115,6 +1115,7 @@ real(pReal) pure function math_volTetrahedron(v1,v2,v3,v4)
 
   real(pReal), dimension (3), intent(in) :: v1,v2,v3,v4
   real(pReal), dimension (3,3) :: m
+
 
   m(1:3,1) = v1-v2
   m(1:3,2) = v1-v3
@@ -1288,6 +1289,9 @@ subroutine selfTest
 
   if(math_binomial(49,6) /= 13983816) &
     error stop 'math_binomial'
+
+  if(math_multinomial([1,2,3,4]) /= 12600) &
+    error stop 'math_multinomial'
 
   ijk = cshift([1,2,3],int(r*1.0e2_pReal))
   if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
