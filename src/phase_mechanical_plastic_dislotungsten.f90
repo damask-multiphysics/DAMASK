@@ -56,7 +56,7 @@ submodule(phase:plastic) dislotungsten
   type :: tDisloTungstendependentState
     real(pReal), dimension(:,:), allocatable :: &
       Lambda_sl, &
-      threshold_stress
+      tau_pass
   end type tDisloTungstendependentState
 
 !--------------------------------------------------------------------------------------------------
@@ -246,8 +246,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
-    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
-    allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
+    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pReal)
+    allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
 
     end associate
 
@@ -380,8 +380,8 @@ module subroutine dislotungsten_dependentState(ph,en)
   associate(prm => param(ph), stt => state(ph),dst => dependentState(ph))
 
     dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
-    dst%threshold_stress(:,en) = prm%mu*prm%b_sl &
-                               * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    dst%tau_pass(:,en) = prm%mu*prm%b_sl &
+                       * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
     dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
 
@@ -416,7 +416,7 @@ module subroutine plastic_dislotungsten_results(ph,group)
         if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(dst%threshold_stress,group,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
                                                      'threshold stress for slip','Pa')
     end select
   enddo outputsLoop
@@ -456,8 +456,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     StressRatio_p,StressRatio_pminus1, &
     dvel, vel, &
     tau_pos,tau_neg, &
-    t_n, t_k, dtk,dtn, &
-    needsGoodName                                                                                   ! ToDo: @Karo: any idea?
+    t_n, t_k, dtk,dtn
   integer :: j
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
@@ -475,13 +474,12 @@ pure subroutine kinetics(Mp,T,ph,en, &
             dot_gamma_0     => stt%rho_mob(:,en)*prm%b_sl*prm%v_0, &
             effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
-  significantPositiveTau: where(abs(tau_pos)-dst%threshold_stress(:,en) > tol_math_check)
-    StressRatio = (abs(tau_pos)-dst%threshold_stress(:,en))/prm%tau_Peierls
+  significantPositiveTau: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
+    StressRatio = (abs(tau_pos)-dst%tau_pass(:,en))/prm%tau_Peierls
     StressRatio_p       = StressRatio** prm%p
     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
-    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
 
-    t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
+    t_n = prm%b_sl/(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)*prm%omega*effectiveLength)
     t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
     vel = prm%h/(t_n + t_k)
@@ -492,7 +490,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
   end where significantPositiveTau
 
   if (present(ddot_gamma_dtau_pos)) then
-    significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,en) > tol_math_check)
+    significantPositiveTau2: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
       dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
           * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
       dtk = -1.0_pReal * t_k / tau_pos
@@ -505,13 +503,12 @@ pure subroutine kinetics(Mp,T,ph,en, &
     end where significantPositiveTau2
   endif
 
-  significantNegativeTau: where(abs(tau_neg)-dst%threshold_stress(:,en) > tol_math_check)
-    StressRatio = (abs(tau_neg)-dst%threshold_stress(:,en))/prm%tau_Peierls
+  significantNegativeTau: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
+    StressRatio = (abs(tau_neg)-dst%tau_pass(:,en))/prm%tau_Peierls
     StressRatio_p       = StressRatio** prm%p
     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
-    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
 
-    t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
+    t_n = prm%b_sl/(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)*prm%omega*effectiveLength)
     t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
     vel = prm%h/(t_n + t_k)
@@ -522,7 +519,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
   end where significantNegativeTau
 
   if (present(ddot_gamma_dtau_neg)) then
-    significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,en) > tol_math_check)
+    significantNegativeTau2: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
       dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
           * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
       dtk = -1.0_pReal * t_k / tau_neg
