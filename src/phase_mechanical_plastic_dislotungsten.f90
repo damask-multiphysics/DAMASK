@@ -331,16 +331,16 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
                 dot_gamma_pos,dot_gamma_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
-  dot%gamma_sl(:,en) = (dot_gamma_pos+dot_gamma_neg)                                                          ! ToDo: needs to be abs
+  dot%gamma_sl(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
 
-  where(dEq0(tau_pos))                                                                              ! ToDo: use avg of pos and neg
+  where(dEq0(tau_pos))                                                                              ! ToDo: use avg of +/-
     dot_rho_dip_formation = 0.0_pReal
     dot_rho_dip_climb     = 0.0_pReal
   else where
-    d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &
+    d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &                     ! ToDo: use avg of +/-
                       prm%d_caron, &                                                                ! lower limit
                       dst%Lambda_sl(:,en))                                                          ! upper limit
-    dot_rho_dip_formation = merge(2.0_pReal*d_hat* stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
+    dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
                                   0.0_pReal, &
                                   prm%dipoleformation)
     v_cl = (3.0_pReal*prm%mu*prm%D_0*exp(-prm%Q_cl/(kB*T))*prm%f_at/(2.0_pReal*PI*kB*T)) &
@@ -348,11 +348,11 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                      ! ToDo: Discuss with Franz: Stress dependency?
   end where
 
-  dot%rho_mob(:,en) = abs(dot%gamma_sl(:,en))/(prm%b_sl*dst%Lambda_sl(:,en)) &                      ! multiplication
+  dot%rho_mob(:,en) = dot%gamma_sl(:,en)/(prm%b_sl*dst%Lambda_sl(:,en)) &                           ! multiplication
                     - dot_rho_dip_formation &
-                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))    ! Spontaneous annihilation of 2 edges
+                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*dot%gamma_sl(:,en)         ! Spontaneous annihilation of 2 edges
   dot%rho_dip(:,en) = dot_rho_dip_formation &
-                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*abs(dot%gamma_sl(:,en)) &  ! Spontaneous annihilation of an edge with a dipole
+                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*dot%gamma_sl(:,en) &       ! Spontaneous annihilation of an edge with a dipole
                     - dot_rho_dip_climb
 
   end associate
@@ -373,7 +373,7 @@ module subroutine dislotungsten_dependentState(ph,en)
     dislocationSpacing
 
 
-  associate(prm => param(ph), stt => state(ph),dst => dependentState(ph))
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
     dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
     dst%tau_pass(:,en) = prm%mu*prm%b_sl &
