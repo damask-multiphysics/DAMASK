@@ -18,7 +18,7 @@ submodule(phase:plastic) dislotungsten
       Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
       b_sl, &                                                                                       !< magnitude of Burgers vector [m]
-      D_a, &
+      d_caron, &                                                                                    !< distance of spontaneous annhihilation
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
       f_at, &                                                                                       !< factor to calculate atomic volume
       tau_Peierls, &                                                                                !< Peierls stress
@@ -172,7 +172,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%D_0  = pl%get_asFloat('D_0')
       prm%Q_cl = pl%get_asFloat('Q_cl')
       prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3.0_pReal
-      prm%D_a  = pl%get_asFloat('D_a') * prm%b_sl
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
@@ -191,7 +190,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%B              = math_expand(prm%B,           N_sl)
       prm%i_sl           = math_expand(prm%i_sl,        N_sl)
       prm%f_at           = math_expand(prm%f_at,        N_sl)
-      prm%D_a            = math_expand(prm%D_a,         N_sl)
+      prm%d_caron        = pl%get_asFloat('D_a') * prm%b_sl
 
       ! sanity checks
       if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
@@ -202,12 +201,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
       if (any(prm%Q_s          <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
       if (any(prm%tau_Peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_Peierls'
-      if (any(prm%D_a          <= 0.0_pReal)) extmsg = trim(extmsg)//' D_a or b_sl'
+      if (any(prm%B            <  0.0_pReal)) extmsg = trim(extmsg)//' B'
+      if (any(prm%d_caron      <  0.0_pReal)) extmsg = trim(extmsg)//' d_caron(D_a,b_sl)'
       if (any(prm%f_at         <= 0.0_pReal)) extmsg = trim(extmsg)//' f_at or b_sl'
 
     else slipActive
       rho_mob_0= emptyRealArray; rho_dip_0 = emptyRealArray
-      allocate(prm%b_sl,prm%D_a,prm%i_sl,prm%f_at,prm%tau_Peierls, &
+      allocate(prm%b_sl,prm%d_caron,prm%i_sl,prm%f_at,prm%tau_Peierls, &
                prm%Q_s,prm%v_0,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
                source = emptyRealArray)
       allocate(prm%forestProjection(0,0))
@@ -316,8 +316,6 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     ph, &
     en
 
-  real(pReal) :: &
-    VacancyDiffusion
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos, dot_gamma_neg,&
     tau_pos,&
@@ -325,38 +323,36 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     v_cl, &
     dot_rho_dip_formation, &
     dot_rho_dip_climb, &
-    dip_distance
+    d_hat
 
-  associate(prm => param(ph), stt => state(ph),&
-            dot => dotState(ph), dst => dependentState(ph))
+  associate(prm => param(ph), stt => state(ph), dot => dotState(ph), dst => dependentState(ph))
 
   call kinetics(Mp,T,ph,en,&
                 dot_gamma_pos,dot_gamma_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
   dot%gamma_sl(:,en) = (dot_gamma_pos+dot_gamma_neg)                                                          ! ToDo: needs to be abs
-  VacancyDiffusion = prm%D_0*exp(-prm%Q_cl/(kB*T))
 
   where(dEq0(tau_pos))                                                                              ! ToDo: use avg of pos and neg
     dot_rho_dip_formation = 0.0_pReal
     dot_rho_dip_climb     = 0.0_pReal
   else where
-    dip_distance = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &
-                             prm%D_a, &                                                             ! lower limit
-                             dst%Lambda_sl(:,en))                                                   ! upper limit
-    dot_rho_dip_formation = merge(2.0_pReal*dip_distance* stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
+    d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &
+                      prm%d_caron, &                                                                ! lower limit
+                      dst%Lambda_sl(:,en))                                                          ! upper limit
+    dot_rho_dip_formation = merge(2.0_pReal*d_hat* stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
                                   0.0_pReal, &
                                   prm%dipoleformation)
-    v_cl = (3.0_pReal*prm%mu*VacancyDiffusion*prm%f_at/(2.0_pReal*pi*kB*T)) &
-                  * (1.0_pReal/(dip_distance+prm%D_a))
-    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(dip_distance-prm%D_a)                   ! ToDo: Discuss with Franz: Stress dependency?
+    v_cl = (3.0_pReal*prm%mu*prm%D_0*exp(-prm%Q_cl/(kB*T))*prm%f_at/(2.0_pReal*PI*kB*T)) &
+         * (1.0_pReal/(d_hat+prm%d_caron))
+    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                      ! ToDo: Discuss with Franz: Stress dependency?
   end where
 
   dot%rho_mob(:,en) = abs(dot%gamma_sl(:,en))/(prm%b_sl*dst%Lambda_sl(:,en)) &                      ! multiplication
                     - dot_rho_dip_formation &
-                    - (2.0_pReal*prm%D_a)/prm%b_sl*stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))        ! Spontaneous annihilation of 2 single edge dislocations
+                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))    ! Spontaneous annihilation of 2 edges
   dot%rho_dip(:,en) = dot_rho_dip_formation &
-                    - (2.0_pReal*prm%D_a)/prm%b_sl*stt%rho_dip(:,en)*abs(dot%gamma_sl(:,en)) &      ! Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*abs(dot%gamma_sl(:,en)) &  ! Spontaneous annihilation of an edge with a dipole
                     - dot_rho_dip_climb
 
   end associate
