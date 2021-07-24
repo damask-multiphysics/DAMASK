@@ -71,8 +71,8 @@ recursive function parse_flow(YAML_flow) result(node)
       s = e
       d = s + scan(flow_string(s+1:),':')
       e = d + find_end(flow_string(d+1:),'}')
-
       key = trim(adjustl(flow_string(s+1:d-1)))
+      if (key(1:1) == '"' .or. key(1:1) == "'" ) key = key(2:len(key)-1)
       myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
 
       select type (node)
@@ -97,7 +97,7 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          if(flow_string(1:1) == '"') then
+          if (flow_string(1:1) == '"' .or. flow_string(1:1) == "'") then
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
@@ -125,7 +125,7 @@ integer function find_end(str,e_char)
   N_cu = 0
   i = 1
   do while(i<=len_trim(str))
-    if (str(i:i) == '"') i = i + scan(str(i+1:),'"')
+    if (str(i:i) == '"' .or. str(i:i) == "'") i = i + scan(str(i+1:),str(i:i))
     if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',') == 1) exit
     N_sq = N_sq + merge(1,0,str(i:i) == '[')
     N_cu = N_cu + merge(1,0,str(i:i) == '{')
