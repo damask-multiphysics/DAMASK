@@ -849,7 +849,7 @@ function tNode_get_byKey_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs
 
   if (self%contains(k)) then
     node => self%get(k)
-    select type(self)
+    select type(node)
       class is(tList)
         list => node%asList()
         nodeAs1dFloat = list%as1dFloat()
