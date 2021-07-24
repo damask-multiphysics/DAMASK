@@ -205,7 +205,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       rho_dip_0                = pl%get_as1dFloat('rho_dip_0',   requiredSize=size(N_sl))
       prm%v_0                  = pl%get_as1dFloat('v_0',         requiredSize=size(N_sl))
       prm%b_sl                 = pl%get_as1dFloat('b_sl',        requiredSize=size(N_sl))
-      prm%Q_sl                 = pl%get_as1dFloat('Q_sl',         requiredSize=size(N_sl))
+      prm%Q_sl                 = pl%get_as1dFloat('Q_sl',        requiredSize=size(N_sl))
       prm%i_sl                 = pl%get_as1dFloat('i_sl',        requiredSize=size(N_sl))
       prm%p                    = pl%get_as1dFloat('p_sl',        requiredSize=size(N_sl))
       prm%q                    = pl%get_as1dFloat('q_sl',        requiredSize=size(N_sl))
@@ -758,19 +758,17 @@ module subroutine dislotwin_dependentState(T,ph,en)
     dst%tau_pass(:,en) = prm%mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
     !* threshold stress for growing twin/martensite
-    if(prm%sum_N_tw == prm%sum_N_sl) &
-      dst%tau_hat_tw(:,en) = Gamma/(3.0_pReal*prm%b_tw) &
-                           + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip Burgers here correct?
-    if(prm%sum_N_tr == prm%sum_N_sl) &
-      dst%tau_hat_tr(:,en) = Gamma/(3.0_pReal*prm%b_tr) &
-                           + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip Burgers here correct?
-                           + prm%h*prm%delta_G/ (3.0_pReal*prm%b_tr)
+    dst%tau_hat_tw(:,en) = Gamma/(3.0_pReal*prm%b_tw) &
+                         + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_tw)
+    dst%tau_hat_tr(:,en) = Gamma/(3.0_pReal*prm%b_tr) &
+                         + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_tr) &
+                         + prm%h*prm%delta_G/(3.0_pReal*prm%b_tr)
 
     dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2.0_pReal
     dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2.0_pReal
 
 
-    x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)      ! ToDo: In the paper, this is the Burgers vector for slip and is the same for twin and trans
+    x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)      ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tw(:,en) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
     x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)      ! ToDo: In the paper, this is the Burgers vector for slip
