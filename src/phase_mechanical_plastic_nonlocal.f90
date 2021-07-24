@@ -1402,8 +1402,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
     elseif (prm%chi_GB >= 0.0_pReal) then
       !* GRAIN BOUNDARY
-      if (any(dNeq(phase_orientation0(ph)%data(en)%asQuaternion(), &
-                   phase_orientation0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
+      if (any(dNeq(phase_O_0(ph)%data(en)%asQuaternion(), &
+                   phase_O_0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
           plasticState(neighbor_phase)%nonlocal) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else

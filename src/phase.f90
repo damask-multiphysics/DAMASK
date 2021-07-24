@@ -26,12 +26,8 @@ module phase
   real(pReal),      allocatable, dimension(:) :: phase_rho
 
   type(tRotationContainer), dimension(:), allocatable :: &
-    phase_orientation0, &
-    phase_orientation
-
-  type :: tTensorContainer
-    real(pReal), dimension(:,:,:), allocatable :: data
-  end type
+    phase_O_0, &
+    phase_O
 
   type :: tNumerics
     integer :: &
@@ -364,7 +360,7 @@ subroutine phase_init
   allocate(phase_lattice(phases%length))
   allocate(phase_cOverA(phases%length),source=-1.0_pReal)
   allocate(phase_rho(phases%length))
-  allocate(phase_orientation0(phases%length))
+  allocate(phase_O_0(phases%length))
 
   do ph = 1,phases%length
     phase => phases%get(ph)
@@ -374,20 +370,20 @@ subroutine phase_init
     if (any(phase_lattice(ph) == ['hP','tI'])) &
       phase_cOverA(ph) = phase%get_asFloat('c/a')
     phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
-    allocate(phase_orientation0(ph)%data(count(material_phaseID==ph)))
+    allocate(phase_O_0(ph)%data(count(material_phaseID==ph)))
   enddo
 
   do ce = 1, size(material_phaseID,2)
     ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
     do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
       ph = material_phaseID(co,ce)
-      phase_orientation0(ph)%data(material_phaseEntry(co,ce)) = material_orientation0(ma)%data(co)
+      phase_O_0(ph)%data(material_phaseEntry(co,ce)) = material_O_0(ma)%data(co)
     enddo
   enddo
 
-  allocate(phase_orientation(phases%length))
+  allocate(phase_O(phases%length))
   do ph = 1,phases%length
-    phase_orientation(ph)%data = phase_orientation0(ph)%data
+    phase_O(ph)%data = phase_O_0(ph)%data
   enddo
 
   call mechanical_init(materials,phases)
@@ -577,10 +573,10 @@ subroutine crystallite_orientations(co,ip,el)
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
-  call phase_orientation(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
+  call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(phase_orientation,material_phaseAt(1,el),ip,el)
+    call plastic_nonlocal_updateCompatibility(phase_O,material_phaseAt(1,el),ip,el)
 
 
 end subroutine crystallite_orientations
@@ -602,7 +598,7 @@ function crystallite_push33ToRef(co,ce, tensor33)
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
-  T = matmul(phase_orientation0(ph)%data(en)%asMatrix(),transpose(math_inv33(phase_F(co,ce))))      ! ToDo: initial orientation correct?
+  T = matmul(phase_O_0(ph)%data(en)%asMatrix(),transpose(math_inv33(phase_F(co,ce))))               ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
