@@ -453,7 +453,6 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   integer                       :: hdferr
   logical                       :: attrExists
   character(len=:), allocatable :: p
-  type(C_PTR) :: f_ptr
   character(len=:), allocatable, dimension(:), target :: attrValue_
 
 
@@ -483,8 +482,7 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   endif
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),filetype_id,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  f_ptr = c_loc(attrValue_)
-  call h5awrite_f(attr_id, memtype_id, f_ptr, hdferr)
+  call h5awrite_f(attr_id, memtype_id, c_loc(attrValue_), hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(memtype_id,hdferr)

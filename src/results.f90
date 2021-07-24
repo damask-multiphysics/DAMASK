@@ -34,10 +34,11 @@ module results
   end interface results_writeDataset
 
   interface results_addAttribute
-    module procedure results_addAttribute_real
-    module procedure results_addAttribute_int
     module procedure results_addAttribute_str
+    module procedure results_addAttribute_int
+    module procedure results_addAttribute_real
 
+    module procedure results_addAttribute_str_array
     module procedure results_addAttribute_int_array
     module procedure results_addAttribute_real_array
   end interface results_addAttribute
@@ -52,6 +53,7 @@ module results
     results_openGroup, &
     results_closeGroup, &
     results_writeDataset, &
+    results_writeState_slip, &
     results_setLink, &
     results_addAttribute, &
     results_removeLink, &
@@ -189,7 +191,7 @@ subroutine results_setLink(path,link)
 end subroutine results_setLink
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a string attribute to an object in the results file
+!> @brief Add a string attribute to an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
@@ -207,7 +209,7 @@ end subroutine results_addAttribute_str
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds an integer attribute an object in the results file
+!> @brief Add an integer attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_int(attrLabel,attrValue,path)
 
@@ -226,7 +228,7 @@ end subroutine results_addAttribute_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a real attribute an object in the results file
+!> @brief Add a real attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_real(attrLabel,attrValue,path)
 
@@ -245,7 +247,26 @@ end subroutine results_addAttribute_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds an integer array attribute an object in the results file
+!> @brief Add a string array attribute an object in the results file.
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_str_array(attrLabel,attrValue,path)
+
+  character(len=*), intent(in)               :: attrLabel
+  character(len=*), intent(in), dimension(:) :: attrValue
+  character(len=*), intent(in), optional     :: path
+
+
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
+
+end subroutine results_addAttribute_str_array
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Add an integer array attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
 
@@ -264,7 +285,7 @@ end subroutine results_addAttribute_int_array
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a real array attribute an object in the results file
+!> @brief Add a real array attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
 
@@ -335,6 +356,29 @@ subroutine results_writeVectorDataset_real(dataset,group,label,description,SIuni
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Store real vector dataset with associated metadata for slip
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeState_slip(dataset,group,label,systems,description,SIunit)
+
+  character(len=*), intent(in)                 :: label,group,description,SIunit
+  real(pReal),      intent(in), dimension(:,:) :: dataset
+  character(len=*), intent(in), dimension(:)   :: systems
+
+  integer(HID_T) :: groupHandle
+
+
+  if (size(systems) == 0) return
+
+  groupHandle = results_openGroup(group)
+  call HDF5_write(dataset,groupHandle,label)
+  call executionStamp(group//'/'//label,description,SIunit)
+  call HDF5_addAttribute(resultsFile,'slip_systems',systems,group//'/'//label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeState_slip
 
 
 !--------------------------------------------------------------------------------------------------
