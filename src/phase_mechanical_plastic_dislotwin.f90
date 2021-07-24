@@ -16,7 +16,6 @@ submodule(phase:plastic) dislotwin
     real(pReal) :: &
       mu                  = 1.0_pReal, &                                                            !< equivalent shear modulus
       nu                  = 1.0_pReal, &                                                            !< equivalent shear Poisson's ratio
-      D_0                 = 1.0_pReal, &                                                            !< prefactor for self-diffusion coefficient
       Q_cl                = 1.0_pReal, &                                                            !< activation energy for dislocation climb
       omega               = 1.0_pReal, &                                                            !< frequency factor for dislocation climb
       D                   = 1.0_pReal, &                                                            !< grain size
@@ -214,7 +213,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%B                    = pl%get_as1dFloat('B',           requiredSize=size(N_sl), &
                                                   defaultVal=[(0.0_pReal, i=1,size(N_sl))])
 
-      prm%D_0  = pl%get_asFloat('D_0')
       prm%Q_cl = pl%get_asFloat('Q_cl')
 
       prm%ExtendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
@@ -230,7 +228,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       rho_dip_0        = math_expand(rho_dip_0,       N_sl)
       prm%v_0          = math_expand(prm%v_0,         N_sl)
       prm%b_sl         = math_expand(prm%b_sl,        N_sl)
-      prm%Q_sl         = math_expand(prm%Q_sl,         N_sl)
+      prm%Q_sl         = math_expand(prm%Q_sl,        N_sl)
       prm%i_sl         = math_expand(prm%i_sl,        N_sl)
       prm%p            = math_expand(prm%p,           N_sl)
       prm%q            = math_expand(prm%q,           N_sl)
@@ -239,7 +237,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%d_caron      = pl%get_asFloat('D_a') * prm%b_sl
 
       ! sanity checks
-      if (    prm%D_0           <= 0.0_pReal)          extmsg = trim(extmsg)//' D_0'
       if (    prm%Q_cl          <= 0.0_pReal)          extmsg = trim(extmsg)//' Q_cl'
       if (any(rho_mob_0         <  0.0_pReal))         extmsg = trim(extmsg)//' rho_mob_0'
       if (any(rho_dip_0         <  0.0_pReal))         extmsg = trim(extmsg)//' rho_dip_0'
