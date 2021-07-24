@@ -902,7 +902,6 @@ subroutine crystallite_results(group,ph)
   integer,          intent(in) :: ph
 
   integer :: ou
-  real(pReal), allocatable, dimension(:,:)   :: selected_rotations
 
 
   call results_closeGroup(results_addGroup(group//'/mechanical'))
@@ -935,8 +934,7 @@ subroutine crystallite_results(group,ph)
         call results_writeDataset(phase_mechanical_S(ph)%data,group//'/mechanical/','S', &
                                  'second Piola-Kirchhoff stress','Pa')
       case('O')
-        selected_rotations = select_rotations(phase_O(ph)%data)
-        call results_writeDataset(selected_rotations,group//'/mechanical',output_constituent(ph)%label(ou),&
+        call results_writeDataset(to_quaternion(phase_O(ph)%data),group//'/mechanical',output_constituent(ph)%label(ou),&
                                  'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
         call results_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/'//output_constituent(ph)%label(ou))
         if (any(phase_lattice(ph) == ['hP', 'tI'])) &
@@ -948,19 +946,21 @@ subroutine crystallite_results(group,ph)
   contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert orientation for output: ToDo: implement in HDF5/results
+!> @brief Convert orientation array to quaternion array
 !--------------------------------------------------------------------------------------------------
-  function select_rotations(dataset)
+  function to_quaternion(dataset)
 
     type(rotation), dimension(:), intent(in) :: dataset
-    real(pReal), dimension(4,size(dataset,1)) :: select_rotations
-    integer :: en
+    real(pReal), dimension(4,size(dataset,1)) :: to_quaternion
 
-    do en = 1, size(dataset,1)
-      select_rotations(:,en) = dataset(en)%asQuaternion()
-   enddo
+    integer :: i
 
- end function select_rotations
+
+    do i = 1, size(dataset,1)
+      to_quaternion(:,i) = dataset(i)%asQuaternion()
+    enddo
+
+ end function to_quaternion
 
 end subroutine crystallite_results
 
