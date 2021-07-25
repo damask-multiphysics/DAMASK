@@ -107,7 +107,8 @@ class Orientation(Rotation,Crystal):
     --------
     An array of 3 x 5 random orientations reduced to the fundamental zone of tetragonal symmetry:
 
-    >>> damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
+    >>> import damask
+    >>> o=damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
 
     """
 
@@ -712,6 +713,7 @@ class Orientation(Rotation,Crystal):
         --------
         Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
 
+        >>> import damask
         >>> o = damask.Orientation(lattice='cubic')
         >>> o.IPF_color([0,0,1])
         array([1., 0., 0.])
@@ -859,7 +861,7 @@ class Orientation(Rotation,Crystal):
         Parameters
         ----------
         mode : {'slip', 'twin'}
-            Type of kinematics.
+            Deformation mode.
 
         Returns
         -------
@@ -868,7 +870,7 @@ class Orientation(Rotation,Crystal):
 
         Examples
         --------
-        Schmid matrix (in lab frame) of slip systems of a face-centered
+        Schmid matrix (in lab frame) of first slip system of a face-centered
         cubic crystal in "Goss" orientation.
 
         >>> import damask
@@ -880,13 +882,10 @@ class Orientation(Rotation,Crystal):
                [ 0.000,  0.000,  0.000]])
 
         """
-        try:
-            d = self.to_frame(uvw=self.kinematics(mode)['direction'])
-            p = self.to_frame(hkl=self.kinematics(mode)['plane'])
-        except KeyError:
-            raise (f'"{mode}" not defined for lattice "{self.lattice}"')
-        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
-                                  p/np.linalg.norm(p,axis=-1,keepdims=True))
+        d = self.to_frame(uvw=self.kinematics(mode)['direction'])
+        p = self.to_frame(hkl=self.kinematics(mode)['plane'])
+        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
+                                  p/np.linalg.norm(p,axis=1,keepdims=True))
 
         return ~self.broadcast_to( self.shape+P.shape[:-2],mode='right') \
                @ np.broadcast_to(P,self.shape+P.shape)

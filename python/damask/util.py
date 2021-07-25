@@ -287,6 +287,8 @@ def project_stereographic(vector,direction='z',normalize=True,keepdims=False):
 
     Examples
     --------
+    >>> import damask
+    >>> import numpy as np
     >>> project_stereographic(np.ones(3))
         [0.3660254, 0.3660254]
     >>> project_stereographic(np.ones(3),direction='x',normalize=False,keepdims=True)
@@ -339,7 +341,7 @@ def hybrid_IA(dist,N,rng_seed=None):
 
 def shapeshifter(fro,to,mode='left',keep_ones=False):
     """
-    Return a tuple that reshapes 'fro' to become broadcastable to 'to'.
+    Return dimensions that reshape 'fro' to become broadcastable to 'to'.
 
     Parameters
     ----------
@@ -355,6 +357,22 @@ def shapeshifter(fro,to,mode='left',keep_ones=False):
     keep_ones : bool, optional
         Treat '1' in fro as literal value instead of dimensional placeholder.
         Defaults to False.
+
+    Returns
+    -------
+    new_dims : tuple
+        Dimensions for reshape.
+
+    Example
+    -------
+    >>> import numpy as np
+    >>> from damask import util
+    >>> a = np.ones((3,4,2))
+    >>> b = np.ones(4)
+    >>> b_extended = b.reshape(util.shapeshifter(b.shape,a.shape))
+    >>> (a * np.broadcast_to(b_extended,a.shape)).shape
+    (3,4,2)
+
 
     """
     beg = dict(left ='(^.*\\b)',

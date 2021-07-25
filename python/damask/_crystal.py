@@ -324,6 +324,20 @@ class Crystal():
 
 
     def kinematics(self,mode):
+        """
+        Return kinematic sytems.
+
+        Parameters
+        ----------
+        mode : {'slip','twin'}
+            Deformation mode.
+
+        Returns
+        -------
+        direction_plane : dictionary
+            Direction and plane of deformation mode.
+
+        """
         _kinematics = {
             'cF': {
                 'slip' : np.array([
