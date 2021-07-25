@@ -865,7 +865,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        P : numpy.ndarray of shape (...,N,3,3)
+        P : numpy.ndarray of shape (N,...,3,3)
             Schmid matrix for each of the N deformation systems.
 
         Examples
@@ -887,8 +887,9 @@ class Orientation(Rotation,Crystal):
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
                                   p/np.linalg.norm(p,axis=1,keepdims=True))
 
-        return ~self.broadcast_to( self.shape+P.shape[:-2],mode='right') \
-               @ np.broadcast_to(P,self.shape+P.shape)
+        shape = P.shape[0:1]+self.shape+(3,3)
+        return ~self.broadcast_to(shape[:-2]) \
+               @ np.broadcast_to(P.reshape(util.shapeshifter(P.shape,shape)),shape)
 
 
     def related(self,model):
