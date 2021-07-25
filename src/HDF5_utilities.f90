@@ -312,7 +312,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   logical        :: attrExists
   integer        :: hdferr
   character(len=:), allocatable :: p
-  character(len=len_trim(attrValue)+1,kind=C_CHAR), target :: attrValue_
+  character(len=len_trim(attrValue)+1,kind=C_CHAR), dimension(1), target :: attrValue_
   type(C_PTR), target, dimension(1) :: ptr
 
 
@@ -322,8 +322,8 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
     p = '.'
   endif
 
-  attrValue_ = trim(attrValue)//C_NULL_CHAR
-  ptr(1) = c_loc(attrValue_)
+  attrValue_(1) = trim(attrValue)//C_NULL_CHAR
+  ptr(1) = c_loc(attrValue_(1))
 
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -339,7 +339,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
 
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5awrite_f(attr_id, type_id, c_loc(ptr(1)), hdferr)
+  call h5awrite_f(attr_id, type_id, ptr, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aclose_f(attr_id,hdferr)
@@ -452,7 +452,7 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
-  integer(HID_T)                :: attr_id, space_id, filetype_id, type_id
+  integer(HID_T)                :: attr_id, space_id, type_id
   logical                       :: attrExists
   integer                       :: hdferr,i
   character(len=:), allocatable :: p
