@@ -79,6 +79,5 @@ commercialFEM:
   unitlength:                  1            # physical length of one computational length unit
 
 generic:
-  charLength:                  1.0          # characteristic length scale for gradient problems.
   random_seed:                 0            # fixed seeding for pseudo-random number generator, Default 0: use random seed.
   residualStiffness:           1.0e-6       # non-zero residual damage.

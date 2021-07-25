@@ -103,7 +103,7 @@ module subroutine thermal_init(phases)
     param(ph)%C_p = thermal%get_asFloat('C_p',defaultVal=0.0_pReal)                                 ! ToDo: make mandatory?
     param(ph)%K(1,1) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)                             ! ToDo: make mandatory?
     param(ph)%K(3,3) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)                             ! ToDo: depends on symmtery
-    param(ph)%K = lattice_applyLatticeSymmetry33(param(ph)%K,phase_lattice(ph))
+    param(ph)%K = lattice_symmetrize_33(param(ph)%K,phase_lattice(ph))
 
     sources => thermal%get('source',defaultVal=emptyList)
     thermal_Nsources(ph) = sources%length
@@ -216,7 +216,7 @@ module function phase_K_T(co,ce) result(K)
 end function phase_K_T
 
 
-module function thermal_stress(Delta_t,ph,en) result(converged_)           ! ?? why is this called "stress" when it seems closer to "updateState" ??
+module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
@@ -225,7 +225,7 @@ module function thermal_stress(Delta_t,ph,en) result(converged_)           ! ?? 
 
   converged_ = .not. integrateThermalState(Delta_t,ph,en)
 
-end function thermal_stress
+end function phase_thermal_constitutive
 
 
 !--------------------------------------------------------------------------------------------------

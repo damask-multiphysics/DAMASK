@@ -32,7 +32,7 @@ submodule(phase:mechanical) eigen
 contains
 
 
-module subroutine eigendeformation_init(phases)
+module subroutine eigen_init(phases)
 
   class(tNode), pointer :: &
     phases
@@ -68,7 +68,7 @@ module subroutine eigendeformation_init(phases)
   where(damage_anisobrittle_init())  model_damage = KINEMATICS_cleavage_opening_ID
 
 
-end subroutine eigendeformation_init
+end subroutine eigen_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -86,17 +86,17 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     kinematics, &
     kinematics_type, &
     mechanics
-  integer :: p,k
+  integer :: ph,k
 
   phases => config_material%get('phase')
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
-  do p = 1, phases%length
-    phase => phases%get(p)
+  do ph = 1, phases%length
+    phase => phases%get(ph)
     mechanics => phase%get('mechanical')
     kinematics => mechanics%get('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematics_type => kinematics%get(k)
-      active_kinematics(k,p) = kinematics_type%get_asString('type') == kinematics_label
+      active_kinematics(k,ph) = kinematics_type%get_asString('type') == kinematics_label
     enddo
   enddo
 
@@ -118,17 +118,17 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
     phase, &
     kinematics, &
     kinematics_type
-  integer :: p
+  integer :: ph
 
   phases => config_material%get('phase')
-  allocate(active_kinematics(phases%length), source = .false. )
-  do p = 1, phases%length
-    phase => phases%get(p)
+  allocate(active_kinematics(phases%length), source = .false.)
+  do ph = 1, phases%length
+    phase => phases%get(ph)
     kinematics => phase%get('damage',defaultVal=emptyList)
     if(kinematics%length < 1) return
     kinematics_type => kinematics%get(1)
     if (.not. kinematics_type%contains('type')) continue
-    active_kinematics(p) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
+    active_kinematics(ph) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
   enddo
 
 

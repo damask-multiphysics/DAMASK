@@ -40,7 +40,7 @@ module function anisobrittle_init() result(mySources)
     phase, &
     sources, &
     src
-  integer :: Nmembers,p
+  integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
@@ -56,12 +56,12 @@ module function anisobrittle_init() result(mySources)
   allocate(param(phases%length))
 
 
-  do p = 1, phases%length
-    if(mySources(p)) then
-    phase => phases%get(p)
-    sources => phase%get('damage')
+  do ph = 1, phases%length
+    if(mySources(ph)) then
+      phase => phases%get(ph)
+      sources => phase%get('damage')
 
-        associate(prm  => param(p))
+      associate(prm  => param(ph))
         src => sources%get(1)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
@@ -73,8 +73,7 @@ module function anisobrittle_init() result(mySources)
         prm%s_crit  = src%get_as1dFloat('s_crit',  requiredSize=size(N_cl))
         prm%g_crit  = src%get_as1dFloat('g_crit',  requiredSize=size(N_cl))
 
-        prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
-                                                             phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+        prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase_lattice(ph),phase_cOverA(ph))
 
         ! expand: family => system
         prm%s_crit = math_expand(prm%s_crit,N_cl)
@@ -92,17 +91,15 @@ module function anisobrittle_init() result(mySources)
         if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
-        Nmembers = count(material_phaseID==p)
-        call phase_allocateState(damageState(p),Nmembers,1,1,0)
-        damageState(p)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
-        if(any(damageState(p)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+        Nmembers = count(material_phaseID==ph)
+        call phase_allocateState(damageState(ph),Nmembers,1,1,0)
+        damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
+        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
-        end associate
+      end associate
 
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
-      endif
+      if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
+    endif
 
   enddo
 
@@ -112,10 +109,10 @@ end function anisobrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_dotState(S, ph,me)
+module subroutine anisobrittle_dotState(S, ph,en)
 
   integer, intent(in) :: &
-    ph,me
+    ph,en
   real(pReal),  intent(in), dimension(3,3) :: &
     S
 
@@ -126,15 +123,15 @@ module subroutine anisobrittle_dotState(S, ph,me)
 
 
   associate(prm => param(ph))
-    damageState(ph)%dotState(1,me) = 0.0_pReal
+    damageState(ph)%dotState(1,en) = 0.0_pReal
     do i = 1, prm%sum_N_cl
       traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
       traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
       traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-      traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
+      traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2.0_pReal
 
-      damageState(ph)%dotState(1,me) = damageState(ph)%dotState(1,me) &
+      damageState(ph)%dotState(1,en) = damageState(ph)%dotState(1,en) &
           + prm%dot_o / prm%s_crit(i) &
             * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
                (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
@@ -171,10 +168,10 @@ end subroutine anisobrittle_results
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
+module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
 
   integer, intent(in) :: &
-    ph,me
+    ph,en
   real(pReal),   intent(in),  dimension(3,3) :: &
     S
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -193,7 +190,7 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,me)
   dLd_dTstar = 0.0_pReal
   associate(prm => param(ph))
   do i = 1,prm%sum_N_cl
-    traction_crit = prm%g_crit(i)*damage_phi(ph,me)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2.0_pReal
 
     traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     if (abs(traction_d) > traction_crit + tol_math_check) then

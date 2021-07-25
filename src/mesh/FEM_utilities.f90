@@ -27,17 +27,17 @@ module FEM_utilities
   logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
   integer, public, parameter  :: maxFields = 6
   integer, public             :: nActiveFields = 0
- 
+
 !--------------------------------------------------------------------------------------------------
 ! grid related information information
   real(pReal),   public       :: wgt                                                                !< weighting factor 1/Nelems
-  
+
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
   character(len=*),                         parameter,            public :: &
     FIELD_MECH_label     = 'mechanical'
- 
+
   enum, bind(c); enumerator :: &
     FIELD_UNDEFINED_ID, &
     FIELD_MECH_ID
@@ -48,7 +48,7 @@ module FEM_utilities
     COMPONENT_MECH_Y_ID, &
     COMPONENT_MECH_Z_ID
   end enum
- 
+
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
  logical :: &
@@ -57,23 +57,23 @@ module FEM_utilities
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
-    logical :: converged        = .true.   
-    logical :: stagConverged    = .true.   
+    logical :: converged        = .true.
+    logical :: stagConverged    = .true.
     integer :: iterationsNeeded = 0
   end type tSolutionState
- 
+
   type, public :: tComponentBC
     integer(kind(COMPONENT_UNDEFINED_ID))          :: ID
     real(pReal),                       allocatable, dimension(:) :: Value
-    logical,                           allocatable, dimension(:) :: Mask 
+    logical,                           allocatable, dimension(:) :: Mask
   end type tComponentBC
- 
+
   type, public :: tFieldBC
     integer(kind(FIELD_UNDEFINED_ID))  :: ID
     integer                            :: nComponents = 0
     type(tComponentBC),    allocatable :: componentBC(:)
   end type tFieldBC
- 
+
   type, public :: tLoadCase
     real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
     integer      :: incs                   = 0, &                                                   !< number of increments
@@ -83,7 +83,7 @@ module FEM_utilities
     integer,        allocatable, dimension(:) :: faceID
     type(tFieldBC), allocatable, dimension(:) :: fieldBC
   end type tLoadCase
-  
+
   public :: &
     FEM_utilities_init, &
     utilities_constitutiveResponse, &
@@ -94,14 +94,14 @@ module FEM_utilities
     COMPONENT_MECH_Y_ID, &
     COMPONENT_MECH_Z_ID
 
-contains 
+contains
 
 !ToDo: use functions in variable call
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_utilities_init
-   
+
   character(len=pStringLen) :: petsc_optionsOrder
   class(tNode), pointer :: &
     num_mesh, &
@@ -113,7 +113,7 @@ subroutine FEM_utilities_init
   PetscErrorCode            :: ierr
 
   print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
- 
+
   num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
   structOrder =  num_mesh%get_asInt('structOrder', defaultVal = 2)
 
@@ -141,7 +141,7 @@ subroutine FEM_utilities_init
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)
   CHKERRQ(ierr)
-  
+
   wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
 
@@ -152,20 +152,21 @@ end subroutine FEM_utilities_init
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
- 
+
   real(pReal), intent(in)                 :: timeinc                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
-  
+
   real(pReal),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
-  
+
   PetscErrorCode :: ierr
 
   print'(/,a)', ' ... evaluating constitutive response ......................................'
 
-  call materialpoint_stressAndItsTangent(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
+  call homogenization_mechanical_response(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
+  if (.not. terminallyIll) &
+    call homogenization_mechanical_response2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
+  cutBack = .false.
 
-  cutBack = .false.                                                                                 ! reset cutBack status
-  
   P_av = sum(homogenization_P,dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
 
@@ -198,12 +199,12 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
     do dof = offset+comp+1, offset+numDof, numComp
       localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
     enddo
-  enddo    
+  enddo
   call VecRestoreArrayF90(localVec,localArray,ierr); CHKERRQ(ierr)
   call VecAssemblyBegin(localVec, ierr); CHKERRQ(ierr)
   call VecAssemblyEnd  (localVec, ierr); CHKERRQ(ierr)
   if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,ierr)
- 
+
 end subroutine utilities_projectBCValues
 
 end module FEM_utilities

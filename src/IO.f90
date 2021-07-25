@@ -81,12 +81,7 @@ function IO_readlines(fileName) result(fileContent)
 
   rawData = IO_read(fileName)
 
-!--------------------------------------------------------------------------------------------------
-! count lines to allocate string array
-  N_lines = 0
-  do l=1, len(rawData)
-    if (rawData(l:l) == IO_EOL) N_lines = N_lines+1
-  enddo
+  N_lines = count([(rawData(l:l) == IO_EOL,l=1,len(rawData))])
   allocate(fileContent(N_lines))
 
 !--------------------------------------------------------------------------------------------------
@@ -261,7 +256,7 @@ pure function IO_lc(string)
 
   do i=1,len(string)
     n = index(UPPER,string(i:i))
-    if(n/=0) then
+    if (n/=0) then
       IO_lc(i:i) = LOWER(n:n)
     else
       IO_lc(i:i) = string(i:i)

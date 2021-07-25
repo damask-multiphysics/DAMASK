@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief  contains lattice structure definitions including Schmid matrices for slip, twin, trans,
+!> @brief  contains lattice definitions including Schmid matrices for slip, twin, trans,
 !          and cleavage as well as interaction among the various systems
 !--------------------------------------------------------------------------------------------------
 module lattice
@@ -365,12 +365,6 @@ module lattice
        1, 1, 1,      1,-2, 1  &
        ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< bct slip systems for c/a = 0.5456 (Sn), sorted by Bieler 2009 (https://doi.org/10.1007/s11664-009-0909-x)
 
-! SHOULD NOT BE PART OF LATTICE BEGIN
-  real(pReal),                        dimension(:),     allocatable, public, protected :: &
-    lattice_mu, lattice_nu
-   real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
-    lattice_C66
-! SHOULD NOT BE PART OF LATTICE END
 
   interface lattice_forestProjection_edge
     module procedure slipProjection_transverse
@@ -384,7 +378,8 @@ module lattice
     lattice_init, &
     lattice_equivalent_nu, &
     lattice_equivalent_mu, &
-    lattice_applyLatticeSymmetry33, &
+    lattice_symmetrize_33, &
+    lattice_symmetrize_C66, &
     lattice_SchmidMatrix_slip, &
     lattice_SchmidMatrix_twin, &
     lattice_SchmidMatrix_trans, &
@@ -414,53 +409,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
-  integer :: Nphases, ph,i
-  class(tNode), pointer :: &
-    phases, &
-    phase, &
-    mech, &
-    elasticity
-
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
-! SHOULD NOT BE PART OF LATTICE BEGIN
-
-  phases => config_material%get('phase')
-  Nphases = phases%length
-
-  allocate(lattice_C66(6,6,Nphases), source=0.0_pReal)
-
-  allocate(lattice_mu, lattice_nu,&
-           source=[(0.0_pReal,i=1,Nphases)])
-
-  do ph = 1, phases%length
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    elasticity => mech%get('elastic')
-    lattice_C66(1,1,ph) = elasticity%get_asFloat('C_11')
-    lattice_C66(1,2,ph) = elasticity%get_asFloat('C_12')
-    lattice_C66(4,4,ph) = elasticity%get_asFloat('C_44')
-
-    lattice_C66(1,3,ph) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
-    lattice_C66(2,3,ph) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
-    lattice_C66(3,3,ph) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
-    lattice_C66(6,6,ph) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
-
-    lattice_C66(1:6,1:6,ph) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,ph),phase%get_asString('lattice'))
-
-    lattice_nu(ph) = lattice_equivalent_nu(lattice_C66(1:6,1:6,ph),'voigt')
-    lattice_mu(ph) = lattice_equivalent_mu(lattice_C66(1:6,1:6,ph),'voigt')
-
-    lattice_C66(1:6,1:6,ph) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,ph)))         ! Literature data is in Voigt notation
-    do i = 1, 6
-      if (abs(lattice_C66(i,i,ph))<tol_math_check) &
-        call IO_error(135,el=i,ip=ph,ext_msg='matrix diagonal "el"ement of phase "ip"')
-    enddo
-! SHOULD NOT BE PART OF LATTICE END
-
-    call selfTest
-
-  enddo
+  call selfTest
 
 end subroutine lattice_init
 
@@ -468,10 +419,10 @@ end subroutine lattice_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Characteristic shear for twinning
 !--------------------------------------------------------------------------------------------------
-function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(characteristicShear)
+function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(characteristicShear)
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
-  character(len=*),                     intent(in) :: structure                                     !< lattice structure
+  character(len=2),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
   real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
   real(pReal), dimension(sum(Ntwin))               :: characteristicShear
 
@@ -513,7 +464,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
   myFamilies: do f = 1,size(Ntwin,1)
     mySystems: do s = 1,Ntwin(f)
       a = a + 1
-      select case(structure)
+      select case(lattice)
         case('cF','cI')
           characteristicShear(a) = 0.5_pReal*sqrt(2.0_pReal)
         case('hP')
@@ -531,7 +482,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
               characteristicShear(a) = 2.0_pReal*(cOverA**2.0_pReal-2.0_pReal)/3.0_pReal/cOverA
           end select
         case default
-          call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(structure))
+          call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(lattice))
       end select
     enddo mySystems
   enddo myFamilies
@@ -542,10 +493,10 @@ end function lattice_characteristicShear_Twin
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotated elasticity matrices for twinning in 66-vector notation
 !--------------------------------------------------------------------------------------------------
-function lattice_C66_twin(Ntwin,C66,structure,CoverA)
+function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
-  character(len=*),                     intent(in) :: structure                                     !< lattice structure
+  character(len=2),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
   real(pReal), dimension(6,6),          intent(in) :: C66                                           !< unrotated parent stiffness matrix
   real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
   real(pReal), dimension(6,6,sum(Ntwin))           :: lattice_C66_twin
@@ -554,18 +505,18 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   type(rotation)                        :: R
   integer                               :: i
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       coordinateSystem = buildCoordinateSystem(Ntwin,FCC_NSLIPSYSTEM,FCC_SYSTEMTWIN,&
-                                               structure,0.0_pReal)
+                                               lattice,0.0_pReal)
     case('cI')
       coordinateSystem = buildCoordinateSystem(Ntwin,BCC_NSLIPSYSTEM,BCC_SYSTEMTWIN,&
-                                               structure,0.0_pReal)
+                                               lattice,0.0_pReal)
     case('hP')
       coordinateSystem = buildCoordinateSystem(Ntwin,HEX_NSLIPSYSTEM,HEX_SYSTEMTWIN,&
-                                               structure,cOverA)
+                                               lattice,cOverA)
     case default
-      call IO_error(137,ext_msg='lattice_C66_twin: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_C66_twin: '//trim(lattice))
   end select
 
   do i = 1, sum(Ntwin)
@@ -579,11 +530,11 @@ end function lattice_C66_twin
 !--------------------------------------------------------------------------------------------------
 !> @brief Rotated elasticity matrices for transformation in 66-vector notation
 !--------------------------------------------------------------------------------------------------
-function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
+function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
                            cOverA_trans,a_bcc,a_fcc)
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
-  character(len=*),                      intent(in) :: structure_target                             !< lattice structure
+  character(len=2),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
   real(pReal), dimension(6,6),           intent(in) :: C_parent66
   real(pReal), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
 
@@ -595,9 +546,9 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
 
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
-  if (structure_target == 'hP') then
+  if (lattice_target == 'hP') then
     if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
-      call IO_error(131,ext_msg='lattice_C66_trans: '//trim(structure_target))
+      call IO_error(131,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
     C_bar66(1,2) = (C_parent66(1,1) + 5.0_pReal*C_parent66(1,2) - 2.0_pReal*C_parent66(4,4))/6.0_pReal
     C_bar66(3,3) = (C_parent66(1,1) + 2.0_pReal*C_parent66(1,2) + 4.0_pReal*C_parent66(4,4))/3.0_pReal
@@ -611,13 +562,13 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = applyLatticeSymmetryC66(C_target_unrotated66,'hP')
-  elseif (structure_target  == 'cI') then
+    C_target_unrotated66 = lattice_symmetrize_C66(C_target_unrotated66,'hP')
+  elseif (lattice_target  == 'cI') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
-      call IO_error(134,ext_msg='lattice_C66_trans: '//trim(structure_target))
+      call IO_error(134,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_target_unrotated66 = C_parent66
   else
-    call IO_error(137,ext_msg='lattice_C66_trans : '//trim(structure_target))
+    call IO_error(137,ext_msg='lattice_C66_trans : '//trim(lattice_target))
   endif
 
   do i = 1, 6
@@ -686,11 +637,11 @@ end function lattice_nonSchmidMatrix
 !> @brief Slip-slip interaction matrix
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) result(interactionMatrix)
+function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-slip interaction
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax
@@ -908,7 +859,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
       ],shape(BCT_INTERACTIONSLIPSLIP))
 
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       interactionTypes = FCC_INTERACTIONSLIPSLIP
       NslipMax         = FCC_NSLIPSYSTEM
@@ -922,7 +873,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
       interactionTypes = BCT_INTERACTIONSLIPSLIP
       NslipMax         = BCT_NSLIPSYSTEM
     case default
-      call IO_error(137,ext_msg='lattice_interaction_SlipBySlip: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_interaction_SlipBySlip: '//trim(lattice))
   end select
 
   interactionMatrix = buildInteraction(Nslip,Nslip,NslipMax,NslipMax,interactionValues,interactionTypes)
@@ -934,11 +885,11 @@ end function lattice_interaction_SlipBySlip
 !> @brief Twin-twin interaction matrix
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_TwinByTwin(Ntwin,interactionValues,structure) result(interactionMatrix)
+function lattice_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Ntwin),sum(Ntwin))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtwinMax
@@ -1009,7 +960,7 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,structure) resul
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
       ],shape(HEX_INTERACTIONTWINTWIN))                                                             !< Twin-twin interaction types for hex
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       interactionTypes = FCC_INTERACTIONTWINTWIN
       NtwinMax         = FCC_NTWINSYSTEM
@@ -1020,7 +971,7 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,structure) resul
       interactionTypes = HEX_INTERACTIONTWINTWIN
       NtwinMax         = HEX_NTWINSYSTEM
     case default
-      call IO_error(137,ext_msg='lattice_interaction_TwinByTwin: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_interaction_TwinByTwin: '//trim(lattice))
   end select
 
   interactionMatrix = buildInteraction(Ntwin,Ntwin,NtwinMax,NtwinMax,interactionValues,interactionTypes)
@@ -1032,11 +983,11 @@ end function lattice_interaction_TwinByTwin
 !> @brief Trans-trans interaction matrix
 !> details only active trans systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_TransByTrans(Ntrans,interactionValues,structure) result(interactionMatrix)
+function lattice_interaction_TransByTrans(Ntrans,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                     intent(in) :: Ntrans                           !< number of active trans systems per family
   real(pReal),     dimension(:),                     intent(in) :: interactionValues                !< values for trans-trans interaction
-  character(len=*),                                  intent(in) :: structure                        !< lattice structure (parent crystal)
+  character(len=2),                                  intent(in) :: lattice                          !<Bravais lattice (Pearson symbol) (parent crystal)
   real(pReal),     dimension(sum(Ntrans),sum(Ntrans))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtransMax
@@ -1058,11 +1009,11 @@ function lattice_interaction_TransByTrans(Ntrans,interactionValues,structure) re
       2,2,2,2,2,2,2,2,2,1,1,1  &
       ],shape(FCC_INTERACTIONTRANSTRANS))                                                           !< Trans-trans interaction types for fcc
 
-  if(structure == 'cF') then
+  if(lattice == 'cF') then
     interactionTypes = FCC_INTERACTIONTRANSTRANS
     NtransMax        = FCC_NTRANSSYSTEM
   else
-    call IO_error(137,ext_msg='lattice_interaction_TransByTrans: '//trim(structure))
+    call IO_error(137,ext_msg='lattice_interaction_TransByTrans: '//trim(lattice))
   end if
 
   interactionMatrix = buildInteraction(Ntrans,Ntrans,NtransMax,NtransMax,interactionValues,interactionTypes)
@@ -1074,12 +1025,12 @@ end function lattice_interaction_TransByTrans
 !> @brief Slip-twin interaction matrix
 !> details only active slip and twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,structure) result(interactionMatrix)
+function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                   intent(in) :: Nslip, &                           !< number of active slip systems per family
                                                                  Ntwin                              !< number of active twin systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-twin interaction
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Nslip),sum(Ntwin))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax, &
@@ -1211,7 +1162,7 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,structure)
       21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24  &
       ],shape(HEX_INTERACTIONSLIPTWIN))                                                             !< Slip-twin interaction types for hex
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       interactionTypes = FCC_INTERACTIONSLIPTWIN
       NslipMax         = FCC_NSLIPSYSTEM
@@ -1225,7 +1176,7 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,structure)
       NslipMax         = HEX_NSLIPSYSTEM
       NtwinMax         = HEX_NTWINSYSTEM
     case default
-      call IO_error(137,ext_msg='lattice_interaction_SlipByTwin: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_interaction_SlipByTwin: '//trim(lattice))
   end select
 
   interactionMatrix = buildInteraction(Nslip,Ntwin,NslipMax,NtwinMax,interactionValues,interactionTypes)
@@ -1237,12 +1188,12 @@ end function lattice_interaction_SlipByTwin
 !> @brief Slip-trans interaction matrix
 !> details only active slip and trans systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,structure) result(interactionMatrix)
+function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                    intent(in) :: Nslip, &                          !< number of active slip systems per family
                                                                   Ntrans                            !< number of active trans systems per family
   real(pReal),     dimension(:),                    intent(in) :: interactionValues                 !< values for slip-trans interaction
-  character(len=*),                                 intent(in) :: structure                         !< lattice structure (parent crystal)
+  character(len=2),                                 intent(in) :: lattice                           !< Bravais lattice (Pearson symbol) (parent crystal)
   real(pReal),     dimension(sum(Nslip),sum(Ntrans))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax, &
@@ -1272,13 +1223,13 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,structur
       4,4,4,4,4,4,4,4,4,4,4,4  &
       ],shape(FCC_INTERACTIONSLIPTRANS))                                                            !< Slip-trans interaction types for fcc
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       interactionTypes = FCC_INTERACTIONSLIPTRANS
       NslipMax         = FCC_NSLIPSYSTEM
       NtransMax        = FCC_NTRANSSYSTEM
     case default
-      call IO_error(137,ext_msg='lattice_interaction_SlipByTrans: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_interaction_SlipByTrans: '//trim(lattice))
   end select
 
   interactionMatrix = buildInteraction(Nslip,Ntrans,NslipMax,NtransMax,interactionValues,interactionTypes)
@@ -1290,12 +1241,12 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,structur
 !> @brief Twin-slip interaction matrix
 !> details only active twin and slip systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,structure) result(interactionMatrix)
+function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) result(interactionMatrix)
 
   integer,         dimension(:),                   intent(in) :: Ntwin, &                           !< number of active twin systems per family
                                                                  Nslip                              !< number of active slip systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Ntwin),sum(Nslip))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtwinMax, &
@@ -1339,7 +1290,7 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,structure)
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24  &
       ],shape(HEX_INTERACTIONTWINSLIP))                                                             !< Twin-slip interaction types for hex
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       interactionTypes = FCC_INTERACTIONTWINSLIP
       NtwinMax         = FCC_NTWINSYSTEM
@@ -1353,7 +1304,7 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,structure)
       NtwinMax         = HEX_NTWINSYSTEM
       NslipMax         = HEX_NSLIPSYSTEM
     case default
-      call IO_error(137,ext_msg='lattice_interaction_TwinBySlip: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_interaction_TwinBySlip: '//trim(lattice))
   end select
 
   interactionMatrix = buildInteraction(Ntwin,Nslip,NtwinMax,NslipMax,interactionValues,interactionTypes)
@@ -1365,10 +1316,10 @@ end function lattice_interaction_TwinBySlip
 !> @brief Schmid matrix for slip
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
+function lattice_SchmidMatrix_slip(Nslip,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
-  character(len=*),                         intent(in) :: structure                                 !< lattice structure
+  character(len=2),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
   real(pReal),                              intent(in) :: cOverA
   real(pReal),     dimension(3,3,sum(Nslip))           :: SchmidMatrix
 
@@ -1377,7 +1328,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
   integer,     dimension(:),             allocatable :: NslipMax
   integer                                            :: i
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       NslipMax    = FCC_NSLIPSYSTEM
       slipSystems = FCC_SYSTEMSLIP
@@ -1392,15 +1343,15 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
       slipSystems = BCT_SYSTEMSLIP
     case default
       allocate(NslipMax(0))
-      call IO_error(137,ext_msg='lattice_SchmidMatrix_slip: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_SchmidMatrix_slip: '//trim(lattice))
   end select
 
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
-    call IO_error(145,ext_msg='Nslip '//trim(structure))
+    call IO_error(145,ext_msg='Nslip '//trim(lattice))
   if (any(Nslip < 0)) &
-    call IO_error(144,ext_msg='Nslip '//trim(structure))
+    call IO_error(144,ext_msg='Nslip '//trim(lattice))
 
-  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,lattice,cOverA)
 
   do i = 1, sum(Nslip)
     SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
@@ -1415,10 +1366,10 @@ end function lattice_SchmidMatrix_slip
 !> @brief Schmid matrix for twinning
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
+function lattice_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
-  character(len=*),                         intent(in) :: structure                                 !< lattice structure
+  character(len=2),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
   real(pReal),                              intent(in) :: cOverA                                    !< c/a ratio
   real(pReal),     dimension(3,3,sum(Ntwin))           :: SchmidMatrix
 
@@ -1427,7 +1378,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
   integer,     dimension(:),             allocatable :: NtwinMax
   integer                                            :: i
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       NtwinMax    = FCC_NTWINSYSTEM
       twinSystems = FCC_SYSTEMTWIN
@@ -1439,15 +1390,15 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
       twinSystems = HEX_SYSTEMTWIN
     case default
       allocate(NtwinMax(0))
-      call IO_error(137,ext_msg='lattice_SchmidMatrix_twin: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_SchmidMatrix_twin: '//trim(lattice))
   end select
 
   if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
-    call IO_error(145,ext_msg='Ntwin '//trim(structure))
+    call IO_error(145,ext_msg='Ntwin '//trim(lattice))
   if (any(Ntwin < 0)) &
-    call IO_error(144,ext_msg='Ntwin '//trim(structure))
+    call IO_error(144,ext_msg='Ntwin '//trim(lattice))
 
-  coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,structure,cOverA)
+  coordinateSystem = buildCoordinateSystem(Ntwin,NtwinMax,twinSystems,lattice,cOverA)
 
   do i = 1, sum(Ntwin)
     SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
@@ -1462,24 +1413,24 @@ end function lattice_SchmidMatrix_twin
 !> @brief Schmid matrix for twinning
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) result(SchmidMatrix)
+function lattice_SchmidMatrix_trans(Ntrans,lattice_target,cOverA,a_bcc,a_fcc) result(SchmidMatrix)
 
   integer,         dimension(:),             intent(in) :: Ntrans                                   !< number of active twin systems per family
-  character(len=*),                          intent(in) :: structure_target                         !< lattice structure
+  character(len=2),                          intent(in) :: lattice_target                           !< Bravais lattice (Pearson symbol)
   real(pReal),                               intent(in) :: cOverA                                   !< c/a ratio
   real(pReal),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
 
   real(pReal), dimension(3,3,sum(Ntrans)) :: devNull
   real(pReal)                             :: a_bcc, a_fcc
 
-  if (structure_target /= 'cI' .and. structure_target /= 'hP') &
-    call IO_error(137,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
+  if (lattice_target /= 'cI' .and. lattice_target /= 'hP') &
+    call IO_error(137,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
 
-  if (structure_target == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
-    call IO_error(131,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
+  if (lattice_target == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+    call IO_error(131,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
 
-  if (structure_target == 'cI' .and. (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal)) &
-    call IO_error(134,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
+  if (lattice_target == 'cI' .and. (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal)) &
+    call IO_error(134,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
 
   call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA,a_fcc,a_bcc)
 
@@ -1490,10 +1441,10 @@ end function lattice_SchmidMatrix_trans
 !> @brief Schmid matrix for cleavage
 !> details only active cleavage systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(SchmidMatrix)
+function lattice_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),                  intent(in) :: Ncleavage                           !< number of active cleavage systems per family
-  character(len=*),                               intent(in) :: structure                           !< lattice structure
+  character(len=2),                               intent(in) :: lattice                             !< Bravais lattice (Pearson symbol)
   real(pReal),                                    intent(in) :: cOverA                              !< c/a ratio
   real(pReal),     dimension(3,3,3,sum(Ncleavage))           :: SchmidMatrix
 
@@ -1502,7 +1453,7 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
   integer,     dimension(:),                 allocatable :: NcleavageMax
   integer                                                :: i
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       NcleavageMax    = FCC_NCLEAVAGESYSTEM
       cleavageSystems = FCC_SYSTEMCLEAVAGE
@@ -1511,15 +1462,15 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
       cleavageSystems = BCC_SYSTEMCLEAVAGE
     case default
       allocate(NcleavageMax(0))
-      call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(lattice))
   end select
 
   if (any(NcleavageMax(1:size(Ncleavage)) - Ncleavage < 0)) &
-    call IO_error(145,ext_msg='Ncleavage '//trim(structure))
+    call IO_error(145,ext_msg='Ncleavage '//trim(lattice))
   if (any(Ncleavage < 0)) &
-    call IO_error(144,ext_msg='Ncleavage '//trim(structure))
+    call IO_error(144,ext_msg='Ncleavage '//trim(lattice))
 
-  coordinateSystem = buildCoordinateSystem(Ncleavage,NcleavageMax,cleavageSystems,structure,cOverA)
+  coordinateSystem = buildCoordinateSystem(Ncleavage,NcleavageMax,cleavageSystems,lattice,cOverA)
 
   do i = 1, sum(Ncleavage)
     SchmidMatrix(1:3,1:3,1,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
@@ -1533,16 +1484,16 @@ end function lattice_SchmidMatrix_cleavage
 !--------------------------------------------------------------------------------------------------
 !> @brief Slip direction of slip systems (|| b)
 !--------------------------------------------------------------------------------------------------
-function lattice_slip_direction(Nslip,structure,cOverA) result(d)
+function lattice_slip_direction(Nslip,lattice,cOverA) result(d)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
-  character(len=*),                        intent(in) :: structure                                  !< lattice structure
+  character(len=2),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
   real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
   real(pReal),     dimension(3,sum(Nslip))            :: d
 
   real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
 
-  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+  coordinateSystem = coordinateSystem_slip(Nslip,lattice,cOverA)
   d = coordinateSystem(1:3,1,1:sum(Nslip))
 
 end function lattice_slip_direction
@@ -1551,16 +1502,16 @@ end function lattice_slip_direction
 !--------------------------------------------------------------------------------------------------
 !> @brief Normal direction of slip systems (|| n)
 !--------------------------------------------------------------------------------------------------
-function lattice_slip_normal(Nslip,structure,cOverA) result(n)
+function lattice_slip_normal(Nslip,lattice,cOverA) result(n)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
-  character(len=*),                        intent(in) :: structure                                  !< lattice structure
+  character(len=2),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
   real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
   real(pReal),     dimension(3,sum(Nslip))            :: n
 
   real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
 
-  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+  coordinateSystem = coordinateSystem_slip(Nslip,lattice,cOverA)
   n = coordinateSystem(1:3,2,1:sum(Nslip))
 
 end function lattice_slip_normal
@@ -1569,16 +1520,16 @@ end function lattice_slip_normal
 !--------------------------------------------------------------------------------------------------
 !> @brief Transverse direction of slip systems (|| t = b x n)
 !--------------------------------------------------------------------------------------------------
-function lattice_slip_transverse(Nslip,structure,cOverA) result(t)
+function lattice_slip_transverse(Nslip,lattice,cOverA) result(t)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
-  character(len=*),                        intent(in) :: structure                                  !< lattice structure
+  character(len=2),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
   real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
   real(pReal),     dimension(3,sum(Nslip))            :: t
 
   real(pReal), dimension(3,3,sum(Nslip)) :: coordinateSystem
 
-  coordinateSystem = coordinateSystem_slip(Nslip,structure,cOverA)
+  coordinateSystem = coordinateSystem_slip(Nslip,lattice,cOverA)
   t = coordinateSystem(1:3,3,1:sum(Nslip))
 
 end function lattice_slip_transverse
@@ -1588,17 +1539,17 @@ end function lattice_slip_transverse
 !> @brief Labels for slip systems
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_labels_slip(Nslip,structure) result(labels)
+function lattice_labels_slip(Nslip,lattice) result(labels)
 
   integer,         dimension(:),  intent(in)  :: Nslip                                              !< number of active slip systems per family
-  character(len=*),               intent(in)  :: structure                                          !< lattice structure
+  character(len=2),               intent(in)  :: lattice                                            !< Bravais lattice (Pearson symbol)
 
   character(len=:), dimension(:),   allocatable :: labels
 
   real(pReal),      dimension(:,:), allocatable :: slipSystems
   integer,          dimension(:),   allocatable :: NslipMax
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       NslipMax    = FCC_NSLIPSYSTEM
       slipSystems = FCC_SYSTEMSLIP
@@ -1612,13 +1563,13 @@ function lattice_labels_slip(Nslip,structure) result(labels)
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
-      call IO_error(137,ext_msg='lattice_labels_slip: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_labels_slip: '//trim(lattice))
   end select
 
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
-    call IO_error(145,ext_msg='Nslip '//trim(structure))
+    call IO_error(145,ext_msg='Nslip '//trim(lattice))
   if (any(Nslip < 0)) &
-    call IO_error(144,ext_msg='Nslip '//trim(structure))
+    call IO_error(144,ext_msg='Nslip '//trim(lattice))
 
   labels = getLabels(Nslip,NslipMax,slipSystems)
 
@@ -1626,19 +1577,19 @@ end function lattice_labels_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return 3x3 tensor with symmetry according to given crystal structure
+!> @brief Return 3x3 tensor with symmetry according to given Bravais lattice
 !--------------------------------------------------------------------------------------------------
-pure function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
+pure function lattice_symmetrize_33(T,lattice) result(T_sym)
 
   real(pReal), dimension(3,3) :: T_sym
 
   real(pReal), dimension(3,3), intent(in) :: T
-  character(len=*),            intent(in) :: structure
+  character(len=2),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
 
 
   T_sym = 0.0_pReal
 
-  select case(structure)
+  select case(lattice)
     case('cF','cI')
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
@@ -1649,26 +1600,26 @@ pure function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
       T_sym(3,3) = T(3,3)
    end select
 
-end function lattice_applyLatticeSymmetry33
+end function lattice_symmetrize_33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given crystal structure
+!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
-pure function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
+pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
 
   real(pReal), dimension(6,6) :: C66_sym
 
   real(pReal), dimension(6,6), intent(in) :: C66
-  character(len=*),            intent(in) :: structure
+  character(len=2),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
 
   integer :: i,j
 
 
   C66_sym = 0.0_pReal
 
-  select case(structure)
+  select case(lattice)
     case ('cF','cI')
       C66_sym(1,1) = C66(1,1); C66_sym(2,2) = C66(1,1); C66_sym(3,3) = C66(1,1)
       C66_sym(1,2) = C66(1,2); C66_sym(1,3) = C66(1,2); C66_sym(2,3) = C66(1,2)
@@ -1695,24 +1646,24 @@ pure function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
      enddo
    enddo
 
-end function applyLatticeSymmetryC66
+end function lattice_symmetrize_C66
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Labels for twin systems
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_labels_twin(Ntwin,structure) result(labels)
+function lattice_labels_twin(Ntwin,lattice) result(labels)
 
   integer,         dimension(:),  intent(in)  :: Ntwin                                              !< number of active slip systems per family
-  character(len=*),               intent(in)  :: structure                                          !< lattice structure
+  character(len=2),               intent(in)  :: lattice                                            !< Bravais lattice (Pearson symbol)
 
   character(len=:), dimension(:),   allocatable :: labels
 
   real(pReal),      dimension(:,:), allocatable :: twinSystems
   integer,          dimension(:),   allocatable :: NtwinMax
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       NtwinMax    = FCC_NTWINSYSTEM
       twinSystems = FCC_SYSTEMTWIN
@@ -1723,13 +1674,13 @@ function lattice_labels_twin(Ntwin,structure) result(labels)
       NtwinMax    = HEX_NTWINSYSTEM
       twinSystems = HEX_SYSTEMTWIN
     case default
-      call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_labels_twin: '//trim(lattice))
   end select
 
   if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
-    call IO_error(145,ext_msg='Ntwin '//trim(structure))
+    call IO_error(145,ext_msg='Ntwin '//trim(lattice))
   if (any(Ntwin < 0)) &
-    call IO_error(144,ext_msg='Ntwin '//trim(structure))
+    call IO_error(144,ext_msg='Ntwin '//trim(lattice))
 
   labels = getLabels(Ntwin,NtwinMax,twinSystems)
 
@@ -1740,18 +1691,18 @@ end function lattice_labels_twin
 !> @brief Projection of the transverse direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for edge dislocations
 !--------------------------------------------------------------------------------------------------
-function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
+function slipProjection_transverse(Nslip,lattice,cOverA) result(projection)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
 
   real(pReal), dimension(3,sum(Nslip)) :: n, t
   integer                              :: i, j
 
-  n = lattice_slip_normal    (Nslip,structure,cOverA)
-  t = lattice_slip_transverse(Nslip,structure,cOverA)
+  n = lattice_slip_normal    (Nslip,lattice,cOverA)
+  t = lattice_slip_transverse(Nslip,lattice,cOverA)
 
   do i=1, sum(Nslip); do j=1, sum(Nslip)
     projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
@@ -1764,18 +1715,18 @@ end function slipProjection_transverse
 !> @brief Projection of the slip direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for screw dislocations
 !--------------------------------------------------------------------------------------------------
-function slipProjection_direction(Nslip,structure,cOverA) result(projection)
+function slipProjection_direction(Nslip,lattice,cOverA) result(projection)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
 
   real(pReal), dimension(3,sum(Nslip)) :: n, d
   integer                              :: i, j
 
-  n = lattice_slip_normal   (Nslip,structure,cOverA)
-  d = lattice_slip_direction(Nslip,structure,cOverA)
+  n = lattice_slip_normal   (Nslip,lattice,cOverA)
+  d = lattice_slip_direction(Nslip,lattice,cOverA)
 
   do i=1, sum(Nslip); do j=1, sum(Nslip)
     projection(i,j) = abs(math_inner(n(:,i),d(:,j)))
@@ -1788,17 +1739,17 @@ end function slipProjection_direction
 !> @brief build a local coordinate system on slip systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
-function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
+function coordinateSystem_slip(Nslip,lattice,cOverA) result(coordinateSystem)
 
   integer,          dimension(:),            intent(in) :: Nslip                                    !< number of active slip systems per family
-  character(len=*),                          intent(in) :: structure                                !< lattice structure
+  character(len=2),                          intent(in) :: lattice                                  !< Bravais lattice (Pearson symbol)
   real(pReal),                               intent(in) :: cOverA                                   !< c/a ratio
   real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
 
   real(pReal), dimension(:,:), allocatable :: slipSystems
   integer,     dimension(:),   allocatable :: NslipMax
 
-  select case(structure)
+  select case(lattice)
     case('cF')
       NslipMax    = FCC_NSLIPSYSTEM
       slipSystems = FCC_SYSTEMSLIP
@@ -1813,15 +1764,15 @@ function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
       slipSystems = BCT_SYSTEMSLIP
     case default
       allocate(NslipMax(0))
-      call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(structure))
+      call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(lattice))
   end select
 
   if (any(NslipMax(1:size(Nslip)) - Nslip < 0)) &
-    call IO_error(145,ext_msg='Nslip '//trim(structure))
+    call IO_error(145,ext_msg='Nslip '//trim(lattice))
   if (any(Nslip < 0)) &
-    call IO_error(144,ext_msg='Nslip '//trim(structure))
+    call IO_error(144,ext_msg='Nslip '//trim(lattice))
 
-  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,structure,cOverA)
+  coordinateSystem = buildCoordinateSystem(Nslip,NslipMax,slipSystems,lattice,cOverA)
 
 end function coordinateSystem_slip
 
@@ -1873,15 +1824,15 @@ end function buildInteraction
 !> @brief Build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
-function buildCoordinateSystem(active,potential,system,structure,cOverA)
+function buildCoordinateSystem(active,potential,system,lattice,cOverA)
 
   integer, dimension(:), intent(in) :: &
     active, &                                                                                       !< # of active systems per family
     potential                                                                                       !< # of potential systems per family
   real(pReal), dimension(:,:), intent(in) :: &
     system
-  character(len=*),            intent(in) :: &
-    structure                                                                                       !< lattice structure
+  character(len=2),            intent(in) :: &
+    lattice                                                                                         !< Bravais lattice (Pearson symbol)
   real(pReal),                 intent(in) :: &
     cOverA
   real(pReal), dimension(3,3,sum(active)) :: &
@@ -1895,10 +1846,10 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
 
-  if (structure == 'tI' .and. cOverA > 2.0_pReal) &
-    call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(structure))
-  if (structure == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
-    call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(structure))
+  if (lattice == 'tI' .and. cOverA > 2.0_pReal) &
+    call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(lattice))
+  if (lattice == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+    call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(lattice))
 
   a = 0
   activeFamilies: do f = 1,size(active,1)
@@ -1906,7 +1857,7 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
       a = a + 1
       p = sum(potential(1:f-1))+s
 
-      select case(structure)
+      select case(lattice)
 
         case ('cF','cI','tI')
           direction = system(1:3,p)
@@ -1921,7 +1872,7 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
                         system(8,p)/cOverA ]                                                        ! plane (hkil)->(h (h+2k)/sqrt(3) l/(p/a))
 
         case default
-          call IO_error(137,ext_msg='buildCoordinateSystem: '//trim(structure))
+          call IO_error(137,ext_msg='buildCoordinateSystem: '//trim(lattice))
 
       end select
 
@@ -1950,9 +1901,9 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
     Q, &                                                                                            !< Total rotation: Q = R*B
     S                                                                                               !< Eigendeformation tensor for phase transformation
   real(pReal),                 intent(in) :: &
-    cOverA, &                                                                                       !< c/a for target hex structure
-    a_bcc, &                                                                                        !< lattice parameter a for target bcc structure
-    a_fcc                                                                                           !< lattice parameter a for parent fcc structure
+    cOverA, &                                                                                       !< c/a for target hex lattice
+    a_bcc, &                                                                                        !< lattice parameter a for bcc target lattice
+    a_fcc                                                                                           !< lattice parameter a for fcc parent lattice
 
   type(rotation) :: &
     R, &                                                                                            !< Pitsch rotation
@@ -2126,9 +2077,10 @@ end function getlabels
 function lattice_equivalent_nu(C,assumption) result(nu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
-  character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
-  real(pReal)                 :: K, mu, nu
+  character(len=5),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+  real(pReal) :: nu
 
+  real(pReal) :: K, mu
   logical                     :: error
   real(pReal), dimension(6,6) :: S
 
@@ -2158,8 +2110,8 @@ end function lattice_equivalent_nu
 function lattice_equivalent_mu(C,assumption) result(mu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
-  character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
-  real(pReal)                 :: mu
+  character(len=5),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+  real(pReal) :: mu
 
   logical                     :: error
   real(pReal), dimension(6,6) :: S
@@ -2203,10 +2155,10 @@ subroutine selfTest
 
   do i = 1, 10
     call random_number(C)
-    C_cF = applyLatticeSymmetryC66(C,'cI')
-    C_cI = applyLatticeSymmetryC66(C,'cF')
-    C_hP = applyLatticeSymmetryC66(C,'hP')
-    C_tI = applyLatticeSymmetryC66(C,'tI')
+    C_cF = lattice_symmetrize_C66(C,'cI')
+    C_cI = lattice_symmetrize_C66(C,'cF')
+    C_hP = lattice_symmetrize_C66(C,'hP')
+    C_tI = lattice_symmetrize_C66(C,'tI')
 
     if (any(dNeq(C_cI,transpose(C_cF))))                   error stop 'SymmetryC66/cI-cF'
     if (any(dNeq(C_cF,transpose(C_cI))))                   error stop 'SymmetryC66/cF-cI'
@@ -2226,10 +2178,10 @@ subroutine selfTest
     if (any(dNeq(C(4,4),[C_tI(4,4),C_tI(5,5)])))           error stop 'SymmetryC_44-55/tI'
 
     call random_number(T)
-    T_cF = lattice_applyLatticeSymmetry33(T,'cI')
-    T_cI = lattice_applyLatticeSymmetry33(T,'cF')
-    T_hP = lattice_applyLatticeSymmetry33(T,'hP')
-    T_tI = lattice_applyLatticeSymmetry33(T,'tI')
+    T_cF = lattice_symmetrize_33(T,'cI')
+    T_cI = lattice_symmetrize_33(T,'cF')
+    T_hP = lattice_symmetrize_33(T,'hP')
+    T_tI = lattice_symmetrize_33(T,'tI')
 
     if (any(dNeq0(T_cF) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/c'
     if (any(dNeq0(T_hP) .and. math_I3<1.0_pReal))          error stop 'Symmetry33/hP'
@@ -2244,7 +2196,7 @@ subroutine selfTest
   call random_number(C)
   C(1,1) = C(1,1) + C(1,2) + 0.1_pReal
   C(4,4) = 0.5_pReal * (C(1,1) - C(1,2))
-  C = applyLatticeSymmetryC66(C,'cI')
+  C = lattice_symmetrize_C66(C,'cI')
   if(dNeq(C(4,4),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
   if(dNeq(C(4,4),lattice_equivalent_mu(C,'reuss'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
 
