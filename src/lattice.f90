@@ -2062,7 +2062,7 @@ function getlabels(active,potential,system) result(labels)
       enddo normal
       label(i:i) = ')'
 
-      labels(s) = label
+      labels(a) = label
 
     enddo activeSystems
   enddo activeFamilies

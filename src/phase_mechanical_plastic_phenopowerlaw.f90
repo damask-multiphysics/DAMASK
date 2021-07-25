@@ -372,28 +372,33 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
-  integer :: o
+  integer :: ou
+
 
   associate(prm => param(ph), stt => state(ph))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
 
-      case('xi_sl')
-        call results_writeState_slip(stt%xi_sl,group,trim(prm%output(o)),prm%systems_sl, &
-                                     'resistance against plastic slip','Pa')
-      case('gamma_sl')
-        call results_writeState_slip(stt%gamma_sl,group,trim(prm%output(o)),prm%systems_sl, &
-                                     'plastic shear','1')
+    do ou = 1,size(prm%output)
 
-      case('xi_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(stt%xi_tw,group,trim(prm%output(o)), &
-                                                     'resistance against twinning','Pa')
-      case('gamma_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(stt%gamma_tw,group,trim(prm%output(o)), &
-                                                     'twinning shear','1')
+      select case(trim(prm%output(ou)))
 
-    end select
-  enddo outputsLoop
+        case('xi_sl')
+          call results_writePhaseState(stt%xi_sl,group,trim(prm%output(ou)),prm%systems_sl, &
+                                       'resistance against plastic slip','Pa')
+        case('gamma_sl')
+          call results_writePhaseState(stt%gamma_sl,group,trim(prm%output(ou)),prm%systems_sl, &
+                                       'plastic shear','1')
+
+        case('xi_tw')
+          call results_writePhaseState(stt%xi_tw,group,trim(prm%output(ou)),prm%systems_tw, &
+                                       'resistance against twinning','Pa')
+        case('gamma_tw')
+          call results_writePhaseState(stt%gamma_tw,group,trim(prm%output(ou)),prm%systems_tw, &
+                                       'twinning shear','1')
+
+      end select
+
+    enddo
+
   end associate
 
 end subroutine plastic_phenopowerlaw_results
