@@ -438,13 +438,22 @@ class TestOrientation:
         assert o.to_pole(**{kw:vector,'with_symmetry':with_symmetry}).shape \
             == o.shape + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape
 
-    @pytest.mark.parametrize('lattice',['hP','cI','cF'])
+    @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet
     def test_Schmid(self,update,ref_path,lattice):
         L = Orientation(lattice=lattice)
-        for mode in ['slip','twin']: # ToDo test tI
+        for mode in ['slip','twin']:
             reference = ref_path/f'{lattice}_{mode}.txt'
             P = L.Schmid(mode)
             if update:
                 table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
                 table.save(reference)
             assert np.allclose(P,Table.load(reference).get('Schmid'))
+    
+    @pytest.mark.parametrize('lattice',['hP','cI','cF']) # tI not included yet
+    def test_Schmid_vectorize(self,lattice):
+        O = Orientation.from_random(shape=4,lattice=lattice)                                        # noqa
+        for mode in ['slip','twin']:
+            P = O.Schmid(mode)
+            print(P.shape)
+            for i in range(4):
+                assert np.allclose(Orientation(rotation=O[i],lattice=lattice).Schmid(mode),P[:,i])
