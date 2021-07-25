@@ -313,7 +313,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   integer        :: hdferr
   character(len=:), allocatable :: p
   character(len=len_trim(attrValue)+1,kind=C_CHAR), target :: attrValue_
-  type(c_ptr), target, dimension(1) :: ptr
+  type(C_PTR), target, dimension(1) :: ptr
 
 
   if (present(path)) then
@@ -333,9 +333,10 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
-  call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+    call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
+    if(hdferr < 0) error stop 'HDF5 error'
   endif
+
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5awrite_f(attr_id, type_id, c_loc(ptr(1)), hdferr)
@@ -382,6 +383,7 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
     call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
+
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, int([1],HSIZE_T), hdferr)
@@ -426,6 +428,7 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
     call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
+
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, int([1],HSIZE_T), hdferr)
@@ -449,11 +452,12 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
-  integer(HID_T)                :: attr_id, space_id, filetype_id, memtype_id
-  integer                       :: hdferr
+  integer(HID_T)                :: attr_id, space_id, filetype_id, type_id
   logical                       :: attrExists
+  integer                       :: hdferr,i
   character(len=:), allocatable :: p
-  character(len=:), allocatable, dimension(:), target :: attrValue_
+  character(len=len(attrValue)+1,kind=C_CHAR), dimension(size(attrValue)), target :: attrValue_
+  type(C_PTR), target, dimension(size(attrValue))  :: ptr
 
 
   if (present(path)) then
@@ -462,34 +466,31 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
     p = '.'
   endif
 
-  attrValue_ = attrValue
+  do i=1,size(attrValue)
+    attrValue_(i) = attrValue(i)//C_NULL_CHAR
+    ptr(i) = c_loc(attrValue_(i))
+  enddo
 
-  call h5tcopy_f(H5T_C_S1,filetype_id,hdferr)
+  call h5screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id,hdferr,shape(attrValue_,kind=HSIZE_T))
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tset_size_f(filetype_id, int(len(attrValue_)+1,C_SIZE_T),hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  call h5tcopy_f(H5T_FORTRAN_S1, memtype_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  call h5tset_size_f(memtype_id, int(len(attrValue_),C_SIZE_T), hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  call h5screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id, hdferr)
+  call h5tcopy_f(H5T_STRING, type_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
-  call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),filetype_id,space_id,attr_id,hdferr)
+
+  call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5awrite_f(attr_id, memtype_id, c_loc(attrValue_), hdferr)
+  call h5awrite_f(attr_id, type_id, ptr, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tclose_f(memtype_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(filetype_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
   call h5aclose_f(attr_id,hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+  call h5tclose_f(type_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5sclose_f(space_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -531,6 +532,7 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
     call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
+
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, array_size, hdferr)
@@ -578,6 +580,7 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
     call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
+
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, array_size, hdferr)
