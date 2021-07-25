@@ -736,9 +736,9 @@ pure function math_3333to99(m3333)
 
   integer :: i,j
 
-  do i=1,9; do j=1,9
+  do concurrent(i=1:9, j=1:9)
     math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
-  enddo; enddo
+  enddo
 
 end function math_3333to99
 
@@ -753,9 +753,9 @@ pure function math_99to3333(m99)
 
   integer :: i,j
 
-  do i=1,9; do j=1,9
+  do concurrent(i=1:9, j=1:9)
     math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
-  enddo; enddo
+  enddo
 
 end function math_99to3333
 
