@@ -339,7 +339,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
 
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5awrite_f(attr_id, type_id, ptr, hdferr)
+  call h5awrite_f(attr_id, type_id, c_loc(ptr), hdferr)                                             ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aclose_f(attr_id,hdferr)
@@ -485,7 +485,7 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
 
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5awrite_f(attr_id, type_id, ptr, hdferr)
+  call h5awrite_f(attr_id, type_id, c_loc(ptr), hdferr)                                             ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aclose_f(attr_id,hdferr)
