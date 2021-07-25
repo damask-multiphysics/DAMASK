@@ -233,7 +233,7 @@ end function math_range
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief second rank identity tensor of specified dimension
+!> @brief Rank two identity tensor of specified dimension.
 !--------------------------------------------------------------------------------------------------
 pure function math_eye(d)
 
@@ -250,20 +250,18 @@ end function math_eye
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetric fourth rank identity tensor of specified dimension
+!> @brief Symmetric rank four identity tensor.
 !  from http://en.wikipedia.org/wiki/Tensor_derivative_(continuum_mechanics)#Derivative_of_a_second-order_tensor_with_respect_to_itself
 !--------------------------------------------------------------------------------------------------
-pure function math_identity4th(d)
+pure function math_identity4th()
 
-  integer, intent(in) :: d                                                                          !< tensor dimension
+  real(pReal), dimension(3,3,3,3) :: math_identity4th
+
   integer :: i,j,k,l
-  real(pReal), dimension(d,d,d,d) :: math_identity4th
-  real(pReal), dimension(d,d)     :: identity2nd
 
-  identity2nd = math_eye(d)
-  do i=1,d; do j=1,d; do k=1,d; do l=1,d
-    math_identity4th(i,j,k,l) = 0.5_pReal &
-                              *(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
+
+  do i=1,3; do j=1,3; do k=1,3; do l=1,3
+    math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
   enddo; enddo; enddo; enddo
 
 end function math_identity4th
@@ -1241,6 +1239,9 @@ subroutine selfTest
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     error stop 'math_det33/math_detSym33'
+
+  if(any(dNeq0(t33+transpose(t33)-math_mul3333xx33(math_identity4th(),t33+transpose(t33))))) &
+    error stop 'math_mul3333xx33/math_identity4th'
 
   if(any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
     error stop 'math_inv33(math_I3)'
