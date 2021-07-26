@@ -849,7 +849,7 @@ function tNode_get_byKey_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs
 
   if (self%contains(k)) then
     node => self%get(k)
-    select type(self)
+    select type(node)
       class is(tList)
         list => node%asList()
         nodeAs1dFloat = list%as1dFloat()
@@ -872,11 +872,12 @@ end function tNode_get_byKey_as1dFloat
 !--------------------------------------------------------------------------------------------------
 !> @brief Access by key and convert to float array (2D)
 !--------------------------------------------------------------------------------------------------
-function tNode_get_byKey_as2dFloat(self,k,defaultVal) result(nodeAs2dFloat)
+function tNode_get_byKey_as2dFloat(self,k,defaultVal,requiredShape) result(nodeAs2dFloat)
 
   class(tNode),     intent(in), target                   :: self
   character(len=*), intent(in)                           :: k
   real(pReal),      intent(in), dimension(:,:), optional :: defaultVal
+  integer,          intent(in), dimension(2),   optional :: requiredShape
 
   real(pReal), dimension(:,:), allocatable :: nodeAs2dFloat
 
@@ -896,6 +897,10 @@ function tNode_get_byKey_as2dFloat(self,k,defaultVal) result(nodeAs2dFloat)
     nodeAs2dFloat = defaultVal
   else
     call IO_error(143,ext_msg=k)
+  endif
+
+  if (present(requiredShape)) then
+    if (any(requiredShape /= shape(nodeAs2dFloat))) call IO_error(146,ext_msg=k)
   endif
 
 end function tNode_get_byKey_as2dFloat

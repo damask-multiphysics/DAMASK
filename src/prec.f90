@@ -27,11 +27,6 @@ module prec
 
   real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
 
-
-  type :: group_float                                                                               !< variable length datatype used for storage of state
-    real(pReal), dimension(:), pointer :: p
-  end type group_float
-
   type :: tState
     integer :: &
       sizeState        = 0, &                                                                       !< size of state

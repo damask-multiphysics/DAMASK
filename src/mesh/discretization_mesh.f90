@@ -40,6 +40,11 @@ module discretization_mesh
     mesh_maxNips                                                                                    !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
+  DM, public :: geomMesh
+
+  PetscInt, dimension(:), allocatable, public, protected :: &
+    mesh_boundaries
+
   real(pReal), dimension(:,:), allocatable :: &
     mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
     mesh_node0                                                                                      !< node x,y,z coordinates (initially!)
@@ -49,11 +54,6 @@ module discretization_mesh
   
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
-
-  DM, public :: geomMesh
-
-  PetscInt, dimension(:), allocatable, public, protected :: &
-    mesh_boundaries
 
   public :: &
     discretization_mesh_init, &
@@ -71,16 +71,14 @@ subroutine discretization_mesh_init(restart)
 
   logical, intent(in) :: restart
 
-  integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, l, &
+    j, &
     debug_element, debug_ip
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets
   PetscInt, pointer, dimension(:) :: pFaceSets
-  character(len=pStringLen), dimension(:), allocatable :: fileContent
   IS :: faceSetIS
   PetscErrorCode :: ierr
   integer, dimension(:), allocatable :: &
@@ -88,7 +86,7 @@ subroutine discretization_mesh_init(restart)
   class(tNode), pointer :: &
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
-  type(tvec)  :: coords_node0
+  type(tvec) :: coords_node0
 
   print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
 
