@@ -109,7 +109,7 @@ subroutine FEM_mechanical_init(fieldBC)
 
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: ierr
-
+  real(pReal), dimension(3,3) :: devNull
   class(tNode), pointer :: &
     num_mesh
    
@@ -258,6 +258,7 @@ subroutine FEM_mechanical_init(fieldBC)
     call DMPlexVecSetClosure(mechanical_mesh,section,solution_local,cell,px_scal,5,ierr)
     CHKERRQ(ierr)
   enddo
+  call utilities_constitutiveResponse(0.0_pReal,devNull,.true.)
 
 end subroutine FEM_mechanical_init
 
@@ -288,8 +289,8 @@ type(tSolutionState) function FEM_mechanical_solution( &
   params%timeinc = timeinc
   params%fieldBC = fieldBC
 
-  call SNESSolve(mechanical_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                             ! solve mechanical_snes based on solution guess (result in solution)
-  call SNESGetConvergedReason(mechanical_snes,reason,ierr); CHKERRQ(ierr)                                 ! solution converged?
+  call SNESSolve(mechanical_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                       ! solve mechanical_snes based on solution guess (result in solution)
+  call SNESGetConvergedReason(mechanical_snes,reason,ierr); CHKERRQ(ierr)                           ! solution converged?
   terminallyIll = .false.
 
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
@@ -397,7 +398,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call Utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
+  call utilities_constitutiveResponse(params%timeinc,P_av,ForwardData)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
   ForwardData = .false.
 
@@ -670,7 +671,7 @@ end subroutine FEM_mechanical_converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate current coordinates (FEM nodal coordinates only at the moment)
+!> @brief Calculate current coordinates (both nodal and ip coordinates)
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mechanical_updateCoords()
 
@@ -678,21 +679,35 @@ subroutine FEM_mechanical_updateCoords()
     nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
   real(pReal), pointer, dimension(:,:) :: &
     nodeCoords                                                                                      !< nodal coordinates (3,Nnodes)
+  real(pReal), pointer, dimension(:,:,:) :: &                                                       
+    ipCoords                                                                                        !< ip coordinates (3,nQuadrature,mesh_NcpElems)
+
+  integer :: &
+    qPt, &
+    comp, &
+    qOffset, &
+    nOffset
 
   DM  :: dm_local
   Vec :: x_local
   PetscErrorCode :: ierr
-  PetscInt :: dimPlex, pStart, pEnd, p, s, e
+  PetscInt :: pStart, pEnd, p, s, e, q, &
+              cellStart, cellEnd, c, n
   PetscSection :: section
+  PetscQuadrature :: mechQuad
+  PetscReal,      dimension(:),  pointer :: basisField, basisFieldDer
+  PetscScalar, dimension(:),   pointer :: x_scal
 
   call SNESGetDM(mechanical_snes,dm_local,ierr); CHKERRQ(ierr)
+  call DMGetDS(dm_local,mechQuad,ierr); CHKERRQ(ierr)
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
   call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
   call DMGetDimension(dm_local,dimPlex,ierr); CHKERRQ(ierr)
+
+  ! write cell vertex displacements
   call DMPlexGetDepthStratum(dm_local,0,pStart,pEnd,ierr); CHKERRQ(ierr)
   allocate(nodeCoords(3,pStart:pEnd-1),source=0.0_pReal)
   call VecGetArrayF90(x_local,nodeCoords_linear,ierr); CHKERRQ(ierr)
-
   do p=pStart, pEnd-1
     call DMPlexGetPointLocal(dm_local, p, s, e, ierr); CHKERRQ(ierr)
     nodeCoords(1:dimPlex,p)=nodeCoords_linear(s+1:e)
@@ -700,6 +715,31 @@ subroutine FEM_mechanical_updateCoords()
 
   call discretization_setNodeCoords(nodeCoords)
   call VecRestoreArrayF90(x_local,nodeCoords_linear,ierr); CHKERRQ(ierr)
+
+  ! write ip displacements
+  call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
+  call PetscDSGetTabulation(mechQuad,0,basisField,basisFieldDer,ierr); CHKERRQ(ierr)
+  allocate(ipCoords(3,nQuadrature,mesh_NcpElems),source=0.0_pReal)
+  do c=cellStart,cellEnd-1                                                                                      
+    qOffset=0
+    call DMPlexVecGetClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)                             !< get nodal coordinates of each element
+    do qPt=0,nQuadrature-1
+      qOffset= qPt * (size(basisField)/nQuadrature)
+      do comp=0,dimPlex-1                                                                                       !< loop over components
+        nOffset=0
+        q = comp
+        do n=0,nBasis-1
+          ipCoords(comp+1,qPt+1,c+1)=ipCoords(comp+1,qPt+1,c+1)+&
+                                     sum(basisField(qOffset+(q*dimPlex)+1:qOffset+(q*dimPlex)+dimPlex)*&
+                                     x_scal(nOffset+1:nOffset+dimPlex))
+          q = q+dimPlex
+          nOffset = nOffset+dimPlex
+        enddo
+      enddo
+    enddo
+    call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)     
+  end do    
+  call discretization_setIPcoords(reshape(ipCoords,[3,mesh_NcpElems*nQuadrature]))
   call DMRestoreLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
 
 end subroutine FEM_mechanical_updateCoords
