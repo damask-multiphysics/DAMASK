@@ -1,0 +1,26 @@
+type: dislotungsten
+
+N_sl: [12]
+
+rho_mob_0: [1.0e+9]
+rho_dip_0: [1.0]
+
+nu_a: [9.1e+11]
+b_sl: [2.72e-10]
+Delta_H_kp,0: [2.61154e-19]  # 1.63 eV, Delta_H0
+
+tau_Peierls: [2.03e+9]
+p_sl: [0.86]
+q_sl: [1.69]
+h: [2.566e-10]
+w: [2.992e-09]
+B: [8.3e-5]
+D_a: 1.0 # d_edge
+
+# climb (disabled)
+D_0: 0.0
+Q_cl: 0.0
+V_cl: [0.0]
+
+h_sl-sl: [0.009, 0.72, 0.009, 0.05, 0.05, 0.06, 0.09]
+a_nonSchmid: [0.938, 0.71, 4.43]

@@ -546,19 +546,6 @@ end function math_symmetric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 6x6 matrix
-!--------------------------------------------------------------------------------------------------
-pure function math_symmetric66(m)
-
-  real(pReal), dimension(6,6) :: math_symmetric66
-  real(pReal), dimension(6,6), intent(in) :: m
-
-  math_symmetric66 = 0.5_pReal * (m + transpose(m))
-
-end function math_symmetric66
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief skew part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_skew33(m)
