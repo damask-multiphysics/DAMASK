@@ -96,7 +96,7 @@ submodule(phase:plastic) dislotwin
       f_tr
   end type tDislotwinState
 
-  type :: tDislotwinMicrostructure
+  type :: tDislotwinDependentState
     real(pReal),                  dimension(:,:),   allocatable :: &
       Lambda_sl, &                                                                                  !< mean free path between 2 obstacles seen by a moving dislocation
       Lambda_tw, &                                                                                  !< mean free path between 2 obstacles seen by a growing twin
@@ -108,7 +108,7 @@ submodule(phase:plastic) dislotwin
       V_tr, &                                                                                       !< volume of a new martensite disc
       tau_r_tw, &                                                                                   !< stress to bring partials close together (twin)
       tau_r_tr                                                                                      !< stress to bring partials close together (trans)
-  end type tDislotwinMicrostructure
+  end type tDislotwinDependentState
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
@@ -116,7 +116,7 @@ submodule(phase:plastic) dislotwin
   type(tDislotwinState),          allocatable, dimension(:) :: &
     dotState, &
     state
-  type(tDislotwinMicrostructure), allocatable, dimension(:) :: dependentState
+  type(tDislotwinDependentState), allocatable, dimension(:) :: dependentState
 
 contains
 

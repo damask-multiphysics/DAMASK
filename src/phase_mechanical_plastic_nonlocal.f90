@@ -124,11 +124,11 @@ submodule(phase:plastic) nonlocal
       systems_sl
   end type tParameters
 
-  type :: tNonlocalMicrostructure
+  type :: tNonlocalDependentState
     real(pReal), allocatable, dimension(:,:) :: &
      tau_pass, &
      tau_Back
-  end type tNonlocalMicrostructure
+  end type tNonlocalDependentState
 
   type :: tNonlocalState
     real(pReal), pointer, dimension(:,:) :: &
@@ -164,7 +164,7 @@ submodule(phase:plastic) nonlocal
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters
 
-  type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
+  type(tNonlocalDependentState), dimension(:), allocatable :: dependentState
 
 contains
 
@@ -221,13 +221,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(state0(phases%length))
   allocate(dotState(phases%length))
   allocate(deltaState(phases%length))
-  allocate(microstructure(phases%length))
+  allocate(dependentState(phases%length))
 
   do ph = 1, phases%length
     if(.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph),  dot => dotState(ph),   stt => state(ph), &
-              st0 => state0(ph), del => deltaState(ph), dst => microstructure(ph))
+              st0 => state0(ph), del => deltaState(ph), dst => dependentState(ph))
 
     phase => phases%get(ph)
     mech  => phase%get('mechanical')
@@ -607,7 +607,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
   real(pReal), dimension(3,param(ph)%sum_N_sl,2) :: &
     m                                                                                               ! direction of dislocation motion
 
-  associate(prm => param(ph),dst => microstructure(ph), stt => state(ph))
+  associate(prm => param(ph),dst => dependentState(ph), stt => state(ph))
 
   rho = getRho(ph,en)
 
@@ -774,7 +774,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     dot_gamma                                                                                       !< shear rate
 
-  associate(prm => param(ph),dst=>microstructure(ph),stt=>state(ph))
+  associate(prm => param(ph),dst=>dependentState(ph),stt=>state(ph))
 
   !*** shortcut to state variables
   rho = getRho(ph,en)
@@ -870,7 +870,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
 
-  associate(prm => param(ph),dst => microstructure(ph),del => deltaState(ph))
+  associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph))
 
   !*** shortcut to state variables
   forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
@@ -982,7 +982,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     return
   endif
 
-  associate(prm => param(ph), dst => microstructure(ph), dot => dotState(ph), stt => state(ph))
+  associate(prm => param(ph), dst => dependentState(ph), dot => dotState(ph), stt => state(ph))
 
   tau = 0.0_pReal
   dot_gamma = 0.0_pReal
@@ -1179,7 +1179,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
 
 
   associate(prm => param(ph), &
-            dst => microstructure(ph), &
+            dst => dependentState(ph), &
             dot => dotState(ph), &
             stt => state(ph))
   ns = prm%sum_N_sl
@@ -1470,7 +1470,7 @@ module subroutine plastic_nonlocal_results(ph,group)
 
   integer :: ou
 
-  associate(prm => param(ph),dst => microstructure(ph),stt=>state(ph))
+  associate(prm => param(ph),dst => dependentState(ph),stt=>state(ph))
 
     do ou = 1,size(prm%output)
 

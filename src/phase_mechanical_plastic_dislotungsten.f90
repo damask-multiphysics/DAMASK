@@ -55,11 +55,11 @@ submodule(phase:plastic) dislotungsten
       gamma_sl
   end type tDislotungstenState
 
-  type :: tDislotungstendependentState
+  type :: tDislotungstenDependentState
     real(pReal), dimension(:,:), allocatable :: &
       Lambda_sl, &
       tau_pass
-  end type tDislotungstendependentState
+  end type tDislotungstenDependentState
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
@@ -67,7 +67,7 @@ submodule(phase:plastic) dislotungsten
   type(tDisloTungstenState),          allocatable, dimension(:) :: &
     dotState, &
     state
-  type(tDisloTungstendependentState), allocatable, dimension(:) :: dependentState
+  type(tDisloTungstenDependentState), allocatable, dimension(:) :: dependentState
 
 contains
 
