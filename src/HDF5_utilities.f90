@@ -85,6 +85,7 @@ module HDF5_utilities
     HDF5_utilities_init, &
     HDF5_read, &
     HDF5_write, &
+    HDF5_write_str, &
     HDF5_addAttribute, &
     HDF5_addGroup, &
     HDF5_openGroup, &
@@ -1467,6 +1468,37 @@ subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_real7
 
 
+subroutine HDF5_write_str(dataset,loc_id,datasetName)
+
+  character(len=*), intent(in) :: dataset
+  integer(HID_T),   intent(in) :: loc_id
+  character(len=*), intent(in) :: datasetName                                                      !< name of the dataset in the file
+
+  INTEGER(HID_T)  :: filetype_id, space_id, dataset_id
+  INTEGER :: hdferr
+
+  character(len=len_trim(dataset)+1,kind=C_CHAR), dimension(1), target :: dataset_
+  type(C_PTR), target, dimension(1) :: ptr
+
+ 
+  dataset_(1) = trim(dataset)//C_NULL_CHAR
+  ptr(1) = c_loc(dataset_(1))
+  
+  call h5tcopy_f(H5T_STRING, filetype_id, hdferr)
+  call h5tset_size_f(filetype_id, int(len(dataset_),HSIZE_T), hdferr)
+  
+  call h5screate_f(H5S_SCALAR_F, space_id, hdferr)
+  call h5dcreate_f(loc_id, datasetName, H5T_STRING, space_id, dataset_id, hdferr)
+
+  call h5dwrite_f(dataset_id, H5T_STRING, c_loc(ptr), hdferr);
+  
+  call h5dclose_f(dataset_id, hdferr)
+  call h5sclose_f(space_id, hdferr)
+  call h5tclose_f(filetype_id, hdferr)
+
+end subroutine HDF5_write_str
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 1 dimension
 !--------------------------------------------------------------------------------------------------
@@ -1872,7 +1904,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   integer(HSIZE_T), parameter :: chunkSize = 1024_HSIZE_T**2/8_HSIZE_T
 
 !-------------------------------------------------------------------------------------------------
-! creating a property list for transfer properties (is collective when reading in parallel)
+! creating a property list for transfer properties (is collective when writing in parallel)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 #ifdef PETSC
