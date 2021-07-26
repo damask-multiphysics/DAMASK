@@ -23,14 +23,8 @@ module FEM_utilities
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-  logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  integer, public, parameter  :: maxFields = 6
-  integer, public             :: nActiveFields = 0
-
-!--------------------------------------------------------------------------------------------------
-! grid related information information
-  real(pReal),   public       :: wgt                                                                !< weighting factor 1/Nelems
+  logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+  real(pReal), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
 
 
 !--------------------------------------------------------------------------------------------------
@@ -49,10 +43,6 @@ module FEM_utilities
     COMPONENT_MECH_Z_ID
   end enum
 
-!--------------------------------------------------------------------------------------------------
-! variables controlling debugging
- logical :: &
-   debugPETSc                                                                                       !< use some in debug defined options for more verbose PETSc solution
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -63,26 +53,16 @@ module FEM_utilities
   end type tSolutionState
 
   type, public :: tComponentBC
-    integer(kind(COMPONENT_UNDEFINED_ID))          :: ID
-    real(pReal),                       allocatable, dimension(:) :: Value
-    logical,                           allocatable, dimension(:) :: Mask
+    integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
+    real(pReal), allocatable, dimension(:) :: Value
+    logical,     allocatable, dimension(:) :: Mask
   end type tComponentBC
 
   type, public :: tFieldBC
     integer(kind(FIELD_UNDEFINED_ID))  :: ID
     integer                            :: nComponents = 0
-    type(tComponentBC),    allocatable :: componentBC(:)
+    type(tComponentBC), allocatable, dimension(:) :: componentBC
   end type tFieldBC
-
-  type, public :: tLoadCase
-    real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
-    integer      :: incs                   = 0, &                                                   !< number of increments
-                    outputfrequency        = 1, &                                                   !< frequency of result writes
-                    logscale               = 0                                                      !< linear/logarithmic time inc flag
-    logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
-    integer,        allocatable, dimension(:) :: faceID
-    type(tFieldBC), allocatable, dimension(:) :: fieldBC
-  end type tLoadCase
 
   public :: &
     FEM_utilities_init, &
@@ -109,8 +89,9 @@ subroutine FEM_utilities_init
   integer :: structOrder                                                                            !< order of displacement shape functions
   character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
-
   PetscErrorCode            :: ierr
+  logical :: debugPETSc                                                                             !< use some in debug defined options for more verbose PETSc solution
+
 
   print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
 
