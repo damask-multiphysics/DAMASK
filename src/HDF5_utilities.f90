@@ -308,7 +308,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
 
-  integer(HID_T) :: attr_id, space_id, type_id
+  integer(HID_T) :: attr_id, space_id
   logical        :: attrExists
   integer        :: hdferr
   character(len=:), allocatable :: p
@@ -327,8 +327,6 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
 
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tcopy_f(H5T_STRING, type_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -337,14 +335,12 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
 
-  call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
+  call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5awrite_f(attr_id, type_id, c_loc(ptr), hdferr)                                             ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
+  call h5awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(type_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5sclose_f(space_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -452,7 +448,7 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
-  integer(HID_T)                :: attr_id, space_id, type_id
+  integer(HID_T)                :: attr_id, space_id
   logical                       :: attrExists
   integer                       :: hdferr,i
   character(len=:), allocatable :: p
@@ -473,8 +469,6 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
 
   call h5screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id,hdferr,shape(attrValue_,kind=HSIZE_T))
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tcopy_f(H5T_STRING, type_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -483,14 +477,12 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
     if(hdferr < 0) error stop 'HDF5 error'
   endif
 
-  call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
+  call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5awrite_f(attr_id, type_id, c_loc(ptr), hdferr)                                             ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
+  call h5awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  call h5tclose_f(type_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5sclose_f(space_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
