@@ -99,8 +99,10 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 12 <= self.version_minor <= 13:
+            if self.version_major != 0 or not 12 <= self.version_minor <= 14:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
+            if self.version_major == 0 and self.version_minor < 14:
+                self.export_setup = None
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
 
@@ -1395,7 +1397,7 @@ class Result:
 
     def export_XDMF(self,output='*'):
         """
-        Write XDMF file to directly visualize data in DADF5 file.
+        Write XDMF file to directly visualize data from DADF5 file.
 
         The XDMF format is only supported for structured grids
         with single phase and single constituent.
@@ -1748,3 +1750,29 @@ class Result:
         if flatten: r = util.dict_flatten(r)
 
         return None if (type(r) == dict and r == {}) else r
+
+
+    def export_setup(self,output='*',overwrite=False):
+        """
+        Export configuration files.
+
+        Parameters
+        ----------
+        output : (list of) str, optional
+            Names of the datasets to export to the file.
+            Defaults to '*', in which case all datasets are exported.
+        overwrite : boolean, optional
+            Overwrite existing configuration files.
+            Defaults to False.
+
+        """
+        with h5py.File(self.fname,'r') as f_in:
+            for out in _match(output,f_in['setup'].keys()):
+                description = f_in['/'.join(('setup',out))].attrs['description']
+                if not h5py3: description = description.decode()
+                if not Path(out).exists() or overwrite:
+                    with open(out,'w') as f_out:
+                        f_out.write(f_in['/'.join(('setup',out))][()].decode())
+                    print(f"exported {description} to '{out}'")
+                else:
+                    print(f"'{out}' exists, {description} not exported")

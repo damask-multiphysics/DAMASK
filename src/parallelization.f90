@@ -25,11 +25,11 @@ module parallelization
     worldsize = 1                                                                                   !< MPI worldsize (/=1 for MPI simulations only)
 
 #ifndef PETSC
-public :: parallelization_broadcast_str
+public :: parallelization_bcast_str
 
 contains
 subroutine parallelization_bcast_str(string)
-  character(len=*), allocatable, intent(inout) :: string
+  character(len=:), allocatable, intent(inout) :: string
 end subroutine parallelization_bcast_str
 
 #else

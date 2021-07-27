@@ -74,7 +74,7 @@ subroutine results_init(restart)
   if(.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',13)
+    call results_addAttribute('DADF5_version_minor',14)
     call get_command_argument(0,commandLine)
     call results_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
     call results_addAttribute('created',now())
