@@ -402,7 +402,7 @@ module subroutine plastic_dislotungsten_results(ph,group)
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    outputsLoop: do ou = 1,size(prm%output)
+    do ou = 1,size(prm%output)
 
       select case(trim(prm%output(ou)))
 
@@ -423,7 +423,7 @@ module subroutine plastic_dislotungsten_results(ph,group)
                                        'threshold stress for slip','Pa')
       end select
 
-    enddo outputsLoop
+    enddo
 
   end associate
 

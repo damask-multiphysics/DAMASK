@@ -33,6 +33,11 @@ module results
     module procedure results_writeVectorDataset_int
   end interface results_writeDataset
 
+  interface results_writePhaseState
+    module procedure results_writePhaseState_real
+    module procedure results_writePhaseState_int
+  end interface results_writePhaseState
+
   interface results_addAttribute
     module procedure results_addAttribute_str
     module procedure results_addAttribute_int
@@ -361,7 +366,7 @@ end subroutine results_writeVectorDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real vector dataset with associated metadata for slip
 !--------------------------------------------------------------------------------------------------
-subroutine results_writePhaseState(dataset,group,label,systems,description,SIunit)
+subroutine results_writePhaseState_real(dataset,group,label,systems,description,SIunit)
 
   character(len=*), intent(in)                 :: label,group,description,SIunit
   real(pReal),      intent(in), dimension(:,:) :: dataset
@@ -370,7 +375,7 @@ subroutine results_writePhaseState(dataset,group,label,systems,description,SIuni
   integer(HID_T) :: groupHandle
 
 
-  if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe use for other results_write (not sure about scalar)
+  if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
 
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
@@ -378,7 +383,30 @@ subroutine results_writePhaseState(dataset,group,label,systems,description,SIuni
   call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writePhaseState
+end subroutine results_writePhaseState_real
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Store real vector dataset with associated metadata for slip
+!--------------------------------------------------------------------------------------------------
+subroutine results_writePhaseState_int(dataset,group,label,systems,description,SIunit)
+
+  character(len=*), intent(in)                 :: label,group,description,SIunit
+  integer,          intent(in), dimension(:,:) :: dataset
+  character(len=*), intent(in), dimension(:)   :: systems
+
+  integer(HID_T) :: groupHandle
+
+
+  if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
+
+  groupHandle = results_openGroup(group)
+  call HDF5_write(dataset,groupHandle,label)
+  call executionStamp(group//'/'//label,description,SIunit)
+  call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writePhaseState_int
 
 
 !--------------------------------------------------------------------------------------------------

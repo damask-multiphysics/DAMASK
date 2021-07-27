@@ -1474,62 +1474,62 @@ module subroutine plastic_nonlocal_results(ph,group)
 
     do ou = 1,size(prm%output)
 
-    select case(trim(prm%output(ou)))
+      select case(trim(prm%output(ou)))
 
-      case('rho_u_ed_pos')
-        call results_writePhaseState(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'positive mobile edge density','1/m²')
-      case('rho_b_ed_pos')
-        call results_writePhaseState(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'positive immobile edge density','1/m²')
-      case('rho_u_ed_neg')
-        call results_writePhaseState(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'negative mobile edge density','1/m²')
-      case('rho_b_ed_neg')
-        call results_writePhaseState(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'negative immobile edge density','1/m²')
-      case('rho_d_ed')
-        call results_writePhaseState(stt%rho_dip_edg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'edge dipole density','1/m²')
-      case('rho_u_sc_pos')
-        call results_writePhaseState(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'positive mobile screw density','1/m²')
-      case('rho_b_sc_pos')
-        call results_writePhaseState(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'positive immobile screw density','1/m²')
-      case('rho_u_sc_neg')
-        call results_writePhaseState(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'negative mobile screw density','1/m²')
-      case('rho_b_sc_neg')
-        call results_writePhaseState(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'negative immobile screw density','1/m²')
-      case('rho_d_sc')
-        call results_writePhaseState(stt%rho_dip_scr,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'screw dipole density','1/m²')
-      case('rho_f')
-        call results_writePhaseState(stt%rho_forest,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'forest density','1/m²')
-      case('v_ed_pos')
-        call results_writePhaseState(stt%v_edg_pos,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'positive edge velocity','m/s')
-      case('v_ed_neg')
-        call results_writePhaseState(stt%v_edg_neg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'negative edge velocity','m/s')
-      case('v_sc_pos')
-        call results_writePhaseState(stt%v_scr_pos,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'positive srew velocity','m/s')
-      case('v_sc_neg')
-        call results_writePhaseState(stt%v_scr_neg,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'negative screw velocity','m/s')
-      case('gamma')
-        call results_writePhaseState(stt%gamma,group,trim(prm%output(ou)), prm%systems_sl, &
-                                     'plastic shear','1')
-      case('tau_pass')
-        call results_writePhaseState(dst%tau_pass,group,trim(prm%output(ou)), prm%systems_sl, &
-                                    'passing stress for slip','Pa')
-    end select
+        case('rho_u_ed_pos')
+          call results_writePhaseState(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'positive mobile edge density','1/m²')
+        case('rho_b_ed_pos')
+          call results_writePhaseState(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'positive immobile edge density','1/m²')
+        case('rho_u_ed_neg')
+          call results_writePhaseState(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'negative mobile edge density','1/m²')
+        case('rho_b_ed_neg')
+          call results_writePhaseState(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'negative immobile edge density','1/m²')
+        case('rho_d_ed')
+          call results_writePhaseState(stt%rho_dip_edg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'edge dipole density','1/m²')
+        case('rho_u_sc_pos')
+          call results_writePhaseState(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'positive mobile screw density','1/m²')
+        case('rho_b_sc_pos')
+          call results_writePhaseState(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'positive immobile screw density','1/m²')
+        case('rho_u_sc_neg')
+          call results_writePhaseState(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'negative mobile screw density','1/m²')
+        case('rho_b_sc_neg')
+          call results_writePhaseState(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'negative immobile screw density','1/m²')
+        case('rho_d_sc')
+          call results_writePhaseState(stt%rho_dip_scr,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'screw dipole density','1/m²')
+        case('rho_f')
+          call results_writePhaseState(stt%rho_forest,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'forest density','1/m²')
+        case('v_ed_pos')
+          call results_writePhaseState(stt%v_edg_pos,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'positive edge velocity','m/s')
+        case('v_ed_neg')
+          call results_writePhaseState(stt%v_edg_neg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'negative edge velocity','m/s')
+        case('v_sc_pos')
+          call results_writePhaseState(stt%v_scr_pos,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'positive srew velocity','m/s')
+        case('v_sc_neg')
+          call results_writePhaseState(stt%v_scr_neg,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'negative screw velocity','m/s')
+        case('gamma')
+          call results_writePhaseState(stt%gamma,group,trim(prm%output(ou)), prm%systems_sl, &
+                                       'plastic shear','1')
+        case('tau_pass')
+          call results_writePhaseState(dst%tau_pass,group,trim(prm%output(ou)), prm%systems_sl, &
+                                      'passing stress for slip','Pa')
+      end select
 
-  enddo
+    enddo
 
   end associate
 
