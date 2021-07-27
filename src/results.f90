@@ -65,13 +65,17 @@ subroutine results_init(restart)
   logical, intent(in) :: restart
 
   character(len=pPathLen) :: commandLine
+  integer :: hdferr
+  integer(HID_T) :: group_id
+  character(len=:), allocatable :: date
+
 
   print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
 
-  if(.not. restart) then
+  if (.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
     call results_addAttribute('DADF5_version_minor',14)
@@ -84,8 +88,19 @@ subroutine results_init(restart)
     call results_addAttribute('description','mappings to place data in space','cell_to')
     call results_closeGroup(results_addGroup('setup'))
     call results_addAttribute('description','input data used to run the simulation','setup')
-    call results_closeJobFile
+  else
+    date = now()
+    call results_openJobFile
+    call get_command(commandLine)
+    call results_addAttribute('call (restart at '//date//')',trim(commandLine))
+    call h5gmove_f(resultsFile,'setup','tmp',hdferr)
+    call results_addAttribute('description','input data used to run the simulation (backup from restart at '//date//')','tmp')
+    call results_closeGroup(results_addGroup('setup'))
+    call results_addAttribute('description','input data used to run the simulation','setup')
+    call h5gmove_f(resultsFile,'tmp','setup/backup',hdferr)
   endif
+
+  call results_closeJobFile
 
 end subroutine results_init
 

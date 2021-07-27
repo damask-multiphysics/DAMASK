@@ -1473,6 +1473,10 @@ subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_real7
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Write dataset of type string (scalar).
+!> @details Not collective, must be called by one process at at time.
+!--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_str(dataset,loc_id,datasetName)
 
   character(len=*), intent(in) :: dataset

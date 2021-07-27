@@ -69,7 +69,7 @@ subroutine discretization_grid_init(restart)
   integer, dimension(worldsize) :: &
     displs, sendcounts
   character(len=:), allocatable :: &
-    fileContent
+    fileContent, fname
 
 
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
@@ -78,8 +78,10 @@ subroutine discretization_grid_init(restart)
   if(worldrank == 0) then
     fileContent = IO_read(interface_geomFile)
     call readVTI(grid,geomSize,origin,materialAt_global,fileContent)
+    fname = interface_geomFile
+    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call results_openJobFile(parallel=.false.)
-    call results_writeDataset_str(fileContent,'setup',interface_geomFile,'geometry definition (grid solver)')
+    call results_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
     call results_closeJobFile
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI

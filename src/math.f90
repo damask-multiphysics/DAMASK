@@ -1209,7 +1209,7 @@ subroutine selfTest
     error stop 'math_sym33to6/math_6toSym33'
 
   call random_number(t66)
-  if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66))) &
+  if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pReal))) &
     error stop 'math_sym3333to66/math_66toSym3333'
 
   call random_number(v6)

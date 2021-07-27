@@ -56,7 +56,7 @@ subroutine parse_material()
     print*, 'reading material.yaml'; flush(IO_STDOUT)
     fileContent = IO_read('material.yaml')
     call results_openJobFile(parallel=.false.)
-    call results_writeDataset_str(fileContent,'setup','material.yaml','DAMASK main configuration')
+    call results_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
     call results_closeJobFile
   endif
   call parallelization_bcast_str(fileContent)
