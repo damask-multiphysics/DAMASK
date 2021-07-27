@@ -51,14 +51,17 @@ subroutine parse_material()
 
   inquire(file='material.yaml',exist=fileExists)
   if(.not. fileExists) call IO_error(100,ext_msg='material.yaml')
+
   print*, 'reading material.yaml'; flush(IO_STDOUT)
   fileContent = IO_read('material.yaml')
+
   if (worldrank == 0) then
     call results_openJobFile(parallel=.false.)
     call results_writeDataset_str(fileContent,'setup','material.yaml','DAMASK main configuration')
     call results_closeJobFile
   endif
-  config_material => YAML_parse_file('material.yaml')
+
+  config_material => YAML_parse_str(fileContent)
 
 end subroutine parse_material
 
@@ -73,16 +76,21 @@ subroutine parse_numerics()
 
 
   config_numerics => emptyDict
+
   inquire(file='numerics.yaml', exist=fileExists)
   if (fileExists) then
+
     print*, 'reading numerics.yaml'; flush(IO_STDOUT)
     fileContent = IO_read('numerics.yaml')
+
     if (worldrank == 0) then
       call results_openJobFile(parallel=.false.)
       call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration (optional)')
       call results_closeJobFile
     endif
-    config_numerics => YAML_parse_file('numerics.yaml')
+
+    config_numerics => YAML_parse_str(fileContent)
+
   endif
 
 end subroutine parse_numerics
@@ -98,16 +106,21 @@ subroutine parse_debug()
 
 
   config_debug => emptyDict
+
   inquire(file='debug.yaml', exist=fileExists)
   if (fileExists) then
+
     print*, 'reading debug.yaml'; flush(IO_STDOUT)
     fileContent = IO_read('debug.yaml')
+
     if (worldrank == 0) then
       call results_openJobFile(parallel=.false.)
       call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration (optional)')
       call results_closeJobFile
     endif
-    config_debug => YAML_parse_file('debug.yaml')
+
+    config_debug => YAML_parse_str(fileContent)
+
   endif
 
 end subroutine parse_debug

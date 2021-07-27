@@ -14,7 +14,7 @@ module YAML_parse
 
   public :: &
     YAML_parse_init, &
-    YAML_parse_file
+    YAML_parse_str
 
 contains
 
@@ -29,16 +29,16 @@ end subroutine YAML_parse_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse a YAML file into a a structure of nodes.
+!> @brief Parse a YAML string into a a structure of nodes.
 !--------------------------------------------------------------------------------------------------
-function YAML_parse_file(fname) result(node)
+function YAML_parse_str(str) result(node)
 
-  character(len=*), intent(in) :: fname
+  character(len=*), intent(in) :: str
   class (tNode), pointer :: node
 
-  node => parse_flow(to_flow(IO_read(fname)))
+  node => parse_flow(to_flow(str))
 
-end function YAML_parse_file
+end function YAML_parse_str
 
 
 !--------------------------------------------------------------------------------------------------
