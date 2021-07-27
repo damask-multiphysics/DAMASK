@@ -1479,27 +1479,34 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
   integer(HID_T),   intent(in) :: loc_id
   character(len=*), intent(in) :: datasetName                                                      !< name of the dataset in the file
 
-  INTEGER(HID_T)  :: filetype_id, space_id, dataset_id
-  INTEGER :: hdferr
-
+  integer(HID_T)  :: filetype_id, space_id, dataset_id
+  integer :: hdferr
   character(len=len_trim(dataset)+1,kind=C_CHAR), dimension(1), target :: dataset_
   type(C_PTR), target, dimension(1) :: ptr
 
- 
+
   dataset_(1) = trim(dataset)//C_NULL_CHAR
   ptr(1) = c_loc(dataset_(1))
-  
-  call h5tcopy_f(H5T_STRING, filetype_id, hdferr)
-  call h5tset_size_f(filetype_id, int(len(dataset_),HSIZE_T), hdferr)
-  
-  call h5screate_f(H5S_SCALAR_F, space_id, hdferr)
-  call h5dcreate_f(loc_id, datasetName, H5T_STRING, space_id, dataset_id, hdferr)
 
-  call h5dwrite_f(dataset_id, H5T_STRING, c_loc(ptr), hdferr);
-  
+  call h5tcopy_f(H5T_STRING, filetype_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+  call h5tset_size_f(filetype_id, int(len(dataset_),HSIZE_T), hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+
+  call h5screate_f(H5S_SCALAR_F, space_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+  call h5dcreate_f(loc_id, datasetName, H5T_STRING, space_id, dataset_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+
+  call h5dwrite_f(dataset_id, H5T_STRING, c_loc(ptr), hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+
   call h5dclose_f(dataset_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
   call h5sclose_f(space_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(filetype_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_write_str
 

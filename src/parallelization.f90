@@ -122,7 +122,7 @@ subroutine parallelization_bcast_str(string)
   integer :: strlen, ierr                                                                           ! pI64 for strlen not supported by MPI
 
 
-  if (worldrank == 0) strlen = string
+  if (worldrank == 0) strlen = len(string)
   call MPI_Bcast(strlen,1,MPI_INTEGER,0,MPI_COMM_WORLD, ierr)
   if (worldrank /= 0) allocate(character(len=strlen)::string)
 
