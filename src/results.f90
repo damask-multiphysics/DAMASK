@@ -82,6 +82,8 @@ subroutine results_init(restart)
     call results_addAttribute('call',trim(commandLine))
     call results_closeGroup(results_addGroup('cell_to'))
     call results_addAttribute('description','mappings to place data in space','cell_to')
+    call results_closeGroup(results_addGroup('setup'))
+    call results_addAttribute('description','input data used to run the simulation','setup')
     call results_closeJobFile
   endif
 
