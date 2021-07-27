@@ -129,12 +129,14 @@ program DAMASK_grid
   if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
 
-  fileContent = IO_read(interface_loadFile)
   if (worldrank == 0) then
+    fileContent = IO_read(interface_loadFile)
     call results_openJobFile(parallel=.false.)
     call results_writeDataset_str(fileContent,'setup',interface_loadFile,'load case definition (grid solver)')
     call results_closeJobFile
   endif
+
+  call parallelization_bcast_str(fileContent)
   config_load => YAML_parse_str(fileContent)
   solver => config_load%get('solver')
 
