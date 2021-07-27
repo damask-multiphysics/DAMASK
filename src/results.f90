@@ -52,6 +52,7 @@ module results
     results_openGroup, &
     results_closeGroup, &
     results_writeDataset, &
+    results_writeDataset_str, &
     results_setLink, &
     results_addAttribute, &
     results_removeLink, &
@@ -90,9 +91,12 @@ end subroutine results_init
 !--------------------------------------------------------------------------------------------------
 !> @brief opens the results file to append data
 !--------------------------------------------------------------------------------------------------
-subroutine results_openJobFile
+subroutine results_openJobFile(parallel)
 
-  resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','a')
+  logical, intent(in), optional :: parallel
+
+
+  resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','a',parallel)
 
 end subroutine results_openJobFile
 
@@ -295,6 +299,25 @@ subroutine results_removeLink(link)
   if (hdferr < 0) call IO_error(1,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
 
 end subroutine results_removeLink
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Store string dataset.
+!> @details Not collective, must be called by one process at at time.
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeDataset_str(dataset,group,label,description)
+
+  character(len=*), intent(in) :: label,group,description,dataset
+
+  integer(HID_T) :: groupHandle
+
+
+  groupHandle = results_openGroup(group)
+  call HDF5_write_str(dataset,groupHandle,label)
+  call executionStamp(group//'/'//label,description)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeDataset_str
 
 
 !--------------------------------------------------------------------------------------------------

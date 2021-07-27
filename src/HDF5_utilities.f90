@@ -129,10 +129,11 @@ end subroutine HDF5_utilities_init
 !--------------------------------------------------------------------------------------------------
 !> @brief open and initializes HDF5 output file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_openFile(fileName,mode)
+integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
   character(len=*), intent(in)           :: fileName
   character,        intent(in), optional :: mode
+  logical,          intent(in), optional :: parallel
 
   character                              :: m
   integer(HID_T)                         :: plist_id
@@ -149,7 +150,11 @@ integer(HID_T) function HDF5_openFile(fileName,mode)
   if(hdferr < 0) error stop 'HDF5 error'
 
 #ifdef PETSC
-  call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+  if (present(parallel)) then
+    if (parallel) call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+  else
+    call h5pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+  endif
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
 
