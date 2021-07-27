@@ -119,9 +119,10 @@ function IO_read(fileName) result(fileContent)
   character(len=:), allocatable :: fileContent
 
   integer ::  &
-    fileLength, &
     fileUnit, &
     myStat
+  integer(pI64) ::  &
+    fileLength
 
 
   inquire(file = fileName, size=fileLength)

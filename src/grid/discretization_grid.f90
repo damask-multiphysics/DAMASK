@@ -68,9 +68,6 @@ subroutine discretization_grid_init(restart)
     devNull, z, z_offset
   integer, dimension(worldsize) :: &
     displs, sendcounts
-  integer :: fileUnit, myStat
-  integer(pI64) :: &
-    fileLength
   character(len=:), allocatable :: &
     fileContent
 
@@ -79,13 +76,7 @@ subroutine discretization_grid_init(restart)
 
 
   if(worldrank == 0) then
-    inquire(file = trim(interface_geomFile), size=fileLength)
-    open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
-         status='old', position='rewind', action='read',iostat=myStat)
-    if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
-    allocate(character(len=fileLength)::fileContent)
-    read(fileUnit) fileContent
-    close(fileUnit)
+    fileContent = IO_read(interface_geomFile)
     call readVTI(grid,geomSize,origin,materialAt_global,fileContent)
     call results_openJobFile(parallel=.false.)
     call results_writeDataset_str(fileContent,'setup',interface_geomFile,'geometry definition (grid solver)')
