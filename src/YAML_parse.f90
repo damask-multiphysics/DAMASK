@@ -72,7 +72,7 @@ recursive function parse_flow(YAML_flow) result(node)
       d = s + scan(flow_string(s+1:),':')
       e = d + find_end(flow_string(d+1:),'}')
       key = trim(adjustl(flow_string(s+1:d-1)))
-      if (key(1:1) == '"' .or. key(1:1) == "'" ) key = key(2:len(key)-1)
+      if(quotedString(key)) key = key(2:len(key)-1)
       myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
 
       select type (node)
@@ -97,7 +97,7 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          if (flow_string(1:1) == '"' .or. flow_string(1:1) == "'") then
+          if(quotedString(flow_string)) then
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
@@ -136,6 +136,23 @@ integer function find_end(str,e_char)
   find_end = i
 
 end function find_end
+
+
+!--------------------------------------------------------------------------------------------------
+! @brief check whether a string is enclosed with single or double quotes
+!--------------------------------------------------------------------------------------------------
+logical function quotedString(line)
+
+  character(len=*), intent(in) :: line
+
+  quotedString = .false.
+
+  if (line(1:1) == '"' .or. line(1:1) == "'") then
+    quotedString = .true.
+    if(line(len(line):len(line)) /= line(1:1)) call IO_error(710,ext_msg=line)
+  endif
+
+end function quotedString
 
 
 !--------------------------------------------------------------------------------------------------
@@ -759,6 +776,8 @@ subroutine selfTest
   if (indentDepth(' a') /= 1)     error stop 'indentDepth'
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
   if (indentDepth('x ') /= 0)     error stop 'indentDepth'
+
+  if (.not. quotedString("'a'"))  error stop 'quotedString'
 
   if (      isFlow(' a'))         error stop 'isFLow'
   if (.not. isFlow('{'))          error stop 'isFlow'
