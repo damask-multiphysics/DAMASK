@@ -8,6 +8,7 @@ module material
   use prec
   use config
   use results
+  use math
   use IO
   use rotations
   use discretization
@@ -19,8 +20,12 @@ module material
   type :: tRotationContainer
     type(Rotation), dimension(:),  allocatable :: data
   end type
+  type :: tTensorContainer
+    real(pReal), dimension(:,:,:), allocatable :: data
+  end type
 
-  type(tRotationContainer), dimension(:), allocatable :: material_orientation0
+
+  type(tRotationContainer), dimension(:), allocatable :: material_O_0
 
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
@@ -41,8 +46,9 @@ module material
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !TODO: remove
   public :: &
+    tTensorContainer, &
     tRotationContainer, &
-    material_orientation0, &
+    material_O_0, &
     material_init
 
 contains
@@ -152,15 +158,15 @@ subroutine parse()
 
   enddo
 
-  allocate(material_orientation0(materials%length))
+  allocate(material_O_0(materials%length))
 
   do ma = 1, materials%length
     material     => materials%get(ma)
     constituents => material%get('constituents')
-    allocate(material_orientation0(ma)%data(constituents%length))
+    allocate(material_O_0(ma)%data(constituents%length))
     do co = 1, constituents%length
       constituent => constituents%get(co)
-      call material_orientation0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+      call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
     enddo
  enddo
 

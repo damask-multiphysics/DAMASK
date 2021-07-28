@@ -6,7 +6,10 @@
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
 #include <petsc/finclude/petscsys.h>
-  use PetscSys
+  use PETScSys
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
   use HDF5
 
   implicit none
