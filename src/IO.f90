@@ -495,7 +495,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (709)
       msg = 'Length mismatch'
     case (710)
-      msg = 'Quotation missing in string'
+      msg = 'Closing quotation mark missing in string'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
