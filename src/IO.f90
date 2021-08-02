@@ -16,7 +16,8 @@ module IO
   private
 
   character(len=*), parameter, public :: &
-    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
+    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
+    IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
     IO_COMMENT = '#'

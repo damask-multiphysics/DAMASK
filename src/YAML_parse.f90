@@ -125,7 +125,7 @@ integer function find_end(str,e_char)
   N_cu = 0
   i = 1
   do while(i<=len_trim(str))
-    if (str(i:i) == '"' .or. str(i:i) == "'") i = i + scan(str(i+1:),str(i:i))
+    if (scan(str(i:i),IO_QUOTES) == 1)  i = i + scan(str(i+1:),str(i:i))
     if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',') == 1) exit
     N_sq = N_sq + merge(1,0,str(i:i) == '[')
     N_cu = N_cu + merge(1,0,str(i:i) == '{')
@@ -147,9 +147,9 @@ logical function quotedString(line)
 
   quotedString = .false.
 
-  if (line(1:1) == '"' .or. line(1:1) == "'") then
+  if (scan(line(:1),IO_QUOTES) == 1) then
     quotedString = .true.
-    if(line(len(line):len(line)) /= line(1:1)) call IO_error(710,ext_msg=line)
+    if(line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
   endif
 
 end function quotedString
@@ -382,7 +382,7 @@ subroutine list_item_inline(blck,s_blck,inline)    !ToDo: SR: merge with remove_
     indent_next = indentDepth(blck(s_blck:))
   enddo
 
-  if(scan(inline,",") > 0) inline = '"'//inline//'"'     ! ToDO: SR: Parse as string and not multiple list items. To be added later 
+  if(scan(inline,",") > 0) inline = '"'//inline//'"' 
 
 end subroutine list_item_inline
 
