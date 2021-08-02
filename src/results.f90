@@ -94,10 +94,10 @@ subroutine results_init(restart)
     call get_command(commandLine)
     call results_addAttribute('call (restart at '//date//')',trim(commandLine))
     call h5gmove_f(resultsFile,'setup','tmp',hdferr)
-    call results_addAttribute('description','input data used to run the simulation (backup from restart at '//date//')','tmp')
+    call results_addAttribute('description','input data used to run the simulation up to restart at '//date,'tmp')
     call results_closeGroup(results_addGroup('setup'))
     call results_addAttribute('description','input data used to run the simulation','setup')
-    call h5gmove_f(resultsFile,'tmp','setup/backup',hdferr)
+    call h5gmove_f(resultsFile,'tmp','setup/previous',hdferr)
   endif
 
   call results_closeJobFile

@@ -1766,13 +1766,16 @@ class Result:
             Defaults to False.
 
         """
-        with h5py.File(self.fname,'r') as f_in:
-            for out in _match(output,f_in['setup'].keys()):
-                description = f_in['/'.join(('setup',out))].attrs['description']
-                if not h5py3: description = description.decode()
-                if not Path(out).exists() or overwrite:
-                    with open(out,'w') as f_out:
-                        f_out.write(f_in['/'.join(('setup',out))][()].decode())
-                    print(f"exported {description} to '{out}'")
+        def export(name,obj,output,overwrite):
+            if type(obj) == h5py.Dataset and  _match(output,[name]):
+                d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
+                if not Path(name).exists() or overwrite:
+                    with open(name,'w') as f_out: f_out.write(obj[()].decode())
+                    print(f"Exported {d} to '{name}'.")
                 else:
-                    print(f"'{out}' exists, {description} not exported")
+                    print(f"'{name}' exists, {d} not exported.")
+            elif type(obj) == h5py.Group:
+                os.makedirs(name, exist_ok=True)
+
+        with h5py.File(self.fname,'r') as f_in:
+            f_in['setup'].visititems(partial(export,output=output,overwrite=overwrite))

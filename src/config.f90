@@ -84,7 +84,7 @@ subroutine parse_numerics()
       print*, 'reading numerics.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('numerics.yaml')
       call results_openJobFile(parallel=.false.)
-      call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration (optional)')
+      call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
       call results_closeJobFile
     endif
     call parallelization_bcast_str(fileContent)
@@ -114,7 +114,7 @@ subroutine parse_debug()
       print*, 'reading debug.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('debug.yaml')
       call results_openJobFile(parallel=.false.)
-      call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration (optional)')
+      call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
       call results_closeJobFile
     endif
     call parallelization_bcast_str(fileContent)
