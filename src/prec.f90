@@ -89,6 +89,7 @@ end subroutine prec_init
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative
+! ToDo: Use 'spacing': https://gcc.gnu.org/onlinedocs/gfortran/SPACING.html#SPACING
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 

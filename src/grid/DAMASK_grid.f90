@@ -107,6 +107,8 @@ program DAMASK_grid
     step_bc, &
     step_mech, &
     step_discretization
+  character(len=:), allocatable :: &
+    fileContent, fname
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -127,7 +129,17 @@ program DAMASK_grid
   if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
 
-  config_load => YAML_parse_file(trim(interface_loadFile))
+  if (worldrank == 0) then
+    fileContent = IO_read(interface_loadFile)
+    fname = interface_loadFile
+    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
+    call results_openJobFile(parallel=.false.)
+    call results_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
+    call results_closeJobFile
+  endif
+
+  call parallelization_bcast_str(fileContent)
+  config_load => YAML_parse_str(fileContent)
   solver => config_load%get('solver')
 
 !--------------------------------------------------------------------------------------------------

@@ -216,7 +216,13 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
     mapElemSet                                                                                      !< list of elements in elementSet
 
 
-  inputFile = IO_readlines(trim(getSolverJobName())//trim(InputFileExtension))
+  call results_openJobFile
+  call results_writeDataset_str(IO_read(trim(getSolverJobName())//InputFileExtension), 'setup', &
+                                        trim(getSolverJobName())//InputFileExtension, &
+                                        'MSC.Marc input deck')
+  call results_closeJobFile
+
+  inputFile = IO_readlines(trim(getSolverJobName())//InputFileExtension)
   call inputRead_fileFormat(fileFormatVersion, &
                             inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &

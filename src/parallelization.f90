@@ -24,9 +24,18 @@ module parallelization
     worldrank = 0, &                                                                                !< MPI worldrank (/=0 for MPI simulations only)
     worldsize = 1                                                                                   !< MPI worldsize (/=1 for MPI simulations only)
 
-#ifdef PETSC
+#ifndef PETSC
+public :: parallelization_bcast_str
+
+contains
+subroutine parallelization_bcast_str(string)
+  character(len=:), allocatable, intent(inout) :: string
+end subroutine parallelization_bcast_str
+
+#else
   public :: &
-    parallelization_init
+    parallelization_init, &
+    parallelization_bcast_str
 
 contains
 
@@ -101,6 +110,27 @@ subroutine parallelization_init
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Broadcast a string from process 0.
+!--------------------------------------------------------------------------------------------------
+subroutine parallelization_bcast_str(string)
+
+  character(len=:), allocatable, intent(inout) :: string
+
+  integer :: strlen, ierr                                                                           ! pI64 for strlen not supported by MPI
+
+
+  if (worldrank == 0) strlen = len(string)
+  call MPI_Bcast(strlen,1,MPI_INTEGER,0,MPI_COMM_WORLD, ierr)
+  if (worldrank /= 0) allocate(character(len=strlen)::string)
+
+  call MPI_Bcast(string,strlen,MPI_CHARACTER,0,MPI_COMM_WORLD, ierr)
+
+
+end subroutine parallelization_bcast_str
+
 #endif
 
 end module parallelization
