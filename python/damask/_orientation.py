@@ -854,14 +854,15 @@ class Orientation(Rotation,Crystal):
                @ np.broadcast_to(v,self.shape+v.shape)
 
 
-    def Schmid(self,mode):
+    def Schmid(self,*,N_slip=None,N_twin=None):
         u"""
-        Calculate Schmid matrix P = d ⨂ n in the lab frame for given lattice shear kinematics.
+        Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
         Parameters
         ----------
-        mode : {'slip', 'twin'}
-            Deformation mode.
+        N_slip|N_twin : iterable of int
+            Number of deformation systems per deformation system.
+            Use '*'. to select all.
 
         Returns
         -------
@@ -876,14 +877,22 @@ class Orientation(Rotation,Crystal):
         >>> import damask
         >>> import numpy as np
         >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
-        >>> damask.Orientation.from_Eulers(phi=[0,45,0],degrees=True,lattice='cF').Schmid('slip')[0]
+        >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
+        >>> O.Schmid(N_slip=[1])
         array([[ 0.000,  0.000,  0.000],
                [ 0.577, -0.000,  0.816],
                [ 0.000,  0.000,  0.000]])
 
         """
-        d = self.to_frame(uvw=np.vstack(self.kinematics(mode)['direction']))
-        p = self.to_frame(hkl=np.vstack(self.kinematics(mode)['plane']))
+        if (N_slip is not None) ^ (N_twin is None):
+            raise KeyError('Specify either "N_slip" or "N_twin"')
+
+        kinematics = self.kinematics('slip' if N_twin is None else 'twin')
+        active = N_slip if N_twin is None else N_twin
+        if active == '*': active = [len(a) for a in kinematics]
+
+        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
                                   p/np.linalg.norm(p,axis=1,keepdims=True))
 
