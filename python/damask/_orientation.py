@@ -882,8 +882,8 @@ class Orientation(Rotation,Crystal):
                [ 0.000,  0.000,  0.000]])
 
         """
-        d = self.to_frame(uvw=self.kinematics(mode)['direction'])
-        p = self.to_frame(hkl=self.kinematics(mode)['plane'])
+        d = self.to_frame(uvw=np.vstack(self.kinematics(mode)['direction']))
+        p = self.to_frame(hkl=np.vstack(self.kinematics(mode)['plane']))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
                                   p/np.linalg.norm(p,axis=1,keepdims=True))
 
