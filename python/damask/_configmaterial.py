@@ -457,7 +457,7 @@ class ConfigMaterial(Config):
             target = shape_map.get(k,(N,n))
             obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,target,mode='right')),target)
             for i in range(N):
-                if k in ['phase','O','v']:
+                if k in ['phase','O','v','F_i']:
                     for j in range(n):
                         mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
                 else:
