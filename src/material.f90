@@ -171,7 +171,7 @@ subroutine parse()
     do co = 1, constituents%length
       constituent => constituents%get(co)
       call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-      material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3) ! requiredShape=(3,3)
+      material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
     enddo
  enddo
 
