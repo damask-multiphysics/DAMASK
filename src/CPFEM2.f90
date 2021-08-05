@@ -4,28 +4,29 @@
 !> @brief needs a good name and description
 !--------------------------------------------------------------------------------------------------
 module CPFEM2
-  use prec
   use parallelization
-  use config
-  use math
-  use rotations
+  use DAMASK_interface
+  use prec
+  use IO
   use YAML_types
   use YAML_parse
-  use material
-  use lattice
-  use IO
-  use base64
-  use DAMASK_interface
-  use discretization
   use HDF5
   use HDF5_utilities
   use results
-  use homogenization
+  use config
+  use math
+  use rotations
+  use lattice
+  use material
   use phase
+  use homogenization
+
+  use discretization
 #if   defined(MESH)
   use FEM_quadrature
   use discretization_mesh
 #elif defined(GRID)
+  use base64
   use discretization_grid
 #endif
 
@@ -36,7 +37,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief call all module initializations
+!> @brief Initialize all modules.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
@@ -44,18 +45,19 @@ subroutine CPFEM_initAll
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
   call prec_init
   call IO_init
-  call base64_init
-#ifdef MESH
+#if   defined(MESH)
   call FEM_quadrature_init
+#elif defined(GRID)
+   call base64_init
 #endif
   call YAML_types_init
   call YAML_parse_init
+  call HDF5_utilities_init
+  call results_init(restart=interface_restartInc>0)
   call config_init
   call math_init
   call rotations_init
   call lattice_init
-  call HDF5_utilities_init
-  call results_init(restart=interface_restartInc>0)
 #if   defined(MESH)
   call discretization_mesh_init(restart=interface_restartInc>0)
 #elif defined(GRID)

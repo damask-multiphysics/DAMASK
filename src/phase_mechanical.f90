@@ -232,8 +232,8 @@ module subroutine mechanical_init(materials,phases)
   allocate(phase_mechanical_F0(phases%length))
   allocate(phase_mechanical_Li(phases%length))
   allocate(phase_mechanical_Li0(phases%length))
-  allocate(phase_mechanical_Lp0(phases%length))
   allocate(phase_mechanical_Lp(phases%length))
+  allocate(phase_mechanical_Lp0(phases%length))
   allocate(phase_mechanical_S(phases%length))
   allocate(phase_mechanical_P(phases%length))
   allocate(phase_mechanical_S0(phases%length))
@@ -241,20 +241,20 @@ module subroutine mechanical_init(materials,phases)
   do ph = 1, phases%length
     Nmembers = count(material_phaseID == ph)
 
-    allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fe(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fi0(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fp(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fp0(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_F(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_F0(ph)%data(3,3,Nmembers))
+    allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_S(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_F(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_F0(ph)%data(3,3,Nmembers))
 
     phase   => phases%get(ph)
     mech    => phase%get('mechanical')
@@ -517,7 +517,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
     enddo LpLoop
 
     call phase_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
-                                       S, Fi_new, ph,en)
+                                S, Fi_new, ph,en)
 
     !* update current residuum and check for convergence of loop
     atol_Li = max(num%rtol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &        ! absolute tolerance from largest acceptable relative error
@@ -1030,7 +1030,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged
 
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,en)
-  subState0 = plasticState(ph)%State0(:,en)
+  allocate(subState0,source=plasticState(ph)%State0(:,en))
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
@@ -1153,12 +1153,12 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
   en = material_phaseEntry(co,ce)
 
   call phase_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
-                                          phase_mechanical_Fe(ph)%data(1:3,1:3,en), &
-                                          phase_mechanical_Fi(ph)%data(1:3,1:3,en),ph,en)
+                                   phase_mechanical_Fe(ph)%data(1:3,1:3,en), &
+                                   phase_mechanical_Fi(ph)%data(1:3,1:3,en),ph,en)
   call phase_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                     phase_mechanical_S(ph)%data(1:3,1:3,en), &
-                                     phase_mechanical_Fi(ph)%data(1:3,1:3,en), &
-                                     ph,en)
+                              phase_mechanical_S(ph)%data(1:3,1:3,en), &
+                              phase_mechanical_Fi(ph)%data(1:3,1:3,en), &
+                              ph,en)
 
   invFp = math_inv33(phase_mechanical_Fp(ph)%data(1:3,1:3,en))
   invFi = math_inv33(phase_mechanical_Fi(ph)%data(1:3,1:3,en))

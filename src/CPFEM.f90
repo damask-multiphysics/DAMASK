@@ -4,22 +4,23 @@
 !> @brief CPFEM engine
 !--------------------------------------------------------------------------------------------------
 module CPFEM
+  use DAMASK_interface
   use prec
-  use math
-  use rotations
+  use IO
   use YAML_types
   use YAML_parse
-  use discretization_marc
-  use material
-  use config
-  use homogenization
-  use IO
-  use discretization
-  use DAMASK_interface
   use HDF5_utilities
   use results
+  use config
+  use math
+  use rotations
   use lattice
+  use material
   use phase
+  use homogenization
+
+  use discretization
+  use discretization_marc
 
   implicit none
   private
@@ -68,7 +69,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief call all module initializations
+!> @brief Initialize all modules.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
@@ -77,13 +78,13 @@ subroutine CPFEM_initAll
   call IO_init
   call YAML_types_init
   call YAML_parse_init
+  call HDF5_utilities_init
+  call results_init(.false.)
   call config_init
   call math_init
   call rotations_init
-  call HDF5_utilities_init
-  call results_init(.false.)
-  call discretization_marc_init
   call lattice_init
+  call discretization_marc_init
   call material_init(.false.)
   call phase_init
   call homogenization_init

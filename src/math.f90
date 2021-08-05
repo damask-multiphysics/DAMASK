@@ -90,12 +90,12 @@ subroutine math_init
   integer, dimension(:), allocatable :: randInit
   class(tNode), pointer :: &
     num_generic
- 
+
   print'(/,a)', ' <<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
   num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
- 
+
   call random_seed(size=randSize)
   allocate(randInit(randSize))
   if (randomSeed > 0) then
@@ -233,7 +233,7 @@ end function math_range
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief second rank identity tensor of specified dimension
+!> @brief Rank two identity tensor of specified dimension.
 !--------------------------------------------------------------------------------------------------
 pure function math_eye(d)
 
@@ -250,21 +250,25 @@ end function math_eye
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetric fourth rank identity tensor of specified dimension
+!> @brief Symmetric rank four identity tensor.
 !  from http://en.wikipedia.org/wiki/Tensor_derivative_(continuum_mechanics)#Derivative_of_a_second-order_tensor_with_respect_to_itself
 !--------------------------------------------------------------------------------------------------
-pure function math_identity4th(d)
+pure function math_identity4th()
 
-  integer, intent(in) :: d                                                                          !< tensor dimension
+  real(pReal), dimension(3,3,3,3) :: math_identity4th
+
   integer :: i,j,k,l
-  real(pReal), dimension(d,d,d,d) :: math_identity4th
-  real(pReal), dimension(d,d)     :: identity2nd
 
-  identity2nd = math_eye(d)
-  do i=1,d; do j=1,d; do k=1,d; do l=1,d
-    math_identity4th(i,j,k,l) = 0.5_pReal &
-                              *(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:3, j=1:3, k=1:3, l=1:3)
+    math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
+  enddo
+#else
+  do i=1,3; do j=1,3; do k=1,3; do l=1,3
+    math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
   enddo; enddo; enddo; enddo
+#endif
 
 end function math_identity4th
 
@@ -331,9 +335,16 @@ pure function math_outer(A,B)
   real(pReal), dimension(size(A,1),size(B,1)) ::  math_outer
   integer :: i,j
 
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:size(A,1), j=1:size(B,1))
+    math_outer(i,j) = A(i)*B(j)
+  enddo
+#else
   do i=1,size(A,1); do j=1,size(B,1)
     math_outer(i,j) = A(i)*B(j)
   enddo; enddo
+#endif
 
 end function math_outer
 
@@ -373,9 +384,16 @@ pure function math_mul3333xx33(A,B)
   real(pReal), dimension(3,3) :: math_mul3333xx33
   integer :: i,j
 
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:3, j=1:3)
+    math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
+  enddo
+#else
   do i=1,3; do j=1,3
     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
   enddo; enddo
+#endif
 
 end function math_mul3333xx33
 
@@ -390,9 +408,16 @@ pure function math_mul3333xx3333(A,B)
   real(pReal), dimension(3,3,3,3), intent(in) :: B
   real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
 
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:3, j=1:3, k=1:3, l=1:3)
+    math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
+  enddo
+#else
   do i=1,3; do j=1,3; do k=1,3; do l=1,3
     math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
   enddo; enddo; enddo; enddo
+#endif
 
 end function math_mul3333xx3333
 
@@ -543,19 +568,6 @@ pure function math_symmetric33(m)
   math_symmetric33 = 0.5_pReal * (m + transpose(m))
 
 end function math_symmetric33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 6x6 matrix
-!--------------------------------------------------------------------------------------------------
-pure function math_symmetric66(m)
-
-  real(pReal), dimension(6,6) :: math_symmetric66
-  real(pReal), dimension(6,6), intent(in) :: m
-
-  math_symmetric66 = 0.5_pReal * (m + transpose(m))
-
-end function math_symmetric66
 
 
 !--------------------------------------------------------------------------------------------------
@@ -712,6 +724,7 @@ pure function math_6toSym33(v6,weighted)
   real(pReal), dimension(6) :: w
   integer :: i
 
+
   if(present(weighted)) then
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
@@ -736,9 +749,16 @@ pure function math_3333to99(m3333)
 
   integer :: i,j
 
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:9, j=1:9)
+    math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
+  enddo
+#else
   do i=1,9; do j=1,9
     math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
   enddo; enddo
+#endif
 
 end function math_3333to99
 
@@ -753,9 +773,15 @@ pure function math_99to3333(m99)
 
   integer :: i,j
 
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:9, j=1:9)
+    math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
+  enddo
+#else
   do i=1,9; do j=1,9
     math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
   enddo; enddo
+#endif
 
 end function math_99to3333
 
@@ -775,15 +801,22 @@ pure function math_sym3333to66(m3333,weighted)
   real(pReal), dimension(6) :: w
   integer :: i,j
 
+
   if(present(weighted)) then
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
     w = NRMMANDEL
   endif
 
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:6, j=1:6)
+    math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
+  enddo
+#else
   do i=1,6; do j=1,6
     math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
   enddo; enddo
+#endif
 
 end function math_sym3333to66
 
@@ -802,6 +835,7 @@ pure function math_66toSym3333(m66,weighted)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
+
 
   if(present(weighted)) then
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
@@ -827,6 +861,7 @@ pure function math_Voigt66to3333(m66)
   real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
   real(pReal), dimension(6,6), intent(in) :: m66                                                    !< 6x6 matrix
   integer :: i,j
+
 
   do i=1,6; do j=1, 6
     math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
@@ -881,9 +916,10 @@ subroutine math_eigh(w,v,error,m)
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
   real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v                                    !< eigenvectors
   logical,                                      intent(out) :: error
-  
+
   integer :: ierr
   real(pReal), dimension(size(m,1)**2) :: work
+
 
   v = m                                                                                             ! copy matrix to input (doubles as output) array
   call dsyev('V','U',size(m,1),v,size(m,1),w,work,size(work,1),ierr)
@@ -1222,7 +1258,7 @@ subroutine selfTest
     error stop 'math_sym33to6/math_6toSym33'
 
   call random_number(t66)
-  if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66))) &
+  if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pReal))) &
     error stop 'math_sym3333to66/math_66toSym3333'
 
   call random_number(v6)
@@ -1241,6 +1277,9 @@ subroutine selfTest
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     error stop 'math_det33/math_detSym33'
+
+  if(any(dNeq(t33+transpose(t33),math_mul3333xx33(math_identity4th(),t33+transpose(t33))))) &
+    error stop 'math_mul3333xx33/math_identity4th'
 
   if(any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
     error stop 'math_inv33(math_I3)'

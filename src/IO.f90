@@ -119,27 +119,28 @@ function IO_read(fileName) result(fileContent)
   character(len=:), allocatable :: fileContent
 
   integer ::  &
-    fileLength, &
     fileUnit, &
     myStat
+  integer(pI64) ::  &
+    fileLength
 
 
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
   allocate(character(len=fileLength)::fileContent)
-  if(fileLength==0) then
+  if (fileLength==0) then
     close(fileUnit)
     return
   endif
 
   read(fileUnit,iostat=myStat) fileContent
-  if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
 
   if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
-  if(fileContent(fileLength:fileLength) /= IO_EOL)           fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
+  if (fileContent(fileLength:fileLength) /= IO_EOL)          fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
 
 end function IO_read
 

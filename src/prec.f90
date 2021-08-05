@@ -27,11 +27,6 @@ module prec
 
   real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
 
-
-  type :: group_float                                                                               !< variable length datatype used for storage of state
-    real(pReal), dimension(:), pointer :: p
-  end type group_float
-
   type :: tState
     integer :: &
       sizeState        = 0, &                                                                       !< size of state
@@ -94,6 +89,7 @@ end subroutine prec_init
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative
+! ToDo: Use 'spacing': https://gcc.gnu.org/onlinedocs/gfortran/SPACING.html#SPACING
 !--------------------------------------------------------------------------------------------------
 logical elemental pure function dEq(a,b,tol)
 

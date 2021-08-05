@@ -68,11 +68,21 @@ subroutine discretization_grid_init(restart)
     devNull, z, z_offset
   integer, dimension(worldsize) :: &
     displs, sendcounts
+  character(len=:), allocatable :: &
+    fileContent, fname
+
 
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
+
   if(worldrank == 0) then
-    call readVTI(grid,geomSize,origin,materialAt_global)
+    fileContent = IO_read(interface_geomFile)
+    call readVTI(grid,geomSize,origin,materialAt_global,fileContent)
+    fname = interface_geomFile
+    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
+    call results_openJobFile(parallel=.false.)
+    call results_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
+    call results_closeJobFile
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
   endif
@@ -157,7 +167,8 @@ end subroutine discretization_grid_init
 !> @brief Parse vtk image data (.vti)
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine readVTI(grid,geomSize,origin,material)
+subroutine readVTI(grid,geomSize,origin,material, &
+                   fileContent)
 
   integer,     dimension(3), intent(out) :: &
     grid                                                                                            ! grid   (across all processes!)
@@ -166,27 +177,18 @@ subroutine readVTI(grid,geomSize,origin,material)
     origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     material
+  character(len=*),          intent(in) :: &
+    fileContent
 
-  character(len=:), allocatable :: fileContent, dataType, headerType
+  character(len=:), allocatable :: dataType, headerType
   logical :: inFile,inImage,gotCellData,compressed
-  integer :: fileUnit, myStat
   integer(pI64) :: &
-    fileLength, &                                                                                   !< length of the geom file (in characters)
     startPos, endPos, &
     s
 
+
   grid = -1
   geomSize = -1.0_pReal
-
-!--------------------------------------------------------------------------------------------------
-! read raw data as stream
-  inquire(file = trim(interface_geomFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
-       status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
-  allocate(character(len=fileLength)::fileContent)
-  read(fileUnit) fileContent
-  close(fileUnit)
 
   inFile         = .false.
   inImage        = .false.

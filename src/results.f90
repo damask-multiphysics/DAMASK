@@ -52,6 +52,7 @@ module results
     results_openGroup, &
     results_closeGroup, &
     results_writeDataset, &
+    results_writeDataset_str, &
     results_setLink, &
     results_addAttribute, &
     results_removeLink, &
@@ -64,16 +65,20 @@ subroutine results_init(restart)
   logical, intent(in) :: restart
 
   character(len=pPathLen) :: commandLine
+  integer :: hdferr
+  integer(HID_T) :: group_id
+  character(len=:), allocatable :: date
+
 
   print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
 
-  if(.not. restart) then
+  if (.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',13)
+    call results_addAttribute('DADF5_version_minor',14)
     call get_command_argument(0,commandLine)
     call results_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
     call results_addAttribute('created',now())
@@ -81,8 +86,21 @@ subroutine results_init(restart)
     call results_addAttribute('call',trim(commandLine))
     call results_closeGroup(results_addGroup('cell_to'))
     call results_addAttribute('description','mappings to place data in space','cell_to')
-    call results_closeJobFile
+    call results_closeGroup(results_addGroup('setup'))
+    call results_addAttribute('description','input data used to run the simulation','setup')
+  else
+    date = now()
+    call results_openJobFile
+    call get_command(commandLine)
+    call results_addAttribute('call (restart at '//date//')',trim(commandLine))
+    call h5gmove_f(resultsFile,'setup','tmp',hdferr)
+    call results_addAttribute('description','input data used to run the simulation up to restart at '//date,'tmp')
+    call results_closeGroup(results_addGroup('setup'))
+    call results_addAttribute('description','input data used to run the simulation','setup')
+    call h5gmove_f(resultsFile,'tmp','setup/previous',hdferr)
   endif
+
+  call results_closeJobFile
 
 end subroutine results_init
 
@@ -90,9 +108,12 @@ end subroutine results_init
 !--------------------------------------------------------------------------------------------------
 !> @brief opens the results file to append data
 !--------------------------------------------------------------------------------------------------
-subroutine results_openJobFile
+subroutine results_openJobFile(parallel)
 
-  resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','a')
+  logical, intent(in), optional :: parallel
+
+
+  resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','a',parallel)
 
 end subroutine results_openJobFile
 
@@ -295,6 +316,25 @@ subroutine results_removeLink(link)
   if (hdferr < 0) call IO_error(1,ext_msg = 'results_removeLink: h5ldelete_soft_f ('//trim(link)//')')
 
 end subroutine results_removeLink
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Store string dataset.
+!> @details Not collective, must be called by one process at at time.
+!--------------------------------------------------------------------------------------------------
+subroutine results_writeDataset_str(dataset,group,label,description)
+
+  character(len=*), intent(in) :: label,group,description,dataset
+
+  integer(HID_T) :: groupHandle
+
+
+  groupHandle = results_openGroup(group)
+  call HDF5_write_str(dataset,groupHandle,label)
+  call executionStamp(group//'/'//label,description)
+  call HDF5_closeGroup(groupHandle)
+
+end subroutine results_writeDataset_str
 
 
 !--------------------------------------------------------------------------------------------------
