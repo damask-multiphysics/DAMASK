@@ -407,20 +407,20 @@ module subroutine plastic_dislotungsten_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writePhaseState(stt%rho_mob,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'mobile dislocation density','1/m²')
+          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                    'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writePhaseState(stt%rho_dip,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'dislocation dipole density','1/m²')
+          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                    'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writePhaseState(stt%gamma_sl,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'plastic shear','1')
+          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                    'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writePhaseState(dst%Lambda_sl,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'mean free path for slip','m')
+          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                    'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writePhaseState(dst%tau_pass,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'threshold stress for slip','Pa')
+          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                    'threshold stress for slip','Pa',prm%systems_sl)
       end select
 
     enddo

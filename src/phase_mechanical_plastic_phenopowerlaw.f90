@@ -382,18 +382,18 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('xi_sl')
-          call results_writePhaseState(stt%xi_sl,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'resistance against plastic slip','Pa')
+          call results_writeDataset(stt%xi_sl,group,trim(prm%output(ou)), &
+                                    'resistance against plastic slip','Pa',prm%systems_sl)
         case('gamma_sl')
-          call results_writePhaseState(stt%gamma_sl,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'plastic shear','1')
+          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                    'plastic shear','1',prm%systems_sl)
 
         case('xi_tw')
-          call results_writePhaseState(stt%xi_tw,group,trim(prm%output(ou)),prm%systems_tw, &
-                                       'resistance against twinning','Pa')
+          call results_writeDataset(stt%xi_tw,group,trim(prm%output(ou)), &
+                                    'resistance against twinning','Pa',prm%systems_tw)
         case('gamma_tw')
-          call results_writePhaseState(stt%gamma_tw,group,trim(prm%output(ou)),prm%systems_tw, &
-                                       'twinning shear','1')
+          call results_writeDataset(stt%gamma_tw,group,trim(prm%output(ou)), &
+                                    'twinning shear','1',prm%systems_tw)
 
       end select
 

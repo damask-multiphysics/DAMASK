@@ -33,11 +33,6 @@ module results
     module procedure results_writeVectorDataset_int
   end interface results_writeDataset
 
-  interface results_writePhaseState
-    module procedure results_writePhaseState_real
-    module procedure results_writePhaseState_int
-  end interface results_writePhaseState
-
   interface results_addAttribute
     module procedure results_addAttribute_str
     module procedure results_addAttribute_int
@@ -59,7 +54,6 @@ module results
     results_closeGroup, &
     results_writeDataset, &
     results_writeDataset_str, &
-    results_writePhaseState, &
     results_setLink, &
     results_addAttribute, &
     results_removeLink, &
@@ -385,67 +379,27 @@ end subroutine results_writeScalarDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit)
+subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit,systems)
 
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
+  character(len=*), intent(in),    dimension(:), optional :: systems
   real(pReal),      intent(in),    dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
 
+  if (present(systems)) then
+    if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
+  endif
+
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
+  if (present(systems)) call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store real vector dataset with associated metadata for slip
-!--------------------------------------------------------------------------------------------------
-subroutine results_writePhaseState_real(dataset,group,label,systems,description,SIunit)
-
-  character(len=*), intent(in)                 :: label,group,description,SIunit
-  real(pReal),      intent(in), dimension(:,:) :: dataset
-  character(len=*), intent(in), dimension(:)   :: systems
-
-  integer(HID_T) :: groupHandle
-
-
-  if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
-
-  groupHandle = results_openGroup(group)
-  call HDF5_write(dataset,groupHandle,label)
-  call executionStamp(group//'/'//label,description,SIunit)
-  call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
-  call HDF5_closeGroup(groupHandle)
-
-end subroutine results_writePhaseState_real
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store real vector dataset with associated metadata for slip
-!--------------------------------------------------------------------------------------------------
-subroutine results_writePhaseState_int(dataset,group,label,systems,description,SIunit)
-
-  character(len=*), intent(in)                 :: label,group,description,SIunit
-  integer,          intent(in), dimension(:,:) :: dataset
-  character(len=*), intent(in), dimension(:)   :: systems
-
-  integer(HID_T) :: groupHandle
-
-
-  if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
-
-  groupHandle = results_openGroup(group)
-  call HDF5_write(dataset,groupHandle,label)
-  call executionStamp(group//'/'//label,description,SIunit)
-  call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
-  call HDF5_closeGroup(groupHandle)
-
-end subroutine results_writePhaseState_int
 
 
 !--------------------------------------------------------------------------------------------------
@@ -491,18 +445,24 @@ end subroutine results_writeTensorDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit)
+subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit,systems)
 
   character(len=*), intent(in)                 :: label,group,description
   character(len=*), intent(in), optional       :: SIunit
+  character(len=*), intent(in),    dimension(:), optional :: systems
   integer,          intent(in), dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
 
+  if (present(systems)) then
+    if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
+  endif
+
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
+  if (present(systems)) call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int

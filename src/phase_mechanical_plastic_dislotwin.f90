@@ -802,30 +802,30 @@ module subroutine plastic_dislotwin_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writePhaseState(stt%rho_mob,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'mobile dislocation density','1/m²')
+          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                       'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writePhaseState(stt%rho_dip,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'dislocation dipole density','1/m²')
+          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                       'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writePhaseState(stt%gamma_sl,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'plastic shear','1')
+          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                       'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writePhaseState(dst%Lambda_sl,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'mean free path for slip','m')
+          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                       'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writePhaseState(dst%tau_pass,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'passing stress for slip','Pa')
+          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                       'passing stress for slip','Pa',prm%systems_sl)
 
         case('f_tw')
-          call results_writePhaseState(stt%f_tw,group,trim(prm%output(ou)),prm%systems_tw, &
-                                       'twinned volume fraction','m³/m³')
+          call results_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
+                                       'twinned volume fraction','m³/m³',prm%systems_tw)
         case('Lambda_tw')
-          call results_writePhaseState(dst%Lambda_tw,group,trim(prm%output(ou)),prm%systems_tw, &
-                                       'mean free path for twinning','m')
+          call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
+                                       'mean free path for twinning','m',prm%systems_tw)
         case('tau_hat_tw')
-          call results_writePhaseState(dst%tau_hat_tw,group,trim(prm%output(ou)),prm%systems_tw, &
-                                       'threshold stress for twinning','Pa')
+          call results_writeDataset(dst%tau_hat_tw,group,trim(prm%output(ou)), &
+                                       'threshold stress for twinning','Pa',prm%systems_tw)
 
         case('f_tr')
           if(prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &

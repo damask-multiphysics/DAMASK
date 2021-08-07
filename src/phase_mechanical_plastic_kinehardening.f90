@@ -363,23 +363,23 @@ module subroutine plastic_kinehardening_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case ('xi')
-          call results_writePhaseState(stt%xi,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'resistance against plastic slip','Pa')
+          call results_writeDataset(stt%xi,group,trim(prm%output(ou)), &
+                                    'resistance against plastic slip','Pa',prm%systems_sl)
         case ('chi')
-          call results_writePhaseState(stt%chi,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'back stress','Pa')
+          call results_writeDataset(stt%chi,group,trim(prm%output(ou)), &
+                                    'back stress','Pa',prm%systems_sl)
         case ('sgn(gamma)')
-          call results_writePhaseState(int(stt%sgn_gamma),group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'sense of shear','1')
+          call results_writeDataset(int(stt%sgn_gamma),group,trim(prm%output(ou)), &
+                                    'sense of shear','1',prm%systems_sl)
         case ('chi_0')
-          call results_writePhaseState(stt%chi_0,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'back stress at last switch of stress sense','Pa')
+          call results_writeDataset(stt%chi_0,group,trim(prm%output(ou)), &
+                                    'back stress at last switch of stress sense','Pa',prm%systems_sl)
         case ('gamma_0')
-          call results_writePhaseState(stt%gamma_0,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'plastic shear at last switch of stress sense','1')
+          call results_writeDataset(stt%gamma_0,group,trim(prm%output(ou)), &
+                                    'plastic shear at last switch of stress sense','1',prm%systems_sl)
         case ('gamma')
-          call results_writePhaseState(stt%gamma,group,trim(prm%output(ou)),prm%systems_sl, &
-                                       'plastic shear','1')
+          call results_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
+                                    'plastic shear','1',prm%systems_sl)
       end select
 
     enddo
