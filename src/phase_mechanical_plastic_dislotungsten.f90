@@ -18,7 +18,7 @@ submodule(phase:plastic) dislotungsten
       Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
       b_sl, &                                                                                       !< magnitude of Burgers vector [m]
-      D_a, &
+      d_caron, &                                                                                    !< distance of spontaneous annhihilation
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
       f_at, &                                                                                       !< factor to calculate atomic volume
       tau_Peierls, &                                                                                !< Peierls stress
@@ -56,7 +56,7 @@ submodule(phase:plastic) dislotungsten
   type :: tDisloTungstendependentState
     real(pReal), dimension(:,:), allocatable :: &
       Lambda_sl, &
-      threshold_stress
+      tau_pass
   end type tDisloTungstendependentState
 
 !--------------------------------------------------------------------------------------------------
@@ -172,7 +172,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%D_0  = pl%get_asFloat('D_0')
       prm%Q_cl = pl%get_asFloat('Q_cl')
       prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3.0_pReal
-      prm%D_a  = pl%get_asFloat('D_a') * prm%b_sl
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
@@ -191,7 +190,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%B              = math_expand(prm%B,           N_sl)
       prm%i_sl           = math_expand(prm%i_sl,        N_sl)
       prm%f_at           = math_expand(prm%f_at,        N_sl)
-      prm%D_a            = math_expand(prm%D_a,         N_sl)
+      prm%d_caron        = pl%get_asFloat('D_a') * prm%b_sl
 
       ! sanity checks
       if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
@@ -202,12 +201,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
       if (any(prm%Q_s          <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
       if (any(prm%tau_Peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_Peierls'
-      if (any(prm%D_a          <= 0.0_pReal)) extmsg = trim(extmsg)//' D_a or b_sl'
+      if (any(prm%B            <  0.0_pReal)) extmsg = trim(extmsg)//' B'
+      if (any(prm%d_caron      <  0.0_pReal)) extmsg = trim(extmsg)//' d_caron(D_a,b_sl)'
       if (any(prm%f_at         <= 0.0_pReal)) extmsg = trim(extmsg)//' f_at or b_sl'
 
     else slipActive
       rho_mob_0= emptyRealArray; rho_dip_0 = emptyRealArray
-      allocate(prm%b_sl,prm%D_a,prm%i_sl,prm%f_at,prm%tau_Peierls, &
+      allocate(prm%b_sl,prm%d_caron,prm%i_sl,prm%f_at,prm%tau_Peierls, &
                prm%Q_s,prm%v_0,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
                source = emptyRealArray)
       allocate(prm%forestProjection(0,0))
@@ -246,8 +246,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
-    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers),         source=0.0_pReal)
-    allocate(dst%threshold_stress(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
+    allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pReal)
+    allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),  source=0.0_pReal)
 
     end associate
 
@@ -316,8 +316,6 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     ph, &
     en
 
-  real(pReal) :: &
-    VacancyDiffusion
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos, dot_gamma_neg,&
     tau_pos,&
@@ -325,38 +323,36 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     v_cl, &
     dot_rho_dip_formation, &
     dot_rho_dip_climb, &
-    dip_distance
+    d_hat
 
-  associate(prm => param(ph), stt => state(ph),&
-            dot => dotState(ph), dst => dependentState(ph))
+  associate(prm => param(ph), stt => state(ph), dot => dotState(ph), dst => dependentState(ph))
 
   call kinetics(Mp,T,ph,en,&
                 dot_gamma_pos,dot_gamma_neg, &
                 tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
-  dot%gamma_sl(:,en) = (dot_gamma_pos+dot_gamma_neg)                                                          ! ToDo: needs to be abs
-  VacancyDiffusion = prm%D_0*exp(-prm%Q_cl/(kB*T))
+  dot%gamma_sl(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
 
-  where(dEq0(tau_pos))                                                                              ! ToDo: use avg of pos and neg
+  where(dEq0(tau_pos))                                                                              ! ToDo: use avg of +/-
     dot_rho_dip_formation = 0.0_pReal
     dot_rho_dip_climb     = 0.0_pReal
   else where
-    dip_distance = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &
-                             prm%D_a, &                                                             ! lower limit
-                             dst%Lambda_sl(:,en))                                                   ! upper limit
-    dot_rho_dip_formation = merge(2.0_pReal*dip_distance* stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
+    d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &                     ! ToDo: use avg of +/-
+                      prm%d_caron, &                                                                ! lower limit
+                      dst%Lambda_sl(:,en))                                                          ! upper limit
+    dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
                                   0.0_pReal, &
                                   prm%dipoleformation)
-    v_cl = (3.0_pReal*prm%mu*VacancyDiffusion*prm%f_at/(2.0_pReal*pi*kB*T)) &
-                  * (1.0_pReal/(dip_distance+prm%D_a))
-    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(dip_distance-prm%D_a)                   ! ToDo: Discuss with Franz: Stress dependency?
+    v_cl = (3.0_pReal*prm%mu*prm%D_0*exp(-prm%Q_cl/(kB*T))*prm%f_at/(2.0_pReal*PI*kB*T)) &
+         * (1.0_pReal/(d_hat+prm%d_caron))
+    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                      ! ToDo: Discuss with Franz: Stress dependency?
   end where
 
-  dot%rho_mob(:,en) = abs(dot%gamma_sl(:,en))/(prm%b_sl*dst%Lambda_sl(:,en)) &                      ! multiplication
+  dot%rho_mob(:,en) = dot%gamma_sl(:,en)/(prm%b_sl*dst%Lambda_sl(:,en)) &                           ! multiplication
                     - dot_rho_dip_formation &
-                    - (2.0_pReal*prm%D_a)/prm%b_sl*stt%rho_mob(:,en)*abs(dot%gamma_sl(:,en))        ! Spontaneous annihilation of 2 single edge dislocations
+                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*dot%gamma_sl(:,en)         ! Spontaneous annihilation of 2 edges
   dot%rho_dip(:,en) = dot_rho_dip_formation &
-                    - (2.0_pReal*prm%D_a)/prm%b_sl*stt%rho_dip(:,en)*abs(dot%gamma_sl(:,en)) &      ! Spontaneous annihilation of a single edge dislocation with a dipole constituent
+                    - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*dot%gamma_sl(:,en) &       ! Spontaneous annihilation of an edge with a dipole
                     - dot_rho_dip_climb
 
   end associate
@@ -377,11 +373,11 @@ module subroutine dislotungsten_dependentState(ph,en)
     dislocationSpacing
 
 
-  associate(prm => param(ph), stt => state(ph),dst => dependentState(ph))
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
     dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
-    dst%threshold_stress(:,en) = prm%mu*prm%b_sl &
-                               * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
+    dst%tau_pass(:,en) = prm%mu*prm%b_sl &
+                       * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
     dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
 
@@ -416,7 +412,7 @@ module subroutine plastic_dislotungsten_results(ph,group)
         if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
       case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(dst%threshold_stress,group,trim(prm%output(o)), &
+        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
                                                      'threshold stress for slip','Pa')
     end select
   enddo outputsLoop
@@ -456,8 +452,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     StressRatio_p,StressRatio_pminus1, &
     dvel, vel, &
     tau_pos,tau_neg, &
-    t_n, t_k, dtk,dtn, &
-    needsGoodName                                                                                   ! ToDo: @Karo: any idea?
+    t_n, t_k, dtk,dtn
   integer :: j
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
@@ -475,13 +470,12 @@ pure subroutine kinetics(Mp,T,ph,en, &
             dot_gamma_0     => stt%rho_mob(:,en)*prm%b_sl*prm%v_0, &
             effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
-  significantPositiveTau: where(abs(tau_pos)-dst%threshold_stress(:,en) > tol_math_check)
-    StressRatio = (abs(tau_pos)-dst%threshold_stress(:,en))/prm%tau_Peierls
+  significantPositiveTau: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
+    StressRatio = (abs(tau_pos)-dst%tau_pass(:,en))/prm%tau_Peierls
     StressRatio_p       = StressRatio** prm%p
     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
-    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
 
-    t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
+    t_n = prm%b_sl/(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)*prm%omega*effectiveLength)
     t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
     vel = prm%h/(t_n + t_k)
@@ -492,7 +486,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
   end where significantPositiveTau
 
   if (present(ddot_gamma_dtau_pos)) then
-    significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,en) > tol_math_check)
+    significantPositiveTau2: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
       dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
           * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
       dtk = -1.0_pReal * t_k / tau_pos
@@ -505,13 +499,12 @@ pure subroutine kinetics(Mp,T,ph,en, &
     end where significantPositiveTau2
   endif
 
-  significantNegativeTau: where(abs(tau_neg)-dst%threshold_stress(:,en) > tol_math_check)
-    StressRatio = (abs(tau_neg)-dst%threshold_stress(:,en))/prm%tau_Peierls
+  significantNegativeTau: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
+    StressRatio = (abs(tau_neg)-dst%tau_pass(:,en))/prm%tau_Peierls
     StressRatio_p       = StressRatio** prm%p
     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
-    needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
 
-    t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
+    t_n = prm%b_sl/(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)*prm%omega*effectiveLength)
     t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
     vel = prm%h/(t_n + t_k)
@@ -522,7 +515,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
   end where significantNegativeTau
 
   if (present(ddot_gamma_dtau_neg)) then
-    significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,en) > tol_math_check)
+    significantNegativeTau2: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
       dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
           * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
       dtk = -1.0_pReal * t_k / tau_neg

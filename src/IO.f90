@@ -16,7 +16,8 @@ module IO
   private
 
   character(len=*), parameter, public :: &
-    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
+    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
+    IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
     IO_COMMENT = '#'
@@ -119,27 +120,28 @@ function IO_read(fileName) result(fileContent)
   character(len=:), allocatable :: fileContent
 
   integer ::  &
-    fileLength, &
     fileUnit, &
     myStat
+  integer(pI64) ::  &
+    fileLength
 
 
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
   allocate(character(len=fileLength)::fileContent)
-  if(fileLength==0) then
+  if (fileLength==0) then
     close(fileUnit)
     return
   endif
 
   read(fileUnit,iostat=myStat) fileContent
-  if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
 
   if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
-  if(fileContent(fileLength:fileLength) /= IO_EOL)           fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
+  if (fileContent(fileLength:fileLength) /= IO_EOL)          fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
 
 end function IO_read
 
@@ -494,6 +496,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = '--- expected after YAML file header'
     case (709)
       msg = 'Length mismatch'
+    case (710)
+      msg = 'Closing quotation mark missing in string'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
