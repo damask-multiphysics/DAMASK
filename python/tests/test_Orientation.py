@@ -440,10 +440,10 @@ class TestOrientation:
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet
     def test_Schmid(self,update,ref_path,lattice):
-        L = Orientation(lattice=lattice)
+        O = Orientation(lattice=lattice)                                                            # noqa
         for mode in ['slip','twin']:
             reference = ref_path/f'{lattice}_{mode}.txt'
-            P = L.Schmid(mode)
+            P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             if update:
                 table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})
                 table.save(reference)
@@ -453,7 +453,6 @@ class TestOrientation:
     def test_Schmid_vectorize(self,lattice):
         O = Orientation.from_random(shape=4,lattice=lattice)                                        # noqa
         for mode in ['slip','twin']:
-            P = O.Schmid(mode)
-            print(P.shape)
+            P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             for i in range(4):
                 assert np.allclose(Orientation(rotation=O[i],lattice=lattice).Schmid(mode),P[:,i])
