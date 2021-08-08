@@ -453,6 +453,7 @@ class TestOrientation:
     def test_Schmid_vectorize(self,lattice):
         O = Orientation.from_random(shape=4,lattice=lattice)                                        # noqa
         for mode in ['slip','twin']:
-            P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
+            Ps = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             for i in range(4):
-                assert np.allclose(Orientation(rotation=O[i],lattice=lattice).Schmid(mode),P[:,i])
+                P = O[i].Schmid(N_slip='*') if mode == 'slip' else O[i].Schmid(N_twin='*')
+                assert np.allclose(P,Ps[:,i])

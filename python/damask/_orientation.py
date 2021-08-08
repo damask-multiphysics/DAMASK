@@ -861,7 +861,7 @@ class Orientation(Rotation,Crystal):
         Parameters
         ----------
         N_slip|N_twin : iterable of int
-            Number of deformation systems per deformation system.
+            Number of deformation systems per family of the deformation system.
             Use '*'. to select all.
 
         Returns
@@ -871,7 +871,7 @@ class Orientation(Rotation,Crystal):
 
         Examples
         --------
-        Schmid matrix (in lab frame) of first slip system of a face-centered
+        Schmid matrix (in lab frame) of first octahedral slip system of a face-centered
         cubic crystal in "Goss" orientation.
 
         >>> import damask
@@ -889,7 +889,7 @@ class Orientation(Rotation,Crystal):
 
         kinematics = self.kinematics('slip' if N_twin is None else 'twin')
         active = N_slip if N_twin is None else N_twin
-        if active == '*': active = [len(a) for a in kinematics]
+        if active == '*': active = [len(a) for a in kinematics['direction']]
 
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
         p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
