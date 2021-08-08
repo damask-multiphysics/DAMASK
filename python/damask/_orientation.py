@@ -108,7 +108,7 @@ class Orientation(Rotation,Crystal):
     An array of 3 x 5 random orientations reduced to the fundamental zone of tetragonal symmetry:
 
     >>> import damask
-    >>> o=damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
+    >>> o=damask.Orientation.from_random(shape=(3,5),family='tetragonal').reduced
 
     """
 
@@ -138,9 +138,8 @@ class Orientation(Rotation,Crystal):
 
     def __repr__(self):
         """Represent."""
-        return '\n'.join(([] if self.lattice is None else [f'Bravais lattice {self.lattice}'])
-                       + ([f'Crystal family {self.family}'])
-                       + [super().__repr__()])
+        return '\n'.join([Crystal.__repr__(self),
+                          Rotation.__repr__(self)])
 
 
     def __copy__(self,rotation=None):
@@ -862,7 +861,7 @@ class Orientation(Rotation,Crystal):
         ----------
         N_slip|N_twin : iterable of int
             Number of deformation systems per family of the deformation system.
-            Use '*'. to select all.
+            Use '*' to select all.
 
         Returns
         -------
@@ -887,8 +886,8 @@ class Orientation(Rotation,Crystal):
         if (N_slip is not None) ^ (N_twin is None):
             raise KeyError('Specify either "N_slip" or "N_twin"')
 
-        kinematics = self.kinematics('slip' if N_twin is None else 'twin')
-        active = N_slip if N_twin is None else N_twin
+        kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
+                            (self.kinematics('twin'),N_twin)
         if active == '*': active = [len(a) for a in kinematics['direction']]
 
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))

@@ -26,7 +26,7 @@ lattice_symmetries = {
 
 
 class Crystal():
-    """Lattice."""
+    """Crystal lattice."""
 
     def __init__(self,*,
                  family = None,
@@ -41,7 +41,7 @@ class Crystal():
         ----------
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
             Name of the crystal family.
-            Will be infered if 'lattice' is given.
+            Will be inferred if 'lattice' is given.
         lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
             Name of the Bravais lattice in Pearson notation.
         a : float, optional
@@ -110,14 +110,23 @@ class Crystal():
             self.alpha = self.beta = self.gamma = None
 
 
+    def __repr__(self):
+        """Represent."""
+        return '\n'.join([f'Crystal family {self.family}']
+                       + ([] if self.lattice is None else [f'Bravais lattice {self.lattice}']+
+                                                           list(map(lambda x:f'{x[0]}:{x[1]:.5g}',
+                                                                    zip(['a','b','c','alpha','beta','gamma',],
+                                                                         self.parameters))))
+                        )
+
     def __eq__(self,other):
         """
         Equal to other.
 
         Parameters
         ----------
-        other : Lattice
-            Lattice to check for equality.
+        other : Crystal
+            Crystal to check for equality.
 
         """
         return self.lattice == other.lattice and \
@@ -325,7 +334,7 @@ class Crystal():
 
     def kinematics(self,mode):
         """
-        Return kinematic sytems.
+        Return crystal kinematics systems.
 
         Parameters
         ----------
@@ -335,7 +344,7 @@ class Crystal():
         Returns
         -------
         direction_plane : dictionary
-            Direction and plane of deformation mode.
+            Directions and planes of deformation mode families.
 
         """
         _kinematics = {
@@ -531,7 +540,7 @@ class Crystal():
         Returns
         -------
         operations : (string, damask.Rotation)
-            Rotations characterizing the orientation relationship.
+            Resulting lattice and rotations characterizing the orientation relationship.
 
         References
         ----------
