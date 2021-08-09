@@ -503,8 +503,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! errors related to the grid solver
     case (831)
       msg = 'mask consistency violated in grid load case'
-    case (832)
-      msg = 'ill-defined L (line partly defined) in grid load case'
     case (833)
       msg = 'non-positive ratio for geometric progression'
     case (834)
