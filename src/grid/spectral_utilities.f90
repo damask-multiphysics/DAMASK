@@ -88,7 +88,7 @@ module spectral_utilities
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
     real(pReal), dimension(3,3)   :: values = 0.0_pReal
-    logical,     dimension(3,3)   :: mask   = .false.
+    logical,     dimension(3,3)   :: mask   = .true.
     character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
@@ -96,7 +96,7 @@ module spectral_utilities
     real(pReal), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
     type(rotation)              :: rotation_BC
-    real(pReal) :: timeinc
+    real(pReal) :: Delta_t
   end type tSolutionParams
 
   type :: tNumerics
@@ -684,7 +684,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   logical :: errmatinv
   character(len=pStringLen):: formatString
 
-  mask_stressVector = reshape(transpose(mask_stress), [9])
+  mask_stressVector = .not. reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)
   if(size_reduced > 0) then
     temp99_real = math_3333to99(rot_BC%rotate(C))
@@ -791,16 +791,16 @@ end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate constitutive response from homogenization_F0 to F during timeinc
+!> @brief calculate constitutive response from homogenization_F0 to F during Delta_t
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
-                                          F,timeinc,rotation_BC)
+                                          F,Delta_t,rotation_BC)
 
   real(pReal),    intent(out), dimension(3,3,3,3)                   :: C_volAvg, C_minmaxAvg        !< average stiffness
   real(pReal),    intent(out), dimension(3,3)                       :: P_av                         !< average PK stress
   real(pReal),    intent(out), dimension(3,3,grid(1),grid(2),grid3) :: P                            !< PK stress
   real(pReal),    intent(in),  dimension(3,3,grid(1),grid(2),grid3) :: F                            !< deformation gradient target
-  real(pReal),    intent(in)                                        :: timeinc                      !< loading time
+  real(pReal),    intent(in)                                        :: Delta_t                      !< loading time
   type(rotation), intent(in),  optional                             :: rotation_BC                  !< rotation of load frame
 
 
@@ -815,11 +815,11 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                     ! set materialpoint target F to estimated field
 
-  call homogenization_mechanical_response(timeinc,[1,1],[1,product(grid(1:2))*grid3])               ! calculate P field
+  call homogenization_mechanical_response(Delta_t,[1,1],[1,product(grid(1:2))*grid3])               ! calculate P field
   if (.not. terminallyIll) &
-    call homogenization_thermal_response(timeinc,[1,1],[1,product(grid(1:2))*grid3])
+    call homogenization_thermal_response(Delta_t,[1,1],[1,product(grid(1:2))*grid3])
   if (.not. terminallyIll) &
-    call homogenization_mechanical_response2(timeinc,[1,1],[1,product(grid(1:2))*grid3])
+    call homogenization_mechanical_response2(Delta_t,[1,1],[1,product(grid(1:2))*grid3])
 
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
@@ -870,14 +870,14 @@ end subroutine utilities_constitutiveResponse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates forward rate, either guessing or just add delta/timeinc
+!> @brief calculates forward rate, either guessing or just add delta/Delta_t
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
 
   real(pReal), intent(in), dimension(3,3) :: &
     avRate                                                                                          !< homogeneous addon
   real(pReal), intent(in) :: &
-    dt                                                                                              !< timeinc between field0 and field
+    dt                                                                                              !< Delta_t between field0 and field
   logical, intent(in) :: &
     heterogeneous                                                                                   !< calculate field of rates
   real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid3) :: &
@@ -899,10 +899,10 @@ end function utilities_calculateRate
 !> @brief forwards a field with a pointwise given rate, if aim is given,
 !> ensures that the average matches the aim
 !--------------------------------------------------------------------------------------------------
-function utilities_forwardField(timeinc,field_lastInc,rate,aim)
+function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
 
   real(pReal), intent(in) :: &
-    timeinc                                                                                         !< timeinc of current step
+    Delta_t                                                                                         !< Delta_t of current step
   real(pReal), intent(in),           dimension(3,3,grid(1),grid(2),grid3) :: &
     field_lastInc, &                                                                                !< initial field
     rate                                                                                            !< rate by which to forward
@@ -913,7 +913,7 @@ function utilities_forwardField(timeinc,field_lastInc,rate,aim)
   real(pReal),                       dimension(3,3)                       :: fieldDiff              !< <a + adot*t> - aim
   PetscErrorCode :: ierr
 
-  utilities_forwardField = field_lastInc + rate*timeinc
+  utilities_forwardField = field_lastInc + rate*Delta_t
   if (present(aim)) then                                                                            !< correct to match average
     fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
     call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)

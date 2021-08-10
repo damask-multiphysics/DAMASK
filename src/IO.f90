@@ -16,7 +16,8 @@ module IO
   private
 
   character(len=*), parameter, public :: &
-    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
+    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
+    IO_QUOTES  = "'"//'"'
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
     IO_COMMENT = '#'
@@ -495,13 +496,13 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = '--- expected after YAML file header'
     case (709)
       msg = 'Length mismatch'
+    case (710)
+      msg = 'Closing quotation mark missing in string'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
     case (831)
       msg = 'mask consistency violated in grid load case'
-    case (832)
-      msg = 'ill-defined L (line partly defined) in grid load case'
     case (833)
       msg = 'non-positive ratio for geometric progression'
     case (834)

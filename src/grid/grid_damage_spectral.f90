@@ -160,10 +160,10 @@ end subroutine grid_damage_spectral_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_damage_spectral_solution(timeinc) result(solution)
+function grid_damage_spectral_solution(Delta_t) result(solution)
 
   real(pReal), intent(in) :: &
-    timeinc                                                                                         !< increment in time for current solution
+    Delta_t                                                                                         !< increment in time for current solution
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -176,7 +176,7 @@ function grid_damage_spectral_solution(timeinc) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%timeinc = timeinc
+  params%Delta_t = Delta_t
 
   call SNESSolve(damage_snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
@@ -284,7 +284,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
+    scalarField_real(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
                             + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
                             + mu_ref*phi_current(i,j,k)
   enddo; enddo; enddo
@@ -292,7 +292,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! convolution of damage field with green operator
   call utilities_FFTscalarForward
-  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%timeinc)
+  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%Delta_t)
   call utilities_FFTscalarBackward
 
   where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > phi_lastInc) &
