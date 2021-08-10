@@ -67,7 +67,6 @@ subroutine results_init(restart)
 
   character(len=pPathLen) :: commandLine
   integer :: hdferr
-  integer(HID_T) :: group_id
   character(len=:), allocatable :: date
 
 

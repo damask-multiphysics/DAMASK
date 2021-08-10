@@ -199,10 +199,9 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_init(materials,phases)
+module subroutine mechanical_init(phases)
 
   class(tNode), pointer :: &
-    materials, &
     phases
 
   integer :: &

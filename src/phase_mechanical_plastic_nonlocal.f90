@@ -1119,8 +1119,11 @@ end subroutine nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
+#if __INTEL_COMPILER >= 2020
+non_recursive function rhoDotFlux(timestep,ph,en,ip,el)
+#else
 function rhoDotFlux(timestep,ph,en,ip,el)
-
+#endif
   real(pReal), intent(in) :: &
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &

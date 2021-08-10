@@ -80,7 +80,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    ph, i, &
+    ph, &
     Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
