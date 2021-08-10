@@ -1930,7 +1930,8 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       -1,-2,-1,    -1, 1,-1, &
       -1, 1, 2,    -1, 1,-1  &
       ],pReal),shape(FCCTOHEX_SYSTEMTRANS))
-       real(pReal), dimension(4,fcc_Ntrans), parameter :: &
+
+  real(pReal), dimension(4,fcc_Ntrans), parameter :: &
     FCCTOBCC_SYSTEMTRANS = reshape([&
       0.0, 1.0, 0.0,     10.26, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
       0.0,-1.0, 0.0,     10.26, &
@@ -1978,7 +1979,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       0.0, 0.0, 1.0,     45.0  &
       ],shape(FCCTOBCC_BAINROT))
 
-  if (a_bcc > 0.0_pReal .and. a_fcc > 0.0_pReal .and. dEq0(cOverA)) then                            ! fcc -> bcc transformation
+  if (a_bcc > 0.0_pReal .and. a_fcc > 0.0_pReal .and. dEq0(cOverA)) then                            ! fcc -> bcc
     do i = 1,sum(Ntrans)
       call R%fromAxisAngle(FCCTOBCC_SYSTEMTRANS(:,i),degrees=.true.,P=1)
       call B%fromAxisAngle(FCCTOBCC_BAINROT(:,i),    degrees=.true.,P=1)
@@ -1992,7 +1993,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       Q(1:3,1:3,i) = matmul(R%asMatrix(),B%asMatrix())
       S(1:3,1:3,i) = matmul(R%asMatrix(),U) - MATH_I3
     enddo
-  elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                ! fcc -> hex transformation
+  elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                ! fcc -> hex
     ss      = MATH_I3
     sd      = MATH_I3
     ss(1,3) = sqrt(2.0_pReal)/4.0_pReal
@@ -2062,7 +2063,7 @@ function getlabels(active,potential,system) result(labels)
       enddo normal
       label(i:i) = ')'
 
-      labels(s) = label
+      labels(a) = label
 
     enddo activeSystems
   enddo activeFamilies

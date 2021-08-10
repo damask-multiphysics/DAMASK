@@ -1301,7 +1301,8 @@ class Result:
                     loc  = f[group+'/'+label]
                     datasets_in[arg]={'data' :loc[()],
                                       'label':label,
-                                      'meta': {k:(v if h5py3 else v.decode()) for k,v in loc.attrs.items()}}
+                                      'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
+                                               for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -1369,7 +1370,7 @@ class Result:
                                                now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                     for l,v in result['meta'].items():
-                        dataset.attrs[l.lower()]=v if h5py3 else v.encode()
+                        dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v
                     creator = dataset.attrs['creator'] if h5py3 else \
                               dataset.attrs['creator'].decode()
                     dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \

@@ -30,6 +30,8 @@ submodule(phase:plastic) kinehardening
       nonSchmidActive = .false.
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
+    character(len=:),          allocatable, dimension(:) :: &
+      systems_sl
   end type tParameters
 
   type :: tKinehardeningState
@@ -40,7 +42,6 @@ submodule(phase:plastic) kinehardening
       gamma, &                                                                                      !< accumulated (absolute) shear
       gamma_0, &                                                                                    !< accumulated shear at last switch of stress sense
       sgn_gamma                                                                                     !< sense of acting shear stress (-1 or +1)
-
   end type tKinehardeningState
 
 !--------------------------------------------------------------------------------------------------
@@ -113,6 +114,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
+      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
       prm%P = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
@@ -351,31 +353,37 @@ module subroutine plastic_kinehardening_results(ph,group)
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
-  integer :: o
+  integer :: ou
+
 
   associate(prm => param(ph), stt => state(ph))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-     case ('xi')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
-                                                    'resistance against plastic slip','Pa')
-     case ('chi')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%chi,group,trim(prm%output(o)), &
-                                                    'back stress','Pa')
-     case ('sgn(gamma)')
-       if(prm%sum_N_sl>0) call results_writeDataset(int(stt%sgn_gamma),group,trim(prm%output(o)), &
-                                                    'sense of shear','1')
-     case ('chi_0')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%chi_0,group,trim(prm%output(o)), &
-                                                    'back stress at last switch of stress sense','Pa')
-     case ('gamma_0')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_0,group,trim(prm%output(o)), &
-                                                    'plastic shear at last switch of stress sense','1')
-     case ('gamma')
-       if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma,group,trim(prm%output(o)), &
-                                                    'plastic shear','1')
-    end select
-  enddo outputsLoop
+
+    do ou = 1,size(prm%output)
+
+      select case(trim(prm%output(ou)))
+
+        case ('xi')
+          call results_writeDataset(stt%xi,group,trim(prm%output(ou)), &
+                                    'resistance against plastic slip','Pa',prm%systems_sl)
+        case ('chi')
+          call results_writeDataset(stt%chi,group,trim(prm%output(ou)), &
+                                    'back stress','Pa',prm%systems_sl)
+        case ('sgn(gamma)')
+          call results_writeDataset(int(stt%sgn_gamma),group,trim(prm%output(ou)), &
+                                    'sense of shear','1',prm%systems_sl)
+        case ('chi_0')
+          call results_writeDataset(stt%chi_0,group,trim(prm%output(ou)), &
+                                    'back stress at last switch of stress sense','Pa',prm%systems_sl)
+        case ('gamma_0')
+          call results_writeDataset(stt%gamma_0,group,trim(prm%output(ou)), &
+                                    'plastic shear at last switch of stress sense','1',prm%systems_sl)
+        case ('gamma')
+          call results_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
+                                    'plastic shear','1',prm%systems_sl)
+      end select
+
+    enddo
+
   end associate
 
 end subroutine plastic_kinehardening_results

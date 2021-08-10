@@ -82,6 +82,9 @@ submodule(phase:plastic) dislotwin
       ExtendedDislocations, &                                                                       !< consider split into partials for climb calculation
       fccTwinTransNucleation, &                                                                     !< twinning and transformation models are for fcc
       omitDipoles                                                                                   !< flag controlling consideration of dipole formation
+    character(len=:),          allocatable, dimension(:) :: &
+      systems_sl, &
+      systems_tw
   end type                                                                                          !< container type for internal constitutive parameters
 
   type :: tDislotwinState
@@ -93,7 +96,7 @@ submodule(phase:plastic) dislotwin
       f_tr
   end type tDislotwinState
 
-  type :: tDislotwinMicrostructure
+  type :: tDislotwinDependentState
     real(pReal),                  dimension(:,:),   allocatable :: &
       Lambda_sl, &                                                                                  !< mean free path between 2 obstacles seen by a moving dislocation
       Lambda_tw, &                                                                                  !< mean free path between 2 obstacles seen by a growing twin
@@ -105,7 +108,7 @@ submodule(phase:plastic) dislotwin
       V_tr, &                                                                                       !< volume of a new martensite disc
       tau_r_tw, &                                                                                   !< stress to bring partials close together (twin)
       tau_r_tr                                                                                      !< stress to bring partials close together (trans)
-  end type tDislotwinMicrostructure
+  end type tDislotwinDependentState
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
@@ -113,7 +116,7 @@ submodule(phase:plastic) dislotwin
   type(tDislotwinState),          allocatable, dimension(:) :: &
     dotState, &
     state
-  type(tDislotwinMicrostructure), allocatable, dimension(:) :: dependentState
+  type(tDislotwinDependentState), allocatable, dimension(:) :: dependentState
 
 contains
 
@@ -192,6 +195,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
+      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
       prm%P_sl    = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'),phase_lattice(ph))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),phase_cOverA(ph))
@@ -259,6 +263,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     N_tw         = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
+      prm%systems_tw = lattice_labels_twin(N_tw,phase_lattice(ph))
       prm%P_tw  = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
       prm%h_tw_tw   = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dFloat('h_tw-tw'), &
                                                      phase_lattice(ph))
@@ -787,44 +792,49 @@ module subroutine plastic_dislotwin_results(ph,group)
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
-  integer :: o
+  integer :: ou
 
- associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
 
-      case('rho_mob')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_mob,group,trim(prm%output(o)), &
-                                                     'mobile dislocation density','1/m²')
-      case('rho_dip')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip,group,trim(prm%output(o)), &
-                                                     'dislocation dipole density','1/m²')
-      case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_sl,group,trim(prm%output(o)), &
-                                                     'plastic shear','1')
-      case('Lambda_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(o)), &
-                                                     'mean free path for slip','m')
-      case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
-                                                     'passing stress for slip','Pa')
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-      case('f_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(stt%f_tw,group,trim(prm%output(o)), &
-                                                     'twinned volume fraction','m³/m³')
-      case('Lambda_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(o)), &
-                                                     'mean free path for twinning','m')
-      case('tau_hat_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(dst%tau_hat_tw,group,trim(prm%output(o)), &
-                                                     'threshold stress for twinning','Pa')
+    do ou = 1,size(prm%output)
 
-      case('f_tr')
-        if(prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(o)), &
-                                                     'martensite volume fraction','m³/m³')
+      select case(trim(prm%output(ou)))
 
-    end select
-  enddo outputsLoop
+        case('rho_mob')
+          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                       'mobile dislocation density','1/m²',prm%systems_sl)
+        case('rho_dip')
+          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                       'dislocation dipole density','1/m²',prm%systems_sl)
+        case('gamma_sl')
+          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                       'plastic shear','1',prm%systems_sl)
+        case('Lambda_sl')
+          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                       'mean free path for slip','m',prm%systems_sl)
+        case('tau_pass')
+          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                       'passing stress for slip','Pa',prm%systems_sl)
+
+        case('f_tw')
+          call results_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
+                                       'twinned volume fraction','m³/m³',prm%systems_tw)
+        case('Lambda_tw')
+          call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
+                                       'mean free path for twinning','m',prm%systems_tw)
+        case('tau_hat_tw')
+          call results_writeDataset(dst%tau_hat_tw,group,trim(prm%output(ou)), &
+                                       'threshold stress for twinning','Pa',prm%systems_tw)
+
+        case('f_tr')
+          if(prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
+                                                       'martensite volume fraction','m³/m³')
+
+      end select
+
+    enddo
+
   end associate
 
 end subroutine plastic_dislotwin_results
