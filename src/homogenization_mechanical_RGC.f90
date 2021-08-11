@@ -778,9 +778,9 @@ pure function interfaceNormal(intFace,ho,en) result(n)
   associate (dst => dependentState(ho))
 
     n = 0.0_pReal
-    n(abs(intFace(1))) = real(intFace(1)/abs(intFace(1)),pReal)                                    ! get the normal vector w.r.t. cluster axis
+    n(abs(intFace(1))) = real(intFace(1)/abs(intFace(1)),pReal)                                     ! get the normal vector w.r.t. cluster axis
 
-    n = matmul(dst%orientation(1:3,1:3,en),n)                             ! map the normal vector into sample coordinate system (basis)
+    n = matmul(dst%orientation(1:3,1:3,en),n)                                                       ! map the normal vector into sample coordinate system (basis)
 
   end associate
 
