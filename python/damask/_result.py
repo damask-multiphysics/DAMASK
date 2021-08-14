@@ -1355,15 +1355,17 @@ class Result:
                         dataset[...] = result['data']
                         dataset.attrs['overwritten'] = True
                     else:
+                        shape = result['data'].shape
                         if result['data'].size >= chunk_size*2:
-                            shape  = result['data'].shape
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
-                            dataset = f[group].create_dataset(result['label'],data=result['data'],
-                                                              maxshape=shape, chunks=chunks,
-                                                              compression='gzip', compression_opts=6,
-                                                              shuffle=True,fletcher32=True)
+                            compression = ('gzip',6)
                         else:
-                            dataset = f[group].create_dataset(result['label'],data=result['data'])
+                            chunks = shape
+                            compression = (None,None)
+                        dataset = f[group].create_dataset(result['label'],data=result['data'],
+                                                          maxshape=shape, chunks=chunks,
+                                                          compression=compression[0], compression_opts=compression[1],
+                                                          shuffle=True,fletcher32=True)
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \

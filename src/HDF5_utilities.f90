@@ -77,10 +77,12 @@ module HDF5_utilities
   end interface HDF5_addAttribute
 
 #ifdef PETSC
-  logical, parameter, private :: parallel_default = .true.
+  logical, parameter :: parallel_default = .true.
 #else
-  logical, parameter, private :: parallel_default = .false.
+  logical, parameter :: parallel_default = .false.
 #endif
+  logical :: compression_possible
+
   public :: &
     HDF5_utilities_init, &
     HDF5_read, &
@@ -103,25 +105,32 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_utilities_init
 
-  integer         :: hdferr
+  integer :: hdferr, HDF5_major, HDF5_minor, HDF5_release, deflate_info
   integer(SIZE_T) :: typeSize
+
 
   print'(/,a)', ' <<<+-  HDF5_Utilities init  -+>>>'
 
-!--------------------------------------------------------------------------------------------------
-!initialize HDF5 library and check if integer and float type size match
+
   call h5open_f(hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (int(bit_size(0),SIZE_T)/=typeSize*8) &
     error stop 'Default integer size does not match H5T_NATIVE_INTEGER'
 
   call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (int(storage_size(0.0_pReal),SIZE_T)/=typeSize*8) &
     error stop 'pReal does not match H5T_NATIVE_DOUBLE'
+
+  call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
+  if (hdferr < 0) error stop 'HDF5 error'
+  call H5Zget_filter_info_f(H5Z_FILTER_DEFLATE_F,deflate_info,hdferr)
+  if (hdferr < 0) error stop 'HDF5 error'
+  compression_possible = (HDF5_major == 1 .and. HDF5_minor >= 12) .and. &                           ! https://forum.hdfgroup.org/t/6186
+                         ior(H5Z_FILTER_ENCODE_ENABLED_F,deflate_info) > 0
 
 end subroutine HDF5_utilities_init
 
@@ -1907,10 +1916,11 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
     totalShape                                                                                      !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
 
-  integer,          dimension(worldsize)      :: writeSize                                          !< contribution of all processes
+  integer, dimension(worldsize) :: writeSize                                                        !< contribution of all processes
   integer(HID_T) ::  dcpl
-  integer :: ierr, hdferr, HDF5_major, HDF5_minor, HDF5_release
+  integer :: ierr, hdferr
   integer(HSIZE_T), parameter :: chunkSize = 1024_HSIZE_T**2/8_HSIZE_T
+
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective when writing in parallel)
@@ -1938,23 +1948,23 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   totalShape = [myShape(1:ubound(myShape,1)-1),int(sum(writeSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
-! compress (and chunk) larger datasets
+! chunk dataset, enable compression for larger datasets
   call h5pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  if(product(totalShape) >= chunkSize*2_HSIZE_T) then
-    call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
+  if (hdferr < 0) error stop 'HDF5 error'
+
+  call h5pset_shuffle_f(dcpl, hdferr)
+  if (hdferr < 0) error stop 'HDF5 error'
+  call h5pset_Fletcher32_f(dcpl,hdferr)
+  if (hdferr < 0) error stop 'HDF5 error'
+
+  if (product(totalShape) >= chunkSize*2_HSIZE_T) then
+    call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
     if (hdferr < 0) error stop 'HDF5 error'
-    if (HDF5_major == 1 .and. HDF5_minor >= 12) then                                                ! https://forum.hdfgroup.org/t/6186
-      call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
-      if (hdferr < 0) error stop 'HDF5 error'
-      call h5pset_shuffle_f(dcpl, hdferr)
-      if (hdferr < 0) error stop 'HDF5 error'
-      call h5pset_deflate_f(dcpl, 6, hdferr)
-      if (hdferr < 0) error stop 'HDF5 error'
-      call h5pset_Fletcher32_f(dcpl,hdferr)
-      if (hdferr < 0) error stop 'HDF5 error'
-    endif
+    if (compression_possible) call h5pset_deflate_f(dcpl, 6, hdferr)
+  else
+    call h5pset_chunk_f(dcpl, size(totalShape), totalShape, hdferr)
   endif
+  if (hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
