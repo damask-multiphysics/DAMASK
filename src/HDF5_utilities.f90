@@ -1970,20 +1970,22 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   call h5pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
 
-  call h5pset_shuffle_f(dcpl, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
-  call h5pset_Fletcher32_f(dcpl,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
-
-  if (product(totalShape) >= chunkSize*2_HSIZE_T) then
-    call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
+  if (product(totalShape) > 0) then
+    call h5pset_shuffle_f(dcpl, hdferr)
     if (hdferr < 0) error stop 'HDF5 error'
-    if (compression_possible) call h5pset_deflate_f(dcpl, 6, hdferr)
-  else
-    call h5pset_chunk_f(dcpl, size(totalShape), totalShape, hdferr)
-  endif
-  if (hdferr < 0) error stop 'HDF5 error'
+    call h5pset_Fletcher32_f(dcpl,hdferr)
+    if (hdferr < 0) error stop 'HDF5 error'
 
+    if (product(totalShape) >= chunkSize*2_HSIZE_T) then
+      call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
+      if (hdferr < 0) error stop 'HDF5 error'
+      if (compression_possible) call h5pset_deflate_f(dcpl, 6, hdferr)
+    else
+      call h5pset_chunk_f(dcpl, size(totalShape), totalShape, hdferr)
+    endif
+    if (hdferr < 0) error stop 'HDF5 error'
+  endif
+ 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
   call h5screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
