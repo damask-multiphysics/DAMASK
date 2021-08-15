@@ -189,10 +189,10 @@ subroutine DAMASK_interface_init
   if (len_trim(workingDirArg) > 0) &
     print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
   print'(a)',        ' Geometry argument:      '//trim(geometryArg)
-  print'(a)',        ' Loadcase argument:      '//trim(loadcaseArg)
+  print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
   print'(/,a)',      ' Working directory:      '//getCWD()
   print'(a)',        ' Geometry file:          '//interface_geomFile
-  print'(a)',        ' Loadcase file:          '//interface_loadFile
+  print'(a)',        ' Load case file:         '//interface_loadFile
   print'(a)',        ' Solver job name:        '//getSolverJobName()
   if (interface_restartInc > 0) &
     print'(a,i6.6)', ' Restart from increment: ', interface_restartInc

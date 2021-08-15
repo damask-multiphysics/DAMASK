@@ -389,20 +389,24 @@ subroutine grid_mechanical_spectral_basic_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-
-  call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
-  call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
-  call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
-  call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
   call HDF5_write(F,groupHandle,'F')
   call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
-
-  call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
-  call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-  call HDF5_write(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
-
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
+
+  if (worldrank == 0) then
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a',.false.)
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
+    call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
+    call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
+    call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+    call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
+    call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
+    call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+    call HDF5_write(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
+    call HDF5_closeGroup(groupHandle)
+    call HDF5_closeFile(fileHandle)
+  endif
 
   if (num%update_gamma) call utilities_saveReferenceStiffness
 
