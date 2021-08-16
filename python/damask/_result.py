@@ -983,20 +983,22 @@ class Result:
 
 
     @staticmethod
-    def _add_pole(q,uvw,hkl):
+    def _add_pole(q,uvw,hkl,with_symmetry):
         c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
-        pole = Orientation(q['data'], lattice=q['meta']['lattice'], a=1, c=c).to_pole(uvw=uvw,hkl=hkl)
+        pole = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c).to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
 
         return {
                 'data': pole,
                 'label': 'p^[{} {} {}]'.format(*uvw) if uvw else 'p^({} {} {})'.format(*hkl),
                 'meta' : {
                            'unit':        '1',
-                           'description': f"lab frame vector along lattice {'direction' if uvw else 'plane'}",
+                           'description': 'lab frame vector along lattice ' \
+                                          + ('direction' if uvw else 'plane') \
+                                          + ('s' if with_symmetry else ''),
                            'creator':     'add_pole'
                           }
                 }
-    def add_pole(self,q='O',*,uvw=None,hkl=None):
+    def add_pole(self,q='O',*,uvw=None,hkl=None,with_symmetry=False):
         """
         Add lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -1007,9 +1009,11 @@ class Result:
             Defaults to 'O'.
         uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of crystallographic direction or plane normal.
+        with_symmetry : bool, optional
+            Calculate all N symmetrically equivalent vectors.
 
         """
-        self._add_generic_pointwise(self._add_pole,{'q':q},{'uvw':uvw,'hkl':hkl})
+        self._add_generic_pointwise(self._add_pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry})
 
 
     @staticmethod
