@@ -225,7 +225,8 @@ class TestResult:
         in_file   = default.place('S')
         assert np.allclose(in_memory,in_file)
 
-    @pytest.mark.parametrize('options',[{'uvw':[1,0,0]},{'hkl':[0,1,1]}])
+    @pytest.mark.parametrize('options',[{'uvw':[1,0,0],'with_symmetry':False},
+                                        {'hkl':[0,1,1],'with_symmetry':True}])
     def test_add_pole(self,default,options):
         default.add_pole(**options)
         rot = default.place('O')
