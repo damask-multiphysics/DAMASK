@@ -320,8 +320,8 @@ class Crystal():
 
         Returns
         -------
-        vector : numpy.ndarray of shape (...,3) or (N,...,3)
-            Crystal frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
+        vector : numpy.ndarray of shape (...,3)
+            Crystal frame vector along [uvw] direction or (hkl) plane normal.
 
         """
         if (uvw is not None) ^ (hkl is None):
