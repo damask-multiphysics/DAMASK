@@ -123,6 +123,10 @@ class TestResult:
         in_file   = default.place('x')
         assert np.allclose(in_memory,in_file)
 
+    def test_add_calculation_invalid(self,default):
+        default.add_calculation('np.linalg.norm(#F#,axis=0)','wrong_dim')
+        assert default.get('wrong_dim') is None
+
     def test_add_stress_Cauchy(self,default):
         default.add_stress_Cauchy('P','F')
         in_memory = mechanics.stress_Cauchy(default.place('P'), default.place('F'))
