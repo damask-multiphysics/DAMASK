@@ -83,9 +83,11 @@ subroutine parse_numerics()
     if (worldrank == 0) then
       print*, 'reading numerics.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('numerics.yaml')
-      call results_openJobFile(parallel=.false.)
-      call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
-      call results_closeJobFile
+      if (len(fileContent) > 0) then
+        call results_openJobFile(parallel=.false.)
+        call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
+        call results_closeJobFile
+      endif
     endif
     call parallelization_bcast_str(fileContent)
 
@@ -113,9 +115,11 @@ subroutine parse_debug()
     if (worldrank == 0) then
       print*, 'reading debug.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('debug.yaml')
-      call results_openJobFile(parallel=.false.)
-      call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
-      call results_closeJobFile
+      if (len(fileContent) > 0) then
+        call results_openJobFile(parallel=.false.)
+        call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
+        call results_closeJobFile
+      endif
     endif
     call parallelization_bcast_str(fileContent)
 
