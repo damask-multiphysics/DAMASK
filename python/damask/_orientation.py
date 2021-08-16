@@ -517,15 +517,15 @@ class Orientation(Rotation,Crystal):
         Notes
         -----
         Currently requires same crystal family for both orientations.
-        For extension to cases with differing symmetry see  A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
+        For extension to cases with differing symmetry see A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
 
         Examples
         --------
         Disorientation between two specific orientations of hexagonal symmetry:
 
         >>> import damask
-        >>> a = damask.Orientation.from_Eulers(phi=[123,32,21],degrees=True,lattice='hexagonal')
-        >>> b = damask.Orientation.from_Eulers(phi=[104,11,87],degrees=True,lattice='hexagonal')
+        >>> a = damask.Orientation.from_Euler_angles(phi=[123,32,21],degrees=True,family='hexagonal')
+        >>> b = damask.Orientation.from_Euler_angles(phi=[104,11,87],degrees=True,family='hexagonal')
         >>> a.disorientation(b)
         Crystal family hexagonal
         Quaternion: (real=0.976, imag=<+0.189, +0.018, +0.103>)
@@ -616,7 +616,7 @@ class Orientation(Rotation,Crystal):
         ----------
         vector : numpy.ndarray of shape (...,3)
             Lab frame vector to align with crystal frame direction.
-            Shape of other blends with shape of own rotation array.
+            Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
         proper : bool, optional
             Consider only vectors with z >= 0, hence combine two neighboring SSTs.
@@ -696,6 +696,8 @@ class Orientation(Rotation,Crystal):
         ----------
         vector : numpy.ndarray of shape (...,3)
             Vector to colorize.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
         in_SST : bool, optional
             Consider symmetrically equivalent orientations such that poles are located in SST.
             Defaults to True.
@@ -713,7 +715,7 @@ class Orientation(Rotation,Crystal):
         Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
 
         >>> import damask
-        >>> o = damask.Orientation(lattice='cubic')
+        >>> o = damask.Orientation(family='cubic')
         >>> o.IPF_color([0,0,1])
         array([1., 0., 0.])
 
@@ -835,22 +837,27 @@ class Orientation(Rotation,Crystal):
         ----------
         uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of crystallographic direction or plane normal.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
 
         Returns
         -------
-        vector : numpy.ndarray of shape (...,3) or (N,...,3)
+        vector : numpy.ndarray of shape (...,3) or (...,N,3)
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
         v = self.to_frame(uvw=uvw,hkl=hkl)
+        blend = util.shapeblender(self.shape,v.shape[:-1])
         if with_symmetry:
             sym_ops = self.symmetry_operations
-            v = sym_ops.broadcast_to(sym_ops.shape+v.shape[:-1],mode='right') \
-              @ np.broadcast_to(v,sym_ops.shape+v.shape)
-        return ~(self if self.shape+v.shape[:-1] == () else self.broadcast_to(self.shape+v.shape[:-1],mode='right')) \
-               @ np.broadcast_to(v,self.shape+v.shape)
+            shape = v.shape[:-1]+sym_ops.shape
+            blend += sym_ops.shape
+            v = sym_ops.broadcast_to(shape) \
+              @ np.broadcast_to(v.reshape(util.shapeshifter(v.shape,shape+(3,))),shape+(3,))
+        return ~(self.broadcast_to(blend)) \
+               @ np.broadcast_to(v,blend+(3,))
 
 
     def Schmid(self,*,N_slip=None,N_twin=None):
