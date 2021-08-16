@@ -375,6 +375,8 @@ def shapeshifter(fro,to,mode='left',keep_ones=False):
 
 
     """
+    if not len(fro) and not len(to): return ()
+
     beg = dict(left ='(^.*\\b)',
                right='(^.*?\\b)')
     sep = dict(left ='(.*\\b)',
