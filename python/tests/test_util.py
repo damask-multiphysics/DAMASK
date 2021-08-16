@@ -19,9 +19,9 @@ class TestUtil:
         out,err = util.execute('sh -c "echo $test_for_execute"',env={'test_for_execute':'test'})
         assert out=='test\n' and err==''
 
-    def test_execute_invalid(self):
+    def test_execute_runtime_error(self):
         with pytest.raises(RuntimeError):
-            util.execute('/bin/false')
+            util.execute('false')
 
     @pytest.mark.parametrize('input,output',
                             [

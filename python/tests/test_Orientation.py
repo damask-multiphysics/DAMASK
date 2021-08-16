@@ -83,7 +83,7 @@ class TestOrientation:
             Orientation(family=invalid_family)
 
     @pytest.mark.parametrize('invalid_lattice',[None,'fcc','bcc','hello'])
-    def test_invalid_family_init(self,invalid_lattice):
+    def test_invalid_lattice_init(self,invalid_lattice):
         with pytest.raises(KeyError):
             Orientation(lattice=invalid_lattice)
 
