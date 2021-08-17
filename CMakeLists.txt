@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10.0)
+cmake_minimum_required (VERSION 3.12.0)
 include (FindPkgConfig REQUIRED)
 
 if (DEFINED ENV{PETSC_DIR})
