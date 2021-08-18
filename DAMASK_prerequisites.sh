@@ -74,7 +74,7 @@ echo PETSC_ARCH: $PETSC_ARCH
 echo PETSC_DIR: $PETSC_DIR
 echo
 echo $PETSC_DIR/$PETSC_ARCH/lib:
-/s $PETSC_DIR/$PETSC_ARCH/lib
+ls $PETSC_DIR/$PETSC_ARCH/lib
 echo
 echo $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables:
 cat $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables
