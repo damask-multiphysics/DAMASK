@@ -360,18 +360,19 @@ end subroutine remove_line_break
 !--------------------------------------------------------------------------------------------------
 !> @brief return the scalar list item without line break
 !--------------------------------------------------------------------------------------------------
-subroutine list_item_inline(blck,s_blck,inline)    !ToDo: SR: merge with remove_line_break eventually
+subroutine list_item_inline(blck,s_blck,inline,offset)
 
-  character(len=*), intent(in)               :: blck                                                !< YAML in mixed style
-  integer,          intent(inout)            :: s_blck
-  character(len=:), allocatable, intent(out) :: inline
+  character(len=*), intent(in)                 :: blck                                                !< YAML in mixed style
+  integer,          intent(inout)              :: s_blck
+  character(len=:), allocatable, intent(out)   :: inline
+  integer,                       intent(inout) :: offset
 
   character(len=:), allocatable :: line
   integer :: indent,indent_next
  
+  indent = indentDepth(blck(s_blck:),offset)
   line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-  indent = indentDepth(blck(s_blck:))
-  inline = line(indent+3:)
+  inline = line(indent-offset+3:)
   s_blck = s_blck + index(blck(s_blck:),IO_EOL)
 
   indent_next = indentDepth(blck(s_blck:))
@@ -563,9 +564,9 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       else                                                                                          ! list item in the same line
         line = line(indentDepth(line)+3:)
         if(isScalar(line)) then
-          call list_item_inline(blck,s_blck,inline)
-          call line_toFlow(flow,s_flow,inline)
+          call list_item_inline(blck,s_blck,inline,offset)
           offset = 0
+          call line_toFlow(flow,s_flow,inline)
         elseif(isFlow(line)) then
           s_blck = s_blck + index(blck(s_blck:),'-')
           if(isFlowList(line)) then
