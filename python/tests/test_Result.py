@@ -13,6 +13,7 @@ import numpy as np
 
 from damask import Result
 from damask import Orientation
+from damask import VTK
 from damask import tensor
 from damask import mechanics
 from damask import grid_filters
@@ -370,18 +371,13 @@ class TestResult:
     def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
-        result.export_VTK(output)
+        result.export_VTK(output,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
-        last = ''
-        for i in range(10):
-            if os.path.isfile(tmp_path/fname):
-                with open(fname) as f:
-                    cur = hashlib.md5(f.read().encode()).hexdigest()
-                    if cur == last:
-                        break
-                    else:
-                        last = cur
-            time.sleep(.5)
+        v = VTK.load(tmp_path/fname)
+        v.set_comments('n/a')
+        v.save(tmp_path/fname,parallel=False)
+        with open(fname) as f:
+            cur = hashlib.md5(f.read().encode()).hexdigest()
         if update:
             with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur)
