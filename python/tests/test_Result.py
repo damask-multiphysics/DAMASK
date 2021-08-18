@@ -369,8 +369,7 @@ class TestResult:
              b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
          assert np.allclose(a,b)
 
-    # need to wait for writing in parallel, output order might change if select more than one
-    @pytest.mark.parametrize('output',['F','*',['P']],ids=range(3))
+    @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
