@@ -146,12 +146,6 @@ class Config(dict):
         if 'sort_keys' not in kwargs:
             kwargs['sort_keys'] = False
 
-        def array_representer(dumper, data):
-            """Convert numpy array to list of native types."""
-            return dumper.represent_list([d.item() for d in data])
-
-        NiceDumper.add_representer(np.ndarray, array_representer)
-
         try:
             fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
         except TypeError:                                                                           # compatibility with old pyyaml
