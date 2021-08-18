@@ -1258,7 +1258,7 @@ class Result:
             Arguments parsed to func.
 
         """
-        if len(datasets) != 1 or self.N_constituents !=1:
+        if len(datasets) != 1 or self.N_constituents != 1:
             raise NotImplementedError
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()

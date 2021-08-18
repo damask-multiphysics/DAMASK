@@ -268,9 +268,14 @@ class TestResult:
         in_file   = default.place('V(F)')
         assert np.allclose(in_memory,in_file)
 
-    def test_add_invalid(self,default):
+    def test_add_invalid_dataset(self,default):
         with pytest.raises(TypeError):
             default.add_calculation('#invalid#*2')
+
+    def test_add_generic_grid_invalid(self,ref_path):
+        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        with pytest.raises(NotImplementedError):
+            result.add_curl('F')
 
 
     @pytest.mark.parametrize('shape',['vector','tensor'])
@@ -502,7 +507,10 @@ class TestResult:
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
-    def test_export_setup(self,ref_path,tmp_path,fname):
+    @pytest.mark.parametrize('output',['material.yaml','*'])
+    @pytest.mark.parametrize('overwrite',[True,False])
+    def test_export_setup(self,ref_path,tmp_path,fname,output,overwrite):
         os.chdir(tmp_path)
         r = Result(ref_path/fname)
-        r.export_setup()
+        r.export_setup(output,overwrite)
+        r.export_setup(output,overwrite)
