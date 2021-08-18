@@ -102,13 +102,6 @@ processing:
     - master
     - release
 
-###################################################################################################
-preprocessing_deprecated:
-  stage: python
-  script: PreProcessing/test.py
-  except:
-    - master
-    - release
 
 ###################################################################################################
 compile_grid_Intel:
