@@ -363,7 +363,7 @@ class TestResult:
              b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
          assert np.allclose(a,b)
 
-    # need to wait for writing in parallel, output order might change if select more then one
+    # need to wait for writing in parallel, output order might change if select more than one
     @pytest.mark.parametrize('output',['F','*',['P']],ids=range(3))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
@@ -405,6 +405,11 @@ class TestResult:
     def test_vtk_mode(self,tmp_path,single_phase,mode):
         os.chdir(tmp_path)
         single_phase.export_VTK(mode=mode)
+
+    def test_vtk_invalid_mode(self,single_phase):
+        with pytest.raises(ValueError):
+            single_phase.export_VTK(mode='invalid')
+
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
@@ -497,3 +502,11 @@ class TestResult:
         with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2')) as f:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
+
+
+    @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+    def test_export_setup(self,ref_path,tmp_path,fname):
+        os.chdir(tmp_path)
+        r = Result(ref_path/fname)
+        r.export_setup()
