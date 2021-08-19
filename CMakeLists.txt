@@ -31,6 +31,7 @@ message ("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 
 add_definitions (-DPETSC)
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
+add_definitions (-DCMAKE_SYSTEM="${CMAKE_SYSTEM}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set (CMAKE_BUILD_TYPE "RELEASE")
