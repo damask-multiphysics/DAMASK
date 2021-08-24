@@ -48,19 +48,16 @@ class Marc:
                    compile      = False,
                    optimization = ''):
 
-        usersub = self.damask_root/'src/DAMASK_Marc'
-        usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
+        usersub = (self.damask_root/'src/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
         if not usersub.is_file():
             raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
 
         # Define options [see Marc Installation and Operation Guide, pp 23]
         script = f'run_damask_{optimization}mp'
 
-        cmd = str(self.tools_path/script) + \
-              ' -jid ' + model+'_'+job + \
-              ' -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no'
-        cmd += ' -u ' + str(usersub) + ' -save y' if compile else \
-               ' -prog ' + str(usersub.with_suffix(''))
+        cmd = f'{self.tools_path/script} -jid {model}_{job} -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no ' \
+            + (f'-u {usersub} -save y' if compile else f'-prog {usersub.with_suffix("")}')
+
         print(cmd)
 
         ret = subprocess.run(shlex.split(cmd),capture_output=True)
@@ -75,4 +72,3 @@ class Marc:
             print(ret.stderr.decode())
             print(ret.stdout.decode())
             raise RuntimeError('Marc simulation failed (unknown return value)')
-
