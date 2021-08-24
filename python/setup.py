@@ -23,7 +23,7 @@ setuptools.setup(
         'h5py>=2.9',                                                                                # requires numpy
         'vtk>=8.1',
         'matplotlib>=3.0',                                                                          # requires numpy, pillow
-        'pyaml>=3.12'
+        'pyyaml>=3.12'
     ],
     classifiers = [
         'Intended Audience :: Science/Research',
