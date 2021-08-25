@@ -60,7 +60,8 @@ class Marc:
             Compile DAMASK_Marc user subroutine (and save for later use).
             Defaults to False.
         optimization : str, optional
-            Optimization level.
+            Optimization level '' (-O0), l (-O1), or 'h' (-O3).
+            Defaults to ''.
 
         """
         usersub = (self.damask_root/'src/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
