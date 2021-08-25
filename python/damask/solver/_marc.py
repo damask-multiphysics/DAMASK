@@ -8,7 +8,7 @@ _msc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 
 class Marc:
-    """Wrapper to run DAMASK with MSCMarc."""
+    """Wrapper to run DAMASK with MSC.Marc."""
 
     def __init__(self,msc_version=_msc_version,msc_root=_msc_root,damask_root=_damask_root):
         """
@@ -47,7 +47,22 @@ class Marc:
     def submit_job(self, model, job,
                    compile      = False,
                    optimization = ''):
+        """
+        Assemble command line arguments and call Marc executable.
 
+        Parameters
+        ----------
+        model : str
+            Name of model.
+        job : str
+            Name of job.
+        compile : bool, optional
+            Compile DAMASK_Marc user subroutine (and save for later use).
+            Defaults to False.
+        optimization : str, optional
+            Optimization level.
+
+        """
         usersub = (self.damask_root/'src/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
         if not usersub.is_file():
             raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
