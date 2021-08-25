@@ -57,10 +57,10 @@ class Marc:
         job : str
             Name of job.
         compile : bool, optional
-            Compile DAMASK_Marc user subroutine (and save for later use).
+            Compile DAMASK_Marc user subroutine (and save for future use).
             Defaults to False.
         optimization : str, optional
-            Optimization level '' (-O0), l (-O1), or 'h' (-O3).
+            Optimization level '' (-O0), 'l' (-O1), or 'h' (-O3).
             Defaults to ''.
 
         """
