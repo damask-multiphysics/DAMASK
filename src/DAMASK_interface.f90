@@ -102,6 +102,7 @@ subroutine DAMASK_interface_init
   print'(/,a)', ' Version: '//DAMASKVERSION
 
   print'(/,a)', ' Compiled with: '//compiler_version()
+  print'(a)',   ' Compiled on: '//CMAKE_SYSTEM
   print'(a)',   ' Compiler options: '//compiler_options()
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md

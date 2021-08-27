@@ -1,9 +1,19 @@
 import pytest
 import numpy as np
 
+import damask
 from damask import Crystal
 
 class TestCrystal:
+
+    @pytest.mark.parametrize('lattice,family',[('aP','cubic'),('xI','cubic')])
+    def test_invalid_init(self,lattice,family):
+        with pytest.raises(KeyError):
+            Crystal(family=family,lattice=lattice)
+
+    def test_eq(self):
+        family = np.random.choice(list(damask._crystal.lattice_symmetries.values()))
+        assert Crystal(family=family) == Crystal(family=family)
 
     def test_double_to_lattice(self):
         c = Crystal(lattice='cF')
@@ -55,3 +65,4 @@ class TestCrystal:
                     alpha=alpha,beta=beta,gamma=gamma)
         assert np.allclose(vector,
                            c.to_frame(**{keyFrame:c.to_lattice(**{keyLattice:vector})}))
+    

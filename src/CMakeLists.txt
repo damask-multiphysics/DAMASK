@@ -4,7 +4,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     SET_SOURCE_FILES_PROPERTIES("lattice.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-240")
 endif()
 
-file(GLOB damask-sources *.f90 *.c)
+file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c)
 
 # probably we should have a subfolder for MSC.Marc
 list(FILTER damask-sources EXCLUDE REGEX ".*CPFEM.f90")
@@ -14,7 +14,7 @@ list(FILTER damask-sources EXCLUDE REGEX ".*commercialFEM_fileList.*.f90")
 
 if (PROJECT_NAME STREQUAL "damask-grid")
 
-    file(GLOB grid-sources grid/*.f90)
+    file(GLOB grid-sources CONFIGURE_DEPENDS grid/*.f90)
 
     if (NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
         add_executable(DAMASK_grid ${damask-sources} ${grid-sources})
@@ -28,7 +28,7 @@ if (PROJECT_NAME STREQUAL "damask-grid")
 
 elseif (PROJECT_NAME STREQUAL "damask-mesh")
       
-    file(GLOB mesh-sources mesh/*.f90)
+    file(GLOB mesh-sources CONFIGURE_DEPENDS mesh/*.f90)
 
     add_executable(DAMASK_mesh ${damask-sources} ${mesh-sources})
     install (TARGETS DAMASK_mesh RUNTIME DESTINATION bin)

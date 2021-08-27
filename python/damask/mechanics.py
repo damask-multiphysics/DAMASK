@@ -257,18 +257,18 @@ def _polar_decomposition(T,requested):
     u, _, vh = _np.linalg.svd(T)
     R = _np.einsum('...ij,...jk',u,vh)
 
-    output = []
+    output = ()
     if 'R' in requested:
-        output.append(R)
+        output+=(R,)
     if 'V' in requested:
-        output.append(_np.einsum('...ij,...kj',T,R))
+        output+=(_np.einsum('...ij,...kj',T,R),)
     if 'U' in requested:
-        output.append(_np.einsum('...ji,...jk',R,T))
+        output+=(_np.einsum('...ji,...jk',R,T),)
 
     if len(output) == 0:
         raise ValueError('output needs to be out of V, R, U')
 
-    return tuple(output)
+    return output
 
 
 def _equivalent_Mises(T_sym,s):

@@ -13,6 +13,7 @@ import numpy as np
 
 from damask import Result
 from damask import Orientation
+from damask import VTK
 from damask import tensor
 from damask import mechanics
 from damask import grid_filters
@@ -106,7 +107,8 @@ class TestResult:
         in_file   = default.place('|F_e|')
         assert np.allclose(in_memory,in_file)
 
-    @pytest.mark.parametrize('mode',['direct','function'])
+    @pytest.mark.parametrize('mode',
+        ['direct',pytest.param('function',marks=pytest.mark.xfail(sys.platform=="darwin",reason='n/a'))])
     def test_add_calculation(self,default,tmp_path,mode):
 
         if mode == 'direct':
@@ -122,6 +124,10 @@ class TestResult:
         in_memory = 2.0*np.abs(default.place('F'))-1.0
         in_file   = default.place('x')
         assert np.allclose(in_memory,in_file)
+
+    def test_add_calculation_invalid(self,default):
+        default.add_calculation('np.linalg.norm(#F#,axis=0)','wrong_dim')
+        assert default.get('wrong_dim') is None
 
     def test_add_stress_Cauchy(self,default):
         default.add_stress_Cauchy('P','F')
@@ -264,9 +270,14 @@ class TestResult:
         in_file   = default.place('V(F)')
         assert np.allclose(in_memory,in_file)
 
-    def test_add_invalid(self,default):
+    def test_add_invalid_dataset(self,default):
         with pytest.raises(TypeError):
             default.add_calculation('#invalid#*2')
+
+    def test_add_generic_grid_invalid(self,ref_path):
+        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        with pytest.raises(NotImplementedError):
+            result.add_curl('F')
 
 
     @pytest.mark.parametrize('shape',['vector','tensor'])
@@ -360,25 +371,19 @@ class TestResult:
              b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
          assert np.allclose(a,b)
 
-    # need to wait for writing in parallel, output order might change if select more then one
-    @pytest.mark.parametrize('output',['F','*',['P']],ids=range(3))
+    @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
-        result.export_VTK(output)
+        result.export_VTK(output,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
-        last = ''
-        for i in range(10):
-            if os.path.isfile(tmp_path/fname):
-                with open(fname) as f:
-                    cur = hashlib.md5(f.read().encode()).hexdigest()
-                    if cur == last:
-                        break
-                    else:
-                        last = cur
-            time.sleep(.5)
+        v = VTK.load(tmp_path/fname)
+        v.set_comments('n/a')
+        v.save(tmp_path/fname,parallel=False)
+        with open(fname) as f:
+            cur = hashlib.md5(f.read().encode()).hexdigest()
         if update:
             with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur)
@@ -402,6 +407,11 @@ class TestResult:
     def test_vtk_mode(self,tmp_path,single_phase,mode):
         os.chdir(tmp_path)
         single_phase.export_VTK(mode=mode)
+
+    def test_vtk_invalid_mode(self,single_phase):
+        with pytest.raises(ValueError):
+            single_phase.export_VTK(mode='invalid')
+
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
@@ -494,3 +504,14 @@ class TestResult:
         with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2')) as f:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
+
+
+    @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+    @pytest.mark.parametrize('output',['material.yaml','*'])
+    @pytest.mark.parametrize('overwrite',[True,False])
+    def test_export_setup(self,ref_path,tmp_path,fname,output,overwrite):
+        os.chdir(tmp_path)
+        r = Result(ref_path/fname)
+        r.export_setup(output,overwrite)
+        r.export_setup(output,overwrite)

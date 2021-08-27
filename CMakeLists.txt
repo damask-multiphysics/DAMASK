@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10.0)
+cmake_minimum_required (VERSION 3.12.0)
 include (FindPkgConfig REQUIRED)
 
 if (DEFINED ENV{PETSC_DIR})
@@ -31,6 +31,7 @@ message ("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 
 add_definitions (-DPETSC)
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
+add_definitions (-DCMAKE_SYSTEM="${CMAKE_SYSTEM}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set (CMAKE_BUILD_TYPE "RELEASE")

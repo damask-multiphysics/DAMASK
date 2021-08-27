@@ -567,9 +567,13 @@ class Result:
         formula = kwargs['formula']
         for d in re.findall(r'#(.*?)#',formula):
             formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
+        data = eval(formula)
+
+        if not hasattr(data,'shape') or data.shape[0] != kwargs[d]['data'].shape[0]:
+            raise ValueError("'{}' results in invalid shape".format(kwargs['formula']))
 
         return {
-                'data':  eval(formula),
+                'data':  data,
                 'label': kwargs['label'],
                 'meta':  {
                           'unit':        kwargs['unit'],
@@ -1258,7 +1262,7 @@ class Result:
             Arguments parsed to func.
 
         """
-        if len(datasets) != 1 or self.N_constituents !=1:
+        if len(datasets) != 1 or self.N_constituents != 1:
             raise NotImplementedError
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
