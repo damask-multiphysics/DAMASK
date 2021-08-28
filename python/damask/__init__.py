@@ -26,6 +26,3 @@ from ._config          import Config           # noqa
 from ._configmaterial  import ConfigMaterial   # noqa
 from ._grid            import Grid             # noqa
 from ._result          import Result           # noqa
-
-# deprecated
-from ._test        import Test             # noqa
