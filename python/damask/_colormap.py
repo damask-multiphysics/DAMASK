@@ -1,6 +1,7 @@
 import os
 import json
 import functools
+import colorsys
 
 import numpy as np
 import matplotlib as mpl
@@ -439,109 +440,26 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _hsv2rgb(hsv):
-        """
-        H(ue) S(aturation) V(alue) to R(red) G(reen) B(lue).
-
-        References
-        ----------
-        https://www.rapidtables.com/convert/color/hsv-to-rgb.html
-
-        """
-        sextant = np.clip(int(hsv[0]/60.),0,5)
-        c = hsv[1]*hsv[2]
-        x = c*(1.0 - abs((hsv[0]/60.)%2 - 1.))
-
-        return np.array([
-                         [c, x, 0],
-                         [x, c, 0],
-                         [0, c, x],
-                         [0, x, c],
-                         [x, 0, c],
-                         [c, 0, x],
-                        ])[sextant] + hsv[2] - c
+        """H(ue) S(aturation) V(alue) to R(red) G(reen) B(lue)."""
+        return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
 
     @staticmethod
     def _rgb2hsv(rgb):
-        """
-        R(ed) G(reen) B(lue) to H(ue) S(aturation) V(alue).
-
-        References
-        ----------
-        https://www.rapidtables.com/convert/color/rgb-to-hsv.html
-
-        """
-        C_max = rgb.max()
-        C_min = rgb.min()
-        Delta = C_max - C_min
-
-        v = C_max
-        s = 0. if np.isclose(C_max,0.) else Delta/C_max
-        if np.isclose(Delta,0.):
-            h = 0.
-        elif rgb.argmax() == 0:
-            h = (rgb[1]-rgb[2])/Delta%6
-        elif rgb.argmax() == 1:
-            h = (rgb[2]-rgb[0])/Delta + 2.
-        elif rgb.argmax() == 2:
-            h = (rgb[0]-rgb[1])/Delta + 4.
-
-        h = np.clip(h,0.,6.) * 60.
-
-        return np.array([h,s,v])
+        """R(ed) G(reen) B(lue) to H(ue) S(aturation) V(alue)."""
+        h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
+        return np.array([h*360,s,v])
 
 
     @staticmethod
     def _hsl2rgb(hsl):
-        """
-        H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue).
-
-        References
-        ----------
-        https://www.rapidtables.com/convert/color/hsl-to-rgb.html
-
-        """
-        sextant = np.clip(int(hsl[0]/60.),0,5)
-        c = (1.0 - abs(2.0 * hsl[2] - 1.))*hsl[1]
-        x = c*(1.0 - abs((hsl[0]/60.)%2 - 1.))
-        m = hsl[2] - 0.5*c
-
-        return np.array([
-                         [c+m, x+m, m],
-                         [x+m, c+m, m],
-                         [m, c+m, x+m],
-                         [m, x+m, c+m],
-                         [x+m, m, c+m],
-                         [c+m, m, x+m],
-                        ])[sextant]
+        """H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue)."""
+        return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
 
     @staticmethod
     def _rgb2hsl(rgb):
-        """
-        R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance).
-
-        References
-        ----------
-        https://www.rapidtables.com/convert/color/rgb-to-hsl.html
-
-        """
-        C_max = rgb.max()
-        C_min = rgb.min()
-        Delta = C_max - C_min
-
-        l = np.clip((C_max + C_min)*.5,0.,1.)                                                       # noqa
-        s = 0. if np.isclose(C_max,C_min) else Delta/(1.-np.abs(2*l-1.))
-        if np.isclose(Delta,0.):
-            h = 0.
-        elif rgb.argmax() == 0:
-            h = (rgb[1]-rgb[2])/Delta%6
-        elif rgb.argmax() == 1:
-            h = (rgb[2]-rgb[0])/Delta + 2.
-        elif rgb.argmax() == 2:
-            h = (rgb[0]-rgb[1])/Delta + 4.
-
-        h = np.clip(h,0.,6.) * 60.
-
-        return np.array([h,s,l])
+        """R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)."""
+        h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
+        return np.array([h*360,s,l])
 
 
     @staticmethod
