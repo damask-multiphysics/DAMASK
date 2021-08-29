@@ -1,5 +1,5 @@
 [submodule "PRIVATE"]
   path = PRIVATE
   url = ../PRIVATE.git
-  branch = master
+  branch = development
   shallow = true
