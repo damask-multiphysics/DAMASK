@@ -18,7 +18,7 @@ from . import version
 __all__=[
          'srepr',
          'emph', 'deemph', 'warn', 'strikeout',
-         'execute', 'run',
+         'run', 
          'natural_sort',
          'show_progress',
          'scale_to_coprime',
