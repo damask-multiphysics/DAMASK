@@ -17,8 +17,8 @@ from . import version
 # limit visibility
 __all__=[
          'srepr',
-         'emph','deemph','warn','strikeout',
-         'execute',
+         'emph', 'deemph', 'warn', 'strikeout',
+         'execute', 'run',
          'natural_sort',
          'show_progress',
          'scale_to_coprime',
@@ -144,9 +144,9 @@ def strikeout(what):
     return _colors['crossout']+srepr(what)+_colors['end_color']
 
 
-def execute(cmd,wd='./',env=None):
+def run(cmd,wd='./',env=None,timeout=None):
     """
-    Execute command.
+    Run a command.
 
     Parameters
     ----------
@@ -156,20 +156,23 @@ def execute(cmd,wd='./',env=None):
         Working directory of process. Defaults to ./ .
     env : dict, optional
         Environment for execution.
+    timeout : integer, optional
+        Timeout in seconds.
 
     Returns
     -------
-    stdout, stderr : str
+    stdout, stderr : (str, str)
         Output of the executed command.
 
     """
-    print(f"executing '{cmd}' in '{wd}'")
+    print(f"running '{cmd}' in '{wd}'")
     process = subprocess.run(shlex.split(cmd),
                              stdout = subprocess.PIPE,
                              stderr = subprocess.PIPE,
                              env = os.environ if env is None else env,
                              cwd = wd,
-                             encoding = 'utf-8')
+                             encoding = 'utf-8',
+                             timeout = timeout)
 
     if process.returncode != 0:
         print(process.stdout)
@@ -177,6 +180,9 @@ def execute(cmd,wd='./',env=None):
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
     return process.stdout, process.stderr
+
+
+execute = run
 
 
 def natural_sort(key):
