@@ -209,7 +209,7 @@ SpectralRuntime:
     - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - ./runtime.py --results $LOCAL_HOME/performance --damask_root $DAMASKROOT
+    - ./runtime.py --results ${LOCAL_HOME}/performance --damask_root ${DAMASKROOT} --tag ${CI_COMMIT_SHA}
   except:
     - master
     - release
