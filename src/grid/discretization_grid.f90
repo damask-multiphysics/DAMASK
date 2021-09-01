@@ -266,7 +266,8 @@ subroutine readVTI(grid,geomSize,origin,material, &
     integer :: i
 
 
-    if (getXMLValue(header,'Direction') /= '1 0 0 0 1 0 0 0 1') &
+    temp = getXMLValue(header,'Direction')
+    if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                             ! https://discourse.vtk.org/t/vti-specification/6526
       call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
     temp = getXMLValue(header,'WholeExtent')
