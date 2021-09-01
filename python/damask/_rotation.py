@@ -1026,7 +1026,7 @@ class Rotation:
         N : int, optional
             Number of samples, defaults to 500.
         degrees : boolean, optional
-            sigma is given in degrees.
+            sigma is given in degrees. Defaults to True.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
