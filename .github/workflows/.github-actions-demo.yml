@@ -42,4 +42,6 @@ jobs:
           python3-h5py python3-vtk7 python3-matplotlib python3-yaml -y
       - name: Run unit tests
         run: |
-          PYTHONPATH=${PWD}/python python -m pytest python
+          export PYTHONPATH=${PWD}/python
+          export COLUMNS=256
+          python -m pytest python

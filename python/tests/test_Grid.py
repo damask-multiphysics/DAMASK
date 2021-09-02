@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import vtk
 
 from damask import VTK
 from damask import Grid
@@ -410,6 +411,7 @@ class TestGrid:
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
+    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_get_grain_boundaries(self,update,ref_path,periodic,direction):
         grid = Grid.load(ref_path/'get_grain_boundaries_8g12x15x20.vti')
         current = grid.get_grain_boundaries(periodic,direction)
