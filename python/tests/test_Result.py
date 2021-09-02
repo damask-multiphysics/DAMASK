@@ -18,6 +18,7 @@ from damask import tensor
 from damask import mechanics
 from damask import grid_filters
 
+
 @pytest.fixture
 def default(tmp_path,ref_path):
     """Small Result file in temp location for modification."""
@@ -108,7 +109,7 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('mode',
-        ['direct',pytest.param('function',marks=pytest.mark.xfail(sys.platform=="darwin",reason='n/a'))])
+        ['direct',pytest.param('function',marks=pytest.mark.xfail(sys.platform=='darwin',reason='n/a'))])
     def test_add_calculation(self,default,tmp_path,mode):
 
         if mode == 'direct':
@@ -374,6 +375,7 @@ class TestResult:
     @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
+    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
     def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view('increments',inc)
         os.chdir(tmp_path)
@@ -425,7 +427,8 @@ class TestResult:
 
         assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
 
-    @pytest.mark.skipif(not hasattr(vtk,'vtkXdmfReader'),reason='https://discourse.vtk.org/t/2450')
+    @pytest.mark.skipif(not (hasattr(vtk,'vtkXdmfReader') and hasattr(vtk.vtkXdmfReader(),'GetOutput')),
+                        reason='https://discourse.vtk.org/t/2450')
     def test_XDMF_shape(self,tmp_path,single_phase):
         os.chdir(tmp_path)
 
@@ -437,19 +440,14 @@ class TestResult:
         dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
         bounds_xdmf = reader_xdmf.GetOutput().GetBounds()
 
-        single_phase.view('increments',0).export_VTK()
+        single_phase.view('increments',0).export_VTK(parallel=False)
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'_inc00.vti'
-        for i in range(10):                                                                         # waiting for parallel IO
-            reader_vti = vtk.vtkXMLImageDataReader()
-            reader_vti.SetFileName(fname)
-            reader_vti.Update()
-            dim_vti = reader_vti.GetOutput().GetDimensions()
-            bounds_vti = reader_vti.GetOutput().GetBounds()
-            if dim_vti == dim_xdmf and bounds_vti == bounds_xdmf:
-                return
-            time.sleep(.5)
-
-        assert False
+        reader_vti = vtk.vtkXMLImageDataReader()
+        reader_vti.SetFileName(fname)
+        reader_vti.Update()
+        dim_vti = reader_vti.GetOutput().GetDimensions()
+        bounds_vti = reader_vti.GetOutput().GetBounds()
+        assert dim_vti == dim_xdmf and bounds_vti == bounds_xdmf
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
