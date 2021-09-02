@@ -19,6 +19,7 @@ setuptools.setup(
     python_requires = '>=3.6',
     install_requires = [
         'pandas>=0.24',                                                                             # requires numpy
+        'numpy>=1.17',                                                                              # needed for default_rng
         'scipy>=1.2',
         'h5py>=2.9',                                                                                # requires numpy
         'vtk>=8.1',

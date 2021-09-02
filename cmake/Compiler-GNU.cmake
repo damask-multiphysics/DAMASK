@@ -25,7 +25,7 @@ set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input")
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
 # preprocessor
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIC -fPIE")

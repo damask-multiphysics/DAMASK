@@ -1026,7 +1026,7 @@ class Rotation:
         N : int, optional
             Number of samples, defaults to 500.
         degrees : boolean, optional
-            sigma is given in degrees.
+            sigma is given in degrees. Defaults to True.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
@@ -1055,10 +1055,10 @@ class Rotation:
 
         Parameters
         ----------
-        alpha : numpy.ndarray of size 2
-            Polar coordinates (phi from x,theta from z) of fiber direction in crystal frame.
-        beta : numpy.ndarray of size 2
-            Polar coordinates (phi from x,theta from z) of fiber direction in sample frame.
+        alpha : numpy.ndarray of shape (2)
+            Polar coordinates (phi from x, theta from z) of fiber direction in crystal frame.
+        beta : numpy.ndarray of shape (2)
+            Polar coordinates (phi from x, theta from z) of fiber direction in sample frame.
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
