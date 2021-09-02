@@ -18,11 +18,6 @@ from damask import tensor
 from damask import mechanics
 from damask import grid_filters
 
-def vtk_hasXdmfReader():
-    if hasattr(vtk,'vtkXdmfReader'):
-        r = vtk.vtkXdmfReader()
-        if hasattr(r,'getOutput'): return True
-    return False
 
 @pytest.fixture
 def default(tmp_path,ref_path):
@@ -432,7 +427,8 @@ class TestResult:
 
         assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
 
-    @pytest.mark.skipif(not vtk_hasXdmfReader(),reason='https://discourse.vtk.org/t/2450')
+    @pytest.mark.skipif(not (hasattr(vtk,'vtkXdmfReader') and hasattr(vtk.vtkXdmfReader(),'GetOutput')),
+                        reason='https://discourse.vtk.org/t/2450')
     def test_XDMF_shape(self,tmp_path,single_phase):
         os.chdir(tmp_path)
 
