@@ -1,5 +1,4 @@
-name: Fortran
-
+name: Grid and Mesh Solver
 on: [push]
 
 env:
@@ -10,18 +9,22 @@ env:
   HOMEBREW_NO_INSTALL_CLEANUP: "ON"
 
 jobs:
+
   gcc:
+
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        gcc_v: [9, 10, 11]      # Version of GCC compilers we want to use.
+        gcc_v: [9, 10, 11]      # Version of GCC compilers
+
     env:
       GCC_V: ${{ matrix.gcc_v }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+
+      - uses: actions/checkout@v2
 
       - name: Set up Python 3.x
         uses: actions/setup-python@v1
@@ -53,7 +56,7 @@ jobs:
           export PETSC_ARCH=gcc${GCC_V}
           printenv >> $GITHUB_ENV
 
-      - name: Cache PETSc Installation
+      - name: Cache PETSc installation
         uses: actions/cache@v2
         with:
           path: petsc-3.15.4
@@ -90,16 +93,18 @@ jobs:
           ./bin/DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -w examples/grid
 
   intel:
+
     runs-on: [ubuntu-latest]
+
     strategy:
       matrix:
-        intel_v: [classic, llvm]      # Version of Intel compilers we want to use.
+        intel_v: [classic, llvm]      # Variant of Intel compilers
+
     env:
       INTEL_V: ${{ matrix.intel_v }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
       - name: Set up Python 3.x
         uses: actions/setup-python@v1
@@ -125,7 +130,7 @@ jobs:
           export PETSC_ARCH=intel-${INTEL_V}
           printenv >> $GITHUB_ENV
 
-      - name: Cache PETSc Installation
+      - name: Cache PETSc installation
         uses: actions/cache@v2
         with:
           path: petsc-3.15.4
