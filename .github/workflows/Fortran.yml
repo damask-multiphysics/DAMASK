@@ -49,6 +49,7 @@ jobs:
           brew link gcc@${GCC_V}
 
       - name: Get PETSc
+        if: steps.${{ matrix.os }}-gcc${{ matrix.gcc_v }}-${{ hashFiles('**/petscversion.h') }}-6.outputs.cache-hit != 'true'
         run: |
           wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.15.4.tar.gz
           tar -xf petsc-3.15.4.tar.gz
@@ -123,6 +124,7 @@ jobs:
           printenv >> $GITHUB_ENV
 
       - name: Get PETSc
+        if: steps.intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}-6.outputs.cache-hit != 'true'
         run: |
           wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.15.4.tar.gz
           tar -xf petsc-3.15.4.tar.gz
@@ -134,7 +136,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: petsc-3.15.4
-          key: ${{ matrix.os }}-gcc${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}-6
+          key: intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}-6
 
       - name: Install PETSc Intel (classic)
         if: contains( matrix.intel_v, 'classic')
