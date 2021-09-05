@@ -230,6 +230,7 @@ backup_runtime_measurement:
   script:
     - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
+    - git push
   only:
     - development
 
