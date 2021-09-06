@@ -103,8 +103,13 @@ for EXECUTABLE in gcc g++ gfortran ;do
   getDetails $EXECUTABLE '--version'
 done
 
-firstLevel "Intel Compiler Suite"
+firstLevel "Intel Compiler Suite (classic)"
 for EXECUTABLE in icc icpc ifort ;do
+  getDetails $EXECUTABLE '--version'
+done
+
+firstLevel "Intel Compiler Suite (LLVM)"
+for EXECUTABLE in icx icpx ifx ;do
   getDetails $EXECUTABLE '--version'
 done
 
