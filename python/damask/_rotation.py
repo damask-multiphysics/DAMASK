@@ -481,7 +481,7 @@ class Rotation:
         Returns
         -------
         q : numpy.ndarray of shape (...,4)
-            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3), ǀqǀ=1, q_0 ≥ 0.
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
 
         """
         return self.quaternion.copy()
@@ -489,7 +489,7 @@ class Rotation:
     def as_Euler_angles(self,
                         degrees = False):
         """
-        Represent as Bunge-Euler angles.
+        Represent as Bunge–Euler angles.
 
         Parameters
         ----------
@@ -499,12 +499,12 @@ class Rotation:
         Returns
         -------
         phi : numpy.ndarray of shape (...,3)
-            Bunge-Euler angles: (φ_1, ϕ, φ_2), φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]
-            unless degrees == True: φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]
+            Bunge–Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
+            or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
 
         Examples
         --------
-        Cube orientation as Bunge-Euler angles.
+        Cube orientation as Bunge–Euler angles.
 
         >>> import damask
         >>> import numpy as np
@@ -520,7 +520,7 @@ class Rotation:
                       degrees = False,
                       pair = False):
         """
-        Represent as axis angle pair.
+        Represent as axis–angle pair.
 
         Parameters
         ----------
@@ -531,19 +531,18 @@ class Rotation:
 
         Returns
         -------
-        axis_angle : numpy.ndarray of shape (...,4) unless pair == True:
-            tuple containing numpy.ndarray of shapes (...,3) and (...)
-            Axis angle pair: (n_1, n_2, n_3, ω), ǀnǀ = 1 and ω ∈ [0,π]
-            unless degrees = True: ω ∈ [0,180].
+        axis_angle : numpy.ndarray of shape (...,4) or tuple ((...,3), (...)) if pair == True
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
+            or ω ∈ [0,180] if degrees == True.
 
         Examples
         --------
-        Cube orientation as axis angle pair.
+        Cube orientation as axis–angle pair.
 
         >>> import damask
         >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_axis_angle()
-        array([0., 0., 1., 0.])
+        >>> damask.Rotation(np.array([1,0,0,0])).as_axis_angle(pair=True)
+        (array([0., 0., 1.]), array(0.))
 
         """
         ax = Rotation._qu2ax(self.quaternion)
@@ -557,7 +556,7 @@ class Rotation:
         Returns
         -------
         R : numpy.ndarray of shape (...,3,3)
-            Rotation matrix R, det(R) = 1, R.T∙R=I.
+            Rotation matrix R with det(R) = 1, R.T ∙ R = I.
 
         Examples
         --------
@@ -576,25 +575,23 @@ class Rotation:
     def as_Rodrigues_vector(self,
                             compact = False):
         """
-        Represent as Rodrigues-Frank vector with separated axis and angle argument.
+        Represent as Rodrigues–Frank vector with separated axis and angle argument.
 
         Parameters
         ----------
         compact : bool, optional
-            Return as actual Rodrigues-Frank vector,
+            Return three-component Rodrigues-Frank vector,
             i.e. axis and angle argument are not separated.
 
         Returns
         -------
-        rho : numpy.ndarray of shape (...,4) containing
-            [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π]
-            unless compact == True:
-            numpy.ndarray of shape (...,3) containing
-            tan(ω/2) [n_1, n_2, n_3], ω ∈ [0,π].
+        rho : numpy.ndarray of shape (...,4) or (...,3) if compact == True
+            Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π]
+            or tan(ω/2) [n_1, n_2, n_3] with ω ∈ [0,π] if compact == True.
 
         Examples
         --------
-        Cube orientation as 'real' Rodrigues-Frank vector.
+        Cube orientation as three-component Rodrigues–Frank vector.
 
         >>> import damask
         >>> import numpy as np
@@ -616,7 +613,7 @@ class Rotation:
         Returns
         -------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3/4*π)^(1/3).
 
         Examples
         --------
@@ -637,7 +634,7 @@ class Rotation:
         Returns
         -------
         x : numpy.ndarray of shape (...,3)
-              Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
+              Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
 
         Examples
         --------
@@ -664,13 +661,12 @@ class Rotation:
         Parameters
         ----------
         q : numpy.ndarray of shape (...,4)
-            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3),
-            ǀqǀ=1, q_0 ≥ 0.
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
         accept_homomorph : boolean, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
         P : int ∈ {-1,1}, optional
-            Convention used. Defaults to -1.
+            Sign convention. Defaults to -1.
 
         """
         qu = np.array(q,dtype=float)
@@ -694,15 +690,15 @@ class Rotation:
     def from_Euler_angles(phi,
                           degrees = False):
         """
-        Initialize from Bunge-Euler angles.
+        Initialize from Bunge–Euler angles.
 
         Parameters
         ----------
         phi : numpy.ndarray of shape (...,3)
-            Bunge-Euler angles: (φ_1, ϕ, φ_2), φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]
-            unless degrees == True: φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360].
+            Bunge–Euler angles ()φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
+            or ()φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
         degrees : boolean, optional
-            Bunge-Euler angles are given in degrees. Defaults to False.
+            Bunge–Euler angles are given in degrees. Defaults to False.
 
         """
         eu = np.array(phi,dtype=float)
@@ -726,14 +722,14 @@ class Rotation:
         Parameters
         ----------
         axis_angle : numpy.ndarray of shape (...,4)
-            Axis angle pair: [n_1, n_2, n_3, ω], ǀnǀ = 1 and ω ∈ [0,π]
-            unless degrees = True: ω ∈ [0,180].
+            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
+            or ω ∈ [0,180] if degrees == True.
         degrees : boolean, optional
             Angle ω is given in degrees. Defaults to False.
         normalize: boolean, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
-            Convention used. Defaults to -1.
+            Sign convention. Defaults to -1.
 
         """
         ax = np.array(axis_angle,dtype=float)
@@ -746,10 +742,10 @@ class Rotation:
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
         if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
-            raise ValueError('Axis angle rotation angle outside of [0..π].')
+            raise ValueError('Axis–angle rotation angle outside of [0..π].')
         if not np.all(np.isclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0)):
             print(np.linalg.norm(ax[...,0:3],axis=-1))
-            raise ValueError('Axis angle rotation axis is not of unit length.')
+            raise ValueError('Axis–angle rotation axis is not of unit length.')
 
         return Rotation(Rotation._ax2qu(ax))
 
@@ -797,7 +793,7 @@ class Rotation:
         Parameters
         ----------
         R : numpy.ndarray of shape (...,3,3)
-            Rotation matrix: det(R) = 1, R.T∙R=I.
+            Rotation matrix with det(R) = 1, R.T ∙ R = I.
 
         """
         return Rotation.from_basis(R)
@@ -836,16 +832,16 @@ class Rotation:
                               normalize = False,
                               P = -1):
         """
-        Initialize from Rodrigues-Frank vector (angle separated from axis).
+        Initialize from Rodrigues–Frank vector (angle separated from axis).
 
         Parameters
         ----------
         rho : numpy.ndarray of shape (...,4)
-            Rodrigues-Frank vector. (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
+            Rodrigues–Frank vector (n_1, n_2, n_3, tan(ω/2)) with ǀnǀ = 1  and ω ∈ [0,π].
         normalize : boolean, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
-            Convention used. Defaults to -1.
+            Sign convention. Defaults to -1.
 
         """
         ro = np.array(rho,dtype=float)
@@ -857,7 +853,7 @@ class Rotation:
         ro[...,0:3] *= -P
         if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
         if np.any(ro[...,3] < 0.0):
-            raise ValueError('Rodrigues vector rotation angle not positive.')
+            raise ValueError('Rodrigues vector rotation angle is negative.')
         if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
             raise ValueError('Rodrigues vector rotation axis is not of unit length.')
 
@@ -872,9 +868,9 @@ class Rotation:
         Parameters
         ----------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
+            Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3/4*π)^(1/3).
         P : int ∈ {-1,1}, optional
-            Convention used. Defaults to -1.
+            Sign convention. Defaults to -1.
 
         """
         ho = np.array(h,dtype=float)
@@ -899,9 +895,9 @@ class Rotation:
         Parameters
         ----------
         x : numpy.ndarray of shape (...,3)
-            Cubochoric vector: (x_1, x_2, x_3), max(x_i) < 1/2*π^(2/3).
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
         P : int ∈ {-1,1}, optional
-            Convention used. Defaults to -1.
+            Sign convention. Defaults to -1.
 
         """
         cu = np.array(x,dtype=float)
@@ -922,18 +918,17 @@ class Rotation:
     def from_random(shape = None,
                     rng_seed = None):
         """
-        Draw random rotation.
+        Initialize with random rotation.
 
         Rotations are uniformly distributed.
 
         Parameters
         ----------
         shape : tuple of ints, optional
-            Shape of the sample. Defaults to None which gives a
-            single rotation
+            Shape of the sample. Defaults to None, which gives a single rotation.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None.
-            If None, then fresh, unpredictable entropy will be pulled from the OS.
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -958,25 +953,25 @@ class Rotation:
                  rng_seed = None,
                  **kwargs):
         """
-        Sample discrete values from a binned ODF.
+        Sample discrete values from a binned orientation distribution function (ODF).
 
         Parameters
         ----------
         weights : numpy.ndarray of shape (n)
-            Texture intensity values (probability density or volume fraction) at Euler grid points.
+            Texture intensity values (probability density or volume fraction) at Euler space grid points.
         phi : numpy.ndarray of shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
         N : integer, optional
             Number of discrete orientations to be sampled from the given ODF.
             Defaults to 500.
         degrees : boolean, optional
-            Euler grid values are in degrees. Defaults to True.
+            Euler space grid coordinates are in degrees. Defaults to True.
         fractions : boolean, optional
-            ODF values correspond to volume fractions, not probability density.
+            ODF values correspond to volume fractions, not probability densities.
             Defaults to True.
         rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
-            will be pulled from the OS.
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         Returns
         -------
@@ -1024,12 +1019,12 @@ class Rotation:
         sigma : float
             Standard deviation of (Gaussian) misorientation distribution.
         N : int, optional
-            Number of samples, defaults to 500.
+            Number of samples. Defaults to 500.
         degrees : boolean, optional
             sigma is given in degrees. Defaults to True.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
-            will be pulled from the OS.
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -1063,12 +1058,12 @@ class Rotation:
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
         N : int, optional
-            Number of samples, defaults to 500.
+            Number of samples. Defaults to 500.
         degrees : boolean, optional
             sigma, alpha, and beta are given in degrees.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
-            will be pulled from the OS.
+            A seed to initialize the BitGenerator.
+            Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -1171,9 +1166,9 @@ class Rotation:
     @staticmethod
     def _qu2ax(qu):
         """
-        Quaternion to axis angle pair.
+        Quaternion to axis–angle pair.
 
-        Modified version of the original formulation, should be numerically more stable
+        Modified version of the original formulation, should be numerically more stable.
         """
         with np.errstate(invalid='ignore',divide='ignore'):
             s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
@@ -1186,7 +1181,7 @@ class Rotation:
 
     @staticmethod
     def _qu2ro(qu):
-        """Quaternion to Rodrigues-Frank vector."""
+        """Quaternion to Rodrigues–Frank vector."""
         with np.errstate(invalid='ignore',divide='ignore'):
             s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
             ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.0e-12,qu.shape),
@@ -1260,7 +1255,7 @@ class Rotation:
 
     @staticmethod
     def _om2eu(om):
-        """Rotation matrix to Bunge-Euler angles."""
+        """Rotation matrix to Bunge–Euler angles."""
         with np.errstate(invalid='ignore',divide='ignore'):
             zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
             eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,0.0),
@@ -1279,7 +1274,7 @@ class Rotation:
 
     @staticmethod
     def _om2ax(om):
-        """Rotation matrix to axis angle pair."""
+        """Rotation matrix to axis–angle pair."""
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
                                    om[...,0,1:2]-om[...,1,0:1]
@@ -1300,7 +1295,7 @@ class Rotation:
 
     @staticmethod
     def _om2ro(om):
-        """Rotation matrix to Rodrigues-Frank vector."""
+        """Rotation matrix to Rodrigues–Frank vector."""
         return Rotation._eu2ro(Rotation._om2eu(om))
 
     @staticmethod
@@ -1317,7 +1312,7 @@ class Rotation:
     #---------- Bunge-Euler angles ----------
     @staticmethod
     def _eu2qu(eu):
-        """Bunge-Euler angles to quaternion."""
+        """Bunge–Euler angles to quaternion."""
         ee = 0.5*eu
         cPhi = np.cos(ee[...,1:2])
         sPhi = np.sin(ee[...,1:2])
@@ -1330,7 +1325,7 @@ class Rotation:
 
     @staticmethod
     def _eu2om(eu):
-        """Bunge-Euler angles to rotation matrix."""
+        """Bunge–Euler angles to rotation matrix."""
         c = np.cos(eu)
         s = np.sin(eu)
         om = np.block([+c[...,0:1]*c[...,2:3]-s[...,0:1]*s[...,2:3]*c[...,1:2],
@@ -1348,7 +1343,7 @@ class Rotation:
 
     @staticmethod
     def _eu2ax(eu):
-        """Bunge-Euler angles to axis angle pair."""
+        """Bunge–Euler angles to axis–angle pair."""
         t = np.tan(eu[...,1:2]*0.5)
         sigma = 0.5*(eu[...,0:1]+eu[...,2:3])
         delta = 0.5*(eu[...,0:1]-eu[...,2:3])
@@ -1367,7 +1362,7 @@ class Rotation:
 
     @staticmethod
     def _eu2ro(eu):
-        """Bunge-Euler angles to Rodrigues-Frank vector."""
+        """Bunge–Euler angles to Rodrigues–Frank vector."""
         ax = Rotation._eu2ax(eu)
         ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
         ro[ax[...,3]>=np.pi,3] = np.inf
@@ -1376,19 +1371,19 @@ class Rotation:
 
     @staticmethod
     def _eu2ho(eu):
-        """Bunge-Euler angles to homochoric vector."""
+        """Bunge–Euler angles to homochoric vector."""
         return Rotation._ax2ho(Rotation._eu2ax(eu))
 
     @staticmethod
     def _eu2cu(eu):
-        """Bunge-Euler angles to cubochoric vector."""
+        """Bunge–Euler angles to cubochoric vector."""
         return Rotation._ho2cu(Rotation._eu2ho(eu))
 
 
     #---------- Axis angle pair ----------
     @staticmethod
     def _ax2qu(ax):
-        """Axis angle pair to quaternion."""
+        """Axis–angle pair to quaternion."""
         c = np.cos(ax[...,3:4]*.5)
         s = np.sin(ax[...,3:4]*.5)
         qu = np.where(np.abs(ax[...,3:4])<1.e-6,[1.0, 0.0, 0.0, 0.0],np.block([c, ax[...,:3]*s]))
@@ -1396,7 +1391,7 @@ class Rotation:
 
     @staticmethod
     def _ax2om(ax):
-        """Axis angle pair to rotation matrix."""
+        """Axis-angle pair to rotation matrix."""
         c = np.cos(ax[...,3:4])
         s = np.sin(ax[...,3:4])
         omc = 1. -c
@@ -1413,12 +1408,12 @@ class Rotation:
 
     @staticmethod
     def _ax2eu(ax):
-        """Rotation matrix to Bunge Euler angles."""
+        """Rotation matrix to Bunge–Euler angles."""
         return Rotation._om2eu(Rotation._ax2om(ax))
 
     @staticmethod
     def _ax2ro(ax):
-        """Axis angle pair to Rodrigues-Frank vector."""
+        """Axis–angle pair to Rodrigues–Frank vector."""
         ro = np.block([ax[...,:3],
                        np.where(np.isclose(ax[...,3:4],np.pi,atol=1.e-15,rtol=.0),
                                 np.inf,
@@ -1429,36 +1424,36 @@ class Rotation:
 
     @staticmethod
     def _ax2ho(ax):
-        """Axis angle pair to homochoric vector."""
+        """Axis–angle pair to homochoric vector."""
         f = (0.75 * ( ax[...,3:4] - np.sin(ax[...,3:4]) ))**(1.0/3.0)
         ho = ax[...,:3] * f
         return ho
 
     @staticmethod
     def _ax2cu(ax):
-        """Axis angle pair to cubochoric vector."""
+        """Axis–angle pair to cubochoric vector."""
         return Rotation._ho2cu(Rotation._ax2ho(ax))
 
 
     #---------- Rodrigues-Frank vector ----------
     @staticmethod
     def _ro2qu(ro):
-        """Rodrigues-Frank vector to quaternion."""
+        """Rodrigues–Frank vector to quaternion."""
         return Rotation._ax2qu(Rotation._ro2ax(ro))
 
     @staticmethod
     def _ro2om(ro):
-        """Rodgrigues-Frank vector to rotation matrix."""
+        """Rodgrigues–Frank vector to rotation matrix."""
         return Rotation._ax2om(Rotation._ro2ax(ro))
 
     @staticmethod
     def _ro2eu(ro):
-        """Rodrigues-Frank vector to Bunge-Euler angles."""
+        """Rodrigues–Frank vector to Bunge–Euler angles."""
         return Rotation._om2eu(Rotation._ro2om(ro))
 
     @staticmethod
     def _ro2ax(ro):
-        """Rodrigues-Frank vector to axis angle pair."""
+        """Rodrigues–Frank vector to axis–angle pair."""
         with np.errstate(invalid='ignore',divide='ignore'):
             ax = np.where(np.isfinite(ro[...,3:4]),
                  np.block([ro[...,0:3]*np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True),2.*np.arctan(ro[...,3:4])]),
@@ -1468,7 +1463,7 @@ class Rotation:
 
     @staticmethod
     def _ro2ho(ro):
-        """Rodrigues-Frank vector to homochoric vector."""
+        """Rodrigues–Frank vector to homochoric vector."""
         f = np.where(np.isfinite(ro[...,3:4]),2.0*np.arctan(ro[...,3:4]) -np.sin(2.0*np.arctan(ro[...,3:4])),np.pi)
         ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-8,ro[...,0:3].shape),
                       np.zeros(3), ro[...,0:3]* (0.75*f)**(1.0/3.0))
@@ -1476,7 +1471,7 @@ class Rotation:
 
     @staticmethod
     def _ro2cu(ro):
-        """Rodrigues-Frank vector to cubochoric vector."""
+        """Rodrigues–Frank vector to cubochoric vector."""
         return Rotation._ho2cu(Rotation._ro2ho(ro))
 
 
@@ -1493,12 +1488,12 @@ class Rotation:
 
     @staticmethod
     def _ho2eu(ho):
-        """Homochoric vector to Bunge-Euler angles."""
+        """Homochoric vector to Bunge–Euler angles."""
         return Rotation._ax2eu(Rotation._ho2ax(ho))
 
     @staticmethod
     def _ho2ax(ho):
-        """Homochoric vector to axis angle pair."""
+        """Homochoric vector to axis–angle pair."""
         tfit = np.array([+1.0000000000018852,      -0.5000000002194847,
                          -0.024999992127593126,    -0.003928701544781374,
                          -0.0008152701535450438,   -0.0002009500426119712,
@@ -1521,7 +1516,7 @@ class Rotation:
 
     @staticmethod
     def _ho2ro(ho):
-        """Axis angle pair to Rodrigues-Frank vector."""
+        """Axis–angle pair to Rodrigues–Frank vector."""
         return Rotation._ax2ro(Rotation._ho2ax(ho))
 
     @staticmethod
@@ -1576,17 +1571,17 @@ class Rotation:
 
     @staticmethod
     def _cu2eu(cu):
-        """Cubochoric vector to Bunge-Euler angles."""
+        """Cubochoric vector to Bunge–Euler angles."""
         return Rotation._ho2eu(Rotation._cu2ho(cu))
 
     @staticmethod
     def _cu2ax(cu):
-        """Cubochoric vector to axis angle pair."""
+        """Cubochoric vector to axis–angle pair."""
         return Rotation._ho2ax(Rotation._cu2ho(cu))
 
     @staticmethod
     def _cu2ro(cu):
-        """Cubochoric vector to Rodrigues-Frank vector."""
+        """Cubochoric vector to Rodrigues–Frank vector."""
         return Rotation._ho2ro(Rotation._cu2ho(cu))
 
     @staticmethod
@@ -1642,7 +1637,7 @@ class Rotation:
         Parameters
         ----------
         xyz : numpy.ndarray
-           coordinates of a point on a uniform refinable grid on a ball or
+           Coordinates of a point on a uniform refinable grid on a ball or
            in a uniform refinable cubical grid.
 
         References
