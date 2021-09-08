@@ -575,12 +575,12 @@ class Rotation:
     def as_Rodrigues_vector(self,
                             compact = False):
         """
-        Represent as Rodrigues–Frank vector with separated axis and angle argument.
+        Represent as Rodrigues–Frank vector with separate axis and angle argument.
 
         Parameters
         ----------
         compact : bool, optional
-            Return three-component Rodrigues-Frank vector,
+            Return three-component Rodrigues–Frank vector,
             i.e. axis and angle argument are not separated.
 
         Returns
