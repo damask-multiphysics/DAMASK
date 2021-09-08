@@ -695,8 +695,8 @@ class Rotation:
         Parameters
         ----------
         phi : numpy.ndarray of shape (...,3)
-            Bunge–Euler angles ()φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
-            or ()φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
+            Bunge–Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
+            or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
         degrees : boolean, optional
             Bunge–Euler angles are given in degrees. Defaults to False.
 
