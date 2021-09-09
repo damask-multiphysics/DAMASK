@@ -489,7 +489,7 @@ class Rotation:
     def as_Euler_angles(self,
                         degrees = False):
         """
-        Represent as Bunge–Euler angles.
+        Represent as Bunge Euler angles.
 
         Parameters
         ----------
@@ -499,12 +499,16 @@ class Rotation:
         Returns
         -------
         phi : numpy.ndarray of shape (...,3)
-            Bunge–Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
+            Bunge Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
             or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
+
+        Notes
+        -----
+        Bunge Euler angles correspond to a rotation axis sequence of z–x'–z''.
 
         Examples
         --------
-        Cube orientation as Bunge–Euler angles.
+        Cube orientation as Bunge Euler angles.
 
         >>> import damask
         >>> import numpy as np
@@ -532,7 +536,7 @@ class Rotation:
         Returns
         -------
         axis_angle : numpy.ndarray of shape (...,4) or tuple ((...,3), (...)) if pair == True
-            Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
+            Axis and angle [n_1, n_2, n_3, ω] with ǀnǀ = 1 and ω ∈ [0,π]
             or ω ∈ [0,180] if degrees == True.
 
         Examples
@@ -587,7 +591,7 @@ class Rotation:
         -------
         rho : numpy.ndarray of shape (...,4) or (...,3) if compact == True
             Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π]
-            or tan(ω/2) [n_1, n_2, n_3] with ω ∈ [0,π] if compact == True.
+            or [n_1, n_2, n_3] with |n| = tan(ω/2) and ω ∈ [0,π] if compact == True.
 
         Examples
         --------
@@ -690,15 +694,19 @@ class Rotation:
     def from_Euler_angles(phi,
                           degrees = False):
         """
-        Initialize from Bunge–Euler angles.
+        Initialize from Bunge Euler angles.
 
         Parameters
         ----------
         phi : numpy.ndarray of shape (...,3)
-            Bunge–Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
+            Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
             or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
         degrees : boolean, optional
-            Bunge–Euler angles are given in degrees. Defaults to False.
+            Euler angles are given in degrees. Defaults to False.
+
+        Notes
+        -----
+        Bunge Euler angles correspond to a rotation axis sequence of z–x'–z''.
 
         """
         eu = np.array(phi,dtype=float)
@@ -1137,7 +1145,7 @@ class Rotation:
 
     @staticmethod
     def _qu2eu(qu):
-        """Quaternion to Bunge-Euler angles."""
+        """Quaternion to Bunge Euler angles."""
         q02   = qu[...,0:1]*qu[...,2:3]
         q13   = qu[...,1:2]*qu[...,3:4]
         q01   = qu[...,0:1]*qu[...,1:2]
@@ -1255,7 +1263,7 @@ class Rotation:
 
     @staticmethod
     def _om2eu(om):
-        """Rotation matrix to Bunge–Euler angles."""
+        """Rotation matrix to Bunge Euler angles."""
         with np.errstate(invalid='ignore',divide='ignore'):
             zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
             eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,0.0),
@@ -1309,10 +1317,10 @@ class Rotation:
         return Rotation._ho2cu(Rotation._om2ho(om))
 
 
-    #---------- Bunge-Euler angles ----------
+    #---------- Bunge Euler angles ----------
     @staticmethod
     def _eu2qu(eu):
-        """Bunge–Euler angles to quaternion."""
+        """Bunge Euler angles to quaternion."""
         ee = 0.5*eu
         cPhi = np.cos(ee[...,1:2])
         sPhi = np.sin(ee[...,1:2])
@@ -1325,7 +1333,7 @@ class Rotation:
 
     @staticmethod
     def _eu2om(eu):
-        """Bunge–Euler angles to rotation matrix."""
+        """Bunge Euler angles to rotation matrix."""
         c = np.cos(eu)
         s = np.sin(eu)
         om = np.block([+c[...,0:1]*c[...,2:3]-s[...,0:1]*s[...,2:3]*c[...,1:2],
@@ -1343,7 +1351,7 @@ class Rotation:
 
     @staticmethod
     def _eu2ax(eu):
-        """Bunge–Euler angles to axis–angle pair."""
+        """Bunge Euler angles to axis–angle pair."""
         t = np.tan(eu[...,1:2]*0.5)
         sigma = 0.5*(eu[...,0:1]+eu[...,2:3])
         delta = 0.5*(eu[...,0:1]-eu[...,2:3])
@@ -1362,7 +1370,7 @@ class Rotation:
 
     @staticmethod
     def _eu2ro(eu):
-        """Bunge–Euler angles to Rodrigues–Frank vector."""
+        """Bunge Euler angles to Rodrigues–Frank vector."""
         ax = Rotation._eu2ax(eu)
         ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
         ro[ax[...,3]>=np.pi,3] = np.inf
@@ -1371,12 +1379,12 @@ class Rotation:
 
     @staticmethod
     def _eu2ho(eu):
-        """Bunge–Euler angles to homochoric vector."""
+        """Bunge Euler angles to homochoric vector."""
         return Rotation._ax2ho(Rotation._eu2ax(eu))
 
     @staticmethod
     def _eu2cu(eu):
-        """Bunge–Euler angles to cubochoric vector."""
+        """Bunge Euler angles to cubochoric vector."""
         return Rotation._ho2cu(Rotation._eu2ho(eu))
 
 
@@ -1408,7 +1416,7 @@ class Rotation:
 
     @staticmethod
     def _ax2eu(ax):
-        """Rotation matrix to Bunge–Euler angles."""
+        """Rotation matrix to Bunge Euler angles."""
         return Rotation._om2eu(Rotation._ax2om(ax))
 
     @staticmethod
@@ -1448,7 +1456,7 @@ class Rotation:
 
     @staticmethod
     def _ro2eu(ro):
-        """Rodrigues–Frank vector to Bunge–Euler angles."""
+        """Rodrigues–Frank vector to Bunge Euler angles."""
         return Rotation._om2eu(Rotation._ro2om(ro))
 
     @staticmethod
@@ -1488,7 +1496,7 @@ class Rotation:
 
     @staticmethod
     def _ho2eu(ho):
-        """Homochoric vector to Bunge–Euler angles."""
+        """Homochoric vector to Bunge Euler angles."""
         return Rotation._ax2eu(Rotation._ho2ax(ho))
 
     @staticmethod
@@ -1571,7 +1579,7 @@ class Rotation:
 
     @staticmethod
     def _cu2eu(cu):
-        """Cubochoric vector to Bunge–Euler angles."""
+        """Cubochoric vector to Bunge Euler angles."""
         return Rotation._ho2eu(Rotation._cu2ho(cu))
 
     @staticmethod
