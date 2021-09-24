@@ -591,7 +591,7 @@ class Rotation:
         -------
         rho : numpy.ndarray of shape (...,4) or (...,3) if compact == True
             Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π]
-            or [n_1, n_2, n_3] with |n| = tan(ω/2) and ω ∈ [0,π] if compact == True.
+            or [n_1, n_2, n_3] with ǀnǀ = tan(ω/2) and ω ∈ [0,π] if compact == True.
 
         Examples
         --------
