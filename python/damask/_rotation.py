@@ -120,7 +120,7 @@ class Rotation:
         Parameters
         ----------
         other : Rotation
-            Rotation to check for equality.
+            Rotation to check for inequality.
 
         """
         return np.logical_not(self==other)
@@ -236,7 +236,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : Rotation of shape(self.shape)
+        other : Rotation of shape (self.shape)
             Rotation for composition.
 
         Returns
@@ -262,7 +262,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : Rotation of shape(self.shape)
+        other : Rotation of shape (self.shape)
             Rotation for composition.
 
         """
@@ -276,7 +276,7 @@ class Rotation:
         Parameters
         ----------
         other : damask.Rotation of shape (self.shape)
-            Rotation to inverse composition.
+            Rotation to invert for composition.
 
         Returns
         -------
@@ -296,7 +296,7 @@ class Rotation:
         Parameters
         ----------
         other : Rotation of shape (self.shape)
-            Rotation to inverse composition.
+            Rotation to invert for composition.
 
         """
         return self/other
@@ -468,7 +468,7 @@ class Rotation:
             Misorientation.
 
         """
-        return other*~self
+        return other/self
 
 
     ################################################################################################
