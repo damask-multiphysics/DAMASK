@@ -98,13 +98,13 @@ class Crystal():
              or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
              or (self.beta  is None or ('beta'  in self.immutable and self.beta  != self.immutable['beta'])) \
              or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
-                raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
+                raise ValueError (f'incompatible parameters {self.parameters} for crystal family {self.family}')
 
             if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
-                raise ValueError ('Lattice angles must be positive')
+                raise ValueError ('lattice angles must be positive')
             if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
-              > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
-                raise ValueError ('Each lattice angle must be less than sum of others')
+              >= np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
+                raise ValueError ('each lattice angle must be less than sum of others')
         else:
             self.a = self.b = self.c = None
             self.alpha = self.beta = self.gamma = None
@@ -285,6 +285,37 @@ class Crystal():
         return np.linalg.inv(self.basis_real.T)
 
 
+    @property
+    def lattice_points(self):
+        """Return lattice points."""
+        _lattice_points = {
+                'P': [
+                      [0,0,0],
+                     ],
+                'S': [
+                      [0,0,0],
+                      [0.5,0.5,0],
+                     ],
+                'I': [
+                      [0,0,0],
+                      [0.5,0.5,0.5],
+                     ],
+                'F': [
+                      [0,0,0],
+                      [0.0,0.5,0.5],
+                      [0.5,0.0,0.5],
+                      [0.5,0.5,0.0],
+                     ],
+                'hP': [
+                       [0,0,0],
+                       [2./3.,1./3.,0.5],
+                     ],
+                }
+
+        if self.lattice is None: raise KeyError('no lattice type specified')
+        return np.array(_lattice_points.get(self.lattice if self.lattice == 'hP' else \
+                                            self.lattice[-1],None),dtype=float)
+
     def to_lattice(self,*,direction=None,plane=None):
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
@@ -302,7 +333,7 @@ class Crystal():
 
         """
         if (direction is not None) ^ (plane is None):
-            raise KeyError('Specify either "direction" or "plane"')
+            raise KeyError('specify either "direction" or "plane"')
         axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
                       if plane is None else \
                       (np.array(plane),self.basis_real.T)
@@ -325,7 +356,7 @@ class Crystal():
 
         """
         if (uvw is not None) ^ (hkl is None):
-            raise KeyError('Specify either "uvw" or "hkl"')
+            raise KeyError('specify either "uvw" or "hkl"')
         axis,basis  = (np.array(uvw),self.basis_real) \
                       if hkl is None else \
                       (np.array(hkl),self.basis_reciprocal)
