@@ -290,31 +290,27 @@ class Crystal():
         """Return lattice points."""
         _lattice_points = {
                 'P': [
-                      [0,0,0],
                      ],
                 'S': [
-                      [0,0,0],
                       [0.5,0.5,0],
                      ],
                 'I': [
-                      [0,0,0],
                       [0.5,0.5,0.5],
                      ],
                 'F': [
-                      [0,0,0],
                       [0.0,0.5,0.5],
                       [0.5,0.0,0.5],
                       [0.5,0.5,0.0],
                      ],
                 'hP': [
-                       [0,0,0],
                        [2./3.,1./3.,0.5],
                      ],
                 }
 
         if self.lattice is None: raise KeyError('no lattice type specified')
-        return np.array(_lattice_points.get(self.lattice if self.lattice == 'hP' else \
-                                            self.lattice[-1],None),dtype=float)
+        return np.array([[0,0,0]]
+                        + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
+                                              self.lattice[-1],None),dtype=float)
 
     def to_lattice(self,*,direction=None,plane=None):
         """
