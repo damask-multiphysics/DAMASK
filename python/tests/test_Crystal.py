@@ -65,4 +65,17 @@ class TestCrystal:
                     alpha=alpha,beta=beta,gamma=gamma)
         assert np.allclose(vector,
                            c.to_frame(**{keyFrame:c.to_lattice(**{keyLattice:vector})}))
-    
+
+    @pytest.mark.parametrize('lattice,a,b,c,alpha,beta,gamma,points',
+                            [
+                             ('aP',0.5,2.0,3.0,0.8,0.5,1.2,[[0,0,0]]),
+                             ('mS',1.0,2.0,3.0,np.pi/2,0.5,np.pi/2,[[0,0,0],[0.5,0.5,0.0]]),
+                             ('oI',0.5,1.5,3.0,np.pi/2,np.pi/2,np.pi/2,[[0,0,0],[0.5,0.5,0.5]]),
+                             ('hP',1.0,1.0,1.6,np.pi/2,np.pi/2,2*np.pi/3,[[0,0,0],[2./3.,1./3.,0.5]]),
+                             ('cF',1.0,1.0,1.0,np.pi/2,np.pi/2,np.pi/2,[[0,0,0],[0.0,0.5,0.5],[0.5,0.0,0.5],[0.5,0.5,0.0]]),
+                            ])
+    def test_lattice_points(self,lattice,a,b,c,alpha,beta,gamma,points):
+        c = Crystal(lattice=lattice,
+                    a=a,b=b,c=c,
+                    alpha=alpha,beta=beta,gamma=gamma)
+        assert np.allclose(points,c.lattice_points)
