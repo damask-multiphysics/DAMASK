@@ -10,7 +10,7 @@ endif ()
 # Dummy project to determine compiler names and version
 project (Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig")
-pkg_check_modules (PETSC REQUIRED PETSc>=3.12.0 PETSc<3.16.0)
+pkg_check_modules (PETSC REQUIRED PETSc>=3.12.0 PETSc<3.17.0)
 pkg_get_variable (CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable (CMAKE_C_COMPILER PETSc ccompiler)
 
