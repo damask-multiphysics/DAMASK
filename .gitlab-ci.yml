@@ -241,9 +241,10 @@ merge_into_master:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
     - echo $TESTEDREV > python/damask/VERSION
+    - git add python/damask/VERSION
     - >
         git diff-index --quiet HEAD ||
-        git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+        git commit -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
     - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
