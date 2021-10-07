@@ -219,7 +219,7 @@ source_distribution:
   stage: deploy
   script:
     - cd $(mktemp -d)
-    - $DAMASKROOT/PRIVATE/releasing/deploy.sh $DAMASKROOT $CI_COMMIT_SHA
+    - $DAMASKROOT/PRIVATE/releasing/tar.xz/create.sh $DAMASKROOT $CI_COMMIT_SHA
   except:
     - master
     - release
