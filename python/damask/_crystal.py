@@ -114,8 +114,8 @@ class Crystal():
         """Represent."""
         return '\n'.join([f'Crystal family {self.family}']
                        + ([] if self.lattice is None else [f'Bravais lattice {self.lattice}']+
-                                                           list(map(lambda x:f'{x[0]}:{x[1]:.5g}',
-                                                                    zip(['a','b','c','alpha','beta','gamma',],
+                                                           list(map(lambda x:f'{x[0]}: {x[1]:.5g}',
+                                                                    zip(['a','b','c','α','β','γ',],
                                                                          self.parameters))))
                         )
 
