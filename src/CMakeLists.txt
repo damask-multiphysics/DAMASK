@@ -29,3 +29,7 @@ else()
     exec_program(mktemp ARGS -d OUTPUT_VARIABLE black_hole)
     install(PROGRAMS ${nothing} DESTINATION ${black_hole})
 endif()
+
+string(REPLACE ";" "\n" sources "${damask-sources};${solver-sources}")
+message(${CMAKE_BINARY_DIR})
+file(WRITE ${CMAKE_BINARY_DIR}/sources.txt ${sources})
