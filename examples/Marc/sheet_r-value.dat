@@ -350,7 +350,7 @@ initial state
          1
 DAMASK_elements
 loadcase            r-value
-         5
+         4
 DAMASK
 unten_z
 unten_y
