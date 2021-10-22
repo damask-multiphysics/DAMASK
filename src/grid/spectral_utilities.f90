@@ -392,8 +392,8 @@ subroutine utilities_updateGamma(C)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
         forall(l = 1:3, m = 1:3) &
           temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
-        A(1:3,1:3) = real(temp33_complex);  A(4:6,4:6) =   real(temp33_complex)
-        A(1:3,4:6) = aimag(temp33_complex); A(4:6,1:3) = -aimag(temp33_complex)
+        A(1:3,1:3) = temp33_complex%re; A(4:6,4:6) =  temp33_complex%re
+        A(1:3,4:6) = temp33_complex%im; A(4:6,1:3) = -temp33_complex%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
@@ -509,8 +509,8 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
         forall(l = 1:3, m = 1:3) &
           temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
-        A(1:3,1:3) =  real(temp33_complex); A(4:6,4:6) =   real(temp33_complex)
-        A(1:3,4:6) = aimag(temp33_complex); A(4:6,1:3) = -aimag(temp33_complex)
+        A(1:3,1:3) = temp33_complex%re; A(4:6,4:6) =  temp33_complex%re
+        A(1:3,4:6) = temp33_complex%im; A(4:6,1:3) = -temp33_complex%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
@@ -630,7 +630,7 @@ real(pReal) function utilities_curlRMS()
                              -tensorField_fourier(l,1,i,j,k)*xi1st(2,i,j,k)*rescaledGeom(2))
       enddo
       utilities_curlRMS = utilities_curlRMS &
-                        +2.0_pReal*sum(real(curl_fourier)**2.0_pReal+aimag(curl_fourier)**2.0_pReal)! Has somewhere a conj. complex counterpart. Therefore count it twice.
+                        +2.0_pReal*sum(curl_fourier%re**2.0_pReal+curl_fourier%im**2.0_pReal)       ! Has somewhere a conj. complex counterpart. Therefore count it twice.
     enddo
     do l = 1, 3
        curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2) &
@@ -641,7 +641,7 @@ real(pReal) function utilities_curlRMS()
                        -tensorField_fourier(l,1,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2))
     enddo
     utilities_curlRMS = utilities_curlRMS &
-                      + sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)         ! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
+                      + sum(curl_fourier%re**2.0_pReal + curl_fourier%im**2.0_pReal)                ! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
     do l = 1, 3
       curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2) &
                       -tensorField_fourier(l,2,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*rescaledGeom(3))
@@ -651,7 +651,7 @@ real(pReal) function utilities_curlRMS()
                       -tensorField_fourier(l,1,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2))
     enddo
     utilities_curlRMS = utilities_curlRMS &
-                      + sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)         ! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
+                      + sum(curl_fourier%re**2.0_pReal + curl_fourier%im**2.0_pReal)                ! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
   enddo; enddo
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
