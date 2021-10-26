@@ -41,7 +41,7 @@ module mesh_mechanical_FEM
 
   type, private :: tNumerics
     integer :: &
-      p_i, &                                                                                        !< integration order
+      p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
     logical :: &
       BBarStabilisation
