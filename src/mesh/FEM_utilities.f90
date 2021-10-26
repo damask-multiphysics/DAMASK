@@ -19,6 +19,7 @@ module FEM_utilities
   use IO
   use discretization_mesh
   use homogenization
+  use FEM_quadrature
 
   implicit none
   private
@@ -29,8 +30,8 @@ module FEM_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
-  character(len=*),                         parameter,            public :: &
-    FIELD_MECH_label     = 'mechanical'
+  character(len=*), parameter, public :: &
+    FIELD_MECH_label = 'mechanical'
 
   enum, bind(c); enumerator :: &
     FIELD_UNDEFINED_ID, &
@@ -86,7 +87,9 @@ subroutine FEM_utilities_init
   class(tNode), pointer :: &
     num_mesh, &
     debug_mesh                                                                                      ! pointer to mesh debug options
-  integer :: structOrder                                                                            !< order of displacement shape functions
+  integer :: &
+    p_s, &                                                                                          !< order of shape functions
+    p_i                                                                                             !< integration order (quadrature rule)
   character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
   PetscErrorCode            :: ierr
@@ -96,7 +99,14 @@ subroutine FEM_utilities_init
   print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
 
   num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
-  structOrder =  num_mesh%get_asInt('structOrder', defaultVal = 2)
+
+  p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
+  p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
+
+  if (p_s < 1_pInt .or. p_s > size(FEM_nQuadrature,2)) &
+    call IO_error(821,ext_msg='shape function order (p_s) out of bounds')
+  if (p_i < max(1_pInt,p_s-1_pInt) .or. p_i > p_s) &
+    call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
   debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
   debugPETSc  =  debug_mesh%contains('PETSc')
@@ -119,7 +129,7 @@ subroutine FEM_utilities_init
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('PETSc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
-  write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
+  write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)
   CHKERRQ(ierr)
 
