@@ -53,22 +53,22 @@ variables:
   GNUCompiler:                     "$GNUCompiler10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   IMPI2020Intel19_1:               "MPI/Intel/19.1.2/IntelMPI/2019"
-  OMPI4_0GNU10:                    "MPI/GNU/10/OpenMPI/4.0.5"
+  OMPI4_1GNU10:                    "MPI/GNU/10/OpenMPI/4.1.1"
   # ------------ Defaults ----------------------------------------------
   MPI_Intel:                       "$IMPI2020Intel19_1"
-  MPI_GNU:                         "$OMPI4_0GNU10"
+  MPI_GNU:                         "$OMPI4_1GNU10"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_14_2IMPI2020Intel19_1:    "Libraries/PETSc/3.14.2/Intel-19.1.2-IntelMPI-2019"
-  PETSc3_14_2OMPI4_0GNU10:         "Libraries/PETSc/3.14.2/GNU-10-OpenMPI-4.0.5"
+  PETSc3_16_0IMPI2020Intel19_1:    "Libraries/PETSc/3.16.0/Intel-19.1.2-IntelMPI-2019"
+  PETSc3_16_0OMPI4_1GNU10:         "Libraries/PETSc/3.16.0/GNU-10-OpenMPI-4.1.1"
   # ------------ Defaults ----------------------------------------------
-  PETSc_Intel:                     "$PETSc3_14_2IMPI2020Intel19_1"
-  PETSc_GNU:                       "$PETSc3_14_2OMPI4_0GNU10"
+  PETSc_Intel:                     "$PETSc3_16_0IMPI2020Intel19_1"
+  PETSc_GNU:                       "$PETSc3_16_0OMPI4_1GNU10"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC2021:                         "FEM/MSC/2021.2"
   # ------------ Defaults ----------------------------------------------
   MSC:                             "$MSC2021"
   IntelMarc:                       "$IntelCompiler19_1"
-  HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
+  HDF5Marc:                        "HDF5/1.12.1/Intel-19.1.2"
 
 ###################################################################################################
 checkout:
