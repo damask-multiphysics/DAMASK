@@ -1,5 +1,5 @@
-title               r-value
-$....MARC input file produced by Marc Mentat 2019 (64bit)
+title               R-Wert
+$....MARC input file produced by Marc Mentat 2021.2 (64bit)
 $...................................
 $....input file using extended precision
 extended
@@ -7,11 +7,11 @@ $...................................
 sizing                                 0        80       165         0
 alloc                       25
 elements                     7
-version                     14         1         0         1
+version                     15         1         0         1
 table                        0         0         2         1         1         0         0         1
 processor                    1         1         1         0
 $no list
-large stra                   2         1         0         0         0         0         0
+large stra                   2         1         0         0         0         0         0         0
 all points
 no echo                      1         2         3         4
 state vars                   2
@@ -269,8 +269,6 @@ coordinates
        163 3.999999999999999+1 9.999999999999996+0-5.000000000000000-1
        164 3.999999999999999+1 9.999999999999996+0 0.000000000000000+0
        165 3.999999999999999+1 9.999999999999996+0 5.000000000000000-1
-define              element             set                 DAMASK_elements
-           1          to          80
 define              node                set                 unten_y_nodes
            2           5           8          11          14
 define              node                set                 oben_y_nodes
@@ -283,6 +281,166 @@ define              node                set                 unten_z_nodes
            7          to           9
 define              node                set                 oben_z_nodes
          157          to         159
+define              element             set                 material0_elements
+           1
+define              element             set                 material1_elements
+           2
+define              element             set                 material2_elements
+           3
+define              element             set                 material3_elements
+           4
+define              element             set                 material4_elements
+           5
+define              element             set                 material5_elements
+           6
+define              element             set                 material6_elements
+           7
+define              element             set                 material7_elements
+           8
+define              element             set                 material8_elements
+           9
+define              element             set                 material9_elements
+          10
+define              element             set                 material10_elements
+          11
+define              element             set                 material11_elements
+          12
+define              element             set                 material12_elements
+          13
+define              element             set                 material13_elements
+          14
+define              element             set                 material14_elements
+          15
+define              element             set                 material15_elements
+          16
+define              element             set                 material16_elements
+          17
+define              element             set                 material17_elements
+          18
+define              element             set                 material18_elements
+          19
+define              element             set                 material19_elements
+          20
+define              element             set                 material20_elements
+          21
+define              element             set                 material21_elements
+          22
+define              element             set                 material22_elements
+          23
+define              element             set                 material23_elements
+          24
+define              element             set                 material24_elements
+          25
+define              element             set                 material25_elements
+          26
+define              element             set                 material26_elements
+          27
+define              element             set                 material27_elements
+          28
+define              element             set                 material28_elements
+          29
+define              element             set                 material29_elements
+          30
+define              element             set                 material30_elements
+          31
+define              element             set                 material31_elements
+          32
+define              element             set                 material32_elements
+          33
+define              element             set                 material33_elements
+          34
+define              element             set                 material34_elements
+          35
+define              element             set                 material35_elements
+          36
+define              element             set                 material36_elements
+          37
+define              element             set                 material37_elements
+          38
+define              element             set                 material38_elements
+          39
+define              element             set                 material39_elements
+          40
+define              element             set                 material40_elements
+          41
+define              element             set                 material41_elements
+          42
+define              element             set                 material42_elements
+          43
+define              element             set                 material43_elements
+          44
+define              element             set                 material44_elements
+          45
+define              element             set                 material45_elements
+          46
+define              element             set                 material46_elements
+          47
+define              element             set                 material47_elements
+          48
+define              element             set                 material48_elements
+          49
+define              element             set                 material49_elements
+          50
+define              element             set                 material50_elements
+          51
+define              element             set                 material51_elements
+          52
+define              element             set                 material52_elements
+          53
+define              element             set                 material53_elements
+          54
+define              element             set                 material54_elements
+          55
+define              element             set                 material55_elements
+          56
+define              element             set                 material56_elements
+          57
+define              element             set                 material57_elements
+          58
+define              element             set                 material58_elements
+          59
+define              element             set                 material59_elements
+          60
+define              element             set                 material60_elements
+          61
+define              element             set                 material61_elements
+          62
+define              element             set                 material62_elements
+          63
+define              element             set                 material63_elements
+          64
+define              element             set                 material64_elements
+          65
+define              element             set                 material65_elements
+          66
+define              element             set                 material66_elements
+          67
+define              element             set                 material67_elements
+          68
+define              element             set                 material68_elements
+          69
+define              element             set                 material69_elements
+          70
+define              element             set                 material70_elements
+          71
+define              element             set                 material71_elements
+          72
+define              element             set                 material72_elements
+          73
+define              element             set                 material73_elements
+          74
+define              element             set                 material74_elements
+          75
+define              element             set                 material75_elements
+          76
+define              element             set                 material76_elements
+          77
+define              element             set                 material77_elements
+          78
+define              element             set                 material78_elements
+          79
+define              element             set                 material79_elements
+          80
 hypoelastic
 
          1         0         1         0         1TKS                              0
@@ -294,13 +452,13 @@ mat color
          1         1       230         0         0
 table               weg_x
          1         1         0         0         2
-         1         2         2         0         0         2         0         0         2         0         0         2
+         1         2         2         0         0         2         0         0         2         0         0         2         0         0         0         0
  0.000000000000000+0 0.000000000000000+0
  2.000000000000000+2 1.600000000000000+1
 geometry
          0         0         2
          1         9         1       230         0         0
-r-value-sample
+r-wert-probe
  0.000000000000000+0 0.000000000000000+0 0.000000000000000+0 0.000000000000000+0 0.000000000000000+0 0.000000000000000+0 0.000000000000000+0
 
 usdata                       1
@@ -344,20 +502,655 @@ unten_fest_nodes
 oben_ziehen_nodes
 initial state
 
-         2         6         1         0         0         0DAMASK
+         2         6         1         0         0         0material0
  0.000000000000000+0
          0
          1
-DAMASK_elements
-loadcase            r-value
-         4
-DAMASK
+material0_elements
+initial state
+
+         2         6         1         0         0         0material1
+ 1.000000000000000+0
+         0
+         1
+material1_elements
+initial state
+
+         2         6         1         0         0         0material2
+ 2.000000000000000+0
+         0
+         1
+material2_elements
+initial state
+
+         2         6         1         0         0         0material3
+ 3.000000000000000+0
+         0
+         1
+material3_elements
+initial state
+
+         2         6         1         0         0         0material4
+ 4.000000000000000+0
+         0
+         1
+material4_elements
+initial state
+
+         2         6         1         0         0         0material5
+ 5.000000000000000+0
+         0
+         1
+material5_elements
+initial state
+
+         2         6         1         0         0         0material6
+ 6.000000000000000+0
+         0
+         1
+material6_elements
+initial state
+
+         2         6         1         0         0         0material7
+ 7.000000000000000+0
+         0
+         1
+material7_elements
+initial state
+
+         2         6         1         0         0         0material8
+ 8.000000000000000+0
+         0
+         1
+material8_elements
+initial state
+
+         2         6         1         0         0         0material9
+ 9.000000000000000+0
+         0
+         1
+material9_elements
+initial state
+
+         2         6         1         0         0         0material10
+ 10.000000000000000+0
+         0
+         1
+material10_elements
+initial state
+
+         2         6         1         0         0         0material11
+ 11.000000000000000+0
+         0
+         1
+material11_elements
+initial state
+
+         2         6         1         0         0         0material12
+ 12.000000000000000+0
+         0
+         1
+material12_elements
+initial state
+
+         2         6         1         0         0         0material13
+ 13.000000000000000+0
+         0
+         1
+material13_elements
+initial state
+
+         2         6         1         0         0         0material14
+ 14.000000000000000+0
+         0
+         1
+material14_elements
+initial state
+
+         2         6         1         0         0         0material15
+ 15.000000000000000+0
+         0
+         1
+material15_elements
+initial state
+
+         2         6         1         0         0         0material16
+ 16.000000000000000+0
+         0
+         1
+material16_elements
+initial state
+
+         2         6         1         0         0         0material17
+ 17.000000000000000+0
+         0
+         1
+material17_elements
+initial state
+
+         2         6         1         0         0         0material18
+ 18.000000000000000+0
+         0
+         1
+material18_elements
+initial state
+
+         2         6         1         0         0         0material19
+ 19.000000000000000+0
+         0
+         1
+material19_elements
+initial state
+
+         2         6         1         0         0         0material20
+ 20.000000000000000+0
+         0
+         1
+material20_elements
+initial state
+
+         2         6         1         0         0         0material21
+ 21.000000000000000+0
+         0
+         1
+material21_elements
+initial state
+
+         2         6         1         0         0         0material22
+ 22.000000000000000+0
+         0
+         1
+material22_elements
+initial state
+
+         2         6         1         0         0         0material23
+ 23.000000000000000+0
+         0
+         1
+material23_elements
+initial state
+
+         2         6         1         0         0         0material24
+ 24.000000000000000+0
+         0
+         1
+material24_elements
+initial state
+
+         2         6         1         0         0         0material25
+ 25.000000000000000+0
+         0
+         1
+material25_elements
+initial state
+
+         2         6         1         0         0         0material26
+ 26.000000000000000+0
+         0
+         1
+material26_elements
+initial state
+
+         2         6         1         0         0         0material27
+ 27.000000000000000+0
+         0
+         1
+material27_elements
+initial state
+
+         2         6         1         0         0         0material28
+ 28.000000000000000+0
+         0
+         1
+material28_elements
+initial state
+
+         2         6         1         0         0         0material29
+ 29.000000000000000+0
+         0
+         1
+material29_elements
+initial state
+
+         2         6         1         0         0         0material30
+ 30.000000000000000+0
+         0
+         1
+material30_elements
+initial state
+
+         2         6         1         0         0         0material31
+ 31.000000000000000+0
+         0
+         1
+material31_elements
+initial state
+
+         2         6         1         0         0         0material32
+ 32.000000000000000+0
+         0
+         1
+material32_elements
+initial state
+
+         2         6         1         0         0         0material33
+ 33.000000000000000+0
+         0
+         1
+material33_elements
+initial state
+
+         2         6         1         0         0         0material34
+ 34.000000000000000+0
+         0
+         1
+material34_elements
+initial state
+
+         2         6         1         0         0         0material35
+ 35.000000000000000+0
+         0
+         1
+material35_elements
+initial state
+
+         2         6         1         0         0         0material36
+ 36.000000000000000+0
+         0
+         1
+material36_elements
+initial state
+
+         2         6         1         0         0         0material37
+ 37.000000000000000+0
+         0
+         1
+material37_elements
+initial state
+
+         2         6         1         0         0         0material38
+ 38.000000000000000+0
+         0
+         1
+material38_elements
+initial state
+
+         2         6         1         0         0         0material39
+ 39.000000000000000+0
+         0
+         1
+material39_elements
+initial state
+
+         2         6         1         0         0         0material40
+ 40.000000000000000+0
+         0
+         1
+material40_elements
+initial state
+
+         2         6         1         0         0         0material41
+ 41.000000000000000+0
+         0
+         1
+material41_elements
+initial state
+
+         2         6         1         0         0         0material42
+ 42.000000000000000+0
+         0
+         1
+material42_elements
+initial state
+
+         2         6         1         0         0         0material43
+ 43.000000000000000+0
+         0
+         1
+material43_elements
+initial state
+
+         2         6         1         0         0         0material44
+ 44.000000000000000+0
+         0
+         1
+material44_elements
+initial state
+
+         2         6         1         0         0         0material45
+ 45.000000000000000+0
+         0
+         1
+material45_elements
+initial state
+
+         2         6         1         0         0         0material46
+ 46.000000000000000+0
+         0
+         1
+material46_elements
+initial state
+
+         2         6         1         0         0         0material47
+ 47.000000000000000+0
+         0
+         1
+material47_elements
+initial state
+
+         2         6         1         0         0         0material48
+ 48.000000000000000+0
+         0
+         1
+material48_elements
+initial state
+
+         2         6         1         0         0         0material49
+ 49.000000000000000+0
+         0
+         1
+material49_elements
+initial state
+
+         2         6         1         0         0         0material50
+ 50.000000000000000+0
+         0
+         1
+material50_elements
+initial state
+
+         2         6         1         0         0         0material51
+ 51.000000000000000+0
+         0
+         1
+material51_elements
+initial state
+
+         2         6         1         0         0         0material52
+ 52.000000000000000+0
+         0
+         1
+material52_elements
+initial state
+
+         2         6         1         0         0         0material53
+ 53.000000000000000+0
+         0
+         1
+material53_elements
+initial state
+
+         2         6         1         0         0         0material54
+ 54.000000000000000+0
+         0
+         1
+material54_elements
+initial state
+
+         2         6         1         0         0         0material55
+ 55.000000000000000+0
+         0
+         1
+material55_elements
+initial state
+
+         2         6         1         0         0         0material56
+ 56.000000000000000+0
+         0
+         1
+material56_elements
+initial state
+
+         2         6         1         0         0         0material57
+ 57.000000000000000+0
+         0
+         1
+material57_elements
+initial state
+
+         2         6         1         0         0         0material58
+ 58.000000000000000+0
+         0
+         1
+material58_elements
+initial state
+
+         2         6         1         0         0         0material59
+ 59.000000000000000+0
+         0
+         1
+material59_elements
+initial state
+
+         2         6         1         0         0         0material60
+ 60.000000000000000+0
+         0
+         1
+material60_elements
+initial state
+
+         2         6         1         0         0         0material61
+ 61.000000000000000+0
+         0
+         1
+material61_elements
+initial state
+
+         2         6         1         0         0         0material62
+ 62.000000000000000+0
+         0
+         1
+material62_elements
+initial state
+
+         2         6         1         0         0         0material63
+ 63.000000000000000+0
+         0
+         1
+material63_elements
+initial state
+
+         2         6         1         0         0         0material64
+ 64.000000000000000+0
+         0
+         1
+material64_elements
+initial state
+
+         2         6         1         0         0         0material65
+ 65.000000000000000+0
+         0
+         1
+material65_elements
+initial state
+
+         2         6         1         0         0         0material66
+ 66.000000000000000+0
+         0
+         1
+material66_elements
+initial state
+
+         2         6         1         0         0         0material67
+ 67.000000000000000+0
+         0
+         1
+material67_elements
+initial state
+
+         2         6         1         0         0         0material68
+ 68.000000000000000+0
+         0
+         1
+material68_elements
+initial state
+
+         2         6         1         0         0         0material69
+ 69.000000000000000+0
+         0
+         1
+material69_elements
+initial state
+
+         2         6         1         0         0         0material70
+ 70.000000000000000+0
+         0
+         1
+material70_elements
+initial state
+
+         2         6         1         0         0         0material71
+ 71.000000000000000+0
+         0
+         1
+material71_elements
+initial state
+
+         2         6         1         0         0         0material72
+ 72.000000000000000+0
+         0
+         1
+material72_elements
+initial state
+
+         2         6         1         0         0         0material73
+ 73.000000000000000+0
+         0
+         1
+material73_elements
+initial state
+
+         2         6         1         0         0         0material74
+ 74.000000000000000+0
+         0
+         1
+material74_elements
+initial state
+
+         2         6         1         0         0         0material75
+ 75.000000000000000+0
+         0
+         1
+material75_elements
+initial state
+
+         2         6         1         0         0         0material76
+ 76.000000000000000+0
+         0
+         1
+material76_elements
+initial state
+
+         2         6         1         0         0         0material77
+ 77.000000000000000+0
+         0
+         1
+material77_elements
+initial state
+
+         2         6         1         0         0         0material78
+ 78.000000000000000+0
+         0
+         1
+material78_elements
+initial state
+
+         2         6         1         0         0         0material79
+ 79.000000000000000+0
+         0
+         1
+material79_elements
+loadcase            R-Wert
+        83
+material0
+material1
+material2
+material3
+material4
+material5
+material6
+material7
+material8
+material9
+material10
+material11
+material12
+material13
+material14
+material15
+material16
+material17
+material18
+material19
+material20
+material21
+material22
+material23
+material24
+material25
+material26
+material27
+material28
+material29
+material30
+material31
+material32
+material33
+material34
+material35
+material36
+material37
+material38
+material39
+material40
+material41
+material42
+material43
+material44
+material45
+material46
+material47
+material48
+material49
+material50
+material51
+material52
+material53
+material54
+material55
+material56
+material57
+material58
+material59
+material60
+material61
+material62
+material63
+material64
+material65
+material66
+material67
+material68
+material69
+material70
+material71
+material72
+material73
+material74
+material75
+material76
+material77
+material78
+material79
 unten_z
 unten_y
 unten_fest
 no print
 post
-         6        16        17         0         0        19        20         0         1         0         0         0         0         0         0         0
+         3        16        17         0         0        19        20         0         1         0         0         0         0         0         0         0
+        17         0
+       301         0
+       311         0
 parameters
  1.000000000000000+0 1.000000000000000+9 1.000000000000000+2 1.000000000000000+6 2.500000000000000-1 5.000000000000000-1 1.500000000000000+0-5.000000000000000-1
  8.625000000000000+0 2.000000000000000+1 1.000000000000000-4 1.000000000000000-6 1.000000000000000+0 1.000000000000000-4
@@ -367,9 +1160,9 @@ parameters
  3.000000000000000+0 4.000000000000000-1
 end option
 $...................
-$....start of loadcase Tensile
-title               Tensile
-loadcase            Tensile
+$....start of loadcase Ziehen
+title               Ziehen
+loadcase            Ziehen
          6
 unten_z
 unten_y
@@ -392,5 +1185,5 @@ auto load
 time step
  2.000000000000000+0
 continue
-$....end of loadcase Tensile
+$....end of loadcase Ziehen
 $...................
