@@ -101,7 +101,7 @@ logical elemental pure function dEq(a,b,tol)
     dEq = abs(a-b) <= tol
   else
     dEq = abs(a-b) <= PREAL_EPSILON * maxval(abs([a,b]))
-  endif
+  end if
 
 end function dEq
 
@@ -139,7 +139,7 @@ logical elemental pure function dEq0(a,tol)
     dEq0 = abs(a) <= tol
   else
     dEq0 = abs(a) <= PREAL_MIN * 10.0_pReal
-  endif
+  end if
 
 end function dEq0
 
@@ -178,7 +178,7 @@ logical elemental pure function cEq(a,b,tol)
     cEq = abs(a-b) <= tol
   else
     cEq = abs(a-b) <= PREAL_EPSILON * maxval(abs([a,b]))
-  endif
+  end if
 
 end function cEq
 
