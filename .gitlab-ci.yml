@@ -46,29 +46,18 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler19_1:               "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
-  GNUCompiler10:                   "Compiler/GNU/10"
-  # ------------ Defaults ----------------------------------------------
-  IntelCompiler:                   "$IntelCompiler19_1"
-  GNUCompiler:                     "$GNUCompiler10"
+  IntelCompiler:  "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  GNUCompiler:    "Compiler/GNU/10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IMPI2020Intel19_1:               "MPI/Intel/19.1.2/IntelMPI/2019"
-  OMPI4_0GNU10:                    "MPI/GNU/10/OpenMPI/4.0.5"
-  # ------------ Defaults ----------------------------------------------
-  MPI_Intel:                       "$IMPI2020Intel19_1"
-  MPI_GNU:                         "$OMPI4_0GNU10"
+  MPI_Intel:      "MPI/Intel/19.1.2/IntelMPI/2019"
+  MPI_GNU:        "MPI/GNU/10/OpenMPI/4.1.1"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_14_2IMPI2020Intel19_1:    "Libraries/PETSc/3.14.2/Intel-19.1.2-IntelMPI-2019"
-  PETSc3_14_2OMPI4_0GNU10:         "Libraries/PETSc/3.14.2/GNU-10-OpenMPI-4.0.5"
-  # ------------ Defaults ----------------------------------------------
-  PETSc_Intel:                     "$PETSc3_14_2IMPI2020Intel19_1"
-  PETSc_GNU:                       "$PETSc3_14_2OMPI4_0GNU10"
-  # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2021:                         "FEM/MSC/2021.2"
-  # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2021"
-  IntelMarc:                       "$IntelCompiler19_1"
-  HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
+  PETSc_Intel:    "Libraries/PETSc/3.16.0/Intel-19.1.2-IntelMPI-2019"
+  PETSc_GNU:      "Libraries/PETSc/3.16.0/GNU-10-OpenMPI-4.1.1"
+  # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  MSC:            "FEM/MSC/2021.2"
+  IntelMarc:      "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  HDF5Marc:       "HDF5/1.12.1/Intel-19.1.2"
 
 ###################################################################################################
 checkout:
