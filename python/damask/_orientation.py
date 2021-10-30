@@ -9,27 +9,6 @@ from . import util
 from . import tensor
 
 
-lattice_symmetries = {
-                'aP': 'triclinic',
-
-                'mP': 'monoclinic',
-                'mS': 'monoclinic',
-
-                'oP': 'orthorhombic',
-                'oS': 'orthorhombic',
-                'oI': 'orthorhombic',
-                'oF': 'orthorhombic',
-
-                'tP': 'tetragonal',
-                'tI': 'tetragonal',
-
-                'hP': 'hexagonal',
-
-                'cP': 'cubic',
-                'cI': 'cubic',
-                'cF': 'cubic',
-               }
-
 _parameter_doc = \
        """
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
