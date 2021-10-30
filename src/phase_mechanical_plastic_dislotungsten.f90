@@ -463,7 +463,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     StressRatio, &
     StressRatio_p,StressRatio_pminus1, &
     dvel, &
-    tau_pos,tau_neg, &
+    tau_pos, tau_neg, tau_eff, &
     t_n, t_k, dtk,dtn
   integer :: j
 
@@ -482,8 +482,10 @@ pure subroutine kinetics(Mp,T,ph,en, &
               dot_gamma_0     => stt%rho_mob(:,en)*prm%b_sl*prm%v_0, &
               effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
-      significantPositiveTau: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
-        StressRatio = (abs(tau_pos)-dst%tau_pass(:,en))/prm%tau_Peierls
+      tau_eff = abs(tau_pos)-dst%tau_pass(:,en)
+
+      significantPositiveTau: where(tau_eff > tol_math_check)
+        StressRatio = tau_eff/prm%tau_Peierls
         StressRatio_p       = StressRatio** prm%p
         StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
 
@@ -510,8 +512,10 @@ pure subroutine kinetics(Mp,T,ph,en, &
         end where significantPositiveTau2
       end if
 
-      significantNegativeTau: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
-        StressRatio = (abs(tau_neg)-dst%tau_pass(:,en))/prm%tau_Peierls
+      tau_eff = abs(tau_neg)-dst%tau_pass(:,en)
+
+      significantNegativeTau: where(tau_eff > tol_math_check)
+        StressRatio = tau_eff/prm%tau_Peierls
         StressRatio_p       = StressRatio** prm%p
         StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
 
