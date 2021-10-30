@@ -890,7 +890,8 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
       stressRatio    = tau_eff/prm%tau_0
       StressRatio_p  = stressRatio** prm%p
       Q_kB_T = prm%Q_sl/(kB*T)
-      v_wait_inverse = prm%v_0**(-1.0_pReal) * exp(Q_kB_T*(1.0_pReal-StressRatio_p)** prm%q)
+      v_wait_inverse = exp(Q_kB_T*(1.0_pReal-StressRatio_p)** prm%q) &
+                     / prm%v_0
       v_run_inverse  = prm%B/(tau_eff*prm%b_sl)
 
       dot_gamma_sl = sign(stt%rho_mob(:,en)*prm%b_sl/(v_wait_inverse+v_run_inverse),tau)

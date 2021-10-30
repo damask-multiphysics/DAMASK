@@ -462,7 +462,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     StressRatio, &
     StressRatio_p,StressRatio_pminus1, &
-    dvel, vel, &
+    dvel, &
     tau_pos,tau_neg, &
     t_n, t_k, dtk,dtn
   integer :: j
@@ -487,12 +487,11 @@ pure subroutine kinetics(Mp,T,ph,en, &
         StressRatio_p       = StressRatio** prm%p
         StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
 
-        t_n = prm%b_sl/(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)*prm%omega*effectiveLength)
+        t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pReal-StressRatio_p) ** prm%q) &
+            / (prm%omega*effectiveLength)
         t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
-        vel = prm%h/(t_n + t_k)
-
-        dot_gamma_pos = dot_gamma_0 * sign(vel,tau_pos) * 0.5_pReal
+        dot_gamma_pos = dot_gamma_0 * sign(prm%h/(t_n + t_k),tau_pos) * 0.5_pReal
       else where significantPositiveTau
         dot_gamma_pos = 0.0_pReal
       end where significantPositiveTau
@@ -516,12 +515,11 @@ pure subroutine kinetics(Mp,T,ph,en, &
         StressRatio_p       = StressRatio** prm%p
         StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
 
-        t_n = prm%b_sl/(exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)*prm%omega*effectiveLength)
+        t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pReal-StressRatio_p) ** prm%q) &
+            / (prm%omega*effectiveLength)
         t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
-        vel = prm%h/(t_n + t_k)
-
-        dot_gamma_neg = dot_gamma_0 * sign(vel,tau_neg) * 0.5_pReal
+        dot_gamma_neg = dot_gamma_0 * sign(prm%h/(t_n + t_k),tau_neg) * 0.5_pReal
       else where significantNegativeTau
         dot_gamma_neg = 0.0_pReal
       end where significantNegativeTau
