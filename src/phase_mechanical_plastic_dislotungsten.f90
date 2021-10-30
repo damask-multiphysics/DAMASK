@@ -491,7 +491,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
 
         t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pReal-StressRatio_p) ** prm%q) &
             / (prm%omega*effectiveLength)
-        t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
+        t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
         dot_gamma_pos = dot_gamma_0 * sign(prm%h/(t_n + t_k),tau_pos) * 0.5_pReal
       else where significantPositiveTau
@@ -521,7 +521,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
 
         t_n = prm%b_sl*exp(BoltzmannRatio*(1.0_pReal-StressRatio_p) ** prm%q) &
             / (prm%omega*effectiveLength)
-        t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
+        t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
         dot_gamma_neg = dot_gamma_0 * sign(prm%h/(t_n + t_k),tau_neg) * 0.5_pReal
       else where significantNegativeTau
