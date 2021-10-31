@@ -196,7 +196,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%d_caron        = pl%get_asFloat('D_a') * prm%b_sl
 
       ! sanity checks
-      if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
+      if (    prm%D_0          <  0.0_pReal)  extmsg = trim(extmsg)//' D_0'
       if (    prm%Q_cl         <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
       if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_mob_0'
       if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_dip_0'
@@ -375,16 +375,17 @@ module subroutine dislotungsten_dependentState(ph,en)
     en
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
-    dislocationSpacing
+    Lambda_sl_inv
 
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
     dst%tau_pass(:,en) = prm%mu*prm%b_sl &
                        * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
-    dst%Lambda_sl(:,en) = prm%D/(1.0_pReal+prm%D*dislocationSpacing/prm%i_sl)
+    Lambda_sl_inv = 1.0_pReal/prm%D &
+                  + sqrt(matmul(prm%forestProjection,stt%rho_mob(:,en)+stt%rho_dip(:,en)))/prm%i_sl
+    dst%Lambda_sl(:,en) = Lambda_sl_inv**(-1.0_pReal)
 
   end associate
 
