@@ -3,9 +3,9 @@ references:
   - D. Cereceda et al.,
     International Journal of Plasticity 78:242-265, 2016,
     http://dx.doi.org/10.1016/j.ijplas.2015.09.002
-  - A. Koester et al.,
-    Acta Materialia 60:3894-3901, 2012
-    http://dx.doi.org/10.1016/j.actamat.2012.03.053
+  - R. Gröger et al.,
+    Acta Materialia 56(19):5412-5425, 2008,
+    https://doi.org/10.1016/j.actamat.2008.07.037
 output: [Lambda_sl]
 N_sl: [12]
 b_sl: [2.72e-10]
@@ -24,8 +24,8 @@ i_sl: [1]  # c, eq. (25)
 D: 1.0e+20 # d_g, eq. (25)
 D_a: 1.0 # d_edge = D_a*b
 
-# values in Cereceda et al. are high, using parameters from Koester et al.
-a_nonSchmid: [0.61, 0.23, 0.55] # Table 1
+# values in Cereceda et al. are high, using parameters from Gröger et al.
+a_nonSchmid: [0.0, 0.56, 0.75] # Table 2
 
 D_0: 0.0 # disable climb
 f_at: 1
