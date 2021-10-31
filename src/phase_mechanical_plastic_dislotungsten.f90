@@ -502,7 +502,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
       if (present(ddot_gamma_dtau_pos)) then
         significantPositiveTau2: where(abs(tau_pos)-dst%tau_pass(:,en) > tol_math_check)
           dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-              * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
+              * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pReal * t_k / tau_pos
 
           dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
@@ -532,7 +532,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
       if (present(ddot_gamma_dtau_neg)) then
         significantNegativeTau2: where(abs(tau_neg)-dst%tau_pass(:,en) > tol_math_check)
           dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-              * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
+              * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pReal * t_k / tau_neg
 
           dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
