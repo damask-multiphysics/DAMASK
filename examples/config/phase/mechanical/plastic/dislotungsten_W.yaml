@@ -30,5 +30,3 @@ a_nonSchmid: [0.61, 0.23, 0.55] # Table 1
 D_0: 0.0 # disable climb
 f_at: 1
 Q_cl: 1.0
-
-v_0: [1]

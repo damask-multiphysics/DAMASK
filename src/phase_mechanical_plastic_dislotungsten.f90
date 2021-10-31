@@ -24,7 +24,6 @@ submodule(phase:plastic) dislotungsten
       tau_Peierls, &                                                                                !< Peierls stress
       !* mobility law parameters
       Q_s, &                                                                                        !< activation energy for glide [J]
-      v_0, &                                                                                        !< dislocation velocity prefactor [m/s]
       p, &                                                                                          !< p-exponent in glide velocity
       q, &                                                                                          !< q-exponent in glide velocity
       B, &                                                                                          !< friction coefficient
@@ -158,7 +157,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
       rho_mob_0       = pl%get_as1dFloat('rho_mob_0',     requiredSize=size(N_sl))
       rho_dip_0       = pl%get_as1dFloat('rho_dip_0',     requiredSize=size(N_sl))
-      prm%v_0         = pl%get_as1dFloat('v_0',           requiredSize=size(N_sl))
       prm%b_sl        = pl%get_as1dFloat('b_sl',          requiredSize=size(N_sl))
       prm%Q_s         = pl%get_as1dFloat('Q_s',           requiredSize=size(N_sl))
 
@@ -189,7 +187,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%w              = math_expand(prm%w,           N_sl)
       prm%omega          = math_expand(prm%omega,       N_sl)
       prm%tau_Peierls    = math_expand(prm%tau_Peierls, N_sl)
-      prm%v_0            = math_expand(prm%v_0,         N_sl)
       prm%B              = math_expand(prm%B,           N_sl)
       prm%i_sl           = math_expand(prm%i_sl,        N_sl)
       prm%f_at           = math_expand(prm%f_at,        N_sl)
@@ -200,7 +197,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       if (    prm%Q_cl         <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
       if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_mob_0'
       if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_dip_0'
-      if (any(prm%v_0          <  0.0_pReal)) extmsg = trim(extmsg)//' v_0'
       if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
       if (any(prm%Q_s          <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
       if (any(prm%tau_Peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_Peierls'
@@ -211,7 +207,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     else slipActive
       rho_mob_0 = emptyRealArray; rho_dip_0 = emptyRealArray
       allocate(prm%b_sl,prm%d_caron,prm%i_sl,prm%f_at,prm%tau_Peierls, &
-               prm%Q_s,prm%v_0,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
+               prm%Q_s,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
                source = emptyRealArray)
       allocate(prm%forestProjection(0,0))
       allocate(prm%h_sl_sl         (0,0))
@@ -338,11 +334,11 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
 
     dot%gamma_sl(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
 
-    where(dEq0(tau_pos))                                                                            ! ToDo: use avg of +/-
+    where(dEq0((tau_pos+tau_neg)*0.5_pReal))
       dot_rho_dip_formation = 0.0_pReal
       dot_rho_dip_climb     = 0.0_pReal
     else where
-      d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &                   ! ToDo: use avg of +/-
+      d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos+tau_neg)*0.5_pReal), &
                         prm%d_caron, &                                                              ! lower limit
                         dst%Lambda_sl(:,en))                                                        ! upper limit
       dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
@@ -480,7 +476,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     if (present(tau_neg_out)) tau_neg_out = tau_neg
 
     associate(BoltzmannRatio  => prm%Q_s/(kB*T), &
-              dot_gamma_0     => stt%rho_mob(:,en)*prm%b_sl*prm%v_0, &
+              dot_gamma_0     => stt%rho_mob(:,en)*prm%b_sl, &
               effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
       tau_eff = abs(tau_pos)-dst%tau_pass(:,en)
