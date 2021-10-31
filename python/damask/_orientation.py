@@ -125,7 +125,7 @@ class Orientation(Rotation,Crystal):
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
-            dup.quaternion = Orientation(rotation,family='cubic').quaternion
+            dup.quaternion = Rotation(rotation).quaternion
         return dup
 
     copy = __copy__

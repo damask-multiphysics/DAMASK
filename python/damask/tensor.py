@@ -8,7 +8,7 @@ All routines operate on numpy.ndarrays of shape (...,3,3).
 import numpy as _np
 
 
-def deviatoric(T):
+def deviatoric(T: _np.ndarray) -> _np.ndarray:
     """
     Calculate deviatoric part of a tensor.
 
@@ -26,7 +26,7 @@ def deviatoric(T):
     return T - spherical(T,tensor=True)
 
 
-def eigenvalues(T_sym):
+def eigenvalues(T_sym: _np.ndarray) -> _np.ndarray:
     """
     Eigenvalues, i.e. principal components, of a symmetric tensor.
 
@@ -45,7 +45,7 @@ def eigenvalues(T_sym):
     return _np.linalg.eigvalsh(symmetric(T_sym))
 
 
-def eigenvectors(T_sym,RHS=False):
+def eigenvectors(T_sym: _np.ndarray, RHS: bool = False) -> _np.ndarray:
     """
     Eigenvectors of a symmetric tensor.
 
@@ -70,7 +70,7 @@ def eigenvectors(T_sym,RHS=False):
     return v
 
 
-def spherical(T,tensor=True):
+def spherical(T: _np.ndarray, tensor: bool = True) -> _np.ndarray:
     """
     Calculate spherical part of a tensor.
 
@@ -92,7 +92,7 @@ def spherical(T,tensor=True):
     return _np.einsum('...jk,...',_np.eye(3),sph) if tensor else sph
 
 
-def symmetric(T):
+def symmetric(T: _np.ndarray) -> _np.ndarray:
     """
     Symmetrize tensor.
 
@@ -110,7 +110,7 @@ def symmetric(T):
     return (T+transpose(T))*0.5
 
 
-def transpose(T):
+def transpose(T: _np.ndarray) -> _np.ndarray:
     """
     Transpose tensor.
 
