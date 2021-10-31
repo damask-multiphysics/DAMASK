@@ -81,7 +81,7 @@ checkout:
     - release
 
 ###################################################################################################
-processing:
+pytest:
   stage: python
   script:
     - cd $DAMASKROOT/python
@@ -90,6 +90,16 @@ processing:
   except:
     - master
     - release
+
+mypy:
+  stage: python
+  script:
+    - cd $DAMASKROOT/python
+    - mypy damask/mechanics.py
+  except:
+    - master
+    - release
+
 
 
 ###################################################################################################
