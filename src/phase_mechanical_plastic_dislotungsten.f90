@@ -476,7 +476,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     if (present(tau_neg_out)) tau_neg_out = tau_neg
 
     associate(BoltzmannRatio  => prm%Q_s/(kB*T), &
-              dot_gamma_0     => stt%rho_mob(:,en)*prm%b_sl, &
+              b_rho_half      => stt%rho_mob(:,en) * prm%b_sl * 0.5_pReal, &
               effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
       tau_eff = abs(tau_pos)-dst%tau_pass(:,en)
@@ -490,7 +490,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
             / (prm%omega*effectiveLength)
         t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
-        dot_gamma_pos = dot_gamma_0 * sign(prm%h/(t_n + t_k),tau_pos) * 0.5_pReal
+        dot_gamma_pos = b_rho_half * sign(prm%h/(t_n + t_k),tau_pos)
       else where significantPositiveTau
         dot_gamma_pos = 0.0_pReal
       end where significantPositiveTau
@@ -503,7 +503,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
 
           dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
-          ddot_gamma_dtau_pos = dot_gamma_0 * dvel* 0.5_pReal
+          ddot_gamma_dtau_pos = b_rho_half * dvel
         else where significantPositiveTau2
           ddot_gamma_dtau_pos = 0.0_pReal
         end where significantPositiveTau2
@@ -520,7 +520,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
             / (prm%omega*effectiveLength)
         t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_eff)                                 ! corrected eq. (14)
 
-        dot_gamma_neg = dot_gamma_0 * sign(prm%h/(t_n + t_k),tau_neg) * 0.5_pReal
+        dot_gamma_neg = b_rho_half * sign(prm%h/(t_n + t_k),tau_neg)
       else where significantNegativeTau
         dot_gamma_neg = 0.0_pReal
       end where significantNegativeTau
@@ -533,7 +533,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
 
           dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
-          ddot_gamma_dtau_neg = dot_gamma_0 * dvel * 0.5_pReal
+          ddot_gamma_dtau_neg = b_rho_half * dvel
         else where significantNegativeTau2
           ddot_gamma_dtau_neg = 0.0_pReal
         end where significantNegativeTau2
