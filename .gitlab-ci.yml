@@ -95,7 +95,7 @@ mypy:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - mypy damask/tensor.py damask/mechanics.py damask/seeds.py
+    - mypy damask/*.py
   except:
     - master
     - release
