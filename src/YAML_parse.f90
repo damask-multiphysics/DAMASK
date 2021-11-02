@@ -71,8 +71,8 @@ recursive function parse_flow(YAML_flow) result(node)
       s = e
       d = s + scan(flow_string(s+1:),':')
       e = d + find_end(flow_string(d+1:),'}')
-
       key = trim(adjustl(flow_string(s+1:d-1)))
+      if(quotedString(key)) key = key(2:len(key)-1)
       myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
 
       select type (node)
@@ -97,7 +97,11 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          node = trim(adjustl(flow_string))
+          if(quotedString(flow_string)) then
+            node = trim(adjustl(flow_string(2:len(flow_string)-1)))
+          else
+            node = trim(adjustl(flow_string))
+          endif
       end select
   endif
 
@@ -119,16 +123,36 @@ integer function find_end(str,e_char)
 
   N_sq = 0
   N_cu = 0
-  do i = 1, len_trim(str)
+  i = 1
+  do while(i<=len_trim(str))
+    if (scan(str(i:i),IO_QUOTES) == 1)  i = i + scan(str(i+1:),str(i:i))
     if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',') == 1) exit
     N_sq = N_sq + merge(1,0,str(i:i) == '[')
     N_cu = N_cu + merge(1,0,str(i:i) == '{')
     N_sq = N_sq - merge(1,0,str(i:i) == ']')
     N_cu = N_cu - merge(1,0,str(i:i) == '}')
+    i = i + 1
   enddo
   find_end = i
 
 end function find_end
+
+
+!--------------------------------------------------------------------------------------------------
+! @brief check whether a string is enclosed with single or double quotes
+!--------------------------------------------------------------------------------------------------
+logical function quotedString(line)
+
+  character(len=*), intent(in) :: line
+
+  quotedString = .false.
+
+  if (scan(line(:1),IO_QUOTES) == 1) then
+    quotedString = .true.
+    if(line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
+  endif
+
+end function quotedString
 
 
 !--------------------------------------------------------------------------------------------------
@@ -334,6 +358,37 @@ end subroutine remove_line_break
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief return the scalar list item without line break
+!--------------------------------------------------------------------------------------------------
+subroutine list_item_inline(blck,s_blck,inline,offset)
+
+  character(len=*), intent(in)                 :: blck                                                !< YAML in mixed style
+  integer,          intent(inout)              :: s_blck
+  character(len=:), allocatable, intent(out)   :: inline
+  integer,                       intent(inout) :: offset
+
+  character(len=:), allocatable :: line
+  integer :: indent,indent_next
+ 
+  indent = indentDepth(blck(s_blck:),offset)
+  line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  inline = line(indent-offset+3:)
+  s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+
+  indent_next = indentDepth(blck(s_blck:))
+
+  do while(indent_next > indent)
+    inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
+    s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    indent_next = indentDepth(blck(s_blck:))
+  enddo
+
+  if(scan(inline,",") > 0) inline = '"'//inline//'"' 
+
+end subroutine list_item_inline
+
+
+!--------------------------------------------------------------------------------------------------
 ! @brief reads a line of YAML block which is already in flow style
 ! @details Dicts should be enlcosed within '{}' for it to be consistent with DAMASK YAML parser
 !--------------------------------------------------------------------------------------------------
@@ -463,7 +518,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset                                                         !< stores leading '- ' in nested lists
-  character(len=:), allocatable :: line,flow_line
+  character(len=:), allocatable :: line,flow_line,inline
   integer :: e_blck,indent
 
   indent = indentDepth(blck(s_blck:),offset)
@@ -509,9 +564,9 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       else                                                                                          ! list item in the same line
         line = line(indentDepth(line)+3:)
         if(isScalar(line)) then
-          call line_toFlow(flow,s_flow,line)
-          s_blck = e_blck +2
+          call list_item_inline(blck,s_blck,inline,offset)
           offset = 0
+          call line_toFlow(flow,s_flow,inline)
         elseif(isFlow(line)) then
           s_blck = s_blck + index(blck(s_blck:),'-')
           if(isFlowList(line)) then
@@ -723,6 +778,8 @@ subroutine selfTest
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
   if (indentDepth('x ') /= 0)     error stop 'indentDepth'
 
+  if (.not. quotedString("'a'"))  error stop 'quotedString'
+
   if (      isFlow(' a'))         error stop 'isFLow'
   if (.not. isFlow('{'))          error stop 'isFlow'
   if (.not. isFlow(' ['))         error stop 'isFlow'
@@ -809,14 +866,14 @@ subroutine selfTest
 
   multi_line_flow1: block
   character(len=*), parameter :: flow_multi = &
-    "%YAML 1.1"//IO_EOL//&
-    "---"//IO_EOL//&
-    "a: [b,"//IO_EOL//&
-    "c: "//IO_EOL//&
-    "d, e]"//IO_EOL
+    '%YAML 1.1'//IO_EOL//&
+    '---'//IO_EOL//&
+    'a:     ["b",'//IO_EOL//&
+    'c: '//IO_EOL//&
+    '"d",                               "e"]'//IO_EOL
 
   character(len=*), parameter :: flow = &
-    "{a: [b, {c: d}, e]}"
+    '{a: ["b", {c: "d"}, "e"]}'
   
   if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
   end block multi_line_flow1
@@ -848,14 +905,15 @@ subroutine selfTest
     " "//IO_EOL//&
     " "//IO_EOL//&
     "                 param_1: [a:                   b, c, {d: {e: [f: g, h]}}]"//IO_EOL//&
-    " - c: d"//IO_EOL//&
+    " - c:d"//IO_EOL//&
+    "  e.f,"//IO_EOL//&
     " bb:"//IO_EOL//&
     " "//IO_EOL//&
     "  - "//IO_EOL//&
     "   {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL//&
     "..."//IO_EOL
   character(len=*), parameter :: mixed_flow = &
-    "{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, {c: d}], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}"
+    '{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, "c:d e.f,"], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}'
 
   if(.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
   end block basic_mixed

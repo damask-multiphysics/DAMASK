@@ -766,25 +766,21 @@ end function relaxationVector
 !--------------------------------------------------------------------------------------------------
 !> @brief identify the normal of an interface
 !--------------------------------------------------------------------------------------------------
-pure function interfaceNormal(intFace,ho,en)
+pure function interfaceNormal(intFace,ho,en) result(n)
 
-  real(pReal), dimension(3)             :: interfaceNormal
-
+  real(pReal), dimension(3)             :: n
   integer,     dimension(4), intent(in) :: intFace                                                  !< interface ID in 4D array (normal and position)
   integer,                   intent(in) :: &
     ho, &
     en
 
-  integer :: nPos
+
   associate (dst => dependentState(ho))
 
-!--------------------------------------------------------------------------------------------------
-! get the normal of the interface, identified from the value of intFace(1)
-  interfaceNormal = 0.0_pReal
-  nPos = abs(intFace(1))                                                                            ! identify the position of the interface in global state array
-  interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                                    ! get the normal vector w.r.t. cluster axis
+    n = 0.0_pReal
+    n(abs(intFace(1))) = real(intFace(1)/abs(intFace(1)),pReal)                                     ! get the normal vector w.r.t. cluster axis
 
-  interfaceNormal = matmul(dst%orientation(1:3,1:3,en),interfaceNormal)                             ! map the normal vector into sample coordinate system (basis)
+    n = matmul(dst%orientation(1:3,1:3,en),n)                                                       ! map the normal vector into sample coordinate system (basis)
 
   end associate
 
@@ -794,22 +790,18 @@ end function interfaceNormal
 !--------------------------------------------------------------------------------------------------
 !> @brief collect six faces of a grain in 4D (normal and position)
 !--------------------------------------------------------------------------------------------------
-pure function getInterface(iFace,iGrain3)
+pure function getInterface(iFace,iGrain3) result(i)
 
-  integer, dimension(4)             :: getInterface
-
+  integer, dimension(4)             :: i
   integer, dimension(3), intent(in) :: iGrain3                                                      !< grain ID in 3D array
   integer,               intent(in) :: iFace                                                        !< face index (1..6) mapped like (-e1,-e2,-e3,+e1,+e2,+e3) or iDir = (-1,-2,-3,1,2,3)
 
   integer :: iDir                                                                                   !< direction of interface normal
 
- iDir = (int(real(iFace-1,pReal)/2.0_pReal)+1)*(-1)**iFace
- getInterface(1) = iDir
 
-!--------------------------------------------------------------------------------------------------
-! identify the interface position by the direction of its normal
-  getInterface(2:4) = iGrain3
-  if (iDir < 0) getInterface(1-iDir) = getInterface(1-iDir)-1                                       ! to have a correlation with coordinate/position in real space
+  iDir = (int(real(iFace-1,pReal)/2.0_pReal)+1)*(-1)**iFace
+  i = [iDir,iGrain3]
+  if (iDir < 0) i(1-iDir) = i(1-iDir)-1                                       ! to have a correlation with coordinate/position in real space
 
 end function getInterface
 

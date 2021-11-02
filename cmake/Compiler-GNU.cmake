@@ -12,9 +12,9 @@ endif ()
 if (OPTIMIZATION STREQUAL "OFF")
   set (OPTIMIZATION_FLAGS "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
-  set (OPTIMIZATION_FLAGS "-O2")
+  set (OPTIMIZATION_FLAGS "-O2 -mtune=generic")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
+  set (OPTIMIZATION_FLAGS "-O3 -march=native -ffast-math -funroll-loops -ftree-vectorize")
 endif ()
 
 set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
@@ -25,7 +25,7 @@ set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input")
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
 # preprocessor
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIC -fPIE")

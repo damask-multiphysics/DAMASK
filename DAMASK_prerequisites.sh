@@ -74,7 +74,7 @@ echo PETSC_ARCH: $PETSC_ARCH
 echo PETSC_DIR: $PETSC_DIR
 echo
 echo $PETSC_DIR/$PETSC_ARCH/lib:
-/s $PETSC_DIR/$PETSC_ARCH/lib
+ls $PETSC_DIR/$PETSC_ARCH/lib
 echo
 echo $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables:
 cat $PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables
@@ -103,8 +103,13 @@ for EXECUTABLE in gcc g++ gfortran ;do
   getDetails $EXECUTABLE '--version'
 done
 
-firstLevel "Intel Compiler Suite"
+firstLevel "Intel Compiler Suite (classic)"
 for EXECUTABLE in icc icpc ifort ;do
+  getDetails $EXECUTABLE '--version'
+done
+
+firstLevel "Intel Compiler Suite (LLVM)"
+for EXECUTABLE in icx icpx ifx ;do
   getDetails $EXECUTABLE '--version'
 done
 

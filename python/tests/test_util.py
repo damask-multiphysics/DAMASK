@@ -19,9 +19,9 @@ class TestUtil:
         out,err = util.execute('sh -c "echo $test_for_execute"',env={'test_for_execute':'test'})
         assert out=='test\n' and err==''
 
-    def test_execute_invalid(self):
+    def test_execute_runtime_error(self):
         with pytest.raises(RuntimeError):
-            util.execute('/bin/false')
+            util.execute('false')
 
     @pytest.mark.parametrize('input,output',
                             [
@@ -158,3 +158,33 @@ class TestUtil:
                                              ({'A':{'B':{},'C':'D'}},       {'B':{},'C':'D'})])
     def test_flatten(self,full,reduced):
         assert util.dict_flatten(full) == reduced
+
+
+    def test_double_Bravais_to_Miller(self):
+        with pytest.raises(KeyError):
+            util.Bravais_to_Miller(uvtw=np.ones(4),hkil=np.ones(4))
+
+    def test_double_Miller_to_Bravais(self):
+        with pytest.raises(KeyError):
+            util.Miller_to_Bravais(uvw=np.ones(4),hkl=np.ones(4))
+
+
+    @pytest.mark.parametrize('vector',np.array([
+                                                [1,0,0],
+                                                [1,1,0],
+                                                [1,1,1],
+                                                [1,0,-2],
+                                               ]))
+    @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
+    def test_Miller_Bravais_Miller(self,vector,kw_Miller,kw_Bravais):
+        assert np.all(vector == util.Bravais_to_Miller(**{kw_Bravais:util.Miller_to_Bravais(**{kw_Miller:vector})}))
+
+    @pytest.mark.parametrize('vector',np.array([
+                                                [1,0,-1,2],
+                                                [1,-1,0,3],
+                                                [1,1,-2,-3],
+                                                [0,0,0,1],
+                                               ]))
+    @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
+    def test_Bravais_Miller_Bravais(self,vector,kw_Miller,kw_Bravais):
+        assert np.all(vector == util.Miller_to_Bravais(**{kw_Miller:util.Bravais_to_Miller(**{kw_Bravais:vector})}))

@@ -309,7 +309,7 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
   solution%iterationsNeeded = totalIter
   solution%termIll = terminallyIll
   terminallyIll = .false.
-  P_aim = merge(P_aim,P_av,params%stress_mask)
+  P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_spectral_polarisation_solution
 
@@ -350,20 +350,20 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
-    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/Delta_t_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)  ! estimate deformation rate for prescribed stress components
+    F_aimDot = merge(merge(.0_pReal,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pReal,guess)  ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
-               + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
+               + matmul(merge(.0_pReal,deformation_BC%values,deformation_BC%mask),F_aim_lastInc)
     elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
-               + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,deformation_BC%values,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
-               + merge((deformation_BC%values - F_aim_lastInc)/t_remaining,.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
     endif
 
     Fdot     = utilities_calculateRate(guess, &
@@ -382,9 +382,9 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
   if(stress_BC%myType=='P')     P_aim = P_aim &
-                                      + merge((stress_BC%values - P_aim)/t_remaining,0.0_pReal,stress_BC%mask)*Delta_t
+                                      + merge(.0_pReal,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if(stress_BC%myType=='dot_P') P_aim = P_aim &
-                                      + merge(stress_BC%values,0.0_pReal,stress_BC%mask)*Delta_t
+                                      + merge(.0_pReal,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
                                      rotation_BC%rotate(F_aim,active=.true.)),&
@@ -408,7 +408,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
 ! set module wide available data
   params%stress_mask = stress_BC%mask
   params%rotation_BC = rotation_BC
-  params%timeinc     = Delta_t
+  params%Delta_t     = Delta_t
 
 end subroutine grid_mechanical_spectral_polarisation_forward
 
@@ -445,21 +445,25 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-
-  call HDF5_write(F_aim,groupHandle,'P_aim',.false.)
-  call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
-  call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
-  call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
   call HDF5_write(F,groupHandle,'F')
   call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
   call HDF5_write(F_tau,groupHandle,'F_tau')
   call HDF5_write(F_tau_lastInc,groupHandle,'F_tau_lastInc')
-
-  call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
-  call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
+
+  if (worldrank == 0) then
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a',.false.)
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
+    call HDF5_write(F_aim,groupHandle,'P_aim',.false.)
+    call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
+    call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+    call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
+    call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
+    call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+    call HDF5_closeGroup(groupHandle)
+    call HDF5_closeFile(fileHandle)
+  endif
 
   if(num%update_gamma) call utilities_saveReferenceStiffness
 
@@ -592,14 +596,14 @@ subroutine formResidual(in, FandF_tau, &
 ! evaluate constitutive response
   call utilities_constitutiveResponse(residual_F, &                                                 ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
-                                      F - residual_F_tau/num%beta,params%timeinc,params%rotation_BC)
+                                      F - residual_F_tau/num%beta,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
-  err_BC = maxval(abs(merge(P_av-P_aim, &
-                            math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)),&
+  err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
+                            P_av-P_aim, &
                             params%stress_mask)))
 ! calculate divergence
   tensorField_real = 0.0_pReal

@@ -24,8 +24,403 @@ phase:
         xi_inf_sl: [63.e+6]
 
 material:
-  - homogenization: SX
-    constituents:
-      - phase: Aluminum
+  - constituents:
+      - O: [0.31638628373524325, 0.4606971763404367, -0.25136671882289513, 0.7902357900300152]
+        phase: Aluminum
         v: 1.0
-        O: [0.9330127018922194, 0.25, 0.06698729810778066, 0.25]
+    homogenization: SX
+  - constituents:
+      - O: [0.17926942151539643, -0.8129164299504208, -0.5453207208299451, -0.09825814907531387]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.11156578191572807, -0.4904242197947781, -0.8051447086471791, 0.3142915192646224]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.050875167730042026, -0.4676541613791777, -0.3231762099798638, -0.8211385022980162]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5736388730744205, 0.030011807121272376, 0.1793738934298104, -0.7986630961094017]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3524596363123286, 0.8260984090345517, 0.4361208241824434, 0.05596650851705724]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.1475195192105493, -0.2681290123533707, -0.8885681859138441, -0.3417475722928759]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3878621882257487, -0.4133490094014299, -0.5962575110690821, 0.5684914246189594]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.44765430421636465, 0.1688301032261743, 0.5590033642770855, 0.6772128608407416]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3154783988579777, -0.893128078628195, 0.126738882437621, 0.294504449369408]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.01177697706652547, -0.8423157700616575, 0.4660610852557732, -0.2704672089677829]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.6023412506865766, 0.33897759335409144, -0.587639839755177, 0.42066450724741294]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.1457746940340264, 0.33010317541439926, 0.7204157567665017, 0.592269169857055]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.10885124011262147, 0.38223867611365064, -0.5398450127934588, -0.7420325896959369]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3329465044039982, 0.005520408719519113, 0.4218135102429913, 0.843320527954356]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.2773927866814888, 0.282254093261412, -0.9094550709020325, -0.12758268983226237]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.22508894523834683, 0.3481870269276267, -0.6119961977184769, -0.673469683793499]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.7972172843203117, -0.42474780085647684, -0.2632560619322889, 0.3387183979420616]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.1856727896017474, 0.5407410320424911, 0.8064864929236231, 0.15067942194898976]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.35572128347826554, -0.21063165012009927, 0.7164748021511587, -0.561925737380588]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.951689791582057, -0.18424932026485139, 0.24330606914616992, 0.03377699360630425]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.7518830912041409, -0.6350086418080308, 0.03666967302842633, -0.17346808660504054]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.45893176203555247, -0.10107069709110554, -0.8532524342056044, -0.22611199770616278]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.6863555826979106, 0.7132418012703317, -0.12068837363804946, -0.07507638436064179]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5031196491913161, 0.7534072343296819, -0.418000862383123, 0.0672565008327974]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5354367280219723, 0.1489275079865293, -0.5066200327507001, 0.6591390218047527]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.7481103019200436, -0.6384221488364733, 0.14256832672505068, -0.11145585785834745]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.02565565294273664, 0.5032076562445432, -0.10524431346049941, -0.8573490984734187]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.09677483527453862, 0.42211465960588607, 0.39550590793620377, -0.8099561236208737]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5682732488475628, -0.018709507415836685, 0.5596636589678777, 0.6029030252098423]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.520651625785196, 0.5331055583395244, -0.1753591314180096, 0.6434046341634921]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.7323990700263593, 0.5135195038892626, -0.28947480564659256, -0.34072519461542217]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.2379144266672964, 0.9451799147482833, -0.022386636015155, 0.2225544716870999]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.6929401940723844, 0.6921675787458842, 0.04806193711709397, 0.196030560302569]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.114679536930033, -0.02786128070118354, -0.2458076367959361, -0.9621075607955694]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5536359330028813, 0.3398797644491804, 0.6552731815916284, -0.3854686198548249]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.9501825140749718, -0.17348508997627773, -0.023693401768133945, 0.2578657329207251]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5269902873788485, -0.38600076480335854, 0.7335400729523406, -0.18762624537269798]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.16353281877366127, -0.8502634877258836, 0.2921682908502614, -0.4061363175656595]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.2506727462997232, 0.38078481221063915, -0.8812340677720474, -0.12487040822466101]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.53797656304294, 0.04453446570800863, -0.73466834243862, -0.41092618023082744]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5147765687773858, -0.012009003671292302, 0.8506194553313438, -0.10633630744205957]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.45770418863630163, 0.46122438992768267, -0.5413625109006552, 0.5335780820385708]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.12028049877433303, 0.5509971760365859, 0.5424247126754088, 0.6226637493007807]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.1208751835697386, -0.11646202949704858, 0.1842663733100575, -0.9684377570859003]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.24961872240151486, 0.29610154171987574, -0.885460753706652, 0.2568533123457741]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.4494732523235404, 0.8130366919200476, -0.22342614248113637, -0.2950015116798619]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3566054427707518, 0.6009999195769142, 0.6204413194609187, 0.35592727341468655]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.041340362458678996, -0.7766310224212297, -0.446615292586641, 0.4423460295656439]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3143906305984617, 0.637462215667549, -0.06250872515926072, -0.7006376483369167]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.15960096982054908, 0.0154505822997579, -0.6938445646590042, 0.7020459600568152]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.10937013835716297, 0.005361991476876583, 0.07892487169799395, -0.9908482661389645]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.5566919673747123, 0.12234937037008195, 0.03295758799282205, 0.8209984667611823]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.03242357741517866, -0.1003019572329824, -0.25727891603352054, -0.9605705535604615]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.07439180141351488, 0.222039714860086, 0.9710557663706901, 0.04706297382800665]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.386406745139845, -0.3485065110202708, 0.0213726326755233, -0.8536839284298527]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.9148730990764601, 0.0859699947503276, -0.2653710064737939, 0.29188114278237975]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.05351534255347124, -0.47484306303499174, -0.4424245873225889, -0.7588943655946909]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.1850990827256794, -0.7850365894615515, 0.5790701003651098, 0.11888524569444774]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.2293488176462691, 0.8155102586104775, 0.36252844203460916, -0.3884781418063178]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.6824605981608404, -0.07237666863890763, 0.6154543161215582, 0.38758887311431783]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.7240310183899645, -0.1492281437355668, -0.5793271457602446, 0.3433512832533411]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.4130306435878869, -0.08991141120131982, -0.8934593257803132, 0.15182904455126872]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.9217038188689652, -0.2551303946186847, 0.2760910380891145, 0.09562578475994342]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.49248590418849286, 0.7555385277692129, 0.01782522408264428, -0.4316264920256593]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.288763491302084, 0.26595000602129804, -0.8721581902166229, 0.29193549223478765]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.18741690177717063, -0.959586229086916, -0.01605960190298382, -0.2093114021302156]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.6141655879532604, 0.44351951295059505, 0.35530824864623534, 0.5475829806066271]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.2814752417920179, 0.7638077896809081, -0.5255180392616715, 0.24738661865884956]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.16603578951305883, -0.6913575628365758, -0.6767106315334661, -0.1911009107226411]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.7317089905438434, -0.4610621713555634, -0.01149547471101715, -0.5018879171322728]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.12911750380868442, -0.775968622433847, -0.5524437669202766, -0.27569412688569794]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.18347252569039887, -0.3000323311682173, -0.9120086722006003, -0.21108911483411225]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.2453327661435727, -0.041601186144862225, -0.967732952958631, 0.039675016391321906]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.9885220121542625, 0.08409037295425872, -0.06115390693360882, -0.1096049284004023]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.3506668690363713, 0.8300197131399097, 0.3314704911076744, -0.2796915019878287]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.43424700094705143, -0.6863040633023977, -0.3990882505417852, -0.4256111407642043]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.09516090822469872, -0.09694359326006573, 0.7244026181255996, -0.6758603318174947]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.6299976256081414, -0.6188326478138776, 0.4105304204739873, 0.22718697056217957]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX
+  - constituents:
+      - O: [0.1624065072613073, -0.6001819140771016, 0.5096769212668724, -0.5946723739521216]
+        phase: Aluminum
+        v: 1.0
+    homogenization: SX

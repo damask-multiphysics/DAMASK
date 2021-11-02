@@ -324,7 +324,7 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
   solution%iterationsNeeded = totalIter
   solution%termIll = terminallyIll
   terminallyIll = .false.
-  P_aim = merge(P_aim,P_av,params%stress_mask)
+  P_aim = merge(P_av,P_aim,params%stress_mask)
 
 end function grid_mechanical_FEM_solution
 
@@ -363,20 +363,20 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
   else
     C_volAvgLastInc    = C_volAvg
 
-    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/Delta_t_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)  ! estimate deformation rate for prescribed stress components
+    F_aimDot = merge(merge(.0_pReal,(F_aim-F_aim_lastInc)/Delta_t_old,stress_BC%mask),.0_pReal,guess)  ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
-               + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
+               + matmul(merge(.0_pReal,deformation_BC%values,deformation_BC%mask),F_aim_lastInc)
     elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
       F_aimDot = F_aimDot &
-               + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,deformation_BC%values,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
-               + merge((deformation_BC%values - F_aim_lastInc)/t_remaining,.0_pReal,deformation_BC%mask)
+               + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
     endif
 
     if (guess) then
@@ -397,9 +397,9 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
   if (stress_BC%myType=='P')     P_aim = P_aim &
-                                       + merge((stress_BC%values - P_aim)/t_remaining,0.0_pReal,stress_BC%mask)*Delta_t
+                                       + merge(.0_pReal,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
   if (stress_BC%myType=='dot_P') P_aim = P_aim &
-                                       + merge(stress_BC%values,0.0_pReal,stress_BC%mask)*Delta_t
+                                       + merge(.0_pReal,stress_BC%values,stress_BC%mask)*Delta_t
 
   call VecAXPY(solution_current,Delta_t,solution_rate,ierr); CHKERRQ(ierr)
 
@@ -412,7 +412,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 ! set module wide available data
   params%stress_mask = stress_BC%mask
   params%rotation_BC = rotation_BC
-  params%timeinc     = Delta_t
+  params%Delta_t     = Delta_t
 
 end subroutine grid_mechanical_FEM_forward
 
@@ -446,21 +446,25 @@ subroutine grid_mechanical_FEM_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-
-  call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
-  call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
-  call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
-  call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
   call HDF5_write(F,groupHandle,'F')
   call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
   call HDF5_write(u_current,groupHandle,'u')
   call HDF5_write(u_lastInc,groupHandle,'u_lastInc')
-
-  call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
-  call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
+
+  if (worldrank == 0) then
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a',.false.)
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
+    call HDF5_write(P_aim,groupHandle,'P_aim',.false.)
+    call HDF5_write(F_aim,groupHandle,'F_aim',.false.)
+    call HDF5_write(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
+    call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
+    call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
+    call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+    call HDF5_closeGroup(groupHandle)
+    call HDF5_closeFile(fileHandle)
+  endif
 
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,ierr)
   CHKERRQ(ierr)
@@ -568,13 +572,13 @@ subroutine formResidual(da_local,x_local, &
 ! evaluate constitutive response
   call utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
-                                      F,params%timeinc,params%rotation_BC)
+                                      F,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
-  err_BC = maxval(abs(merge(P_av - P_aim,.0_pReal,params%stress_mask)))
+  err_BC = maxval(abs(merge(.0_pReal,P_av - P_aim,params%stress_mask)))
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual

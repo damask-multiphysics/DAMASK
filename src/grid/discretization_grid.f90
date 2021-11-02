@@ -96,9 +96,9 @@ subroutine discretization_grid_init(restart)
   call MPI_Bcast(origin,3,MPI_DOUBLE,0,MPI_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
 
-  print'(/,a,3(i12  ))',  ' cells    a b c: ', grid
-  print'(a,3(es12.5))',   ' size     x y z: ', geomSize
-  print'(a,3(es12.5))',   ' origin   x y z: ', origin
+  print'(/,a,3(i12  ))',  ' cells  a b c: ', grid
+  print'(a,3(es12.5))',   ' size   x y z: ', geomSize
+  print'(a,3(es12.5))',   ' origin x y z: ', origin
 
   if(worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
 
@@ -266,7 +266,8 @@ subroutine readVTI(grid,geomSize,origin,material, &
     integer :: i
 
 
-    if (getXMLValue(header,'Direction') /= '1 0 0 0 1 0 0 0 1') &
+    temp = getXMLValue(header,'Direction')
+    if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                             ! https://discourse.vtk.org/t/vti-specification/6526
       call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
     temp = getXMLValue(header,'WholeExtent')

@@ -46,29 +46,18 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler19_1:               "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
-  GNUCompiler10:                   "Compiler/GNU/10"
-  # ------------ Defaults ----------------------------------------------
-  IntelCompiler:                   "$IntelCompiler19_1"
-  GNUCompiler:                     "$GNUCompiler10"
+  IntelCompiler:  "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  GNUCompiler:    "Compiler/GNU/10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IMPI2020Intel19_1:               "MPI/Intel/19.1.2/IntelMPI/2019"
-  OMPI4_0GNU10:                    "MPI/GNU/10/OpenMPI/4.0.5"
-  # ------------ Defaults ----------------------------------------------
-  MPI_Intel:                       "$IMPI2020Intel19_1"
-  MPI_GNU:                         "$OMPI4_0GNU10"
+  MPI_Intel:      "MPI/Intel/19.1.2/IntelMPI/2019"
+  MPI_GNU:        "MPI/GNU/10/OpenMPI/4.1.1"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_14_2IMPI2020Intel19_1:    "Libraries/PETSc/3.14.2/Intel-19.1.2-IntelMPI-2019"
-  PETSc3_14_2OMPI4_0GNU10:         "Libraries/PETSc/3.14.2/GNU-10-OpenMPI-4.0.5"
-  # ------------ Defaults ----------------------------------------------
-  PETSc_Intel:                     "$PETSc3_14_2IMPI2020Intel19_1"
-  PETSc_GNU:                       "$PETSc3_14_2OMPI4_0GNU10"
-  # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2021:                         "FEM/MSC/2021.2"
-  # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2021"
-  IntelMarc:                       "$IntelCompiler19_1"
-  HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
+  PETSc_Intel:    "Libraries/PETSc/3.16.0/Intel-19.1.2-IntelMPI-2019"
+  PETSc_GNU:      "Libraries/PETSc/3.16.0/GNU-10-OpenMPI-4.1.1"
+  # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  MSC:            "FEM/MSC/2021.2"
+  IntelMarc:      "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  HDF5Marc:       "HDF5/1.12.1/Intel-19.1.2"
 
 ###################################################################################################
 checkout:
@@ -102,13 +91,6 @@ processing:
     - master
     - release
 
-###################################################################################################
-preprocessing_deprecated:
-  stage: python
-  script: PreProcessing/test.py
-  except:
-    - master
-    - release
 
 ###################################################################################################
 compile_grid_Intel:
@@ -216,7 +198,7 @@ SpectralRuntime:
     - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py -d $LOCAL_HOME/performance
+    - ./runtime.py --results ${LOCAL_HOME}/performance --damask_root ${DAMASKROOT} --tag ${CI_COMMIT_SHA}
   except:
     - master
     - release
@@ -226,16 +208,7 @@ source_distribution:
   stage: deploy
   script:
     - cd $(mktemp -d)
-    - $DAMASKROOT/PRIVATE/releasing/deploy.sh $DAMASKROOT $CI_COMMIT_SHA
-  except:
-    - master
-    - release
-
-library_documentation:
-  stage: deploy
-  script:
-    - cd $DAMASKROOT/PRIVATE/documenting/sphinx
-    - make html
+    - $DAMASKROOT/PRIVATE/releasing/tar.xz/create.sh $DAMASKROOT $CI_COMMIT_SHA
   except:
     - master
     - release
@@ -246,9 +219,7 @@ backup_runtime_measurement:
   script:
     - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
-    - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - mv $LOCAL_HOME/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $LOCAL_HOME/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - git push
   only:
     - development
 
@@ -259,9 +230,10 @@ merge_into_master:
     - cd $DAMASKROOT
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
     - echo $TESTEDREV > python/damask/VERSION
+    - git add python/damask/VERSION
     - >
         git diff-index --quiet HEAD ||
-        git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $TESTEDREV"
+        git commit -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
     - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state

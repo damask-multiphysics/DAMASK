@@ -120,13 +120,15 @@ submodule(phase:plastic) nonlocal
     logical :: &
       shortRangeStressCorrection, &                                                                 !< use of short range stress correction by excess density gradient term
       nonSchmidActive = .false.
+    character(len=:),          allocatable, dimension(:) :: &
+      systems_sl
   end type tParameters
 
-  type :: tNonlocalMicrostructure
+  type :: tNonlocalDependentState
     real(pReal), allocatable, dimension(:,:) :: &
      tau_pass, &
      tau_Back
-  end type tNonlocalMicrostructure
+  end type tNonlocalDependentState
 
   type :: tNonlocalState
     real(pReal), pointer, dimension(:,:) :: &
@@ -162,7 +164,7 @@ submodule(phase:plastic) nonlocal
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters
 
-  type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
+  type(tNonlocalDependentState), dimension(:), allocatable :: dependentState
 
 contains
 
@@ -219,13 +221,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(state0(phases%length))
   allocate(dotState(phases%length))
   allocate(deltaState(phases%length))
-  allocate(microstructure(phases%length))
+  allocate(dependentState(phases%length))
 
   do ph = 1, phases%length
     if(.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph),  dot => dotState(ph),   stt => state(ph), &
-              st0 => state0(ph), del => deltaState(ph), dst => microstructure(ph))
+              st0 => state0(ph), del => deltaState(ph), dst => dependentState(ph))
 
     phase => phases%get(ph)
     mech  => phase%get('mechanical')
@@ -246,6 +248,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
+      prm%systems_sl = lattice_labels_slip(ini%N_sl,phase_lattice(ph))
       prm%P_sl = lattice_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
@@ -604,7 +607,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
   real(pReal), dimension(3,param(ph)%sum_N_sl,2) :: &
     m                                                                                               ! direction of dislocation motion
 
-  associate(prm => param(ph),dst => microstructure(ph), stt => state(ph))
+  associate(prm => param(ph),dst => dependentState(ph), stt => state(ph))
 
   rho = getRho(ph,en)
 
@@ -771,7 +774,7 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     dot_gamma                                                                                       !< shear rate
 
-  associate(prm => param(ph),dst=>microstructure(ph),stt=>state(ph))
+  associate(prm => param(ph),dst=>dependentState(ph),stt=>state(ph))
 
   !*** shortcut to state variables
   rho = getRho(ph,en)
@@ -867,7 +870,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
 
-  associate(prm => param(ph),dst => microstructure(ph),del => deltaState(ph))
+  associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph))
 
   !*** shortcut to state variables
   forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
@@ -979,7 +982,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     return
   endif
 
-  associate(prm => param(ph), dst => microstructure(ph), dot => dotState(ph), stt => state(ph))
+  associate(prm => param(ph), dst => dependentState(ph), dot => dotState(ph), stt => state(ph))
 
   tau = 0.0_pReal
   dot_gamma = 0.0_pReal
@@ -1116,8 +1119,11 @@ end subroutine nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
+#if __INTEL_COMPILER >= 2020
+non_recursive function rhoDotFlux(timestep,ph,en,ip,el)
+#else
 function rhoDotFlux(timestep,ph,en,ip,el)
-
+#endif
   real(pReal), intent(in) :: &
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
@@ -1176,7 +1182,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
 
 
   associate(prm => param(ph), &
-            dst => microstructure(ph), &
+            dst => dependentState(ph), &
             dot => dotState(ph), &
             stt => state(ph))
   ns = prm%sum_N_sl
@@ -1458,71 +1464,76 @@ end subroutine plastic_nonlocal_updateCompatibility
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
+!> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_results(ph,group)
 
   integer,         intent(in) :: ph
   character(len=*),intent(in) :: group
 
-  integer :: o
+  integer :: ou
 
-  associate(prm => param(ph),dst => microstructure(ph),stt=>state(ph))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case('rho_u_ed_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(o)), &
-                                                     'positive mobile edge density','1/m²')
-      case('rho_b_ed_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(o)), &
-                                                     'positive immobile edge density','1/m²')
-      case('rho_u_ed_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(o)), &
-                                                     'negative mobile edge density','1/m²')
-      case('rho_b_ed_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(o)), &
-                                                     'negative immobile edge density','1/m²')
-      case('rho_d_ed')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip_edg,group,trim(prm%output(o)), &
-                                                     'edge dipole density','1/m²')
-      case('rho_u_sc_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(o)), &
-                                                     'positive mobile screw density','1/m²')
-      case('rho_b_sc_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(o)), &
-                                                     'positive immobile screw density','1/m²')
-      case('rho_u_sc_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(o)), &
-                                                     'negative mobile screw density','1/m²')
-      case('rho_b_sc_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(o)), &
-                                                     'negative immobile screw density','1/m²')
-      case('rho_d_sc')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_dip_scr,group,trim(prm%output(o)), &
-                                                     'screw dipole density','1/m²')
-      case('rho_f')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%rho_forest,group,trim(prm%output(o)), &
-                                                     'forest density','1/m²')
-      case('v_ed_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_edg_pos,group,trim(prm%output(o)), &
-                                                     'positive edge velocity','m/s')
-      case('v_ed_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_edg_neg,group,trim(prm%output(o)), &
-                                                     'negative edge velocity','m/s')
-      case('v_sc_pos')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_scr_pos,group,trim(prm%output(o)), &
-                                                     'positive srew velocity','m/s')
-      case('v_sc_neg')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%v_scr_neg,group,trim(prm%output(o)), &
-                                                     'negative screw velocity','m/s')
-      case('gamma')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma,group,trim(prm%output(o)), &
-                                                     'plastic shear','1')
-      case('tau_pass')
-        if(prm%sum_N_sl>0) call results_writeDataset(dst%tau_pass,group,trim(prm%output(o)), &
-                                                     'passing stress for slip','Pa')
-    end select
-  enddo outputsLoop
+  associate(prm => param(ph),dst => dependentState(ph),stt=>state(ph))
+
+    do ou = 1,size(prm%output)
+
+      select case(trim(prm%output(ou)))
+
+        case('rho_u_ed_pos')
+          call results_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), &
+                                    'positive mobile edge density','1/m²', prm%systems_sl)
+        case('rho_b_ed_pos')
+          call results_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), &
+                                    'positive immobile edge density','1/m²', prm%systems_sl)
+        case('rho_u_ed_neg')
+          call results_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), &
+                                    'negative mobile edge density','1/m²', prm%systems_sl)
+        case('rho_b_ed_neg')
+          call results_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), &
+                                    'negative immobile edge density','1/m²', prm%systems_sl)
+        case('rho_d_ed')
+          call results_writeDataset(stt%rho_dip_edg,group,trim(prm%output(ou)), &
+                                    'edge dipole density','1/m²', prm%systems_sl)
+        case('rho_u_sc_pos')
+          call results_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), &
+                                    'positive mobile screw density','1/m²', prm%systems_sl)
+        case('rho_b_sc_pos')
+          call results_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), &
+                                    'positive immobile screw density','1/m²', prm%systems_sl)
+        case('rho_u_sc_neg')
+          call results_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), &
+                                    'negative mobile screw density','1/m²', prm%systems_sl)
+        case('rho_b_sc_neg')
+          call results_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), &
+                                    'negative immobile screw density','1/m²', prm%systems_sl)
+        case('rho_d_sc')
+          call results_writeDataset(stt%rho_dip_scr,group,trim(prm%output(ou)), &
+                                    'screw dipole density','1/m²', prm%systems_sl)
+        case('rho_f')
+          call results_writeDataset(stt%rho_forest,group,trim(prm%output(ou)), &
+                                    'forest density','1/m²', prm%systems_sl)
+        case('v_ed_pos')
+          call results_writeDataset(stt%v_edg_pos,group,trim(prm%output(ou)), &
+                                    'positive edge velocity','m/s', prm%systems_sl)
+        case('v_ed_neg')
+          call results_writeDataset(stt%v_edg_neg,group,trim(prm%output(ou)), &
+                                    'negative edge velocity','m/s', prm%systems_sl)
+        case('v_sc_pos')
+          call results_writeDataset(stt%v_scr_pos,group,trim(prm%output(ou)), &
+                                    'positive srew velocity','m/s', prm%systems_sl)
+        case('v_sc_neg')
+          call results_writeDataset(stt%v_scr_neg,group,trim(prm%output(ou)), &
+                                    'negative screw velocity','m/s', prm%systems_sl)
+        case('gamma')
+          call results_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
+                                    'plastic shear','1', prm%systems_sl)
+        case('tau_pass')
+          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                    'passing stress for slip','Pa', prm%systems_sl)
+      end select
+
+    enddo
+
   end associate
 
 end subroutine plastic_nonlocal_results

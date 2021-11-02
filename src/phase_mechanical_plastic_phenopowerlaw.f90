@@ -42,6 +42,9 @@ submodule(phase:plastic) phenopowerlaw
       nonSchmidActive = .false.
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
+    character(len=:),          allocatable, dimension(:) :: &
+      systems_sl, &
+      systems_tw
   end type tParameters
 
   type :: tPhenopowerlawState
@@ -115,6 +118,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
+      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
@@ -126,8 +130,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
       endif
-      prm%h_sl_sl   = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
-                                                     phase_lattice(ph))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'),phase_lattice(ph))
 
       xi_0_sl             = pl%get_as1dFloat('xi_0_sl',   requiredSize=size(N_sl))
       prm%xi_inf_sl       = pl%get_as1dFloat('xi_inf_sl', requiredSize=size(N_sl))
@@ -162,11 +165,10 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     N_tw         = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
-      prm%P_tw            = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%h_tw_tw         = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dFloat('h_tw-tw'), &
-                                                           phase_lattice(ph))
-      prm%gamma_char      = lattice_characteristicShear_twin(N_tw,phase_lattice(ph),&
-                                                             phase_cOverA(ph))
+      prm%systems_tw = lattice_labels_twin(N_tw,phase_lattice(ph))
+      prm%P_tw     = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%h_tw_tw  = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dFloat('h_tw-tw'),phase_lattice(ph))
+      prm%gamma_char = lattice_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
 
       xi_0_tw             = pl%get_as1dFloat('xi_0_tw',requiredSize=size(N_tw))
 
@@ -370,28 +372,33 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
 
-  integer :: o
+  integer :: ou
+
 
   associate(prm => param(ph), stt => state(ph))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
 
-      case('xi_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%xi_sl,group,trim(prm%output(o)), &
-                                                     'resistance against plastic slip','Pa')
-      case('gamma_sl')
-        if(prm%sum_N_sl>0) call results_writeDataset(stt%gamma_sl,group,trim(prm%output(o)), &
-                                                     'plastic shear','1')
+    do ou = 1,size(prm%output)
 
-      case('xi_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(stt%xi_tw,group,trim(prm%output(o)), &
-                                                     'resistance against twinning','Pa')
-      case('gamma_tw')
-        if(prm%sum_N_tw>0) call results_writeDataset(stt%gamma_tw,group,trim(prm%output(o)), &
-                                                     'twinning shear','1')
+      select case(trim(prm%output(ou)))
 
-    end select
-  enddo outputsLoop
+        case('xi_sl')
+          call results_writeDataset(stt%xi_sl,group,trim(prm%output(ou)), &
+                                    'resistance against plastic slip','Pa',prm%systems_sl)
+        case('gamma_sl')
+          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                    'plastic shear','1',prm%systems_sl)
+
+        case('xi_tw')
+          call results_writeDataset(stt%xi_tw,group,trim(prm%output(ou)), &
+                                    'resistance against twinning','Pa',prm%systems_tw)
+        case('gamma_tw')
+          call results_writeDataset(stt%gamma_tw,group,trim(prm%output(ou)), &
+                                    'twinning shear','1',prm%systems_tw)
+
+      end select
+
+    enddo
+
   end associate
 
 end subroutine plastic_phenopowerlaw_results

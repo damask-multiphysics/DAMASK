@@ -67,8 +67,8 @@ module phase
   interface
 
 ! == cleaned:begin =================================================================================
-    module subroutine mechanical_init(materials,phases)
-      class(tNode), pointer :: materials,phases
+    module subroutine mechanical_init(phases)
+      class(tNode), pointer :: phases
     end subroutine mechanical_init
 
     module subroutine damage_init
@@ -386,7 +386,7 @@ subroutine phase_init
     phase_O(ph)%data = phase_O_0(ph)%data
   enddo
 
-  call mechanical_init(materials,phases)
+  call mechanical_init(phases)
   call damage_init
   call thermal_init(phases)
 
@@ -482,7 +482,6 @@ end subroutine phase_results
 subroutine crystallite_init()
 
   integer :: &
-    ph, &
     ce, &
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop

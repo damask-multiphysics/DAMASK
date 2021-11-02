@@ -155,10 +155,10 @@ end subroutine grid_thermal_spectral_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_thermal_spectral_solution(timeinc) result(solution)
+function grid_thermal_spectral_solution(Delta_t) result(solution)
 
   real(pReal), intent(in) :: &
-    timeinc                                                                                         !< increment in time for current solution
+    Delta_t                                                                                         !< increment in time for current solution
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -171,7 +171,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
-  params%timeinc = timeinc
+  params%Delta_t = Delta_t
 
   call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)
@@ -195,7 +195,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc,ce)
+    call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
@@ -233,7 +233,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
     ce = 0
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
-      call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc,ce)
+      call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
     enddo; enddo; enddo
   else
     T_lastInc = T_current
@@ -279,7 +279,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
+    scalarField_real(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
                             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
                             + mu_ref*T_current(i,j,k)
   enddo; enddo; enddo
@@ -287,7 +287,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! convolution of temperature field with green operator
   call utilities_FFTscalarForward
-  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%timeinc)
+  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%Delta_t)
   call utilities_FFTscalarBackward
 
 !--------------------------------------------------------------------------------------------------

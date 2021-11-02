@@ -121,7 +121,7 @@ class VTK:
 
         """
         vtk_nodes = vtk.vtkPoints()
-        vtk_nodes.SetData(np_to_vtk(nodes))
+        vtk_nodes.SetData(np_to_vtk(np.ascontiguousarray(nodes)))
         cells = vtk.vtkCellArray()
         cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
@@ -157,7 +157,7 @@ class VTK:
         """
         N = points.shape[0]
         vtk_points = vtk.vtkPoints()
-        vtk_points.SetData(np_to_vtk(points))
+        vtk_points.SetData(np_to_vtk(np.ascontiguousarray(points)))
 
         vtk_cells = vtk.vtkCellArray()
         vtk_cells.SetNumberOfCells(N)

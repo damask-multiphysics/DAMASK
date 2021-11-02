@@ -386,7 +386,7 @@ module function phase_K_phi(co,ce) result(K)
   real(pReal), dimension(3,3) :: K
   real(pReal), parameter :: l = 1.0_pReal
   
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D) \
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D) &
     * l**2.0_pReal
 
 end function phase_K_phi

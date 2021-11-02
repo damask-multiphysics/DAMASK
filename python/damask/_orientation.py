@@ -1,39 +1,21 @@
 import inspect
+import copy
 
 import numpy as np
 
 from . import Rotation
+from . import Crystal
 from . import util
 from . import tensor
-from . import lattice as lattice_
 
-
-lattice_symmetries = {
-                'aP': 'triclinic',
-
-                'mP': 'monoclinic',
-                'mS': 'monoclinic',
-
-                'oP': 'orthorhombic',
-                'oS': 'orthorhombic',
-                'oI': 'orthorhombic',
-                'oF': 'orthorhombic',
-
-                'tP': 'tetragonal',
-                'tI': 'tetragonal',
-
-                'hP': 'hexagonal',
-
-                'cP': 'cubic',
-                'cI': 'cubic',
-                'cF': 'cubic',
-               }
 
 _parameter_doc = \
-       """lattice : str
-            Either a crystal family  out of {triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic}
-            or     a Bravais lattice out of {aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF}.
-            When specifying a Bravais lattice, additional lattice parameters might be required.
+       """
+        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
+            Name of the crystal family.
+            Will be infered if 'lattice' is given.
+        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
+            Name of the Bravais lattice in Pearson notation.
         a : float, optional
             Length of lattice parameter 'a'.
         b : float, optional
@@ -52,7 +34,7 @@ _parameter_doc = \
        """
 
 
-class Orientation(Rotation):
+class Orientation(Rotation,Crystal):
     """
     Representation of crystallographic orientation as combination of rotation and either crystal family or Bravais lattice.
 
@@ -73,7 +55,7 @@ class Orientation(Rotation):
     - triclinic
        - aP : primitive
 
-    - monoclininic
+    - monoclinic
        - mP : primitive
        - mS : base-centered
 
@@ -104,13 +86,15 @@ class Orientation(Rotation):
     --------
     An array of 3 x 5 random orientations reduced to the fundamental zone of tetragonal symmetry:
 
-    >>> damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
+    >>> import damask
+    >>> o=damask.Orientation.from_random(shape=(3,5),family='tetragonal').reduced
 
     """
 
     @util.extend_docstring(_parameter_doc)
     def __init__(self,
-                 rotation = None,
+                 rotation = np.array([1.0,0.0,0.0,0.0]), *,
+                 family = None,
                  lattice = None,
                  a = None,b = None,c = None,
                  alpha = None,beta = None,gamma = None,
@@ -126,79 +110,23 @@ class Orientation(Rotation):
             Defaults to no rotation.
 
         """
-        Rotation.__init__(self) if rotation is None else Rotation.__init__(self,rotation=rotation)
-
-        if lattice in lattice_symmetries:
-            self.family  = lattice_symmetries[lattice]
-            self.lattice = lattice
-
-            self.a = 1 if a is None else a
-            self.b = b
-            self.c = c
-            self.a = float(self.a) if self.a is not None else \
-                     (self.b / self.ratio['b'] if self.b is not None and self.ratio['b'] is not None else
-                      self.c / self.ratio['c'] if self.c is not None and self.ratio['c'] is not None else None)
-            self.b = float(self.b) if self.b is not None else \
-                     (self.a * self.ratio['b'] if self.a is not None and self.ratio['b'] is not None else
-                      self.c / self.ratio['c'] * self.ratio['b']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-            self.c = float(self.c) if self.c is not None else \
-                     (self.a * self.ratio['c'] if self.a is not None and self.ratio['c'] is not None else
-                      self.b / self.ratio['b'] * self.ratio['c']
-                      if self.c is not None and self.ratio['b'] is not None and self.ratio['c'] is not None else None)
-
-            self.alpha = np.radians(alpha) if degrees and alpha is not None else alpha
-            self.beta  = np.radians(beta)  if degrees and beta  is not None else beta
-            self.gamma = np.radians(gamma) if degrees and gamma is not None else gamma
-            if self.alpha is None and 'alpha' in self.immutable: self.alpha = self.immutable['alpha']
-            if self.beta  is None and 'beta'  in self.immutable: self.beta  = self.immutable['beta']
-            if self.gamma is None and 'gamma' in self.immutable: self.gamma = self.immutable['gamma']
-
-            if \
-                (self.a     is None) \
-             or (self.b     is None or ('b'     in self.immutable and self.b     != self.immutable['b'] * self.a)) \
-             or (self.c     is None or ('c'     in self.immutable and self.c     != self.immutable['c'] * self.b)) \
-             or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
-             or (self.beta  is None or ( 'beta' in self.immutable and self.beta  != self.immutable['beta'])) \
-             or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
-                raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
-
-            if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
-                raise ValueError ('Lattice angles must be positive')
-            if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
-              > np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
-                raise ValueError ('Each lattice angle must be less than sum of others')
-
-        elif lattice in set(lattice_symmetries.values()):
-            self.family  = lattice
-            self.lattice = None
-
-            self.a = self.b = self.c = None
-            self.alpha = self.beta = self.gamma = None
-        else:
-            raise KeyError(f'Lattice "{lattice}" is unknown')
+        Rotation.__init__(self,rotation)
+        Crystal.__init__(self,family=family, lattice=lattice,
+                              a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma, degrees=degrees)
 
 
     def __repr__(self):
         """Represent."""
-        return '\n'.join(([] if self.lattice is None else [f'Bravais lattice {self.lattice}'])
-                       + ([f'Crystal family {self.family}'])
-                       + [super().__repr__()])
+        return '\n'.join([Crystal.__repr__(self),
+                          Rotation.__repr__(self)])
 
 
-    def __copy__(self,**kwargs):
+    def __copy__(self,rotation=None):
         """Create deep copy."""
-        return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion,
-                              lattice =kwargs['lattice']  if 'lattice'  in kwargs else self.lattice
-                                                                                    if self.lattice is not None else self.family,
-                              a       =kwargs['a']        if 'a'        in kwargs else self.a,
-                              b       =kwargs['b']        if 'b'        in kwargs else self.b,
-                              c       =kwargs['c']        if 'c'        in kwargs else self.c,
-                              alpha   =kwargs['alpha']    if 'alpha'    in kwargs else self.alpha,
-                              beta    =kwargs['beta']     if 'beta'     in kwargs else self.beta,
-                              gamma   =kwargs['gamma']    if 'gamma'    in kwargs else self.gamma,
-                              degrees =kwargs['degrees']  if 'degrees'  in kwargs else None,
-                             )
+        dup = copy.deepcopy(self)
+        if rotation is not None:
+            dup.quaternion = Orientation(rotation,family='cubic').quaternion
+        return dup
 
     copy = __copy__
 
@@ -213,8 +141,9 @@ class Orientation(Rotation):
             Orientation to check for equality.
 
         """
-        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
-                             for attr in ['family','lattice','parameters']])
+        matching_type = self.family == other.family and \
+                        self.lattice == other.lattice and \
+                        self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
     def __ne__(self,other):
@@ -251,8 +180,9 @@ class Orientation(Rotation):
             Mask indicating where corresponding orientations are close.
 
         """
-        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
-                             for attr in ['family','lattice','parameters']])
+        matching_type = self.family == other.family and \
+                        self.lattice == other.lattice and \
+                        self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).isclose(other.reduced))
 
 
@@ -432,84 +362,6 @@ class Orientation(Rotation):
 
 
     @property
-    def symmetry_operations(self):
-        """Symmetry operations as Rotations."""
-        if self.family == 'cubic':
-            sym_quats =  [
-                          [ 1.0,            0.0,            0.0,            0.0            ],
-                          [ 0.0,            1.0,            0.0,            0.0            ],
-                          [ 0.0,            0.0,            1.0,            0.0            ],
-                          [ 0.0,            0.0,            0.0,            1.0            ],
-                          [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
-                          [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
-                          [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
-                          [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
-                          [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                          [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                          [ 0.5,            0.5,            0.5,            0.5            ],
-                          [-0.5,            0.5,            0.5,            0.5            ],
-                          [-0.5,            0.5,            0.5,           -0.5            ],
-                          [-0.5,            0.5,           -0.5,            0.5            ],
-                          [-0.5,           -0.5,            0.5,            0.5            ],
-                          [-0.5,           -0.5,            0.5,           -0.5            ],
-                          [-0.5,           -0.5,           -0.5,            0.5            ],
-                          [-0.5,            0.5,           -0.5,           -0.5            ],
-                          [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                          [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                          [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
-                          [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
-                          [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
-                          [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
-                        ]
-        elif self.family == 'hexagonal':
-            sym_quats =  [
-                          [ 1.0,            0.0,            0.0,            0.0            ],
-                          [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
-                          [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                          [ 0.0,            0.0,            0.0,            1.0            ],
-                          [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                          [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
-                          [ 0.0,            1.0,            0.0,            0.0            ],
-                          [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
-                          [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
-                          [ 0.0,            0.0,            1.0,            0.0            ],
-                          [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
-                          [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
-                        ]
-        elif self.family == 'tetragonal':
-            sym_quats =  [
-                          [ 1.0,            0.0,            0.0,            0.0            ],
-                          [ 0.0,            1.0,            0.0,            0.0            ],
-                          [ 0.0,            0.0,            1.0,            0.0            ],
-                          [ 0.0,            0.0,            0.0,            1.0            ],
-                          [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                          [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                          [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                          [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                        ]
-        elif self.family == 'orthorhombic':
-            sym_quats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                          [ 0.0,1.0,0.0,0.0 ],
-                          [ 0.0,0.0,1.0,0.0 ],
-                          [ 0.0,0.0,0.0,1.0 ],
-                        ]
-        elif self.family == 'monoclinic':
-            sym_quats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                          [ 0.0,0.0,1.0,0.0 ],
-                        ]
-        elif self.family == 'triclinic':
-            sym_quats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                        ]
-        else:
-            raise KeyError(f'unknown crystal family "{self.family}"')
-
-        return Rotation.from_quaternion(sym_quats,accept_homomorph=True)
-
-
-    @property
     def equivalent(self):
         """
         Orientations that are symmetrically equivalent.
@@ -518,7 +370,8 @@ class Orientation(Rotation):
         is added to the left of the Rotation array.
 
         """
-        o = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+self.shape,mode='right')
+        sym_ops = self.symmetry_operations
+        o = sym_ops.broadcast_to(sym_ops.shape+self.shape,mode='right')
         return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
 
@@ -619,381 +472,6 @@ class Orientation(Rotation):
                 return np.ones_like(rho[...,0],dtype=bool)
 
 
-    def relation_operations(self,model,return_lattice=False):
-        """
-        Crystallographic orientation relationships for phase transformations.
-
-        Parameters
-        ----------
-        model : str
-            Name of orientation relationship.
-        return_lattice : bool, optional
-            Return the target lattice in addition.
-
-        Returns
-        -------
-        operations : Rotations
-            Rotations characterizing the orientation relationship.
-
-        References
-        ----------
-        S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
-        https://doi.org/10.1016/j.jallcom.2012.02.004
-
-        K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
-        https://doi.org/10.1016/j.actamat.2005.11.001
-
-        Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-        https://doi.org/10.1107/S0021889805038276
-
-        H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
-        https://doi.org/10.1016/j.matchar.2004.12.015
-
-        Y. He et al., Acta Materialia 53(4):1179-1190, 2005
-        https://doi.org/10.1016/j.actamat.2004.11.021
-
-        """
-        if model not in lattice_.relations:
-            raise KeyError(f'unknown orientation relationship "{model}"')
-        r = lattice_.relations[model]
-
-        if self.lattice not in r:
-            raise KeyError(f'relationship "{model}" not supported for lattice "{self.lattice}"')
-
-        sl = self.lattice
-        ol = (set(r)-{sl}).pop()
-        m = r[sl]
-        o = r[ol]
-
-        p_,_p = np.zeros(m.shape[:-1]+(3,)),np.zeros(o.shape[:-1]+(3,))
-        p_[...,0,:] = m[...,0,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=m[...,0,0:4])
-        p_[...,1,:] = m[...,1,:] if m.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=m[...,1,0:4])
-        _p[...,0,:] = o[...,0,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(uvtw=o[...,0,0:4])
-        _p[...,1,:] = o[...,1,:] if o.shape[-1] == 3 else lattice_.Bravais_to_Miller(hkil=o[...,1,0:4])
-
-        return (Rotation.from_parallel(p_,_p),ol) \
-                if return_lattice else \
-                Rotation.from_parallel(p_,_p)
-
-
-    def related(self,model):
-        """
-        Orientations derived from the given relationship.
-
-        One dimension (length according to number of related orientations)
-        is added to the left of the Rotation array.
-
-        """
-        o,lattice = self.relation_operations(model,return_lattice=True)
-        target = Orientation(lattice=lattice)
-        o = o.broadcast_to(o.shape+self.shape,mode='right')
-        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
-                         lattice=lattice,
-                         b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
-                         c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
-                         alpha = None if 'alpha' in target.immutable else self.alpha,
-                         beta  = None if 'beta'  in target.immutable else self.beta,
-                         gamma = None if 'gamma' in target.immutable else self.gamma,
-                        )
-
-
-    @property
-    def parameters(self):
-        """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
-
-
-    @property
-    def immutable(self):
-        """Return immutable parameters of own lattice."""
-        if self.family == 'triclinic':
-            return {}
-        if self.family == 'monoclinic':
-            return {
-                     'alpha': np.pi/2.,
-                     'gamma': np.pi/2.,
-                   }
-        if self.family == 'orthorhombic':
-            return {
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': np.pi/2.,
-                   }
-        if self.family == 'tetragonal':
-            return {
-                     'b': 1.0,
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': np.pi/2.,
-                   }
-        if self.family == 'hexagonal':
-            return {
-                     'b': 1.0,
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': 2.*np.pi/3.,
-                   }
-        if self.family == 'cubic':
-            return {
-                     'b': 1.0,
-                     'c': 1.0,
-                     'alpha': np.pi/2.,
-                     'beta':  np.pi/2.,
-                     'gamma': np.pi/2.,
-                   }
-
-
-    @property
-    def ratio(self):
-        """Return axes ratios of own lattice."""
-        _ratio = { 'hexagonal': {'c': np.sqrt(8./3.)}}
-
-        return dict(b = self.immutable['b']
-                        if 'b' in self.immutable else
-                        _ratio[self.family]['b'] if self.family in _ratio and 'b' in _ratio[self.family] else None,
-                    c = self.immutable['c']
-                        if 'c' in self.immutable else
-                        _ratio[self.family]['c'] if self.family in _ratio and 'c' in _ratio[self.family] else None,
-                   )
-
-
-    @property
-    def basis_real(self):
-        """
-        Calculate orthogonal real space crystal basis.
-
-        References
-        ----------
-        C.T. Young and J.L. Lytton, Journal of Applied Physics 43:1408–1417, 1972
-        https://doi.org/10.1063/1.1661333
-
-        """
-        if None in self.parameters:
-            raise KeyError('missing crystal lattice parameters')
-        return np.array([
-                          [1,0,0],
-                          [np.cos(self.gamma),np.sin(self.gamma),0],
-                          [np.cos(self.beta),
-                           (np.cos(self.alpha)-np.cos(self.beta)*np.cos(self.gamma))                     /np.sin(self.gamma),
-                           np.sqrt(1 - np.cos(self.alpha)**2 - np.cos(self.beta)**2 - np.cos(self.gamma)**2
-                                 + 2 * np.cos(self.alpha)    * np.cos(self.beta)    * np.cos(self.gamma))/np.sin(self.gamma)],
-                         ],dtype=float).T \
-             * np.array([self.a,self.b,self.c])
-
-
-    @property
-    def basis_reciprocal(self):
-        """Calculate reciprocal (dual) crystal basis."""
-        return np.linalg.inv(self.basis_real.T)
-
-
-    def in_SST(self,vector,proper=False):
-        """
-        Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
-
-        Parameters
-        ----------
-        vector : numpy.ndarray of shape (...,3)
-            Vector to check.
-        proper : bool, optional
-            Consider only vectors with z >= 0, hence combine two neighboring SSTs.
-            Defaults to False.
-
-        Returns
-        -------
-        in : numpy.ndarray of shape (...)
-           Boolean array indicating whether vector falls into SST.
-
-        References
-        ----------
-        Bases are computed from
-
-        >>> basis = {
-        ...    'cubic' :       np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,1.]/np.sqrt(2.),                #              green
-        ...                                            [1.,1.,1.]/np.sqrt(3.)]).T),           #              blue
-        ...    'hexagonal' :   np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,0.],                            #              green
-        ...                                            [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),  #              blue
-        ...    'tetragonal' :  np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,0.],                            #              green
-        ...                                            [1.,1.,0.]/np.sqrt(2.)]).T),           #              blue
-        ...    'orthorhombic': np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,0.],                            #              green
-        ...                                            [0.,1.,0.]]).T),                       #              blue
-        ...    }
-
-        """
-        if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
-            raise ValueError('input is not a field of three-dimensional vectors')
-
-        if self.family == 'cubic':
-            basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                           [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
-                                           [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
-                       'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                           [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
-                                           [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
-                    }
-        elif self.family == 'hexagonal':
-            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                           [ 1.            , -np.sqrt(3.)   ,  0. ],
-                                           [ 0.            ,  2.            ,  0. ] ]),
-                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
-                                           [-1.            ,  np.sqrt(3.)   ,  0. ],
-                                           [ np.sqrt(3.)   , -1.            ,  0. ] ]),
-                    }
-        elif self.family == 'tetragonal':
-            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                           [ 1.            , -1.            ,  0. ],
-                                           [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
-                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
-                                           [-1.            ,  1.            ,  0. ],
-                                           [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
-                    }
-        elif self.family == 'orthorhombic':
-            basis = {'improper':np.array([ [ 0., 0., 1.],
-                                           [ 1., 0., 0.],
-                                           [ 0., 1., 0.] ]),
-                       'proper':np.array([ [ 0., 0., 1.],
-                                           [-1., 0., 0.],
-                                           [ 0., 1., 0.] ]),
-                    }
-        else:                                                                                       # direct exit for unspecified symmetry
-            return  np.ones_like(vector[...,0],bool)
-
-        if proper:
-            components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['proper'], vector.shape+(3,)),
-                                                      vector), 12)
-            components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['improper'], vector.shape+(3,)),
-                                                      vector), 12)
-            return   np.all(components_proper   >= 0.0,axis=-1) \
-                   | np.all(components_improper >= 0.0,axis=-1)
-        else:
-            components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(basis['improper'], vector.shape+(3,)),
-                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
-
-            return np.all(components >= 0.0,axis=-1)
-
-
-    def IPF_color(self,vector,in_SST=True,proper=False):
-        """
-        Map vector to RGB color within standard stereographic triangle of own symmetry.
-
-        Parameters
-        ----------
-        vector : numpy.ndarray of shape (...,3)
-            Vector to colorize.
-        in_SST : bool, optional
-            Consider symmetrically equivalent orientations such that poles are located in SST.
-            Defaults to True.
-        proper : bool, optional
-            Consider only vectors with z >= 0, hence combine two neighboring SSTs (with mirrored colors).
-            Defaults to False.
-
-        Returns
-        -------
-        rgb : numpy.ndarray of shape (...,3)
-           RGB array of IPF colors.
-
-        Examples
-        --------
-        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
-
-        >>> o = damask.Orientation(lattice='cubic')
-        >>> o.IPF_color([0,0,1])
-        array([1., 0., 0.])
-
-        References
-        ----------
-        Bases are computed from
-
-        >>> basis = {
-        ...    'cubic' :       np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,1.]/np.sqrt(2.),                #              green
-        ...                                            [1.,1.,1.]/np.sqrt(3.)]).T),           #              blue
-        ...    'hexagonal' :   np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,0.],                            #              green
-        ...                                            [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),  #              blue
-        ...    'tetragonal' :  np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,0.],                            #              green
-        ...                                            [1.,1.,0.]/np.sqrt(2.)]).T),           #              blue
-        ...    'orthorhombic': np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                            [1.,0.,0.],                            #              green
-        ...                                            [0.,1.,0.]]).T),                       #              blue
-        ...    }
-
-        """
-        if np.array(vector).shape[-1] != 3:
-            raise ValueError('input is not a field of three-dimensional vectors')
-
-        vector_ = self.to_SST(vector,proper) if in_SST else \
-                  self @ np.broadcast_to(vector,self.shape+(3,))
-
-        if self.family == 'cubic':
-            basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                           [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
-                                           [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
-                       'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                           [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
-                                           [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
-                    }
-        elif self.family == 'hexagonal':
-            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                           [ 1.            , -np.sqrt(3.)   ,  0. ],
-                                           [ 0.            ,  2.            ,  0. ] ]),
-                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
-                                           [-1.            ,  np.sqrt(3.)   ,  0. ],
-                                           [ np.sqrt(3.)   , -1.            ,  0. ] ]),
-                    }
-        elif self.family == 'tetragonal':
-            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                           [ 1.            , -1.            ,  0. ],
-                                           [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
-                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
-                                           [-1.            ,  1.            ,  0. ],
-                                           [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
-                    }
-        elif self.family == 'orthorhombic':
-            basis = {'improper':np.array([ [ 0., 0., 1.],
-                                           [ 1., 0., 0.],
-                                           [ 0., 1., 0.] ]),
-                       'proper':np.array([ [ 0., 0., 1.],
-                                           [-1., 0., 0.],
-                                           [ 0., 1., 0.] ]),
-                    }
-        else:                                                                                       # direct exit for unspecified symmetry
-            return np.zeros_like(vector_)
-
-        if proper:
-            components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['proper'], vector_.shape+(3,)),
-                                                      vector_), 12)
-            components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['improper'], vector_.shape+(3,)),
-                                                      vector_), 12)
-            in_SST = np.all(components_proper   >= 0.0,axis=-1) \
-                   | np.all(components_improper >= 0.0,axis=-1)
-            components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
-                                  components_proper,components_improper)
-        else:
-            components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(basis['improper'], vector_.shape+(3,)),
-                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
-
-            in_SST = np.all(components >= 0.0,axis=-1)
-
-        with np.errstate(invalid='ignore',divide='ignore'):
-            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5            # smoothen color ramps
-            rgb = np.clip(rgb,0.,1.)                                                            # clip intensity
-            rgb /= np.max(rgb,axis=-1,keepdims=True)                                            # normalize to (HS)V = 1
-        rgb[np.broadcast_to(~in_SST[...,np.newaxis],rgb.shape)] = 0.0
-        return rgb
-
-
     def disorientation(self,other,return_operators=False):
         """
         Calculate disorientation between myself and given other orientation.
@@ -1018,15 +496,15 @@ class Orientation(Rotation):
         Notes
         -----
         Currently requires same crystal family for both orientations.
-        For extension to cases with differing symmetry see  A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
+        For extension to cases with differing symmetry see A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
 
         Examples
         --------
         Disorientation between two specific orientations of hexagonal symmetry:
 
         >>> import damask
-        >>> a = damask.Orientation.from_Eulers(phi=[123,32,21],degrees=True,lattice='hexagonal')
-        >>> b = damask.Orientation.from_Eulers(phi=[104,11,87],degrees=True,lattice='hexagonal')
+        >>> a = damask.Orientation.from_Euler_angles(phi=[123,32,21],degrees=True,family='hexagonal')
+        >>> b = damask.Orientation.from_Euler_angles(phi=[104,11,87],degrees=True,family='hexagonal')
         >>> a.disorientation(b)
         Crystal family hexagonal
         Quaternion: (real=0.976, imag=<+0.189, +0.018, +0.103>)
@@ -1117,7 +595,7 @@ class Orientation(Rotation):
         ----------
         vector : numpy.ndarray of shape (...,3)
             Lab frame vector to align with crystal frame direction.
-            Shape of other blends with shape of own rotation array.
+            Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
         proper : bool, optional
             Consider only vectors with z >= 0, hence combine two neighboring SSTs.
@@ -1148,57 +626,187 @@ class Orientation(Rotation):
                )
 
 
-    def to_lattice(self,*,direction=None,plane=None):
+    def in_SST(self,vector,proper=False):
         """
-        Calculate lattice vector corresponding to crystal frame direction or plane normal.
+        Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
 
         Parameters
         ----------
-        direction|normal : numpy.ndarray of shape (...,3)
-            Vector along direction or plane normal.
+        vector : numpy.ndarray of shape (...,3)
+            Vector to check.
+        proper : bool, optional
+            Consider only vectors with z >= 0, hence combine two neighboring SSTs.
+            Defaults to False.
 
         Returns
         -------
-        Miller : numpy.ndarray of shape (...,3)
-            lattice vector of direction or plane.
-            Use util.scale_to_coprime to convert to (integer) Miller indices.
+        in : numpy.ndarray of shape (...)
+           Boolean array indicating whether vector falls into SST.
 
         """
-        if (direction is not None) ^ (plane is None):
-            raise KeyError('specify either "direction" or "plane"')
-        axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
-                      if plane is None else \
-                      (np.array(plane),self.basis_real.T)
-        return np.einsum('il,...l',basis,axis)
+        if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
+            raise ValueError('input is not a field of three-dimensional vectors')
+
+        if self.standard_triangle is None:                                                          # direct exit for no symmetry
+            return  np.ones_like(vector[...,0],bool)
+
+        if proper:
+            components_proper   = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.standard_triangle['proper'], vector.shape+(3,)),
+                                                      vector), 12)
+            components_improper = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.standard_triangle['improper'], vector.shape+(3,)),
+                                                      vector), 12)
+            return   np.all(components_proper   >= 0.0,axis=-1) \
+                   | np.all(components_improper >= 0.0,axis=-1)
+        else:
+            components = np.around(np.einsum('...ji,...i',
+                                             np.broadcast_to(self.standard_triangle['improper'], vector.shape+(3,)),
+                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
+
+            return np.all(components >= 0.0,axis=-1)
 
 
-    def to_frame(self,*,uvw=None,hkl=None,with_symmetry=False):
+    def IPF_color(self,vector,in_SST=True,proper=False):
         """
-        Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
+        Map vector to RGB color within standard stereographic triangle of own symmetry.
 
         Parameters
         ----------
-        uvw|hkl : numpy.ndarray of shape (...,3)
-            Miller indices of crystallographic direction or plane normal.
-        with_symmetry : bool, optional
-            Calculate all N symmetrically equivalent vectors.
+        vector : numpy.ndarray of shape (...,3)
+            Vector to colorize.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
+        in_SST : bool, optional
+            Consider symmetrically equivalent orientations such that poles are located in SST.
+            Defaults to True.
+        proper : bool, optional
+            Consider only vectors with z >= 0, hence combine two neighboring SSTs (with mirrored colors).
+            Defaults to False.
 
         Returns
         -------
-        vector : numpy.ndarray of shape (...,3) or (N,...,3)
-            Crystal frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
+        rgb : numpy.ndarray of shape (...,3)
+           RGB array of IPF colors.
+
+        Examples
+        --------
+        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
+
+        >>> import damask
+        >>> o = damask.Orientation(family='cubic')
+        >>> o.IPF_color([0,0,1])
+        array([1., 0., 0.])
 
         """
-        if (uvw is not None) ^ (hkl is None):
-            raise KeyError('specify either "uvw" or "hkl"')
-        axis,basis  = (np.array(uvw),self.basis_real) \
-                      if hkl is None else \
-                      (np.array(hkl),self.basis_reciprocal)
-        return (self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+axis.shape[:-1],mode='right')
-              @ np.broadcast_to(np.einsum('il,...l',basis,axis),self.symmetry_operations.shape+axis.shape)
-                if with_symmetry else
-                np.einsum('il,...l',basis,axis))
+        if np.array(vector).shape[-1] != 3:
+            raise ValueError('input is not a field of three-dimensional vectors')
 
+        vector_ = self.to_SST(vector,proper) if in_SST else \
+                  self @ np.broadcast_to(vector,self.shape+(3,))
+
+        if self.standard_triangle is None:                                                          # direct exit for no symmetry
+            return np.zeros_like(vector_)
+
+        if proper:
+            components_proper   = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.standard_triangle['proper'], vector_.shape+(3,)),
+                                                      vector_), 12)
+            components_improper = np.around(np.einsum('...ji,...i',
+                                                      np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
+                                                      vector_), 12)
+            in_SST = np.all(components_proper   >= 0.0,axis=-1) \
+                   | np.all(components_improper >= 0.0,axis=-1)
+            components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
+                                  components_proper,components_improper)
+        else:
+            components = np.around(np.einsum('...ji,...i',
+                                             np.broadcast_to(self .standard_triangle['improper'], vector_.shape+(3,)),
+                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
+
+            in_SST = np.all(components >= 0.0,axis=-1)
+
+        with np.errstate(invalid='ignore',divide='ignore'):
+            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5                # smoothen color ramps
+            rgb = np.clip(rgb,0.,1.)                                                                # clip intensity
+            rgb /= np.max(rgb,axis=-1,keepdims=True)                                                # normalize to (HS)V = 1
+        rgb[np.broadcast_to(~in_SST[...,np.newaxis],rgb.shape)] = 0.0
+
+        return rgb
+
+
+    @property
+    def symmetry_operations(self):
+        """Symmetry operations as Rotations."""
+        _symmetry_operations = {
+            'cubic':         [
+                              [ 1.0,            0.0,            0.0,            0.0            ],
+                              [ 0.0,            1.0,            0.0,            0.0            ],
+                              [ 0.0,            0.0,            1.0,            0.0            ],
+                              [ 0.0,            0.0,            0.0,            1.0            ],
+                              [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
+                              [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
+                              [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
+                              [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
+                              [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                              [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                              [ 0.5,            0.5,            0.5,            0.5            ],
+                              [-0.5,            0.5,            0.5,            0.5            ],
+                              [-0.5,            0.5,            0.5,           -0.5            ],
+                              [-0.5,            0.5,           -0.5,            0.5            ],
+                              [-0.5,           -0.5,            0.5,            0.5            ],
+                              [-0.5,           -0.5,            0.5,           -0.5            ],
+                              [-0.5,           -0.5,           -0.5,            0.5            ],
+                              [-0.5,            0.5,           -0.5,           -0.5            ],
+                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                              [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
+                              [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
+                              [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
+                              [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
+                            ],
+            'hexagonal':    [
+                              [ 1.0,            0.0,            0.0,            0.0            ],
+                              [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
+                              [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                              [ 0.0,            0.0,            0.0,            1.0            ],
+                              [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                              [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
+                              [ 0.0,            1.0,            0.0,            0.0            ],
+                              [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
+                              [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
+                              [ 0.0,            0.0,            1.0,            0.0            ],
+                              [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
+                              [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
+                            ],
+            'tetragonal':   [
+                              [ 1.0,            0.0,            0.0,            0.0            ],
+                              [ 0.0,            1.0,            0.0,            0.0            ],
+                              [ 0.0,            0.0,            1.0,            0.0            ],
+                              [ 0.0,            0.0,            0.0,            1.0            ],
+                              [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                              [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                            ],
+            'orthorhombic': [
+                              [ 1.0,0.0,0.0,0.0 ],
+                              [ 0.0,1.0,0.0,0.0 ],
+                              [ 0.0,0.0,1.0,0.0 ],
+                              [ 0.0,0.0,0.0,1.0 ],
+                            ],
+            'monoclinic':   [
+                              [ 1.0,0.0,0.0,0.0 ],
+                              [ 0.0,0.0,1.0,0.0 ],
+                            ],
+            'triclinic':    [
+                              [ 1.0,0.0,0.0,0.0 ],
+                            ]}
+        return Rotation.from_quaternion(_symmetry_operations[self.family],accept_homomorph=True)
+
+
+####################################################################################################
+    # functions that require lattice, not just family
 
     def to_pole(self,*,uvw=None,hkl=None,with_symmetry=False):
         """
@@ -1208,60 +816,92 @@ class Orientation(Rotation):
         ----------
         uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of crystallographic direction or plane normal.
+            Shape of vector blends with shape of own rotation array.
+            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
 
         Returns
         -------
-        vector : numpy.ndarray of shape (...,3) or (N,...,3)
+        vector : numpy.ndarray of shape (...,3) or (...,N,3)
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
-        v = self.to_frame(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
-        return ~(self if self.shape+v.shape[:-1] == () else self.broadcast_to(self.shape+v.shape[:-1],mode='right')) \
-               @ np.broadcast_to(v,self.shape+v.shape)
+        v = self.to_frame(uvw=uvw,hkl=hkl)
+        blend = util.shapeblender(self.shape,v.shape[:-1])
+        if with_symmetry:
+            sym_ops = self.symmetry_operations
+            shape = v.shape[:-1]+sym_ops.shape
+            blend += sym_ops.shape
+            v = sym_ops.broadcast_to(shape) \
+              @ np.broadcast_to(v.reshape(util.shapeshifter(v.shape,shape+(3,))),shape+(3,))
+        return ~(self.broadcast_to(blend)) \
+               @ np.broadcast_to(v,blend+(3,))
 
 
-    def Schmid(self,mode):
+    def Schmid(self,*,N_slip=None,N_twin=None):
         u"""
-        Calculate Schmid matrix P = d ⨂ n in the lab frame for given lattice shear kinematics.
+        Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
         Parameters
         ----------
-        mode : {'slip', 'twin'}
-            Type of kinematics.
+        N_slip|N_twin : iterable of int
+            Number of deformation systems per family of the deformation system.
+            Use '*' to select all.
 
         Returns
         -------
-        P : numpy.ndarray of shape (...,N,3,3)
+        P : numpy.ndarray of shape (N,...,3,3)
             Schmid matrix for each of the N deformation systems.
 
         Examples
         --------
-        Schmid matrix (in lab frame) of slip systems of a face-centered
+        Schmid matrix (in lab frame) of first octahedral slip system of a face-centered
         cubic crystal in "Goss" orientation.
 
         >>> import damask
         >>> import numpy as np
         >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
-        >>> damask.Orientation.from_Eulers(phi=[0,45,0],degrees=True,lattice='cF').Schmid('slip')[0]
+        >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
+        >>> O.Schmid(N_slip=[1])
         array([[ 0.000,  0.000,  0.000],
                [ 0.577, -0.000,  0.816],
                [ 0.000,  0.000,  0.000]])
 
         """
-        try:
-            master = lattice_.kinematics[self.lattice][mode]
-            kinematics = {'direction':master[:,0:3],'plane':master[:,3:6]} \
-                          if master.shape[-1] == 6 else \
-                         {'direction':lattice_.Bravais_to_Miller(uvtw=master[:,0:4]),
-                          'plane':    lattice_.Bravais_to_Miller(hkil=master[:,4:8])}
-        except KeyError:
-            raise (f'"{mode}" not defined for lattice "{self.lattice}"')
-        d = self.to_frame(uvw=kinematics['direction'],with_symmetry=False)
-        p = self.to_frame(hkl=kinematics['plane']    ,with_symmetry=False)
-        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
-                                  p/np.linalg.norm(p,axis=-1,keepdims=True))
+        if (N_slip is not None) ^ (N_twin is None):
+            raise KeyError('Specify either "N_slip" or "N_twin"')
 
-        return ~self.broadcast_to( self.shape+P.shape[:-2],mode='right') \
-               @ np.broadcast_to(P,self.shape+P.shape)
+        kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
+                            (self.kinematics('twin'),N_twin)
+        if active == '*': active = [len(a) for a in kinematics['direction']]
+
+        d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
+        p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
+        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
+                                  p/np.linalg.norm(p,axis=1,keepdims=True))
+
+        shape = P.shape[0:1]+self.shape+(3,3)
+        return ~self.broadcast_to(shape[:-2]) \
+               @ np.broadcast_to(P.reshape(util.shapeshifter(P.shape,shape)),shape)
+
+
+    def related(self,model):
+        """
+        Orientations derived from the given relationship.
+
+        One dimension (length according to number of related orientations)
+        is added to the left of the Rotation array.
+
+        """
+        lattice,o = self.relation_operations(model)
+        target = Crystal(lattice=lattice)
+        o = o.broadcast_to(o.shape+self.shape,mode='right')
+        return Orientation(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
+                          lattice=lattice,
+                          b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
+                          c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
+                          alpha = None if 'alpha' in target.immutable else self.alpha,
+                          beta  = None if 'beta'  in target.immutable else self.beta,
+                          gamma = None if 'gamma' in target.immutable else self.gamma,
+                         )

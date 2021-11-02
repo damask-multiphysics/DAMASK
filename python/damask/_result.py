@@ -567,9 +567,13 @@ class Result:
         formula = kwargs['formula']
         for d in re.findall(r'#(.*?)#',formula):
             formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
+        data = eval(formula)
+
+        if not hasattr(data,'shape') or data.shape[0] != kwargs[d]['data'].shape[0]:
+            raise ValueError("'{}' results in invalid shape".format(kwargs['formula']))
 
         return {
-                'data':  eval(formula),
+                'data':  data,
                 'label': kwargs['label'],
                 'meta':  {
                           'unit':        kwargs['unit'],
@@ -981,47 +985,39 @@ class Result:
         self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
 
 
-# The add_pole functionality needs discussion.
-# The new Crystal object can perform such a calculation but the outcome depends on the lattice parameters
-# as well as on whether a direction or plane is concerned (see the DAMASK_examples/pole_figure notebook).
-# Below code appears to be too simplistic.
 
-    # @staticmethod
-    # def _add_pole(q,p,polar):
-    #     pole      = np.array(p)
-    #     unit_pole = pole/np.linalg.norm(pole)
-    #     m         = util.scale_to_coprime(pole)
-    #     rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
-    #
-    #     rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
-    #     xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
-    #     coords = xy if not polar else \
-    #              np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
-    #     return {
-    #             'data': coords,
-    #             'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
-    #             'meta' : {
-    #                       'unit':        '1',
-    #                       'description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
-    #                                      .format('Polar' if polar else 'Cartesian'),
-    #                       'creator':     'add_pole'
-    #                      }
-    #            }
-    # def add_pole(self,q,p,polar=False):
-    #     """
-    #     Add coordinates of stereographic projection of given pole in crystal frame.
-    #
-    #     Parameters
-    #     ----------
-    #     q : str
-    #         Name of the dataset containing the crystallographic orientation as quaternions.
-    #     p : numpy.array of shape (3)
-    #         Crystallographic direction or plane.
-    #     polar : bool, optional
-    #         Give pole in polar coordinates. Defaults to False.
-    #
-    #     """
-    #     self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
+    @staticmethod
+    def _add_pole(q,uvw,hkl,with_symmetry):
+        c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
+        pole = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c).to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
+
+        return {
+                'data': pole,
+                'label': 'p^[{} {} {}]'.format(*uvw) if uvw else 'p^({} {} {})'.format(*hkl),
+                'meta' : {
+                           'unit':        '1',
+                           'description': 'lab frame vector along lattice ' \
+                                          + ('direction' if uvw else 'plane') \
+                                          + ('s' if with_symmetry else ''),
+                           'creator':     'add_pole'
+                          }
+                }
+    def add_pole(self,q='O',*,uvw=None,hkl=None,with_symmetry=False):
+        """
+        Add lab frame vector along lattice direction [uvw] or plane normal (hkl).
+
+        Parameters
+        ----------
+        q : str
+            Name of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
+        uvw|hkl : numpy.ndarray of shape (...,3)
+            Miller indices of crystallographic direction or plane normal.
+        with_symmetry : bool, optional
+            Calculate all N symmetrically equivalent vectors.
+
+        """
+        self._add_generic_pointwise(self._add_pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry})
 
 
     @staticmethod
@@ -1266,7 +1262,7 @@ class Result:
             Arguments parsed to func.
 
         """
-        if len(datasets) != 1 or self.N_constituents !=1:
+        if len(datasets) != 1 or self.N_constituents != 1:
             raise NotImplementedError
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
@@ -1313,7 +1309,8 @@ class Result:
                     loc  = f[group+'/'+label]
                     datasets_in[arg]={'data' :loc[()],
                                       'label':label,
-                                      'meta': {k:(v if h5py3 else v.decode()) for k,v in loc.attrs.items()}}
+                                      'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
+                                               for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -1366,22 +1363,24 @@ class Result:
                         dataset[...] = result['data']
                         dataset.attrs['overwritten'] = True
                     else:
+                        shape = result['data'].shape
                         if result['data'].size >= chunk_size*2:
-                            shape  = result['data'].shape
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
-                            dataset = f[group].create_dataset(result['label'],data=result['data'],
-                                                              maxshape=shape, chunks=chunks,
-                                                              compression='gzip', compression_opts=6,
-                                                              shuffle=True,fletcher32=True)
+                            compression = ('gzip',6)
                         else:
-                            dataset = f[group].create_dataset(result['label'],data=result['data'])
+                            chunks = shape
+                            compression = (None,None)
+                        dataset = f[group].create_dataset(result['label'],data=result['data'],
+                                                          maxshape=shape, chunks=chunks,
+                                                          compression=compression[0], compression_opts=compression[1],
+                                                          shuffle=True,fletcher32=True)
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
                                                now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                     for l,v in result['meta'].items():
-                        dataset.attrs[l.lower()]=v if h5py3 else v.encode()
+                        dataset.attrs[l.lower()]=v.encode() if not h5py3 and type(v) is str else v
                     creator = dataset.attrs['creator'] if h5py3 else \
                               dataset.attrs['creator'].decode()
                     dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
@@ -1770,7 +1769,7 @@ class Result:
             if type(obj) == h5py.Dataset and  _match(output,[name]):
                 d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
                 if not Path(name).exists() or overwrite:
-                    with open(name,'w') as f_out: f_out.write(obj[()].decode())
+                    with open(name,'w') as f_out: f_out.write(obj[0].decode())
                     print(f"Exported {d} to '{name}'.")
                 else:
                     print(f"'{name}' exists, {d} not exported.")

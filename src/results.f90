@@ -34,10 +34,11 @@ module results
   end interface results_writeDataset
 
   interface results_addAttribute
-    module procedure results_addAttribute_real
-    module procedure results_addAttribute_int
     module procedure results_addAttribute_str
+    module procedure results_addAttribute_int
+    module procedure results_addAttribute_real
 
+    module procedure results_addAttribute_str_array
     module procedure results_addAttribute_int_array
     module procedure results_addAttribute_real_array
   end interface results_addAttribute
@@ -66,7 +67,6 @@ subroutine results_init(restart)
 
   character(len=pPathLen) :: commandLine
   integer :: hdferr
-  integer(HID_T) :: group_id
   character(len=:), allocatable :: date
 
 
@@ -210,7 +210,7 @@ subroutine results_setLink(path,link)
 end subroutine results_setLink
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a string attribute to an object in the results file
+!> @brief Add a string attribute to an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
@@ -228,7 +228,7 @@ end subroutine results_addAttribute_str
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds an integer attribute an object in the results file
+!> @brief Add an integer attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_int(attrLabel,attrValue,path)
 
@@ -247,7 +247,7 @@ end subroutine results_addAttribute_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a real attribute an object in the results file
+!> @brief Add a real attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_real(attrLabel,attrValue,path)
 
@@ -266,7 +266,26 @@ end subroutine results_addAttribute_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds an integer array attribute an object in the results file
+!> @brief Add a string array attribute an object in the results file.
+!--------------------------------------------------------------------------------------------------
+subroutine results_addAttribute_str_array(attrLabel,attrValue,path)
+
+  character(len=*), intent(in)               :: attrLabel
+  character(len=*), intent(in), dimension(:) :: attrValue
+  character(len=*), intent(in), optional     :: path
+
+
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
+
+end subroutine results_addAttribute_str_array
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Add an integer array attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
 
@@ -285,7 +304,7 @@ end subroutine results_addAttribute_int_array
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a real array attribute an object in the results file
+!> @brief Add a real array attribute an object in the results file.
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
 
@@ -336,7 +355,6 @@ subroutine results_writeDataset_str(dataset,group,label,description)
 
 end subroutine results_writeDataset_str
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real scalar dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
@@ -360,18 +378,24 @@ end subroutine results_writeScalarDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit)
+subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit,systems)
 
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
+  character(len=*), intent(in),    dimension(:), optional :: systems
   real(pReal),      intent(in),    dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
 
+  if (present(systems)) then
+    if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
+  endif
+
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
+  if (present(systems)) call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
@@ -420,18 +444,24 @@ end subroutine results_writeTensorDataset_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit)
+subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit,systems)
 
   character(len=*), intent(in)                 :: label,group,description
   character(len=*), intent(in), optional       :: SIunit
+  character(len=*), intent(in),    dimension(:), optional :: systems
   integer,          intent(in), dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
 
+  if (present(systems)) then
+    if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
+  endif
+
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
+  if (present(systems)) call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int

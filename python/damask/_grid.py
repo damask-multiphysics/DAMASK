@@ -270,7 +270,8 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return Grid(v.get('MaterialId').reshape(cells,order='F') - 1, bbox[1] - bbox[0], bbox[0],
+        return Grid(v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe') - 1,
+                    bbox[1] - bbox[0], bbox[0],
                     util.execution_stamp('Grid','load_Neper'))
 
 

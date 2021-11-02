@@ -146,7 +146,7 @@ module function elastic_nu(ph) result(nu)
   integer, intent(in) :: ph
 
 
-  nu = param(ph)%mu
+  nu = param(ph)%nu
 
 end function elastic_nu
 

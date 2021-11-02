@@ -5,6 +5,7 @@ import time
 import pytest
 import numpy as np
 import numpy.ma as ma
+import vtk
 
 from damask import VTK
 from damask import grid_filters
@@ -162,6 +163,7 @@ class TestVTK:
         new = VTK.load(tmp_path/'with_comments.vtr')
         assert new.get_comments() == ['this is a comment']
 
+    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_polyData(self,update,ref_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
         polyData = VTK.from_poly_data(points)
@@ -173,14 +175,15 @@ class TestVTK:
              assert polyData.__repr__() == reference.__repr__() and \
                     np.allclose(polyData.get('coordinates'),points)
 
+    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
         cells = np.array([5,6,7],int)
         size  = np.array([.6,1.,.5])
         rectilinearGrid = VTK.from_rectilinear_grid(cells,size)
         c = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         n = grid_filters.coordinates0_node(cells,size).reshape(-1,3,order='F')
-        rectilinearGrid.add(c,'cell')
-        rectilinearGrid.add(n,'node')
+        rectilinearGrid.add(np.ascontiguousarray(c),'cell')
+        rectilinearGrid.add(np.ascontiguousarray(n),'node')
         if update:
              rectilinearGrid.save(ref_path/'rectilinearGrid')
         else:
