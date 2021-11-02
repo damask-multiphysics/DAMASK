@@ -20,13 +20,16 @@ tau_Peierls: [2.03e+9]
 h: [2.566e-10]
 h_sl-sl: [0.009, 0.72, 0.009, 0.05, 0.05, 0.06, 0.09]
 w: [2.992e-09] # 11b
-i_sl: [1]  # c, eq. (25)
-D: 1.0e+20 # d_g, eq. (25)
-D_a: 1.0 # d_edge = D_a*b
 
 # values in Cereceda et al. are high, using parameters from Gröger et al.
 a_nonSchmid: [0.0, 0.56, 0.75] # Table 2
 
-D_0: 0.0 # disable climb
+# (almost) no annhilation, adjustment needed for simulations beyond the yield point
+i_sl: [1]  # c, eq. (25)
+D: 1.0e+20 # d_g, eq. (25)
+D_a: 1.0 # d_edge = D_a*b
+
+# disable climb (not discussed in Cereceda et al.)
+D_0: 0.0
 f_at: 1
 Q_cl: 1.0
