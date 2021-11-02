@@ -7,7 +7,6 @@ import numpy as _np
 
 from . import util as _util
 from . import grid_filters as _grid_filters
-from . import _grid
 
 
 def from_random(size: _np.ndarray, N_seeds: int, cells: _np.ndarray = None, rng_seed=None) -> _np.ndarray:
@@ -97,7 +96,7 @@ def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distan
     return coords
 
 
-def from_grid(grid: _grid.Grid, selection: Sequence[int] = None,
+def from_grid(grid, selection: Sequence[int] = None,
               invert: bool = False, average: bool = False, periodic: bool = True) -> tuple[_np.ndarray, _np.ndarray]:
     """
     Create seeds from grid description.
@@ -105,15 +104,15 @@ def from_grid(grid: _grid.Grid, selection: Sequence[int] = None,
     Parameters
     ----------
     grid : damask.Grid
-        Grid, from which the material IDs are used as seeds.
+        Grid from which the material IDs are used as seeds.
     selection : iterable of integers, optional
         Material IDs to consider.
     invert : boolean, false
-        Do not consider the material IDs given in selection. Defaults to False.
+        Consider all material IDs except those in selection. Defaults to False.
     average : boolean, optional
         Seed corresponds to center of gravity of material ID cloud.
     periodic : boolean, optional
-        Center of gravity with periodic boundaries.
+        Center of gravity accounts for periodic boundaries.
 
     Returns
     -------
