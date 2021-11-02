@@ -1,7 +1,7 @@
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
 from scipy import spatial as _spatial
-from typing import Sequence
+from typing import Sequence,Tuple
 
 import numpy as _np
 
@@ -97,7 +97,7 @@ def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distan
 
 
 def from_grid(grid, selection: Sequence[int] = None,
-              invert: bool = False, average: bool = False, periodic: bool = True) -> tuple[_np.ndarray, _np.ndarray]:
+              invert: bool = False, average: bool = False, periodic: bool = True) -> Tuple[_np.ndarray, _np.ndarray]:
     """
     Create seeds from grid description.
 
