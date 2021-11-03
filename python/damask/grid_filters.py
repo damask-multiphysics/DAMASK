@@ -11,10 +11,12 @@ the following operations are required for tensorial data:
     - D1 = D3.reshape(cells+(-1,)).reshape(-1,9,order='F')
 
 """
-from scipy import spatial as _spatial
+
 from typing import Sequence, Tuple, Union
 
+from scipy import spatial as _spatial
 import numpy as _np
+
 
 def _ks(size: _np.ndarray, cells: Union[_np.ndarray,Sequence[int]], first_order: bool = False) -> _np.ndarray:
     """
