@@ -1,0 +1,35 @@
+type: dislotungsten
+references:
+  - D. Cereceda et al.,
+    International Journal of Plasticity 78:242-265, 2016,
+    http://dx.doi.org/10.1016/j.ijplas.2015.09.002
+  - R. Gröger et al.,
+    Acta Materialia 56(19):5412-5425, 2008,
+    https://doi.org/10.1016/j.actamat.2008.07.037
+output: [Lambda_sl]
+N_sl: [12]
+b_sl: [2.72e-10]
+rho_mob_0: [1.0e+9]  # estimated from section 3.2
+rho_dip_0: [1.0]     # not given
+Q_s: [2.61154e-19]   # 1.63 eV, Delta_H0
+B: [8.3e-5]
+omega: [9.1e+11]     # nu_0
+p_sl: [0.86]
+q_sl: [1.69]
+tau_Peierls: [2.03e+9]
+h: [2.566e-10]
+h_sl-sl: [0.009, 0.72, 0.009, 0.05, 0.05, 0.06, 0.09]
+w: [2.992e-09] # 11b
+
+# values in Cereceda et al. are high, using parameters from Gröger et al.
+a_nonSchmid: [0.0, 0.56, 0.75] # Table 2
+
+# (almost) no annhilation, adjustment needed for simulations beyond the yield point
+i_sl: [1]  # c, eq. (25)
+D: 1.0e+20 # d_g, eq. (25)
+D_a: 1.0 # d_edge = D_a*b
+
+# disable climb (not discussed in Cereceda et al.)
+D_0: 0.0
+f_at: 1
+Q_cl: 1.0
