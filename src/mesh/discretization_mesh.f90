@@ -85,7 +85,7 @@ subroutine discretization_mesh_init(restart)
     materialAt
   class(tNode), pointer :: &
     num_mesh
-  integer :: integrationOrder                                                                       !< order of quadrature rule required
+  integer :: p_i                                                                                    !< integration order (quadrature rule)
   type(tvec) :: coords_node0
 
   print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
@@ -93,7 +93,7 @@ subroutine discretization_mesh_init(restart)
 !--------------------------------------------------------------------------------
 ! read numerics parameter
   num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
-  integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+  p_i = num_mesh%get_asInt('p_i',defaultVal = 2)
 
 !---------------------------------------------------------------------------------
 ! read debug parameters
@@ -150,9 +150,9 @@ subroutine discretization_mesh_init(restart)
   call VecGetArrayF90(coords_node0, mesh_node0_temp,ierr)
   CHKERRQ(ierr)
 
-  mesh_maxNips = FEM_nQuadrature(dimPlex,integrationOrder)
+  mesh_maxNips = FEM_nQuadrature(dimPlex,p_i)
 
-  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,integrationOrder)%p)
+  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,p_i)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
 
   allocate(materialAt(mesh_NcpElems))

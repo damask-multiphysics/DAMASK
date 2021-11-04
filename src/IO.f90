@@ -432,7 +432,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Nconstituents mismatch between homogenization and material'
 
 !--------------------------------------------------------------------------------------------------
-! material error messages and related messages in mesh
+! material error messages and related messages in geometry
     case (150)
       msg = 'index out of bounds'
     case (153)
@@ -498,6 +498,11 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Length mismatch'
     case (710)
       msg = 'Closing quotation mark missing in string'
+
+!-------------------------------------------------------------------------------------------------
+! errors related to the mesh solver
+    case (821)
+      msg = 'order not supported'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver

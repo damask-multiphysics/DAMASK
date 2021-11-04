@@ -41,7 +41,7 @@ module mesh_mechanical_FEM
 
   type, private :: tNumerics
     integer :: &
-      integrationOrder, &                                                                           !< order of quadrature rule required
+      p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
     logical :: &
       BBarStabilisation
@@ -118,7 +118,7 @@ subroutine FEM_mechanical_init(fieldBC)
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
   num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
-  num%integrationOrder  = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+  num%p_i               = num_mesh%get_asInt('p_i',defaultVal = 2)
   num%itmax             = num_mesh%get_asInt('itmax',defaultVal=250)
   num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
   num%eps_struct_atol   = num_mesh%get_asFloat('eps_struct_atol', defaultVal = 1.0e-10_pReal)
@@ -135,9 +135,9 @@ subroutine FEM_mechanical_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-  qPoints  = FEM_quadrature_points( dimPlex,num%integrationOrder)%p
-  qWeights = FEM_quadrature_weights(dimPlex,num%integrationOrder)%p
-  nQuadrature = FEM_nQuadrature(    dimPlex,num%integrationOrder)
+  qPoints  = FEM_quadrature_points( dimPlex,num%p_i)%p
+  qWeights = FEM_quadrature_weights(dimPlex,num%p_i)%p
+  nQuadrature = FEM_nQuadrature(    dimPlex,num%p_i)
   qPointsP  => qPoints
   qWeightsP => qWeights
   call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
@@ -146,7 +146,7 @@ subroutine FEM_mechanical_init(fieldBC)
   call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
   CHKERRQ(ierr)
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
-                            num%integrationOrder,mechFE,ierr); CHKERRQ(ierr)
+                            num%p_i,mechFE,ierr); CHKERRQ(ierr)
   call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
   call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
   nBasis = nBasis/nc
