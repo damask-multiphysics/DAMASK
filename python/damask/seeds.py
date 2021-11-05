@@ -1,5 +1,7 @@
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
+from typing import Sequence,Tuple
+
 from scipy import spatial as _spatial
 import numpy as _np
 
@@ -7,7 +9,7 @@ from . import util as _util
 from . import grid_filters as _grid_filters
 
 
-def from_random(size,N_seeds,cells=None,rng_seed=None):
+def from_random(size: _np.ndarray, N_seeds: int, cells: _np.ndarray = None, rng_seed=None) -> _np.ndarray:
     """
     Place seeds randomly in space.
 
@@ -41,7 +43,8 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
     return coords
 
 
-def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=None):
+def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distance: float,
+                      periodic: bool = True, rng_seed=None) -> _np.ndarray:
     """
     Place seeds according to a Poisson disc distribution.
 
@@ -75,18 +78,17 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     i = 0
     progress = _util._ProgressBar(N_seeds+1,'',50)
     while s < N_seeds:
+        i += 1
         candidates = rng.random((N_candidates,3))*_np.broadcast_to(size,(N_candidates,3))
         tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
                _spatial.cKDTree(coords[:s])
         distances = tree.query(candidates)[0]
         best = distances.argmax()
         if distances[best] > distance:                                                              # require minimum separation
+            i = 0
             coords[s] = candidates[best]                                                            # maximum separation to existing point cloud
             s += 1
             progress.update(s)
-            i = 0
-        else:
-            i += 1
 
         if i == 100:
             raise ValueError('Seeding not possible')
@@ -94,22 +96,23 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     return coords
 
 
-def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
+def from_grid(grid, selection: Sequence[int] = None,
+              invert: bool = False, average: bool = False, periodic: bool = True) -> Tuple[_np.ndarray, _np.ndarray]:
     """
     Create seeds from grid description.
 
     Parameters
     ----------
     grid : damask.Grid
-        Grid, from which the material IDs are used as seeds.
+        Grid from which the material IDs are used as seeds.
     selection : iterable of integers, optional
         Material IDs to consider.
     invert : boolean, false
-        Do not consider the material IDs given in selection. Defaults to False.
+        Consider all material IDs except those in selection. Defaults to False.
     average : boolean, optional
         Seed corresponds to center of gravity of material ID cloud.
     periodic : boolean, optional
-        Center of gravity with periodic boundaries.
+        Center of gravity accounts for periodic boundaries.
 
     Returns
     -------

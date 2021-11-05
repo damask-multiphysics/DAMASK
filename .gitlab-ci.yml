@@ -81,12 +81,21 @@ checkout:
     - release
 
 ###################################################################################################
-processing:
+pytest:
   stage: python
   script:
     - cd $DAMASKROOT/python
     - COLUMNS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
+  except:
+    - master
+    - release
+
+mypy:
+  stage: python
+  script:
+    - cd $DAMASKROOT/python
+    - mypy -m damask
   except:
     - master
     - release
