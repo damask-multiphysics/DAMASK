@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 
 from . import tensor
@@ -85,9 +87,12 @@ class Rotation:
                + str(self.quaternion)
 
 
-    def __copy__(self,**kwargs):
+    def __copy__(self,rotation=None):
         """Create deep copy."""
-        return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion)
+        dup = copy.deepcopy(self)
+        if rotation is not None:
+            dup.quaternion = Rotation(rotation).quaternion
+        return dup
 
     copy = __copy__
 
