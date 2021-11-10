@@ -75,7 +75,7 @@ subroutine discretization_grid_init(restart)
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
 
-  if(worldrank == 0) then
+  if (worldrank == 0) then
     fileContent = IO_read(interface_geomFile)
     call readVTI(grid,geomSize,origin,materialAt_global,fileContent)
     fname = interface_geomFile
@@ -85,7 +85,7 @@ subroutine discretization_grid_init(restart)
     call results_closeJobFile
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
-  endif
+  end if
 
 
   call MPI_Bcast(grid,3,MPI_INTEGER,0,MPI_COMM_WORLD, ierr)
@@ -100,7 +100,7 @@ subroutine discretization_grid_init(restart)
   print'(a,3(es12.5))',   ' size   x y z: ', geomSize
   print'(a,3(es12.5))',   ' origin x y z: ', origin
 
-  if(worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
+  if (worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
 
   call fftw_mpi_init
   devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
@@ -109,7 +109,7 @@ subroutine discretization_grid_init(restart)
                                    PETSC_COMM_WORLD, &
                                    z, &                                                             ! domain grid size along z
                                    z_offset)                                                        ! domain grid offset along z
-  if(z==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
+  if (z==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
 
   grid3       = int(z)
   grid3Offset = int(z_offset)
@@ -136,14 +136,14 @@ subroutine discretization_grid_init(restart)
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
-  if(.not. restart) then
+  if (.not. restart) then
     call results_openJobFile
     call results_closeGroup(results_addGroup('geometry'))
     call results_addAttribute('cells', grid,    '/geometry')
     call results_addAttribute('size',  geomSize,'/geometry')
     call results_addAttribute('origin',origin,  '/geometry')
     call results_closeJobFile
-  endif
+  end if
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
@@ -202,20 +202,20 @@ subroutine readVTI(grid,geomSize,origin,material, &
     if (endPos < startPos) endPos = len(fileContent,kind=pI64)                                      ! end of file without new line
 
     if (.not. inFile) then
-      if(index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
+      if (index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
         inFile = .true.
         if (.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
         headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
-      endif
+      end if
     else
       if (.not. inImage) then
         if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
           inImage = .true.
           call cellsSizeOrigin(grid,geomSize,origin,fileContent(startPos:endPos))
-        endif
+        end if
       else
-        if (index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
+        if (index(fileContent(startPos:endPos),'<CellData',kind=pI64) /= 0_pI64) then
           gotCellData = .true.
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
             if (index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
@@ -230,25 +230,25 @@ subroutine readVTI(grid,geomSize,origin,material, &
               s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
               material = as_Int(fileContent(s:endPos),headerType,compressed,dataType)
               exit
-            endif
+            end if
             startPos = endPos + 2_pI64
             endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
-          enddo
-        endif
-      endif
-    endif
+          end do
+        end if
+      end if
+    end if
 
     if (gotCellData) exit
     startPos = endPos + 2_pI64
 
-  enddo
+  end do
 
-  if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
-  if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
-  if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
-  if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
+  if (.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
+  if (size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
+  if (any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
+  if (any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
   material = material + 1
-  if(any(material<1))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
+  if (any(material<1))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
   contains
 
@@ -352,11 +352,11 @@ subroutine readVTI(grid,geomSize,origin,material, &
 
     integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
-    if(compressed) then
+    if (compressed) then
       bytes = asBytes_compressed(base64_str,headerType)
     else
       bytes = asBytes_uncompressed(base64_str,headerType)
-    endif
+    end if
 
   end function asBytes
 
@@ -379,17 +379,18 @@ subroutine readVTI(grid,geomSize,origin,material, &
     integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
     integer(pI64) :: headerLen, nBlock, b,s,e
 
-    if    (headerType == 'UInt32') then
+
+    if      (headerType == 'UInt32') then
       temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 4_pI64 * (3_pI64 + nBlock)
       temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
-    elseif(headerType == 'UInt64') then
+    else if (headerType == 'UInt64') then
       temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 8_pI64 * (3_pI64 + nBlock)
       temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
-    endif
+    end if
 
     allocate(size_inflated(nBlock),source=temp(2))
     size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
@@ -402,7 +403,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
       s = e + 1_pI64
       e = s + size_deflated(b) - 1_pI64
       bytes(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_inflated(s:e),size_inflated(b))
-    enddo
+    end do
 
   end function asBytes_compressed
 
@@ -424,19 +425,19 @@ subroutine readVTI(grid,geomSize,origin,material, &
     allocate(bytes(0))
 
     s=0_pI64
-    if    (headerType == 'UInt32') then
+    if      (headerType == 'UInt32') then
       do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
         nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
         s = s + base64_nChar(4_pI64+nByte(1))
-      enddo
-    elseif(headerType == 'UInt64') then
+      end do
+    else if (headerType == 'UInt64') then
       do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
         nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
         s = s + base64_nChar(8_pI64+nByte(1))
-      enddo
-    endif
+      end do
+    end if
 
   end function asBytes_uncompressed
 
@@ -455,11 +456,11 @@ subroutine readVTI(grid,geomSize,origin,material, &
 #endif
 
     s = index(line," "//key,back=.true.)
-    if(s==0) then
+    if (s==0) then
       getXMLValue = ''
     else
       e = s + 1 + scan(line(s+1:),"'"//'"')
-      if(scan(line(s:e-2),'=') == 0) then
+      if (scan(line(s:e-2),'=') == 0) then
         getXMLValue = ''
       else
         s = e
@@ -471,8 +472,8 @@ subroutine readVTI(grid,geomSize,origin,material, &
         e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
 #endif
         getXMLValue = line(s:e-1)
-      endif
-    endif
+      end if
+    end if
 
   end function
 
@@ -510,11 +511,12 @@ function IPcoordinates0(grid,geomSize,grid3Offset)
     a,b,c, &
     i
 
+
   i = 0
   do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
     i = i + 1
     IPcoordinates0(1:3,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
-  enddo; enddo; enddo
+  end do; end do; end do
 
 end function IPcoordinates0
 
@@ -538,7 +540,7 @@ pure function nodes0(grid,geomSize,grid3Offset)
   do c = 0, grid3; do b = 0, grid(2); do a = 0, grid(1)
     n = n + 1
     nodes0(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
-  enddo; enddo; enddo
+  end do; end do; end do
 
 end function nodes0
 
@@ -552,6 +554,7 @@ pure function cellSurfaceArea(geomSize,grid)
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
 
   real(pReal), dimension(6,1,product(grid)) :: cellSurfaceArea
+
 
   cellSurfaceArea(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
   cellSurfaceArea(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
@@ -631,7 +634,7 @@ pure function IPneighborhood(grid)
     IPneighborhood(3,5,1,e) = 6
     IPneighborhood(3,6,1,e) = 5
 
-  enddo; enddo; enddo
+  end do; end do; end do
 
 end function IPneighborhood
 
