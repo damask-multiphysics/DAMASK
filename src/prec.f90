@@ -273,27 +273,27 @@ subroutine selfTest
 
 
   realloc_lhs_test = [1,2]
-  if (any(realloc_lhs_test/=[1,2]))        error stop 'LHS allocation'
+  if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'
 
   call random_number(r)
   r = r/minval(r)
-  if(.not. all(dEq(r,r+PREAL_EPSILON)))    error stop 'dEq'
-  if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) error stop 'dNeq'
-  if(.not. all(dEq0(r-(r+PREAL_MIN))))     error stop 'dEq0'
+  if (.not. all(dEq(r,r+PREAL_EPSILON)))    error stop 'dEq'
+  if (dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) error stop 'dNeq'
+  if (.not. all(dEq0(r-(r+PREAL_MIN))))     error stop 'dEq0'
 
   ! https://www.binaryconvert.com
   ! https://www.rapidtables.com/convert/number/binary-to-decimal.html
   f = real(prec_bytesToC_FLOAT(int([-65,+11,-102,+75],C_SIGNED_CHAR)),pReal)
-  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_FLOAT'
+  if (dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_FLOAT'
 
   f = real(prec_bytesToC_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pReal)
-  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_DOUBLE'
+  if (dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_DOUBLE'
 
   i = int(prec_bytesToC_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pInt)
-  if(i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT32_T'
+  if (i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT32_T'
 
   i = int(prec_bytesToC_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pInt)
-  if(i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT64_T'
+  if (i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT64_T'
 
 end subroutine selfTest
 
