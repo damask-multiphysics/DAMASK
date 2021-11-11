@@ -123,9 +123,7 @@ subroutine FEM_utilities_init
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
                                &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &
                                &-mechanical_snes_ksp_ew_rtol0 0.01 -mechanical_snes_ksp_ew_rtolmax 0.01 &
-                               &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25 &
-                               &-mechanical_pc_type ml -mechanical_mg_levels_ksp_type chebyshev &
-                               &-mechanical_mg_levels_pc_type sor -mechanical_pc_ml_nullspace user',ierr)
+                               &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25', ierr)
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('PETSc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
@@ -150,6 +148,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
   real(pReal),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   PetscErrorCode :: ierr
+
 
   print'(/,a)', ' ... evaluating constitutive response ......................................'
 
