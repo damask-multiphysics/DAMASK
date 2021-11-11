@@ -52,8 +52,8 @@ variables:
   MPI_Intel:      "MPI/Intel/19.1.2/IntelMPI/2019"
   MPI_GNU:        "MPI/GNU/10/OpenMPI/4.1.1"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc_Intel:    "Libraries/PETSc/3.16.0/Intel-19.1.2-IntelMPI-2019"
-  PETSc_GNU:      "Libraries/PETSc/3.16.0/GNU-10-OpenMPI-4.1.1"
+  PETSc_Intel:    "Libraries/PETSc/3.16.1/Intel-19.1.2-IntelMPI-2019"
+  PETSc_GNU:      "Libraries/PETSc/3.16.1/GNU-10-OpenMPI-4.1.1"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC:            "FEM/MSC/2021.2"
   IntelMarc:      "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
