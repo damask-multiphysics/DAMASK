@@ -177,6 +177,7 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   PetscScalar          :: BCValue,BCDotValue,timeinc
   PetscErrorCode       :: ierr
 
+
   call PetscSectionGetFieldComponents(section,field,numComp,ierr); CHKERRQ(ierr)
   call ISGetSize(bcPointsIS,nBcPoints,ierr); CHKERRQ(ierr)
   if (nBcPoints > 0) call ISGetIndicesF90(bcPointsIS,bcPoints,ierr)
@@ -188,8 +189,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
     CHKERRQ(ierr)
     do dof = offset+comp+1, offset+numDof, numComp
       localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
-    enddo
-  enddo
+    end do
+  end do
   call VecRestoreArrayF90(localVec,localArray,ierr); CHKERRQ(ierr)
   call VecAssemblyBegin(localVec, ierr); CHKERRQ(ierr)
   call VecAssemblyEnd  (localVec, ierr); CHKERRQ(ierr)
