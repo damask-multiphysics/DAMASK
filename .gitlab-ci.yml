@@ -7,7 +7,6 @@ stages:
   - fortran
   - performance
   - deploy
-  - backup
   - update_master
   - distclean
   - clean
@@ -127,7 +126,7 @@ compile_grid_GNU:
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
+    - COLUMNS=256 pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
@@ -137,7 +136,7 @@ compile_mesh_GNU:
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
+    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
@@ -147,7 +146,7 @@ compile_Marc:
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
+    - COLUMNS=256 pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
   except:
     - master
     - release
@@ -158,8 +157,7 @@ setup_grid:
   stage: setup
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
-    - BUILD_DIR=$(mktemp -d)
-    - cd ${BUILD_DIR}
+    - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
   except:
@@ -170,8 +168,7 @@ setup_mesh:
   stage: setup
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
-    - BUILD_DIR=$(mktemp -d)
-    - cd ${BUILD_DIR}
+    - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
   except:
@@ -184,7 +181,7 @@ core:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - COLUMNS=256 pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
+    - COLUMNS=256 pytest -k 'not compile' --basetemp ${TESTROOT}/fortran -v
   except:
     - master
     - release
@@ -198,16 +195,18 @@ core:
 #     - release
 
 ###################################################################################################
-SpectralRuntime:
+grid_runtime:
   stage: performance
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $DAMASKROOT
     - make clean grid OPTIMIZATION=AGGRESSIVE
-    - cd $LOCAL_HOME/performance                                                                    # location of old results
-    - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
-    - cd $DAMASKROOT/PRIVATE/testing
-    - ./runtime.py --results ${LOCAL_HOME}/performance --damask_root ${DAMASKROOT} --tag ${CI_COMMIT_SHA}
+    - REPO_DIR=$(mktemp -d)
+    - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
+    - cd ${DAMASKROOT}/PRIVATE/testing/
+    - ./runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
+    - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
+  resource_group: runtime
   except:
     - master
     - release
@@ -217,28 +216,18 @@ source_distribution:
   stage: deploy
   script:
     - cd $(mktemp -d)
-    - $DAMASKROOT/PRIVATE/releasing/tar.xz/create.sh $DAMASKROOT $CI_COMMIT_SHA
+    - ${DAMASKROOT}/PRIVATE/releasing/tar.xz/create.sh ${DAMASKROOT} ${CI_COMMIT_SHA}
   except:
     - master
     - release
 
 ##################################################################################################
-backup_runtime_measurement:
-  stage: backup
-  script:
-    - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
-    - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
-    - git push
-  only:
-    - development
-
-##################################################################################################
 merge_into_master:
   stage: update_master
   script:
-    - cd $DAMASKROOT
+    - cd ${DAMASKROOT}
     - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
-    - echo $TESTEDREV > python/damask/VERSION
+    - echo ${TESTEDREV} > python/damask/VERSION
     - git add python/damask/VERSION
     - >
         git diff-index --quiet HEAD ||
