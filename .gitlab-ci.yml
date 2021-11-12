@@ -75,9 +75,6 @@ checkout:
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
-  except:
-    - master
-    - release
 
 ###################################################################################################
 pytest:
@@ -86,18 +83,12 @@ pytest:
     - cd $DAMASKROOT/python
     - COLUMNS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
-  except:
-    - master
-    - release
 
 mypy:
   stage: python
   script:
     - cd $DAMASKROOT/python
     - mypy -m damask
-  except:
-    - master
-    - release
 
 
 ###################################################################################################
@@ -107,9 +98,6 @@ compile_grid_Intel:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
-  except:
-    - master
-    - release
 
 compile_mesh_Intel:
   stage: compile
@@ -117,9 +105,6 @@ compile_mesh_Intel:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
-  except:
-    - master
-    - release
 
 compile_grid_GNU:
   stage: compile
@@ -127,9 +112,6 @@ compile_grid_GNU:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
     - COLUMNS=256 pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
-  except:
-    - master
-    - release
 
 compile_mesh_GNU:
   stage: compile
@@ -137,9 +119,6 @@ compile_mesh_GNU:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
     - COLUMNS=256 pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
-  except:
-    - master
-    - release
 
 compile_Marc:
   stage: compile
@@ -147,9 +126,6 @@ compile_Marc:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd pytest
     - COLUMNS=256 pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
-  except:
-    - master
-    - release
 
 
 ###################################################################################################
@@ -160,9 +136,6 @@ setup_grid:
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
-  except:
-    - master
-    - release
 
 setup_mesh:
   stage: setup
@@ -171,9 +144,6 @@ setup_mesh:
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
-  except:
-    - master
-    - release
 
 ###################################################################################################
 core:
@@ -182,17 +152,11 @@ core:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - COLUMNS=256 pytest -k 'not compile' --basetemp ${TESTROOT}/fortran -v
-  except:
-    - master
-    - release
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
 #   stage: fortran
 #   script: Phenopowerlaw_singleSlip/test.py
-#   except:
-#     - master
-#     - release
 
 ###################################################################################################
 grid_runtime:
@@ -207,9 +171,6 @@ grid_runtime:
     - ./runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   resource_group: runtime
-  except:
-    - master
-    - release
 
 ###################################################################################################
 source_distribution:
@@ -217,9 +178,6 @@ source_distribution:
   script:
     - cd $(mktemp -d)
     - ${DAMASKROOT}/PRIVATE/releasing/tar.xz/create.sh ${DAMASKROOT} ${CI_COMMIT_SHA}
-  except:
-    - master
-    - release
 
 ##################################################################################################
 merge_into_master:
@@ -251,9 +209,6 @@ remove_data:
   script:
     - rm -rf $LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID
     - sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue                                        # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
-  except:
-    - master
-    - release
 
 ###################################################################################################
 remove_lock:
@@ -262,6 +217,3 @@ remove_lock:
     - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
   script: sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue
-  except:
-    - master
-    - release
