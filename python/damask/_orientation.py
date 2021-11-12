@@ -9,27 +9,6 @@ from . import util
 from . import tensor
 
 
-lattice_symmetries = {
-                'aP': 'triclinic',
-
-                'mP': 'monoclinic',
-                'mS': 'monoclinic',
-
-                'oP': 'orthorhombic',
-                'oS': 'orthorhombic',
-                'oI': 'orthorhombic',
-                'oF': 'orthorhombic',
-
-                'tP': 'tetragonal',
-                'tI': 'tetragonal',
-
-                'hP': 'hexagonal',
-
-                'cP': 'cubic',
-                'cI': 'cubic',
-                'cF': 'cubic',
-               }
-
 _parameter_doc = \
        """
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
@@ -146,7 +125,7 @@ class Orientation(Rotation,Crystal):
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
-            dup.quaternion = Orientation(rotation,family='cubic').quaternion
+            dup.quaternion = Rotation(rotation).quaternion
         return dup
 
     copy = __copy__

@@ -7,9 +7,9 @@ from damask import Orientation
 from damask import Table
 from damask import util
 from damask import grid_filters
-from damask import _orientation
+from damask import _crystal
 
-crystal_families = set(_orientation.lattice_symmetries.values())
+crystal_families = set(_crystal.lattice_symmetries.values())
 
 
 @pytest.fixture
