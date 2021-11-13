@@ -8,18 +8,19 @@ stages:
   - performance
   - deploy
   - update_master
+  - clean
 
 
 ###################################################################################################
 default:
   before_script:
-    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
+    - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --nonblocking
     - source $DAMASKROOT/env/DAMASK.sh
     - export PATH=${BINDIR}:$PATH
     - cd $DAMASKROOT/PRIVATE/testing
     - echo Job start:" $(date)"
   after_script:
-    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --unregister
+    - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --unregister
     - echo Job end:" $(date)"
 
 
@@ -59,7 +60,7 @@ variables:
 checkout:
   stage: prepare
   before_script:
-    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
+    - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --nonblocking
     - echo Job start:" $(date)"
   script:
     - mkdir -p ${DAMASKROOT}
@@ -169,7 +170,7 @@ grid_runtime:
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   resource_group: runtime
   before_script:
-    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --blocking
+    - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --blocking
 
 
 ###################################################################################################
@@ -202,3 +203,15 @@ merge_into_master:
     - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
   only:
     - development
+
+
+###################################################################################################
+clean_pool:
+  stage: clean
+  script:
+    - ${LOCAL_HOME}/bin/manage_pool -p ${CI_PIPELINE_ID} --clean
+  when: always
+  before_script:
+    - echo Job start:" $(date)"
+  after_script:
+    - echo Job end:" $(date)"
