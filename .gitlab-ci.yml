@@ -76,14 +76,15 @@ checkout:
 pytest:
   stage: python
   script:
-    - cd ${DAMASKROOT}/python
+    - PYTHONPATH=${CI_PROJECT_DIR}/python
+    - cd ${CI_PROJECT_DIR}/python
     - pytest --basetemp ${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
 
 mypy:
   stage: python
   script:
-    - cd ${DAMASKROOT}/python
+    - cd ${CI_PROJECT_DIR}/python
     - mypy -m damask
 
 
@@ -130,7 +131,7 @@ setup_grid:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${DAMASKROOT}
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${CI_PROJECT_DIR}
     - make -j2 all install
 
 setup_mesh:
@@ -138,7 +139,7 @@ setup_mesh:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${DAMASKROOT}
+    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${CI_PROJECT_DIR}
     - make -j2 all install
 
 
@@ -178,7 +179,7 @@ source_distribution:
   stage: deploy
   script:
     - cd $(mktemp -d)
-    - ${DAMASKROOT}/PRIVATE/releasing/tar.xz/create.sh ${DAMASKROOT} ${CI_COMMIT_SHA}
+    - ${CI_PROJECT_DIR}/PRIVATE/releasing/tar.xz/create.sh ${CI_PROJECT_DIR} ${CI_COMMIT_SHA}
 
 
 ###################################################################################################
