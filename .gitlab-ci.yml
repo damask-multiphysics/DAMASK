@@ -172,6 +172,7 @@ grid_runtime:
   resource_group: runtime
   before_script:
     - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --blocking
+    - source $DAMASKROOT/env/DAMASK.sh
 
 
 ###################################################################################################
