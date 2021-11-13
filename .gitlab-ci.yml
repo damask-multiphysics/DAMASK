@@ -162,8 +162,9 @@ grid_runtime:
   stage: performance
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
-    - cd $DAMASKROOT
-    - make clean grid OPTIMIZATION=AGGRESSIVE
+    - cd $(mktemp -d)
+    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${CI_PROJECT_DIR}
+    - make -j2 all install
     - REPO_DIR=$(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
     - cd ${DAMASKROOT}/PRIVATE/testing/
