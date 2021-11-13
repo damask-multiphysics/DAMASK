@@ -16,7 +16,7 @@ default:
   before_script:
     - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --nonblocking
     - source $DAMASKROOT/env/DAMASK.sh
-    - export PATH=${BINDIR}:$PATH
+    - export PATH=${TESTROOT}/bin:$PATH
     - cd $DAMASKROOT/PRIVATE/testing
     - echo Job start:" $(date)"
   after_script:
@@ -34,9 +34,8 @@ variables:
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
+  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID"
   DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
-  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/tests"
-  BINDIR:     "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/bin"
 
   # ===============================================================================================
   # Names of module files to load
@@ -64,8 +63,6 @@ checkout:
     - echo Job start:" $(date)"
   script:
     - mkdir -p ${DAMASKROOT}
-    - mkdir -p ${TESTROOT}
-    - mkdir -p ${BINDIR}
     - cd ${DAMASKROOT}
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git checkout ${CI_COMMIT_SHA}
@@ -131,7 +128,7 @@ setup_grid:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${CI_PROJECT_DIR}
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
 
 setup_mesh:
@@ -139,7 +136,7 @@ setup_mesh:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${CI_PROJECT_DIR}
+    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
 
 
@@ -163,7 +160,7 @@ grid_runtime:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${CI_PROJECT_DIR}
+    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
     - REPO_DIR=$(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
@@ -174,7 +171,8 @@ grid_runtime:
   before_script:
     - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --blocking
     - source $DAMASKROOT/env/DAMASK.sh
-
+    - export PATH=${TESTROOT}/bin:$PATH
+    - echo Job start:" $(date)"
 
 ###################################################################################################
 source_distribution:
