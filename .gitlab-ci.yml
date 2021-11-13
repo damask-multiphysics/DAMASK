@@ -14,6 +14,7 @@ stages:
 before_script:
   - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
   - source $DAMASKROOT/env/DAMASK.sh
+  - export PATH=${BINDIR}:$PATH
   - cd $DAMASKROOT/PRIVATE/testing
   - echo Job start:" $(date)"
 
@@ -34,6 +35,7 @@ variables:
   # ===============================================================================================
   DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
   TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/tests"
+  BINDIR:     "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/bin"
 
   # ===============================================================================================
   # Names of module files to load
@@ -62,11 +64,11 @@ checkout:
   script:
     - mkdir -p ${DAMASKROOT}
     - mkdir -p ${TESTROOT}
+    - mkdir -p ${BINDIR}
     - cd ${DAMASKROOT}
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git checkout ${CI_COMMIT_SHA}
     - git submodule update --init
-    - source env/DAMASK.sh
 
 
 ###################################################################################################
