@@ -129,7 +129,7 @@ setup_grid:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${DAMASKROOT}
     - make -j2 all install
 
 setup_mesh:
@@ -137,7 +137,7 @@ setup_mesh:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $(mktemp -d)
-    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
+    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${LOCAL_HOME}/GitLabCI_Pipeline_${CI_PIPELINE_ID} ${DAMASKROOT}
     - make -j2 all install
 
 
