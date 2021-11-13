@@ -82,7 +82,7 @@ mypy:
   stage: python
   script:
     - cd ${CI_PROJECT_DIR}/python
-    - mypy -m damask
+    - mypy damask
 
 
 ###################################################################################################
