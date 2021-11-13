@@ -8,25 +8,19 @@ stages:
   - performance
   - deploy
   - update_master
-  - distclean
-  - clean
+
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue)x == 'x' ];
-      then echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue;
-    fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
-      do sleep 5m;
-      echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
-    done
+  - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
   - echo Job start:" $(date)"
 
-###################################################################################################
 after_script:
+  - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --unregister
   - echo Job end:" $(date)"
+
 
 ###################################################################################################
 variables:
@@ -58,36 +52,35 @@ variables:
   IntelMarc:      "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
   HDF5Marc:       "HDF5/1.12.1/Intel-19.1.2"
 
+
 ###################################################################################################
 checkout:
   stage: prepare
   before_script:
-    - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
-        do sleep 5m;
-        echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
-      done
+    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
+    - echo Job start:" $(date)"
   script:
-    - mkdir -p $DAMASKROOT
-    - mkdir -p $TESTROOT
-    - cd $DAMASKROOT
+    - mkdir -p ${DAMASKROOT}
+    - mkdir -p ${TESTROOT}
+    - cd ${DAMASKROOT}
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
-    - git checkout $CI_COMMIT_SHA
+    - git checkout ${CI_COMMIT_SHA}
     - git submodule update --init
     - source env/DAMASK.sh
+
 
 ###################################################################################################
 pytest:
   stage: python
   script:
-    - cd $DAMASKROOT/python
-    - COLUMNS=256 pytest --basetemp=${TESTROOT}/python -v --cov --cov-report=term
+    - cd ${DAMASKROOT}/python
+    - pytest --basetemp ${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
 
 mypy:
   stage: python
   script:
-    - cd $DAMASKROOT/python
+    - cd ${DAMASKROOT}/python
     - mypy -m damask
 
 
@@ -97,35 +90,35 @@ compile_grid_Intel:
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
+    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_Intel
 
 compile_mesh_Intel:
   stage: compile
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
+    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_Intel
 
 compile_grid_GNU:
   stage: compile
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
+    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
 
 compile_mesh_GNU:
   stage: compile
   script:
     - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
+    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
 
 compile_Marc:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd pytest
-    - COLUMNS=256 pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
+    - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
 
 
 ###################################################################################################
@@ -145,18 +138,20 @@ setup_mesh:
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
 
+
 ###################################################################################################
 core:
   stage: fortran
   script:
     - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - COLUMNS=256 pytest -k 'not compile' --basetemp ${TESTROOT}/fortran -v
+    - pytest -k 'not compile' --basetemp ${TESTROOT}/fortran -v
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
 #   stage: fortran
 #   script: Phenopowerlaw_singleSlip/test.py
+
 
 ###################################################################################################
 grid_runtime:
@@ -171,6 +166,9 @@ grid_runtime:
     - ./runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   resource_group: runtime
+  before_script:
+    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --blocking
+
 
 ###################################################################################################
 source_distribution:
@@ -179,7 +177,8 @@ source_distribution:
     - cd $(mktemp -d)
     - ${DAMASKROOT}/PRIVATE/releasing/tar.xz/create.sh ${DAMASKROOT} ${CI_COMMIT_SHA}
 
-##################################################################################################
+
+###################################################################################################
 merge_into_master:
   stage: update_master
   script:
@@ -192,6 +191,7 @@ merge_into_master:
         git commit -m "[skip ci] updated version information after successful test of $TESTEDREV"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
+    - git pull
     - git merge $UPDATEDREV -s recursive -X ours                                                    # conflicts occur only for inconsistent state
     - git push origin master                                                                        # master is now tested version and has updated VERSION file
     - git checkout development
@@ -200,20 +200,3 @@ merge_into_master:
     - git push origin development                                                                   # development is unchanged (as master is based on it) but has updated VERSION file
   only:
     - development
-
-###################################################################################################
-remove_data:
-  stage: distclean
-  before_script:
-    - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
-  script:
-    - rm -rf $LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID
-    - sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue                                        # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
-
-###################################################################################################
-remove_lock:
-  stage: clean
-  before_script:
-    - echo "Removing lock of pipeline $CI_PIPELINE_ID"
-  when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue
