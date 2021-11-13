@@ -167,7 +167,6 @@ grid_runtime:
     - cd ${DAMASKROOT}/PRIVATE/testing/
     - ./runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
-  resource_group: runtime
   before_script:
     - ${LOCAL_HOME}/bin/manage_pool -j ${CI_JOB_ID} -p ${CI_PIPELINE_ID} --blocking
     - source $DAMASKROOT/env/DAMASK.sh
