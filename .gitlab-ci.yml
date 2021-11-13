@@ -11,16 +11,16 @@ stages:
 
 
 ###################################################################################################
-before_script:
-  - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
-  - source $DAMASKROOT/env/DAMASK.sh
-  - export PATH=${BINDIR}:$PATH
-  - cd $DAMASKROOT/PRIVATE/testing
-  - echo Job start:" $(date)"
-
-after_script:
-  - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --unregister
-  - echo Job end:" $(date)"
+default:
+  before_script:
+    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --nonblocking
+    - source $DAMASKROOT/env/DAMASK.sh
+    - export PATH=${BINDIR}:$PATH
+    - cd $DAMASKROOT/PRIVATE/testing
+    - echo Job start:" $(date)"
+  after_script:
+    - ${LOCAL_HOME}/bin/manage_pool ${CI_JOB_ID} --unregister
+    - echo Job end:" $(date)"
 
 
 ###################################################################################################
