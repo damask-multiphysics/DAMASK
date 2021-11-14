@@ -440,10 +440,10 @@ class ConfigMaterial(Config):
         """
         N,n,shaped = 1,1,{}
 
-        dim_map = {'O':-1,'F_i':-2}
+        map_dim = {'O':-1,'F_i':-2}
         for k,v in kwargs.items():
             shaped[k] = np.array(v)
-            s = shaped[k].shape[:dim_map.get(k,None)]
+            s = shaped[k].shape[:map_dim.get(k,None)]
             N = max(N,s[0]) if len(s)>0 else N
             n = max(n,s[1]) if len(s)>1 else n
 
@@ -452,9 +452,9 @@ class ConfigMaterial(Config):
         if 'v' not in kwargs:
             shaped['v'] = np.broadcast_to(1/n,(N,n))
 
-        shape_map = {'O':(N,n,4),'F_i':(N,n,3,3)}
+        map_shape = {'O':(N,n,4),'F_i':(N,n,3,3)}
         for k,v in shaped.items():
-            target = shape_map.get(k,(N,n))
+            target = map_shape.get(k,(N,n))
             obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,target,mode='right')),target)
             for i in range(N):
                 if k in ['phase','O','v','F_i']:
