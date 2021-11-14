@@ -160,10 +160,9 @@ grid_runtime:
     - cd $(mktemp -d)
     - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
-    - REPO_DIR=$(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
-    - cd ${DAMASKROOT}/PRIVATE/testing/
-    - ./runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
+    - cd $(mktemp -d)
+    - git clone -q git@git.damask.mpie.de:damask/performance.git .
+    - ${DAMASKROOT}/PRIVATE/testing/runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking
