@@ -1094,7 +1094,7 @@ subroutine utilities_saveReferenceStiffness
     fileUnit,ierr
 
   if (worldrank == 0) then
-    print'(1x,a)', 'writing reference stiffness data required for restart to file'; flush(IO_STDOUT)
+    print'(/,1x,a)', '... writing reference stiffness data required for restart to file .........'; flush(IO_STDOUT)
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
          status='replace',access='stream',action='write',iostat=ierr)
     if (ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')

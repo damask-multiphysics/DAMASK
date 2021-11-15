@@ -317,7 +317,7 @@ program DAMASK_grid
   endif
 
   writeUndeformed: if (interface_restartInc < 1) then
-    print'(/,1x,a)', '... writing initial configuration to file ........................'
+    print'(/,1x,a)', '... writing initial configuration to file .................................'
     flush(IO_STDOUT)
     call CPFEM_results(0,0.0_pReal)
   endif writeUndeformed
@@ -444,7 +444,7 @@ program DAMASK_grid
         call MPI_Allreduce(interface_SIGUSR1,signal,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
-          print'(/,1x,a)', '... writing results to file ......................................'
+          print'(/,1x,a)', '... writing results to file ...............................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,t)
         endif

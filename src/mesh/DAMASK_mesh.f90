@@ -237,7 +237,7 @@ program DAMASK_mesh
     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
   end if
 
-  print'(/,1x,a)', '... writing initial configuration to file ........................'
+  print'(/,1x,a)', '... writing initial configuration to file .................................'
   flush(IO_STDOUT)
   call CPFEM_results(0,0.0_pReal)
 
@@ -321,7 +321,7 @@ program DAMASK_mesh
       end if; flush(IO_STDOUT)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
-        print'(/,1x,a)', '... writing results to file ......................................'
+        print'(/,1x,a)', '... writing results to file ...............................................'
         call FEM_mechanical_updateCoords
         call CPFEM_results(totalIncsCounter,time)
       end if
