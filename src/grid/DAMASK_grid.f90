@@ -223,7 +223,11 @@ program DAMASK_grid
     loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
-    loadCases(l)%f_out     = load_step%get_asInt('f_out',     defaultVal=1)
+    if (load_step%get_asString('f_out',defaultVal='DAMASK') == 'none') then
+       loadCases(l)%f_out = huge(0)
+    else
+      loadCases(l)%f_out     = load_step%get_asInt('f_out', defaultVal=1)
+    endif
     loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
 
     reportAndCheck: if (worldrank == 0) then
@@ -276,7 +280,8 @@ program DAMASK_grid
       endif
       print'(a,f0.3)',   '  t: ', loadCases(l)%t
       print'(a,i0)',     '  N: ', loadCases(l)%N
-      print'(a,i0)',     '  f_out: ', loadCases(l)%f_out
+      if (loadCases(l)%f_out < huge(0)) &
+        print'(a,i0)',   '  f_out: ', loadCases(l)%f_out
       if (loadCases(l)%f_restart < huge(0)) &
         print'(a,i0)',   '  f_restart: ', loadCases(l)%f_restart
 
