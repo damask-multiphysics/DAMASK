@@ -136,7 +136,7 @@ compile_Marc:
     - cp ${CI_PROJECT_DIR}/examples/Marc/* .
     - python3 -c "import damask;damask.solver.Marc().submit_job('r-value','texture',True,'h')"
     - mkdir ${TESTROOT}/src
-    - mv ${CI_PROJECT_DIR}/src/DAMASK_Marc.marc
+    - mv ${CI_PROJECT_DIR}/src/DAMASK_Marc.marc ${TESTROOT}/src
 
 
 ###################################################################################################
@@ -145,13 +145,13 @@ open-source:
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd PRIVATE/testing/pytest
-    - pytest -k 'not compile and not Marc' --basetemp ${TESTROOT}/fortran -v
+    - pytest -k 'not compile and not Marc' --basetemp ${TESTROOT}/open-source -v
 
 Marc:
   stage: fortran
   script:
     - cd PRIVATE/testing/pytest
-    - pytest -k 'not compile and Marc' --damask-root ${TESTROOT} --basetemp ${TESTROOT}/fortran -v
+    - pytest -k 'not compile and Marc' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
@@ -169,7 +169,11 @@ grid_runtime:
     - make -j2 all install
     - REPO_DIR=$(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
-    - ./PRIVATE/testing/runtime.py --input_dir ${CI_PROJECT_DIR}/examples/grid --output_dir ${REPO_DIR} --tag ${CI_COMMIT_SHA}
+    - >
+        ${CI_PROJECT_DIR}/PRIVATE/testing/runtime.py
+        --input_dir ${CI_PROJECT_DIR}/examples/grid
+        --output_dir ${REPO_DIR}
+        --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking

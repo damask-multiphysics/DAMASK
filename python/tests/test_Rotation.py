@@ -989,11 +989,19 @@ class TestRotation:
         with pytest.raises(TypeError):
             R@data
 
-    def test_misorientation(self):
+    def test_misorientation_invariant(self):
         R = Rotation.from_random()
         assert np.allclose(R.misorientation(R).as_matrix(),np.eye(3))
 
-    def test_misorientation360(self):
+    def test_misorientation_average(self):
+        """2 times the average is the misorientation."""
+        r = Rotation.from_random(2)
+        a = r[0].misorientation(r[1]).as_axis_angle()
+        b = r.average().misorientation(r[1]).as_axis_angle()
+        b[3] = (b[3]*2)%np.pi
+        assert np.allclose(a,b)
+
+    def test_misorientation_360deg(self):
         R_1 = Rotation()
         R_2 = Rotation.from_Euler_angles([360,0,0],degrees=True)
         assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
