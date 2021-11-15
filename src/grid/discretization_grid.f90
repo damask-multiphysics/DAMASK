@@ -215,7 +215,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
           call cellsSizeOrigin(grid,geomSize,origin,fileContent(startPos:endPos))
         end if
       else
-        if (index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
+        if (index(fileContent(startPos:endPos),'<CellData',kind=pI64) /= 0_pI64) then
           gotCellData = .true.
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
             if (index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
@@ -379,12 +379,13 @@ subroutine readVTI(grid,geomSize,origin,material, &
     integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
     integer(pI64) :: headerLen, nBlock, b,s,e
 
-    if    (headerType == 'UInt32') then
+
+    if      (headerType == 'UInt32') then
       temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 4_pI64 * (3_pI64 + nBlock)
       temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
-    elseif (headerType == 'UInt64') then
+    else if (headerType == 'UInt64') then
       temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 8_pI64 * (3_pI64 + nBlock)
@@ -424,13 +425,13 @@ subroutine readVTI(grid,geomSize,origin,material, &
     allocate(bytes(0))
 
     s=0_pI64
-    if    (headerType == 'UInt32') then
+    if      (headerType == 'UInt32') then
       do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
         nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
         s = s + base64_nChar(4_pI64+nByte(1))
       end do
-    elseif (headerType == 'UInt64') then
+    else if (headerType == 'UInt64') then
       do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
         nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
@@ -510,6 +511,7 @@ function IPcoordinates0(grid,geomSize,grid3Offset)
     a,b,c, &
     i
 
+
   i = 0
   do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
     i = i + 1
@@ -552,6 +554,7 @@ pure function cellSurfaceArea(geomSize,grid)
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
 
   real(pReal), dimension(6,1,product(grid)) :: cellSurfaceArea
+
 
   cellSurfaceArea(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
   cellSurfaceArea(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
