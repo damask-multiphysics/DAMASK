@@ -91,7 +91,7 @@ subroutine math_init
   class(tNode), pointer :: &
     num_generic
 
-  print'(/,a)', ' <<<+-  math init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
   num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
@@ -109,9 +109,9 @@ subroutine math_init
   call random_seed(put = randInit)
   call random_number(randTest)
 
-  print'(a,i2)',                ' size  of random seed:     ', randSize
-  print'(a,i0)',                ' value of random seed:     ', randInit(1)
-  print'(a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
+  print'(/,a,i2)',                ' size  of random seed:     ', randSize
+  print'(  a,i0)',                ' value of random seed:     ', randInit(1)
+  print'(  a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
 

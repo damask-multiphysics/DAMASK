@@ -99,13 +99,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 
   myPlasticity = plastic_active('dislotungsten')
-  if(count(myPlasticity) == 0) return
+  if (count(myPlasticity) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanical:plastic:dislotungsten init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:dislotungsten init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  print*, 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
-  print*, 'https://doi.org/10.1016/j.ijplas.2015.09.002'
+  print'(/,1x,a)', 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
 
   phases => config_material%get('phase')
@@ -116,7 +116,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 
   do ph = 1, phases%length
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
 
@@ -243,7 +243,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
     dot%gamma_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pReal)
     allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),  source=0.0_pReal)

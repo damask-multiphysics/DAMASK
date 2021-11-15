@@ -49,7 +49,7 @@ subroutine discretization_init(materialAt,&
   integer, optional,           intent(in) :: &
     sharedNodesBegin                                                                                !< index of first node shared among different processes (MPI)
 
-  print'(/,a)', ' <<<+-  discretization init  -+>>>'; flush(6)
+  print'(/,1x,a)', '<<<+-  discretization init  -+>>>'; flush(6)
 
   discretization_Nelems = size(materialAt,1)
   discretization_nIPs   = size(IPcoords0,2)/discretization_Nelems

@@ -222,7 +222,7 @@ contains
 module subroutine plastic_init
 
 
-  print'(/,a)', ' <<<+-  phase:mechanical:plastic init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic init  -+>>>'
 
   where(plastic_none_init())              phase_plasticity = PLASTICITY_NONE_ID
   where(plastic_isotropic_init())         phase_plasticity = PLASTICITY_ISOTROPIC_ID
@@ -295,7 +295,7 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     dLp_dFi(i,j,1:3,1:3) = matmul(matmul(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
                            matmul(matmul(Fi,dLp_dMp(i,j,1:3,1:3)),S)
     dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
-  enddo; enddo
+  end do; end do
 
 end subroutine plastic_LpAndItsTangents
 
@@ -418,7 +418,7 @@ module function plastic_deltaState(ph, en) result(broken)
 
   end select plasticType
 
-  if(.not. broken) then
+  if (.not. broken) then
     select case(phase_plasticity(ph))
       case (PLASTICITY_NONLOCAL_ID,PLASTICITY_KINEHARDENING_ID)
 
@@ -427,7 +427,7 @@ module function plastic_deltaState(ph, en) result(broken)
         plasticState(ph)%state(myOffset + 1:myOffset + mySize,en) = &
         plasticState(ph)%state(myOffset + 1:myOffset + mySize,en) + plasticState(ph)%deltaState(1:mySize,en)
     end select
-  endif
+  end if
 
 end function plastic_deltaState
 
@@ -453,8 +453,8 @@ function plastic_active(plastic_label)  result(active_plastic)
     phase => phases%get(ph)
     mech  => phase%get('mechanical')
     pl    => mech%get('plastic',defaultVal = emptyDict)
-    if(pl%get_asString('type',defaultVal='none') == plastic_label) active_plastic(ph) = .true.
-  enddo
+    if (pl%get_asString('type',defaultVal='none') == plastic_label) active_plastic(ph) = .true.
+  end do
 
 end function plastic_active
 

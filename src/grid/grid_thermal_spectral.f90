@@ -75,10 +75,10 @@ subroutine grid_thermal_spectral_init(T_0)
   class(tNode), pointer :: &
     num_grid
 
-  print'(/,a)', ' <<<+-  grid_thermal_spectral init  -+>>>'
+  print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
 
-  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
+  print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
@@ -141,7 +141,7 @@ subroutine grid_thermal_spectral_init(T_0)
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
     call homogenization_thermal_setField(T_0,0.0_pReal,ce)
-  enddo; enddo; enddo
+  end do; end do; end do
 
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,ierr); CHKERRQ(ierr)
   T_PETSc(xstart:xend,ystart:yend,zstart:zend) = T_current
@@ -182,7 +182,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   else
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
-  endif
+  end if
   stagNorm = maxval(abs(T_current - T_stagInc))
   solnNorm = maxval(abs(T_current))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,ierr)
@@ -196,14 +196,14 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
     call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
-  enddo; enddo; enddo
+  end do; end do; end do
 
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
   call VecMax(solution_vec,devNull,T_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
-    print'(/,a)', ' ... thermal conduction converged ..................................'
-  print'(/,a,f8.4,2x,f8.4,2x,f8.4)', ' Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
-  print'(/,a)', ' ==========================================================================='
+    print'(/,1x,a)', '... thermal conduction converged ..................................'
+  print'(/,1x,a,f8.4,2x,f8.4,2x,f8.4)', 'Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
+  print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 
 end function grid_thermal_spectral_solution
@@ -234,11 +234,11 @@ subroutine grid_thermal_spectral_forward(cutBack)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
       call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
-    enddo; enddo; enddo
+    end do; end do; end do
   else
     T_lastInc = T_current
     call updateReference
-  endif
+  end if
 
 end subroutine grid_thermal_spectral_forward
 
@@ -272,7 +272,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
     vectorField_real(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField_real(1:3,i,j,k))
-  enddo; enddo; enddo
+  end do; end do; end do
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate temperature divergence in fourier field
   call utilities_FFTscalarBackward
@@ -282,7 +282,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
     scalarField_real(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
                             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
                             + mu_ref*T_current(i,j,k)
-  enddo; enddo; enddo
+  end do; end do; end do
 
 !--------------------------------------------------------------------------------------------------
 ! convolution of temperature field with green operator
@@ -310,7 +310,7 @@ subroutine updateReference()
   do ce = 1, product(grid(1:2))*grid3
     K_ref  = K_ref  + homogenization_K_T(ce)
     mu_ref = mu_ref + homogenization_mu_T(ce)
-  enddo
+  end do
 
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)

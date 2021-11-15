@@ -41,10 +41,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_quadrature_init()
 
-  print'(/,a)', ' <<<+-  FEM_quadrature init  -+>>>'; flush(6)
+  print'(/,1x,a)', '<<<+-  FEM_quadrature init  -+>>>'; flush(6)
 
-  print*, 'L. Zhang et al., Journal of Computational Mathematics 27(1):89-96, 2009'
-  print*, 'https://www.jstor.org/stable/43693493'
+  print'(/,1x,a)', 'L. Zhang et al., Journal of Computational Mathematics 27(1):89-96, 2009'
+  print'(  1x,a)', 'https://www.jstor.org/stable/43693493'
 
 !--------------------------------------------------------------------------------------------------
 ! 2D linear

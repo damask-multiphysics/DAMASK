@@ -76,11 +76,11 @@ subroutine parallelization_init
   call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err)
   if (err /= 0)                              error stop 'Could not determine worldrank'
 
-  if (worldrank == 0) print'(/,a)',  ' <<<+-  parallelization init  -+>>>'
+  if (worldrank == 0) print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
 
   call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err)
   if (err /= 0)                              error stop 'Could not determine worldsize'
-  if (worldrank == 0) print'(a,i3)', ' MPI processes: ',worldsize
+  if (worldrank == 0) print'(/,1x,a,i3)', 'MPI processes: ',worldsize
 
   call MPI_Type_size(MPI_INTEGER,typeSize,err)
   if (err /= 0)                              error stop 'Could not determine MPI integer size'
@@ -97,16 +97,16 @@ subroutine parallelization_init
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if(got_env /= 0) then
-!$   print*, 'Could not get $OMP_NUM_THREADS, using default'
+!$   print'(1x,a)', 'Could not get $OMP_NUM_THREADS, using default'
 !$   OMP_NUM_THREADS = 4_pI32
 !$ else
 !$   read(NumThreadsString,'(i6)') OMP_NUM_THREADS
 !$   if (OMP_NUM_THREADS < 1_pI32) then
-!$     print*, 'Invalid OMP_NUM_THREADS: "'//trim(NumThreadsString)//'", using default'
+!$     print'(1x,a)', 'Invalid OMP_NUM_THREADS: "'//trim(NumThreadsString)//'", using default'
 !$     OMP_NUM_THREADS = 4_pI32
 !$   endif
 !$ endif
-!$ print'(a,i2)',   ' OMP_NUM_THREADS: ',OMP_NUM_THREADS
+!$ print'(1x,a,1x,i2)',   'OMP_NUM_THREADS:',OMP_NUM_THREADS
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init

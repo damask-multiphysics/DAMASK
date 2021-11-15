@@ -43,8 +43,8 @@ module function externalheat_init(source_length) result(mySources)
 
   mySources = thermal_active('externalheat',source_length)
   if(count(mySources) == 0) return
-  print'(/,a)', ' <<<+-  phase:thermal:externalheat init  -+>>>'
-  print'(a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:thermal:externalheat init  -+>>>'
+  print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
   phases => config_material%get('phase')
@@ -53,11 +53,11 @@ module function externalheat_init(source_length) result(mySources)
 
   do ph = 1, phases%length
     phase => phases%get(ph)
-    if(count(mySources(:,ph)) == 0) cycle
+    if (count(mySources(:,ph)) == 0) cycle
     thermal => phase%get('thermal')
     sources => thermal%get('source')
     do so = 1, sources%length
-      if(mySources(so,ph)) then
+      if (mySources(so,ph)) then
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
           src => sources%get(so)
@@ -70,9 +70,9 @@ module function externalheat_init(source_length) result(mySources)
           Nmembers = count(material_phaseID == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
         end associate
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
 end function externalheat_init
 
@@ -125,7 +125,7 @@ module function externalheat_f_T(ph,en) result(f_T)
         f_T = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
               prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
                                                                                                    ! ...or extrapolate if outside of bounds
-    enddo
+    end do
   end associate
 
 end function externalheat_f_T

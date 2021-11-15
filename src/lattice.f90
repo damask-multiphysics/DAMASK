@@ -409,7 +409,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
-  print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
   call selfTest
 

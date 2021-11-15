@@ -56,7 +56,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
-  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
 
   call selfTest
 

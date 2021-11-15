@@ -26,10 +26,10 @@ module subroutine elastic_init(phases)
     elastic
 
 
-  print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
-  print'(/,a)', ' <<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
 
-  print'(a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
+  print'(/,a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
   allocate(param(phases%length))
 
@@ -48,18 +48,18 @@ module subroutine elastic_init(phases)
       if (any(phase_lattice(ph) == ['hP','tI'])) then
         prm%C66(1,3) = elastic%get_asFloat('C_13')
         prm%C66(3,3) = elastic%get_asFloat('C_33')
-      endif
+      end if
       if (phase_lattice(ph) == 'tI') prm%C66(6,6) = elastic%get_asFloat('C_66')
 
       prm%C66 = lattice_symmetrize_C66(prm%C66,phase_lattice(ph))
 
       prm%nu = lattice_equivalent_nu(prm%C66,'voigt')
       prm%mu = lattice_equivalent_mu(prm%C66,'voigt')
-      
+
       prm%C66 = math_sym3333to66(math_Voigt66to3333(prm%C66))                                       ! Literature data is in Voigt notation
 
     end associate
-  enddo
+  end do
 
 end subroutine elastic_init
 
@@ -98,7 +98,7 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   do i =1, 3;do j=1,3
     dS_dFe(i,j,1:3,1:3) = matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
     dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                             !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
-  enddo; enddo
+  end do; end do
 
 end subroutine phase_hooke_SandItsTangents
 

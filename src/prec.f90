@@ -69,15 +69,15 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
 
-  print'(/,a)', ' <<<+-  prec init  -+>>>'
+  print'(/,1x,a)', '<<<+-  prec init  -+>>>'
 
-  print'(a,i3)',    ' Size of integer in bit: ',bit_size(0)
-  print'(a,i19)',   '   Maximum value:        ',huge(0)
-  print'(/,a,i3)',  ' Size of float in bit:   ',storage_size(0.0_pReal)
-  print'(a,e10.3)', '   Maximum value:        ',huge(0.0_pReal)
-  print'(a,e10.3)', '   Minimum value:        ',PREAL_MIN
-  print'(a,e10.3)', '   Epsilon value:        ',PREAL_EPSILON
-  print'(a,i3)',    '   Decimal precision:    ',precision(0.0_pReal)
+  print'(/,a,i3)',    ' integer size / bit:   ',bit_size(0)
+  print'(  a,i19)',   '   maximum value:      ',huge(0)
+  print'(/,a,i3)',    ' float size / bit:     ',storage_size(0.0_pReal)
+  print'(  a,e10.3)', '   maximum value:      ',huge(0.0_pReal)
+  print'(  a,e10.3)', '   minimum value:      ',PREAL_MIN
+  print'(  a,e10.3)', '   epsilon value:      ',PREAL_EPSILON
+  print'(  a,i3)',    '   decimal precision:  ',precision(0.0_pReal)
 
   call selfTest
 
