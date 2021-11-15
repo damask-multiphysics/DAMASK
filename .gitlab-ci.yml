@@ -134,8 +134,7 @@ compile_Marc:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd $(mktemp -d)
     - cp ${CI_PROJECT_DIR}/examples/Marc/* .
-    - python3 -c "import damask;s=damask.solver.Marc();r.submit_job('r-value','texture',True,'h')"
-    - make -j2 all install
+    - python3 -c "import damask;damask.solver.Marc().submit_job('r-value','texture',True,'h')"
 
 
 ###################################################################################################
