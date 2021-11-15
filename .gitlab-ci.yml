@@ -135,15 +135,23 @@ compile_Marc:
     - cd $(mktemp -d)
     - cp ${CI_PROJECT_DIR}/examples/Marc/* .
     - python3 -c "import damask;damask.solver.Marc().submit_job('r-value','texture',True,'h')"
+    - mkdir ${TESTROOT}/src
+    - mv ${CI_PROJECT_DIR}/src/DAMASK_Marc.marc
 
 
 ###################################################################################################
-core:
+open-source:
   stage: fortran
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd PRIVATE/testing/pytest
-    - pytest -k 'not compile' --basetemp ${TESTROOT}/fortran -v
+    - pytest -k 'not compile and not Marc' --basetemp ${TESTROOT}/fortran -v
+
+Marc:
+  stage: fortran
+  script:
+    - cd PRIVATE/testing/pytest
+    - pytest -k 'not compile and Marc' --damask-root ${TESTROOT} --basetemp ${TESTROOT}/fortran -v
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
