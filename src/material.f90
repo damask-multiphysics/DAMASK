@@ -26,6 +26,7 @@ module material
 
 
   type(tRotationContainer), dimension(:), allocatable :: material_O_0
+  type(tTensorContainer),   dimension(:), allocatable :: material_F_i_0
 
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
@@ -48,6 +49,7 @@ module material
   public :: &
     tTensorContainer, &
     tRotationContainer, &
+    material_F_i_0, &
     material_O_0, &
     material_init
 
@@ -159,14 +161,17 @@ subroutine parse()
   enddo
 
   allocate(material_O_0(materials%length))
+  allocate(material_F_i_0(materials%length))
 
   do ma = 1, materials%length
     material     => materials%get(ma)
     constituents => material%get('constituents')
     allocate(material_O_0(ma)%data(constituents%length))
+    allocate(material_F_i_0(ma)%data(1:3,1:3,constituents%length))
     do co = 1, constituents%length
       constituent => constituents%get(co)
       call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+      material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
     enddo
  enddo
 
