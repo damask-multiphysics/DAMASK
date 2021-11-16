@@ -165,8 +165,9 @@ grid_runtime:
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
-    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
+    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
     - make -j2 all install
+    - export PATH=${PWD}/bin:${PATH}
     - REPO_DIR=$(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
     - >
@@ -178,7 +179,6 @@ grid_runtime:
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking
     - source env/DAMASK.sh
-    - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
 
 
