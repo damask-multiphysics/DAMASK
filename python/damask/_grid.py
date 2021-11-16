@@ -55,8 +55,8 @@ class Grid:
         mat_N   = self.N_materials
         return util.srepr([
                f'cells : {util.srepr(self.cells, " x ")}',
-               f'size  : {util.srepr(self.size,  " x ")}/m',
-               f'origin: {util.srepr(self.origin,"   ")}/m',
+               f'size  : {util.srepr(self.size,  " x ")} / m³',
+               f'origin: {util.srepr(self.origin,"   ")} / m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
                                           f' (min: {mat_min}, max: {mat_max})')
               ])
