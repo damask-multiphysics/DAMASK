@@ -99,12 +99,15 @@ class TestConfigMaterial:
     @pytest.mark.parametrize('N,n,kw',[
                                         (1,1,{'phase':'Gold',
                                               'O':[1,0,0,0],
+                                              'F_i':np.eye(3),
                                               'homogenization':'SX'}),
                                         (3,1,{'phase':'Gold',
                                               'O':Rotation.from_random(3),
+                                              'F_i':np.broadcast_to(np.eye(3),(3,3,3)),
                                               'homogenization':'SX'}),
                                         (2,3,{'phase':np.broadcast_to(['a','b','c'],(2,3)),
                                               'O':Rotation.from_random((2,3)),
+                                              'F_i':np.broadcast_to(np.eye(3),(2,3,3,3)),
                                               'homogenization':['SX','PX']}),
                                         ])
     def test_material_add(self,kw,N,n):
