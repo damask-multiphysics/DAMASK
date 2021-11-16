@@ -54,9 +54,9 @@ class Grid:
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials
         return util.srepr([
-               f'cells  a b c: {util.srepr(self.cells, " x ")}',
-               f'size   x y z: {util.srepr(self.size,  " x ")}',
-               f'origin x y z: {util.srepr(self.origin,"   ")}',
+               f'cells : {util.srepr(self.cells, " x ")}',
+               f'size  : {util.srepr(self.size,  " x ")} / m³',
+               f'origin: {util.srepr(self.origin,"   ")} / m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
                                           f' (min: {mat_min}, max: {mat_max})')
               ])
