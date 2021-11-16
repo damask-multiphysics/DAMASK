@@ -49,9 +49,8 @@ def patch_plt_show(monkeypatch):
 
 
 def pytest_addoption(parser):
-    parser.addoption("--update",
-                     action="store_true",
-                     default=False)
+    parser.addoption('--update', action='store_true', default=False,
+                     help='Update reference results.')
 
 
 @pytest.fixture
