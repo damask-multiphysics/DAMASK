@@ -168,12 +168,12 @@ grid_runtime:
     - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
     - make -j2 all install
     - export PATH=${PWD}/bin:${PATH}
-    - REPO_DIR=$(mktemp -d)
-    - git clone -q git@git.damask.mpie.de:damask/performance.git ${REPO_DIR}
+    - cd $(mktemp -d)
+    - git clone -q git@git.damask.mpie.de:damask/performance.git .
     - >
         ${CI_PROJECT_DIR}/PRIVATE/testing/runtime.py
         --input_dir ${CI_PROJECT_DIR}/examples/grid
-        --output_dir ${REPO_DIR}
+        --output_dir ./
         --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   before_script:
@@ -199,12 +199,11 @@ update_revision:
   script:
     - cd $(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
-    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
-    - echo ${TESTEDREV} > python/damask/VERSION
+    - git checkout ${CI_COMMIT_SHA}
+    - export VERSION=$(git describe)
+    - echo ${VERSION} > python/damask/VERSION
     - git add python/damask/VERSION
-    - >
-        git diff-index --quiet HEAD ||
-        git commit -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - git commit -m "[skip ci] updated version information after successful test of $VERSION"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
     - git pull
