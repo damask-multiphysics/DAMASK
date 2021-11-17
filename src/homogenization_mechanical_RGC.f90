@@ -373,7 +373,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
         do i=1,3; do j=1,3; do k=1,3; do l=1,3
           smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) &
                                              + dPdF(i,k,j,l,iGrN)*normN(k)*mornN(l)
-        end do;enddo;enddo;enddo
+        end do;end do;end do;end do
 ! projecting the material tangent dPdF into the interface
 ! to obtain the Jacobian matrix contribution of dPdF
       end if
@@ -394,7 +394,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
         do i=1,3; do j=1,3; do k=1,3; do l=1,3
           smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) &
                                              + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
-        end do;enddo;enddo;enddo
+        end do;end do;end do;end do
       end if
     end do
   end do
