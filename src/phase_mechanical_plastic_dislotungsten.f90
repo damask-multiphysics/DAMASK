@@ -13,7 +13,6 @@ submodule(phase:plastic) dislotungsten
   type :: tParameters
     real(pReal) :: &
       D    = 1.0_pReal, &                                                                           !< grain size
-      mu   = 1.0_pReal, &                                                                           !< equivalent shear modulus
       D_0  = 1.0_pReal, &                                                                           !< prefactor for self-diffusion coefficient
       Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
@@ -129,8 +128,6 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
-
-    prm%mu = elastic_mu(ph)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -324,9 +321,12 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     dot_rho_dip_formation, &
     dot_rho_dip_climb, &
     d_hat
-
+  real(pReal) :: &
+    mu
 
   associate(prm => param(ph), stt => state(ph), dot => dotState(ph), dst => dependentState(ph))
+
+    mu = elastic_mu(ph,en)
 
     call kinetics(Mp,T,ph,en,&
                   dot_gamma_pos,dot_gamma_neg, &
@@ -338,13 +338,13 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
       dot_rho_dip_formation = 0.0_pReal
       dot_rho_dip_climb     = 0.0_pReal
     else where
-      d_hat = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos+tau_neg)*0.5_pReal), &
+      d_hat = math_clip(3.0_pReal*mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos+tau_neg)*0.5_pReal), &
                         prm%d_caron, &                                                              ! lower limit
                         dst%Lambda_sl(:,en))                                                        ! upper limit
       dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
                                     0.0_pReal, &
                                     prm%dipoleformation)
-      v_cl = (3.0_pReal*prm%mu*prm%D_0*exp(-prm%Q_cl/(kB*T))*prm%f_at/(2.0_pReal*PI*kB*T)) &
+      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(kB*T))*prm%f_at/(2.0_pReal*PI*kB*T)) &
            * (1.0_pReal/(d_hat+prm%d_caron))
       dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
     end where
@@ -372,11 +372,12 @@ module subroutine dislotungsten_dependentState(ph,en)
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     Lambda_sl_inv
-
+  real(pReal) :: &
+    mu
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    dst%tau_pass(:,en) = prm%mu*prm%b_sl &
+    dst%tau_pass(:,en) = elastic_mu(ph,en)*prm%b_sl &
                        * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
     Lambda_sl_inv = 1.0_pReal/prm%D &
