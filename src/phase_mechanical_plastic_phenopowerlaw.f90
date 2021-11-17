@@ -95,8 +95,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   myPlasticity = plastic_active('phenopowerlaw')
   if(count(myPlasticity) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanical:plastic:phenopowerlaw init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:phenopowerlaw init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
 
   phases => config_material%get('phase')
@@ -105,7 +105,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   allocate(dotState(phases%length))
 
   do ph = 1, phases%length
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
 
@@ -129,7 +129,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       else
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
-      endif
+      end if
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'),phase_lattice(ph))
 
       xi_0_sl             = pl%get_as1dFloat('xi_0_sl',   requiredSize=size(N_sl))
@@ -158,7 +158,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       xi_0_sl = emptyRealArray
       allocate(prm%xi_inf_sl,prm%h_int,source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
-    endif slipActive
+    end if slipActive
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
@@ -192,7 +192,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       xi_0_tw = emptyRealArray
       allocate(prm%gamma_char,source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
-    endif twinActive
+    end if twinActive
 
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
@@ -206,7 +206,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0
       allocate(prm%h_tw_sl(prm%sum_N_tw,prm%sum_N_sl))                                              ! at least one dimension is 0
       prm%h_0_tw_sl = 0.0_pReal
-    endif slipAndTwinActive
+    end if slipAndTwinActive
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
@@ -263,7 +263,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 !  exit if any parameter is out of range
     if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(phenopowerlaw)')
 
-  enddo
+  end do
 
 end function plastic_phenopowerlaw_init
 
@@ -306,7 +306,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                        + ddot_gamma_dtau_sl_pos(i) * prm%P_sl(k,l,i) * prm%P_nS_pos(m,n,i) &
                        + ddot_gamma_dtau_sl_neg(i) * prm%P_sl(k,l,i) * prm%P_nS_neg(m,n,i)
-  enddo slipSystems
+  end do slipSystems
 
   call kinetics_tw(Mp,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
   twinSystems: do i = 1, prm%sum_N_tw
@@ -314,7 +314,7 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                        + ddot_gamma_dtau_tw(i)*prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
-  enddo twinSystems
+  end do twinSystems
 
   end associate
 
@@ -397,7 +397,7 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
 
       end select
 
-    enddo
+    end do
 
   end associate
 
@@ -438,7 +438,7 @@ pure subroutine kinetics_sl(Mp,ph,en, &
       tau_sl_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i))
       tau_sl_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)), &
                             0.0_pReal, prm%nonSchmidActive)
-    enddo
+    end do
 
     where(dNeq0(tau_sl_pos))
       dot_gamma_sl_pos = prm%dot_gamma_0_sl * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &     ! 1/2 if non-Schmid active
@@ -460,14 +460,14 @@ pure subroutine kinetics_sl(Mp,ph,en, &
       else where
         ddot_gamma_dtau_sl_pos = 0.0_pReal
       end where
-    endif
+    end if
     if (present(ddot_gamma_dtau_sl_neg)) then
       where(dNeq0(dot_gamma_sl_neg))
         ddot_gamma_dtau_sl_neg = dot_gamma_sl_neg*prm%n_sl/tau_sl_neg
       else where
         ddot_gamma_dtau_sl_neg = 0.0_pReal
       end where
-    endif
+    end if
 
   end associate
 
@@ -517,7 +517,7 @@ pure subroutine kinetics_tw(Mp,ph,en,&
       else where
         ddot_gamma_dtau_tw = 0.0_pReal
       end where
-    endif
+    end if
 
   end associate
 

@@ -30,8 +30,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine config_init
 
-  print'(/,a)', ' <<<+-  config init  -+>>>'; flush(IO_STDOUT)
-
+  print'(/,1x,a)', '<<<+-  config init  -+>>>'; flush(IO_STDOUT)
 
   call parse_material
   call parse_numerics
@@ -50,15 +49,15 @@ subroutine parse_material()
 
 
   inquire(file='material.yaml',exist=fileExists)
-  if(.not. fileExists) call IO_error(100,ext_msg='material.yaml')
+  if (.not. fileExists) call IO_error(100,ext_msg='material.yaml')
 
   if (worldrank == 0) then
-    print*, 'reading material.yaml'; flush(IO_STDOUT)
+    print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
     fileContent = IO_read('material.yaml')
     call results_openJobFile(parallel=.false.)
     call results_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
     call results_closeJobFile
-  endif
+  end if
   call parallelization_bcast_str(fileContent)
 
   config_material => YAML_parse_str(fileContent)
@@ -81,19 +80,19 @@ subroutine parse_numerics()
   if (fileExists) then
 
     if (worldrank == 0) then
-      print*, 'reading numerics.yaml'; flush(IO_STDOUT)
+      print'(1x,a)', 'reading numerics.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('numerics.yaml')
       if (len(fileContent) > 0) then
         call results_openJobFile(parallel=.false.)
         call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
         call results_closeJobFile
-      endif
-    endif
+      end if
+    end if
     call parallelization_bcast_str(fileContent)
 
     config_numerics => YAML_parse_str(fileContent)
 
-  endif
+  end if
 
 end subroutine parse_numerics
 
@@ -113,19 +112,19 @@ subroutine parse_debug()
   if (fileExists) then
 
     if (worldrank == 0) then
-      print*, 'reading debug.yaml'; flush(IO_STDOUT)
+      print'(1x,a)', 'reading debug.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('debug.yaml')
       if (len(fileContent) > 0) then
         call results_openJobFile(parallel=.false.)
         call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
         call results_closeJobFile
-      endif
-    endif
+      end if
+    end if
     call parallelization_bcast_str(fileContent)
 
     config_debug => YAML_parse_str(fileContent)
 
-  endif
+  end if
 
 end subroutine parse_debug
 

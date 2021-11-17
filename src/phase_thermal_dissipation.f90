@@ -36,8 +36,8 @@ module function dissipation_init(source_length) result(mySources)
 
   mySources = thermal_active('dissipation',source_length)
   if(count(mySources) == 0) return
-  print'(/,a)', ' <<<+-  phase:thermal:dissipation init  -+>>>'
-  print'(a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:thermal:dissipation init  -+>>>'
+  print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
   phases => config_material%get('phase')
@@ -45,11 +45,11 @@ module function dissipation_init(source_length) result(mySources)
 
   do ph = 1, phases%length
     phase => phases%get(ph)
-    if(count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
+    if (count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
     thermal => phase%get('thermal')
     sources => thermal%get('source')
     do so = 1, sources%length
-      if(mySources(so,ph)) then
+      if (mySources(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get(so)
 
@@ -58,9 +58,9 @@ module function dissipation_init(source_length) result(mySources)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
         end associate
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
 
 end function dissipation_init

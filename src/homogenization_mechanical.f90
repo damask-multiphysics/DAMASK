@@ -68,7 +68,7 @@ module subroutine mechanical_init(num_homog)
   class(tNode), pointer :: &
     num_homogMech
 
-  print'(/,a)', ' <<<+-  homogenization:mechanical init  -+>>>'
+  print'(/,1x,a)', '<<<+-  homogenization:mechanical init  -+>>>'
 
   call material_parseHomogenization2()
 
@@ -114,7 +114,7 @@ module subroutine mechanical_partition(subF,ce)
 
   do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
     call phase_set_F(Fs(1:3,1:3,co),co,ce)
-  enddo
+  end do
 
 
 end subroutine mechanical_partition
@@ -138,7 +138,7 @@ module subroutine mechanical_homogenize(Delta_t,ce)
                                             + phase_P(co,ce)
     homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = homogenization_dPdF(1:3,1:3,1:3,1:3,ce) &
                                             + phase_mechanical_dPdF(Delta_t,co,ce)
-  enddo
+  end do
 
   homogenization_P(1:3,1:3,ce)            = homogenization_P(1:3,1:3,ce) &
                                           / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
@@ -173,11 +173,11 @@ module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ce)
         Fs(:,:,co)        = phase_F(co,ce)
         Ps(:,:,co)        = phase_P(co,ce)
-      enddo
+      end do
       doneAndHappy = RGC_updateState(Ps,Fs,subF,subdt,dPdFs,ce)
   else
     doneAndHappy = .true.
-  endif
+  end if
 
 end function mechanical_updateState
 
@@ -241,7 +241,7 @@ subroutine material_parseHomogenization2()
       case default
         call IO_error(500,ext_msg=homogMech%get_asString('type'))
     end select
-  enddo
+  end do
 
 end subroutine material_parseHomogenization2
 

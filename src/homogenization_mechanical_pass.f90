@@ -17,15 +17,15 @@ module subroutine pass_init
     ho, &
     Nmembers
 
-  print'(/,a)', ' <<<+-  homogenization:mechanical:pass init  -+>>>'
+  print'(/,1x,a)', '<<<+-  homogenization:mechanical:pass init  -+>>>'
 
-  print'(a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_NONE_ID)
+  print'(/,a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_NONE_ID)
   flush(IO_STDOUT)
 
   do ho = 1, size(homogenization_type)
-    if(homogenization_type(ho) /= HOMOGENIZATION_NONE_ID) cycle
+    if (homogenization_type(ho) /= HOMOGENIZATION_NONE_ID) cycle
 
-    if(homogenization_Nconstituents(ho) /= 1) &
+    if (homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='N_constituents (pass)')
 
     Nmembers = count(material_homogenizationID == ho)
@@ -33,7 +33,7 @@ module subroutine pass_init
     allocate(homogState(ho)%state0(0,Nmembers))
     allocate(homogState(ho)%state (0,Nmembers))
 
-  enddo
+  end do
 
 end subroutine pass_init
 

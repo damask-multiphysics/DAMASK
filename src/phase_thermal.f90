@@ -86,7 +86,7 @@ module subroutine thermal_init(phases)
     Nmembers
 
 
-  print'(/,a)', ' <<<+-  phase:thermal init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
 
   allocate(current(phases%length))
 

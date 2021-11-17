@@ -76,10 +76,10 @@ subroutine grid_damage_spectral_init()
   character(len=pStringLen) :: &
     snes_type
 
-  print'(/,a)', ' <<<+-  grid_spectral_damage init  -+>>>'
+  print'(/,1x,a)', '<<<+-  grid_spectral_damage init  -+>>>'
 
-  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
+  print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
@@ -137,7 +137,7 @@ subroutine grid_damage_spectral_init()
     call SNESVISetVariableBounds(damage_snes,lBound,uBound,ierr)                                    ! variable bounds for variational inequalities like contact mechanics, damage etc.
     call DMRestoreGlobalVector(damage_grid,lBound,ierr); CHKERRQ(ierr)
     call DMRestoreGlobalVector(damage_grid,uBound,ierr); CHKERRQ(ierr)
-  endif
+  end if
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
@@ -187,7 +187,7 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   else
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
-  endif
+  end if
   stagNorm = maxval(abs(phi_current - phi_stagInc))
   solnNorm = maxval(abs(phi_current))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,ierr)
@@ -201,14 +201,14 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
     call homogenization_set_phi(phi_current(i,j,k),ce)
-  enddo; enddo; enddo
+  end do; end do; end do
 
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
   call VecMax(solution_vec,devNull,phi_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
-    print'(/,a)', ' ... nonlocal damage converged .....................................'
-  print'(/,a,f8.6,2x,f8.6,2x,e11.4)', ' Minimum|Maximum|Delta Damage      = ', phi_min, phi_max, stagNorm
-  print'(/,a)', ' ==========================================================================='
+    print'(/,1x,a)', '... nonlocal damage converged .....................................'
+  print'(/,1x,a,f8.6,2x,f8.6,2x,e11.4)', 'Minimum|Maximum|Delta Damage      = ', phi_min, phi_max, stagNorm
+  print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 
 end function grid_damage_spectral_solution
@@ -238,11 +238,11 @@ subroutine grid_damage_spectral_forward(cutBack)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       ce = ce + 1
       call homogenization_set_phi(phi_current(i,j,k),ce)
-    enddo; enddo; enddo
+    end do; end do; end do
   else
     phi_lastInc = phi_current
     call updateReference
-  endif
+  end if
 
 end subroutine grid_damage_spectral_forward
 
@@ -277,7 +277,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
     vectorField_real(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, vectorField_real(1:3,i,j,k))
-  enddo; enddo; enddo
+  end do; end do; end do
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate damage divergence in fourier field
   call utilities_FFTscalarBackward
@@ -287,7 +287,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
     scalarField_real(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
                             + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
                             + mu_ref*phi_current(i,j,k)
-  enddo; enddo; enddo
+  end do; end do; end do
 
 !--------------------------------------------------------------------------------------------------
 ! convolution of damage field with green operator
@@ -320,7 +320,7 @@ subroutine updateReference()
   do ce = 1, product(grid(1:2))*grid3
     K_ref  = K_ref  + homogenization_K_phi(ce)
     mu_ref = mu_ref + homogenization_mu_phi(ce)
-  enddo
+  end do
 
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)

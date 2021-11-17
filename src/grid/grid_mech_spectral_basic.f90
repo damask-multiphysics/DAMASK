@@ -111,13 +111,13 @@ subroutine grid_mechanical_spectral_basic_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mechanical_spectral_basic init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_basic init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
-  print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
+  print'(/,1x,a)', 'P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  print*, 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print'(  1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
@@ -186,30 +186,30 @@ subroutine grid_mechanical_spectral_basic_init
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
 
   restartRead: if (interface_restartInc > 0) then
-    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
     call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F,groupHandle,'F')
     call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
 
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
-  endif restartRead
+  end if restartRead
 
   homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
@@ -219,13 +219,13 @@ subroutine grid_mechanical_spectral_basic_init
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
 
   restartRead2: if (interface_restartInc > 0) then
-    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(1x,a,i0,a)', 'reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -234,7 +234,7 @@ subroutine grid_mechanical_spectral_basic_init
                        MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,ierr)
     call MPI_File_read(fileUnit,C_minMaxAvg,81,MPI_DOUBLE,MPI_STATUS_IGNORE,ierr)
     call MPI_File_close(fileUnit,ierr)
-  endif restartRead2
+  end if restartRead2
 
   call utilities_updateGamma(C_minMaxAvg)
   call utilities_saveReferenceStiffness
@@ -263,7 +263,7 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
-  if(num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
+  if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -328,7 +328,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
                + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
-    endif
+    end if
 
     Fdot = utilities_calculateRate(guess, &
                                    F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),Delta_t_old, &
@@ -336,7 +336,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
     F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
 
     homogenization_F0 = reshape(F,[3,3,product(grid(1:2))*grid3])
-  endif
+  end if
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
@@ -385,7 +385,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
@@ -406,7 +406,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite
     call HDF5_write(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
-  endif
+  end if
 
   if (num%update_gamma) call utilities_saveReferenceStiffness
 
@@ -443,14 +443,14 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     reason = -1
   else
     reason = 0
-  endif
+  end if
 
-  print'(1/,a)', ' ... reporting .............................................................'
-  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
+  print'(/,1x,a)', '... reporting .............................................................'
+  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
+  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
-  print'(/,a)', ' ==========================================================================='
+  print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 
 end subroutine converged
@@ -485,12 +485,12 @@ subroutine formResidual(in, F, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (debugRotation) print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      ' deformation gradient aim       =', transpose(F_aim)
+    if (debugRotation) print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
+    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
-  endif newIteration
+  end if newIteration
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response

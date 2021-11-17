@@ -343,7 +343,7 @@ subroutine phase_init
     phase
 
 
-  print'(/,a)', ' <<<+-  phase init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
   debug_constitutive => config_debug%get('phase', defaultVal=emptyList)
   debugConstitutive%basic     = debug_constitutive%contains('basic')
@@ -371,20 +371,20 @@ subroutine phase_init
       phase_cOverA(ph) = phase%get_asFloat('c/a')
     phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
     allocate(phase_O_0(ph)%data(count(material_phaseID==ph)))
-  enddo
+  end do
 
   do ce = 1, size(material_phaseID,2)
     ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
     do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
       ph = material_phaseID(co,ce)
       phase_O_0(ph)%data(material_phaseEntry(co,ce)) = material_O_0(ma)%data(co)
-    enddo
-  enddo
+    end do
+  end do
 
   allocate(phase_O(phases%length))
   do ph = 1,phases%length
     phase_O(ph)%data = phase_O_0(ph)%data
-  enddo
+  end do
 
   call mechanical_init(phases)
   call damage_init
@@ -471,7 +471,7 @@ subroutine phase_results()
     call mechanical_results(group,ph)
     call damage_results(group,ph)
 
-  enddo
+  end do
 
 end subroutine phase_results
 
@@ -495,7 +495,7 @@ subroutine crystallite_init()
     phases
 
 
-  print'(/,a)', ' <<<+-  crystallite init  -+>>>'
+  print'(/,1x,a)', '<<<+-  crystallite init  -+>>>'
 
   cMax = homogenization_maxNconstituents
   iMax = discretization_nIPs
@@ -515,28 +515,28 @@ subroutine crystallite_init()
   num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
   num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
-  if(num%subStepMinCryst   <= 0.0_pReal)      call IO_error(301,ext_msg='subStepMinCryst')
-  if(num%subStepSizeCryst  <= 0.0_pReal)      call IO_error(301,ext_msg='subStepSizeCryst')
-  if(num%stepIncreaseCryst <= 0.0_pReal)      call IO_error(301,ext_msg='stepIncreaseCryst')
+  if (num%subStepMinCryst   <= 0.0_pReal)      call IO_error(301,ext_msg='subStepMinCryst')
+  if (num%subStepSizeCryst  <= 0.0_pReal)      call IO_error(301,ext_msg='subStepSizeCryst')
+  if (num%stepIncreaseCryst <= 0.0_pReal)      call IO_error(301,ext_msg='stepIncreaseCryst')
 
-  if(num%subStepSizeLp <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLp')
-  if(num%subStepSizeLi <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLi')
+  if (num%subStepSizeLp <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLp')
+  if (num%subStepSizeLi <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLi')
 
-  if(num%rtol_crystalliteState  <= 0.0_pReal) call IO_error(301,ext_msg='rtol_crystalliteState')
-  if(num%rtol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='rtol_crystalliteStress')
-  if(num%atol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='atol_crystalliteStress')
+  if (num%rtol_crystalliteState  <= 0.0_pReal) call IO_error(301,ext_msg='rtol_crystalliteState')
+  if (num%rtol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='rtol_crystalliteStress')
+  if (num%atol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='atol_crystalliteStress')
 
-  if(num%iJacoLpresiduum < 1)                 call IO_error(301,ext_msg='iJacoLpresiduum')
+  if (num%iJacoLpresiduum < 1)                 call IO_error(301,ext_msg='iJacoLpresiduum')
 
-  if(num%nState < 1)                          call IO_error(301,ext_msg='nState')
-  if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
+  if (num%nState < 1)                          call IO_error(301,ext_msg='nState')
+  if (num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
 
 
   phases => config_material%get('phase')
 
-  print'(a42,1x,i10)', '    # of elements:                       ', eMax
-  print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
-  print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
+  print'(/,a42,1x,i10)', '    # of elements:                       ', eMax
+  print'(  a42,1x,i10)', '    # of integration points/element:     ', iMax
+  print'(  a42,1x,i10)', 'max # of constituents/integration point: ', cMax
   flush(IO_STDOUT)
 
 
@@ -547,9 +547,9 @@ subroutine crystallite_init()
       do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(co,ip,el)                                                       ! update dependent state variables to be consistent with basic states
-     enddo
-    enddo
-  enddo
+     end do
+    end do
+  end do
   !$OMP END PARALLEL DO
 
 
@@ -642,7 +642,7 @@ subroutine phase_restartWrite(fileHandle)
 
     call HDF5_closeGroup(groupHandle(2))
 
-  enddo
+  end do
 
   call HDF5_closeGroup(groupHandle(1))
 
@@ -670,7 +670,7 @@ subroutine phase_restartRead(fileHandle)
 
     call HDF5_closeGroup(groupHandle(2))
 
-  enddo
+  end do
 
   call HDF5_closeGroup(groupHandle(1))
 

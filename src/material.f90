@@ -63,11 +63,11 @@ subroutine material_init(restart)
   logical, intent(in) :: restart
 
 
-  print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
 
   call parse
-  print*, 'parsed material.yaml'
+  print'(/,1x,a)', 'parsed material.yaml'
 
 
   if (.not. restart) then
@@ -75,7 +75,7 @@ subroutine material_init(restart)
     call results_mapping_phase(material_phaseID,material_phaseEntry,material_name_phase)
     call results_mapping_homogenization(material_homogenizationID,material_homogenizationEntry,material_name_homogenization)
     call results_closeJobFile
-  endif
+  end if
 
 end subroutine material_init
 
@@ -115,7 +115,7 @@ subroutine parse()
   do h=1, homogenizations%length
     homogenization => homogenizations%get(h)
     homogenization_Nconstituents(h) = homogenization%get_asInt('N_constituents')
-  enddo
+  end do
   homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
 
   allocate(counterPhase(phases%length),source=0)
@@ -139,7 +139,7 @@ subroutine parse()
       material_homogenizationID(ce) = homogenizations%getIndex(material%get_asString('homogenization'))
       counterHomogenization(material_homogenizationID(ce)) = counterHomogenization(material_homogenizationID(ce)) + 1
       material_homogenizationEntry(ce) = counterHomogenization(material_homogenizationID(ce))
-    enddo
+    end do
 
     frac = 0.0_pReal
     do co = 1, constituents%length
@@ -153,12 +153,12 @@ subroutine parse()
         material_phaseMemberAt(co,ip,el)      = counterPhase(material_phaseAt(co,el))
         material_phaseEntry(co,ce) = counterPhase(material_phaseAt(co,el))
         material_phaseID(co,ce) = material_phaseAt(co,el)
-      enddo
+      end do
 
-    enddo
+    end do
     if (dNeq(frac,1.0_pReal,1.e-12_pReal)) call IO_error(153,ext_msg='constituent')
 
-  enddo
+  end do
 
   allocate(material_O_0(materials%length))
   allocate(material_F_i_0(materials%length))
@@ -191,15 +191,15 @@ subroutine sanityCheck(materials,homogenizations)
                            constituents
   integer :: m
 
-  if(maxval(discretization_materialAt) > materials%length) &
+  if (maxval(discretization_materialAt) > materials%length) &
     call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
   do m = 1, materials%length
     material => materials%get(m)
     constituents   => material%get('constituents')
     homogenization => homogenizations%get(material%get_asString('homogenization'))
-    if(constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
-  enddo
+    if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+  end do
 
 end subroutine sanityCheck
 
@@ -220,12 +220,12 @@ function getKeys(dict)
   do i=1, dict%length
     temp(i) = dict%getKey(i)
     l = max(len_trim(temp(i)),l)
-  enddo
+  end do
 
   allocate(character(l)::getKeys(dict%length))
   do i=1, dict%length
     getKeys(i) = trim(temp(i))
-  enddo
+  end do
 
 end function getKeys
 
