@@ -106,7 +106,7 @@ module function elastic_C66(ph,en) result(C66)
 
   associate(prm => param(ph))
 
-    C66 = get_C66(ph,en) 
+    C66 = get_C66(ph,en)
     C66 = math_sym3333to66(math_Voigt66to3333(C66))                                                 ! Literature data is in Voigt notation
 
   end associate
@@ -126,7 +126,7 @@ module function elastic_mu(ph,en) result(mu)
     mu
 
 
-    mu  = lattice_equivalent_mu(get_C66(ph,en),'voigt')
+    mu = lattice_equivalent_mu(get_C66(ph,en),'voigt')
 
 end function elastic_mu
 
@@ -142,7 +142,7 @@ module function elastic_nu(ph,en) result(nu)
     nu
 
 
-    nu  = lattice_equivalent_nu(get_C66(ph,en),'voigt')
+    nu = lattice_equivalent_nu(get_C66(ph,en),'voigt')
 
 end function elastic_nu
 
