@@ -151,18 +151,18 @@ end function phase_damage_constitutive
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the degraded/modified elasticity matrix
 !--------------------------------------------------------------------------------------------------
-module function phase_damage_C66(C66,ph,en)
+module function phase_damage_C66(C66,ph,en) result(C66_degraded)
 
   real(pReal), dimension(6,6), intent(in)  :: C66
   integer,                     intent(in)  :: ph,en
-  real(pReal), dimension(6,6) :: phase_damage_C66
+  real(pReal), dimension(6,6) :: C66_degraded
 
 
   damageType: select case (phase_damage(ph))
     case (DAMAGE_ISOBRITTLE_ID) damageType
-     phase_damage_C66 = C66 * damage_phi(ph,en)**2
+     C66_degraded = C66 * damage_phi(ph,en)**2
     case default damageType
-     phase_damage_C66 = C66
+     C66_degraded = C66
   end select damageType
 
 end function phase_damage_C66
