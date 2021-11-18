@@ -234,10 +234,10 @@ module phase
       integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C
     end function phase_homogenizedC66
-    module function phase_damage_C66(C66_homogenized,ph,en) result(C66)
-      real(pReal), dimension(6,6), intent(in)  :: C66_homogenized
+    module function phase_damage_C66(C66,ph,en)
+      real(pReal), dimension(6,6), intent(in)  :: C66
       integer,                     intent(in)  :: ph,en
-      real(pReal), dimension(6,6) :: C66
+      real(pReal), dimension(6,6) :: phase_damage_C66
     end function phase_damage_C66
 
     module function phase_f_phi(phi,co,ce) result(f)
