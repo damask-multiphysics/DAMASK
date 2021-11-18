@@ -8,7 +8,7 @@ contains
 
 module subroutine pass_init()
   
-  print'(/,a)', ' <<<+-  homogenization:thermal:pass init  -+>>>'
+  print'(/,1x,a)', '<<<+-  homogenization:thermal:pass init  -+>>>'
 
 end subroutine pass_init
 

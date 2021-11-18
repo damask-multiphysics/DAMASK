@@ -177,19 +177,19 @@ subroutine spectral_utilities_init
     num_grid, &
     debug_grid                                                                                      ! pointer to grid  debug options
 
-  print'(/,a)', ' <<<+-  spectral_utilities init  -+>>>'
+  print'(/,1x,a)', '<<<+-  spectral_utilities init  -+>>>'
 
-  print*, 'M. Diehl, Diploma Thesis TU München, 2010'
-  print*, 'https://doi.org/10.13140/2.1.3234.3840'//IO_EOL
+  print'(/,1x,a)', 'M. Diehl, Diploma Thesis TU München, 2010'
+  print'(  1x,a)', 'https://doi.org/10.13140/2.1.3234.3840'//IO_EOL
 
-  print*, 'P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
-  print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
+  print'(  1x,a)', 'P. Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  print*, 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'//IO_EOL
+  print'(  1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'//IO_EOL
 
-  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
+  print'(  1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -200,15 +200,15 @@ subroutine spectral_utilities_init
   debugRotation   =  debug_grid%contains('rotation')
   debugPETSc      =  debug_grid%contains('PETSc')
 
-  if(debugPETSc) print'(3(/,a),/)', &
-                 ' Initializing PETSc with debug options: ', &
+  if (debugPETSc) print'(3(/,1x,a),/)', &
+                 'Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the "PETSc_options" keyword in numerics.yaml'
+                 'add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
 
   call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
-  if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
+  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
                                 num_grid%get_asString('PETSc_options',defaultVal=''),ierr)
@@ -271,7 +271,7 @@ subroutine spectral_utilities_init
   if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
   call fftw_set_timelimit(num_grid%get_asFloat('fftw_timelimit',defaultVal=-1.0_pReal))
 
-  print*, 'FFTW initialized'; flush(IO_STDOUT)
+  print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
@@ -342,10 +342,10 @@ subroutine spectral_utilities_init
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
   do k = grid3Offset+1, grid3Offset+grid3
     k_s(3) = k - 1
-    if(k > grid(3)/2 + 1) k_s(3) = k_s(3) - grid(3)                                                 ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+    if (k > grid(3)/2 + 1) k_s(3) = k_s(3) - grid(3)                                                 ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
       do j = 1, grid(2)
         k_s(2) = j - 1
-        if(j > grid(2)/2 + 1) k_s(2) = k_s(2) - grid(2)                                             ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+        if (j > grid(2)/2 + 1) k_s(2) = k_s(2) - grid(2)                                             ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
           do i = 1, grid1Red
             k_s(1) = i - 1                                                                          ! symmetry, junst running from 0,1,...,N/2,N/2+1
             xi2nd(1:3,i,j,k-grid3Offset) = utilities_getFreqDerivative(k_s)
@@ -357,7 +357,7 @@ subroutine spectral_utilities_init
             endwhere
   enddo; enddo; enddo
 
-  if(num%memory_efficient) then                                                                     ! allocate just single fourth order tensor
+  if (num%memory_efficient) then                                                                     ! allocate just single fourth order tensor
     allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
   else                                                                                              ! precalculation of gamma_hat field
     allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
@@ -384,7 +384,7 @@ subroutine utilities_updateGamma(C)
 
   C_ref = C
 
-  if(.not. num%memory_efficient) then
+  if (.not. num%memory_efficient) then
     gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                   ! for the singular point and any non invertible A
     do k = grid3Offset+1, grid3Offset+grid3; do j = 1, grid(2); do i = 1, grid1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
@@ -497,12 +497,12 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   logical :: err
 
 
-  print'(/,a)', ' ... doing gamma convolution ...............................................'
+  print'(/,1x,a)', '... doing gamma convolution ...............................................'
   flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
-  memoryEfficient: if(num%memory_efficient) then
+  memoryEfficient: if (num%memory_efficient) then
     do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
       if (any([i,j,k+grid3Offset] /= 1)) then                                                       ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         forall(l = 1:3, m = 1:3) &
@@ -567,7 +567,7 @@ real(pReal) function utilities_divergenceRMS()
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  print'(/,a)', ' ... calculating divergence ................................................'
+  print'(/,1x,a)', '... calculating divergence ................................................'
   flush(IO_STDOUT)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
@@ -593,9 +593,9 @@ real(pReal) function utilities_divergenceRMS()
                + sum(aimag(matmul(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
                                   conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2.0_pReal)
   enddo; enddo
-  if(grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                    ! counted twice in case of grid(1) == 1
+  if (grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                    ! counted twice in case of grid(1) == 1
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
 
 end function utilities_divergenceRMS
@@ -610,7 +610,7 @@ real(pReal) function utilities_curlRMS()
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  print'(/,a)', ' ... calculating curl ......................................................'
+  print'(/,1x,a)', '... calculating curl ......................................................'
   flush(IO_STDOUT)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
@@ -655,9 +655,9 @@ real(pReal) function utilities_curlRMS()
   enddo; enddo
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
-  if(grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                                ! counted twice in case of grid(1) == 1
+  if (grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                                ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 
@@ -686,13 +686,13 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
   mask_stressVector = .not. reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)
-  if(size_reduced > 0) then
+  if (size_reduced > 0) then
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
-    if(debugGeneral) then
-      print'(/,a)', ' ... updating masked compliance ............................................'
-      print'(/,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
-        ' Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
+    if (debugGeneral) then
+      print'(/,1x,a)', '... updating masked compliance ............................................'
+      print'(/,1x,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
+        'Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
       flush(IO_STDOUT)
     endif
 
@@ -711,10 +711,10 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pReal))
     if (debugGeneral .or. errmatinv) then
       write(formatString, '(i2)') size_reduced
-      formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-      print trim(formatString), ' C * S (load) ', transpose(matmul(c_reduced,s_reduced))
-      print trim(formatString), ' S (load) ', transpose(s_reduced)
-      if(errmatinv) error stop 'matrix inversion error'
+      formatString = '(/,1x,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
+      print trim(formatString), 'C * S (load) ', transpose(matmul(c_reduced,s_reduced))
+      print trim(formatString), 'S (load) ', transpose(s_reduced)
+      if (errmatinv) error stop 'matrix inversion error'
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
   else
@@ -723,9 +723,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
   utilities_maskedCompliance = math_99to3333(temp99_Real)
 
-  if(debugGeneral) then
-    print'(/,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
-      ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
+  if (debugGeneral) then
+    print'(/,1x,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
+      'Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
     flush(IO_STDOUT)
   endif
 
@@ -810,7 +810,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pReal)                     :: dPdF_norm_max, dPdF_norm_min
   real(pReal), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
 
-  print'(/,a)', ' ... evaluating constitutive response ......................................'
+  print'(/,1x,a)', '... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
   homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                     ! set materialpoint target F to estimated field
@@ -824,11 +824,11 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
-  if (debugRotation) print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    ' Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
-  if(present(rotation_BC)) P_av = rotation_BC%rotate(P_av)
-  print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    ' Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
+  if (debugRotation) print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
+  if (present(rotation_BC)) P_av = rotation_BC%rotate(P_av)
+  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    'Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
 
   dPdF_max = 0.0_pReal
@@ -1017,7 +1017,7 @@ subroutine utilities_updateCoords(F)
   call utilities_FFTtensorForward()
 
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
-    if(any([i,j,k+grid3Offset] /= 1)) then
+    if (any([i,j,k+grid3Offset] /= 1)) then
       vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
                                      / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * cmplx(wgt,0.0,pReal)
     else
@@ -1031,7 +1031,7 @@ subroutine utilities_updateCoords(F)
  ! average F
   if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
   call MPI_Bcast(Favg,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
@@ -1042,22 +1042,22 @@ subroutine utilities_updateCoords(F)
 
   ! send bottom layer to process below
   call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,MPI_COMM_WORLD,request(1),ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
   call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,MPI_COMM_WORLD,request(2),ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
 
   ! send top layer to process above
   call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,1,MPI_COMM_WORLD,request(3),ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
   call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,1,MPI_COMM_WORLD,request(4),ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
 
   call MPI_Waitall(4,request,status,ierr)
-  if(ierr /=0) error stop 'MPI error'
+  if (ierr /=0) error stop 'MPI error'
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   ! ToDo
 #else
-  if(any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'
+  if (any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'
 #endif
 
  !--------------------------------------------------------------------------------------------------
@@ -1094,10 +1094,10 @@ subroutine utilities_saveReferenceStiffness
     fileUnit,ierr
 
   if (worldrank == 0) then
-    print'(a)', ' writing reference stiffness data required for restart to file'; flush(IO_STDOUT)
+    print'(/,1x,a)', '... writing reference stiffness data required for restart to file .........'; flush(IO_STDOUT)
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
          status='replace',access='stream',action='write',iostat=ierr)
-    if(ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
+    if (ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
     write(fileUnit) C_ref
     close(fileUnit)
   endif

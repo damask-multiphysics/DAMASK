@@ -124,10 +124,10 @@ subroutine grid_mechanical_spectral_polarisation_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print'(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
@@ -208,23 +208,23 @@ subroutine grid_mechanical_spectral_polarisation_init
   F_tau => FandF_tau(9:17,:,:,:)
 
   restartRead: if (interface_restartInc > 0) then
-    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
     call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(F,groupHandle,'F')
     call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
     call HDF5_read(F_tau,groupHandle,'F_tau')
@@ -235,7 +235,7 @@ subroutine grid_mechanical_spectral_polarisation_init
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
     F_tau = 2.0_pReal*F
     F_tau_lastInc = 2.0_pReal*F_lastInc
-  endif restartRead
+  end if restartRead
 
   homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
@@ -245,13 +245,13 @@ subroutine grid_mechanical_spectral_polarisation_init
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
 
   restartRead2: if (interface_restartInc > 0) then
-    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(1x,a,i0,a)', 'reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if(ierr /=0) error stop 'MPI error'
+    if (ierr /=0) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -260,7 +260,7 @@ subroutine grid_mechanical_spectral_polarisation_init
                        MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,ierr)
     call MPI_File_read(fileUnit,C_minMaxAvg,81,MPI_DOUBLE,MPI_STATUS_IGNORE,ierr)
     call MPI_File_close(fileUnit,ierr)
-  endif restartRead2
+  end if restartRead2
 
   call utilities_updateGamma(C_minMaxAvg)
   call utilities_saveReferenceStiffness
@@ -291,11 +291,11 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
-  if(num%update_gamma) then
+  if (num%update_gamma) then
     call utilities_updateGamma(C_minMaxAvg)
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
-  endif
+  end if
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -364,7 +364,7 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
                + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
-    endif
+    end if
 
     Fdot     = utilities_calculateRate(guess, &
                                        F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),Delta_t_old, &
@@ -376,14 +376,14 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
 
     homogenization_F0 = reshape(F,[3,3,product(grid(1:2))*grid3])
-  endif
+  end if
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * Delta_t
-  if(stress_BC%myType=='P')     P_aim = P_aim &
+  if (stress_BC%myType=='P')     P_aim = P_aim &
                                       + merge(.0_pReal,(stress_BC%values - P_aim)/t_remaining,stress_BC%mask)*Delta_t
-  if(stress_BC%myType=='dot_P') P_aim = P_aim &
+  if (stress_BC%myType=='dot_P') P_aim = P_aim &
                                       + merge(.0_pReal,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
@@ -399,8 +399,8 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
                   + math_mul3333xx33(S_scale,0.5_pReal*matmul(F_lambda33, &
                     math_mul3333xx33(C_scale,matmul(transpose(F_lambda33),F_lambda33)-math_I3)))
        F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
-    enddo; enddo; enddo
-  endif
+    end do; end do; end do
+  end if
 
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
@@ -441,7 +441,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
-  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
@@ -463,9 +463,9 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
     call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
-  endif
+  end if
 
-  if(num%update_gamma) call utilities_saveReferenceStiffness
+  if (num%update_gamma) call utilities_saveReferenceStiffness
 
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
@@ -502,16 +502,16 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     reason = -1
   else
     reason = 0
-  endif
+  end if
 
-  print'(1/,a)', ' ... reporting .............................................................'
-  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
+  print'(/,1x,a)', '... reporting .............................................................'
+  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
-  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error curl       = ', &
+  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error stress BC  = ', &
+  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error stress BC  = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
-  print'(/,a)', ' ==========================================================================='
+  print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 
 end subroutine converged
@@ -565,12 +565,12 @@ subroutine formResidual(in, FandF_tau, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (debugRotation) print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      ' deformation gradient aim       =', transpose(F_aim)
+    if (debugRotation) print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
+    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
-  endif newIteration
+  end if newIteration
 
 !--------------------------------------------------------------------------------------------------
 !
@@ -580,7 +580,7 @@ subroutine formResidual(in, FandF_tau, &
       num%beta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
       num%alpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
-  enddo; enddo; enddo
+  end do; end do; end do
 
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space
@@ -621,7 +621,7 @@ subroutine formResidual(in, FandF_tau, &
                        residual_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
                        + residual_F_tau(1:3,1:3,i,j,k)
-  enddo; enddo; enddo
+  end do; end do; end do
 
 !--------------------------------------------------------------------------------------------------
 ! calculating curl

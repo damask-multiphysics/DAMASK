@@ -30,10 +30,10 @@ module subroutine elastic_init(phases)
     elastic
 
 
-  print'(/,a)', ' <<<+-  phase:mechanical:elastic init  -+>>>'
-  print'(/,a)', ' <<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
 
-  print'(a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
+  print'(/,a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
   allocate(param(phases%length))
 

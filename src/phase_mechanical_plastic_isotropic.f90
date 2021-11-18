@@ -68,11 +68,11 @@ module function plastic_isotropic_init() result(myPlasticity)
   myPlasticity = plastic_active('isotropic')
   if(count(myPlasticity) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  print*, 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
-  print*, 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
+  print'(/,a)', 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
+  print'(/,a)', 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
@@ -140,7 +140,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 !  exit if any parameter is out of range
     if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(isotropic)')
 
-  enddo
+  end do
 
 end function plastic_isotropic_init
 
@@ -232,7 +232,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
     else
       Li      = 0.0_pReal
       dLi_dMi = 0.0_pReal
-    endif
+    end if
 
   end associate
 
@@ -262,7 +262,7 @@ module subroutine isotropic_dotState(Mp,ph,en)
     norm_Mp = sqrt(math_tensordot(Mp,Mp))
   else
     norm_Mp = sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp)))
-  endif
+  end if
 
   dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(en))) **prm%n
 
@@ -273,13 +273,13 @@ module subroutine isotropic_dotState(Mp,ph,en)
       xi_inf_star = prm%xi_inf &
                   + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2))**(1.0_pReal / prm%c_3) &
                   / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
-    endif
+    end if
     dot%xi(en) = dot_gamma &
                * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
                * sign(abs(1.0_pReal - stt%xi(en)/xi_inf_star)**prm%a *prm%h, 1.0_pReal-stt%xi(en)/xi_inf_star)
   else
     dot%xi(en) = 0.0_pReal
-  endif
+  end if
 
   end associate
 
@@ -303,7 +303,7 @@ module subroutine plastic_isotropic_results(ph,group)
         call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
                                     'resistance against plastic flow','Pa')
     end select
-  enddo outputsLoop
+  end do outputsLoop
   end associate
 
 end subroutine plastic_isotropic_results

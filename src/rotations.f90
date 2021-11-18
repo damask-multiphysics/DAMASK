@@ -103,10 +103,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_init
 
-  print'(/,a)', ' <<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
-  print*, 'https://doi.org/10.1088/0965-0393/23/8/083501'
+  print'(/,1x,a)', 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
+  print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
   call selfTest
 

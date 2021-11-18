@@ -152,17 +152,17 @@ module function plastic_dislotwin_init() result(myPlasticity)
   myPlasticity = plastic_active('dislotwin')
   if(count(myPlasticity) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanical:plastic:dislotwin init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:dislotwin init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  print*, 'A. Ma and F. Roters, Acta Materialia 52(12):3603–3612, 2004'
-  print*, 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
+  print'(/,1x,a)', 'A. Ma and F. Roters, Acta Materialia 52(12):3603–3612, 2004'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
 
-  print*, 'F. Roters et al., Computational Materials Science 39:91–95, 2007'
-  print*, 'https://doi.org/10.1016/j.commatsci.2006.04.014'//IO_EOL
+  print'(/,1x,a)', 'F. Roters et al., Computational Materials Science 39:91–95, 2007'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.commatsci.2006.04.014'//IO_EOL
 
-  print*, 'S.L. Wong et al., Acta Materialia 118:140–151, 2016'
-  print*, 'https://doi.org/10.1016/j.actamat.2016.07.032'
+  print'(/,1x,a)', 'S.L. Wong et al., Acta Materialia 118:140–151, 2016'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2016.07.032'
 
 
   phases => config_material%get('phase')
@@ -254,7 +254,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       rho_mob_0 = emptyRealArray; rho_dip_0 = emptyRealArray
       allocate(prm%b_sl,prm%Q_sl,prm%v_0,prm%i_sl,prm%p,prm%q,prm%B,source=emptyRealArray)
       allocate(prm%forestProjection(0,0),prm%h_sl_sl(0,0))
-    endif slipActive
+    end if slipActive
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
@@ -295,11 +295,11 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (any(prm%r             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tw'
       if (.not. prm%fccTwinTransNucleation) then
         if (any(prm%dot_N_0_tw  < 0.0_pReal)) extmsg = trim(extmsg)//' dot_N_0_tw'
-      endif
+      end if
     else twinActive
       allocate(prm%gamma_char,prm%b_tw,prm%dot_N_0_tw,prm%t_tw,prm%r,source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
-    endif twinActive
+    end if twinActive
 
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
@@ -344,11 +344,11 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (any(prm%s             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tr'
       if (phase_lattice(ph) /= 'cF') then
         if (any(prm%dot_N_0_tr  < 0.0_pReal)) extmsg = trim(extmsg)//' dot_N_0_tr'
-      endif
+      end if
     else transActive
       allocate(prm%s,prm%b_tr,prm%t_tr,prm%dot_N_0_tr,source=emptyRealArray)
       allocate(prm%h_tr_tr(0,0))
-    endif transActive
+    end if transActive
 
 !--------------------------------------------------------------------------------------------------
 ! shearband related parameters
@@ -364,7 +364,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (prm%E_sb          <  0.0_pReal) extmsg = trim(extmsg)//' Q_sb'
       if (prm%p_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' p_sb'
       if (prm%q_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' q_sb'
-    endif
+    end if
 
 !--------------------------------------------------------------------------------------------------
 ! parameters required for several mechanisms and their interactions
@@ -378,7 +378,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%T_ref       = pl%get_asFloat('T_ref')
       prm%Gamma_sf(1) = pl%get_asFloat('Gamma_sf')
       prm%Gamma_sf(2) = pl%get_asFloat('Gamma_sf,T',defaultVal=0.0_pReal)
-    endif
+    end if
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,prm%N_tw,pl%get_as1dFloat('h_sl-tw'), &
@@ -460,7 +460,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 !  exit if any parameter is out of range
     if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(dislotwin)')
 
-  enddo
+  end do
 
 end function plastic_dislotwin_init
 
@@ -574,7 +574,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                        + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
-  enddo slipContribution
+  end do slipContribution
 
   call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
   twinContibution: do i = 1, prm%sum_N_tw
@@ -582,7 +582,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                        + ddot_gamma_dtau_tw(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
-  enddo twinContibution
+  end do twinContibution
 
   call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr,ddot_gamma_dtau_tr)
   transContibution: do i = 1, prm%sum_N_tr
@@ -590,7 +590,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                        + ddot_gamma_dtau_tr(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
-  enddo transContibution
+  end do transContibution
 
   Lp      = Lp      * f_unrotated
   dLp_dMp = dLp_dMp * f_unrotated
@@ -616,10 +616,10 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
         forall (k=1:3,l=1:3,m=1:3,n=1:3) &
           dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                            + ddot_gamma_dtau * P_sb(k,l) * P_sb(m,n)
-      endif significantShearBandStress
-    enddo
+      end if significantShearBandStress
+    end do
 
-  endif shearBandingContribution
+  end if shearBandingContribution
 
   end associate
 
@@ -699,9 +699,9 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
 
           dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,en) &
                                / (d_hat-prm%d_caron(i))
-        endif
-      endif significantSlipStress
-    enddo slipState
+        end if
+      end if significantSlipStress
+    end do slipState
 
     dot%rho_mob(:,en) = abs(dot_gamma_sl)/(prm%b_sl*dst%Lambda_sl(:,en)) &
                       - dot_rho_dip_formation &
@@ -853,7 +853,7 @@ module subroutine plastic_dislotwin_results(ph,group)
 
       end select
 
-    enddo
+    end do
 
   end associate
 
@@ -988,8 +988,8 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
         end if
       else isFCC
         Ndot0=prm%dot_N_0_tw(i)
-      endif isFCC
-    enddo
+      end if isFCC
+    end do
 
     significantStress: where(tau > tol_math_check)
       StressRatio_r   = (dst%tau_hat_tw(:,en)/tau)**prm%r
@@ -1057,8 +1057,8 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
         end if
       else isFCC
         Ndot0=prm%dot_N_0_tr(i)
-      endif isFCC
-    enddo
+      end if isFCC
+    end do
 
     significantStress: where(tau > tol_math_check)
       StressRatio_s   = (dst%tau_hat_tr(:,en)/tau)**prm%s

@@ -48,9 +48,9 @@ module mesh_mechanical_FEM
     real(pReal) :: &
       eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
       eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
-  end type tNumerics   
+  end type tNumerics
 
-  type(tNumerics), private :: num 
+  type(tNumerics), private :: num
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES                           :: mechanical_snes
@@ -112,8 +112,8 @@ subroutine FEM_mechanical_init(fieldBC)
   real(pReal), dimension(3,3) :: devNull
   class(tNode), pointer :: &
     num_mesh
-   
-  print'(/,a)', ' <<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
+
+  print'(/,1x,a)', '<<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
@@ -123,7 +123,7 @@ subroutine FEM_mechanical_init(fieldBC)
   num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
   num%eps_struct_atol   = num_mesh%get_asFloat('eps_struct_atol', defaultVal = 1.0e-10_pReal)
   num%eps_struct_rtol   = num_mesh%get_asFloat('eps_struct_rtol', defaultVal = 1.0e-4_pReal)
-  
+
   if (num%itmax <= 1)                       call IO_error(301,ext_msg='itmax')
   if (num%eps_struct_rtol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_struct_rtol')
   if (num%eps_struct_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_struct_atol')
@@ -302,7 +302,7 @@ type(tSolutionState) function FEM_mechanical_solution( &
     CHKERRQ(ierr)
   endif
 
-  print'(/,a)', ' ==========================================================================='
+  print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 
 end function FEM_mechanical_solution
@@ -362,7 +362,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
-    
+
     call PetscSectionGetNumFields(section,numFields,ierr)
     CHKERRQ(ierr)
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,ierr)                             !< get Dofs belonging to element
@@ -663,8 +663,8 @@ subroutine FEM_mechanical_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reaso
   print'(/,1x,a,a,i0,a,i0,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
                                                   int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
-  print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    ' Piola--Kirchhoff stress / MPa =',transpose(P_av)*1.e-6_pReal
+  print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    'Piola--Kirchhoff stress / MPa =',transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
 
 end subroutine FEM_mechanical_converged
@@ -679,7 +679,7 @@ subroutine FEM_mechanical_updateCoords()
     nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
   real(pReal), pointer, dimension(:,:) :: &
     nodeCoords                                                                                      !< nodal coordinates (3,Nnodes)
-  real(pReal), pointer, dimension(:,:,:) :: &                                                       
+  real(pReal), pointer, dimension(:,:,:) :: &
     ipCoords                                                                                        !< ip coordinates (3,nQuadrature,mesh_NcpElems)
 
   integer :: &
@@ -720,7 +720,7 @@ subroutine FEM_mechanical_updateCoords()
   call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(mechQuad,0,basisField,basisFieldDer,ierr); CHKERRQ(ierr)
   allocate(ipCoords(3,nQuadrature,mesh_NcpElems),source=0.0_pReal)
-  do c=cellStart,cellEnd-1                                                                                      
+  do c=cellStart,cellEnd-1
     qOffset=0
     call DMPlexVecGetClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)                             !< get nodal coordinates of each element
     do qPt=0,nQuadrature-1
@@ -737,8 +737,8 @@ subroutine FEM_mechanical_updateCoords()
         enddo
       enddo
     enddo
-    call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)     
-  end do    
+    call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,ierr); CHKERRQ(ierr)
+  end do
   call discretization_setIPcoords(reshape(ipCoords,[3,mesh_NcpElems*nQuadrature]))
   call DMRestoreLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
 

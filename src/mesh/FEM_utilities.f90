@@ -96,7 +96,7 @@ subroutine FEM_utilities_init
   logical :: debugPETSc                                                                             !< use some in debug defined options for more verbose PETSc solution
 
 
-  print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
+  print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
 
   num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
 
@@ -111,10 +111,10 @@ subroutine FEM_utilities_init
   debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
   debugPETSc  =  debug_mesh%contains('PETSc')
 
-  if(debugPETSc) print'(3(/,a),/)', &
-                 ' Initializing PETSc with debug options: ', &
+  if(debugPETSc) print'(3(/,1x,a),/)', &
+                 'Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the "PETSc_options" keyword in numerics.yaml'
+                 'add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
@@ -149,8 +149,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   PetscErrorCode :: ierr
 
-
-  print'(/,a)', ' ... evaluating constitutive response ......................................'
+  print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
   call homogenization_mechanical_response(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
   if (.not. terminallyIll) &

@@ -72,7 +72,7 @@ subroutine discretization_grid_init(restart)
     fileContent, fname
 
 
-  print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
 
   if (worldrank == 0) then
@@ -96,9 +96,9 @@ subroutine discretization_grid_init(restart)
   call MPI_Bcast(origin,3,MPI_DOUBLE,0,MPI_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
 
-  print'(/,a,3(i12  ))',  ' cells  a b c: ', grid
-  print'(a,3(es12.5))',   ' size   x y z: ', geomSize
-  print'(a,3(es12.5))',   ' origin x y z: ', origin
+  print'(/,1x,a,3(i12,1x))',    'cells  a b c: ', grid
+  print  '(1x,a,3(es12.5,1x))', 'size   x y z: ', geomSize
+  print  '(1x,a,3(es12.5,1x))', 'origin x y z: ', origin
 
   if (worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
 

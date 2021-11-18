@@ -81,7 +81,7 @@ subroutine CPFEM_init
   integer(HID_T) :: fileHandle
 
 
-  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
 
   if (interface_restartInc > 0) then

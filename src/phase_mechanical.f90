@@ -217,7 +217,7 @@ module subroutine mechanical_init(phases)
     phase, &
     mech
 
-  print'(/,a)', ' <<<+-  phase:mechanical init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
   allocate(output_constituent(phases%length))
