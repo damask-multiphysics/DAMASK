@@ -484,7 +484,7 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
 
   associate(prm => param(ph), stt => state(ph))
 
-    C66       = elastic_C66(ph,en)
+    C66 = math_sym3333to66(math_Voigt66to3333(elastic_C66(ph,en)))
 
     f_unrotated = 1.0_pReal &
                 - sum(stt%f_tw(1:prm%sum_N_tw,en)) &

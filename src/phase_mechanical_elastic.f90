@@ -64,38 +64,7 @@ end subroutine elastic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Return 6x6 elasticity tensor.
 !--------------------------------------------------------------------------------------------------
-function get_C66(ph,en)
-
-  integer, intent(in) :: &
-    ph, &
-    en
-  real(pReal), dimension(6,6) :: get_C66
-
-
-  associate(prm => param(ph))
-    get_C66 = 0.0_pReal
-    get_C66(1,1) = prm%C_11
-    get_C66(1,2) = prm%C_12
-    get_C66(4,4) = prm%C_44
-
-    if (any(phase_lattice(ph) == ['hP','tI'])) then
-      get_C66(1,3) = prm%C_13
-      get_C66(3,3) = prm%C_33
-    end if
-
-    if (phase_lattice(ph) == 'tI') get_C66(6,6) = prm%C_66
-
-    get_C66 = lattice_symmetrize_C66(get_C66,phase_lattice(ph))
-
-  end associate
-
-end function get_C66
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Return 6x6 elasticity tensor.
-!--------------------------------------------------------------------------------------------------
-module function elastic_C66(ph,en) result(C66)
+function elastic_C66(ph,en) result(C66)
 
   integer, intent(in) :: &
     ph, &
@@ -103,7 +72,22 @@ module function elastic_C66(ph,en) result(C66)
   real(pReal), dimension(6,6) :: C66
 
 
-  C66 = math_sym3333to66(math_Voigt66to3333(get_C66(ph,en)))                                        ! Literature data is in Voigt notation
+  associate(prm => param(ph))
+    C66 = 0.0_pReal
+    C66(1,1) = prm%C_11
+    C66(1,2) = prm%C_12
+    C66(4,4) = prm%C_44
+
+    if (any(phase_lattice(ph) == ['hP','tI'])) then
+      C66(1,3) = prm%C_13
+      C66(3,3) = prm%C_33
+    end if
+
+    if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66
+
+    C66 = lattice_symmetrize_C66(C66,phase_lattice(ph))
+
+  end associate
 
 end function elastic_C66
 
@@ -120,9 +104,10 @@ module function elastic_mu(ph,en) result(mu)
     mu
 
 
-  mu = lattice_equivalent_mu(get_C66(ph,en),'voigt')
+  mu = lattice_equivalent_mu(elastic_C66(ph,en),'voigt')
 
 end function elastic_mu
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return Poisson ratio.
@@ -136,7 +121,7 @@ module function elastic_nu(ph,en) result(nu)
     nu
 
 
-  nu = lattice_equivalent_nu(get_C66(ph,en),'voigt')
+  nu = lattice_equivalent_nu(elastic_C66(ph,en),'voigt')
 
 end function elastic_nu
 
@@ -194,7 +179,7 @@ module function phase_homogenizedC66(ph,en) result(C)
     case (PLASTICITY_DISLOTWIN_ID) plasticType
      C = plastic_dislotwin_homogenizedC(ph,en)
     case default plasticType
-     C = elastic_C66(ph,en)
+     C = math_sym3333to66(math_Voigt66to3333(elastic_C66(ph,en)))
   end select plasticType
 
 end function phase_homogenizedC66
