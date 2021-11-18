@@ -2,12 +2,12 @@ submodule(phase:mechanical) elastic
 
   type :: tParameters
     real(pReal) :: &
-      C_11, &
-      C_12, &
-      C_13, &
-      C_33, &
-      C_44, &
-      C_66 
+      C_11 = 0.0_pReal, &
+      C_12 = 0.0_pReal, &
+      C_13 = 0.0_pReal, &
+      C_33 = 0.0_pReal, &
+      C_44 = 0.0_pReal, &
+      C_66 = 0.0_pReal
   end type tParameters
 
   type(tParameters), allocatable, dimension(:) :: param
@@ -15,7 +15,7 @@ submodule(phase:mechanical) elastic
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize elasticity
+!> @brief Initialize elasticity.
 !--------------------------------------------------------------------------------------------------
 module subroutine elastic_init(phases)
 
@@ -45,24 +45,24 @@ module subroutine elastic_init(phases)
 
     associate(prm => param(ph))
 
-      prm%C_11   = elastic%get_asFloat('C_11')
-      prm%C_12   = elastic%get_asFloat('C_12')
-      prm%C_44   = elastic%get_asFloat('C_44')
+      prm%C_11 = elastic%get_asFloat('C_11')
+      prm%C_12 = elastic%get_asFloat('C_12')
+      prm%C_44 = elastic%get_asFloat('C_44')
 
       if (any(phase_lattice(ph) == ['hP','tI'])) then
-        prm%C_13   = elastic%get_asFloat('C_13')
-        prm%C_33   = elastic%get_asFloat('C_33')
+        prm%C_13 = elastic%get_asFloat('C_13')
+        prm%C_33 = elastic%get_asFloat('C_33')
       end if
-      if (phase_lattice(ph) == 'tI') prm%C_66   = elastic%get_asFloat('C_66')
+      if (phase_lattice(ph) == 'tI') prm%C_66 = elastic%get_asFloat('C_66')
 
     end associate
   end do
 
 end subroutine elastic_init
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief returns 6x6 elasticity tensor
-! internal function call to return dynamic values of the elasticity tensor
+!> @brief Return 6x6 elasticity tensor.
 !--------------------------------------------------------------------------------------------------
 function get_C66(ph,en)
 
@@ -70,6 +70,7 @@ function get_C66(ph,en)
     ph, &
     en
   real(pReal), dimension(6,6) :: get_C66
+
 
   associate(prm => param(ph))
     get_C66 = 0.0_pReal
@@ -81,18 +82,18 @@ function get_C66(ph,en)
       get_C66(1,3) = prm%C_13
       get_C66(3,3) = prm%C_33
     end if
- 
-    if (phase_lattice(ph) == 'tI') &
-      get_C66(6,6) = prm%C_66
-   
+
+    if (phase_lattice(ph) == 'tI') get_C66(6,6) = prm%C_66
+
     get_C66 = lattice_symmetrize_C66(get_C66,phase_lattice(ph))
 
   end associate
 
 end function get_C66
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief returns 6x6 elasticity tensor in Voigt notation
+!> @brief Return 6x6 elasticity tensor.
 !--------------------------------------------------------------------------------------------------
 module function elastic_C66(ph,en) result(C66)
 
@@ -100,7 +101,9 @@ module function elastic_C66(ph,en) result(C66)
     ph, &
     en
   real(pReal), dimension(6,6) :: &
-    C66 
+    C66
+
+
   associate(prm => param(ph))
 
     C66 = get_C66(ph,en) 
@@ -110,8 +113,9 @@ module function elastic_C66(ph,en) result(C66)
 
 end function elastic_C66
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief returns value of shear modulus
+!> @brief Return shear modulus.
 !--------------------------------------------------------------------------------------------------
 module function elastic_mu(ph,en) result(mu)
 
@@ -121,12 +125,13 @@ module function elastic_mu(ph,en) result(mu)
   real(pReal) :: &
     mu
 
+
     mu  = lattice_equivalent_mu(get_C66(ph,en),'voigt')
 
 end function elastic_mu
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns value of poisson ratio
+!> @brief Return Poisson ratio.
 !--------------------------------------------------------------------------------------------------
 module function elastic_nu(ph,en) result(nu)
 
@@ -135,6 +140,7 @@ module function elastic_nu(ph,en) result(nu)
     en
   real(pReal) :: &
     nu
+
 
     nu  = lattice_equivalent_nu(get_C66(ph,en),'voigt')
 
@@ -189,6 +195,7 @@ module function phase_homogenizedC(ph,en) result(C)
 
   real(pReal), dimension(6,6) :: C
   integer,      intent(in)    :: ph, en
+
 
   plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_DISLOTWIN_ID) plasticType

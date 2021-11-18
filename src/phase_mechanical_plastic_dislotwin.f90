@@ -791,12 +791,10 @@ module subroutine dislotwin_dependentState(T,ph,en)
     dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2.0_pReal
 
 
-    x0 = mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/&
-                             (1.0_pReal-nu)      ! ToDo: In the paper, this is the Burgers vector for slip
+    x0 = mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tw(:,en) = mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
-    x0 = mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/&
-                                            (1.0_pReal-nu)      ! ToDo: In the paper, this is the Burgers vector for slip
+    x0 = mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tr(:,en) = mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
 
   end associate

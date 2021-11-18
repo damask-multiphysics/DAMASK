@@ -372,8 +372,7 @@ module subroutine dislotungsten_dependentState(ph,en)
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     Lambda_sl_inv
-  real(pReal) :: &
-    mu
+
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
