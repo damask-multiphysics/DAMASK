@@ -383,11 +383,8 @@ pure function rotTensor4sym(self,T,active) result(tRot)
   real(pReal),     intent(in), dimension(6,6) :: T
   logical,         intent(in), optional       :: active
 
-  if (present(active)) then
-    tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T),active))
-  else
-    tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T)))
-  endif
+
+  tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T),active))
 
 end function rotTensor4sym
 
@@ -399,6 +396,7 @@ pure elemental function misorientation(self,other)
 
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
+
 
   misorientation%q = multiply_quaternion(other%q, conjugate_quaternion(self%q))
 

@@ -100,16 +100,9 @@ module function elastic_C66(ph,en) result(C66)
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal), dimension(6,6) :: &
-    C66
 
 
-  associate(prm => param(ph))
-
-    C66 = get_C66(ph,en)
-    C66 = math_sym3333to66(math_Voigt66to3333(C66))                                                 ! Literature data is in Voigt notation
-
-  end associate
+  C66 = math_sym3333to66(math_Voigt66to3333(get_C66(ph,en)))                                        ! Literature data is in Voigt notation
 
 end function elastic_C66
 
