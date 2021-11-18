@@ -230,10 +230,10 @@ module phase
     end function phase_mechanical_constitutive
 
     !ToDo: Merge all the stiffness functions
-    module function phase_homogenizedC(ph,en) result(C)
+    module function phase_homogenizedC66(ph,en) result(C)
       integer, intent(in) :: ph, en
       real(pReal), dimension(6,6) :: C
-    end function phase_homogenizedC
+    end function phase_homogenizedC66
     module function phase_damage_C(C_homogenized,ph,en) result(C)
       real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
       integer,                         intent(in)  :: ph,en
@@ -299,7 +299,7 @@ module phase
 
   public :: &
     phase_init, &
-    phase_homogenizedC, &
+    phase_homogenizedC66, &
     phase_f_phi, &
     phase_f_T, &
     phase_K_phi, &

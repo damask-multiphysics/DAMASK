@@ -652,7 +652,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
     real(pReal), dimension(6,6) :: C
 
 
-    C = phase_homogenizedC(material_phaseID(grainID,ce),material_phaseEntry(grainID,ce))
+    C = phase_homogenizedC66(material_phaseID(grainID,ce),material_phaseEntry(grainID,ce))
     equivalentMu = lattice_equivalent_mu(C,'voigt')
 
   end function equivalentMu

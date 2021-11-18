@@ -417,7 +417,7 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
    sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
-      call isobrittle_deltaState(phase_homogenizedC(ph,en), Fe, ph,en)
+      call isobrittle_deltaState(phase_homogenizedC66(ph,en), Fe, ph,en)
       broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))
       if (.not. broken) then
         myOffset = damageState(ph)%offsetDeltaState

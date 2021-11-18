@@ -166,7 +166,7 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     i, j
 
 
-  C = math_66toSym3333(phase_homogenizedC(ph,en))
+  C = math_66toSym3333(phase_homogenizedC66(ph,en))
   C = phase_damage_C(C,ph,en)
 
   E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
@@ -184,7 +184,7 @@ end subroutine phase_hooke_SandItsTangents
 !> @brief returns the homogenized elasticity matrix
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
-module function phase_homogenizedC(ph,en) result(C)
+module function phase_homogenizedC66(ph,en) result(C)
 
   real(pReal), dimension(6,6) :: C
   integer,      intent(in)    :: ph, en
@@ -197,7 +197,7 @@ module function phase_homogenizedC(ph,en) result(C)
      C = elastic_C66(ph,en)
   end select plasticType
 
-end function phase_homogenizedC
+end function phase_homogenizedC66
 
 
 end submodule elastic
