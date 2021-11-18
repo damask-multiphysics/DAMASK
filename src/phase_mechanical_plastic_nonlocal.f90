@@ -242,9 +242,6 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
-    prm%mu = elastic_mu(ph)
-    prm%nu = elastic_nu(ph)
-
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
@@ -570,7 +567,9 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
     n
   real(pReal) :: &
     FVsize, &
-    nRealNeighbors                                                                                  ! number of really existing neighbors
+    nRealNeighbors, &                                                                               ! number of really existing neighbors
+    mu, &
+    nu
   integer, dimension(2) :: &
     neighbors
   real(pReal), dimension(2) :: &
@@ -609,6 +608,8 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
 
   associate(prm => param(ph),dst => dependentState(ph), stt => state(ph))
 
+  mu = elastic_mu(ph,en)
+  nu = elastic_nu(ph,en)
   rho = getRho(ph,en)
 
   stt%rho_forest(:,en) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
@@ -627,7 +628,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
     myInteractionMatrix = prm%h_sl_sl
   end if
 
-  dst%tau_pass(:,en) = prm%mu * prm%b_sl &
+  dst%tau_pass(:,en) = mu * prm%b_sl &
                      * sqrt(matmul(myInteractionMatrix,sum(abs(rho),2)))
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
@@ -728,8 +729,8 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
       where(rhoTotal > 0.0_pReal) rhoExcessGradient_over_rho = rhoExcessGradient / rhoTotal
 
         ! ... gives the local stress correction when multiplied with a factor
-      dst%tau_back(s,en) = - prm%mu * prm%b_sl(s) / (2.0_pReal * PI) &
-                         * (  rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
+      dst%tau_back(s,en) = - mu * prm%b_sl(s) / (2.0_pReal * PI) &
+                         * (  rhoExcessGradient_over_rho(1) / (1.0_pReal - nu) &
                             + rhoExcessGradient_over_rho(2))
     end do
   end if
@@ -855,6 +856,9 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     c, &                                                                                            ! character of dislocation
     t, &                                                                                            ! type of dislocation
     s                                                                                               ! index of my current slip system
+  real(pReal) :: &
+    mu, &
+    nu
   real(pReal), dimension(param(ph)%sum_N_sl,10) :: &
     deltaRhoRemobilization, &                                                                       ! density increment by remobilization
     deltaRhoDipole2SingleStress                                                                     ! density increment by dipole dissociation (by stress change)
@@ -869,8 +873,11 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     dUpper, &                                                                                       ! current maximum stable dipole distance for edges and screws
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
-
+   
   associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph))
+
+  mu = elastic_mu(ph,en)
+  nu = elastic_nu(ph,en)
 
   !*** shortcut to state variables
   forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
@@ -901,8 +908,8 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   end do
 
-  dUpper(:,1) = prm%mu * prm%b_sl/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
-  dUpper(:,2) = prm%mu * prm%b_sl/(4.0_pReal * PI * abs(tau))
+  dUpper(:,1) = mu * prm%b_sl/(8.0_pReal * PI * (1.0_pReal - nu) * abs(tau))
+  dUpper(:,2) = mu * prm%b_sl/(4.0_pReal * PI * abs(tau))
 
   where(dNeq0(sqrt(sum(abs(rho(:,edg)),2)))) &
     dUpper(:,1) = min(1.0_pReal/sqrt(sum(abs(rho(:,edg)),2)),dUpper(:,1))
@@ -975,7 +982,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
   real(pReal) :: &
-    D_SD
+    D_SD, &
+    mu, &
+    nu
 
   if (timestep <= 0.0_pReal) then
     plasticState(ph)%dotState = 0.0_pReal
@@ -983,6 +992,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   end if
 
   associate(prm => param(ph), dst => dependentState(ph), dot => dotState(ph), stt => state(ph))
+
+  mu = elastic_mu(ph,en)
+  nu = elastic_nu(ph,en)
 
   tau = 0.0_pReal
   dot_gamma = 0.0_pReal
@@ -1005,8 +1017,8 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   end do
 
   dLower = prm%minDipoleHeight
-  dUpper(:,1) = prm%mu * prm%b_sl/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
-  dUpper(:,2) = prm%mu * prm%b_sl/(4.0_pReal * PI * abs(tau))
+  dUpper(:,1) = mu * prm%b_sl/(8.0_pReal * PI * (1.0_pReal - nu) * abs(tau))
+  dUpper(:,2) = mu * prm%b_sl/(4.0_pReal * PI * abs(tau))
 
   where(dNeq0(sqrt(sum(abs(rho(:,edg)),2)))) &
     dUpper(:,1) = min(1.0_pReal/sqrt(sum(abs(rho(:,edg)),2)),dUpper(:,1))
@@ -1083,8 +1095,8 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   ! thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
   D_SD = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))                                              ! eq. 3.53
-  v_climb = D_SD * prm%mu * prm%V_at &
-          / (PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
+  v_climb = D_SD * mu * prm%V_at &
+          / (PI * (1.0_pReal-nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
   forall (s = 1:prm%sum_N_sl, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
