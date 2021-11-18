@@ -854,12 +854,13 @@ end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 Voigt matrix into symmetric 3x3x3x3 matrix
+!> @brief Convert 6x6 Voigt matrix into symmetric 3x3x3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
   real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
   real(pReal), dimension(6,6), intent(in) :: m66                                                    !< 6x6 matrix
+
   integer :: i,j
 
 
@@ -871,6 +872,31 @@ pure function math_Voigt66to3333(m66)
   enddo; enddo
 
 end function math_Voigt66to3333
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 Voigt matrix.
+!--------------------------------------------------------------------------------------------------
+pure function math_3333toVoigt66(m3333)
+
+  real(pReal), dimension(6,6)                 :: math_3333toVoigt66
+  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
+
+  integer :: i,j
+
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:6, j=1:6)
+    math_3333toVoigt66(i,j) = m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+  end do
+#else
+  do i=1,6; do j=1,6
+    math_3333toVoigt66(i,j) = m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+  end do; end do
+#endif
+
+end function math_3333toVoigt66
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1260,6 +1286,9 @@ subroutine selfTest
   call random_number(t66)
   if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pReal))) &
     error stop 'math_sym3333to66/math_66toSym3333'
+
+  if(any(dNeq(math_3333toVoigt66(math_Voigt66to3333(t66)),t66,1.0e-15_pReal))) &
+    error stop 'math_3333toVoigt66/math_Voigt66to3333'
 
   call random_number(v6)
   if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &

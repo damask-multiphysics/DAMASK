@@ -167,7 +167,6 @@ end subroutine phase_hooke_SandItsTangents
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
-!> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
 module function phase_homogenizedC66(ph,en) result(C)
 
