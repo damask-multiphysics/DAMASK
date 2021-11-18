@@ -100,7 +100,7 @@ module function elastic_C66(ph,en) result(C66)
   integer, intent(in) :: &
     ph, &
     en
-
+  real(pReal), dimension(6,6) :: C66
 
   C66 = math_sym3333to66(math_Voigt66to3333(get_C66(ph,en)))                                        ! Literature data is in Voigt notation
 
@@ -166,8 +166,7 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     i, j
 
 
-  C = math_66toSym3333(phase_homogenizedC66(ph,en))
-  C = phase_damage_C(C,ph,en)
+  C = math_66toSym3333(phase_damage_C66(phase_homogenizedC66(ph,en),ph,en))
 
   E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
   S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                                        !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
