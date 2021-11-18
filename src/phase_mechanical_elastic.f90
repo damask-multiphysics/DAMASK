@@ -64,7 +64,7 @@ end subroutine elastic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Return 6x6 elasticity tensor.
 !--------------------------------------------------------------------------------------------------
-function elastic_C66(ph,en) result(C66)
+module function elastic_C66(ph,en) result(C66)
 
   integer, intent(in) :: &
     ph, &

@@ -505,6 +505,7 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
   type(rotation)                        :: R
   integer                               :: i
 
+
   select case(lattice)
     case('cF')
       coordinateSystem = buildCoordinateSystem(Ntwin,FCC_NSLIPSYSTEM,FCC_SYSTEMTWIN,&
@@ -521,7 +522,7 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
   do i = 1, sum(Ntwin)
     call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
-    lattice_C66_twin(1:6,1:6,i) = R%rotTensor4sym(C66)
+    lattice_C66_twin(1:6,1:6,i) = math_sym3333to66(R%rotTensor4(math_66toSym3333(C66)))
   enddo
 
 end function lattice_C66_twin
@@ -580,7 +581,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   do i = 1, sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
-    lattice_C66_trans(1:6,1:6,i) = R%rotTensor4sym(C_target_unrotated66)
+    lattice_C66_trans(1:6,1:6,i) = math_sym3333to66(R%rotTensor4(math_66toSym3333(C_target_unrotated66)))
   enddo
 
  end function lattice_C66_trans
