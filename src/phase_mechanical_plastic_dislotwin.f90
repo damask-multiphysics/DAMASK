@@ -473,27 +473,29 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
   integer,     intent(in) :: &
     ph, en
   real(pReal), dimension(6,6) :: &
-    homogenizedC, &
-    C66
+    homogenizedC
+
+  real(pReal), dimension(6,6) :: &
+    C
   real(pReal), dimension(:,:,:), allocatable :: &
     C66_tw, &
     C66_tr
-
   integer :: i
   real(pReal) :: f_unrotated
 
-  associate(prm => param(ph), stt => state(ph))
 
-    C66 = math_sym3333to66(math_Voigt66to3333(elastic_C66(ph,en)))
+  C = elastic_C66(ph,en)
+
+  associate(prm => param(ph), stt => state(ph))
 
     f_unrotated = 1.0_pReal &
                 - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
                 - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    homogenizedC = f_unrotated * C66
+    homogenizedC = f_unrotated * C
 
     twinActive: if (prm%sum_N_tw > 0) then
-      C66_tw    = lattice_C66_twin(prm%N_tw,C66,phase_lattice(ph),phase_cOverA(ph))
+      C66_tw    = lattice_C66_twin(prm%N_tw,C,phase_lattice(ph),phase_cOverA(ph))
       do i=1,prm%sum_N_tw
         homogenizedC = homogenizedC &
                      + stt%f_tw(i,en)*C66_tw(1:6,1:6,i)
@@ -501,7 +503,7 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
      end if twinActive 
     
     transActive: if (prm%sum_N_tr > 0) then
-      C66_tr    = lattice_C66_trans(prm%N_tr,C66,prm%lattice_tr,0.0_pReal,prm%a_cI,prm%a_cF)
+      C66_tr    = lattice_C66_trans(prm%N_tr,C,prm%lattice_tr,0.0_pReal,prm%a_cI,prm%a_cF)
       do i=1,prm%sum_N_tr
         homogenizedC = homogenizedC &
                      + stt%f_tr(i,en)*C66_tr(1:6,1:6,i)

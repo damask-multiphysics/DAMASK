@@ -130,6 +130,7 @@ end function elastic_nu
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
+! ToDo: Use Voigt matrix directly
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, ph, en)
@@ -166,7 +167,7 @@ end subroutine phase_hooke_SandItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenized elasticity matrix
+!> @brief Return the homogenized elasticity matrix.
 !--------------------------------------------------------------------------------------------------
 module function phase_homogenizedC66(ph,en) result(C)
 
@@ -176,7 +177,7 @@ module function phase_homogenizedC66(ph,en) result(C)
 
   plasticType: select case (phase_plasticity(ph))
     case (PLASTICITY_DISLOTWIN_ID) plasticType
-     C = math_3333toVoigt66(math_66toSym3333(plastic_dislotwin_homogenizedC(ph,en)))
+     C = plastic_dislotwin_homogenizedC(ph,en)
     case default plasticType
      C = elastic_C66(ph,en)
   end select plasticType
