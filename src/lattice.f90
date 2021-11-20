@@ -548,6 +548,8 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
   if (lattice_target == 'hP') then
+    ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
+    ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
     if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
       call IO_error(131,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
@@ -2091,7 +2093,7 @@ function lattice_equivalent_nu(C,assumption) result(nu)
     K = (C(1,1)+C(2,2)+C(3,3) +2.0_pReal*(C(1,2)+C(2,3)+C(1,3))) &
       / 9.0_pReal
   elseif(IO_lc(assumption) == 'reuss') then
-    call math_invert(S,error,C)
+    call math_invert(S,error,C)                                                                     ! ToDo: correct for Voigt?
     if(error) error stop 'matrix inversion failed'
     K = 1.0_pReal &
       / (S(1,1)+S(2,2)+S(3,3) +2.0_pReal*(S(1,2)+S(2,3)+S(1,3)))
@@ -2123,7 +2125,7 @@ function lattice_equivalent_mu(C,assumption) result(mu)
     mu = (1.0_pReal*(C(1,1)+C(2,2)+C(3,3)) -1.0_pReal*(C(1,2)+C(2,3)+C(1,3)) +3.0_pReal*(C(4,4)+C(5,5)+C(6,6))) &
        / 15.0_pReal
   elseif(IO_lc(assumption) == 'reuss') then
-    call math_invert(S,error,C)
+    call math_invert(S,error,C)                                                                     ! ToDo: correct for Voigt?
     if(error) error stop 'matrix inversion failed'
     mu = 15.0_pReal &
        / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
