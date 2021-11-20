@@ -854,6 +854,40 @@ end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Convert 6 Voigt stress vector into symmetric 3x3 tensor.
+!--------------------------------------------------------------------------------------------------
+pure function math_Voigt6to33_stress(sigma_tilde) result(sigma)
+
+  real(pReal), dimension(3,3) :: sigma
+  real(pReal), dimension(6), intent(in) :: sigma_tilde
+
+
+  sigma = reshape([sigma_tilde(1), sigma_tilde(6), sigma_tilde(5), &
+                   sigma_tilde(6), sigma_tilde(2), sigma_tilde(4), &
+                   sigma_tilde(5), sigma_tilde(4), sigma_tilde(3)],[3,3])
+
+
+end function math_Voigt6to33_stress
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert 6 Voigt strain vector into symmetric 3x3 tensor.
+!--------------------------------------------------------------------------------------------------
+pure function math_Voigt6to33_strain(epsilon_tilde) result(epsilon)
+
+  real(pReal), dimension(3,3) :: epsilon
+  real(pReal), dimension(6), intent(in) :: epsilon_tilde
+
+
+  epsilon = reshape([          epsilon_tilde(1), 0.5_pReal*epsilon_tilde(6), 0.5_pReal*epsilon_tilde(5), &
+                     0.5_pReal*epsilon_tilde(6),           epsilon_tilde(2), 0.5_pReal*epsilon_tilde(4), &
+                     0.5_pReal*epsilon_tilde(5), 0.5_pReal*epsilon_tilde(4),           epsilon_tilde(3)],[3,3])
+
+
+end function math_Voigt6to33_strain
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Convert 6x6 Voigt matrix into symmetric 3x3x3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
@@ -864,12 +898,12 @@ pure function math_Voigt66to3333(m66)
   integer :: i,j
 
 
-  do i=1,6; do j=1, 6
+  do i=1,6; do j=1,6
     math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
     math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
     math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
     math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
-  enddo; enddo
+  end do; end do
 
 end function math_Voigt66to3333
 
