@@ -1491,20 +1491,20 @@ subroutine selfTest()
     call R%fromMatrix(om)
 
     call random_number(v3)
-    if (all(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
       error stop 'rotVector'
 
     call random_number(t33)
-    if (all(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
       error stop 'rotTensor2'
 
     call random_number(t3333)
-    if (all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
       error stop 'rotTensor4'
 
     call random_number(C)
     C = C+transpose(C)
-    if (any(dNeq(R%rotStiffness(C),math_3333toVoigt66(R%rotate(math_Voigt66to3333(C))),1.0e-14_pReal))) &
+    if (any(dNeq(R%rotStiffness(C),math_3333toVoigt66(R%rotate(math_Voigt66to3333(C))),1.0e-12_pReal))) &
       error stop 'rotStiffness'
 
     call R%fromQuaternion(qu * (1.0_pReal + merge(+5.e-9_pReal,-5.e-9_pReal, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML
