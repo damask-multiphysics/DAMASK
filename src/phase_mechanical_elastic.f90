@@ -15,7 +15,7 @@ submodule(phase:mechanical) elastic
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize elasticity.
+!> @brief initialize elasticity
 !--------------------------------------------------------------------------------------------------
 module subroutine elastic_init(phases)
 
@@ -62,7 +62,7 @@ end subroutine elastic_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return 6x6 elasticity tensor.
+!> @brief return 6x6 elasticity tensor
 !--------------------------------------------------------------------------------------------------
 module function elastic_C66(ph,en) result(C66)
 
@@ -93,7 +93,7 @@ end function elastic_C66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return shear modulus.
+!> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
 module function elastic_mu(ph,en) result(mu)
 
@@ -110,7 +110,7 @@ end function elastic_mu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return Poisson ratio.
+!> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
 module function elastic_nu(ph,en) result(nu)
 
@@ -128,7 +128,7 @@ end function elastic_nu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
+!> @brief return the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
 ! ToDo: Use Voigt matrix directly
 !--------------------------------------------------------------------------------------------------
