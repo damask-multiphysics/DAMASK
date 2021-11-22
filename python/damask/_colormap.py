@@ -14,6 +14,10 @@ from PIL import Image
 from . import util
 from . import Table
 
+from typing import Sequence, Union, Optional, List, TextIO
+from io import TextIOWrapper
+import pathlib
+
 _eps   = 216./24389.
 _kappa = 24389./27.
 _ref_white = np.array([.95047, 1.00000, 1.08883])                                                   # Observer = 2, Illuminant = D65
@@ -39,20 +43,20 @@ class Colormap(mpl.colors.ListedColormap):
 
     """
 
-    def __add__(self,other):
+    def __add__(self, other: "Colormap") -> "Colormap":
         """Concatenate."""
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
-    def __iadd__(self,other):
+    def __iadd__(self, other: "Colormap") -> "Colormap":
         """Concatenate (in-place)."""
         return self.__add__(other)
 
-    def __invert__(self):
+    def __invert__(self) -> "Colormap":
         """Reverse."""
         return self.reversed()
 
-    def __repr__(self):
+    def __repr__(self) -> "Colormap":
         """Show as matplotlib figure."""
         fig = plt.figure(self.name,figsize=(5,.5))
         ax1 = fig.add_axes([0, 0, 1, 1])
@@ -64,7 +68,11 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_range(low,high,name='DAMASK colormap',N=256,model='rgb'):
+    def from_range(low: Sequence[float],
+                   high: Sequence[float],
+                   name: str = 'DAMASK colormap',
+                   N: int = 256,
+                   model: str = 'rgb') -> "Colormap":
         """
         Create a perceptually uniform colormap between given (inclusive) bounds.
 
@@ -145,7 +153,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_predefined(name,N=256):
+    def from_predefined(name: str, N: int = 256) -> "Colormap":
         """
         Select from a set of predefined colormaps.
 
@@ -185,7 +193,10 @@ class Colormap(mpl.colors.ListedColormap):
             return Colormap.from_range(definition['low'],definition['high'],name,N)
 
 
-    def shade(self,field,bounds=None,gap=None):
+    def shade(self,
+              field: np.ndarray,
+              bounds: Optional[Sequence[float]] = None,
+              gap: Optional[np.ndarray] = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
 
@@ -226,7 +237,7 @@ class Colormap(mpl.colors.ListedColormap):
             mode='RGBA')
 
 
-    def reversed(self,name=None):
+    def reversed(self, name: str = None) -> "Colormap":
         """
         Reverse.
 
@@ -251,7 +262,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
-    def _get_file_handle(self,fname,extension):
+    def _get_file_handle(self, fname: Union[TextIOWrapper, str, pathlib.Path, None], ext: str) -> TextIO:
         """
         Provide file handle.
 
@@ -260,7 +271,7 @@ class Colormap(mpl.colors.ListedColormap):
         fname : file, str, pathlib.Path, or None
             Filename or filehandle, will be name of the colormap+extension if None.
 
-        extension: str
+        ext: str
             Extension of the filename.
 
         Returns
@@ -269,18 +280,17 @@ class Colormap(mpl.colors.ListedColormap):
             File handle with write access.
 
         """
-        if fname is None:
-            fhandle = open(self.name.replace(' ','_')+'.'+extension,'w',newline='\n')
-        else:
-            try:
-                fhandle = open(fname,'w',newline='\n')
-            except TypeError:
-                fhandle = fname
+        fname = pathlib.Path(self.name.replace(' ','_'))\
+                       .with_suffix(('' if ext is None or ext.startswith('.') else '.')+ext) if fname is None else fname
+        if isinstance(fname, (str,pathlib.Path)):
+            return open(fname, 'w', newline='\n')
+        if isinstance(fname, TextIOWrapper):
+            return fname
 
-        return fhandle
+        raise TypeError
 
 
-    def save_paraview(self,fname=None):
+    def save_paraview(self, fname: Optional[Union[TextIOWrapper, str, pathlib.Path]] = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -291,7 +301,7 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap and extension '.json'.
 
         """
-        colors = []
+        colors: List = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
 
@@ -306,7 +316,7 @@ class Colormap(mpl.colors.ListedColormap):
         json.dump(out,self._get_file_handle(fname,'json'),indent=4)
 
 
-    def save_ASCII(self,fname=None):
+    def save_ASCII(self, fname: Union[TextIOWrapper, str, pathlib.Path] = None):
         """
         Save as ASCII file.
 
@@ -322,7 +332,7 @@ class Colormap(mpl.colors.ListedColormap):
         t.save(self._get_file_handle(fname,'txt'))
 
 
-    def save_GOM(self,fname=None):
+    def save_GOM(self, fname: Union[TextIOWrapper, str, pathlib.Path] = None):
         """
         Save as ASCII file for use in GOM Aramis.
 
@@ -343,7 +353,7 @@ class Colormap(mpl.colors.ListedColormap):
         self._get_file_handle(fname,'legend').write(GOM_str)
 
 
-    def save_gmsh(self,fname=None):
+    def save_gmsh(self, fname: Optional[Union[TextIOWrapper, str, pathlib.Path]] = None):
         """
         Save as ASCII file for use in gmsh.
 
@@ -362,7 +372,9 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _interpolate_msh(frac,low,high):
+    def _interpolate_msh(frac,
+                         low: Sequence[float],
+                         high: Sequence[float]) -> np.ndarray:
         """
         Interpolate in Msh color space.
 
@@ -439,31 +451,31 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _hsv2rgb(hsv):
+    def _hsv2rgb(hsv: Sequence[float]) -> np.ndarray:
         """H(ue) S(aturation) V(alue) to R(red) G(reen) B(lue)."""
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
 
     @staticmethod
-    def _rgb2hsv(rgb):
+    def _rgb2hsv(rgb: Sequence[float]) -> np.ndarray:
         """R(ed) G(reen) B(lue) to H(ue) S(aturation) V(alue)."""
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,v])
 
 
     @staticmethod
-    def _hsl2rgb(hsl):
+    def _hsl2rgb(hsl: Sequence[float]) -> np.ndarray:
         """H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue)."""
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
 
     @staticmethod
-    def _rgb2hsl(rgb):
+    def _rgb2hsl(rgb: Sequence[float]) -> np.ndarray:
         """R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)."""
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,l])
 
 
     @staticmethod
-    def _xyz2rgb(xyz):
+    def _xyz2rgb(xyz: np.ndarray) -> np.ndarray:
         """
         CIE Xyz to R(ed) G(reen) B(lue).
 
@@ -483,7 +495,7 @@ class Colormap(mpl.colors.ListedColormap):
         return np.clip(rgb,0.,1.)
 
     @staticmethod
-    def _rgb2xyz(rgb):
+    def _rgb2xyz(rgb: np.ndarray) -> np.ndarray:
         """
         R(ed) G(reen) B(lue) to CIE Xyz.
 
@@ -501,7 +513,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2xyz(lab,ref_white=None):
+    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
         """
         CIE Lab to CIE Xyz.
 
@@ -520,7 +532,7 @@ class Colormap(mpl.colors.ListedColormap):
                         ])*(ref_white if ref_white is not None else _ref_white)
 
     @staticmethod
-    def _xyz2lab(xyz,ref_white=None):
+    def _xyz2lab(xyz: np.ndarray, ref_white: Optional[np.ndarray] = None) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
 
@@ -540,7 +552,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2msh(lab):
+    def _lab2msh(lab: np.ndarray) -> np.ndarray:
         """
         CIE Lab to Msh.
 
@@ -558,7 +570,7 @@ class Colormap(mpl.colors.ListedColormap):
                         ])
 
     @staticmethod
-    def _msh2lab(msh):
+    def _msh2lab(msh: np.ndarray) -> np.ndarray:
         """
         Msh to CIE Lab.
 
@@ -575,29 +587,29 @@ class Colormap(mpl.colors.ListedColormap):
                         ])
 
     @staticmethod
-    def _lab2rgb(lab):
+    def _lab2rgb(lab: np.ndarray) -> np.ndarray:
         return Colormap._xyz2rgb(Colormap._lab2xyz(lab))
 
     @staticmethod
-    def _rgb2lab(rgb):
+    def _rgb2lab(rgb: np.ndarray) -> np.ndarray:
         return Colormap._xyz2lab(Colormap._rgb2xyz(rgb))
 
     @staticmethod
-    def _msh2rgb(msh):
+    def _msh2rgb(msh: np.ndarray) -> np.ndarray:
         return Colormap._lab2rgb(Colormap._msh2lab(msh))
 
     @staticmethod
-    def _rgb2msh(rgb):
+    def _rgb2msh(rgb: np.ndarray) -> np.ndarray:
         return Colormap._lab2msh(Colormap._rgb2lab(rgb))
 
     @staticmethod
-    def _hsv2msh(hsv):
+    def _hsv2msh(hsv: np.ndarray) -> np.ndarray:
         return Colormap._rgb2msh(Colormap._hsv2rgb(hsv))
 
     @staticmethod
-    def _hsl2msh(hsl):
+    def _hsl2msh(hsl: np.ndarray) -> np.ndarray:
         return Colormap._rgb2msh(Colormap._hsl2rgb(hsl))
 
     @staticmethod
-    def _xyz2msh(xyz):
+    def _xyz2msh(xyz: np.ndarray) -> np.ndarray:
         return Colormap._lab2msh(Colormap._xyz2lab(xyz))
