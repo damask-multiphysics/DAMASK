@@ -2,6 +2,10 @@ import os
 import json
 import functools
 import colorsys
+from pathlib import Path
+from typing import Sequence, Union, Optional, List, TextIO
+from io import TextIOWrapper
+
 
 import numpy as np
 import matplotlib as mpl
@@ -13,10 +17,6 @@ from PIL import Image
 
 from . import util
 from . import Table
-
-from typing import Sequence, Union, Optional, List, TextIO
-from io import TextIOWrapper
-import pathlib
 
 _eps   = 216./24389.
 _kappa = 24389./27.
