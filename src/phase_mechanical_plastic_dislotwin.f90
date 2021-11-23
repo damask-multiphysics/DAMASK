@@ -150,7 +150,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 
   myPlasticity = plastic_active('dislotwin')
-  if(count(myPlasticity) == 0) return
+  if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:dislotwin init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
@@ -173,7 +173,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 
   do ph = 1, phases%length
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
 
@@ -368,7 +368,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! parameters required for several mechanisms and their interactions
-    if(prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
+    if (prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
       prm%D = pl%get_asFloat('D')
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0) &
@@ -425,7 +425,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     stt%gamma_sl=>plasticState(ph)%state(startIndex:endIndex,:)
     dot%gamma_sl=>plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
@@ -474,34 +474,34 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
     ph, en
   real(pReal), dimension(6,6) :: &
     homogenizedC, &
-    C66
+    C
   real(pReal), dimension(:,:,:), allocatable :: &
     C66_tw, &
     C66_tr
-
   integer :: i
   real(pReal) :: f_unrotated
 
-  associate(prm => param(ph), stt => state(ph))
 
-    C66       = elastic_C66(ph,en)
+  C = elastic_C66(ph,en)
+
+  associate(prm => param(ph), stt => state(ph))
 
     f_unrotated = 1.0_pReal &
                 - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
                 - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    homogenizedC = f_unrotated * C66
+    homogenizedC = f_unrotated * C
 
     twinActive: if (prm%sum_N_tw > 0) then
-      C66_tw    = lattice_C66_twin(prm%N_tw,C66,phase_lattice(ph),phase_cOverA(ph))
+      C66_tw    = lattice_C66_twin(prm%N_tw,C,phase_lattice(ph),phase_cOverA(ph))
       do i=1,prm%sum_N_tw
         homogenizedC = homogenizedC &
                      + stt%f_tw(i,en)*C66_tw(1:6,1:6,i)
       end do
-     end if twinActive 
-    
+     end if twinActive
+
     transActive: if (prm%sum_N_tr > 0) then
-      C66_tr    = lattice_C66_trans(prm%N_tr,C66,prm%lattice_tr,0.0_pReal,prm%a_cI,prm%a_cF)
+      C66_tr    = lattice_C66_trans(prm%N_tr,C,prm%lattice_tr,0.0_pReal,prm%a_cI,prm%a_cF)
       do i=1,prm%sum_N_tr
         homogenizedC = homogenizedC &
                      + stt%f_tr(i,en)*C66_tr(1:6,1:6,i)
@@ -595,7 +595,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
   Lp      = Lp      * f_unrotated
   dLp_dMp = dLp_dMp * f_unrotated
 
-  shearBandingContribution: if(dNeq0(prm%v_sb)) then
+  shearBandingContribution: if (dNeq0(prm%v_sb)) then
 
     E_kB_T = prm%E_sb/(kB*T)
     call math_eigh33(eigValues,eigVectors,Mp)                                                       ! is Mp symmetric by design?
@@ -846,7 +846,7 @@ module subroutine plastic_dislotwin_results(ph,group)
                                        'threshold stress for twinning','Pa',prm%systems_tw)
 
         case('f_tr')
-          if(prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
+          if (prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
                                                        'martensite volume fraction','m³/m³')
 
       end select
@@ -929,8 +929,8 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
 
   end associate
 
-  if(present(ddot_gamma_dtau_sl)) ddot_gamma_dtau_sl = ddot_gamma_dtau
-  if(present(tau_sl))             tau_sl             = tau
+  if (present(ddot_gamma_dtau_sl)) ddot_gamma_dtau_sl = ddot_gamma_dtau
+  if (present(tau_sl))             tau_sl             = tau
 
 end subroutine kinetics_sl
 
@@ -1000,7 +1000,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
   end associate
 
-  if(present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw = ddot_gamma_dtau
+  if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw = ddot_gamma_dtau
 
 end subroutine kinetics_tw
 
@@ -1069,7 +1069,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
   end associate
 
-  if(present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr = ddot_gamma_dtau
+  if (present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr = ddot_gamma_dtau
 
 end subroutine kinetics_tr
 

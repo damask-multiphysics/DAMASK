@@ -643,16 +643,16 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   !-------------------------------------------------------------------------------------------------
   !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
   !-------------------------------------------------------------------------------------------------
-  real(pReal) function equivalentMu(grainID,ce)
+  real(pReal) function equivalentMu(co,ce)
 
     integer, intent(in)    :: &
-      grainID,&
+      co,&
       ce
 
     real(pReal), dimension(6,6) :: C
 
 
-    C = phase_homogenizedC(material_phaseID(grainID,ce),material_phaseEntry(grainID,ce))
+    C = phase_homogenizedC66(material_phaseID(co,ce),material_phaseEntry(co,ce))                    ! damage not included!
     equivalentMu = lattice_equivalent_mu(C,'voigt')
 
   end function equivalentMu

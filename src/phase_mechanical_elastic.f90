@@ -15,7 +15,7 @@ submodule(phase:mechanical) elastic
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize elasticity.
+!> @brief initialize elasticity
 !--------------------------------------------------------------------------------------------------
 module subroutine elastic_init(phases)
 
@@ -62,52 +62,30 @@ end subroutine elastic_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return 6x6 elasticity tensor.
-!--------------------------------------------------------------------------------------------------
-function get_C66(ph,en)
-
-  integer, intent(in) :: &
-    ph, &
-    en
-  real(pReal), dimension(6,6) :: get_C66
-
-
-  associate(prm => param(ph))
-    get_C66 = 0.0_pReal
-    get_C66(1,1) = prm%C_11
-    get_C66(1,2) = prm%C_12
-    get_C66(4,4) = prm%C_44
-
-    if (any(phase_lattice(ph) == ['hP','tI'])) then
-      get_C66(1,3) = prm%C_13
-      get_C66(3,3) = prm%C_33
-    end if
-
-    if (phase_lattice(ph) == 'tI') get_C66(6,6) = prm%C_66
-
-    get_C66 = lattice_symmetrize_C66(get_C66,phase_lattice(ph))
-
-  end associate
-
-end function get_C66
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Return 6x6 elasticity tensor.
+!> @brief return 6x6 elasticity tensor
 !--------------------------------------------------------------------------------------------------
 module function elastic_C66(ph,en) result(C66)
 
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal), dimension(6,6) :: &
-    C66
+  real(pReal), dimension(6,6) :: C66
 
 
   associate(prm => param(ph))
+    C66 = 0.0_pReal
+    C66(1,1) = prm%C_11
+    C66(1,2) = prm%C_12
+    C66(4,4) = prm%C_44
 
-    C66 = get_C66(ph,en) 
-    C66 = math_sym3333to66(math_Voigt66to3333(C66))                                                 ! Literature data is in Voigt notation
+    if (any(phase_lattice(ph) == ['hP','tI'])) then
+      C66(1,3) = prm%C_13
+      C66(3,3) = prm%C_33
+    end if
+
+    if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66
+
+    C66 = lattice_symmetrize_C66(C66,phase_lattice(ph))
 
   end associate
 
@@ -115,7 +93,7 @@ end function elastic_C66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return shear modulus.
+!> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
 module function elastic_mu(ph,en) result(mu)
 
@@ -126,12 +104,13 @@ module function elastic_mu(ph,en) result(mu)
     mu
 
 
-    mu  = lattice_equivalent_mu(get_C66(ph,en),'voigt')
+  mu = lattice_equivalent_mu(elastic_C66(ph,en),'voigt')
 
 end function elastic_mu
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief Return Poisson ratio.
+!> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
 module function elastic_nu(ph,en) result(nu)
 
@@ -142,15 +121,16 @@ module function elastic_nu(ph,en) result(nu)
     nu
 
 
-    nu  = lattice_equivalent_nu(get_C66(ph,en),'voigt')
+  nu = lattice_equivalent_nu(elastic_C66(ph,en),'voigt')
 
 end function elastic_nu
 
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
+!> @brief return the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
+! ToDo: Use Voigt matrix directly
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, ph, en)
@@ -173,13 +153,12 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     i, j
 
 
-  C = math_66toSym3333(phase_homogenizedC(ph,en))
-  C = phase_damage_C(C,ph,en)
+  C = math_Voigt66to3333(phase_damage_C66(phase_homogenizedC66(ph,en),ph,en))
 
   E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
   S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                                        !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
-  do i =1, 3;do j=1,3
+  do i =1,3; do j=1,3
     dS_dFe(i,j,1:3,1:3) = matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
     dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                             !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
   end do; end do
@@ -188,10 +167,9 @@ end subroutine phase_hooke_SandItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenized elasticity matrix
-!> ToDo: homogenizedC66 would be more consistent
+!> @brief Return the homogenized elasticity matrix.
 !--------------------------------------------------------------------------------------------------
-module function phase_homogenizedC(ph,en) result(C)
+module function phase_homogenizedC66(ph,en) result(C)
 
   real(pReal), dimension(6,6) :: C
   integer,      intent(in)    :: ph, en
@@ -204,7 +182,7 @@ module function phase_homogenizedC(ph,en) result(C)
      C = elastic_C66(ph,en)
   end select plasticType
 
-end function phase_homogenizedC
+end function phase_homogenizedC66
 
 
 end submodule elastic

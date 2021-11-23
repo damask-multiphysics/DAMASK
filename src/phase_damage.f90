@@ -139,6 +139,7 @@ module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
   integer :: &
     ph, en
 
+
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
@@ -150,20 +151,21 @@ end function phase_damage_constitutive
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the degraded/modified elasticity matrix
 !--------------------------------------------------------------------------------------------------
-module function phase_damage_C(C_homogenized,ph,en) result(C)
+module function phase_damage_C66(C66,ph,en) result(C66_degraded)
 
-  real(pReal), dimension(3,3,3,3), intent(in)  :: C_homogenized
-  integer,                         intent(in)  :: ph,en
-  real(pReal), dimension(3,3,3,3) :: C
+  real(pReal), dimension(6,6), intent(in)  :: C66
+  integer,                     intent(in)  :: ph,en
+  real(pReal), dimension(6,6) :: C66_degraded
+
 
   damageType: select case (phase_damage(ph))
     case (DAMAGE_ISOBRITTLE_ID) damageType
-     C = C_homogenized * damage_phi(ph,en)**2
+     C66_degraded = C66 * damage_phi(ph,en)**2
     case default damageType
-     C = C_homogenized
+     C66_degraded = C66
   end select damageType
 
-end function phase_damage_C
+end function phase_damage_C66
 
 
 !--------------------------------------------------------------------------------------------------
@@ -417,7 +419,7 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
    sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
-      call isobrittle_deltaState(phase_homogenizedC(ph,en), Fe, ph,en)
+      call isobrittle_deltaState(phase_homogenizedC66(ph,en), Fe, ph,en)
       broken = any(IEEE_is_NaN(damageState(ph)%deltaState(:,en)))
       if (.not. broken) then
         myOffset = damageState(ph)%offsetDeltaState
