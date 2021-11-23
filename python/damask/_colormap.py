@@ -42,6 +42,11 @@ class Colormap(mpl.colors.ListedColormap):
 
     """
 
+    def __eq__(self, other) -> bool:
+        """Test equality of colormaps."""
+        return         len(self.colors) == len(other.colors) \
+           and bool(np.all(self.colors  ==     other.colors))
+
     def __add__(self, other: "Colormap") -> "Colormap":
         """Concatenate."""
         return Colormap(np.vstack((self.colors,other.colors)),
