@@ -80,7 +80,9 @@ class TestColormap:
     @pytest.mark.parametrize('low,high',[((0,0,0),(1,1,1)),
                                          ([0,0,0],[1,1,1])])
     def test_from_range_types(self,low,high):
-        assert Colormap.from_range(low,high) == Colormap.from_range(np.array(low),np.array(high))
+        a = Colormap.from_range(low,high)
+        b = Colormap.from_range(np.array(low),np.array(high))
+        assert np.all(a.colors == b.colors) 
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
