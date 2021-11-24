@@ -3,7 +3,7 @@ import json
 import functools
 import colorsys
 from pathlib import Path
-from typing import Sequence, Union, List, TextIO
+from typing import Sequence, Union, TextIO
 
 
 import numpy as np
@@ -297,7 +297,7 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap and extension '.json'.
 
         """
-        colors: List = []
+        colors = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
 
