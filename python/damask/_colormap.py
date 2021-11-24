@@ -261,7 +261,7 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
-    def _get_file_handle(self, fname: Union[TextIO, str, Path, None], ext: str) -> TextIO:
+    def _get_file_handle(self, fname: Union[TextIO, str, Path, None], suffix: str) -> TextIO:
         """
         Provide file handle.
 
@@ -269,7 +269,7 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, pathlib.Path, or None
             Filename or filehandle, will be name of the colormap+extension if None.
-        ext: str
+        suffix: str
             Extension of the filename.
 
         Returns
@@ -279,7 +279,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         """
         if fname is None:
-            return open(self.name.replace(' ','_')+'.'+ext, 'w', newline='\n')
+            return open(self.name.replace(' ','_')+suffix, 'w', newline='\n')
         elif isinstance(fname, (str, Path)):
             return open(fname, 'w', newline='\n')
         else:
@@ -309,7 +309,7 @@ class Colormap(mpl.colors.ListedColormap):
                 'RGBPoints':colors
                }]
 
-        json.dump(out,self._get_file_handle(fname,'json'),indent=4)
+        json.dump(out,self._get_file_handle(fname,'.json'),indent=4)
 
 
     def save_ASCII(self, fname: Union[TextIO, str, Path] = None):
@@ -325,7 +325,7 @@ class Colormap(mpl.colors.ListedColormap):
         """
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(self.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
-        t.save(self._get_file_handle(fname,'txt'))
+        t.save(self._get_file_handle(fname,'.txt'))
 
 
     def save_GOM(self, fname: Union[TextIO, str, Path] = None):
@@ -346,7 +346,7 @@ class Colormap(mpl.colors.ListedColormap):
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
 
-        self._get_file_handle(fname,'legend').write(GOM_str)
+        self._get_file_handle(fname,'.legend').write(GOM_str)
 
 
     def save_gmsh(self, fname: Union[TextIO, str, Path] = None):
@@ -364,7 +364,7 @@ class Colormap(mpl.colors.ListedColormap):
         gmsh_str = 'View.ColorTable = {\n' \
                  +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in self.colors[:,:3]*255]) \
                  +'\n}\n'
-        self._get_file_handle(fname,'msh').write(gmsh_str)
+        self._get_file_handle(fname,'.msh').write(gmsh_str)
 
 
     @staticmethod
