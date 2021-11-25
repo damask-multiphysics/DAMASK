@@ -3,7 +3,7 @@ import json
 import functools
 import colorsys
 from pathlib import Path
-from typing import Sequence, Union, List, TextIO
+from typing import Sequence, Union, TextIO
 
 
 import numpy as np
@@ -128,18 +128,18 @@ class Colormap(mpl.colors.ListedColormap):
             raise ValueError(f'Invalid color model: {model}.')
 
         low_high = np.vstack((low,high))
-        outofbounds = np.bool_(False)
+        out_of_bounds = np.bool_(False)
 
         if   model.lower() == 'rgb':
-            outofbounds = np.any(low_high<0) or np.any(low_high>1)
+            out_of_bounds = np.any(low_high<0) or np.any(low_high>1)
         elif model.lower() == 'hsv':
-            outofbounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
+            out_of_bounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
         elif model.lower() == 'hsl':
-            outofbounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
+            out_of_bounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
         elif model.lower() == 'lab':
-            outofbounds = np.any(low_high[:,0]<0)
+            out_of_bounds = np.any(low_high[:,0]<0)
 
-        if outofbounds:
+        if out_of_bounds:
             raise ValueError(f'{model.upper()} colors {low} | {high} are out of bounds.')
 
         low_,high_ = map(toMsh[model.lower()],low_high)
@@ -162,9 +162,9 @@ class Colormap(mpl.colors.ListedColormap):
         name : str
             Name of the colormap.
         N : int, optional
-           Number of color quantization levels. Defaults to 256.
-           This parameter is not used for matplotlib colormaps
-           that are of type `ListedColormap`.
+            Number of color quantization levels. Defaults to 256.
+            This parameter is not used for matplotlib colormaps
+            that are of type `ListedColormap`.
 
         Returns
         -------
@@ -260,8 +260,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def _get_file_handle(self,
-                        fname: Union[TextIO, str, Path, None] = None,
-                        suffix: str = None) -> TextIO:
+                         fname: Union[TextIO, str, Path, None],
+                         suffix: str) -> TextIO:
         """
         Provide filehandle.
 
@@ -270,7 +270,7 @@ class Colormap(mpl.colors.ListedColormap):
         fname : file, str, pathlib.Path, or None
             Filename or filehandle.
             If None, colormap name + suffix.
-        suffix: str, optional
+        suffix: str
             Extension to use for colormap filename.
 
         Returns
@@ -298,7 +298,7 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap with extension '.json'.
 
         """
-        colors: List = []
+        colors = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
 
@@ -369,7 +369,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _interpolate_msh(frac: Union[float,int],
+    def _interpolate_msh(frac: float,
                          low: np.ndarray,
                          high: np.ndarray) -> np.ndarray:
         """
@@ -449,24 +449,76 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _hsv2rgb(hsv: np.ndarray) -> np.ndarray:
-        """Hue Saturation Value to Red Green Blue."""
+        """
+        Hue Saturation Value to Red Green Blue.
+
+        Parameters
+        ----------
+        hsv : numpy.ndarray of shape (3)
+            HSV values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        """
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
 
     @staticmethod
     def _rgb2hsv(rgb: np.ndarray) -> np.ndarray:
-        """Red Green Blue to Hue Saturation Value."""
+        """
+        Red Green Blue to Hue Saturation Value.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        Returns
+        -------
+        hsv : numpy.ndarray of shape (3)
+            HSV values.
+
+        """
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,v])
 
 
     @staticmethod
     def _hsl2rgb(hsl: np.ndarray) -> np.ndarray:
-        """Hue Saturation Luminance to Red Green Blue."""
+        """
+        Hue Saturation Luminance to Red Green Blue.
+
+        Parameters
+        ----------
+        hsl : numpy.ndarray of shape (3)
+            HSL values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        """
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
 
     @staticmethod
     def _rgb2hsl(rgb: np.ndarray) -> np.ndarray:
-        """Red Green Blue to Hue Saturation Luminance."""
+        """
+        Red Green Blue to Hue Saturation Luminance.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        Returns
+        -------
+        hsl : numpy.ndarray of shape (3)
+            HSL values.
+
+        """
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,l])
 
@@ -475,6 +527,16 @@ class Colormap(mpl.colors.ListedColormap):
     def _xyz2rgb(xyz: np.ndarray) -> np.ndarray:
         """
         CIE Xyz to Red Green Blue.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
 
         References
         ----------
@@ -496,6 +558,16 @@ class Colormap(mpl.colors.ListedColormap):
         """
         Red Green Blue to CIE Xyz.
 
+        Parameters
+        ----------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        Returns
+        -------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
+
         References
         ----------
         https://www.easyrgb.com/en/math.php
@@ -513,6 +585,16 @@ class Colormap(mpl.colors.ListedColormap):
     def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
         """
         CIE Lab to CIE Xyz.
+
+        Parameters
+        ----------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
+
+        Returns
+        -------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
 
         References
         ----------
@@ -532,6 +614,16 @@ class Colormap(mpl.colors.ListedColormap):
     def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
+
+        Returns
+        -------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
 
         References
         ----------
@@ -553,6 +645,16 @@ class Colormap(mpl.colors.ListedColormap):
         """
         CIE Lab to Msh.
 
+        Parameters
+        ----------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
+
+        Returns
+        -------
+        msh : numpy.ndarray of shape (3)
+            Msh values.
+
         References
         ----------
         https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
@@ -570,6 +672,16 @@ class Colormap(mpl.colors.ListedColormap):
     def _msh2lab(msh: np.ndarray) -> np.ndarray:
         """
         Msh to CIE Lab.
+
+        Parameters
+        ----------
+        msh : numpy.ndarray of shape (3)
+            Msh values.
+
+        Returns
+        -------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
 
         References
         ----------
