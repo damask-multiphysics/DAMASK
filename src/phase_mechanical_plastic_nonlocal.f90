@@ -19,9 +19,6 @@ submodule(phase:plastic) nonlocal
 
   type(tGeometry), dimension(:), allocatable :: geom
 
-  real(pReal), parameter :: &
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
-
   ! storage order of dislocation types
   integer, dimension(*), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]                                                                         !< signed (single)

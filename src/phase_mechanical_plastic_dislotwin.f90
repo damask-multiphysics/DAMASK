@@ -9,9 +9,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:plastic) dislotwin
 
-  real(pReal), parameter :: &
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
-
   type :: tParameters
     real(pReal) :: &
       Q_cl                = 1.0_pReal, &                                                            !< activation energy for dislocation climb
@@ -31,7 +28,7 @@ submodule(phase:plastic) dislotwin
       delta_G             = 1.0_pReal, &                                                            !< Free energy difference between austensite and martensite
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
       h                   = 1.0_pReal, &                                                            !< Stack height of hex nucleus
-      T_ref               = 0.0_pReal, &
+      T_ref               = T_ROOM, &
       a_cI                = 1.0_pReal, &
       a_cF                = 1.0_pReal
     real(pReal),                            dimension(2) :: &

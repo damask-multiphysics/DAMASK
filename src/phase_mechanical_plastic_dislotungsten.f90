@@ -7,9 +7,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:plastic) dislotungsten
 
-  real(pReal), parameter :: &
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
-
   type :: tParameters
     real(pReal) :: &
       D    = 1.0_pReal, &                                                                           !< grain size
