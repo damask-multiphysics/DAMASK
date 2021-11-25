@@ -1091,9 +1091,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   ! thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
-  D_SD = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))                                              ! eq. 3.53
+  D_SD = prm%D_0 * exp(-prm%Q_cl / (K_B * Temperature))                                              ! eq. 3.53
   v_climb = D_SD * mu * prm%V_at &
-          / (PI * (1.0_pReal-nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
+          / (PI * (1.0_pReal-nu) * (dUpper(:,1) + dLower(:,1)) * K_B * Temperature)              ! eq. 3.54
   forall (s = 1:prm%sum_N_sl, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
@@ -1668,9 +1668,9 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
       activationEnergy_P = criticalStress_P * activationVolume_P
       tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)
       tPeierls = 1.0_pReal / prm%nu_a &
-               * exp(activationEnergy_P / (kB * T) &
+               * exp(activationEnergy_P / (K_B * T) &
                      * (1.0_pReal - tauRel_P**prm%p)**prm%q)
-      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (kB * T) &
+      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (K_B * T) &
                              * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal), &
                              0.0_pReal, &
                              tauEff < criticalStress_P)
@@ -1682,8 +1682,8 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
       criticalStress_S = prm%Q_sol / activationVolume_S
       tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
       tSolidSolution = 1.0_pReal /  prm%nu_a &
-                     * exp(prm%Q_sol / (kB * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
-      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * T) &
+                     * exp(prm%Q_sol / (K_B * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
+      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (K_B * T) &
                                    * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal), &
                                    0.0_pReal, &
                                    tauEff < criticalStress_S)
