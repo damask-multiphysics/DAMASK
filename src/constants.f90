@@ -10,6 +10,6 @@ module constants
 
   real(pReal), parameter :: &
     T_ROOM = 300.0_pReal, &                                                                         !< Room temperature in K
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
+    K_B = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
 
 end module constants
