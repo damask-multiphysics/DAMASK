@@ -924,7 +924,7 @@ real(pReal) function math_sampleGaussVar(mu, sigma, width)
     do
       call random_number(rnd)
       scatter = width_ * (2.0_pReal * rnd(1) - 1.0_pReal)
-      if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                    ! test if scattered value is drawn
+      if (rnd(2) <= exp(-0.5_pReal * scatter**2)) exit                                              ! test if scattered value is drawn
     enddo
 
     math_sampleGaussVar = scatter * sigma

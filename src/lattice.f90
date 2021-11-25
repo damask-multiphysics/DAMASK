@@ -473,13 +473,13 @@ function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
           p = sum(HEX_NTWINSYSTEM(1:f-1))+s
           select case(HEX_SHEARTWIN(p))                                                             ! from Christian & Mahajan 1995 p.29
             case (1)                                                                                ! <-10.1>{10.2}
-              characteristicShear(a) = (3.0_pReal-cOverA**2.0_pReal)/sqrt(3.0_pReal)/CoverA
+              characteristicShear(a) = (3.0_pReal-cOverA**2)/sqrt(3.0_pReal)/CoverA
             case (2)                                                                                ! <11.6>{-1-1.1}
               characteristicShear(a) = 1.0_pReal/cOverA
             case (3)                                                                                ! <10.-2>{10.1}
-              characteristicShear(a) = (4.0_pReal*cOverA**2.0_pReal-9.0_pReal)/sqrt(48.0_pReal)/cOverA
+              characteristicShear(a) = (4.0_pReal*cOverA**2-9.0_pReal)/sqrt(48.0_pReal)/cOverA
             case (4)                                                                                ! <11.-3>{11.2}
-              characteristicShear(a) = 2.0_pReal*(cOverA**2.0_pReal-2.0_pReal)/3.0_pReal/cOverA
+              characteristicShear(a) = 2.0_pReal*(cOverA**2-2.0_pReal)/3.0_pReal/cOverA
           end select
         case default
           call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(lattice))
@@ -558,11 +558,11 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
     C_bar66(1,4) = (C_parent66(1,1) - C_parent66(1,2) - 2.0_pReal*C_parent66(4,4)) /(3.0_pReal*sqrt(2.0_pReal))
 
     C_target_unrotated66 = 0.0_pReal
-    C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2.0_pReal/C_bar66(4,4)
-    C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2.0_pReal/C_bar66(4,4)
+    C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2/C_bar66(4,4)
+    C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2/C_bar66(4,4)
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
-    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
+    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
     C_target_unrotated66 = lattice_symmetrize_C66(C_target_unrotated66,'hP')
   elseif (lattice_target  == 'cI') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &

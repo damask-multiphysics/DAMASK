@@ -578,22 +578,22 @@ real(pReal) function utilities_divergenceRMS()
   do k = 1, grid3; do j = 1, grid(2)
     do i = 2, grid1Red -1                                                                           ! Has somewhere a conj. complex counterpart. Therefore count it twice.
       utilities_divergenceRMS = utilities_divergenceRMS &
-            + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,j,k),&                      ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
-                                          conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2.0_pReal)&      ! --> sum squared L_2 norm of vector
+            + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,j,k), &                     ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+                                          conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2) &             ! --> sum squared L_2 norm of vector
                         +sum(aimag(matmul(tensorField_fourier(1:3,1:3,i,j,k),&
-                                          conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2.0_pReal))
+                                          conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2))
     enddo
     utilities_divergenceRMS = utilities_divergenceRMS &                                             ! these two layers (DC and Nyquist) do not have a conjugate complex counterpart (if grid(1) /= 1)
                + sum( real(matmul(tensorField_fourier(1:3,1:3,1       ,j,k), &
-                                  conjg(-xi1st(1:3,1,j,k))*rescaledGeom))**2.0_pReal) &
+                                  conjg(-xi1st(1:3,1,j,k))*rescaledGeom))**2) &
                + sum(aimag(matmul(tensorField_fourier(1:3,1:3,1       ,j,k), &
-                                  conjg(-xi1st(1:3,1,j,k))*rescaledGeom))**2.0_pReal) &
+                                  conjg(-xi1st(1:3,1,j,k))*rescaledGeom))**2) &
                + sum( real(matmul(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
-                                  conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2.0_pReal) &
+                                  conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2) &
                + sum(aimag(matmul(tensorField_fourier(1:3,1:3,grid1Red,j,k), &
-                                  conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2.0_pReal)
+                                  conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2)
   enddo; enddo
-  if (grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                    ! counted twice in case of grid(1) == 1
+  if (grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                   ! counted twice in case of grid(1) == 1
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
   if (ierr /=0) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
@@ -630,7 +630,7 @@ real(pReal) function utilities_curlRMS()
                              -tensorField_fourier(l,1,i,j,k)*xi1st(2,i,j,k)*rescaledGeom(2))
       enddo
       utilities_curlRMS = utilities_curlRMS &
-                        +2.0_pReal*sum(curl_fourier%re**2.0_pReal+curl_fourier%im**2.0_pReal)       ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+                        +2.0_pReal*sum(curl_fourier%re**2+curl_fourier%im**2)                       ! Has somewhere a conj. complex counterpart. Therefore count it twice.
     enddo
     do l = 1, 3
        curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2) &
@@ -641,7 +641,7 @@ real(pReal) function utilities_curlRMS()
                        -tensorField_fourier(l,1,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2))
     enddo
     utilities_curlRMS = utilities_curlRMS &
-                      + sum(curl_fourier%re**2.0_pReal + curl_fourier%im**2.0_pReal)                ! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
+                      + sum(curl_fourier%re**2 + curl_fourier%im**2)                                ! this layer (DC) does not have a conjugate complex counterpart (if grid(1) /= 1)
     do l = 1, 3
       curl_fourier = (+tensorField_fourier(l,3,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2) &
                       -tensorField_fourier(l,2,grid1Red,j,k)*xi1st(3,grid1Red,j,k)*rescaledGeom(3))
@@ -651,13 +651,13 @@ real(pReal) function utilities_curlRMS()
                       -tensorField_fourier(l,1,grid1Red,j,k)*xi1st(2,grid1Red,j,k)*rescaledGeom(2))
     enddo
     utilities_curlRMS = utilities_curlRMS &
-                      + sum(curl_fourier%re**2.0_pReal + curl_fourier%im**2.0_pReal)                ! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
+                      + sum(curl_fourier%re**2 + curl_fourier%im**2)                                ! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
   enddo; enddo
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
   if (ierr /=0) error stop 'MPI error'
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
-  if (grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                                ! counted twice in case of grid(1) == 1
+  if (grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                               ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 
@@ -836,13 +836,13 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
   do i = 1, product(grid(1:2))*grid3
-    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)) then
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
       dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
-      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
     endif
-    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)) then
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
       dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
-      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
     endif
   enddo
 
