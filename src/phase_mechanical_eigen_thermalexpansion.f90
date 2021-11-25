@@ -98,7 +98,7 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
     Li = dot_T * ( &
-                  prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                             ! constant  coefficient
+                  prm%A(1:3,1:3,1)*1.0_pReal &                                                      ! constant  coefficient
                 + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                             ! linear    coefficient
                 + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                             ! quadratic coefficient
                 ) / &

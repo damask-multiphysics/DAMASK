@@ -8,6 +8,8 @@ submodule(phase:mechanical) elastic
       C_33 = 0.0_pReal, &
       C_44 = 0.0_pReal, &
       C_66 = 0.0_pReal
+    real(pReal) :: &
+      T_ref
   end type tParameters
 
   type(tParameters), allocatable, dimension(:) :: param
@@ -44,6 +46,8 @@ module subroutine elastic_init(phases)
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
 
     associate(prm => param(ph))
+
+      prm%T_ref = elastic%get_asFloat('T_ref', defaultVal=T_ROOM)
 
       prm%C_11(1) = elastic%get_asFloat('C_11')
       prm%C_11(2) = elastic%get_asFloat('C_11,T',  defaultVal=0.0_pReal)
@@ -93,16 +97,36 @@ module function elastic_C66(ph,en) result(C66)
   associate(prm => param(ph))
     C66 = 0.0_pReal
     T = thermal_T(ph,en)
-    C66(1,1) = prm%C_11(1) + prm%C_11(2)*T + prm%C_11(3)*T**2
-    C66(1,2) = prm%C_12(1) + prm%C_12(2)*T + prm%C_12(3)*T**2
-    C66(4,4) = prm%C_44(1) + prm%C_44(2)*T + prm%C_44(3)*T**2
+
+    C66(1,1) =   prm%C_11(1)* 1.0_pReal &
+               + prm%C_11(2)*(T - prm%T_ref)**1 &
+               + prm%C_11(3)*(T - prm%T_ref)**2
+
+    C66(1,2) =   prm%C_12(1)* 1.0_pReal &
+               + prm%C_12(2)*(T - prm%T_ref)**1 &
+               + prm%C_12(3)*(T - prm%T_ref)**2
+
+    C66(4,4) =   prm%C_44(1)*1.0_pReal &
+               + prm%C_44(2)*(T - prm%T_ref)**1 &
+               + prm%C_44(3)*(T - prm%T_ref)**2
+
 
     if (any(phase_lattice(ph) == ['hP','tI'])) then
-      C66(1,3) = prm%C_13(1) + prm%C_13(2)*T + prm%C_13(3)*T**2
-      C66(3,3) = prm%C_33(1) + prm%C_33(2)*T + prm%C_33(3)*T**2
+      C66(1,3) =   prm%C_13(1)*1.0_pReal &
+                 + prm%C_13(2)*(T - prm%T_ref)**1 &
+                 + prm%C_13(3)*(T - prm%T_ref)**2
+
+      C66(3,3) =   prm%C_33(1)*1.0_pReal &
+                 + prm%C_33(2)*(T - prm%T_ref)**1 &
+                 + prm%C_33(3)*(T - prm%T_ref)**2
+
     end if
 
-    if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66(1) + prm%C_66(2)*T + prm%C_66(3)*T**2
+    if (phase_lattice(ph) == 'tI') then
+      C66(6,6) =   prm%C_66(1)*1.0_pReal &
+                 + prm%C_66(2)*(T - prm%T_ref)**1 &
+                 + prm%C_66(3)*(T - prm%T_ref)**2
+    end if
 
     C66 = lattice_symmetrize_C66(C66,phase_lattice(ph))
 
