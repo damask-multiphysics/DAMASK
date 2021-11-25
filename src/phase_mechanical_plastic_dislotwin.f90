@@ -31,7 +31,7 @@ submodule(phase:plastic) dislotwin
       delta_G             = 1.0_pReal, &                                                            !< Free energy difference between austensite and martensite
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
       h                   = 1.0_pReal, &                                                            !< Stack height of hex nucleus
-      T_ref               = 0.0_pReal, &
+      T_ref               = 300.0_pReal, &
       a_cI                = 1.0_pReal, &
       a_cF                = 1.0_pReal
     real(pReal),                            dimension(2) :: &
