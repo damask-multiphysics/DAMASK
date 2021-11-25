@@ -16,18 +16,18 @@ class Marc:
 
         Parameters
         ----------
-        version : float
+        version : string
             Marc version
 
         """
-        self.marc_version = marc_version
+        self.marc_version = Path(marc_version)
         self.marc_root    = Path(marc_root)
         self.damask_root = Path(damask_root)
 
     @property
     def library_path(self):
 
-        path_lib = self.marc_root/f'mentat{self.marc_version}/shlib/linux64'
+        path_lib = self.marc_root/self.marc_version/shlib/linux64
         if not path_lib.is_dir():
             raise FileNotFoundError(f'library path "{path_lib}" not found')
 
@@ -37,7 +37,7 @@ class Marc:
     @property
     def tools_path(self):
 
-        path_tools = self.marc_root/f'marc{self.marc_version}/tools'
+        path_tools = self.marc_root/self.marc_version/tools
         if not path_tools.is_dir():
             raise FileNotFoundError(f'tools path "{path_tools}" not found')
 
