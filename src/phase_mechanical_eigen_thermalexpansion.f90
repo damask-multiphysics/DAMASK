@@ -58,7 +58,7 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
           kinematic_type => kinematics%get(k)
 
-          prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=300.0_pReal)
+          prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=T_ROOM)
 
           prm%A(1,1,1) = kinematic_type%get_asFloat('A_11')
           prm%A(1,1,2) = kinematic_type%get_asFloat('A_11,T',defaultVal=0.0_pReal)
