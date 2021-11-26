@@ -261,7 +261,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def _get_file_handle(self,
                          fname: Union[TextIO, str, Path, None],
-                         suffix: str) -> TextIO:
+                         suffix: str = '') -> TextIO:
         """
         Provide filehandle.
 
@@ -270,7 +270,7 @@ class Colormap(mpl.colors.ListedColormap):
         fname : file, str, pathlib.Path, or None
             Filename or filehandle.
             If None, colormap name + suffix.
-        suffix: str
+        suffix: str, optional
             Extension to use for colormap filename.
 
         Returns
