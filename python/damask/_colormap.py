@@ -5,7 +5,6 @@ import colorsys
 from pathlib import Path
 from typing import Sequence, Union, TextIO
 
-
 import numpy as np
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -17,9 +16,9 @@ from PIL import Image
 from . import util
 from . import Table
 
-_eps   = 216./24389.
-_kappa = 24389./27.
-_ref_white = np.array([.95047, 1.00000, 1.08883])                                                   # Observer = 2, Illuminant = D65
+_EPS   = 216./24389.
+_KAPPA = 24389./27.
+_REF_WHITE = np.array([.95047, 1.00000, 1.08883])                                                   # Observer = 2, Illuminant = D65
 
 # ToDo (if needed)
 # - support alpha channel (paraview/ASCII/input)
@@ -522,10 +521,10 @@ class Colormap(mpl.colors.ListedColormap):
         f_z = (lab[0]+16.)/116. - lab[2]/200.
 
         return np.array([
-                         f_x**3.                if f_x**3. > _eps     else (116.*f_x-16.)/_kappa,
-                         ((lab[0]+16.)/116.)**3 if lab[0]>_kappa*_eps else lab[0]/_kappa,
-                         f_z**3.                if f_z**3. > _eps     else (116.*f_z-16.)/_kappa
-                        ])*(ref_white if ref_white is not None else _ref_white)
+                         f_x**3.                if f_x**3. > _EPS     else (116.*f_x-16.)/_KAPPA,
+                         ((lab[0]+16.)/116.)**3 if lab[0]>_KAPPA*_EPS else lab[0]/_KAPPA,
+                         f_z**3.                if f_z**3. > _EPS     else (116.*f_z-16.)/_KAPPA
+                        ])*(ref_white if ref_white is not None else _REF_WHITE)
 
     @staticmethod
     def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
@@ -537,8 +536,8 @@ class Colormap(mpl.colors.ListedColormap):
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
 
         """
-        ref_white = ref_white if ref_white is not None else _ref_white
-        f = np.where(xyz/ref_white > _eps,(xyz/ref_white)**(1./3.),(_kappa*xyz/ref_white+16.)/116.)
+        ref_white = ref_white if ref_white is not None else _REF_WHITE
+        f = np.where(xyz/ref_white > _EPS,(xyz/ref_white)**(1./3.),(_KAPPA*xyz/ref_white+16.)/116.)
 
         return np.array([
                          116.0 *  f[1] - 16.0,

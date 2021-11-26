@@ -5,6 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module phase
   use prec
+  use constants
   use math
   use rotations
   use IO
