@@ -168,19 +168,19 @@ submodule(phase) mechanical
       integer,     intent(in) :: ph,en
     end function plastic_dislotwin_homogenizedC
 
-    module function elastic_C66(ph) result(C66)
+    module function elastic_C66(ph,en) result(C66)
       real(pReal), dimension(6,6) :: C66
-      integer,     intent(in) :: ph
+      integer,     intent(in) :: ph, en
     end function elastic_C66
 
-    module function elastic_mu(ph) result(mu)
+    module function elastic_mu(ph,en) result(mu)
       real(pReal) :: mu
-      integer, intent(in) :: ph
+      integer, intent(in) :: ph, en
     end function elastic_mu
 
-    module function elastic_nu(ph) result(nu)
+    module function elastic_nu(ph,en) result(nu)
       real(pReal) :: nu
-      integer, intent(in) :: ph
+      integer, intent(in) :: ph, en
     end function elastic_nu
 
   end interface
@@ -205,6 +205,9 @@ module subroutine mechanical_init(phases)
     phases
 
   integer :: &
+    ce, &
+    co, &
+    ma, &
     ph, &
     en, &
     Nmembers
@@ -214,7 +217,7 @@ module subroutine mechanical_init(phases)
     phase, &
     mech
 
-  print'(/,a)', ' <<<+-  phase:mechanical init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
   allocate(output_constituent(phases%length))
@@ -261,15 +264,21 @@ module subroutine mechanical_init(phases)
 #endif
   enddo
 
+  do ce = 1, size(material_phaseID,2)
+    ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
+    do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+      ph = material_phaseID(co,ce)
+      phase_mechanical_Fi0(ph)%data(1:3,1:3,material_phaseEntry(co,ce)) = material_F_i_0(ma)%data(1:3,1:3,co)
+    enddo
+  enddo
+
   do ph = 1, phases%length
     do en = 1, count(material_phaseID == ph)
 
       phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_O_0(ph)%data(en)%asMatrix()                 ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en) &
                                                 / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,en))**(1.0_pReal/3.0_pReal)
-      phase_mechanical_Fi0(ph)%data(1:3,1:3,en) = math_I3
-      phase_mechanical_F0(ph)%data(1:3,1:3,en)  = math_I3
-
+      phase_mechanical_F0(ph)%data(1:3,1:3,en) = math_I3
       phase_mechanical_Fe(ph)%data(1:3,1:3,en) = math_inv33(matmul(phase_mechanical_Fi0(ph)%data(1:3,1:3,en), &
                                                                    phase_mechanical_Fp0(ph)%data(1:3,1:3,en)))  ! assuming that euler angles are given in internal strain free configuration
     enddo

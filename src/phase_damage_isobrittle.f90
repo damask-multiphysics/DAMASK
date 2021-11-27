@@ -44,10 +44,10 @@ module function isobrittle_init() result(mySources)
 
 
   mySources = source_active('isobrittle')
-  if(count(mySources) == 0) return
+  if (count(mySources) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:damage:isobrittle init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:damage:isobrittle init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
   phases => config_material%get('phase')
@@ -56,7 +56,7 @@ module function isobrittle_init() result(mySources)
   allocate(deltaState(phases%length))
 
   do ph = 1, phases%length
-    if(mySources(ph)) then
+    if (mySources(ph)) then
       phase => phases%get(ph)
       sources => phase%get('damage')
 
@@ -77,7 +77,7 @@ module function isobrittle_init() result(mySources)
         Nmembers = count(material_phaseID==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,1)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
-        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+        if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
         stt%r_W => damageState(ph)%state(1,:)
         dlt%r_W => damageState(ph)%deltaState(1,:)
@@ -86,9 +86,9 @@ module function isobrittle_init() result(mySources)
 
 
       if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isobrittle)')
-    endif
+    end if
 
-  enddo
+  end do
 
 
 end function isobrittle_init
@@ -96,6 +96,7 @@ end function isobrittle_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
+! ToDo: Use Voigt directly
 !--------------------------------------------------------------------------------------------------
 module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
@@ -109,13 +110,16 @@ module subroutine isobrittle_deltaState(C, Fe, ph,en)
     epsilon
   real(pReal) :: &
     r_W
+  real(pReal), dimension(6,6) :: &
+    C_sym
 
 
+  C_sym = math_sym3333to66(math_Voigt66to3333(C))
   epsilon = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = 2.0_pReal*dot_product(epsilon,matmul(C,epsilon))/prm%W_crit
+    r_W = 2.0_pReal*dot_product(epsilon,matmul(C_sym,epsilon))/prm%W_crit
     dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
 
   end associate
@@ -141,7 +145,7 @@ module subroutine isobrittle_results(phase,group)
         case ('f_phi')
           call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³') ! Wrong, this is dimensionless
       end select
-    enddo outputsLoop
+    end do outputsLoop
 
   end associate
 

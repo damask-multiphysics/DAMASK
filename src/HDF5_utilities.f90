@@ -109,7 +109,7 @@ subroutine HDF5_utilities_init
   integer(SIZE_T) :: typeSize
 
 
-  print'(/,a)', ' <<<+-  HDF5_Utilities init  -+>>>'
+  print'(/,1x,a)', '<<<+-  HDF5_Utilities init  -+>>>'
 
 
   call h5open_f(hdferr)

@@ -923,7 +923,7 @@ subroutine tElement_init(self,elemType)
 
   self%nIPneighbors = size(self%IPneighbor,1)
 
-  print'(/,a)', ' <<<+-  element_init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  element_init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'element type:      ',self%elemType
   print*, '  geom type:       ',self%geomType

@@ -15,15 +15,15 @@ module math
   implicit none
   public
 #if __INTEL_COMPILER >= 1900
-  ! do not make use associated entities available to other modules
+  ! do not make use of associated entities available to other modules
   private :: &
     IO, &
     config
 #endif
 
   real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
-  real(pReal),    parameter :: INDEG = 180.0_pReal/PI                                               !< conversion from radian into degree
-  real(pReal),    parameter :: INRAD = PI/180.0_pReal                                               !< conversion from degree into radian
+  real(pReal),    parameter :: INDEG = 180.0_pReal/PI                                               !< conversion from radian to degree
+  real(pReal),    parameter :: INRAD = PI/180.0_pReal                                               !< conversion from degree to radian
   complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,2.0_pReal*PI)                             !< Re(0.0), Im(2xPi)
 
   real(pReal), dimension(3,3), parameter :: &
@@ -91,7 +91,7 @@ subroutine math_init
   class(tNode), pointer :: &
     num_generic
 
-  print'(/,a)', ' <<<+-  math init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
   num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
@@ -109,9 +109,9 @@ subroutine math_init
   call random_seed(put = randInit)
   call random_number(randTest)
 
-  print'(a,i2)',                ' size  of random seed:     ', randSize
-  print'(a,i0)',                ' value of random seed:     ', randInit(1)
-  print'(a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
+  print'(/,a,i2)',                ' size  of random seed:     ', randSize
+  print'(  a,i0)',                ' value of random seed:     ', randInit(1)
+  print'(  a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
 
@@ -132,19 +132,19 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
   integer, intent(in),optional :: istart,iend, sortDim
   integer :: ipivot,s,e,d
 
-  if(present(istart)) then
+  if (present(istart)) then
     s = istart
   else
     s = lbound(a,2)
   endif
 
-  if(present(iend)) then
+  if (present(iend)) then
     e = iend
   else
     e = ubound(a,2)
   endif
 
-  if(present(sortDim)) then
+  if (present(sortDim)) then
     d = sortDim
   else
     d = 1
@@ -467,7 +467,7 @@ pure function math_inv33(A)
   logical     :: error
 
   call math_invert33(math_inv33,DetA,error,A)
-  if(error) math_inv33 = 0.0_pReal
+  if (error) math_inv33 = 0.0_pReal
 
 end function math_inv33
 
@@ -698,7 +698,7 @@ pure function math_sym33to6(m33,weighted)
   integer :: i
 
 
-  if(present(weighted)) then
+  if (present(weighted)) then
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
     w = NRMMANDEL
@@ -725,7 +725,7 @@ pure function math_6toSym33(v6,weighted)
   integer :: i
 
 
-  if(present(weighted)) then
+  if (present(weighted)) then
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
     w = INVNRMMANDEL
@@ -802,7 +802,7 @@ pure function math_sym3333to66(m3333,weighted)
   integer :: i,j
 
 
-  if(present(weighted)) then
+  if (present(weighted)) then
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
     w = NRMMANDEL
@@ -822,7 +822,7 @@ end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 matrix into symmetric 3x3x3x3 matrix
+!> @brief convert 6x6 matrix into symmetric 3x3x3x3 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only rearranges order according to Nye
@@ -837,7 +837,7 @@ pure function math_66toSym3333(m66,weighted)
   integer :: i,j
 
 
-  if(present(weighted)) then
+  if (present(weighted)) then
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
     w = INVNRMMANDEL
@@ -854,12 +854,13 @@ end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 Voigt matrix into symmetric 3x3x3x3 matrix
+!> @brief convert 6x6 Voigt matrix into symmetric 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
   real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
   real(pReal), dimension(6,6), intent(in) :: m66                                                    !< 6x6 matrix
+
   integer :: i,j
 
 
@@ -871,6 +872,31 @@ pure function math_Voigt66to3333(m66)
   enddo; enddo
 
 end function math_Voigt66to3333
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convert symmetric 3x3x3x3 matrix into 6x6 Voigt matrix
+!--------------------------------------------------------------------------------------------------
+pure function math_3333toVoigt66(m3333)
+
+  real(pReal), dimension(6,6)                 :: math_3333toVoigt66
+  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
+
+  integer :: i,j
+
+
+#ifndef __INTEL_COMPILER
+  do concurrent(i=1:6, j=1:6)
+    math_3333toVoigt66(i,j) = m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+  end do
+#else
+  do i=1,6; do j=1,6
+    math_3333toVoigt66(i,j) = m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+  end do; end do
+#endif
+
+end function math_3333toVoigt66
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -958,7 +984,7 @@ subroutine math_eigh33(w,v,m)
                v(2,2) + m(2, 3) * w(1), &
               (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
   norm = norm2(v(1:3, 1))
-  fallback1: if(norm < threshold) then
+  fallback1: if (norm < threshold) then
     call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
@@ -966,7 +992,7 @@ subroutine math_eigh33(w,v,m)
                  v(2,2) + m(2, 3) * w(2), &
                 (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
     norm = norm2(v(1:3, 2))
-    fallback2: if(norm < threshold) then
+    fallback2: if (norm < threshold) then
       call math_eigh(w,v,error,m)
     else fallback2
       v(1:3,2) = v(1:3, 2) / norm
@@ -1003,7 +1029,7 @@ pure function math_rotationalPart(F) result(R)
   I_F = [math_trace33(F), 0.5*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
 
   x = math_clip(I_C(1)**2 -3.0_pReal*I_C(2),0.0_pReal)**(3.0_pReal/2.0_pReal)
-  if(dNeq0(x)) then
+  if (dNeq0(x)) then
     Phi = acos(math_clip((I_C(1)**3 -4.5_pReal*I_C(1)*I_C(2) +13.5_pReal*I_C(3))/x,-1.0_pReal,1.0_pReal))
     lambda = I_C(1) +(2.0_pReal * sqrt(math_clip(I_C(1)**2-3.0_pReal*I_C(2),0.0_pReal))) &
                     *cos((Phi-2.0_pReal * PI*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
@@ -1065,7 +1091,7 @@ function math_eigvalsh33(m)
     - 2.0_pReal/27.0_pReal*I(1)**3.0_pReal &
     - I(3)                                                                                          ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
-  if(all(abs([P,Q]) < TOL)) then
+  if (all(abs([P,Q]) < TOL)) then
     math_eigvalsh33 = math_eigvalsh(m)
   else
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
@@ -1188,7 +1214,7 @@ real(pReal) pure elemental function math_clip(a, left, right)
   if (present(left))  math_clip = max(left,math_clip)
   if (present(right)) math_clip = min(right,math_clip)
   if (present(left) .and. present(right)) then
-    if(left>right) error stop 'left > right'
+    if (left>right) error stop 'left > right'
   endif
 
 end function math_clip
@@ -1234,35 +1260,38 @@ subroutine selfTest
     error stop 'math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]'
 
   call math_sort(sort_in_,1,3,2)
-  if(any(sort_in_ /= sort_out_)) &
+  if (any(sort_in_ /= sort_out_)) &
     error stop 'math_sort'
 
-  if(any(math_range(5) /= range_out_)) &
+  if (any(math_range(5) /= range_out_)) &
     error stop 'math_range'
 
-  if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
+  if (any(dNeq(math_exp33(math_I3,0),math_I3))) &
     error stop 'math_exp33(math_I3,1)'
-  if(any(dNeq(math_exp33(math_I3,128),exp(1.0_pReal)*math_I3))) &
+  if (any(dNeq(math_exp33(math_I3,128),exp(1.0_pReal)*math_I3))) &
     error stop 'math_exp33(math_I3,128)'
 
   call random_number(v9)
-  if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
+  if (any(dNeq(math_33to9(math_9to33(v9)),v9))) &
     error stop 'math_33to9/math_9to33'
 
   call random_number(t99)
-  if(any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
+  if (any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
     error stop 'math_3333to99/math_99to3333'
 
   call random_number(v6)
-  if(any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
+  if (any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
     error stop 'math_sym33to6/math_6toSym33'
 
   call random_number(t66)
-  if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pReal))) &
+  if (any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pReal))) &
     error stop 'math_sym3333to66/math_66toSym3333'
 
+  if (any(dNeq(math_3333toVoigt66(math_Voigt66to3333(t66)),t66,1.0e-15_pReal))) &
+    error stop 'math_3333toVoigt66/math_Voigt66to3333'
+
   call random_number(v6)
-  if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
+  if (any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
     error stop 'math_symmetric33'
 
   call random_number(v3_1)
@@ -1270,34 +1299,34 @@ subroutine selfTest
   call random_number(v3_3)
   call random_number(v3_4)
 
-  if(dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
+  if (dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
           math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
     error stop 'math_volTetrahedron'
 
   call random_number(t33)
-  if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
+  if (dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     error stop 'math_det33/math_detSym33'
 
-  if(any(dNeq(t33+transpose(t33),math_mul3333xx33(math_identity4th(),t33+transpose(t33))))) &
+  if (any(dNeq(t33+transpose(t33),math_mul3333xx33(math_identity4th(),t33+transpose(t33))))) &
     error stop 'math_mul3333xx33/math_identity4th'
 
-  if(any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
+  if (any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
     error stop 'math_inv33(math_I3)'
 
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
   enddo
-  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
+  if (any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
     error stop 'math_inv33'
 
   call math_invert33(t33_2,det,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
+  if (any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
     error stop 'math_invert33: T:T^-1 != I'
-  if(dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
+  if (dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
     error stop 'math_invert33 (determinant)'
 
   call math_invert(t33_2,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
+  if (any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
     error stop 'math_invert t33'
 
   do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
@@ -1305,7 +1334,7 @@ subroutine selfTest
   enddo
   t33_2 = math_rotationalPart(transpose(t33))
   t33   = math_rotationalPart(t33)
-  if(any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
+  if (any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
     error stop 'math_rotationalPart'
 
   call random_number(r)
@@ -1313,33 +1342,33 @@ subroutine selfTest
   txx = math_eye(d)
   allocate(txx_2(d,d))
   call math_invert(txx_2,e,txx)
-  if(any(dNeq0(txx_2,txx) .or. e)) &
+  if (any(dNeq0(txx_2,txx) .or. e)) &
     error stop 'math_invert(txx)/math_eye'
 
   call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix
-  if(any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pReal)) .or. e) &
+  if (any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pReal)) .or. e) &
     error stop 'math_invert(t99)'
 
-  if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
+  if (any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
     error stop 'math_clip'
 
-  if(math_factorial(10) /= 3628800) &
+  if (math_factorial(10) /= 3628800) &
     error stop 'math_factorial'
 
-  if(math_binomial(49,6) /= 13983816) &
+  if (math_binomial(49,6) /= 13983816) &
     error stop 'math_binomial'
 
-  if(math_multinomial([1,2,3,4]) /= 12600) &
+  if (math_multinomial([1,2,3,4]) /= 12600) &
     error stop 'math_multinomial'
 
   ijk = cshift([1,2,3],int(r*1.0e2_pReal))
-  if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
+  if (dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
     error stop 'math_LeviCivita(even)'
   ijk = cshift([3,2,1],int(r*2.0e2_pReal))
-  if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),-1.0_pReal)) &
+  if (dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),-1.0_pReal)) &
     error stop 'math_LeviCivita(odd)'
   ijk = cshift([2,2,1],int(r*2.0e2_pReal))
-  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
+  if (dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
     error stop 'math_LeviCivita'
 
 end subroutine selfTest

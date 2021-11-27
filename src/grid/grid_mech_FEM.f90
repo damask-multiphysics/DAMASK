@@ -116,7 +116,7 @@ subroutine grid_mechanical_FEM_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
@@ -234,7 +234,7 @@ subroutine grid_mechanical_FEM_init
 !--------------------------------------------------------------------------------------------------
 ! init fields
   restartRead: if (interface_restartInc > 0) then
-    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -272,7 +272,7 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(ierr)
 
   restartRead2: if (interface_restartInc > 0) then
-    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(1x,a,i0,a)', 'reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
     if(ierr /=0) error stop 'MPI error'
@@ -442,7 +442,7 @@ subroutine grid_mechanical_FEM_restartWrite
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,ierr)
   CHKERRQ(ierr)
 
-  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
@@ -506,12 +506,12 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
     reason = 0
   endif
 
-  print'(1/,a)', ' ... reporting .............................................................'
-  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
+  print'(/,1x,a)', '... reporting .............................................................'
+  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
+  print'(1x,a,f12.2,a,es8.2,a,es9.2,a)',    'error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
-  print'(/,a)', ' ==========================================================================='
+  print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
 
 end subroutine converged
@@ -547,10 +547,10 @@ subroutine formResidual(da_local,x_local, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
-    if (debugRotation) print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
-      ' deformation gradient aim       =', transpose(F_aim)
+    if (debugRotation) print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
+    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      'deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
   endif newIteration
 

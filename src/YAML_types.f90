@@ -187,7 +187,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine YAML_types_init
 
-  print'(/,a)', ' <<<+-  YAML_types init  -+>>>'
+  print'(/,1x,a)', '<<<+-  YAML_types init  -+>>>'
 
   call selfTest
 

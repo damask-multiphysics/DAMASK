@@ -70,7 +70,7 @@ subroutine DAMASK_interface_init
   external :: &
     quit
 
-  print'(/,a)', ' <<<+-  DAMASK_interface init  -+>>>'
+  print'(/,1x,a)', '<<<+-  DAMASK_interface init  -+>>>'
 
   if(worldrank == 0) open(OUTPUT_UNIT, encoding='UTF-8')                                            ! for special characters in output
 

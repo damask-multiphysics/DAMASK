@@ -199,7 +199,7 @@ subroutine homogenization_init()
     num_homog, &
     num_homogGeneric
 
-  print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
 
 
   allocate(homogState      (size(material_name_homogenization)))

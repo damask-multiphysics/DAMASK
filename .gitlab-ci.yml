@@ -3,20 +3,18 @@ stages:
   - prepare
   - python
   - compile
-  - setup
   - fortran
   - performance
   - deploy
-  - update_master
+  - finalize
 
 
 ###################################################################################################
 default:
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
-    - source $DAMASKROOT/env/DAMASK.sh
-    - export PATH=${TESTROOT}/bin:$PATH
-    - cd $DAMASKROOT/PRIVATE/testing
+    - source env/DAMASK.sh
+    - export PATH=${TESTROOT}/bin:${PATH}
     - echo Job start:" $(date)"
   after_script:
     - echo Job end:" $(date)"
@@ -33,20 +31,19 @@ variables:
   # Shortcut names
   # ===============================================================================================
   TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID"
-  DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
 
   # ===============================================================================================
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler:  "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
-  GNUCompiler:    "Compiler/GNU/10"
+  COMPILER_INTEL: "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  COMPILER_GNU:   "Compiler/GNU/10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MPI_Intel:      "MPI/Intel/19.1.2/IntelMPI/2019"
+  MPI_INTEL:      "MPI/Intel/19.1.2/IntelMPI/2019"
   MPI_GNU:        "MPI/GNU/10/OpenMPI/4.1.1"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc_Intel:    "Libraries/PETSc/3.16.1/Intel-19.1.2-IntelMPI-2019"
-  PETSc_GNU:      "Libraries/PETSc/3.16.1/GNU-10-OpenMPI-4.1.1"
+  PETSC_INTEL:    "Libraries/PETSc/3.16.1/Intel-19.1.2-IntelMPI-2019"
+  PETSC_GNU:      "Libraries/PETSc/3.16.1/GNU-10-OpenMPI-4.1.1"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC:            "FEM/MSC/2021.2"
   IntelMarc:      "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
@@ -54,97 +51,107 @@ variables:
 
 
 ###################################################################################################
-checkout:
+create_testroot:
   stage: prepare
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
     - echo Job start:" $(date)"
   script:
-    - mkdir -p ${DAMASKROOT}
-    - cd ${DAMASKROOT}
-    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
-    - git checkout ${CI_COMMIT_SHA}
-    - git submodule update --init
+    - mkdir -p ${TESTROOT}
 
 
 ###################################################################################################
 pytest:
   stage: python
   script:
-    - PYTHONPATH=${CI_PROJECT_DIR}/python
-    - cd ${CI_PROJECT_DIR}/python
+    - cd python
     - pytest --basetemp ${TESTROOT}/python -v --cov --cov-report=term
     - coverage report --fail-under=90
 
 mypy:
   stage: python
   script:
-    - cd ${CI_PROJECT_DIR}/python
+    - cd python
     - mypy damask
 
 
 ###################################################################################################
-compile_grid_Intel:
+test_grid_Intel:
   stage: compile
   script:
-    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
-    - cd pytest
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_Intel
 
-compile_mesh_Intel:
+test_mesh_Intel:
   stage: compile
   script:
-    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
-    - cd pytest
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_Intel
 
-compile_grid_GNU:
+test_grid_GNU:
   stage: compile
   script:
-    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
-    - cd pytest
+    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
+    - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
 
-compile_mesh_GNU:
+test_mesh_GNU:
   stage: compile
   script:
-    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
-    - cd pytest
+    - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
+    - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
 
-compile_Marc:
+test_Marc:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - cd pytest
+    - cd PRIVATE/testing/pytest
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
 
 
-###################################################################################################
 setup_grid:
-  stage: setup
+  stage: compile
   script:
-    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
 
 setup_mesh:
-  stage: setup
+  stage: compile
   script:
-    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
 
+compile_Marc:
+  stage: compile
+  script:
+    - module load $IntelMarc $HDF5Marc $MSC
+    - cd $(mktemp -d)
+    - cp ${CI_PROJECT_DIR}/examples/Marc/* .
+    - python3 -c "import damask;damask.solver.Marc().submit_job('r-value','texture',True,'h')"
+    - mkdir ${TESTROOT}/src
+    - mv ${CI_PROJECT_DIR}/src/DAMASK_Marc.marc ${TESTROOT}/src
+
 
 ###################################################################################################
-core:
+open-source:
   stage: fortran
   script:
-    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
-    - cd pytest
-    - pytest -k 'not compile' --basetemp ${TESTROOT}/fortran -v
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
+    - cd PRIVATE/testing/pytest
+    - pytest -k 'not compile and not Marc' --basetemp ${TESTROOT}/open-source -v
+
+Marc:
+  stage: fortran
+  script:
+    - cd PRIVATE/testing/pytest
+    - pytest -k 'not compile and Marc' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
@@ -156,19 +163,24 @@ core:
 grid_runtime:
   stage: performance
   script:
-    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
+    - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd $(mktemp -d)
-    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
+    - cmake -DOPTIMIZATION=AGGRESSIVE -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=./ ${CI_PROJECT_DIR}
     - make -j2 all install
+    - export PATH=${PWD}/bin:${PATH}
     - cd $(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/performance.git .
-    - ${DAMASKROOT}/PRIVATE/testing/runtime.py --input_dir $DAMASKROOT/examples/grid --output_dir . --tag ${CI_COMMIT_SHA}
+    - >
+        ${CI_PROJECT_DIR}/PRIVATE/testing/runtime.py
+        --input_dir ${CI_PROJECT_DIR}/examples/grid
+        --output_dir ./
+        --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking
-    - source $DAMASKROOT/env/DAMASK.sh
-    - export PATH=${TESTROOT}/bin:$PATH
+    - source env/DAMASK.sh
     - echo Job start:" $(date)"
+
 
 ###################################################################################################
 source_distribution:
@@ -179,16 +191,19 @@ source_distribution:
 
 
 ###################################################################################################
-merge_into_master:
-  stage: update_master
+update_revision:
+  stage: finalize
+  before_script:
+    - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID}
+    - echo Job start:" $(date)"
   script:
-    - cd ${DAMASKROOT}
-    - export TESTEDREV=$(git describe)                                                              # might be detached from development branch
-    - echo ${TESTEDREV} > python/damask/VERSION
+    - cd $(mktemp -d)
+    - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
+    - git checkout ${CI_COMMIT_SHA}
+    - export VERSION=$(git describe)
+    - echo ${VERSION} > python/damask/VERSION
     - git add python/damask/VERSION
-    - >
-        git diff-index --quiet HEAD ||
-        git commit -m "[skip ci] updated version information after successful test of $TESTEDREV"
+    - git commit -m "[skip ci] updated version information after successful test of $VERSION"
     - export UPDATEDREV=$(git describe)                                                             # tested state + 1 commit
     - git checkout master
     - git pull

@@ -75,7 +75,6 @@ module rotations
       procedure, public  :: rotVector
       procedure, public  :: rotTensor2
       procedure, public  :: rotTensor4
-      procedure, public  :: rotTensor4sym
       procedure, public  :: misorientation
       procedure, public  :: standardize
   end type rotation
@@ -103,10 +102,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_init
 
-  print'(/,a)', ' <<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
-  print*, 'https://doi.org/10.1088/0965-0393/23/8/083501'
+  print'(/,1x,a)', 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
+  print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
   call selfTest
 
@@ -372,33 +371,13 @@ end function rotTensor4
 
 
 !---------------------------------------------------------------------------------------------------
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief rotate a symmetric rank-4 tensor stored as (6,6) passively (default) or actively
-!! ToDo: Need to check active/passive !!!
-!---------------------------------------------------------------------------------------------------
-pure function rotTensor4sym(self,T,active) result(tRot)
-
-  real(pReal),                 dimension(6,6) :: tRot
-  class(rotation), intent(in)                 :: self
-  real(pReal),     intent(in), dimension(6,6) :: T
-  logical,         intent(in), optional       :: active
-
-  if (present(active)) then
-    tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T),active))
-  else
-    tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T)))
-  endif
-
-end function rotTensor4sym
-
-
-!---------------------------------------------------------------------------------------------------
 !> @brief misorientation
 !---------------------------------------------------------------------------------------------------
 pure elemental function misorientation(self,other)
 
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
+
 
   misorientation%q = multiply_quaternion(other%q, conjugate_quaternion(self%q))
 

@@ -41,7 +41,7 @@ module subroutine damage_init()
   integer :: ho,Nmembers
 
 
-  print'(/,a)', ' <<<+-  homogenization:damage init  -+>>>'
+  print'(/,1x,a)', '<<<+-  homogenization:damage init  -+>>>'
 
 
   configHomogenizations => config_material%get('homogenization')

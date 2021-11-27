@@ -46,10 +46,10 @@ module function anisobrittle_init() result(mySources)
 
 
   mySources = source_active('anisobrittle')
-  if(count(mySources) == 0) return
+  if (count(mySources) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:damage:anisobrittle init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:damage:anisobrittle init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
   phases => config_material%get('phase')
@@ -57,7 +57,7 @@ module function anisobrittle_init() result(mySources)
 
 
   do ph = 1, phases%length
-    if(mySources(ph)) then
+    if (mySources(ph)) then
       phase => phases%get(ph)
       sources => phase%get('damage')
 
@@ -94,14 +94,14 @@ module function anisobrittle_init() result(mySources)
         Nmembers = count(material_phaseID==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,0)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
-        if(any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+        if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
       end associate
 
       if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
-    endif
+    end if
 
-  enddo
+  end do
 
 end function anisobrittle_init
 
@@ -136,7 +136,7 @@ module subroutine anisobrittle_dotState(S, ph,en)
             * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
                (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
                (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%q)
-    enddo
+    end do
   end associate
 
 end subroutine anisobrittle_dotState
@@ -159,7 +159,7 @@ module subroutine anisobrittle_results(phase,group)
         case ('f_phi')
           call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³')
       end select
-    enddo outputsLoop
+    end do outputsLoop
   end associate
 
 end subroutine anisobrittle_results
@@ -200,7 +200,7 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
                             + dudotd_dt*prm%cleavage_systems(k,l,1,i) * prm%cleavage_systems(m,n,1,i)
-    endif
+    end if
 
     traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
     if (abs(traction_t) > traction_crit + tol_math_check) then
@@ -210,7 +210,7 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
                             + dudott_dt*prm%cleavage_systems(k,l,2,i) * prm%cleavage_systems(m,n,2,i)
-    endif
+    end if
 
     traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
     if (abs(traction_n) > traction_crit + tol_math_check) then
@@ -220,8 +220,8 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
                             + dudotn_dt*prm%cleavage_systems(k,l,3,i) * prm%cleavage_systems(m,n,3,i)
-    endif
-  enddo
+    end if
+  end do
   end associate
 
 end subroutine damage_anisobrittle_LiAndItsTangent
