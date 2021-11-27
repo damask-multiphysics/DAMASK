@@ -1,13 +1,15 @@
 submodule(phase:mechanical) elastic
 
   type :: tParameters
-    real(pReal) :: &
+    real(pReal),dimension(3) :: &
       C_11 = 0.0_pReal, &
       C_12 = 0.0_pReal, &
       C_13 = 0.0_pReal, &
       C_33 = 0.0_pReal, &
       C_44 = 0.0_pReal, &
       C_66 = 0.0_pReal
+    real(pReal) :: &
+      T_ref
   end type tParameters
 
   type(tParameters), allocatable, dimension(:) :: param
@@ -15,7 +17,7 @@ submodule(phase:mechanical) elastic
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize elasticity.
+!> @brief initialize elasticity
 !--------------------------------------------------------------------------------------------------
 module subroutine elastic_init(phases)
 
@@ -28,7 +30,7 @@ module subroutine elastic_init(phases)
     phase, &
     mech, &
     elastic
-
+  logical :: thermal_active
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic:Hooke init  -+>>>'
@@ -45,15 +47,35 @@ module subroutine elastic_init(phases)
 
     associate(prm => param(ph))
 
-      prm%C_11 = elastic%get_asFloat('C_11')
-      prm%C_12 = elastic%get_asFloat('C_12')
-      prm%C_44 = elastic%get_asFloat('C_44')
+      prm%T_ref = elastic%get_asFloat('T_ref', defaultVal=T_ROOM)
 
+      prm%C_11(1) = elastic%get_asFloat('C_11')
+      prm%C_11(2) = elastic%get_asFloat('C_11,T',  defaultVal=0.0_pReal)
+      prm%C_11(3) = elastic%get_asFloat('C_11,T^2',defaultVal=0.0_pReal)
+ 
+      prm%C_12(1) = elastic%get_asFloat('C_12')
+      prm%C_12(2) = elastic%get_asFloat('C_12,T',  defaultVal=0.0_pReal)
+      prm%C_12(3) = elastic%get_asFloat('C_12,T^2',defaultVal=0.0_pReal)
+ 
+      prm%C_44(1) = elastic%get_asFloat('C_44')
+      prm%C_44(2) = elastic%get_asFloat('C_44,T',  defaultVal=0.0_pReal)
+      prm%C_44(3) = elastic%get_asFloat('C_44,T^2',defaultVal=0.0_pReal)
+ 
       if (any(phase_lattice(ph) == ['hP','tI'])) then
-        prm%C_13 = elastic%get_asFloat('C_13')
-        prm%C_33 = elastic%get_asFloat('C_33')
+        prm%C_13(1) = elastic%get_asFloat('C_13')
+        prm%C_13(2) = elastic%get_asFloat('C_13,T',  defaultVal=0.0_pReal)
+        prm%C_13(3) = elastic%get_asFloat('C_13,T^2',defaultVal=0.0_pReal)
+ 
+        prm%C_33(1) = elastic%get_asFloat('C_33')
+        prm%C_33(2) = elastic%get_asFloat('C_33,T',  defaultVal=0.0_pReal)
+        prm%C_33(3) = elastic%get_asFloat('C_33,T^2',defaultVal=0.0_pReal)
       end if
-      if (phase_lattice(ph) == 'tI') prm%C_66 = elastic%get_asFloat('C_66')
+
+      if (phase_lattice(ph) == 'tI') then
+        prm%C_66(1) = elastic%get_asFloat('C_66')
+        prm%C_66(2) = elastic%get_asFloat('C_66,T',  defaultVal=0.0_pReal)
+        prm%C_66(3) = elastic%get_asFloat('C_66,T^2',defaultVal=0.0_pReal)
+      end if
 
     end associate
   end do
@@ -62,28 +84,51 @@ end subroutine elastic_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return 6x6 elasticity tensor.
+!> @brief return 6x6 elasticity tensor
 !--------------------------------------------------------------------------------------------------
 module function elastic_C66(ph,en) result(C66)
 
   integer, intent(in) :: &
     ph, &
     en
+
   real(pReal), dimension(6,6) :: C66
+  real(pReal) :: T
 
 
   associate(prm => param(ph))
     C66 = 0.0_pReal
-    C66(1,1) = prm%C_11
-    C66(1,2) = prm%C_12
-    C66(4,4) = prm%C_44
+    T = thermal_T(ph,en)
+
+    C66(1,1) = prm%C_11(1) &
+             + prm%C_11(2)*(T - prm%T_ref)**1 &
+             + prm%C_11(3)*(T - prm%T_ref)**2
+
+    C66(1,2) = prm%C_12(1) &
+             + prm%C_12(2)*(T - prm%T_ref)**1 &
+             + prm%C_12(3)*(T - prm%T_ref)**2
+
+    C66(4,4) = prm%C_44(1) &
+             + prm%C_44(2)*(T - prm%T_ref)**1 &
+             + prm%C_44(3)*(T - prm%T_ref)**2
+
 
     if (any(phase_lattice(ph) == ['hP','tI'])) then
-      C66(1,3) = prm%C_13
-      C66(3,3) = prm%C_33
+      C66(1,3) = prm%C_13(1) &
+               + prm%C_13(2)*(T - prm%T_ref)**1 &
+               + prm%C_13(3)*(T - prm%T_ref)**2
+
+      C66(3,3) = prm%C_33(1) &
+               + prm%C_33(2)*(T - prm%T_ref)**1 &
+               + prm%C_33(3)*(T - prm%T_ref)**2
+
     end if
 
-    if (phase_lattice(ph) == 'tI') C66(6,6) = prm%C_66
+    if (phase_lattice(ph) == 'tI') then
+      C66(6,6) = prm%C_66(1) &
+               + prm%C_66(2)*(T - prm%T_ref)**1 &
+               + prm%C_66(3)*(T - prm%T_ref)**2
+    end if
 
     C66 = lattice_symmetrize_C66(C66,phase_lattice(ph))
 
@@ -93,7 +138,7 @@ end function elastic_C66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return shear modulus.
+!> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
 module function elastic_mu(ph,en) result(mu)
 
@@ -110,7 +155,7 @@ end function elastic_mu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return Poisson ratio.
+!> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
 module function elastic_nu(ph,en) result(nu)
 
@@ -128,7 +173,7 @@ end function elastic_nu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
+!> @brief return the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
 ! ToDo: Use Voigt matrix directly
 !--------------------------------------------------------------------------------------------------
