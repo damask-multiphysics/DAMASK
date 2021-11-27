@@ -17,9 +17,9 @@ module subroutine isostrain_init
     ho, &
     Nmembers
 
-  print'(/,a)', ' <<<+-  homogenization:mechanical:isostrain init  -+>>>'
+  print'(/,1x,a)', '<<<+-  homogenization:mechanical:isostrain init  -+>>>'
 
-  print'(a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
+  print'(/,a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   flush(IO_STDOUT)
 
   do ho = 1, size(homogenization_type)
@@ -30,7 +30,7 @@ module subroutine isostrain_init
     allocate(homogState(ho)%state0(0,Nmembers))
     allocate(homogState(ho)%state (0,Nmembers))
 
-  enddo
+  end do
 
 end subroutine isostrain_init
 

@@ -51,7 +51,7 @@ module discretization_mesh
 
   real(pReal), pointer, dimension(:) :: &
     mesh_node0_temp
-  
+
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
@@ -88,7 +88,7 @@ subroutine discretization_mesh_init(restart)
   integer :: p_i                                                                                    !< integration order (quadrature rule)
   type(tvec) :: coords_node0
 
-  print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
+  print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
 
 !--------------------------------------------------------------------------------
 ! read numerics parameter
@@ -106,6 +106,7 @@ subroutine discretization_mesh_init(restart)
   CHKERRQ(ierr)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,ierr)
   CHKERRQ(ierr)
+  print'()'
   call DMView(globalMesh, PETSC_VIEWER_STDOUT_WORLD,ierr)
   CHKERRQ(ierr)
 
@@ -173,7 +174,7 @@ subroutine discretization_mesh_init(restart)
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 
-  call writeGeometry(reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]),mesh_node0)  
+  call writeGeometry(reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]),mesh_node0)
 
 end subroutine discretization_mesh_init
 
@@ -249,18 +250,18 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   real(pReal), dimension(:,:), intent(in) :: &
   coordinates_nodes, &
   coordinates_points
-  
+
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
-  
+
   call results_writeDataset(coordinates_nodes,'geometry','x_n', &
         'initial coordinates of the nodes','m')
-  
+
   call results_writeDataset(coordinates_points,'geometry','x_p', &
         'initial coordinates of the materialpoints (cell centers)','m')
-  
+
   call results_closeJobFile
-  
+
   end subroutine writeGeometry
 
 end module discretization_mesh

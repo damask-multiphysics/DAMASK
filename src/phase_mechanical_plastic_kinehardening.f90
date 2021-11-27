@@ -83,8 +83,8 @@ module function plastic_kinehardening_init() result(myPlasticity)
   myPlasticity = plastic_active('kinehardening')
   if(count(myPlasticity) == 0) return
 
-  print'(/,a)', ' <<<+-  phase:mechanical:plastic:kinehardening init  -+>>>'
-  print'(a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:kinehardening init  -+>>>'
+  print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
 
   phases => config_material%get('phase')
@@ -95,7 +95,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 
   do ph = 1, phases%length
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), dot => dotState(ph), dlt => deltaState(ph), stt => state(ph))
 
@@ -125,7 +125,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
       else
         prm%P_nS_pos = prm%P
         prm%P_nS_neg = prm%P
-      endif
+      end if
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
                                                    phase_lattice(ph))
 
@@ -161,7 +161,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
       xi_0 = emptyRealArray
       allocate(prm%xi_inf_f,prm%xi_inf_b,prm%h_0_f,prm%h_inf_f,prm%h_0_b,prm%h_inf_b,source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
-    endif slipActive
+    end if slipActive
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -217,7 +217,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 !  exit if any parameter is out of range
     if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(kinehardening)')
 
-  enddo
+  end do
 
 
 end function plastic_kinehardening_init
@@ -258,7 +258,7 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
                        + ddot_gamma_dtau_pos(i) * prm%P(k,l,i) * prm%P_nS_pos(m,n,i) &
                        + ddot_gamma_dtau_neg(i) * prm%P(k,l,i) * prm%P_nS_neg(m,n,i)
-  enddo
+  end do
 
   end associate
 
@@ -382,7 +382,7 @@ module subroutine plastic_kinehardening_results(ph,group)
                                     'plastic shear','1',prm%systems_sl)
       end select
 
-    enddo
+    end do
 
   end associate
 
@@ -424,7 +424,7 @@ pure subroutine kinetics(Mp,ph,en, &
       tau_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i)) - stt%chi(i,en)
       tau_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)) - stt%chi(i,en), &
                          0.0_pReal, prm%nonSchmidActive)
-    enddo
+    end do
 
     where(dNeq0(tau_pos))
       dot_gamma_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &           ! 1/2 if non-Schmid active
@@ -446,14 +446,14 @@ pure subroutine kinetics(Mp,ph,en, &
       else where
         ddot_gamma_dtau_pos = 0.0_pReal
       end where
-    endif
+    end if
     if (present(ddot_gamma_dtau_neg)) then
       where(dNeq0(dot_gamma_neg))
         ddot_gamma_dtau_neg = dot_gamma_neg*prm%n/tau_neg
       else where
         ddot_gamma_dtau_neg = 0.0_pReal
       end where
-    endif
+    end if
 
   end associate
 

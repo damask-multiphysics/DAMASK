@@ -44,7 +44,7 @@ module subroutine eigen_init(phases)
     kinematics, &
     mechanics
 
-  print'(/,a)', ' <<<+-  phase:mechanical:eigen init  -+>>>'
+  print'(/,1x,a)', '<<<+-  phase:mechanical:eigen init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
 ! explicit eigen mechanisms
@@ -55,11 +55,11 @@ module subroutine eigen_init(phases)
     mechanics => phase%get('mechanical')
     kinematics => mechanics%get('eigen',defaultVal=emptyList)
     Nmodels(ph) = kinematics%length
-  enddo
+  end do
 
   allocate(model(maxval(Nmodels),phases%length), source = KINEMATICS_undefined_ID)
 
-  if(maxval(Nmodels) /= 0) then
+  if (maxval(Nmodels) /= 0) then
     where(thermalexpansion_init(maxval(Nmodels))) model = KINEMATICS_thermal_expansion_ID
   endif
 
@@ -97,8 +97,8 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     do k = 1, kinematics%length
       kinematics_type => kinematics%get(k)
       active_kinematics(k,ph) = kinematics_type%get_asString('type') == kinematics_label
-    enddo
-  enddo
+    end do
+  end do
 
 
 end function kinematics_active
@@ -125,11 +125,11 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
   do ph = 1, phases%length
     phase => phases%get(ph)
     kinematics => phase%get('damage',defaultVal=emptyList)
-    if(kinematics%length < 1) return
+    if (kinematics%length < 1) return
     kinematics_type => kinematics%get(1)
     if (.not. kinematics_type%contains('type')) continue
     active_kinematics(ph) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
-  enddo
+  end do
 
 
 end function kinematics_active2
@@ -188,7 +188,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
         dLi_dS = dLi_dS + my_dLi_dS
         active = .true.
     end select kinematicsType
-  enddo KinematicsLoop
+  end do KinematicsLoop
 
   select case (model_damage(ph))
     case (KINEMATICS_cleavage_opening_ID)
@@ -198,7 +198,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
       active = .true.
   end select
 
-  if(.not. active) return
+  if (.not. active) return
 
   FiInv = math_inv33(Fi)
   detFi = math_det33(Fi)
@@ -209,7 +209,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     dLi_dS(1:3,1:3,i,j)  = matmul(matmul(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
     dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
     dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
-  enddo; enddo
+  end do; end do
 
 end subroutine phase_LiAndItsTangents
 

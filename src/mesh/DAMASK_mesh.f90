@@ -86,7 +86,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
   call CPFEM_initAll
-  print'(/,a)', ' <<<+-  DAMASK_mesh init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  DAMASK_mesh init  -+>>>'; flush(IO_STDOUT)
 
 !---------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
@@ -115,16 +115,16 @@ program DAMASK_mesh
         case('$Loadcase')
           N_def = N_def + 1
       end select
-    enddo                                                                                           ! count all identifiers to allocate memory and do sanity check
-  enddo
+    end do                                                                                           ! count all identifiers to allocate memory and do sanity check
+  end do
 
-  if(N_def < 1) call IO_error(error_ID = 837)
+  if (N_def < 1) call IO_error(error_ID = 837)
   allocate(loadCases(N_def))
 
   do i = 1, size(loadCases)
     allocate(loadCases(i)%fieldBC(1))
     loadCases(i)%fieldBC(1)%ID = FIELD_MECH_ID
-  enddo
+  end do
 
   do i = 1, size(loadCases)
     loadCases(i)%fieldBC(1)%nComponents = dimPlex                                                   !< X, Y (, Z) displacements
@@ -138,12 +138,12 @@ program DAMASK_mesh
         case (3)
           loadCases(i)%fieldBC(1)%componentBC(component)%ID = COMPONENT_MECH_Z_ID
       end select
-    enddo
+    end do
     do component = 1, loadCases(i)%fieldBC(1)%nComponents
       allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pReal)
       allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Mask (mesh_Nboundaries), source = .false.)
-    enddo
-  enddo
+    end do
+  end do
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
@@ -163,7 +163,7 @@ program DAMASK_mesh
           currentFaceSet = -1
           do faceSet = 1, mesh_Nboundaries
             if (mesh_boundaries(faceSet) == currentFace) currentFaceSet = faceSet
-          enddo
+          end do
           if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
         case('t')
           loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1)
@@ -192,11 +192,11 @@ program DAMASK_mesh
                    .true.
                loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Value(currentFaceSet) = &
                    IO_floatValue(line,chunkPos,i+1)
-             endif
-           enddo
+             end if
+           end do
       end select
-    enddo
-  enddo
+    end do
+  end do
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
@@ -204,28 +204,28 @@ program DAMASK_mesh
   errorID = 0
   checkLoadcases: do currentLoadCase = 1, size(loadCases)
     write (loadcase_string, '(i0)' ) currentLoadCase
-    print'(a,i0)', ' load case: ', currentLoadCase
+    print'(/,1x,a,i0)', 'load case: ', currentLoadCase
     if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
-      print'(a)', '  drop guessing along trajectory'
-    print'(a)', '  Field '//trim(FIELD_MECH_label)
+      print'(2x,a)', 'drop guessing along trajectory'
+    print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
 
     do faceSet = 1, mesh_Nboundaries
        do component = 1, loadCases(currentLoadCase)%fieldBC(1)%nComponents
          if (loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Mask(faceSet)) &
-           print'(a,i2,a,i2,a,f12.7)', '    Face  ', mesh_boundaries(faceSet), &
-                                       ' Component ', component, &
-                                       ' Value ', loadCases(currentLoadCase)%fieldBC(1)% &
-                                                          componentBC(component)%Value(faceSet)
-      enddo
-    enddo
-    print'(a,f12.6)', '  time:       ', loadCases(currentLoadCase)%time
+           print'(a,i2,a,i2,a,f12.7)', &
+           '    Face ', mesh_boundaries(faceSet), &
+           ' Component ', component, &
+           ' Value ', loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Value(faceSet)
+      end do
+    end do
+    print'(2x,a,f12.6)', 'time:       ', loadCases(currentLoadCase)%time
     if (loadCases(currentLoadCase)%incs < 1)             errorID = 835                            ! non-positive incs count
-    print'(a,i5)',    '  increments: ', loadCases(currentLoadCase)%incs
+    print'(2x,a,i5)',    'increments: ', loadCases(currentLoadCase)%incs
     if (loadCases(currentLoadCase)%outputfrequency < 1)  errorID = 836                            ! non-positive result frequency
-    print'(a,i5)',    '  output  frequency:  ', &
+    print'(2x,a,i5)',    'output frequency: ', &
                loadCases(currentLoadCase)%outputfrequency
     if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
-  enddo checkLoadcases
+  end do checkLoadcases
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
@@ -235,9 +235,9 @@ program DAMASK_mesh
   if (worldrank == 0) then
     open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
-  endif
+  end if
 
-  print'(/,a)', ' ... writing initial configuration to file ........................'
+  print'(/,1x,a)', '... writing initial configuration to file .................................'
   flush(IO_STDOUT)
   call CPFEM_results(0,0.0_pReal)
 
@@ -262,7 +262,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
-        print'(/,a)', ' ###########################################################################'
+        print'(/,1x,a)', '###########################################################################'
         print'(1x,a,es12.5,6(a,i0))',&
                 'Time', time, &
                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
@@ -281,60 +281,60 @@ program DAMASK_mesh
         stagIterate = .true.
         do while (stagIterate)
           solres(1) = FEM_mechanical_solution(incInfo,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(1))
-          if(.not. solres(1)%converged) exit
+          if (.not. solres(1)%converged) exit
 
           stagIter = stagIter + 1
           stagIterate =            stagIter < stagItMax &
                        .and.       all(solres(:)%converged) &
                        .and. .not. all(solres(:)%stagConverged)                                     ! stationary with respect to staggered iteration
-        enddo
+        end do
 
 ! check solution
         cutBack = .False.
-        if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
+        if (.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
           if (cutBackLevel < maxCutBack) then                                                       ! do cut back
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
             timeinc = timeinc/2.0_pReal
-            print'(/,a)', ' cutting back'
+            print'(/,1x,a)', 'cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
             if (worldrank == 0) close(statUnit)
             call IO_error(950)
-          endif
+          end if
         else
           guess = .true.                                                                            ! start guessing after first converged (sub)inc
           timeIncOld = timeinc
-        endif
+        end if
         if (.not. cutBack .and. worldrank == 0) &
           write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                             solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
-      enddo subStepLooping
+      end do subStepLooping
 
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
       if (all(solres(:)%converged)) then
-        print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' converged'
+        print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' converged'
       else
-        print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
-      endif; flush(IO_STDOUT)
+        print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
+      end if; flush(IO_STDOUT)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
-        print'(/,a)', ' ... writing results to file ......................................'
+        print'(/,1x,a)', '... writing results to file ...............................................'
         call FEM_mechanical_updateCoords
         call CPFEM_results(totalIncsCounter,time)
-      endif
+      end if
 
 
-    enddo incLooping
+    end do incLooping
 
-  enddo loadCaseLooping
+  end do loadCaseLooping
 
 
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
-  print'(/,a)', ' ###########################################################################'
+  print'(/,1x,a)', '###########################################################################'
   if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)

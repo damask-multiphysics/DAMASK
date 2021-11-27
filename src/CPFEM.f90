@@ -103,7 +103,7 @@ subroutine CPFEM_init
   class(tNode), pointer :: &
     debug_CPFEM
 
-  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
   allocate(CPFEM_cs(               6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
   allocate(CPFEM_dcsdE(          6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)

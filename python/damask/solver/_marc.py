@@ -3,14 +3,14 @@ import shlex
 import re
 from pathlib import Path
 
-_msc_version = 2021.2
-_msc_root = '/opt/msc'
+_marc_version = 2021.2
+_marc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 
 class Marc:
-    """Wrapper to run DAMASK with MSC.Marc."""
+    """Wrapper to run DAMASK with MSC Marc."""
 
-    def __init__(self,msc_version=_msc_version,msc_root=_msc_root,damask_root=_damask_root):
+    def __init__(self,marc_version=_marc_version,marc_root=_marc_root,damask_root=_damask_root):
         """
         Create a Marc solver object.
 
@@ -20,14 +20,14 @@ class Marc:
             Marc version
 
         """
-        self.msc_version = msc_version
-        self.msc_root    = Path(msc_root)
+        self.marc_version = marc_version
+        self.marc_root    = Path(marc_root)
         self.damask_root = Path(damask_root)
 
     @property
     def library_path(self):
 
-        path_lib = self.msc_root/f'mentat{self.msc_version}/shlib/linux64'
+        path_lib = self.marc_root/f'mentat{self.marc_version}/shlib/linux64'
         if not path_lib.is_dir():
             raise FileNotFoundError(f'library path "{path_lib}" not found')
 
@@ -37,7 +37,7 @@ class Marc:
     @property
     def tools_path(self):
 
-        path_tools = self.msc_root/f'marc{self.msc_version}/tools'
+        path_tools = self.marc_root/f'marc{self.marc_version}/tools'
         if not path_tools.is_dir():
             raise FileNotFoundError(f'tools path "{path_tools}" not found')
 

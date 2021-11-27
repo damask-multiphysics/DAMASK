@@ -70,10 +70,10 @@ subroutine results_init(restart)
   character(len=:), allocatable :: date
 
 
-  print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
-  print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
+  print'(/,1x,a)', 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
+  print'(  1x,a)', 'https://doi.org/10.1007/s40192-017-0084-5'
 
   if (.not. restart) then
     resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
@@ -98,7 +98,7 @@ subroutine results_init(restart)
     call results_closeGroup(results_addGroup('setup'))
     call results_addAttribute('description','input data used to run the simulation','setup')
     call h5gmove_f(resultsFile,'tmp','setup/previous',hdferr)
-  endif
+  end if
 
   call results_closeJobFile
 
@@ -222,7 +222,7 @@ subroutine results_addAttribute_str(attrLabel,attrValue,path)
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
-  endif
+  end if
 
 end subroutine results_addAttribute_str
 
@@ -241,7 +241,7 @@ subroutine results_addAttribute_int(attrLabel,attrValue,path)
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
-  endif
+  end if
 
 end subroutine results_addAttribute_int
 
@@ -260,7 +260,7 @@ subroutine results_addAttribute_real(attrLabel,attrValue,path)
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
-  endif
+  end if
 
 end subroutine results_addAttribute_real
 
@@ -279,7 +279,7 @@ subroutine results_addAttribute_str_array(attrLabel,attrValue,path)
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
-  endif
+  end if
 
 end subroutine results_addAttribute_str_array
 
@@ -298,7 +298,7 @@ subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
-  endif
+  end if
 
 end subroutine results_addAttribute_int_array
 
@@ -317,7 +317,7 @@ subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
   else
     call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
-  endif
+  end if
 
 end subroutine results_addAttribute_real_array
 
@@ -390,7 +390,7 @@ subroutine results_writeVectorDataset_real(dataset,group,label,description,SIuni
 
   if (present(systems)) then
     if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
-  endif
+  end if
 
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
@@ -422,7 +422,7 @@ subroutine results_writeTensorDataset_real(dataset,group,label,description,SIuni
     transposed_ = transposed
   else
     transposed_ = .true.
-  endif
+  end if
 
   groupHandle = results_openGroup(group)
   if(transposed_) then
@@ -430,11 +430,11 @@ subroutine results_writeTensorDataset_real(dataset,group,label,description,SIuni
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)
       dataset_transposed(:,:,i) = transpose(dataset(:,:,i))
-    enddo
+    end do
     call HDF5_write(dataset_transposed,groupHandle,label)
   else
     call HDF5_write(dataset,groupHandle,label)
-  endif
+  end if
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
@@ -456,7 +456,7 @@ subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit
 
   if (present(systems)) then
     if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
-  endif
+  end if
 
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
@@ -542,16 +542,16 @@ subroutine results_mapping_phase(ID,entry,label)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
       entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
-    enddo
-  enddo
+    end do
+  end do
   call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
       entryGlobal(co,ce) = entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank)
-    enddo
-  enddo
+    end do
+  end do
 #endif
 
   myShape = int([size(ID,1),writeSize(worldrank)], HSIZE_T)
@@ -694,13 +694,13 @@ subroutine results_mapping_homogenization(ID,entry,label)
   entryOffset = 0
   do ce = 1, size(ID,1)
     entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
-  enddo
+  end do
   call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
     entryGlobal(ce) = entry(ce) -1 + entryOffset(ID(ce),worldrank)
-  enddo
+  end do
 #endif
 
   myShape = int([writeSize(worldrank)], HSIZE_T)

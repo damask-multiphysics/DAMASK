@@ -113,10 +113,10 @@ program DAMASK_grid
 ! init DAMASK (all modules)
 
   call CPFEM_initAll
-  print'(/,a)',   ' <<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
 
-  print*, 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
+  print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 
 !-------------------------------------------------------------------------------------------------
@@ -223,21 +223,21 @@ program DAMASK_grid
     loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
-    if (load_step%get_asString('f_out',defaultVal='DAMASK') == 'none') then
-       loadCases(l)%f_out = huge(0)
+    if (load_step%get_asString('f_out',defaultVal='n/a') == 'none') then
+      loadCases(l)%f_out = huge(0)
     else
-      loadCases(l)%f_out     = load_step%get_asInt('f_out', defaultVal=1)
-    endif
+      loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
+    end if
     loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
 
     reportAndCheck: if (worldrank == 0) then
-      print'(/,a,i0)', ' load case: ', l
-      print*, ' estimate_rate:', loadCases(l)%estimate_rate
+      print'(/,1x,a,1x,i0)', 'load case:', l
+      print'(2x,a,1x,l1)', 'estimate_rate:', loadCases(l)%estimate_rate
       if (loadCases(l)%deformation%myType == 'F') then
-        print*, ' F:'
+        print'(2x,a)', 'F:'
       else
-        print*, ' '//loadCases(l)%deformation%myType//' / 1/s:'
-      endif
+        print'(2x,a)', loadCases(l)%deformation%myType//' / 1/s:'
+      end if
       do i = 1, 3; do j = 1, 3
         if (loadCases(l)%deformation%mask(i,j)) then
           write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
@@ -250,8 +250,8 @@ program DAMASK_grid
       if (any(.not.(loadCases(l)%stress%mask .or. transpose(loadCases(l)%stress%mask)) .and. (math_I3<1))) &
         errorID = 838                                                                               ! no rotation is allowed by stress BC
 
-      if (loadCases(l)%stress%myType == 'P')     print*, ' P / MPa:'
-      if (loadCases(l)%stress%myType == 'dot_P') print*, ' dot_P / MPa/s:'
+      if (loadCases(l)%stress%myType == 'P')     print'(2x,a)', 'P / MPa:'
+      if (loadCases(l)%stress%myType == 'dot_P') print'(2x,a)', 'dot_P / MPa/s:'
 
       if (loadCases(l)%stress%myType /= '') then
         do i = 1, 3; do j = 1, 3
@@ -274,16 +274,16 @@ program DAMASK_grid
       if (loadCases(l)%f_restart < 1)  errorID = 839
 
       if (dEq(loadCases(l)%r,1.0_pReal,1.e-9_pReal)) then
-        print'(a)', '  r: 1 (constant step width)'
+        print'(2x,a)', 'r: 1 (constant step width)'
       else
-        print'(a,f0.3)', '  r: ', loadCases(l)%r
+        print'(2x,a,1x,f0.3)', 'r:', loadCases(l)%r
       endif
-      print'(a,f0.3)',   '  t: ', loadCases(l)%t
-      print'(a,i0)',     '  N: ', loadCases(l)%N
+      print'(2x,a,1x,f0.3)',   't:', loadCases(l)%t
+      print'(2x,a,1x,i0)',     'N:', loadCases(l)%N
       if (loadCases(l)%f_out < huge(0)) &
-        print'(a,i0)',   '  f_out: ', loadCases(l)%f_out
+        print'(2x,a,1x,i0)',   'f_out:', loadCases(l)%f_out
       if (loadCases(l)%f_restart < huge(0)) &
-        print'(a,i0)',   '  f_restart: ', loadCases(l)%f_restart
+        print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
 
       if (errorID > 0) call IO_error(error_ID = errorID, el = l)
 
@@ -322,7 +322,7 @@ program DAMASK_grid
   endif
 
   writeUndeformed: if (interface_restartInc < 1) then
-    print'(/,a)', ' ... writing initial configuration to file ........................'
+    print'(/,1x,a)', '... writing initial configuration to file .................................'
     flush(IO_STDOUT)
     call CPFEM_results(0,0.0_pReal)
   endif writeUndeformed
@@ -358,8 +358,8 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
-          print'(/,a)', ' ###########################################################################'
-          print'(1x,a,es12.5,6(a,i0))', &
+          print'(/,1x,a)', '###########################################################################'
+          print'(1x,a,1x,es12.5,6(a,i0))', &
                   'Time', t, &
                   's: Increment ', inc,'/',loadCases(l)%N,&
                   '-', stepFraction,'/',subStepFactor**cutBackLevel,&
@@ -384,7 +384,7 @@ program DAMASK_grid
               case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
             end select
           enddo
-          if(.not. cutBack) call CPFEM_forward
+          if (.not. cutBack) call CPFEM_forward
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
@@ -430,7 +430,7 @@ program DAMASK_grid
             cutBackLevel = cutBackLevel + 1
             t = t - Delta_t
             Delta_t = Delta_t/real(subStepFactor,pReal)                                             ! cut timestep
-            print'(/,a)', ' cutting back '
+            print'(/,1x,a)', 'cutting back '
           else                                                                                      ! no more options to continue
             if (worldrank == 0) close(statUnit)
             call IO_error(950)
@@ -441,26 +441,26 @@ program DAMASK_grid
         cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
 
         if (all(solres(:)%converged)) then
-          print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' converged'
+          print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' converged'
         else
-          print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
+          print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
         endif; flush(IO_STDOUT)
 
         call MPI_Allreduce(interface_SIGUSR1,signal,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
-          print'(1/,a)', ' ... writing results to file ......................................'
+          print'(/,1x,a)', '... writing results to file ...............................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,t)
         endif
-        if(signal) call interface_setSIGUSR1(.false.)
+        if (signal) call interface_setSIGUSR1(.false.)
         call MPI_Allreduce(interface_SIGUSR2,signal,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
           call mechanical_restartWrite
           call CPFEM_restartWrite
         endif
-        if(signal) call interface_setSIGUSR2(.false.)
+        if (signal) call interface_setSIGUSR2(.false.)
         call MPI_Allreduce(interface_SIGTERM,signal,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
         if (signal) exit loadCaseLooping
@@ -473,7 +473,7 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
-  print'(/,a)', ' ###########################################################################'
+  print'(/,1x,a)', '###########################################################################'
   if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)

@@ -44,7 +44,7 @@ module subroutine thermal_init()
   integer :: ho
 
 
-  print'(/,a)', ' <<<+-  homogenization:thermal init  -+>>>'
+  print'(/,1x,a)', '<<<+-  homogenization:thermal init  -+>>>'
 
 
   configHomogenizations => config_material%get('homogenization')
@@ -65,9 +65,9 @@ module subroutine thermal_init()
 #endif
       else
         prm%output = emptyStringArray
-      endif
+      end if
     end associate
-  enddo
+  end do
 
   call pass_init()
 
@@ -89,7 +89,7 @@ module subroutine thermal_partition(ce)
   dot_T = current(material_homogenizationID(ce))%dot_T(material_homogenizationEntry(ce))
   do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
     call phase_thermal_setField(T,dot_T,co,ce)
-  enddo
+  end do
 
 end subroutine thermal_partition
 
@@ -108,7 +108,7 @@ module function homogenization_mu_T(ce) result(mu)
   mu = phase_mu_T(1,ce)
   do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
     mu = mu + phase_mu_T(co,ce)
-  enddo
+  end do
 
   mu = mu / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
@@ -129,7 +129,7 @@ module function homogenization_K_T(ce) result(K)
   K = phase_K_T(1,ce)
   do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
     K = K + phase_K_T(co,ce)
-  enddo
+  end do
 
   K = K / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
@@ -150,7 +150,7 @@ module function homogenization_f_T(ce) result(f)
   f = phase_f_T(material_phaseID(1,ce),material_phaseEntry(1,ce))
   do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
     f = f + phase_f_T(material_phaseID(co,ce),material_phaseEntry(co,ce))
-  enddo
+  end do
 
   f = f/real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
@@ -189,7 +189,7 @@ module subroutine thermal_results(ho,group)
         case('T')
           call results_writeDataset(current(ho)%T,group,'T','temperature','K')
       end select
-    enddo outputsLoop
+    end do outputsLoop
   end associate
 
 end subroutine thermal_results
