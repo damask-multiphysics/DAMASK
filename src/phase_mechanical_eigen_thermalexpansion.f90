@@ -61,11 +61,11 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
           prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=T_ROOM)
 
           prm%A(1,1,1) = kinematic_type%get_asFloat('A_11')
-          prm%A(1,1,2) = kinematic_type%get_asFloat('A_11,T',defaultVal=0.0_pReal)
+          prm%A(1,1,2) = kinematic_type%get_asFloat('A_11,T',  defaultVal=0.0_pReal)
           prm%A(1,1,3) = kinematic_type%get_asFloat('A_11,T^2',defaultVal=0.0_pReal)
           if (any(phase_lattice(p) == ['hP','tI'])) then
             prm%A(3,3,1) = kinematic_type%get_asFloat('A_33')
-            prm%A(3,3,2) = kinematic_type%get_asFloat('A_33,T',defaultVal=0.0_pReal)
+            prm%A(3,3,2) = kinematic_type%get_asFloat('A_33,T',  defaultVal=0.0_pReal)
             prm%A(3,3,3) = kinematic_type%get_asFloat('A_33,T^2',defaultVal=0.0_pReal)
           end if
           do i=1, size(prm%A,3)
