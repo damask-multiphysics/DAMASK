@@ -691,8 +691,8 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
                         * (prm%Gamma_sf(1) + prm%Gamma_sf(2) * T) / (mu*prm%b_sl(i)), &
                       1.0_pReal, &
                       prm%ExtendedDislocations)
-          v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Q_cl/(K_B*T)) &
-               * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(K_B*T)) - 1.0_pReal)
+          v_cl = 2.0_pReal*prm%omega*b_d**2*exp(-prm%Q_cl/(K_B*T)) &
+               * (exp(abs(sigma_cl)*prm%b_sl(i)**3/(K_B*T)) - 1.0_pReal)
 
           dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,en) &
                                / (d_hat-prm%d_caron(i))
@@ -784,14 +784,14 @@ module subroutine dislotwin_dependentState(T,ph,en)
                          + 3.0_pReal*prm%b_tr*mu/(prm%L_tr*prm%b_tr) &
                          + prm%h*prm%delta_G/(3.0_pReal*prm%b_tr)
 
-    dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2.0_pReal
-    dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2.0_pReal
+    dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2
+    dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2
 
 
-    x0 = mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
+    x0 = mu*prm%b_tw**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tw(:,en) = mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
-    x0 = mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
+    x0 = mu*prm%b_tr**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tr(:,en) = mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
 
   end associate
@@ -917,7 +917,7 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
                            / prm%tau_0
       dV_run_inverse_dTau  = -1.0_pReal * v_run_inverse/tau_eff
       dV_dTau              = -1.0_pReal * (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
-                           / (v_wait_inverse+v_run_inverse)**2.0_pReal
+                           / (v_wait_inverse+v_run_inverse)**2
       ddot_gamma_dtau = dV_dTau*stt%rho_mob(:,en)*prm%b_sl
     else where significantStress
       dot_gamma_sl    = 0.0_pReal

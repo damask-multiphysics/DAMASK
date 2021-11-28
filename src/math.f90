@@ -1086,15 +1086,15 @@ function math_eigvalsh33(m)
 
   I = math_invariantsSym33(m)                                                                       ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
-  P = I(2)-I(1)**2.0_pReal/3.0_pReal                                                                ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  P = I(2)-I(1)**2/3.0_pReal                                                                        ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
   Q = product(I(1:2))/3.0_pReal &
-    - 2.0_pReal/27.0_pReal*I(1)**3.0_pReal &
+    - 2.0_pReal/27.0_pReal*I(1)**3 &
     - I(3)                                                                                          ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
   if (all(abs([P,Q]) < TOL)) then
     math_eigvalsh33 = math_eigvalsh(m)
   else
-    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+    rho=sqrt(-3.0_pReal*P**3)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                                                             [cos( phi              /3.0_pReal), &

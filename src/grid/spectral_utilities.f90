@@ -578,7 +578,7 @@ real(pReal) function utilities_divergenceRMS()
   do k = 1, grid3; do j = 1, grid(2)
     do i = 2, grid1Red -1                                                                           ! Has somewhere a conj. complex counterpart. Therefore count it twice.
       utilities_divergenceRMS = utilities_divergenceRMS &
-            + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,j,k), &                     ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+            + 2.0_pReal*(sum (real(matmul(tensorField_fourier(1:3,1:3,i,j,k), &                     ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2, i.e. do not take square root and square again
                                           conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2) &             ! --> sum squared L_2 norm of vector
                         +sum(aimag(matmul(tensorField_fourier(1:3,1:3,i,j,k),&
                                           conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2))
