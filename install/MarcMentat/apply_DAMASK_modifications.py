@@ -17,7 +17,7 @@ def copy_and_patch(patch,orig,marc_root,editor):
     with open(orig.parent/patch.stem) as f_in:
         content = f_in.read()
     with open(orig.parent/patch.stem,'w') as f_out:
-        f_out.write(content.replace('%INSTALLDIR%',marc_root).replace('%EDITOR%',editor))
+        f_out.write(content.replace('%INSTALLDIR%',f'{marc_root}').replace('%EDITOR%',editor))
 
 
 parser = argparse.ArgumentParser(
