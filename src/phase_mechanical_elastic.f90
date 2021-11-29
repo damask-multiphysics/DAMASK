@@ -193,15 +193,17 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
     dS_dFi                                                                                          !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
 
   real(pReal), dimension(3,3) :: E
+  real(pReal), dimension(6,6) :: C66
   real(pReal), dimension(3,3,3,3) :: C
   integer :: &
     i, j
 
 
-  C = math_Voigt66to3333(phase_damage_C66(phase_homogenizedC66(ph,en),ph,en))
+  C66 = phase_damage_C66(phase_homogenizedC66(ph,en),ph,en)
+  C = math_Voigt66to3333(C66)
 
   E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
-  S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                                        !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
+  S = math_Voigt6to33_stress(matmul(C66,math_33toVoigt6_strain(matmul(matmul(transpose(Fi),E),Fi))))!< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
   do i =1,3; do j=1,3
     dS_dFe(i,j,1:3,1:3) = matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko

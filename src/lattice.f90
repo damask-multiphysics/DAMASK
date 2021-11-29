@@ -405,7 +405,7 @@ module lattice
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief module initialization
+!> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
@@ -417,7 +417,7 @@ end subroutine lattice_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief characteristic shear for twinning
+!> @brief Characteristic shear for twinning
 !--------------------------------------------------------------------------------------------------
 function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(characteristicShear)
 
@@ -491,7 +491,7 @@ end function lattice_characteristicShear_Twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotated elasticity matrices for twinning in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for twinning in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
@@ -522,14 +522,14 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
   do i = 1, sum(Ntwin)
     call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
-    lattice_C66_twin(1:6,1:6,i) = math_3333toVoigt66(R%rotTensor4(math_Voigt66to3333(C66)))
+    lattice_C66_twin(1:6,1:6,i) = R%rotStiffness(C66)
   enddo
 
 end function lattice_C66_twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotated elasticity matrices for transformation in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
                            cOverA_trans,a_bcc,a_fcc)
@@ -548,6 +548,8 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
   if (lattice_target == 'hP') then
+    ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
+    ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
     if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
       call IO_error(131,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
@@ -581,14 +583,14 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   do i = 1,sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
-    lattice_C66_trans(1:6,1:6,i) = math_3333toVoigt66(R%rotTensor4(math_Voigt66to3333(C_target_unrotated66)))
+    lattice_C66_trans(1:6,1:6,i) = R%rotStiffness(C_target_unrotated66)
   enddo
 
  end function lattice_C66_trans
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief non-Schmid projections for bcc with up to 6 coefficients
+!> @brief Non-schmid projections for bcc with up to 6 coefficients
 ! Koester et al. 2012, Acta Materialia 60 (2012) 3894–3901, eq. (17)
 ! Gröger et al. 2008, Acta Materialia 56 (2008) 5412–5425, table 1
 !--------------------------------------------------------------------------------------------------
@@ -635,7 +637,7 @@ end function lattice_nonSchmidMatrix
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip-slip interaction matrix
+!> @brief Slip-slip interaction matrix
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(interactionMatrix)
@@ -884,7 +886,7 @@ end function lattice_interaction_SlipBySlip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief twin-twin interaction matrix
+!> @brief Twin-twin interaction matrix
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(interactionMatrix)
@@ -983,7 +985,7 @@ end function lattice_interaction_TwinByTwin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief trans-trans interaction matrix
+!> @brief Trans-trans interaction matrix
 !> details only active trans systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_TransByTrans(Ntrans,interactionValues,lattice) result(interactionMatrix)
@@ -1025,7 +1027,7 @@ end function lattice_interaction_TransByTrans
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip-twin interaction matrix
+!> @brief Slip-twin interaction matrix
 !> details only active slip and twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) result(interactionMatrix)
@@ -1189,7 +1191,7 @@ end function lattice_interaction_SlipByTwin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip-trans interaction matrix
+!> @brief Slip-trans interaction matrix
 !> details only active slip and trans systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice) result(interactionMatrix)
@@ -1242,7 +1244,7 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief twin-slip interaction matrix
+!> @brief Twin-slip interaction matrix
 !> details only active twin and slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) result(interactionMatrix)
@@ -1487,7 +1489,7 @@ end function lattice_SchmidMatrix_cleavage
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip direction of slip systems (|| b)
+!> @brief Slip direction of slip systems (|| b)
 !--------------------------------------------------------------------------------------------------
 function lattice_slip_direction(Nslip,lattice,cOverA) result(d)
 
@@ -1505,7 +1507,7 @@ end function lattice_slip_direction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief normal direction of slip systems (|| n)
+!> @brief Normal direction of slip systems (|| n)
 !--------------------------------------------------------------------------------------------------
 function lattice_slip_normal(Nslip,lattice,cOverA) result(n)
 
@@ -1523,7 +1525,7 @@ end function lattice_slip_normal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief transverse direction of slip systems (|| t = b x n)
+!> @brief Transverse direction of slip systems (|| t = b x n)
 !--------------------------------------------------------------------------------------------------
 function lattice_slip_transverse(Nslip,lattice,cOverA) result(t)
 
@@ -1541,7 +1543,7 @@ end function lattice_slip_transverse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief labels of slip systems
+!> @brief Labels of slip systems
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_labels_slip(Nslip,lattice) result(labels)
@@ -1582,7 +1584,7 @@ end function lattice_labels_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return 3x3 tensor with symmetry according to given Bravais lattice
+!> @brief Return 3x3 tensor with symmetry according to given Bravais lattice
 !--------------------------------------------------------------------------------------------------
 pure function lattice_symmetrize_33(T,lattice) result(T_sym)
 
@@ -1609,7 +1611,7 @@ end function lattice_symmetrize_33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
+!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
 pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
@@ -1655,7 +1657,7 @@ end function lattice_symmetrize_C66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief labels of twin systems
+!> @brief Labels for twin systems
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_labels_twin(Ntwin,lattice) result(labels)
@@ -1693,7 +1695,7 @@ end function lattice_labels_twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief projection of the transverse direction onto the slip plane
+!> @brief Projection of the transverse direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for edge dislocations
 !--------------------------------------------------------------------------------------------------
 function slipProjection_transverse(Nslip,lattice,cOverA) result(projection)
@@ -1717,7 +1719,7 @@ end function slipProjection_transverse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief projection of the slip direction onto the slip plane
+!> @brief Projection of the slip direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for screw dislocations
 !--------------------------------------------------------------------------------------------------
 function slipProjection_direction(Nslip,lattice,cOverA) result(projection)
@@ -1783,7 +1785,7 @@ end function coordinateSystem_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief populate reduced interaction matrix
+!> @brief Populate reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,values,matrix)
 
@@ -1826,7 +1828,7 @@ end function buildInteraction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build a local coordinate system on slip, twin, trans, cleavage systems
+!> @brief Build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,potential,system,lattice,cOverA)
@@ -1893,7 +1895,7 @@ end function buildCoordinateSystem
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief helper function to define transformation systems
+!> @brief Helper function to define transformation systems
 ! Needed to calculate Schmid matrix and rotated stiffness matrices.
 ! @details: set c/a   = 0.0 for fcc -> bcc transformation
 !           set a_Xcc = 0.0 for fcc -> hex transformation
@@ -2077,7 +2079,7 @@ end function getlabels
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equivalent Poisson's ratio (ν)
+!> @brief Equivalent Poisson's ratio (ν)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
 function lattice_equivalent_nu(C,assumption) result(nu)
@@ -2110,7 +2112,7 @@ end function lattice_equivalent_nu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equivalent shear modulus (μ)
+!> @brief Equivalent shear modulus (μ)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
 function lattice_equivalent_mu(C,assumption) result(mu)
@@ -2139,7 +2141,7 @@ end function lattice_equivalent_mu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some lattice functions
+!> @brief Check correctness of some lattice functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
