@@ -166,7 +166,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%D    = pl%get_asFloat('D')
       prm%D_0  = pl%get_asFloat('D_0')
       prm%Q_cl = pl%get_asFloat('Q_cl')
-      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3.0_pReal
+      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
@@ -498,7 +498,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
               * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pReal * t_k / tau_pos
 
-          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2
 
           ddot_gamma_dtau_pos = b_rho_half * dvel
         else where significantPositiveTau2
@@ -528,7 +528,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
               * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pReal * t_k / tau_neg
 
-          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2
 
           ddot_gamma_dtau_neg = b_rho_half * dvel
         else where significantNegativeTau2

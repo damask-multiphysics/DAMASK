@@ -129,7 +129,7 @@ module subroutine anisobrittle_dotState(S, ph,en)
       traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
       traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-      traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2.0_pReal
+      traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2
 
       damageState(ph)%dotState(1,en) = damageState(ph)%dotState(1,en) &
           + prm%dot_o / prm%s_crit(i) &
@@ -190,7 +190,7 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
   dLd_dTstar = 0.0_pReal
   associate(prm => param(ph))
   do i = 1,prm%sum_N_cl
-    traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2
 
     traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     if (abs(traction_d) > traction_crit + tol_math_check) then

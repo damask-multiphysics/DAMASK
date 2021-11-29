@@ -578,7 +578,7 @@ pure function om2eu(om) result(eu)
   real(pReal)                             :: zeta
 
   if    (dNeq(abs(om(3,3)),1.0_pReal,1.e-8_pReal)) then
-    zeta = 1.0_pReal/sqrt(math_clip(1.0_pReal-om(3,3)**2.0_pReal,1e-64_pReal,1.0_pReal))
+    zeta = 1.0_pReal/sqrt(math_clip(1.0_pReal-om(3,3)**2,1e-64_pReal,1.0_pReal))
     eu = [atan2(om(3,1)*zeta,-om(3,2)*zeta), &
           acos(math_clip(om(3,3),-1.0_pReal,1.0_pReal)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
@@ -1099,7 +1099,7 @@ pure function ho2ax(ho) result(ax)
             +0.000003953714684212874_pReal, -0.00000036555001439719544_pReal ]
 
   ! normalize h and store the magnitude
-  hmag_squared = sum(ho**2.0_pReal)
+  hmag_squared = sum(ho**2)
   if (dEq0(hmag_squared)) then
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
