@@ -303,7 +303,9 @@ class Colormap(mpl.colors.ListedColormap):
                 'RGBPoints':colors
                }]
 
-        json.dump(out,self._get_file_handle(fname,'json'),indent=4)
+        fhandle = self._get_file_handle(fname,'json')
+        json.dump(out,fhandle,indent=4)
+        fhandle.write('\n')
 
 
     def save_ASCII(self,fname=None):
