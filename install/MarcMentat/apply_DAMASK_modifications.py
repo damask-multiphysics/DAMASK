@@ -53,7 +53,7 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
 
 print('patching files...\n')
 
-for directory in glob.glob(str(damask_root/f'install/MarcMentat'/marc_version/f'*')):
+for directory in glob.glob(str(damask_root/'install/MarcMentat'/marc_version/'*')):
     for orig, mods in matches[Path(directory).name]:
         product,subfolder = (marc_root/Path(directory)).name.split('_')
         orig = marc_root/f'{product.lower()}{marc_version}/{subfolder}/{orig}'
