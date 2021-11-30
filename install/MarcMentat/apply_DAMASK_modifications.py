@@ -40,7 +40,7 @@ parser.add_argument('--damask-root', dest='damask_root', metavar = 'string',
 args = parser.parse_args()
 marc_root = Path(args.marc_root).expanduser()
 damask_root = Path(args.damask_root).expanduser()
-marc_version = Path(args.marc_version).expanduser()
+marc_version = args.marc_version
 
 matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
                            ['run_marc','run_damask_*mp'],
