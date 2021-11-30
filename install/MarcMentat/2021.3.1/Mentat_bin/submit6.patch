@@ -1,15 +1,5 @@
 ---
 +++
-@@ -4,7 +4,8 @@
- # Normal exit status is 0.
- #
- 
--DIR=/nethome/f.roters/temp/msc/Marc2021.3.1/marc2021.3.1
-+DIR=%INSTALLDIR%/marc2021.3.1
-+
- if test $MARCDIR1
- then
-  DIR=$MARCDIR1
 @@ -60,10 +61,10 @@ gpu=$3
  if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
    slv="-iam sfm"

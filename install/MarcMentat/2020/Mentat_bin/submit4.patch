@@ -1,15 +1,5 @@
 --- 
 +++ 
-@@ -4,7 +4,8 @@
- # Normal exit status is 0.
- #
- 
--DIR=/tmp/msc/marc2020
-+DIR=%INSTALLDIR%/marc2020
-+
- if test $MARCDIR1
- then
-  DIR=$MARCDIR1
 @@ -59,10 +60,10 @@
  if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
    slv="-iam sfm"

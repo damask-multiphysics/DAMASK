@@ -1,15 +1,5 @@
 --- 
 +++ 
-@@ -4,7 +4,8 @@
- # Normal exit status is 0.
- #
- 
--DIR=/nethome/f.roters/temp/msc/Marc2021.2/marc2021.2
-+DIR=%INSTALLDIR%/marc2021.2
-+
- if test $MARCDIR1
- then
-  DIR=$MARCDIR1
 @@ -59,10 +60,10 @@
  if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
    slv="-iam sfm"
