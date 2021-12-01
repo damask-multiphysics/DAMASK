@@ -14,8 +14,10 @@ def copy_and_patch(patch,orig,editor):
     except shutil.SameFileError:
         pass
     damask.util.run(f'patch {orig.parent/patch.stem} {patch} -b')
-    with open(orig.parent/patch.stem) as f_in, open(orig.parent/patch.stem,'w') as f_out:
-        f_out.write(f_in.read().replace('%EDITOR%',editor))
+    with open(orig.parent/patch.stem) as f_in:
+        content = f_in.read()
+    with open(orig.parent/patch.stem,'w') as f_out:
+        f_out.write(content.replace('%EDITOR%',editor))
 
 
 parser = argparse.ArgumentParser(
