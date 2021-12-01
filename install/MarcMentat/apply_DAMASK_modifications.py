@@ -50,7 +50,7 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
            'Mentat_menus':[['job_run.ms','job_run.ms']]}
 
 
-print('patching files...\n')
+print('patching files...')
 
 for directory in glob.glob(str(damask_root/'install/MarcMentat'/marc_version/'*')):
     for orig, mods in matches[Path(directory).name]:
@@ -67,11 +67,9 @@ os.system(f'xvfb-run -a {executable} -compile {menu_file}')
 
 print('setting file access rights...')
 
-files = (glob.glob(str(marc_root/f'marc{marc_version}/tools/run_damask*')) +
-         glob.glob(str(marc_root/f'marc{marc_version}/tools/comp_damask*')) +
+files = (glob.glob(str(marc_root/f'marc{marc_version}/tools/*_damask*')) +
          glob.glob(str(marc_root/f'mentat{marc_version}/bin/kill[4-6]')) +
          glob.glob(str(marc_root/f'mentat{marc_version}/bin/submit[4-6]')))
 
 for file in files:
     os.chmod(file , 0o755)
-
