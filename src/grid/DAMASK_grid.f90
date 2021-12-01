@@ -223,7 +223,11 @@ program DAMASK_grid
     loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
-    loadCases(l)%f_out     = load_step%get_asInt('f_out',     defaultVal=1)
+    if (load_step%get_asString('f_out',defaultVal='n/a') == 'none') then
+      loadCases(l)%f_out = huge(0)
+    else
+      loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
+    end if
     loadCases(l)%estimate_rate = (load_step%get_asBool('estimate_rate',defaultVal=.true.) .and. l>1)
 
     reportAndCheck: if (worldrank == 0) then
@@ -233,7 +237,7 @@ program DAMASK_grid
         print'(2x,a)', 'F:'
       else
         print'(2x,a)', loadCases(l)%deformation%myType//' / 1/s:'
-      endif
+      end if
       do i = 1, 3; do j = 1, 3
         if (loadCases(l)%deformation%mask(i,j)) then
           write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
@@ -276,7 +280,8 @@ program DAMASK_grid
       endif
       print'(2x,a,1x,f0.3)',   't:', loadCases(l)%t
       print'(2x,a,1x,i0)',     'N:', loadCases(l)%N
-      print'(2x,a,1x,i0)',     'f_out:', loadCases(l)%f_out
+      if (loadCases(l)%f_out < huge(0)) &
+        print'(2x,a,1x,i0)',   'f_out:', loadCases(l)%f_out
       if (loadCases(l)%f_restart < huge(0)) &
         print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
 

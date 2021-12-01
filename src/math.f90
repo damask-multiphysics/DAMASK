@@ -806,7 +806,7 @@ pure function math_sym3333to66(m3333,weighted)
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
     w = NRMMANDEL
-  endif
+  end if
 
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:6, j=1:6)
@@ -841,20 +841,83 @@ pure function math_66toSym3333(m66,weighted)
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
     w = INVNRMMANDEL
-  endif
+  end if
 
   do i=1,6; do j=1,6
     math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
     math_66toSym3333(MAPNYE(2,i),MAPNYE(1,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
     math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(2,j),MAPNYE(1,j)) = w(i)*w(j)*m66(i,j)
     math_66toSym3333(MAPNYE(2,i),MAPNYE(1,i),MAPNYE(2,j),MAPNYE(1,j)) = w(i)*w(j)*m66(i,j)
-  enddo; enddo
+  end do; end do
 
 end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 6x6 Voigt matrix into symmetric 3x3x3x3 matrix
+!> @brief Convert 6 Voigt stress vector into symmetric 3x3 tensor.
+!--------------------------------------------------------------------------------------------------
+pure function math_Voigt6to33_stress(sigma_tilde) result(sigma)
+
+  real(pReal), dimension(3,3) :: sigma
+  real(pReal), dimension(6), intent(in) :: sigma_tilde
+
+
+  sigma = reshape([sigma_tilde(1), sigma_tilde(6), sigma_tilde(5), &
+                   sigma_tilde(6), sigma_tilde(2), sigma_tilde(4), &
+                   sigma_tilde(5), sigma_tilde(4), sigma_tilde(3)],[3,3])
+
+end function math_Voigt6to33_stress
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert 6 Voigt strain vector into symmetric 3x3 tensor.
+!--------------------------------------------------------------------------------------------------
+pure function math_Voigt6to33_strain(epsilon_tilde) result(epsilon)
+
+  real(pReal), dimension(3,3) :: epsilon
+  real(pReal), dimension(6), intent(in) :: epsilon_tilde
+
+
+  epsilon = reshape([          epsilon_tilde(1), 0.5_pReal*epsilon_tilde(6), 0.5_pReal*epsilon_tilde(5), &
+                     0.5_pReal*epsilon_tilde(6),           epsilon_tilde(2), 0.5_pReal*epsilon_tilde(4), &
+                     0.5_pReal*epsilon_tilde(5), 0.5_pReal*epsilon_tilde(4),           epsilon_tilde(3)],[3,3])
+
+end function math_Voigt6to33_strain
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert 3x3 tensor into 6 Voigt stress vector.
+!--------------------------------------------------------------------------------------------------
+pure function math_33toVoigt6_stress(sigma) result(sigma_tilde)
+
+  real(pReal), dimension(6) :: sigma_tilde
+  real(pReal), dimension(3,3), intent(in) :: sigma
+
+
+  sigma_tilde = [sigma(1,1), sigma(2,2), sigma(3,3), &
+                 sigma(3,2), sigma(3,1), sigma(1,2)] 
+
+end function math_33toVoigt6_stress
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert 3x3 tensor into 6 Voigt strain vector.
+!--------------------------------------------------------------------------------------------------
+pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
+
+  real(pReal), dimension(6) :: epsilon_tilde
+  real(pReal), dimension(3,3), intent(in) :: epsilon
+
+
+  epsilon_tilde = [          epsilon(1,1),           epsilon(2,2),           epsilon(3,3), &
+                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)] 
+
+end function math_33toVoigt6_strain
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert 6x6 Voigt matrix into symmetric 3x3x3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
@@ -864,18 +927,18 @@ pure function math_Voigt66to3333(m66)
   integer :: i,j
 
 
-  do i=1,6; do j=1, 6
+  do i=1,6; do j=1,6
     math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
     math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
     math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
     math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
-  enddo; enddo
+  end do; end do
 
 end function math_Voigt66to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3x3x3x3 matrix into 6x6 Voigt matrix
+!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 Voigt matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_3333toVoigt66(m3333)
 
@@ -924,7 +987,7 @@ real(pReal) function math_sampleGaussVar(mu, sigma, width)
     do
       call random_number(rnd)
       scatter = width_ * (2.0_pReal * rnd(1) - 1.0_pReal)
-      if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                    ! test if scattered value is drawn
+      if (rnd(2) <= exp(-0.5_pReal * scatter**2)) exit                                              ! test if scattered value is drawn
     enddo
 
     math_sampleGaussVar = scatter * sigma
@@ -1086,15 +1149,15 @@ function math_eigvalsh33(m)
 
   I = math_invariantsSym33(m)                                                                       ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
-  P = I(2)-I(1)**2.0_pReal/3.0_pReal                                                                ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  P = I(2)-I(1)**2/3.0_pReal                                                                        ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
   Q = product(I(1:2))/3.0_pReal &
-    - 2.0_pReal/27.0_pReal*I(1)**3.0_pReal &
+    - 2.0_pReal/27.0_pReal*I(1)**3 &
     - I(3)                                                                                          ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
   if (all(abs([P,Q]) < TOL)) then
     math_eigvalsh33 = math_eigvalsh(m)
   else
-    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+    rho=sqrt(-3.0_pReal*P**3)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                                                             [cos( phi              /3.0_pReal), &

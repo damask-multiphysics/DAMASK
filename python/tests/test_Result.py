@@ -390,7 +390,7 @@ class TestResult:
             with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur+'\n')
         with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5')) as f:
-            assert cur == f.read()[:-1]
+            assert cur == f.read().strip('\n')
 
     @pytest.mark.parametrize('mode',['point','cell'])
     @pytest.mark.parametrize('output',[False,True])

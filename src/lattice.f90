@@ -219,18 +219,18 @@ module lattice
        2, -1, -1,  0,     0,  1, -1,  0, &
       -1,  2, -1,  0,    -1,  0,  1,  0, &
       -1, -1,  2,  0,     1, -1,  0,  0, &
-    ! <-11.0>{11.0}/2nd order prismatic compound systems (plane normal independent of c/a-ratio)
+    ! <-11.0>{11.0}/2. order prismatic compound systems (plane normal independent of c/a-ratio)
       -1,  1,  0,  0,     1,  1, -2,  0, &
        0, -1,  1,  0,    -2,  1,  1,  0, &
        1,  0, -1,  0,     1, -2,  1,  0, &
-    ! <-1-1.0>{-11.1}/1st order pyramidal <a> systems (direction independent of c/a-ratio)
+    ! <-1-1.0>{-11.1}/1. order pyramidal <a> systems (direction independent of c/a-ratio)
       -1,  2, -1,  0,     1,  0, -1,  1, &
       -2,  1,  1,  0,     0,  1, -1,  1, &
       -1, -1,  2,  0,    -1,  1,  0,  1, &
        1, -2,  1,  0,    -1,  0,  1,  1, &
        2, -1, -1,  0,     0, -1,  1,  1, &
        1,  1, -2,  0,     1, -1,  0,  1, &
-    ! <11.3>{-10.1}/1st order pyramidal <c+a> systems (direction independent of c/a-ratio)
+    ! <11.3>{-10.1}/1. order pyramidal <c+a> systems (direction independent of c/a-ratio)
       -2,  1,  1,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     1,  0, -1,  1, &
       -1, -1,  2,  3,     0,  1, -1,  1, &
@@ -243,7 +243,7 @@ module lattice
       -1,  2, -1,  3,     0, -1,  1,  1, &
       -1,  2, -1,  3,     1, -1,  0,  1, &
       -2,  1,  1,  3,     1, -1,  0,  1, &
-    ! <11.3>{-1-1.2}/2nd order pyramidal <c+a> systems
+    ! <11.3>{-1-1.2}/2. order pyramidal <c+a> systems
       -1, -1,  2,  3,     1,  1, -2,  2, &
        1, -2,  1,  3,    -1,  2, -1,  2, &
        2, -1, -1,  3,    -2,  1,  1,  2, &
@@ -405,7 +405,7 @@ module lattice
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief module initialization
+!> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
@@ -417,7 +417,7 @@ end subroutine lattice_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief characteristic shear for twinning
+!> @brief Characteristic shear for twinning
 !--------------------------------------------------------------------------------------------------
 function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(characteristicShear)
 
@@ -473,13 +473,13 @@ function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
           p = sum(HEX_NTWINSYSTEM(1:f-1))+s
           select case(HEX_SHEARTWIN(p))                                                             ! from Christian & Mahajan 1995 p.29
             case (1)                                                                                ! <-10.1>{10.2}
-              characteristicShear(a) = (3.0_pReal-cOverA**2.0_pReal)/sqrt(3.0_pReal)/CoverA
+              characteristicShear(a) = (3.0_pReal-cOverA**2)/sqrt(3.0_pReal)/CoverA
             case (2)                                                                                ! <11.6>{-1-1.1}
               characteristicShear(a) = 1.0_pReal/cOverA
             case (3)                                                                                ! <10.-2>{10.1}
-              characteristicShear(a) = (4.0_pReal*cOverA**2.0_pReal-9.0_pReal)/sqrt(48.0_pReal)/cOverA
+              characteristicShear(a) = (4.0_pReal*cOverA**2-9.0_pReal)/sqrt(48.0_pReal)/cOverA
             case (4)                                                                                ! <11.-3>{11.2}
-              characteristicShear(a) = 2.0_pReal*(cOverA**2.0_pReal-2.0_pReal)/3.0_pReal/cOverA
+              characteristicShear(a) = 2.0_pReal*(cOverA**2-2.0_pReal)/3.0_pReal/cOverA
           end select
         case default
           call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(lattice))
@@ -491,7 +491,7 @@ end function lattice_characteristicShear_Twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotated elasticity matrices for twinning in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for twinning in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
@@ -522,14 +522,14 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
   do i = 1, sum(Ntwin)
     call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
-    lattice_C66_twin(1:6,1:6,i) = math_3333toVoigt66(R%rotTensor4(math_Voigt66to3333(C66)))
+    lattice_C66_twin(1:6,1:6,i) = R%rotStiffness(C66)
   enddo
 
 end function lattice_C66_twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotated elasticity matrices for transformation in 6x6-matrix notation
+!> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
                            cOverA_trans,a_bcc,a_fcc)
@@ -548,6 +548,8 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
   if (lattice_target == 'hP') then
+    ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
+    ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
     if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
       call IO_error(131,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
@@ -558,11 +560,11 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
     C_bar66(1,4) = (C_parent66(1,1) - C_parent66(1,2) - 2.0_pReal*C_parent66(4,4)) /(3.0_pReal*sqrt(2.0_pReal))
 
     C_target_unrotated66 = 0.0_pReal
-    C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2.0_pReal/C_bar66(4,4)
-    C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2.0_pReal/C_bar66(4,4)
+    C_target_unrotated66(1,1) = C_bar66(1,1) - C_bar66(1,4)**2/C_bar66(4,4)
+    C_target_unrotated66(1,2) = C_bar66(1,2) + C_bar66(1,4)**2/C_bar66(4,4)
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
-    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
+    C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
     C_target_unrotated66 = lattice_symmetrize_C66(C_target_unrotated66,'hP')
   elseif (lattice_target  == 'cI') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
@@ -581,14 +583,14 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   do i = 1,sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
-    lattice_C66_trans(1:6,1:6,i) = math_3333toVoigt66(R%rotTensor4(math_Voigt66to3333(C_target_unrotated66)))
+    lattice_C66_trans(1:6,1:6,i) = R%rotStiffness(C_target_unrotated66)
   enddo
 
  end function lattice_C66_trans
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief non-Schmid projections for bcc with up to 6 coefficients
+!> @brief Non-schmid projections for bcc with up to 6 coefficients
 ! Koester et al. 2012, Acta Materialia 60 (2012) 3894–3901, eq. (17)
 ! Gröger et al. 2008, Acta Materialia 56 (2008) 5412–5425, table 1
 !--------------------------------------------------------------------------------------------------
@@ -635,7 +637,7 @@ end function lattice_nonSchmidMatrix
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip-slip interaction matrix
+!> @brief Slip-slip interaction matrix
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(interactionMatrix)
@@ -751,22 +753,23 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
 
   integer, dimension(HEX_NSLIP,HEX_NSLIP), parameter :: &
     HEX_INTERACTIONSLIPSLIP = reshape( [&
+    ! basal      prism      2. prism   1. pyr<a>           1. pyr<c+a>                           2. pyr<c+a>
        1, 2, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, & ! -----> acting (forest)
-       2, 1, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, & ! |
+       2, 1, 2,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, & ! | basal
        2, 2, 1,   3, 3, 3,   7, 7, 7,  13,13,13,13,13,13,  21,21,21,21,21,21,21,21,21,21,21,21,  31,31,31,31,31,31, & ! |
                                                                                                                       ! v
        6, 6, 6,   4, 5, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, & ! reacting (primary)
-       6, 6, 6,   5, 4, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
+       6, 6, 6,   5, 4, 5,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, & ! prism
        6, 6, 6,   5, 5, 4,   8, 8, 8,  14,14,14,14,14,14,  22,22,22,22,22,22,22,22,22,22,22,22,  32,32,32,32,32,32, &
 
       12,12,12,  11,11,11,   9,10,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
-      12,12,12,  11,11,11,  10, 9,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
+      12,12,12,  11,11,11,  10, 9,10,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, & ! 2. prism
       12,12,12,  11,11,11,  10,10, 9,  15,15,15,15,15,15,  23,23,23,23,23,23,23,23,23,23,23,23,  33,33,33,33,33,33, &
 
       20,20,20,  19,19,19,  18,18,18,  16,17,17,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
       20,20,20,  19,19,19,  18,18,18,  17,16,17,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
       20,20,20,  19,19,19,  18,18,18,  17,17,16,17,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
-      20,20,20,  19,19,19,  18,18,18,  17,17,17,16,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
+      20,20,20,  19,19,19,  18,18,18,  17,17,17,16,17,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, & ! 1. pyr<a>
       20,20,20,  19,19,19,  18,18,18,  17,17,17,17,16,17,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
       20,20,20,  19,19,19,  18,18,18,  17,17,17,17,17,16,  24,24,24,24,24,24,24,24,24,24,24,24,  34,34,34,34,34,34, &
 
@@ -776,7 +779,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
       30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,25,26,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
       30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,25,26,26,26,26,26,26,26,  35,35,35,35,35,35, &
       30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,25,26,26,26,26,26,26,  35,35,35,35,35,35, &
-      30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,25,26,26,26,26,26,  35,35,35,35,35,35, &
+      30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,25,26,26,26,26,26,  35,35,35,35,35,35, & ! 1. pyr<c+a>
       30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,25,26,26,26,26,  35,35,35,35,35,35, &
       30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,25,26,26,26,  35,35,35,35,35,35, &
       30,30,30,  29,29,29,  28,28,28,  27,27,27,27,27,27,  26,26,26,26,26,26,26,26,26,25,26,26,  35,35,35,35,35,35, &
@@ -786,7 +789,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  36,37,37,37,37,37, &
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,36,37,37,37,37, &
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,36,37,37,37, &
-      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,36,37,37, &
+      42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,36,37,37, & ! 2. pyr<c+a>
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,36,37, &
       42,42,42,  41,41,41,  40,40,40,  39,39,39,39,39,39,  38,38,38,38,38,38,38,38,38,38,38,38,  37,37,37,37,37,36  &
       ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme)
@@ -883,7 +886,7 @@ end function lattice_interaction_SlipBySlip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief twin-twin interaction matrix
+!> @brief Twin-twin interaction matrix
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(interactionMatrix)
@@ -932,31 +935,32 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(
                                                                                                     !< 3: other interaction
   integer, dimension(HEX_NTWIN,HEX_NTWIN), parameter :: &
     HEX_INTERACTIONTWINTWIN = reshape( [&
+    ! <-10.1>{10.2}       <11.6>{-1-1.1}      <10.-2>{10.1}       <11.-3>{11.2}
        1, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, & ! -----> acting
        2, 1, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, & ! |
        2, 2, 1, 2, 2, 2,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, & ! |
-       2, 2, 2, 1, 2, 2,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, & ! v
+       2, 2, 2, 1, 2, 2,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, & ! v <-10.1>{10.2}
        2, 2, 2, 2, 1, 2,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, & ! reacting
        2, 2, 2, 2, 2, 1,   3, 3, 3, 3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13, &
 
        6, 6, 6, 6, 6, 6,   4, 5, 5, 5, 5, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, &
        6, 6, 6, 6, 6, 6,   5, 4, 5, 5, 5, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, &
        6, 6, 6, 6, 6, 6,   5, 5, 4, 5, 5, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, &
-       6, 6, 6, 6, 6, 6,   5, 5, 5, 4, 5, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, &
+       6, 6, 6, 6, 6, 6,   5, 5, 5, 4, 5, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, & ! <11.6>{-1-1.1}
        6, 6, 6, 6, 6, 6,   5, 5, 5, 5, 4, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, &
        6, 6, 6, 6, 6, 6,   5, 5, 5, 5, 5, 4,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14, &
 
       12,12,12,12,12,12,  11,11,11,11,11,11,   9,10,10,10,10,10,  15,15,15,15,15,15, &
       12,12,12,12,12,12,  11,11,11,11,11,11,  10, 9,10,10,10,10,  15,15,15,15,15,15, &
       12,12,12,12,12,12,  11,11,11,11,11,11,  10,10, 9,10,10,10,  15,15,15,15,15,15, &
-      12,12,12,12,12,12,  11,11,11,11,11,11,  10,10,10, 9,10,10,  15,15,15,15,15,15, &
+      12,12,12,12,12,12,  11,11,11,11,11,11,  10,10,10, 9,10,10,  15,15,15,15,15,15, & ! <10.-2>{10.1}
       12,12,12,12,12,12,  11,11,11,11,11,11,  10,10,10,10, 9,10,  15,15,15,15,15,15, &
       12,12,12,12,12,12,  11,11,11,11,11,11,  10,10,10,10,10, 9,  15,15,15,15,15,15, &
 
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  16,17,17,17,17,17, &
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,16,17,17,17,17, &
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,16,17,17,17, &
-      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,16,17,17, &
+      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,16,17,17, & ! <11.-3>{11.2}
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,16,17, &
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
       ],shape(HEX_INTERACTIONTWINTWIN))                                                             !< Twin-twin interaction types for hex
@@ -981,7 +985,7 @@ end function lattice_interaction_TwinByTwin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief trans-trans interaction matrix
+!> @brief Trans-trans interaction matrix
 !> details only active trans systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_TransByTrans(Ntrans,interactionValues,lattice) result(interactionMatrix)
@@ -1023,7 +1027,7 @@ end function lattice_interaction_TransByTrans
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip-twin interaction matrix
+!> @brief Slip-twin interaction matrix
 !> details only active slip and twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) result(interactionMatrix)
@@ -1123,22 +1127,23 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
 
   integer, dimension(HEX_NTWIN,HEX_NSLIP), parameter :: &
     HEX_INTERACTIONSLIPTWIN = reshape( [&
+    ! <-10.1>{10.2}       <11.6>{-1-1.1}      <10.-2>{10.1}       <11.-3>{11.2}
        1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! ----> twin (acting)
-       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
+       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! | basal
        1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
                                                                                        ! v
        5, 5, 5, 5, 5, 5,   6, 6, 6, 6, 6, 6,   7, 7, 7, 7, 7, 7,   8, 8, 8, 8, 8, 8, & ! slip (reacting)
+       5, 5, 5, 5, 5, 5,   6, 6, 6, 6, 6, 6,   7, 7, 7, 7, 7, 7,   8, 8, 8, 8, 8, 8, & ! prism
        5, 5, 5, 5, 5, 5,   6, 6, 6, 6, 6, 6,   7, 7, 7, 7, 7, 7,   8, 8, 8, 8, 8, 8, &
-       5, 5, 5, 5, 5, 5,   6, 6, 6, 6, 6, 6,   7, 7, 7, 7, 7, 7,   8, 8, 8, 8, 8, 8, &
 
        9, 9, 9, 9, 9, 9,  10,10,10,10,10,10,  11,11,11,11,11,11,  12,12,12,12,12,12, &
+       9, 9, 9, 9, 9, 9,  10,10,10,10,10,10,  11,11,11,11,11,11,  12,12,12,12,12,12, & ! 2.prism
        9, 9, 9, 9, 9, 9,  10,10,10,10,10,10,  11,11,11,11,11,11,  12,12,12,12,12,12, &
-       9, 9, 9, 9, 9, 9,  10,10,10,10,10,10,  11,11,11,11,11,11,  12,12,12,12,12,12, &
 
       13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, &
       13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, &
       13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, &
-      13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, &
+      13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, & ! 1. pyr<a>
       13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, &
       13,13,13,13,13,13,  14,14,14,14,14,14,  15,15,15,15,15,15,  16,16,16,16,16,16, &
 
@@ -1148,7 +1153,7 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
-      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
+      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, & ! 1. pyr<c+a>
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
       17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
@@ -1158,7 +1163,7 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
       21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, &
       21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, &
       21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, &
-      21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, &
+      21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, & ! 2. pyr<c+a>
       21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24, &
       21,21,21,21,21,21,  22,22,22,22,22,22,  23,23,23,23,23,23,  24,24,24,24,24,24  &
       ],shape(HEX_INTERACTIONSLIPTWIN))                                                             !< Slip-twin interaction types for hex
@@ -1186,7 +1191,7 @@ end function lattice_interaction_SlipByTwin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip-trans interaction matrix
+!> @brief Slip-trans interaction matrix
 !> details only active slip and trans systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice) result(interactionMatrix)
@@ -1239,7 +1244,7 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief twin-slip interaction matrix
+!> @brief Twin-slip interaction matrix
 !> details only active twin and slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) result(interactionMatrix)
@@ -1262,31 +1267,32 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) r
 
   integer, dimension(HEX_NSLIP,HEX_NTWIN), parameter :: &
     HEX_INTERACTIONTWINSLIP = reshape( [&
+    ! basal      prism     2. prism   1. pyr<a>           1. pyr<c+a>                           2. pyr<c+a>
       1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, & ! ----> slip (acting)
       1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, & ! |
       1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, & ! |
-      1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, & ! v
+      1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, & ! v <-10.1>{10.2}
       1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, & ! twin (reacting)
       1, 1, 1,   5, 5, 5,   9, 9, 9,  13,13,13,13,13,13,  17,17,17,17,17,17,17,17,17,17,17,17,  21,21,21,21,21,21, &
 
       2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, &
       2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, &
       2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, &
-      2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, &
+      2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, & ! <11.6>{-1-1.1}
       2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, &
       2, 2, 2,   6, 6, 6,  10,10,10,  14,14,14,14,14,14,  18,18,18,18,18,18,18,18,18,18,18,18,  22,22,22,22,22,22, &
 
       3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, &
       3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, &
       3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, &
-      3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, &
+      3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, & ! <10.-2>{10.1}
       3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, &
       3, 3, 3,   7, 7, 7,  11,11,11,  15,15,15,15,15,15,  19,19,19,19,19,19,19,19,19,19,19,19,  23,23,23,23,23,23, &
 
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
-      4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
+      4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, & ! <11.-3>{11.2}
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24, &
       4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24  &
       ],shape(HEX_INTERACTIONTWINSLIP))                                                             !< Twin-slip interaction types for hex
@@ -1483,7 +1489,7 @@ end function lattice_SchmidMatrix_cleavage
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief slip direction of slip systems (|| b)
+!> @brief Slip direction of slip systems (|| b)
 !--------------------------------------------------------------------------------------------------
 function lattice_slip_direction(Nslip,lattice,cOverA) result(d)
 
@@ -1501,7 +1507,7 @@ end function lattice_slip_direction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief normal direction of slip systems (|| n)
+!> @brief Normal direction of slip systems (|| n)
 !--------------------------------------------------------------------------------------------------
 function lattice_slip_normal(Nslip,lattice,cOverA) result(n)
 
@@ -1519,7 +1525,7 @@ end function lattice_slip_normal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief transverse direction of slip systems (|| t = b x n)
+!> @brief Transverse direction of slip systems (|| t = b x n)
 !--------------------------------------------------------------------------------------------------
 function lattice_slip_transverse(Nslip,lattice,cOverA) result(t)
 
@@ -1537,7 +1543,7 @@ end function lattice_slip_transverse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief labels of slip systems
+!> @brief Labels of slip systems
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_labels_slip(Nslip,lattice) result(labels)
@@ -1578,7 +1584,7 @@ end function lattice_labels_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return 3x3 tensor with symmetry according to given Bravais lattice
+!> @brief Return 3x3 tensor with symmetry according to given Bravais lattice
 !--------------------------------------------------------------------------------------------------
 pure function lattice_symmetrize_33(T,lattice) result(T_sym)
 
@@ -1605,7 +1611,7 @@ end function lattice_symmetrize_33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
+!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given Bravais lattice
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
 pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
@@ -1651,7 +1657,7 @@ end function lattice_symmetrize_C66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief labels of twin systems
+!> @brief Labels for twin systems
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
 function lattice_labels_twin(Ntwin,lattice) result(labels)
@@ -1689,7 +1695,7 @@ end function lattice_labels_twin
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief projection of the transverse direction onto the slip plane
+!> @brief Projection of the transverse direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for edge dislocations
 !--------------------------------------------------------------------------------------------------
 function slipProjection_transverse(Nslip,lattice,cOverA) result(projection)
@@ -1713,7 +1719,7 @@ end function slipProjection_transverse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief projection of the slip direction onto the slip plane
+!> @brief Projection of the slip direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for screw dislocations
 !--------------------------------------------------------------------------------------------------
 function slipProjection_direction(Nslip,lattice,cOverA) result(projection)
@@ -1779,7 +1785,7 @@ end function coordinateSystem_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief populate reduced interaction matrix
+!> @brief Populate reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,values,matrix)
 
@@ -1822,7 +1828,7 @@ end function buildInteraction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build a local coordinate system on slip, twin, trans, cleavage systems
+!> @brief Build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,potential,system,lattice,cOverA)
@@ -1889,7 +1895,7 @@ end function buildCoordinateSystem
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief helper function to define transformation systems
+!> @brief Helper function to define transformation systems
 ! Needed to calculate Schmid matrix and rotated stiffness matrices.
 ! @details: set c/a   = 0.0 for fcc -> bcc transformation
 !           set a_Xcc = 0.0 for fcc -> hex transformation
@@ -2073,7 +2079,7 @@ end function getlabels
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equivalent Poisson's ratio (ν)
+!> @brief Equivalent Poisson's ratio (ν)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
 function lattice_equivalent_nu(C,assumption) result(nu)
@@ -2106,7 +2112,7 @@ end function lattice_equivalent_nu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equivalent shear modulus (μ)
+!> @brief Equivalent shear modulus (μ)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
 function lattice_equivalent_mu(C,assumption) result(mu)
@@ -2135,7 +2141,7 @@ end function lattice_equivalent_mu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some lattice functions
+!> @brief Check correctness of some lattice functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 

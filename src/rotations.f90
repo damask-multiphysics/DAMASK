@@ -75,6 +75,7 @@ module rotations
       procedure, public  :: rotVector
       procedure, public  :: rotTensor2
       procedure, public  :: rotTensor4
+      procedure, public  :: rotStiffness
       procedure, public  :: misorientation
       procedure, public  :: standardize
   end type rotation
@@ -339,8 +340,7 @@ end function rotTensor2
 
 
 !---------------------------------------------------------------------------------------------------
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief rotate a rank-4 tensor passively (default) or actively
+!> @brief Rotate a rank-4 tensor passively (default) or actively.
 !> @details: rotation is based on rotation matrix
 !! ToDo: Need to check active/passive !!!
 !---------------------------------------------------------------------------------------------------
@@ -353,6 +353,7 @@ pure function rotTensor4(self,T,active) result(tRot)
 
   real(pReal), dimension(3,3) :: R
   integer :: i,j,k,l,m,n,o,p
+
 
   if (present(active)) then
     R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
@@ -371,7 +372,47 @@ end function rotTensor4
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief misorientation
+!> @brief Rotate a rank-4 tensor in Voigt 6x6 notation passively (default) or actively.
+!> @details: https://scicomp.stackexchange.com/questions/35600
+!! ToDo: Need to check active/passive !!!
+!---------------------------------------------------------------------------------------------------
+pure function rotStiffness(self,C,active) result(cRot)
+
+  real(pReal),                 dimension(6,6) :: cRot
+  class(rotation), intent(in)                 :: self
+  real(pReal),     intent(in), dimension(6,6) :: C
+  logical,         intent(in), optional       :: active
+
+  real(pReal), dimension(3,3) :: R
+  real(pReal), dimension(6,6) :: M
+
+
+  if (present(active)) then
+    R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
+  else
+    R = self%asMatrix()
+  endif
+
+  M = reshape([R(1,1)**2.0_pReal,           R(2,1)**2.0_pReal,           R(3,1)**2.0_pReal, &
+               R(2,1)*R(3,1),               R(1,1)*R(3,1),               R(1,1)*R(2,1), &
+               R(1,2)**2.0_pReal,           R(2,2)**2.0_pReal,           R(3,2)**2.0_pReal, &
+               R(2,2)*R(3,2),               R(1,2)*R(3,2),               R(1,2)*R(2,2), &
+               R(1,3)**2.0_pReal,           R(2,3)**2.0_pReal,           R(3,3)**2.0_pReal, &
+               R(2,3)*R(3,3),               R(1,3)*R(3,3),               R(1,3)*R(2,3), &
+               2.0_pReal*R(1,2)*R(1,3),     2.0_pReal*R(2,2)*R(2,3),     2.0_pReal*R(3,2)*R(3,3), &
+               R(2,2)*R(3,3)+R(2,3)*R(3,2), R(1,2)*R(3,3)+R(1,3)*R(3,2), R(1,2)*R(2,3)+R(1,3)*R(2,2), &
+               2.0_pReal*R(1,3)*R(1,1),     2.0_pReal*R(2,3)*R(2,1),     2.0_pReal*R(3,3)*R(3,1), &
+               R(2,3)*R(3,1)+R(2,1)*R(3,3), R(1,3)*R(3,1)+R(1,1)*R(3,3), R(1,3)*R(2,1)+R(1,1)*R(2,3), &
+               2.0_pReal*R(1,1)*R(1,2),     2.0_pReal*R(2,1)*R(2,2),     2.0_pReal*R(3,1)*R(3,2), &
+               R(2,1)*R(3,2)+R(2,2)*R(3,1), R(1,1)*R(3,2)+R(1,2)*R(3,1), R(1,1)*R(2,2)+R(1,2)*R(2,1)],[6,6])
+
+  cRot = matmul(M,matmul(C,transpose(M)))
+
+end function rotStiffness
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief Misorientation.
 !---------------------------------------------------------------------------------------------------
 pure elemental function misorientation(self,other)
 
@@ -386,7 +427,7 @@ end function misorientation
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert unit quaternion to rotation matrix
+!> @brief Convert unit quaternion to rotation matrix.
 !---------------------------------------------------------------------------------------------------
 pure function qu2om(qu) result(om)
 
@@ -395,8 +436,8 @@ pure function qu2om(qu) result(om)
 
   real(pReal)                             :: qq
 
-  qq = qu(1)**2-sum(qu(2:4)**2)
 
+  qq = qu(1)**2-sum(qu(2:4)**2)
 
   om(1,1) = qq+2.0_pReal*qu(2)**2
   om(2,2) = qq+2.0_pReal*qu(3)**2
@@ -416,7 +457,7 @@ end function qu2om
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert unit quaternion to Euler angles
+!> @brief Convert unit quaternion to Euler angles.
 !---------------------------------------------------------------------------------------------------
 pure function qu2eu(qu) result(eu)
 
@@ -424,6 +465,7 @@ pure function qu2eu(qu) result(eu)
   real(pReal),             dimension(3) :: eu
 
   real(pReal)                           :: q12, q03, chi
+
 
   q03 = qu(1)**2+qu(4)**2
   q12 = qu(2)**2+qu(3)**2
@@ -578,7 +620,7 @@ pure function om2eu(om) result(eu)
   real(pReal)                             :: zeta
 
   if    (dNeq(abs(om(3,3)),1.0_pReal,1.e-8_pReal)) then
-    zeta = 1.0_pReal/sqrt(math_clip(1.0_pReal-om(3,3)**2.0_pReal,1e-64_pReal,1.0_pReal))
+    zeta = 1.0_pReal/sqrt(math_clip(1.0_pReal-om(3,3)**2,1e-64_pReal,1.0_pReal))
     eu = [atan2(om(3,1)*zeta,-om(3,2)*zeta), &
           acos(math_clip(om(3,3),-1.0_pReal,1.0_pReal)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
@@ -1099,7 +1141,7 @@ pure function ho2ax(ho) result(ax)
             +0.000003953714684212874_pReal, -0.00000036555001439719544_pReal ]
 
   ! normalize h and store the magnitude
-  hmag_squared = sum(ho**2.0_pReal)
+  hmag_squared = sum(ho**2)
   if (dEq0(hmag_squared)) then
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
@@ -1379,6 +1421,7 @@ subroutine selfTest()
   real(pReal), dimension(3)       :: x, eu, ho, v3
   real(pReal), dimension(3,3)     :: om, t33
   real(pReal), dimension(3,3,3,3) :: t3333
+  real(pReal), dimension(6,6)     :: C
   real    :: A,B
   integer :: i
 
@@ -1411,6 +1454,7 @@ subroutine selfTest()
             sin(2.0_pReal*PI*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
+
 
     if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) error stop 'om2qu/qu2om'
     if(.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) error stop 'eu2qu/qu2eu'
@@ -1447,20 +1491,25 @@ subroutine selfTest()
     call R%fromMatrix(om)
 
     call random_number(v3)
-    if(all(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
       error stop 'rotVector'
 
     call random_number(t33)
-    if(all(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
       error stop 'rotTensor2'
 
     call random_number(t3333)
-    if(all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
+    if (any(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
       error stop 'rotTensor4'
+
+    call random_number(C)
+    C = C+transpose(C)
+    if (any(dNeq(R%rotStiffness(C),math_3333toVoigt66(R%rotate(math_Voigt66to3333(C))),1.0e-12_pReal))) &
+      error stop 'rotStiffness'
 
     call R%fromQuaternion(qu * (1.0_pReal + merge(+5.e-9_pReal,-5.e-9_pReal, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML
 
-  enddo
+  end do
 
   contains
 

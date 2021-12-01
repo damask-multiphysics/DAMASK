@@ -7,9 +7,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:plastic) dislotungsten
 
-  real(pReal), parameter :: &
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
-
   type :: tParameters
     real(pReal) :: &
       D    = 1.0_pReal, &                                                                           !< grain size
@@ -169,7 +166,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%D    = pl%get_asFloat('D')
       prm%D_0  = pl%get_asFloat('D_0')
       prm%Q_cl = pl%get_asFloat('Q_cl')
-      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3.0_pReal
+      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
@@ -344,7 +341,7 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
       dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
                                     0.0_pReal, &
                                     prm%dipoleformation)
-      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(kB*T))*prm%f_at/(2.0_pReal*PI*kB*T)) &
+      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(2.0_pReal*PI*K_B*T)) &
            * (1.0_pReal/(d_hat+prm%d_caron))
       dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
     end where
@@ -475,7 +472,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
     if (present(tau_pos_out)) tau_pos_out = tau_pos
     if (present(tau_neg_out)) tau_neg_out = tau_neg
 
-    associate(BoltzmannRatio  => prm%Q_s/(kB*T), &
+    associate(BoltzmannRatio  => prm%Q_s/(K_B*T), &
               b_rho_half      => stt%rho_mob(:,en) * prm%b_sl * 0.5_pReal, &
               effectiveLength => dst%Lambda_sl(:,en) - prm%w)
 
@@ -501,7 +498,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
               * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pReal * t_k / tau_pos
 
-          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2
 
           ddot_gamma_dtau_pos = b_rho_half * dvel
         else where significantPositiveTau2
@@ -531,7 +528,7 @@ pure subroutine kinetics(Mp,T,ph,en, &
               * StressRatio_pminus1 / prm%tau_Peierls
           dtk = -1.0_pReal * t_k / tau_neg
 
-          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+          dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2
 
           ddot_gamma_dtau_neg = b_rho_half * dvel
         else where significantNegativeTau2

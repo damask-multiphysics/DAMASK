@@ -19,9 +19,6 @@ submodule(phase:plastic) nonlocal
 
   type(tGeometry), dimension(:), allocatable :: geom
 
-  real(pReal), parameter :: &
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
-
   ! storage order of dislocation types
   integer, dimension(*), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]                                                                         !< signed (single)
@@ -623,7 +620,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
                         * spread((  1.0_pReal - prm%f_F &
                                    + prm%f_F &
                                    * log(0.35_pReal * prm%b_sl * sqrt(max(stt%rho_forest(:,en),prm%rho_significant))) &
-                                   / log(0.35_pReal * prm%b_sl * 1e6_pReal))** 2.0_pReal,2,prm%sum_N_sl)
+                                   / log(0.35_pReal * prm%b_sl * 1e6_pReal))**2,2,prm%sum_N_sl)
   else
     myInteractionMatrix = prm%h_sl_sl
   end if
@@ -649,7 +646,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
     rhoExcess(1,:) = rho_edg_delta
     rhoExcess(2,:) = rho_scr_delta
 
-    FVsize = geom(ph)%V_0(en) ** (1.0_pReal/3.0_pReal)
+    FVsize = geom(ph)%V_0(en)**(1.0_pReal/3.0_pReal)
 
     !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
 
@@ -1094,9 +1091,9 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   ! thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
-  D_SD = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))                                              ! eq. 3.53
+  D_SD = prm%D_0 * exp(-prm%Q_cl / (K_B * Temperature))                                              ! eq. 3.53
   v_climb = D_SD * mu * prm%V_at &
-          / (PI * (1.0_pReal-nu) * (dUpper(:,1) + dLower(:,1)) * kB * Temperature)              ! eq. 3.54
+          / (PI * (1.0_pReal-nu) * (dUpper(:,1) + dLower(:,1)) * K_B * Temperature)              ! eq. 3.54
   forall (s = 1:prm%sum_N_sl, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * v_climb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
@@ -1307,10 +1304,10 @@ function rhoDotFlux(timestep,ph,en,ip,el)
                          * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
               where (compatibility(c,:,s,n,ip,el) > 0.0_pReal) &
                 rhoDotFlux(:,t) = rhoDotFlux(1:ns,t) &
-                                + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2.0_pReal    ! transferring to equally signed mobile dislocation type
+                                + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2        ! transferring to equally signed mobile dislocation type
               where (compatibility(c,:,s,n,ip,el) < 0.0_pReal) &
                 rhoDotFlux(:,topp) = rhoDotFlux(:,topp) &
-                                   + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2.0_pReal ! transferring to opposite signed mobile dislocation type
+                                   + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2     ! transferring to opposite signed mobile dislocation type
 
             end if
           end do
@@ -1339,7 +1336,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
             c = (t + 1) / 2
             if (v0(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then             ! flux from en to my neighbor == leaving flux for en (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
               if (v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal) then                                     ! no sign change in flux density
-                transmissivity = sum(compatibility(c,:,s,n,ip,el)**2.0_pReal)                       ! overall transmissivity from this slip system to my neighbor
+                transmissivity = sum(compatibility(c,:,s,n,ip,el)**2)                               ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pReal
               end if
@@ -1666,14 +1663,14 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
       !* Peierls contribution
       tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))
       lambda_P = prm%b_sl(s)
-      activationVolume_P = prm%w *prm%b_sl(s)**3.0_pReal
+      activationVolume_P = prm%w *prm%b_sl(s)**3
       criticalStress_P = prm%peierlsStress(s,c)
       activationEnergy_P = criticalStress_P * activationVolume_P
       tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)
       tPeierls = 1.0_pReal / prm%nu_a &
-               * exp(activationEnergy_P / (kB * T) &
+               * exp(activationEnergy_P / (K_B * T) &
                      * (1.0_pReal - tauRel_P**prm%p)**prm%q)
-      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (kB * T) &
+      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (K_B * T) &
                              * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal), &
                              0.0_pReal, &
                              tauEff < criticalStress_P)
@@ -1681,12 +1678,12 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
       ! Contribution from solid solution strengthening
       tauEff = abs(tau(s)) - tauThreshold(s)
       lambda_S = prm%b_sl(s) / sqrt(prm%c_sol)
-      activationVolume_S = prm%f_sol * prm%b_sl(s)**3.0_pReal / sqrt(prm%c_sol)
+      activationVolume_S = prm%f_sol * prm%b_sl(s)**3 / sqrt(prm%c_sol)
       criticalStress_S = prm%Q_sol / activationVolume_S
       tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
       tSolidSolution = 1.0_pReal /  prm%nu_a &
-                     * exp(prm%Q_sol / (kB * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
-      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * T) &
+                     * exp(prm%Q_sol / (K_B * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
+      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (K_B * T) &
                                    * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal), &
                                    0.0_pReal, &
                                    tauEff < criticalStress_S)
@@ -1697,8 +1694,8 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
 
       v(s) = sign(1.0_pReal,tau(s)) &
            / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%B /(prm%b_sl(s) * tauEff))
-      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / lambda_S + prm%B / (prm%b_sl(s) * tauEff**2.0_pReal))
-      dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / lambda_P
+      dv_dtau(s)   = v(s)**2 * (dtSolidSolution_dtau / lambda_S + prm%B / (prm%b_sl(s) * tauEff**2))
+      dv_dtauNS(s) = v(s)**2 * dtPeierls_dtau / lambda_P
 
     end if
   end do

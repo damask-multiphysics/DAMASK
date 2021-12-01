@@ -9,9 +9,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(phase:plastic) dislotwin
 
-  real(pReal), parameter :: &
-    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
-
   type :: tParameters
     real(pReal) :: &
       Q_cl                = 1.0_pReal, &                                                            !< activation energy for dislocation climb
@@ -31,7 +28,7 @@ submodule(phase:plastic) dislotwin
       delta_G             = 1.0_pReal, &                                                            !< Free energy difference between austensite and martensite
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
       h                   = 1.0_pReal, &                                                            !< Stack height of hex nucleus
-      T_ref               = 0.0_pReal, &
+      T_ref               = T_ROOM, &
       a_cI                = 1.0_pReal, &
       a_cF                = 1.0_pReal
     real(pReal),                            dimension(2) :: &
@@ -597,7 +594,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
 
   shearBandingContribution: if (dNeq0(prm%v_sb)) then
 
-    E_kB_T = prm%E_sb/(kB*T)
+    E_kB_T = prm%E_sb/(K_B*T)
     call math_eigh33(eigValues,eigVectors,Mp)                                                       ! is Mp symmetric by design?
 
     do i = 1,6
@@ -694,8 +691,8 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
                         * (prm%Gamma_sf(1) + prm%Gamma_sf(2) * T) / (mu*prm%b_sl(i)), &
                       1.0_pReal, &
                       prm%ExtendedDislocations)
-          v_cl = 2.0_pReal*prm%omega*b_d**2.0_pReal*exp(-prm%Q_cl/(kB*T)) &
-               * (exp(abs(sigma_cl)*prm%b_sl(i)**3.0_pReal/(kB*T)) - 1.0_pReal)
+          v_cl = 2.0_pReal*prm%omega*b_d**2*exp(-prm%Q_cl/(K_B*T)) &
+               * (exp(abs(sigma_cl)*prm%b_sl(i)**3/(K_B*T)) - 1.0_pReal)
 
           dot_rho_dip_climb(i) = 4.0_pReal*v_cl*stt%rho_dip(i,en) &
                                / (d_hat-prm%d_caron(i))
@@ -787,14 +784,14 @@ module subroutine dislotwin_dependentState(T,ph,en)
                          + 3.0_pReal*prm%b_tr*mu/(prm%L_tr*prm%b_tr) &
                          + prm%h*prm%delta_G/(3.0_pReal*prm%b_tr)
 
-    dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2.0_pReal
-    dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2.0_pReal
+    dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2
+    dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2
 
 
-    x0 = mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
+    x0 = mu*prm%b_tw**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tw(:,en) = mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
-    x0 = mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
+    x0 = mu*prm%b_tr**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tr(:,en) = mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
 
   end associate
@@ -907,7 +904,7 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
     significantStress: where(tau_eff > tol_math_check)
       stressRatio    = tau_eff/prm%tau_0
       StressRatio_p  = stressRatio** prm%p
-      Q_kB_T = prm%Q_sl/(kB*T)
+      Q_kB_T = prm%Q_sl/(K_B*T)
       v_wait_inverse = exp(Q_kB_T*(1.0_pReal-StressRatio_p)** prm%q) &
                      / prm%v_0
       v_run_inverse  = prm%B/(tau_eff*prm%b_sl)
@@ -920,7 +917,7 @@ pure subroutine kinetics_sl(Mp,T,ph,en, &
                            / prm%tau_0
       dV_run_inverse_dTau  = -1.0_pReal * v_run_inverse/tau_eff
       dV_dTau              = -1.0_pReal * (dV_wait_inverse_dTau+dV_run_inverse_dTau) &
-                           / (v_wait_inverse+v_run_inverse)**2.0_pReal
+                           / (v_wait_inverse+v_run_inverse)**2
       ddot_gamma_dtau = dV_dTau*stt%rho_mob(:,en)*prm%b_sl
     else where significantStress
       dot_gamma_sl    = 0.0_pReal
@@ -980,7 +977,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
           Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,en)+stt%rho_dip(s2,en))+&
                  abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,en)+stt%rho_dip(s1,en)))/&
                   (prm%L_tw*prm%b_sl(i))*&
-                  (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tw(i,en)-tau(i))))
+                  (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tw(i,en)-tau(i))))
         else
           Ndot0=0.0_pReal
         end if
@@ -1049,7 +1046,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
           Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,en)+stt%rho_dip(s2,en))+&
                  abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,en)+stt%rho_dip(s1,en)))/&
                   (prm%L_tr*prm%b_sl(i))*&
-                  (1.0_pReal-exp(-prm%V_cs/(kB*T)*(dst%tau_r_tr(i,en)-tau(i))))
+                  (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tr(i,en)-tau(i))))
         else
           Ndot0=0.0_pReal
         end if
