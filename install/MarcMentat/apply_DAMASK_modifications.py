@@ -64,3 +64,14 @@ print('compiling Mentat menu binaries...')
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
 os.system(f'xvfb-run -a {executable} -compile {menu_file}')
+
+print('setting file access rights...')
+
+files = (glob.glob(str(marc_root/f'marc{marc_version}/tools/run_damask*')) +
+         glob.glob(str(marc_root/f'marc{marc_version}/tools/comp_damask*')) +
+         glob.glob(str(marc_root/f'mentat{marc_version}/bin/kill[4-6]')) +
+         glob.glob(str(marc_root/f'mentat{marc_version}/bin/submit[4-6]')))
+
+for file in files:
+    os.chmod(file , 0o755)
+
