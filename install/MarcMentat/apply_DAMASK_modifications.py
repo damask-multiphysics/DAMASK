@@ -8,7 +8,7 @@ from pathlib import Path
 
 import damask
 
-def copy_and_patch(patch,orig,marc_root,editor):
+def copy_and_patch(patch,orig,editor):
     try:
         shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
@@ -20,7 +20,6 @@ def copy_and_patch(patch,orig,marc_root,editor):
 
 parser = argparse.ArgumentParser(
                   description='Apply DAMASK modification to MSC Marc/Mentat',
-                  prog = Path(__file__).name,
                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
@@ -56,7 +55,7 @@ for directory in glob.glob(str(damask_root/'install/MarcMentat'/marc_version/'*'
         product,subfolder = (marc_root/Path(directory)).name.split('_')
         orig = marc_root/f'{product.lower()}{marc_version}/{subfolder}/{orig}'
         for patch in glob.glob(f'{directory}/{mods}.patch'):
-            copy_and_patch(Path(patch),orig,marc_root,args.editor)
+            copy_and_patch(Path(patch),orig,args.editor)
 
 print('compiling Mentat menu binaries...')
 
