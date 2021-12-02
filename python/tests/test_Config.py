@@ -59,3 +59,11 @@ class TestConfig:
     @pytest.mark.parametrize('data',[Rotation.from_random(),Orientation.from_random(lattice='cI')])
     def test_rotation_orientation(self,data):
         assert str(Config(a=data)) == str(Config(a=data.as_quaternion()))
+
+    def test_initialize(self):
+        yml = """
+        a:
+           - 1
+           - 2
+        """
+        assert Config(yml) == Config('{"a":[1,2]}') == Config(a=[1,2]) == Config(dict(a=[1,2]))

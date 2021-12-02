@@ -38,6 +38,15 @@ class NiceDumper(yaml.SafeDumper):
 class Config(dict):
     """YAML-based configuration."""
 
+    def __init__(self,yml=None,**kwargs):
+        """Initialize from YAML, dict, or key=value pairs."""
+        if isinstance(yml,str):
+            kwargs.update(yaml.safe_load(yml))
+        elif isinstance(yml,dict):
+            kwargs.update(yml)
+
+        super().__init__(**kwargs)
+
     def __repr__(self):
         """Show as in file."""
         output = StringIO()
