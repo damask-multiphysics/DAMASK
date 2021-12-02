@@ -137,7 +137,7 @@ subroutine HDF5_utilities_init
   if (avail) then
     call H5Zget_filter_info_f(H5Z_FILTER_DEFLATE_F,configFlags,hdferr)
     if (hdferr < 0) error stop 'HDF5 error'
-    compression_possible = compression_possible .and. ior(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
+    compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
   end if
 
   call H5Zfilter_avail_f(H5Z_FILTER_SHUFFLE_F,avail,hdferr)
@@ -147,7 +147,7 @@ subroutine HDF5_utilities_init
   if (avail) then
     call H5Zget_filter_info_f(H5Z_FILTER_SHUFFLE_F,configFlags,hdferr)
     if (hdferr < 0) error stop 'HDF5 error'
-    compression_possible = compression_possible .and. ior(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
+    compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
   end if
 
 end subroutine HDF5_utilities_init
