@@ -95,7 +95,7 @@ class Colormap(mpl.colors.ListedColormap):
         N : int, optional
             Number of color quantization levels. Defaults to 256.
         model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
-            Colormodel used for input color definitions. Defaults to `rgb`.
+            Color model used for input color definitions. Defaults to `rgb`.
             The available color models are:
             - 'rgb': Red Green Blue.
             - 'hsv': Hue Saturation Value.
