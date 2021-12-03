@@ -5,7 +5,6 @@ import colorsys
 from pathlib import Path
 from typing import Sequence, Union, TextIO
 
-
 import numpy as np
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -29,6 +28,10 @@ class Colormap(mpl.colors.ListedColormap):
     """
     Enhance matplotlib colormap functionality to be used within DAMASK.
 
+    Colors are internally stored as R(ed) G(green) B(lue) values.
+    The colormap can be used in matplotlib, seaborn, etc., and can
+    exported to file for external use.
+
     References
     ----------
     K. Moreland, Proceedings of the 5th International Symposium on Advances in Visual Computing, 2009
@@ -42,8 +45,10 @@ class Colormap(mpl.colors.ListedColormap):
 
     """
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Test equality of colormaps."""
+        if not isinstance(other, Colormap):
+            return NotImplemented
         return         len(self.colors) == len(other.colors) \
            and bool(np.all(self.colors  ==     other.colors))
 
@@ -80,10 +85,6 @@ class Colormap(mpl.colors.ListedColormap):
         """
         Create a perceptually uniform colormap between given (inclusive) bounds.
 
-        Colors are internally stored as R(ed) G(green) B(lue) values.
-        The colormap can be used in matplotlib/seaborn or exported to
-        file for external use.
-
         Parameters
         ----------
         low : iterable of float (3)
@@ -91,7 +92,7 @@ class Colormap(mpl.colors.ListedColormap):
         high : iterable of float (3)
             Color definition for maximum value.
         name : str, optional
-            Name of the colormap. Defaults to `DAMASK colormap`.
+            Name of the colormap. Defaults to 'DAMASK colormap'.
         N : int, optional
             Number of color quantization levels. Defaults to 256.
         model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
@@ -242,7 +243,7 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         name : str, optional
             Name of the reversed colormap.
-            If None, parent colormap name + "_r".
+            Defaults to parent colormap name + '_r'.
 
         Returns
         -------
@@ -261,14 +262,14 @@ class Colormap(mpl.colors.ListedColormap):
 
     def _get_file_handle(self,
                         fname: Union[TextIO, str, Path, None],
-                        dsuffix: str = '') -> TextIO:
+                        suffix: str = '') -> TextIO:
         """
         Provide file handle.
 
         Parameters
         ----------
         fname : file, str, pathlib.Path, or None
-            Filename or filehandle.
+            Filename or file handle.
             If None, colormap name + suffix.
         suffix: str, optional
             Extension to use for colormap filename.
@@ -298,7 +299,7 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap with extension '.json'.
 
         """
-        colors: List = []
+        colors = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
 
