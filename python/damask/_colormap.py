@@ -5,6 +5,7 @@ import colorsys
 from pathlib import Path
 from typing import Sequence, Union, TextIO
 
+
 import numpy as np
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -40,6 +41,11 @@ class Colormap(mpl.colors.ListedColormap):
     https://matplotlib.org/tutorials/colors/colormaps.html
 
     """
+
+    def __eq__(self, other) -> bool:
+        """Test equality of colormaps."""
+        return         len(self.colors) == len(other.colors) \
+           and bool(np.all(self.colors  ==     other.colors))
 
     def __add__(self, other: 'Colormap') -> 'Colormap':
         """Concatenate."""
@@ -80,20 +86,20 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        low : numpy.ndarray of shape (3)
+        low : iterable of float (3)
             Color definition for minimum value.
-        high : numpy.ndarray of shape (3)
+        high : iterable of float (3)
             Color definition for maximum value.
-        N : int, optional
-            The number of color quantization levels. Defaults to 256.
         name : str, optional
-            The name of the colormap. Defaults to `DAMASK colormap`.
+            Name of the colormap. Defaults to `DAMASK colormap`.
+        N : int, optional
+            Number of color quantization levels. Defaults to 256.
         model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
-            Colormodel used for input color definitions. Defaults to `rgb`.
+            Color model used for input color definitions. Defaults to `rgb`.
             The available color models are:
-            - 'rgb': R(ed) G(green) B(lue).
-            - 'hsv': H(ue) S(aturation) V(alue).
-            - 'hsl': H(ue) S(aturation) L(uminance).
+            - 'rgb': Red Green Blue.
+            - 'hsv': Hue Saturation Value.
+            - 'hsl': Hue Saturation Luminance.
             - 'xyz': CIE Xyz.
             - 'lab': CIE Lab.
             - 'msh': Msh (for perceptual uniform interpolation).
@@ -109,41 +115,34 @@ class Colormap(mpl.colors.ListedColormap):
         >>> damask.Colormap.from_range((0,0,1),(0,0,0),'blue_to_black')
 
         """
-        low_high = np.vstack((low,high))
-        if   model.lower() == 'rgb':
-            if np.any(low_high<0) or np.any(low_high>1):
-                raise ValueError(f'RGB color {low} | {high} are out of range.')
+        toMsh = dict(
+            rgb=Colormap._rgb2msh,
+            hsv=Colormap._hsv2msh,
+            hsl=Colormap._hsl2msh,
+            xyz=Colormap._xyz2msh,
+            lab=Colormap._lab2msh,
+            msh=lambda x:x,
+        )
 
-            low_,high_ = map(Colormap._rgb2msh,low_high)
-
-        elif model.lower() == 'hsv':
-            if np.any(low_high<0) or np.any(low_high>[360,1,1]):
-                raise ValueError(f'HSV color {low} | {high} are out of range.')
-
-            low_,high_ = map(Colormap._hsv2msh,low_high)
-
-        elif model.lower() == 'hsl':
-            if np.any(low_high<0) or np.any(low_high>[360,1,1]):
-                raise ValueError(f'HSL color {low} | {high} are out of range.')
-
-            low_,high_ = map(Colormap._hsl2msh,low_high)
-
-        elif model.lower() == 'xyz':
-
-            low_,high_ = map(Colormap._xyz2msh,low_high)
-
-        elif model.lower() == 'lab':
-            if np.any(low_high[:,0]<0):
-                raise ValueError(f'CIE Lab color {low} | {high} are out of range.')
-
-            low_,high_ = map(Colormap._lab2msh,low_high)
-
-        elif model.lower() == 'msh':
-            low_,high_ = low_high[0],low_high[1]
-
-        else:
+        if model.lower() not in toMsh:
             raise ValueError(f'Invalid color model: {model}.')
 
+        low_high = np.vstack((low,high))
+        out_of_bounds = np.bool_(False)
+
+        if   model.lower() == 'rgb':
+            out_of_bounds = np.any(low_high<0) or np.any(low_high>1)
+        elif model.lower() == 'hsv':
+            out_of_bounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
+        elif model.lower() == 'hsl':
+            out_of_bounds = np.any(low_high<0) or np.any(low_high>[360,1,1])
+        elif model.lower() == 'lab':
+            out_of_bounds = np.any(low_high[:,0]<0)
+
+        if out_of_bounds:
+            raise ValueError(f'{model.upper()} colors {low} | {high} are out of bounds.')
+
+        low_,high_ = map(toMsh[model.lower()],low_high)
         msh = map(functools.partial(Colormap._interpolate_msh,low=low_,high=high_),np.linspace(0,1,N))
         rgb = np.array(list(map(Colormap._msh2rgb,msh)))
 
@@ -155,17 +154,17 @@ class Colormap(mpl.colors.ListedColormap):
         """
         Select from a set of predefined colormaps.
 
-        Predefined colormaps include native matplotlib colormaps
-        and common DAMASK colormaps.
+        Predefined colormaps (Colormap.predefined) include
+        native matplotlib colormaps and common DAMASK colormaps.
 
         Parameters
         ----------
         name : str
-            The name of the colormap.
+            Name of the colormap.
         N : int, optional
-           The number of color quantization levels. Defaults to 256.
-           This parameter is not used for matplotlib colormaps
-           that are of type `ListedColormap`.
+            Number of color quantization levels. Defaults to 256.
+            This parameter is not used for matplotlib colormaps
+            that are of type `ListedColormap`.
 
         Returns
         -------
@@ -178,8 +177,8 @@ class Colormap(mpl.colors.ListedColormap):
         >>> damask.Colormap.from_predefined('strain')
 
         """
-        # matplotlib presets
         try:
+            # matplotlib presets
             colormap = cm.__dict__[name]
             return Colormap(np.array(list(map(colormap,np.linspace(0,1,N)))
                                      if isinstance(colormap,mpl.colors.LinearSegmentedColormap) else
@@ -202,8 +201,8 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         field : numpy.array of shape (:,:)
             Data to be shaded.
-        bounds : iterable of len (2), optional
-            Colormap value range (low,high).
+        bounds : iterable of float (2), optional
+            Value range (low,high) spanned by colormap.
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
 
@@ -242,13 +241,13 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         name : str, optional
-            The name for the reversed colormap.
-            A name of None will be replaced by the name of the parent colormap + "_r".
+            Name of the reversed colormap.
+            If None, parent colormap name + "_r".
 
         Returns
         -------
         damask.Colormap
-            The reversed colormap.
+            Reversed colormap.
 
         Examples
         --------
@@ -260,16 +259,19 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
-    def _get_file_handle(self, fname: Union[TextIO, str, Path, None], suffix: str) -> TextIO:
+    def _get_file_handle(self,
+                        fname: Union[TextIO, str, Path, None],
+                        dsuffix: str = '') -> TextIO:
         """
         Provide file handle.
 
         Parameters
         ----------
         fname : file, str, pathlib.Path, or None
-            Filename or filehandle, will be name of the colormap+extension if None.
-        suffix: str
-            Extension of the filename.
+            Filename or filehandle.
+            If None, colormap name + suffix.
+        suffix: str, optional
+            Extension to use for colormap filename.
 
         Returns
         -------
@@ -293,10 +295,10 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
-            consist of the name of the colormap and extension '.json'.
+            consist of the name of the colormap with extension '.json'.
 
         """
-        colors = []
+        colors: List = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
 
@@ -321,7 +323,7 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
-            consist of the name of the colormap and extension '.txt'.
+            consist of the name of the colormap with extension '.txt'.
 
         """
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
@@ -337,7 +339,7 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
-            consist of the name of the colormap and extension '.legend'.
+            consist of the name of the colormap with extension '.legend'.
 
         """
         # ToDo: test in GOM
@@ -358,7 +360,7 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fname : file, str, or pathlib.Path, optional
             Filename to store results. If not given, the filename will
-            consist of the name of the colormap and extension '.msh'.
+            consist of the name of the colormap with extension '.msh'.
 
         """
         # ToDo: test in gmsh
@@ -369,7 +371,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _interpolate_msh(frac,
+    def _interpolate_msh(frac: float,
                          low: np.ndarray,
                          high: np.ndarray) -> np.ndarray:
         """
@@ -449,24 +451,76 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _hsv2rgb(hsv: np.ndarray) -> np.ndarray:
-        """H(ue) S(aturation) V(alue) to R(red) G(reen) B(lue)."""
+        """
+        Hue Saturation Value to Red Green Blue.
+
+        Parameters
+        ----------
+        hsv : numpy.ndarray of shape (3)
+            HSV values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        """
         return np.array(colorsys.hsv_to_rgb(hsv[0]/360.,hsv[1],hsv[2]))
 
     @staticmethod
     def _rgb2hsv(rgb: np.ndarray) -> np.ndarray:
-        """R(ed) G(reen) B(lue) to H(ue) S(aturation) V(alue)."""
+        """
+        Red Green Blue to Hue Saturation Value.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        Returns
+        -------
+        hsv : numpy.ndarray of shape (3)
+            HSV values.
+
+        """
         h,s,v = colorsys.rgb_to_hsv(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,v])
 
 
     @staticmethod
     def _hsl2rgb(hsl: np.ndarray) -> np.ndarray:
-        """H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue)."""
+        """
+        Hue Saturation Luminance to Red Green Blue.
+
+        Parameters
+        ----------
+        hsl : numpy.ndarray of shape (3)
+            HSL values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        """
         return np.array(colorsys.hls_to_rgb(hsl[0]/360.,hsl[2],hsl[1]))
 
     @staticmethod
     def _rgb2hsl(rgb: np.ndarray) -> np.ndarray:
-        """R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)."""
+        """
+        Red Green Blue to Hue Saturation Luminance.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        Returns
+        -------
+        hsl : numpy.ndarray of shape (3)
+            HSL values.
+
+        """
         h,l,s = colorsys.rgb_to_hls(rgb[0],rgb[1],rgb[2])
         return np.array([h*360,s,l])
 
@@ -474,7 +528,17 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _xyz2rgb(xyz: np.ndarray) -> np.ndarray:
         """
-        CIE Xyz to R(ed) G(reen) B(lue).
+        CIE Xyz to Red Green Blue.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
+
+        Returns
+        -------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
 
         References
         ----------
@@ -494,7 +558,17 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _rgb2xyz(rgb: np.ndarray) -> np.ndarray:
         """
-        R(ed) G(reen) B(lue) to CIE Xyz.
+        Red Green Blue to CIE Xyz.
+
+        Parameters
+        ----------
+        rgb : numpy.ndarray of shape (3)
+            RGB values.
+
+        Returns
+        -------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
 
         References
         ----------
@@ -514,6 +588,16 @@ class Colormap(mpl.colors.ListedColormap):
         """
         CIE Lab to CIE Xyz.
 
+        Parameters
+        ----------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
+
+        Returns
+        -------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
+
         References
         ----------
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
@@ -532,6 +616,16 @@ class Colormap(mpl.colors.ListedColormap):
     def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray of shape (3)
+            CIE Xyz values.
+
+        Returns
+        -------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
 
         References
         ----------
@@ -553,6 +647,16 @@ class Colormap(mpl.colors.ListedColormap):
         """
         CIE Lab to Msh.
 
+        Parameters
+        ----------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
+
+        Returns
+        -------
+        msh : numpy.ndarray of shape (3)
+            Msh values.
+
         References
         ----------
         https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
@@ -570,6 +674,16 @@ class Colormap(mpl.colors.ListedColormap):
     def _msh2lab(msh: np.ndarray) -> np.ndarray:
         """
         Msh to CIE Lab.
+
+        Parameters
+        ----------
+        msh : numpy.ndarray of shape (3)
+            Msh values.
+
+        Returns
+        -------
+        lab : numpy.ndarray of shape (3)
+            CIE lab values.
 
         References
         ----------
