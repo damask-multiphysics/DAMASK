@@ -29,7 +29,7 @@ class Colormap(mpl.colors.ListedColormap):
     Enhance matplotlib colormap functionality to be used within DAMASK.
 
     Colors are internally stored as R(ed) G(green) B(lue) values.
-    The colormap can be used in matplotlib, seaborn, etc., and can
+    The colormap can be used in matplotlib, seaborn, etc., or can
     exported to file for external use.
 
     References
@@ -72,8 +72,8 @@ class Colormap(mpl.colors.ListedColormap):
         ax1.set_axis_off()
         ax1.imshow(np.linspace(0,1,self.N).reshape(1,-1),
                    aspect='auto', cmap=self, interpolation='nearest')
-        plt.show(block = False)
-        return 'Colormap: '+self.name
+        plt.show(block=False)
+        return f'Colormap: {self.name}'
 
 
     @staticmethod
@@ -87,16 +87,16 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        low : iterable of float (3)
+        low : sequence of float, len (3)
             Color definition for minimum value.
-        high : iterable of float (3)
+        high : sequence of float, len (3)
             Color definition for maximum value.
         name : str, optional
             Name of the colormap. Defaults to 'DAMASK colormap'.
         N : int, optional
             Number of color quantization levels. Defaults to 256.
         model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
-            Color model used for input color definitions. Defaults to `rgb`.
+            Color model used for input color definitions. Defaults to 'rgb'.
             The available color models are:
             - 'rgb': Red Green Blue.
             - 'hsv': Hue Saturation Value.
@@ -200,9 +200,9 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        field : numpy.array of shape (:,:)
+        field : numpy.array, shape (:,:)
             Data to be shaded.
-        bounds : iterable of float (2), optional
+        bounds : sequence of float, len (2), optional
             Value range (low,high) spanned by colormap.
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
@@ -261,18 +261,18 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def _get_file_handle(self,
-                        fname: Union[TextIO, str, Path, None],
-                        suffix: str = '') -> TextIO:
+                         fname: Union[TextIO, str, Path, None],
+                         suffix: str = '') -> TextIO:
         """
         Provide file handle.
 
         Parameters
         ----------
         fname : file, str, pathlib.Path, or None
-            Filename or file handle.
+            Name or handle of file.
             If None, colormap name + suffix.
         suffix: str, optional
-            Extension to use for colormap filename.
+            Extension to use for colormap file.
 
         Returns
         -------
@@ -295,8 +295,7 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         fname : file, str, or pathlib.Path, optional
-            Filename to store results. If not given, the filename will
-            consist of the name of the colormap with extension '.json'.
+            File to store results. Defaults to colormap name + '.json'.
 
         """
         colors = []
@@ -323,8 +322,7 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         fname : file, str, or pathlib.Path, optional
-            Filename to store results. If not given, the filename will
-            consist of the name of the colormap with extension '.txt'.
+            File to store results. Defaults to colormap name + '.txt'.
 
         """
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
@@ -339,8 +337,7 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         fname : file, str, or pathlib.Path, optional
-            Filename to store results. If not given, the filename will
-            consist of the name of the colormap with extension '.legend'.
+            File to store results. Defaults to colormap name + '.legend'.
 
         """
         # ToDo: test in GOM
@@ -360,8 +357,7 @@ class Colormap(mpl.colors.ListedColormap):
         Parameters
         ----------
         fname : file, str, or pathlib.Path, optional
-            Filename to store results. If not given, the filename will
-            consist of the name of the colormap with extension '.msh'.
+            File to store results. Defaults to colormap name + '.msh'.
 
         """
         # ToDo: test in gmsh
@@ -457,12 +453,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        hsv : numpy.ndarray of shape (3)
+        hsv : numpy.ndarray, shape (3)
             HSV values.
 
         Returns
         -------
-        rgb : numpy.ndarray of shape (3)
+        rgb : numpy.ndarray, shape (3)
             RGB values.
 
         """
@@ -475,12 +471,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        rgb : numpy.ndarray of shape (3)
+        rgb : numpy.ndarray, shape (3)
             RGB values.
 
         Returns
         -------
-        hsv : numpy.ndarray of shape (3)
+        hsv : numpy.ndarray, shape (3)
             HSV values.
 
         """
@@ -495,12 +491,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        hsl : numpy.ndarray of shape (3)
+        hsl : numpy.ndarray, shape (3)
             HSL values.
 
         Returns
         -------
-        rgb : numpy.ndarray of shape (3)
+        rgb : numpy.ndarray, shape (3)
             RGB values.
 
         """
@@ -513,12 +509,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        rgb : numpy.ndarray of shape (3)
+        rgb : numpy.ndarray, shape (3)
             RGB values.
 
         Returns
         -------
-        hsl : numpy.ndarray of shape (3)
+        hsl : numpy.ndarray, shape (3)
             HSL values.
 
         """
@@ -533,12 +529,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        xyz : numpy.ndarray of shape (3)
+        xyz : numpy.ndarray, shape (3)
             CIE Xyz values.
 
         Returns
         -------
-        rgb : numpy.ndarray of shape (3)
+        rgb : numpy.ndarray, shape (3)
             RGB values.
 
         References
@@ -563,12 +559,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        rgb : numpy.ndarray of shape (3)
+        rgb : numpy.ndarray, shape (3)
             RGB values.
 
         Returns
         -------
-        xyz : numpy.ndarray of shape (3)
+        xyz : numpy.ndarray, shape (3)
             CIE Xyz values.
 
         References
@@ -591,12 +587,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        lab : numpy.ndarray of shape (3)
+        lab : numpy.ndarray, shape (3)
             CIE lab values.
 
         Returns
         -------
-        xyz : numpy.ndarray of shape (3)
+        xyz : numpy.ndarray, shape (3)
             CIE Xyz values.
 
         References
@@ -620,12 +616,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        xyz : numpy.ndarray of shape (3)
+        xyz : numpy.ndarray, shape (3)
             CIE Xyz values.
 
         Returns
         -------
-        lab : numpy.ndarray of shape (3)
+        lab : numpy.ndarray, shape (3)
             CIE lab values.
 
         References
@@ -650,12 +646,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        lab : numpy.ndarray of shape (3)
+        lab : numpy.ndarray, shape (3)
             CIE lab values.
 
         Returns
         -------
-        msh : numpy.ndarray of shape (3)
+        msh : numpy.ndarray, shape (3)
             Msh values.
 
         References
@@ -678,12 +674,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        msh : numpy.ndarray of shape (3)
+        msh : numpy.ndarray, shape (3)
             Msh values.
 
         Returns
         -------
-        lab : numpy.ndarray of shape (3)
+        lab : numpy.ndarray, shape (3)
             CIE lab values.
 
         References
