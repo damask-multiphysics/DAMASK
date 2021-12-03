@@ -105,7 +105,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_utilities_init
 
-  integer :: hdferr, HDF5_major, HDF5_minor, HDF5_release, deflate_info
+  integer :: hdferr, HDF5_major, HDF5_minor, HDF5_release, configFlags
+  logical :: avail
   integer(SIZE_T) :: typeSize
 
 
@@ -127,10 +128,27 @@ subroutine HDF5_utilities_init
 
   call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  call H5Zget_filter_info_f(H5Z_FILTER_DEFLATE_F,deflate_info,hdferr)
+  compression_possible = (HDF5_major == 1 .and. HDF5_minor >= 12)                                   ! https://forum.hdfgroup.org/t/6186
+
+  call H5Zfilter_avail_f(H5Z_FILTER_DEFLATE_F,avail,hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  compression_possible = (HDF5_major == 1 .and. HDF5_minor >= 12) .and. &                           ! https://forum.hdfgroup.org/t/6186
-                         ior(H5Z_FILTER_ENCODE_ENABLED_F,deflate_info) > 0
+  compression_possible = compression_possible .and. avail
+
+  if (avail) then
+    call H5Zget_filter_info_f(H5Z_FILTER_DEFLATE_F,configFlags,hdferr)
+    if (hdferr < 0) error stop 'HDF5 error'
+    compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
+  end if
+
+  call H5Zfilter_avail_f(H5Z_FILTER_SHUFFLE_F,avail,hdferr)
+  if (hdferr < 0) error stop 'HDF5 error'
+  compression_possible = compression_possible .and. avail
+
+  if (avail) then
+    call H5Zget_filter_info_f(H5Z_FILTER_SHUFFLE_F,configFlags,hdferr)
+    if (hdferr < 0) error stop 'HDF5 error'
+    compression_possible = compression_possible .and. iand(H5Z_FILTER_ENCODE_ENABLED_F,configFlags) > 0
+  end if
 
 end subroutine HDF5_utilities_init
 
@@ -1506,12 +1524,14 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
   if (hdferr < 0) error stop 'HDF5 error'
   call h5pset_chunk_f(dcpl, 1, [1_HSIZE_T], hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  call h5pset_shuffle_f(dcpl, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
   call h5pset_Fletcher32_f(dcpl,hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  if (compression_possible .and. len(dataset) > 1024*256) call h5pset_deflate_f(dcpl, 6, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  if (compression_possible .and. len(dataset) > 1024*256) then
+    call h5pset_shuffle_f(dcpl, hdferr)
+    if (hdferr < 0) error stop 'HDF5 error'
+    call h5pset_deflate_f(dcpl, 6, hdferr)
+    if (hdferr < 0) error stop 'HDF5 error'
+  endif
 
   call h5screate_simple_f(1, [1_HSIZE_T], space_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -1959,7 +1979,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   if (parallel) then
     call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)      ! get total output size over each process
     if (ierr /= 0) error stop 'MPI error'
-  endif
+  end if
 #endif
   myStart                   = int(0,HSIZE_T)
   myStart(ubound(myStart))  = int(sum(writeSize(1:worldrank)),HSIZE_T)
@@ -1971,20 +1991,23 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   if (hdferr < 0) error stop 'HDF5 error'
 
   if (product(totalShape) > 0) then
-    call h5pset_shuffle_f(dcpl, hdferr)
-    if (hdferr < 0) error stop 'HDF5 error'
     call h5pset_Fletcher32_f(dcpl,hdferr)
     if (hdferr < 0) error stop 'HDF5 error'
 
     if (product(totalShape) >= chunkSize*2_HSIZE_T) then
       call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
       if (hdferr < 0) error stop 'HDF5 error'
-      if (compression_possible) call h5pset_deflate_f(dcpl, 6, hdferr)
+      if (compression_possible) then
+        call h5pset_shuffle_f(dcpl, hdferr)
+        if (hdferr < 0) error stop 'HDF5 error'
+        call h5pset_deflate_f(dcpl, 6, hdferr)
+        if (hdferr < 0) error stop 'HDF5 error'
+      end if
     else
       call h5pset_chunk_f(dcpl, size(totalShape), totalShape, hdferr)
-    endif
-    if (hdferr < 0) error stop 'HDF5 error'
-  endif
+      if (hdferr < 0) error stop 'HDF5 error'
+    end if
+  end if
  
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
