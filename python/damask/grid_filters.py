@@ -151,8 +151,8 @@ def coordinates0_point(cells: Union[_np.ndarray, Sequence[int]],
         Undeformed cell center coordinates.
 
     """
-    start = origin        + size/_np.array(cells)*.5
-    end   = origin + size - size/_np.array(cells)*.5
+    start = _np.array(origin)                   + size/_np.array(cells)*.5
+    end   = _np.array(origin) + _np.array(size) - size/_np.array(cells)*.5
 
     return _np.stack(_np.meshgrid(_np.linspace(start[0],end[0],cells[0]),
                                   _np.linspace(start[1],end[1],cells[1]),
