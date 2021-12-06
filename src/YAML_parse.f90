@@ -101,9 +101,9 @@ recursive function parse_flow(YAML_flow) result(node)
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
-          endif
+          end if
       end select
-  endif
+  end if
 
 end function parse_flow
 
@@ -150,7 +150,7 @@ logical function quotedString(line)
   if (scan(line(:1),IO_QUOTES) == 1) then
     quotedString = .true.
     if(line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
-  endif
+  end if
 
 end function quotedString
 
@@ -209,7 +209,7 @@ logical function isListItem(line)
     isListItem = scan(trim(adjustl(line)),' ') == 2
   else
     isListItem = trim(adjustl(line)) == '-'
-  endif
+  end if
 
 end function isListItem
 
@@ -224,7 +224,7 @@ logical function isKeyValue(line)
 
   if( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
     if(index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
-  endif
+  end if
 
 end function isKeyValue
 
@@ -243,7 +243,7 @@ logical function isKey(line)
     isKey = index(IO_rmComment(line),':',back=.false.) == len(IO_rmComment(line)) .and. &
             index(IO_rmComment(line),':',back=.true.)  == len(IO_rmComment(line)) .and. &
             .not. isFlow(line)
-  endif
+  end if
 
 end function isKey
 
@@ -299,8 +299,8 @@ subroutine skip_file_header(blck,s_blck)
       s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     else
       call IO_error(708,ext_msg = line)
-    endif
-  endif
+    end if
+  end if
  
 end subroutine skip_file_header
 
@@ -419,7 +419,7 @@ recursive subroutine line_isFlow(flow,s_flow,line)
         call line_isFlow(flow,s_flow,line(s+1:list_chunk-1))
       else
         call line_toFlow(flow,s_flow,line(s+1:list_chunk-1))
-      endif
+      end if
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow +2
       s = s + find_end(line(s+1:),']')
@@ -447,7 +447,7 @@ recursive subroutine line_isFlow(flow,s_flow,line)
     s_flow = s_flow +1
   else
     call line_toFlow(flow,s_flow,line)
-  endif
+  end if
 
 end subroutine line_isFlow
 
@@ -479,7 +479,7 @@ recursive subroutine keyValue_toFlow(flow,s_flow,line)
     offset_value = indentDepth(line(col_pos+2:))
     line_asStandard = line(:col_pos+1)//line(col_pos+2+offset_value:)
     call line_toFlow(flow,s_flow,line_asStandard)
-  endif
+  end if
 
 end subroutine keyValue_toFlow
 
@@ -557,10 +557,10 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
-          endif
+          end if
           call line_isFlow(flow,s_flow,flow_line)
           offset = 0
-        endif
+        end if
       else                                                                                          ! list item in the same line
         line = line(indentDepth(line)+3:)
         if(isScalar(line)) then
@@ -573,20 +573,20 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
-          endif
+          end if
           call line_isFlow(flow,s_flow,flow_line)
           offset = 0
         else                                                                                        ! non scalar list item
           offset = offset + indentDepth(blck(s_blck:))+1                                            ! offset in spaces to be ignored
           s_blck = s_blck + index(blck(s_blck:e_blck),'-')                                          ! s_blck after '-' symbol
-         endif
+         end if
       end if
     end if
 
     if(isScalar(line) .or. isFlow(line)) then
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow + 2
-    endif
+    end if
 
   enddo
 
@@ -643,7 +643,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
       if(previous_isKey) then
         flow(s_flow-1:s_flow) = ', '
         s_flow = s_flow + 1
-      endif
+      end if
 
       if(isKeyValue(line)) then
         col_pos = index(line,':')
@@ -652,16 +652,16 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
-          endif
+          end if
           call keyValue_toFlow(flow,s_flow,flow_line)
         else
           call keyValue_toFlow(flow,s_flow,line)
           s_blck = e_blck + 2
-        endif
+        end if
       else
         call line_toFlow(flow,s_flow,line)
         s_blck = e_blck + 2
-      endif
+      end if
     end if
 
     if(isScalar(line) .or. isKeyValue(line)) then
@@ -670,7 +670,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
       previous_isKey = .false.
     else
       previous_isKey = .true.
-    endif
+    end if
 
     flow(s_flow:s_flow) = ' '
     s_flow = s_flow + 1
@@ -722,14 +722,14 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
         call remove_line_break(blck,s_blck,']',flow_line)
       else
         call remove_line_break(blck,s_blck,'}',flow_line)
-      endif
+      end if
       call line_isFlow(flow,s_flow,line)
     else
       line = line(indentDepth(line)+1:)
       call line_toFlow(flow,s_flow,line)
       s_blck = e_blck +2
-    endif
-  endif
+    end if
+  end if
 
 end subroutine
 
@@ -759,7 +759,7 @@ function to_flow(blck)
     line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
     if(trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call decide(blck,to_flow,s_blck,s_flow,offset)
-  endif
+  end if
   line = IO_rmComment(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
   if(trim(line)== '---') call IO_warning(709,ext_msg=line)
   to_flow = trim(to_flow(:s_flow-1))
