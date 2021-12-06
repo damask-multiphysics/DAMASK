@@ -130,9 +130,9 @@ def gradient(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(grad_,axes=(0,1,2),s=f.shape[:3])
 
 
-def coordinates0_point(cells: Union[ _np.ndarray,Sequence[int]],
-                       size: _np.ndarray,
-                       origin: _np.ndarray = _np.zeros(3)) -> _np.ndarray:
+def coordinates0_point(cells: Union[_np.ndarray, Sequence[int]],
+                       size: Union[_np.ndarray, Sequence[float]],
+                       origin: Union[_np.ndarray, Sequence[float]] = _np.zeros(3)) -> _np.ndarray:
     """
     Cell center positions (undeformed).
 
@@ -305,9 +305,9 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     return (cells,size,origin)
 
 
-def coordinates0_node(cells: Union[_np.ndarray,Sequence[int]],
-                      size: _np.ndarray,
-                      origin: _np.ndarray = _np.zeros(3)) -> _np.ndarray:
+def coordinates0_node(cells: Union[_np.ndarray, Sequence[int]],
+                      size: Union[_np.ndarray, Sequence[int]],
+                      origin: Union[_np.ndarray, Sequence[int]] = _np.zeros(3)) -> _np.ndarray:
     """
     Nodal positions (undeformed).
 
