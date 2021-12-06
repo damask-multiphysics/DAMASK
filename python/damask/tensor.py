@@ -14,12 +14,12 @@ def deviatoric(T: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the deviatoric part is computed.
 
     Returns
     -------
-    T' : numpy.ndarray of shape (...,3,3)
+    T' : numpy.ndarray, shape (...,3,3)
         Deviatoric part of T.
 
     """
@@ -32,12 +32,12 @@ def eigenvalues(T_sym: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
+    T_sym : numpy.ndarray, shape (...,3,3)
         Symmetric tensor of which the eigenvalues are computed.
 
     Returns
     -------
-    lambda : numpy.ndarray of shape (...,3)
+    lambda : numpy.ndarray, shape (...,3)
         Eigenvalues of T_sym sorted in ascending order, each repeated
         according to its multiplicity.
 
@@ -51,14 +51,14 @@ def eigenvectors(T_sym: _np.ndarray, RHS: bool = False) -> _np.ndarray:
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
+    T_sym : numpy.ndarray, shape (...,3,3)
         Symmetric tensor of which the eigenvectors are computed.
     RHS: bool, optional
         Enforce right-handed coordinate system. Defaults to False.
 
     Returns
     -------
-    x : numpy.ndarray of shape (...,3,3)
+    x : numpy.ndarray, shape (...,3,3)
         Eigenvectors of T_sym sorted in ascending order of their
         associated eigenvalues.
 
@@ -76,14 +76,14 @@ def spherical(T: _np.ndarray, tensor: bool = True) -> _np.ndarray:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the spherical part is computed.
     tensor : bool, optional
         Map spherical part onto identity tensor. Defaults to True.
 
     Returns
     -------
-    p : numpy.ndarray of shape (...,3,3)
+    p : numpy.ndarray, shape (...,3,3)
         unless tensor == False: shape (...,)
         Spherical part of tensor T. p is an isotropic tensor.
 
@@ -98,12 +98,12 @@ def symmetric(T: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the symmetrized values are computed.
 
     Returns
     -------
-    T_sym : numpy.ndarray of shape (...,3,3)
+    T_sym : numpy.ndarray, shape (...,3,3)
         Symmetrized tensor T.
 
     """
@@ -116,12 +116,12 @@ def transpose(T: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the transpose is computed.
 
     Returns
     -------
-    T.T : numpy.ndarray of shape (...,3,3)
+    T.T : numpy.ndarray, shape (...,3,3)
         Transpose of tensor T.
 
     """
