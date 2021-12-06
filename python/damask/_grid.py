@@ -49,8 +49,8 @@ class Grid:
 
         """
         self.material = material
-        self._size    = size
-        self._origin  = origin
+        self.size    = size
+        self.origin  = origin
         self.comments = comments
 
 
