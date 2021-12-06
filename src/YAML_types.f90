@@ -646,7 +646,7 @@ function tNode_contains(self,k)  result(exists)
         if (dict%getKey(j) == k) then
           exists = .true.
           return
-        endif
+        end if
       enddo
     class is(tList)
       list => self%asList()
@@ -654,7 +654,7 @@ function tNode_contains(self,k)  result(exists)
         if (list%get_asString(j) == k) then
           exists = .true.
           return
-        endif
+        end if
       enddo
     class default
       call IO_error(706,ext_msg='Expected list or dict')
@@ -694,7 +694,7 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
     if (item%key == k) then
       found = .true.
       exit
-    endif
+    end if
     item => item%next
     j = j + 1
   enddo
@@ -703,7 +703,7 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
     call IO_error(143,ext_msg=k)
   else
     if (associated(item)) node => item%node
-  endif
+  end if
 
 end function tNode_get_byKey
 
@@ -734,7 +734,7 @@ function tNode_get_byKey_asFloat(self,k,defaultVal) result(nodeAsFloat)
     nodeAsFloat = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_asFloat
 
@@ -765,7 +765,7 @@ function tNode_get_byKey_asInt(self,k,defaultVal) result(nodeAsInt)
     nodeAsInt = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_asInt
 
@@ -796,7 +796,7 @@ function tNode_get_byKey_asBool(self,k,defaultVal) result(nodeAsBool)
     nodeAsBool = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_asBool
 
@@ -827,7 +827,7 @@ function tNode_get_byKey_asString(self,k,defaultVal) result(nodeAsString)
     nodeAsString = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_asString
 
@@ -860,11 +860,11 @@ function tNode_get_byKey_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs
     nodeAs1dFloat = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
   if (present(requiredSize)) then
     if (requiredSize /= size(nodeAs1dFloat)) call IO_error(146,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_as1dFloat
 
@@ -897,11 +897,11 @@ function tNode_get_byKey_as2dFloat(self,k,defaultVal,requiredShape) result(nodeA
     nodeAs2dFloat = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
   if (present(requiredShape)) then
     if (any(requiredShape /= shape(nodeAs2dFloat))) call IO_error(146,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_as2dFloat
 
@@ -933,11 +933,11 @@ function tNode_get_byKey_as1dInt(self,k,defaultVal,requiredSize) result(nodeAs1d
     nodeAs1dInt = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
   if (present(requiredSize)) then
     if (requiredSize /= size(nodeAs1dInt)) call IO_error(146,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_as1dInt
 
@@ -968,7 +968,7 @@ function tNode_get_byKey_as1dBool(self,k,defaultVal) result(nodeAs1dBool)
     nodeAs1dBool = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_as1dBool
 
@@ -999,7 +999,7 @@ function tNode_get_byKey_as1dString(self,k,defaultVal) result(nodeAs1dString)
     nodeAs1dString = defaultVal
   else
     call IO_error(143,ext_msg=k)
-  endif
+  end if
 
 end function tNode_get_byKey_as1dString
 
@@ -1080,7 +1080,7 @@ recursive function tList_asFormattedString(self,indent) result(str)
     indent_ = indent
   else
     indent_ = 0
-  endif
+  end if
 
   item => self%first
   do i = 1, self%length
@@ -1109,7 +1109,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
     indent_ = indent
   else
     indent_ = 0
-  endif
+  end if
 
   item => self%first
   do i = 1, self%length

@@ -19,12 +19,12 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    F : numpy.ndarray of shape (...,3,3)
+    F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
 
     Returns
     -------
-    B : numpy.ndarray of shape (...,3,3)
+    B : numpy.ndarray, shape (...,3,3)
         Left Cauchy-Green deformation tensor.
 
     """
@@ -37,12 +37,12 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    F : numpy.ndarray of shape (...,3,3)
+    F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
 
     Returns
     -------
-    C : numpy.ndarray of shape (...,3,3)
+    C : numpy.ndarray, shape (...,3,3)
         Right Cauchy-Green deformation tensor.
 
     """
@@ -55,12 +55,12 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    epsilon : numpy.ndarray of shape (...,3,3)
+    epsilon : numpy.ndarray, shape (...,3,3)
         Symmetric strain tensor of which the von Mises equivalent is computed.
 
     Returns
     -------
-    epsilon_vM : numpy.ndarray of shape (...)
+    epsilon_vM : numpy.ndarray, shape (...)
         Von Mises equivalent strain of epsilon.
 
     """
@@ -73,12 +73,12 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    sigma : numpy.ndarray of shape (...,3,3)
+    sigma : numpy.ndarray, shape (...,3,3)
         Symmetric stress tensor of which the von Mises equivalent is computed.
 
     Returns
     -------
-    sigma_vM : numpy.ndarray of shape (...)
+    sigma_vM : numpy.ndarray, shape (...)
         Von Mises equivalent stress of sigma.
 
     """
@@ -91,12 +91,12 @@ def maximum_shear(T_sym: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
+    T_sym : numpy.ndarray, shape (...,3,3)
         Symmetric tensor of which the maximum shear is computed.
 
     Returns
     -------
-    gamma_max : numpy.ndarray of shape (...)
+    gamma_max : numpy.ndarray, shape (...)
         Maximum shear of T_sym.
 
     """
@@ -110,12 +110,12 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the rotational part is computed.
 
     Returns
     -------
-    R : damask.Rotation of shape (...)
+    R : damask.Rotation, shape (...)
         Rotational part of the vector.
 
     """
@@ -128,7 +128,7 @@ def strain(F: _np.ndarray, t: str, m: float) -> _np.ndarray:
 
     Parameters
     ----------
-    F : numpy.ndarray of shape (...,3,3)
+    F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
     t : {‘V’, ‘U’}
         Type of the polar decomposition, ‘V’ for left stretch tensor
@@ -138,7 +138,7 @@ def strain(F: _np.ndarray, t: str, m: float) -> _np.ndarray:
 
     Returns
     -------
-    epsilon : numpy.ndarray of shape (...,3,3)
+    epsilon : numpy.ndarray, shape (...,3,3)
         Strain of F.
 
     References
@@ -170,14 +170,14 @@ def stress_Cauchy(P: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    P : numpy.ndarray of shape (...,3,3)
+    P : numpy.ndarray, shape (...,3,3)
         First Piola-Kirchhoff stress.
-    F : numpy.ndarray of shape (...,3,3)
+    F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
 
     Returns
     -------
-    sigma : numpy.ndarray of shape (...,3,3)
+    sigma : numpy.ndarray, shape (...,3,3)
         Cauchy stress.
 
     """
@@ -193,14 +193,14 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray, F: _np.ndarray) -> _np.ndarray
 
     Parameters
     ----------
-    P : numpy.ndarray of shape (...,3,3)
+    P : numpy.ndarray, shape (...,3,3)
         First Piola-Kirchhoff stress.
-    F : numpy.ndarray of shape (...,3,3)
+    F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
 
     Returns
     -------
-    S : numpy.ndarray of shape (...,3,3)
+    S : numpy.ndarray, shape (...,3,3)
         Second Piola-Kirchhoff stress.
 
     """
@@ -213,12 +213,12 @@ def stretch_left(T: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the left stretch is computed.
 
     Returns
     -------
-    V : numpy.ndarray of shape (...,3,3)
+    V : numpy.ndarray, shape (...,3,3)
         Left stretch tensor from Polar decomposition of T.
 
     """
@@ -231,12 +231,12 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the right stretch is computed.
 
     Returns
     -------
-    U : numpy.ndarray of shape (...,3,3)
+    U : numpy.ndarray, shape (...,3,3)
         Left stretch tensor from Polar decomposition of T.
 
     """
@@ -249,7 +249,7 @@ def _polar_decomposition(T: _np.ndarray, requested: Sequence[str]) -> tuple:
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3)
+    T : numpy.ndarray, shape (...,3,3)
         Tensor of which the singular values are computed.
     requested : iterable of str
         Requested outputs: ‘R’ for the rotation tensor,
@@ -279,7 +279,7 @@ def _equivalent_Mises(T_sym: _np.ndarray, s: float) -> _np.ndarray:
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
+    T_sym : numpy.ndarray, shape (...,3,3)
         Symmetric tensor of which the von Mises equivalent is computed.
     s : float
         Scaling factor (2/3 for strain, 3/2 for stress).

@@ -540,19 +540,19 @@ end subroutine utilities_fourierGammaConvolution
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution DamageGreenOp_hat * field_real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierGreenConvolution(D_ref, mobility_ref, deltaT)
+subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
 
   real(pReal), dimension(3,3), intent(in) :: D_ref
-  real(pReal),                 intent(in) :: mobility_ref, deltaT
+  real(pReal),                 intent(in) :: mu_ref, Delta_t
   complex(pReal)                          :: GreenOp_hat
   integer                                 :: i, j, k
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
   do k = 1, grid3; do j = 1, grid(2) ;do i = 1, grid1Red
-    GreenOp_hat =  cmplx(1.0_pReal,0.0_pReal,pReal)/ &
-                   (cmplx(mobility_ref,0.0_pReal,pReal) + cmplx(deltaT,0.0_pReal)*&
-                    sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))
+    GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
+                / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal) &
+                   * sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))
     scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
   enddo; enddo; enddo
 
