@@ -13,7 +13,7 @@ _parameter_doc = \
        """
         family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
             Name of the crystal family.
-            Will be infered if 'lattice' is given.
+            Family will be inferred if 'lattice' is given.
         lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
             Name of the Bravais lattice in Pearson notation.
         a : float, optional
