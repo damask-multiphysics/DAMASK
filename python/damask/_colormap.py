@@ -42,7 +42,7 @@ class Colormap(mpl.colors.ListedColormap):
     https://doi.org/10.1016/j.ijplas.2012.09.012
 
     Matplotlib colormaps overview
-    https://matplotlib.org/tutorials/colors/colormaps.html
+    https://matplotlib.org/stable/tutorials/colors/colormaps.html
 
     """
 
