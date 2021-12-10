@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Sequence, Union, TextIO
 
 import numpy as np
+import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
@@ -191,6 +192,28 @@ class Colormap(mpl.colors.ListedColormap):
             return Colormap.from_range(definition['low'],definition['high'],name,N)
 
 
+    def at(self,
+           fraction : float) -> np.ndarray:
+        """
+        Interpolate color at fraction.
+
+        Parameters
+        ----------
+        fraction : float
+            Fractional coordinate to evaluate Colormap at.
+
+        Returns
+        -------
+        color : np.ndarray, shape(3)
+            RGB values of interpolated color.
+
+        """
+        return interp.interp1d(np.linspace(0,1,self.N),
+                               self.colors,
+                               axis=0,
+                               assume_sorted=True)(fraction)
+
+
     def shade(self,
               field: np.ndarray,
               bounds: Sequence[float] = None,
@@ -213,7 +236,6 @@ class Colormap(mpl.colors.ListedColormap):
             RGBA image of shaded data.
 
         """
-        N = len(self.colors)
         mask = np.logical_not(np.isnan(field) if gap is None else \
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
@@ -227,7 +249,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         return Image.fromarray(
             (np.dstack((
-                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1))).astype(np.uint16),:3],
+                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0)*(self.N-1))).astype(np.uint16),:3],
                         mask.astype(float)
                        )
                       )*255
@@ -343,7 +365,7 @@ class Colormap(mpl.colors.ListedColormap):
         # ToDo: test in GOM
         GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
                 +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
-                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(self.colors)}' \
+                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {self.N}' \
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
 

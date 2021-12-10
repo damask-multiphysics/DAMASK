@@ -139,6 +139,13 @@ class TestColormap:
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
+    @pytest.mark.parametrize('N,cmap',[
+                                       (8,'gray'),
+                                       (17,'gray'),
+                                      ])
+    def test_at(self, N, cmap):
+        assert np.allclose(Colormap.from_predefined(cmap,N=N).at(0.5)[:3],0.5,rtol=0.005)
+
     @pytest.mark.parametrize('bounds',[None,[2,10]])
     def test_shade(self,ref_path,update,bounds):
         data = np.add(*np.indices((10, 11)))
