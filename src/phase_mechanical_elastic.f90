@@ -223,7 +223,7 @@ module function phase_homogenizedC66(ph,en) result(C)
 
 
   plasticType: select case (phase_plasticity(ph))
-    case (PLASTICITY_DISLOTWIN_ID) plasticType
+    case (PLASTIC_DISLOTWIN_ID) plasticType
      C = plastic_dislotwin_homogenizedC(ph,en)
     case default plasticType
      C = elastic_C66(ph,en)

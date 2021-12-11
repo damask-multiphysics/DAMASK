@@ -5,17 +5,17 @@ submodule(phase) mechanical
 
 
   enum, bind(c); enumerator :: &
-    PLASTICITY_UNDEFINED_ID, &
-    PLASTICITY_NONE_ID, &
-    PLASTICITY_ISOTROPIC_ID, &
-    PLASTICITY_PHENOPOWERLAW_ID, &
-    PLASTICITY_KINEHARDENING_ID, &
-    PLASTICITY_DISLOTWIN_ID, &
-    PLASTICITY_DISLOTUNGSTEN_ID, &
-    PLASTICITY_NONLOCAL_ID, &
-    KINEMATICS_UNDEFINED_ID, &
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID
+    PLASTIC_UNDEFINED_ID, &
+    PLASTIC_NONE_ID, &
+    PLASTIC_ISOTROPIC_ID, &
+    PLASTIC_PHENOPOWERLAW_ID, &
+    PLASTIC_KINEHARDENING_ID, &
+    PLASTIC_DISLOTWIN_ID, &
+    PLASTIC_DISLOTUNGSTEN_ID, &
+    PLASTIC_NONLOCAL_ID, &
+    EIGEN_UNDEFINED_ID, &
+    EIGEN_CLEAVAGE_OPENING_ID, &
+    EIGEN_THERMAL_EXPANSION_ID
   end enum
 
   type(tTensorContainer), dimension(:), allocatable :: &
@@ -37,7 +37,7 @@ submodule(phase) mechanical
     phase_mechanical_S0
 
 
-  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+  integer(kind(PLASTIC_undefined_ID)), dimension(:),   allocatable :: &
     phase_plasticity                                                                                !< plasticity of each phase
 
   integer :: phase_plasticity_maxSizeDotState
@@ -291,7 +291,7 @@ module subroutine mechanical_init(phases)
   call elastic_init(phases)
 
   allocate(plasticState(phases%length))
-  allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
+  allocate(phase_plasticity(phases%length),source = PLASTIC_UNDEFINED_ID)
   call plastic_init()
   do ph = 1,phases%length
     plasticState(ph)%state0 = plasticState(ph)%state
@@ -340,22 +340,22 @@ module subroutine mechanical_results(group,ph)
 
   select case(phase_plasticity(ph))
 
-    case(PLASTICITY_ISOTROPIC_ID)
+    case(PLASTIC_ISOTROPIC_ID)
       call plastic_isotropic_results(ph,group//'mechanical/')
 
-    case(PLASTICITY_PHENOPOWERLAW_ID)
+    case(PLASTIC_PHENOPOWERLAW_ID)
       call plastic_phenopowerlaw_results(ph,group//'mechanical/')
 
-    case(PLASTICITY_KINEHARDENING_ID)
+    case(PLASTIC_KINEHARDENING_ID)
       call plastic_kinehardening_results(ph,group//'mechanical/')
 
-    case(PLASTICITY_DISLOTWIN_ID)
+    case(PLASTIC_DISLOTWIN_ID)
       call plastic_dislotwin_results(ph,group//'mechanical/')
 
-    case(PLASTICITY_DISLOTUNGSTEN_ID)
+    case(PLASTIC_DISLOTUNGSTEN_ID)
       call plastic_dislotungsten_results(ph,group//'mechanical/')
 
-    case(PLASTICITY_NONLOCAL_ID)
+    case(PLASTIC_NONLOCAL_ID)
       call plastic_nonlocal_results(ph,group//'mechanical/')
 
   end select
