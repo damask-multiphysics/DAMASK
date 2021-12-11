@@ -375,21 +375,24 @@ subroutine utilities_updateGamma(C)
     gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                   ! for the singular point and any non invertible A
     do k = grid3Offset+1, grid3Offset+grid3; do j = 1, grid(2); do i = 1, grid1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-        forall(l = 1:3, m = 1:3) &
+        do concurrent (l = 1:3, m = 1:3)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
-        forall(l = 1:3, m = 1:3) &
+        end do
+        do concurrent(l = 1:3, m = 1:3)
           temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+        end do
         A(1:3,1:3) = temp33_complex%re; A(4:6,4:6) =  temp33_complex%re
         A(1:3,4:6) = temp33_complex%im; A(4:6,1:3) = -temp33_complex%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
-          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+          do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,i,j,k-grid3Offset) = temp33_complex(l,n)* &
                                                    conjg(-xi1st(o,i,j,k-grid3Offset))*xi1st(m,i,j,k-grid3Offset)
-        endif
-      endif
-    enddo; enddo; enddo
+          end do
+        end if
+      end if
+    end do; end do; end do
   endif
 
 end subroutine utilities_updateGamma
@@ -492,32 +495,37 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   memoryEfficient: if (num%memory_efficient) then
     do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
       if (any([i,j,k+grid3Offset] /= 1)) then                                                       ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-        forall(l = 1:3, m = 1:3) &
+        do concurrent(l = 1:3, m = 1:3)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
-        forall(l = 1:3, m = 1:3) &
+        end do
+        do concurrent(l = 1:3, m = 1:3)
           temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+        end do
         A(1:3,1:3) = temp33_complex%re; A(4:6,4:6) =  temp33_complex%re
         A(1:3,4:6) = temp33_complex%im; A(4:6,1:3) = -temp33_complex%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
-          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+          do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
+          end do
         else
           gamma_hat(1:3,1:3,1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
-        endif
-        forall(l = 1:3, m = 1:3) &
+        end if
+        do concurrent(l = 1:3, m = 1:3)
           temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
+        end do
         tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
-      endif
-    enddo; enddo; enddo
+      end if
+    end do; end do; end do
   else memoryEfficient
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid1Red
-      forall(l = 1:3, m = 1:3) &
+      do concurrent(l = 1:3, m = 1:3)
         temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * tensorField_fourier(1:3,1:3,i,j,k))
+      end do
       tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
-    enddo; enddo; enddo
-  endif memoryEfficient
+    end do; end do; end do
+  end if memoryEfficient
 
   if (grid3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
 
