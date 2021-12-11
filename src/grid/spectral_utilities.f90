@@ -29,15 +29,6 @@ module spectral_utilities
   include 'fftw3-mpi.f03'
 
 !--------------------------------------------------------------------------------------------------
-! field labels information
-  enum, bind(c); enumerator :: &
-    FIELD_UNDEFINED_ID, &
-    FIELD_MECH_ID, &
-    FIELD_THERMAL_ID, &
-    FIELD_DAMAGE_ID
-  end enum
-
-!--------------------------------------------------------------------------------------------------
 ! grid related information information
   real(pReal), protected,  public                :: wgt                                             !< weighting factor 1/Nelems
   integer,     protected,  public                :: grid1Red                                        !< grid(1)/2
@@ -139,11 +130,7 @@ module spectral_utilities
     utilities_calculateRate, &
     utilities_forwardField, &
     utilities_updateCoords, &
-    utilities_saveReferenceStiffness, &
-    FIELD_UNDEFINED_ID, &
-    FIELD_MECH_ID, &
-    FIELD_THERMAL_ID, &
-    FIELD_DAMAGE_ID
+    utilities_saveReferenceStiffness
 
 contains
 
