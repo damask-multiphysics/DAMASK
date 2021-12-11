@@ -162,7 +162,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
   PetscInt  :: devNull
-  PetscReal :: T_min, T_max, stagNorm, solnNorm
+  PetscReal :: T_min, T_max, stagNorm
 
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
@@ -184,9 +184,8 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
     solution%iterationsNeeded = totalIter
   end if
   stagNorm = maxval(abs(T_current - T_stagInc))
-  solnNorm = maxval(abs(T_current))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,ierr)
-  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*solnNorm)
+  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*maxval(T_current))
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,ierr)
   T_stagInc = T_current
 
