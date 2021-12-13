@@ -193,9 +193,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def at(self,
-           fraction : Union[float,Sequence[float]],
-           with_alpha : bool = False,
-           as_string : bool = False) -> np.ndarray:
+           fraction : Union[float,Sequence[float]]) -> np.ndarray:
         """
         Interpolate color at fraction.
 
@@ -203,29 +201,26 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         fraction : float or sequence of float
             Fractional coordinate(s) to evaluate Colormap at.
-        with_alpha : bool
-            Provide opacity as fourth value.
-        as_string : bool
-            Encode color as 'rgb(r,g,b)' or 'rgba(r,g,b,a)'.
 
         Returns
         -------
-        color : np.ndarray, shape(3 or 4), or string
-            RGB(A) values of interpolated color.
+        color : np.ndarray, shape(...,4)
+            RGBA values of interpolated color(s).
+
+        Examples
+        --------
+        >>> import damask
+        >>> cmap = damask.Colormap.from_predefined('gray')
+        >>> cmap.at(0.5)
+        array([0.5, 0.5, 0.5, 1. ])
+        >>> 'rgb({},{},{})'.format(*cmap.at(0.5))
+        'rgb(0.5,0.5,0.5)'
 
         """
-        def _stringify(color):
-            d = color.shape[-1]
-            c = np.array([f'rgba({c[0]},{c[1]},{c[2]},{c[3]})' if d==4
-                     else f'rgb({c[0]},{c[1]},{c[2]})' for c in np.atleast_2d(color)])
-            return c if len(c)>1 else c[0]
-
-
-        color = interp.interp1d(np.linspace(0,1,self.N),
-                                self.colors,
-                                axis=0,
-                                assume_sorted=True)(fraction)[...,:4 if with_alpha else 3]
-        return _stringify(color) if as_string else color
+        return interp.interp1d(np.linspace(0,1,self.N),
+                               self.colors,
+                               axis=0,
+                               assume_sorted=True)(fraction)
 
 
     def shade(self,
