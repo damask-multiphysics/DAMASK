@@ -139,23 +139,15 @@ class TestColormap:
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
-    @pytest.mark.parametrize('N,cmap,at,with_alpha,result',[
-           (8,'gray',0.5,False,[0.5,0.5,0.5]),
-           (17,'gray',0.5,False,[0.5,0.5,0.5]),
-           (17,'gray',[0.5,0.75],False,[[0.5,0.5,0.5],[0.75,0.75,0.75]]),
+    @pytest.mark.parametrize('N,cmap,at,result',[
+           (8,'gray',0.5,[0.5,0.5,0.5]),
+           (17,'gray',0.5,[0.5,0.5,0.5]),
+           (17,'gray',[0.5,0.75],[[0.5,0.5,0.5],[0.75,0.75,0.75]]),
            ])
-    def test_at_value(self, N, cmap, at, with_alpha, result):
-        assert np.allclose(Colormap.from_predefined(cmap,N=N).at(at,with_alpha=with_alpha),
+    def test_at_value(self, N, cmap, at, result):
+        assert np.allclose(Colormap.from_predefined(cmap,N=N).at(at)[...,:3],
                            result,
                            rtol=0.005)
-
-    @pytest.mark.parametrize('N,cmap,at,with_alpha,result',[
-           (8,'gray',0.5,False,'rgb(0.5,0.5,0.5)'),
-           (8,'gray',0.5,True,'rgba(0.5,0.5,0.5,1.0)'),
-           (8,'gray',[0.5,0.25],True,['rgba(0.5,0.5,0.5,1.0)','rgba(0.25,0.25,0.25,1.0)']),
-           ])
-    def test_at_string(self, N, cmap, at, with_alpha, result):
-        assert np.all(Colormap.from_predefined(cmap,N=N).at(at,with_alpha=with_alpha,as_string=True) == result)
 
     @pytest.mark.parametrize('bounds',[None,[2,10]])
     def test_shade(self,ref_path,update,bounds):
