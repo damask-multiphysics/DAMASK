@@ -6,8 +6,6 @@ from . import tensor
 from . import util
 from . import grid_filters
 
-from typing import Union, Sequence, Tuple, Literal, List
-
 _P = -1
 
 # parameters for conversion from/to cubochoric
@@ -63,7 +61,7 @@ class Rotation:
 
     __slots__ = ['quaternion']
 
-    def __init__(self, rotation: Union[Sequence[float], np.ndarray, "Rotation"] = np.array([1.0,0.0,0.0,0.0])):
+    def __init__(self,rotation = np.array([1.0,0.0,0.0,0.0])):
         """
         New rotation.
 
@@ -75,7 +73,6 @@ class Rotation:
             Defaults to no rotation.
 
         """
-        self.quaternion: np.ndarray
         if isinstance(rotation,Rotation):
             self.quaternion = rotation.quaternion.copy()
         elif np.array(rotation).shape[-1] == 4:
@@ -84,13 +81,13 @@ class Rotation:
             raise TypeError('"rotation" is neither a Rotation nor a quaternion')
 
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         """Represent rotation as unit quaternion(s)."""
         return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
 
-    def __copy__(self, rotation: Union[Sequence[float], np.ndarray, "Rotation"] = None) -> "Rotation":
+    def __copy__(self,rotation=None):
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -100,14 +97,14 @@ class Rotation:
     copy = __copy__
 
 
-    def __getitem__(self, item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
+    def __getitem__(self,item):
         """Return slice according to item."""
         return self.copy() \
                if self.shape == () else \
                self.copy(rotation=self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
 
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,other):
         """
         Equal to other.
 
@@ -117,13 +114,11 @@ class Rotation:
             Rotation to check for equality.
 
         """
-        if not isinstance(other, Rotation):
-            raise TypeError
         return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
 
 
-    def __ne__(self, other: object) -> bool:
+    def __ne__(self,other):
         """
         Not equal to other.
 
@@ -133,12 +128,10 @@ class Rotation:
             Rotation to check for inequality.
 
         """
-        if not isinstance(other, Rotation):
-            raise TypeError
         return np.logical_not(self==other)
 
 
-    def isclose(self, other: "Rotation", rtol: float = 1e-5, atol: float = 1e-8, equal_nan: bool = True) -> bool:
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
         """
         Report where values are approximately equal to corresponding ones of other Rotation.
 
@@ -165,7 +158,7 @@ class Rotation:
                              np.all(np.isclose(s,-1.0*o,rtol,atol,equal_nan),axis=-1))
 
 
-    def allclose(self, other: "Rotation", rtol: float = 1e-5, atol: float = 1e-8, equal_nan: bool = True) -> Union[np.bool_, bool]:
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
         """
         Test whether all values are approximately equal to corresponding ones of other Rotation.
 
@@ -195,27 +188,27 @@ class Rotation:
 
 
     @property
-    def size(self) -> int:
+    def size(self):
         return self.quaternion[...,0].size
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self):
         return self.quaternion[...,0].shape
 
 
-    def __len__(self) -> int:
+    def __len__(self):
         """Length of leading/leftmost dimension of array."""
         return 0 if self.shape == () else self.shape[0]
 
 
-    def __invert__(self) -> "Rotation":
+    def __invert__(self):
         """Inverse rotation (backward rotation)."""
         dup = self.copy()
         dup.quaternion[...,1:] *= -1
         return dup
 
 
-    def __pow__(self, exp: int) -> "Rotation":
+    def __pow__(self,exp):
         """
         Perform the rotation 'exp' times.
 
@@ -229,7 +222,7 @@ class Rotation:
         p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
         return self.copy(rotation=Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
-    def __ipow__(self, exp: int) -> "Rotation":
+    def __ipow__(self,exp):
         """
         Perform the rotation 'exp' times (in-place).
 
@@ -242,7 +235,7 @@ class Rotation:
         return self**exp
 
 
-    def __mul__(self, other: "Rotation") -> "Rotation":
+    def __mul__(self,other):
         """
         Compose with other.
 
@@ -268,7 +261,7 @@ class Rotation:
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
-    def __imul__(self, other: "Rotation") -> "Rotation":
+    def __imul__(self,other):
         """
         Compose with other (in-place).
 
@@ -281,7 +274,7 @@ class Rotation:
         return self*other
 
 
-    def __truediv__(self, other: "Rotation") -> "Rotation":
+    def __truediv__(self,other):
         """
         Compose with inverse of other.
 
@@ -301,7 +294,7 @@ class Rotation:
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
-    def __itruediv__(self, other: "Rotation") -> "Rotation":
+    def __itruediv__(self,other):
         """
         Compose with inverse of other (in-place).
 
@@ -314,7 +307,7 @@ class Rotation:
         return self/other
 
 
-    def __matmul__(self, other: np.ndarray) -> np.ndarray:
+    def __matmul__(self,other):
         """
         Rotate vector, second order tensor, or fourth order tensor.
 
@@ -357,13 +350,13 @@ class Rotation:
     apply = __matmul__
 
 
-    def _standardize(self) -> "Rotation":
+    def _standardize(self):
         """Standardize quaternion (ensure positive real hemisphere)."""
         self.quaternion[self.quaternion[...,0] < 0.0] *= -1
         return self
 
 
-    def append(self, other: Union["Rotation", List["Rotation"]]) -> "Rotation":
+    def append(self,other):
         """
         Extend array along first dimension with other array(s).
 
@@ -376,7 +369,7 @@ class Rotation:
                                                       [self]+other if isinstance(other,list) else [self,other]))))
 
 
-    def flatten(self, order: Literal['C','F','A'] = 'C') -> "Rotation":
+    def flatten(self,order = 'C'):
         """
         Flatten array.
 
@@ -389,7 +382,7 @@ class Rotation:
         return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
 
 
-    def reshape(self,shape: Union[int, Tuple[int, ...]], order: Literal['C','F','A'] = 'C') -> "Rotation":
+    def reshape(self,shape,order = 'C'):
         """
         Reshape array.
 
@@ -403,7 +396,7 @@ class Rotation:
         return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
 
-    def broadcast_to(self, shape: Union[int, Tuple[int, ...]], mode: Literal["left", "right"] = 'right') -> "Rotation":
+    def broadcast_to(self,shape,mode = 'right'):
         """
         Broadcast array.
 
@@ -465,7 +458,7 @@ class Rotation:
                                         accept_homomorph = True)
 
 
-    def misorientation(self, other: "Rotation") -> "Rotation":
+    def misorientation(self,other):
         """
         Calculate misorientation to other Rotation.
 
@@ -486,7 +479,7 @@ class Rotation:
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def as_quaternion(self) -> np.ndarray:
+    def as_quaternion(self):
         """
         Represent as unit quaternion.
 
@@ -499,7 +492,7 @@ class Rotation:
         return self.quaternion.copy()
 
     def as_Euler_angles(self,
-                        degrees: bool = False) -> np.ndarray:
+                        degrees = False):
         """
         Represent as Bunge Euler angles.
 
@@ -533,8 +526,8 @@ class Rotation:
         return eu
 
     def as_axis_angle(self,
-                      degrees: bool = False,
-                      pair: bool = False) -> Union[Tuple[float, ...], np.ndarray]:
+                      degrees = False,
+                      pair = False):
         """
         Represent as axis–angle pair.
 
@@ -561,11 +554,11 @@ class Rotation:
         (array([0., 0., 1.]), array(0.))
 
         """
-        ax: np.ndarray = Rotation._qu2ax(self.quaternion)
+        ax = Rotation._qu2ax(self.quaternion)
         if degrees: ax[...,3] = np.degrees(ax[...,3])
         return (ax[...,:3],ax[...,3]) if pair else ax
 
-    def as_matrix(self) -> np.ndarray:
+    def as_matrix(self):
         """
         Represent as rotation matrix.
 
@@ -589,7 +582,7 @@ class Rotation:
         return Rotation._qu2om(self.quaternion)
 
     def as_Rodrigues_vector(self,
-                            compact: bool = False) -> np.ndarray:
+                            compact = False):
         """
         Represent as Rodrigues–Frank vector with separate axis and angle argument.
 
@@ -622,7 +615,7 @@ class Rotation:
         else:
             return ro
 
-    def as_homochoric(self) -> np.ndarray:
+    def as_homochoric(self):
         """
         Represent as homochoric vector.
 
@@ -643,7 +636,7 @@ class Rotation:
         """
         return Rotation._qu2ho(self.quaternion)
 
-    def as_cubochoric(self) -> np.ndarray:
+    def as_cubochoric(self):
         """
         Represent as cubochoric vector.
 
@@ -668,9 +661,9 @@ class Rotation:
     # Static constructors. The input data needs to follow the conventions, options allow to
     # relax the conventions.
     @staticmethod
-    def from_quaternion(q: Union[Sequence[Sequence[float]], np.ndarray],
-                        accept_homomorph: bool = False,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+    def from_quaternion(q,
+                        accept_homomorph = False,
+                        P = -1):
         """
         Initialize from quaternion.
 
@@ -685,7 +678,7 @@ class Rotation:
             Sign convention. Defaults to -1.
 
         """
-        qu: np.ndarray = np.array(q,dtype=float)
+        qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
         if abs(P) != 1:
@@ -703,8 +696,8 @@ class Rotation:
         return Rotation(qu)
 
     @staticmethod
-    def from_Euler_angles(phi: np.ndarray,
-                          degrees: bool = False) -> "Rotation":
+    def from_Euler_angles(phi,
+                          degrees = False):
         """
         Initialize from Bunge Euler angles.
 
@@ -732,10 +725,10 @@ class Rotation:
         return Rotation(Rotation._eu2qu(eu))
 
     @staticmethod
-    def from_axis_angle(axis_angle: np.ndarray,
-                        degrees:bool = False,
-                        normalize: bool = False,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+    def from_axis_angle(axis_angle,
+                        degrees = False,
+                        normalize = False,
+                        P = -1):
         """
         Initialize from Axis angle pair.
 
@@ -770,9 +763,9 @@ class Rotation:
         return Rotation(Rotation._ax2qu(ax))
 
     @staticmethod
-    def from_basis(basis: np.ndarray,
-                   orthonormal: bool = True,
-                   reciprocal: bool = False) -> "Rotation":
+    def from_basis(basis,
+                   orthonormal = True,
+                   reciprocal = False):
         """
         Initialize from lattice basis vectors.
 
@@ -806,7 +799,7 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(R: np.ndarray) -> "Rotation":
+    def from_matrix(R):
         """
         Initialize from rotation matrix.
 
@@ -819,9 +812,8 @@ class Rotation:
         return Rotation.from_basis(R)
 
     @staticmethod
-    def from_parallel(a: np.ndarray,
-                      b: np.ndarray,
-                      **kwargs) -> "Rotation":
+    def from_parallel(a,b,
+                      **kwargs):
         """
         Initialize from pairs of two orthogonal lattice basis vectors.
 
@@ -849,9 +841,9 @@ class Rotation:
 
 
     @staticmethod
-    def from_Rodrigues_vector(rho: np.ndarray,
-                              normalize: bool = False,
-                              P: Literal[1, -1] = -1) -> "Rotation":
+    def from_Rodrigues_vector(rho,
+                              normalize = False,
+                              P = -1):
         """
         Initialize from Rodrigues–Frank vector (angle separated from axis).
 
@@ -881,8 +873,8 @@ class Rotation:
         return Rotation(Rotation._ro2qu(ro))
 
     @staticmethod
-    def from_homochoric(h: np.ndarray,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+    def from_homochoric(h,
+                        P = -1):
         """
         Initialize from homochoric vector.
 
@@ -908,8 +900,8 @@ class Rotation:
         return Rotation(Rotation._ho2qu(ho))
 
     @staticmethod
-    def from_cubochoric(x: np.ndarray,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+    def from_cubochoric(x,
+                        P = -1):
         """
         Initialize from cubochoric vector.
 
@@ -936,8 +928,8 @@ class Rotation:
 
 
     @staticmethod
-    def from_random(shape: Tuple[int, ...] = None,
-                    rng_seed: Union[None, int, Sequence[int], np.ndarray] = None) -> "Rotation":
+    def from_random(shape = None,
+                    rng_seed = None):
         """
         Initialize with random rotation.
 
@@ -966,13 +958,13 @@ class Rotation:
 
 
     @staticmethod
-    def from_ODF(weights: np.ndarray,
-                 phi: np.ndarray,
-                 N: int = 500,
-                 degrees: bool = True,
-                 fractions: bool = True,
-                 rng_seed: Union[None, int, Sequence[int], np.ndarray] = None,
-                 **kwargs) -> "Rotation":
+    def from_ODF(weights,
+                 phi,
+                 N = 500,
+                 degrees = True,
+                 fractions = True,
+                 rng_seed = None,
+                 **kwargs):
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -1025,11 +1017,11 @@ class Rotation:
 
 
     @staticmethod
-    def from_spherical_component(center: "Rotation",
-                                 sigma: float,
-                                 N: int = 500,
-                                 degrees: bool = True,
-                                 rng_seed: Union[None, int, Sequence[float], np.ndarray] = None) -> "Rotation":
+    def from_spherical_component(center,
+                                 sigma,
+                                 N = 500,
+                                 degrees = True,
+                                 rng_seed = None):
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -1060,12 +1052,12 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha: np.ndarray,
-                             beta: np.ndarray,
-                             sigma: float = 0.0,
-                             N: int = 500,
-                             degrees: bool = True,
-                             rng_seed: bool = None):
+    def from_fiber_component(alpha,
+                             beta,
+                             sigma = 0.0,
+                             N = 500,
+                             degrees = True,
+                             rng_seed = None):
         """
         Calculate set of rotations with Gaussian distribution around direction.
 
@@ -1088,8 +1080,7 @@ class Rotation:
 
         """
         rng = np.random.default_rng(rng_seed)
-        sigma_: np.ndarray; alpha_: np.ndarray; beta_: np.ndarray
-        sigma_,alpha_,beta_ = map(np.radians,(sigma,alpha,beta)) if degrees else (sigma,alpha,beta) # type: ignore
+        sigma_,alpha_,beta_ = map(np.radians,(sigma,alpha,beta)) if degrees else (sigma,alpha,beta)
 
         d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
         d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
@@ -1143,7 +1134,7 @@ class Rotation:
 ####################################################################################################
     #---------- Quaternion ----------
     @staticmethod
-    def _qu2om(qu: np.ndarray) -> np.ndarray:
+    def _qu2om(qu):
         qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
         om = np.block([qq + 2.0*qu[...,1:2]**2,
                        2.0*(qu[...,2:3]*qu[...,1:2]-_P*qu[...,0:1]*qu[...,3:4]),
@@ -1158,7 +1149,7 @@ class Rotation:
         return om
 
     @staticmethod
-    def _qu2eu(qu: np.ndarray) -> np.ndarray:
+    def _qu2eu(qu):
         """Quaternion to Bunge Euler angles."""
         q02   = qu[...,0:1]*qu[...,2:3]
         q13   = qu[...,1:2]*qu[...,3:4]
@@ -1186,7 +1177,7 @@ class Rotation:
         return eu
 
     @staticmethod
-    def _qu2ax(qu: np.ndarray) -> np.ndarray:
+    def _qu2ax(qu):
         """
         Quaternion to axis–angle pair.
 
@@ -1202,7 +1193,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _qu2ro(qu: np.ndarray) -> np.ndarray:
+    def _qu2ro(qu):
         """Quaternion to Rodrigues–Frank vector."""
         with np.errstate(invalid='ignore',divide='ignore'):
             s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
@@ -1216,7 +1207,7 @@ class Rotation:
         return ro
 
     @staticmethod
-    def _qu2ho(qu: np.ndarray) -> np.ndarray:
+    def _qu2ho(qu):
         """Quaternion to homochoric vector."""
         with np.errstate(invalid='ignore'):
             omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
@@ -1227,14 +1218,14 @@ class Rotation:
         return ho
 
     @staticmethod
-    def _qu2cu(qu: np.ndarray) -> np.ndarray:
+    def _qu2cu(qu):
         """Quaternion to cubochoric vector."""
         return Rotation._ho2cu(Rotation._qu2ho(qu))
 
 
     #---------- Rotation matrix ----------
     @staticmethod
-    def _om2qu(om: np.ndarray) -> np.ndarray:
+    def _om2qu(om):
         """
         Rotation matrix to quaternion.
 
@@ -1276,7 +1267,7 @@ class Rotation:
         return qu
 
     @staticmethod
-    def _om2eu(om: np.ndarray) -> np.ndarray:
+    def _om2eu(om):
         """Rotation matrix to Bunge Euler angles."""
         with np.errstate(invalid='ignore',divide='ignore'):
             zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
@@ -1295,7 +1286,7 @@ class Rotation:
         return eu
 
     @staticmethod
-    def _om2ax(om: np.ndarray) -> np.ndarray:
+    def _om2ax(om):
         """Rotation matrix to axis–angle pair."""
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
@@ -1316,24 +1307,24 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _om2ro(om: np.ndarray) -> np.ndarray:
+    def _om2ro(om):
         """Rotation matrix to Rodrigues–Frank vector."""
         return Rotation._eu2ro(Rotation._om2eu(om))
 
     @staticmethod
-    def _om2ho(om: np.ndarray) -> np.ndarray:
+    def _om2ho(om):
         """Rotation matrix to homochoric vector."""
         return Rotation._ax2ho(Rotation._om2ax(om))
 
     @staticmethod
-    def _om2cu(om: np.ndarray) -> np.ndarray:
+    def _om2cu(om):
         """Rotation matrix to cubochoric vector."""
         return Rotation._ho2cu(Rotation._om2ho(om))
 
 
     #---------- Bunge Euler angles ----------
     @staticmethod
-    def _eu2qu(eu: np.ndarray) -> np.ndarray:
+    def _eu2qu(eu):
         """Bunge Euler angles to quaternion."""
         ee = 0.5*eu
         cPhi = np.cos(ee[...,1:2])
@@ -1346,7 +1337,7 @@ class Rotation:
         return qu
 
     @staticmethod
-    def _eu2om(eu: np.ndarray) -> np.ndarray:
+    def _eu2om(eu):
         """Bunge Euler angles to rotation matrix."""
         c = np.cos(eu)
         s = np.sin(eu)
@@ -1364,7 +1355,7 @@ class Rotation:
         return om
 
     @staticmethod
-    def _eu2ax(eu: np.ndarray) -> np.ndarray:
+    def _eu2ax(eu):
         """Bunge Euler angles to axis–angle pair."""
         t = np.tan(eu[...,1:2]*0.5)
         sigma = 0.5*(eu[...,0:1]+eu[...,2:3])
@@ -1383,7 +1374,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _eu2ro(eu: np.ndarray) -> np.ndarray:
+    def _eu2ro(eu):
         """Bunge Euler angles to Rodrigues–Frank vector."""
         ax = Rotation._eu2ax(eu)
         ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
@@ -1392,19 +1383,19 @@ class Rotation:
         return ro
 
     @staticmethod
-    def _eu2ho(eu: np.ndarray) -> np.ndarray:
+    def _eu2ho(eu):
         """Bunge Euler angles to homochoric vector."""
         return Rotation._ax2ho(Rotation._eu2ax(eu))
 
     @staticmethod
-    def _eu2cu(eu: np.ndarray) -> np.ndarray:
+    def _eu2cu(eu):
         """Bunge Euler angles to cubochoric vector."""
         return Rotation._ho2cu(Rotation._eu2ho(eu))
 
 
     #---------- Axis angle pair ----------
     @staticmethod
-    def _ax2qu(ax: np.ndarray) -> np.ndarray:
+    def _ax2qu(ax):
         """Axis–angle pair to quaternion."""
         c = np.cos(ax[...,3:4]*.5)
         s = np.sin(ax[...,3:4]*.5)
@@ -1412,7 +1403,7 @@ class Rotation:
         return qu
 
     @staticmethod
-    def _ax2om(ax: np.ndarray) -> np.ndarray:
+    def _ax2om(ax):
         """Axis-angle pair to rotation matrix."""
         c = np.cos(ax[...,3:4])
         s = np.sin(ax[...,3:4])
@@ -1429,12 +1420,12 @@ class Rotation:
         return om if _P < 0.0 else np.swapaxes(om,-1,-2)
 
     @staticmethod
-    def _ax2eu(ax: np.ndarray) -> np.ndarray:
+    def _ax2eu(ax):
         """Rotation matrix to Bunge Euler angles."""
         return Rotation._om2eu(Rotation._ax2om(ax))
 
     @staticmethod
-    def _ax2ro(ax: np.ndarray) -> np.ndarray:
+    def _ax2ro(ax):
         """Axis–angle pair to Rodrigues–Frank vector."""
         ro = np.block([ax[...,:3],
                        np.where(np.isclose(ax[...,3:4],np.pi,atol=1.e-15,rtol=.0),
@@ -1445,36 +1436,36 @@ class Rotation:
         return ro
 
     @staticmethod
-    def _ax2ho(ax: np.ndarray) -> np.ndarray:
+    def _ax2ho(ax):
         """Axis–angle pair to homochoric vector."""
         f = (0.75 * ( ax[...,3:4] - np.sin(ax[...,3:4]) ))**(1.0/3.0)
         ho = ax[...,:3] * f
         return ho
 
     @staticmethod
-    def _ax2cu(ax: np.ndarray) -> np.ndarray:
+    def _ax2cu(ax):
         """Axis–angle pair to cubochoric vector."""
         return Rotation._ho2cu(Rotation._ax2ho(ax))
 
 
     #---------- Rodrigues-Frank vector ----------
     @staticmethod
-    def _ro2qu(ro: np.ndarray) -> np.ndarray:
+    def _ro2qu(ro):
         """Rodrigues–Frank vector to quaternion."""
         return Rotation._ax2qu(Rotation._ro2ax(ro))
 
     @staticmethod
-    def _ro2om(ro: np.ndarray) -> np.ndarray:
+    def _ro2om(ro):
         """Rodgrigues–Frank vector to rotation matrix."""
         return Rotation._ax2om(Rotation._ro2ax(ro))
 
     @staticmethod
-    def _ro2eu(ro: np.ndarray) -> np.ndarray:
+    def _ro2eu(ro):
         """Rodrigues–Frank vector to Bunge Euler angles."""
         return Rotation._om2eu(Rotation._ro2om(ro))
 
     @staticmethod
-    def _ro2ax(ro: np.ndarray) -> np.ndarray:
+    def _ro2ax(ro):
         """Rodrigues–Frank vector to axis–angle pair."""
         with np.errstate(invalid='ignore',divide='ignore'):
             ax = np.where(np.isfinite(ro[...,3:4]),
@@ -1484,7 +1475,7 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _ro2ho(ro: np.ndarray) -> np.ndarray:
+    def _ro2ho(ro):
         """Rodrigues–Frank vector to homochoric vector."""
         f = np.where(np.isfinite(ro[...,3:4]),2.0*np.arctan(ro[...,3:4]) -np.sin(2.0*np.arctan(ro[...,3:4])),np.pi)
         ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-8,ro[...,0:3].shape),
@@ -1492,29 +1483,29 @@ class Rotation:
         return ho
 
     @staticmethod
-    def _ro2cu(ro: np.ndarray) -> np.ndarray:
+    def _ro2cu(ro):
         """Rodrigues–Frank vector to cubochoric vector."""
         return Rotation._ho2cu(Rotation._ro2ho(ro))
 
 
     #---------- Homochoric vector----------
     @staticmethod
-    def _ho2qu(ho: np.ndarray) -> np.ndarray:
+    def _ho2qu(ho):
         """Homochoric vector to quaternion."""
         return Rotation._ax2qu(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2om(ho: np.ndarray) -> np.ndarray:
+    def _ho2om(ho):
         """Homochoric vector to rotation matrix."""
         return Rotation._ax2om(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2eu(ho: np.ndarray) -> np.ndarray:
+    def _ho2eu(ho):
         """Homochoric vector to Bunge Euler angles."""
         return Rotation._ax2eu(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2ax(ho: np.ndarray) -> np.ndarray:
+    def _ho2ax(ho):
         """Homochoric vector to axis–angle pair."""
         tfit = np.array([+1.0000000000018852,      -0.5000000002194847,
                          -0.024999992127593126,    -0.003928701544781374,
@@ -1537,12 +1528,12 @@ class Rotation:
         return ax
 
     @staticmethod
-    def _ho2ro(ho: np.ndarray) -> np.ndarray:
+    def _ho2ro(ho):
         """Axis–angle pair to Rodrigues–Frank vector."""
         return Rotation._ax2ro(Rotation._ho2ax(ho))
 
     @staticmethod
-    def _ho2cu(ho: np.ndarray) -> np.ndarray:
+    def _ho2cu(ho):
         """
         Homochoric vector to cubochoric vector.
 
@@ -1582,32 +1573,32 @@ class Rotation:
 
     #---------- Cubochoric ----------
     @staticmethod
-    def _cu2qu(cu: np.ndarray) -> np.ndarray:
+    def _cu2qu(cu):
         """Cubochoric vector to quaternion."""
         return Rotation._ho2qu(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2om(cu: np.ndarray) -> np.ndarray:
+    def _cu2om(cu):
         """Cubochoric vector to rotation matrix."""
         return Rotation._ho2om(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2eu(cu: np.ndarray) -> np.ndarray:
+    def _cu2eu(cu):
         """Cubochoric vector to Bunge Euler angles."""
         return Rotation._ho2eu(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2ax(cu: np.ndarray) -> np.ndarray:
+    def _cu2ax(cu):
         """Cubochoric vector to axis–angle pair."""
         return Rotation._ho2ax(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2ro(cu: np.ndarray) -> np.ndarray:
+    def _cu2ro(cu):
         """Cubochoric vector to Rodrigues–Frank vector."""
         return Rotation._ho2ro(Rotation._cu2ho(cu))
 
     @staticmethod
-    def _cu2ho(cu: np.ndarray) -> np.ndarray:
+    def _cu2ho(cu):
         """
         Cubochoric vector to homochoric vector.
 
@@ -1650,7 +1641,7 @@ class Rotation:
 
 
     @staticmethod
-    def _get_pyramid_order(xyz: np.ndarray, direction: Literal['forward', 'backward']) -> np.ndarray:
+    def _get_pyramid_order(xyz,direction=None):
         """
         Get order of the coordinates.
 

@@ -1,6 +1,5 @@
 import inspect
 import copy
-from typing import Union, Callable, Sequence, Dict, Any, Tuple, List
 
 import numpy as np
 
@@ -94,12 +93,12 @@ class Orientation(Rotation,Crystal):
 
     @util.extend_docstring(_parameter_doc)
     def __init__(self,
-                 rotation: Union[Sequence[float], np.ndarray, Rotation] = np.array([1.,0.,0.,0.]), *,
-                 family: str = None,
-                 lattice: str = None,
-                 a: float = None, b: float = None, c: float = None,
-                 alpha: float = None, beta: float = None, gamma: float = None,
-                 degrees: bool = False):
+                 rotation = np.array([1.0,0.0,0.0,0.0]), *,
+                 family = None,
+                 lattice = None,
+                 a = None,b = None,c = None,
+                 alpha = None,beta = None,gamma = None,
+                 degrees = False):
         """
         New orientation.
 
@@ -116,12 +115,13 @@ class Orientation(Rotation,Crystal):
                               a=a,b=b,c=c, alpha=alpha,beta=beta,gamma=gamma, degrees=degrees)
 
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         """Represent."""
         return '\n'.join([Crystal.__repr__(self),
                           Rotation.__repr__(self)])
 
-    def __copy__(self,rotation: Union[Sequence[float], np.ndarray, Rotation] = None) -> "Orientation":
+
+    def __copy__(self,rotation=None):
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -131,8 +131,7 @@ class Orientation(Rotation,Crystal):
     copy = __copy__
 
 
-
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,other):
         """
         Equal to other.
 
@@ -142,14 +141,12 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
-    def __ne__(self, other: object) -> bool:
+    def __ne__(self,other):
         """
         Not equal to other.
 
@@ -159,16 +156,10 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
         return np.logical_not(self==other)
 
 
-    def isclose(self,
-                other: object,
-                rtol: float = 1e-5,
-                atol: float = 1e-8,
-                equal_nan: bool = True) -> bool:
+    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
         """
         Report where values are approximately equal to corresponding ones of other Orientation.
 
@@ -189,8 +180,6 @@ class Orientation(Rotation,Crystal):
             Mask indicating where corresponding orientations are close.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
@@ -198,11 +187,7 @@ class Orientation(Rotation,Crystal):
 
 
 
-    def allclose(self,
-                 other: object,
-                 rtol: float = 1e-5,
-                 atol: float = 1e-8,
-                 equal_nan: bool = True) -> Union[bool, np.bool_]:
+    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
         """
         Test whether all values are approximately equal to corresponding ones of other Orientation.
 
@@ -223,12 +208,10 @@ class Orientation(Rotation,Crystal):
             Whether all values are close between both orientations.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
-    def __mul__(self, other: Union[Rotation, "Orientation"]) -> "Orientation":
+    def __mul__(self,other):
         """
         Compose this orientation with other.
 
@@ -250,7 +233,7 @@ class Orientation(Rotation,Crystal):
 
 
     @staticmethod
-    def _split_kwargs(kwargs: Dict[str, Any], target: Callable) -> Tuple[Dict[str, Any], ...]:
+    def _split_kwargs(kwargs,target):
         """
         Separate keyword arguments in 'kwargs' targeted at 'target' from general keyword arguments of Orientation objects.
 
@@ -269,7 +252,7 @@ class Orientation(Rotation,Crystal):
             Valid keyword arguments of Orientation object.
 
         """
-        kws: Tuple[Dict[str, Any], ...] = ()
+        kws = ()
         for t in (target,Orientation.__init__):
             kws += ({key: kwargs[key] for key in set(inspect.signature(t).parameters) & set(kwargs)},)
 
@@ -281,88 +264,85 @@ class Orientation(Rotation,Crystal):
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_random, _parameter_doc)
-    def from_random(cls, **kwargs) -> "Orientation":
+    @util.extended_docstring(Rotation.from_random,_parameter_doc)
+    def from_random(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
         return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
-    def from_quaternion(cls, **kwargs) -> "Orientation":
+    def from_quaternion(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
         return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
-    def from_Euler_angles(cls, **kwargs) -> "Orientation":
+    def from_Euler_angles(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
         return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
-    def from_axis_angle(cls, **kwargs) -> "Orientation":
+    def from_axis_angle(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
         return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_basis,_parameter_doc)
-    def from_basis(cls, **kwargs) -> "Orientation":
+    def from_basis(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
         return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
-    def from_matrix(cls, **kwargs) -> "Orientation":
+    def from_matrix(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
         return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
-    def from_Rodrigues_vector(cls, **kwargs) -> "Orientation":
+    def from_Rodrigues_vector(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
         return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
-    def from_homochoric(cls, **kwargs) -> "Orientation":
+    def from_homochoric(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
         return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
-    def from_cubochoric(cls, **kwargs) -> "Orientation":
+    def from_cubochoric(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
         return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
-    def from_spherical_component(cls, **kwargs) -> "Orientation":
+    def from_spherical_component(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
         return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
-    def from_fiber_component(cls, **kwargs) -> "Orientation":
+    def from_fiber_component(cls,**kwargs):
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
         return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extend_docstring(_parameter_doc)
-    def from_directions(cls,
-                        uvw: Union[Sequence[float], np.ndarray],
-                        hkl: Union[Sequence[float], np.ndarray],
-                        **kwargs) -> "Orientation":
+    def from_directions(cls,uvw,hkl,**kwargs):
         """
         Initialize orientation object from two crystallographic directions.
 
@@ -382,7 +362,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def equivalent(self) -> "Orientation":
+    def equivalent(self):
         """
         Orientations that are symmetrically equivalent.
 
@@ -396,7 +376,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def reduced(self) -> "Orientation":
+    def reduced(self):
         """Select symmetrically equivalent orientation that falls into fundamental zone according to symmetry."""
         eq   = self.equivalent
         ok   = eq.in_FZ
@@ -405,8 +385,9 @@ class Orientation(Rotation,Crystal):
         sort = 0 if len(loc) == 1 else np.lexsort(loc[:0:-1])
         return eq[ok][sort].reshape(self.shape)
 
+
     @property
-    def in_FZ(self) -> Union[np.bool_, np.ndarray]:
+    def in_FZ(self):
         """
         Check whether orientation falls into fundamental zone of own symmetry.
 
@@ -450,7 +431,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def in_disorientation_FZ(self) -> np.ndarray:
+    def in_disorientation_FZ(self):
         """
         Check whether orientation falls into fundamental zone of disorientations.
 
@@ -490,7 +471,8 @@ class Orientation(Rotation,Crystal):
             else:
                 return np.ones_like(rho[...,0],dtype=bool)
 
-    def disorientation(self, other, return_operators = False):
+
+    def disorientation(self,other,return_operators=False):
         """
         Calculate disorientation between myself and given other orientation.
 
@@ -536,8 +518,8 @@ class Orientation(Rotation,Crystal):
         if self.family != other.family:
             raise NotImplementedError('disorientation between different crystal families')
 
-        blend: Tuple[int, ...] = util.shapeblender(self.shape,other.shape)
-        s = self.equivalent
+        blend = util.shapeblender(self.shape,other.shape)
+        s =  self.equivalent
         o = other.equivalent
 
         s_ = s.reshape((s.shape[0],1)+ self.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right')
@@ -552,9 +534,10 @@ class Orientation(Rotation,Crystal):
         r = np.where(np.any(forward[...,np.newaxis],axis=(0,1),keepdims=True),
                      r_.quaternion,
                      _r.quaternion)
-        loc: Tuple[float]  = np.where(ok)
-        sort: np.ndarray = 0 if len(loc) == 2 else np.lexsort(loc[:1:-1])
-        quat: np.ndarray = r[ok][sort].reshape(blend+(4,))
+        loc  = np.where(ok)
+        sort = 0 if len(loc) == 2 else np.lexsort(loc[:1:-1])
+        quat = r[ok][sort].reshape(blend+(4,))
+
         return (
                 (self.copy(rotation=quat),
                  (np.vstack(loc[:2]).T)[sort].reshape(blend+(2,)))
@@ -563,7 +546,7 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def average(self, weights = None, return_cloud = False):
+    def average(self,weights=None,return_cloud=False):
         """
         Return orientation average over last dimension.
 
@@ -604,10 +587,7 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def to_SST(self,
-               vector: np.ndarray,
-               proper: bool = False,
-               return_operators: bool = False) -> np.ndarray:
+    def to_SST(self,vector,proper=False,return_operators=False):
         """
         Rotate vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
@@ -646,7 +626,7 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def in_SST(self, vector: np.ndarray, proper: bool = False) -> Union[np.bool_, np.ndarray]:
+    def in_SST(self,vector,proper=False):
         """
         Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
 
@@ -687,7 +667,7 @@ class Orientation(Rotation,Crystal):
             return np.all(components >= 0.0,axis=-1)
 
 
-    def IPF_color(self, vector: np.ndarray, in_SST: bool = True, proper: bool = False) -> np.ndarray:
+    def IPF_color(self,vector,in_SST=True,proper=False):
         """
         Map vector to RGB color within standard stereographic triangle of own symmetry.
 
@@ -735,30 +715,30 @@ class Orientation(Rotation,Crystal):
             components_improper = np.around(np.einsum('...ji,...i',
                                                       np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                                       vector_), 12)
-            in_SST_ = np.all(components_proper   >= 0.0,axis=-1) \
+            in_SST = np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
-            components = np.where((in_SST_ & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
+            components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
                                              np.broadcast_to(self .standard_triangle['improper'], vector_.shape+(3,)),
                                              np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
-            in_SST_ = np.all(components >= 0.0,axis=-1)
+            in_SST = np.all(components >= 0.0,axis=-1)
 
         with np.errstate(invalid='ignore',divide='ignore'):
             rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5                # smoothen color ramps
             rgb = np.clip(rgb,0.,1.)                                                                # clip intensity
             rgb /= np.max(rgb,axis=-1,keepdims=True)                                                # normalize to (HS)V = 1
-        rgb[np.broadcast_to(~in_SST_[...,np.newaxis],rgb.shape)] = 0.0
+        rgb[np.broadcast_to(~in_SST[...,np.newaxis],rgb.shape)] = 0.0
 
         return rgb
 
 
     @property
-    def symmetry_operations(self) -> Rotation:
+    def symmetry_operations(self):
         """Symmetry operations as Rotations."""
-        _symmetry_operations: Dict[str, List[List]] = {
+        _symmetry_operations = {
             'cubic':         [
                               [ 1.0,            0.0,            0.0,            0.0            ],
                               [ 0.0,            1.0,            0.0,            0.0            ],
@@ -828,10 +808,7 @@ class Orientation(Rotation,Crystal):
 ####################################################################################################
     # functions that require lattice, not just family
 
-    def to_pole(self, *,
-                uvw: np.ndarray = None,
-                hkl: np.ndarray = None,
-                with_symmetry: bool = False) -> np.ndarray:
+    def to_pole(self,*,uvw=None,hkl=None,with_symmetry=False):
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -862,9 +839,7 @@ class Orientation(Rotation,Crystal):
                @ np.broadcast_to(v,blend+(3,))
 
 
-    def Schmid(self, *,
-               N_slip: Sequence[int] = None,
-               N_twin: Sequence[int] = None) -> np.ndarray:
+    def Schmid(self,*,N_slip=None,N_twin=None):
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
@@ -901,7 +876,6 @@ class Orientation(Rotation,Crystal):
                             (self.kinematics('twin'),N_twin)
         if active == '*': active = [len(a) for a in kinematics['direction']]
 
-        assert active
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
         p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
@@ -912,7 +886,7 @@ class Orientation(Rotation,Crystal):
                @ np.broadcast_to(P.reshape(util.shapeshifter(P.shape,shape)),shape)
 
 
-    def related(self, model: str) -> "Orientation":
+    def related(self,model):
         """
         Orientations derived from the given relationship.
 
