@@ -426,7 +426,7 @@ class Rotation:
                                                   shape+(4,)))
 
 
-    def average(self,weights = None):
+    def average(self, weights: np.ndarray = None) -> "Rotation":
         """
         Average along last array dimension.
 
