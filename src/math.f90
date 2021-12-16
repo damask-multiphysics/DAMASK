@@ -961,39 +961,36 @@ pure function math_3333toVoigt66(m3333)
 end function math_3333toVoigt66
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief draw a random sample from Gauss variable
+!> @brief Draw a sample from a normal distribution.
+!> @details https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+!>          https://masuday.github.io/fortran_tutorial/random.html
 !--------------------------------------------------------------------------------------------------
-real(pReal) function math_sampleGaussVar(mu, sigma, width)
+impure elemental subroutine math_normal(x,mu,sigma)
 
-  real(pReal), intent(in) ::            mu, &                                                       !< mean
-                                        sigma                                                       !< standard deviation
-  real(pReal), intent(in), optional ::  width                                                       !< cut off as multiples of standard deviation
+  real(pReal), intent(out) :: x
+  real(pReal), intent(in), optional :: mu, sigma
+  
+  real(pReal) :: sigma_, mu_
+  real(pReal), dimension(2) :: rnd
 
-  real(pReal), dimension(2) ::          rnd                                                         ! random numbers
-  real(pReal) ::                        scatter, &                                                  ! normalized scatter around mean
-                                        width_
-
-  if (abs(sigma) < tol_math_check) then
-    math_sampleGaussVar = mu
+  
+  if (present(mu)) then
+    mu_ = mu
   else
-    if (present(width)) then
-      width_ = width
-    else
-      width_ = 3.0_pReal                                                                            ! use +-3*sigma as default scatter
-    endif
+    mu_ = 0.0_pReal
+  end if
 
-    do
-      call random_number(rnd)
-      scatter = width_ * (2.0_pReal * rnd(1) - 1.0_pReal)
-      if (rnd(2) <= exp(-0.5_pReal * scatter**2)) exit                                              ! test if scattered value is drawn
-    enddo
+  if (present(sigma)) then
+    sigma_ = sigma
+  else
+    sigma_ = 1.0_pReal
+  end if
 
-    math_sampleGaussVar = scatter * sigma
-  endif
+  call random_number(rnd)
+  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(2.0_pReal*PI*(1.0_pReal - rnd(2)))
 
-end function math_sampleGaussVar
+end subroutine math_normal
 
 
 !--------------------------------------------------------------------------------------------------
