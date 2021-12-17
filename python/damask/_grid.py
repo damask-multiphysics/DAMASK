@@ -197,7 +197,7 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
         try:
             f = open(fname)
         except TypeError:
@@ -629,7 +629,7 @@ class Grid:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
-        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning,2)
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.0.0', DeprecationWarning,2)
         header =  [f'{len(self.comments)+4} header'] + self.comments \
                 + ['grid   a {} b {} c {}'.format(*self.cells),
                    'size   x {} y {} z {}'.format(*self.size),
