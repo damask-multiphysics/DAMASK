@@ -895,7 +895,7 @@ pure function math_33toVoigt6_stress(sigma) result(sigma_tilde)
 
 
   sigma_tilde = [sigma(1,1), sigma(2,2), sigma(3,3), &
-                 sigma(3,2), sigma(3,1), sigma(1,2)] 
+                 sigma(3,2), sigma(3,1), sigma(1,2)]
 
 end function math_33toVoigt6_stress
 
@@ -910,7 +910,7 @@ pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
 
 
   epsilon_tilde = [          epsilon(1,1),           epsilon(2,2),           epsilon(3,3), &
-                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)] 
+                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)]
 
 end function math_33toVoigt6_strain
 
@@ -970,11 +970,11 @@ impure elemental subroutine math_normal(x,mu,sigma)
 
   real(pReal), intent(out) :: x
   real(pReal), intent(in), optional :: mu, sigma
-  
+
   real(pReal) :: sigma_, mu_
   real(pReal), dimension(2) :: rnd
 
-  
+
   if (present(mu)) then
     mu_ = mu
   else
@@ -1430,6 +1430,26 @@ subroutine selfTest
   ijk = cshift([2,2,1],int(r*2.0e2_pReal))
   if (dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
     error stop 'math_LeviCivita'
+
+  normal_distribution: block
+    real(pReal), dimension(500000) :: r
+    real(pReal) :: mu, sigma
+
+    call random_number(mu)
+    call random_number(sigma)
+
+    sigma = 1.0_pReal + sigma*5.0_pReal
+    mu = (mu-0.5_pReal)*10_pReal
+
+    call math_normal(r,mu,sigma)
+
+    if (abs(mu -sum(r)/real(size(r),pReal))>5.0e-2_pReal) &
+      error stop 'math_normal(mu)'
+
+    mu = sum(r)/real(size(r),pReal)
+    if (abs(sigma**2 -1.0_pReal/real(size(r)-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
+      error stop 'math_normal(sigma)'
+  end block normal_distribution
 
 end subroutine selfTest
 
