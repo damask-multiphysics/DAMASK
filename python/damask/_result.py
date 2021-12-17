@@ -246,36 +246,6 @@ class Result:
         return dup
 
 
-    def modification_enable(self):
-        """
-        Allow modification of existing data.
-
-        Returns
-        -------
-        modified_view : damask.Result
-            View without write-protection of existing data.
-
-        """
-        print(util.warn('Warning: Modification of existing datasets allowed!'))
-        dup = self.copy()
-        dup._allow_modification = True
-        return dup
-
-    def modification_disable(self):
-        """
-        Prevent modification of existing data (default case).
-
-        Returns
-        -------
-        modified_view : damask.Result
-            View with write-protection of existing data.
-
-        """
-        dup = self.copy()
-        dup._allow_modification = False
-        return dup
-
-
     def increments_in_range(self,start,end):
         """
         Get all increments within a given range.
@@ -329,7 +299,8 @@ class Result:
                   times=None,
                   phases=None,
                   homogenizations=None,
-                  fields=None):
+                  fields=None,
+                  protected=None):
         """
         Set view.
 
@@ -353,6 +324,8 @@ class Result:
             Name(s) of homogenizations to select.
         fields: (list of) str, or bool, optional.
             Name(s) of fields to select.
+        protected: bool, optional.
+            Protection status of existing data.
 
         Returns
         -------
@@ -374,8 +347,23 @@ class Result:
         >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
 
         """
-        what_, datasets_ = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
-        return self._manage_view('set',what_,datasets_)
+        v = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
+        if protected is not None:
+            if v == None:
+                dup = self.copy()
+            else:
+                what_,datasets_ = v
+                dup = self._manage_view('set',what_,datasets_)
+        else:
+            what_,datasets_ = v
+            dup = self._manage_view('set',what_,datasets_)
+
+        if protected is False:
+            dup._allow_modification = True
+        if protected is True:
+            print(util.warn('Warning: Modification of existing datasets allowed!'))
+            dup._allow_modification = False
+        return dup
 
 
     def view_more(self,what=None,datasets=None,*,
@@ -495,7 +483,7 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_unprotected = r.modification_enable()
+        >>> r_unprotected = r.view(protected=False)
         >>> r_unprotected.rename('F','def_grad')
 
         """
@@ -534,7 +522,7 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_unprotected = r.modification_enable()
+        >>> r_unprotected = r.view(protected=False)
         >>> r_unprotected.remove('F')
 
         """

@@ -322,9 +322,9 @@ class TestResult:
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            last = last.modification_enable()
+            last = last.view(protected=False)
         else:
-            last = last.modification_disable()
+            last = last.view(protected=True)
 
         time.sleep(2.)
         try:
@@ -344,10 +344,10 @@ class TestResult:
     def test_rename(self,default,allowed):
         if allowed == 'on':
             F = default.place('F')
-            default = default.modification_enable()
+            default = default.view(protected=False)
             default.rename('F','new_name')
             assert np.all(F == default.place('new_name'))
-            default = default.modification_disable()
+            default = default.view(protected=True)
 
         with pytest.raises(PermissionError):
             default.rename('P','another_new_name')
@@ -355,7 +355,7 @@ class TestResult:
     @pytest.mark.parametrize('allowed',['off','on'])
     def test_remove(self,default,allowed):
         if allowed == 'on':
-            unsafe = default.modification_enable()
+            unsafe = default.view(protected=False)
             unsafe.remove('F')
             assert unsafe.get('F') is None
         else:
