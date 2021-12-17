@@ -354,7 +354,7 @@ class Result:
             else:
                 what_,datasets_ = v
                 dup = self._manage_view('set',what_,datasets_)
-            if protected is True:
+            if not protected:
                 print(util.warn('Warning: Modification of existing datasets allowed!'))
             dup._protected = protected
         else:
