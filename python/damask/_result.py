@@ -156,7 +156,7 @@ class Result:
 
         self.fname = Path(fname).absolute()
 
-        self._allow_modification = False
+        self._protected = True
 
 
     def __copy__(self):
@@ -349,20 +349,18 @@ class Result:
         """
         v = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
         if protected is not None:
-            if v == None:
+            if v is None:
                 dup = self.copy()
             else:
                 what_,datasets_ = v
                 dup = self._manage_view('set',what_,datasets_)
+            if protected is True:
+                print(util.warn('Warning: Modification of existing datasets allowed!'))
+            dup._protected = protected
         else:
             what_,datasets_ = v
             dup = self._manage_view('set',what_,datasets_)
 
-        if protected is False:
-            dup._allow_modification = True
-        if protected is True:
-            print(util.warn('Warning: Modification of existing datasets allowed!'))
-            dup._allow_modification = False
         return dup
 
 
@@ -487,7 +485,7 @@ class Result:
         >>> r_unprotected.rename('F','def_grad')
 
         """
-        if not self._allow_modification:
+        if self._protected:
             raise PermissionError('Renaming datasets not permitted')
 
         with h5py.File(self.fname,'a') as f:
@@ -526,7 +524,7 @@ class Result:
         >>> r_unprotected.remove('F')
 
         """
-        if not self._allow_modification:
+        if self._protected:
             raise PermissionError('Removing datasets not permitted')
 
         with h5py.File(self.fname,'a') as f:
@@ -1417,7 +1415,7 @@ class Result:
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
-                    if self._allow_modification and '/'.join([group,result['label']]) in f:
+                    if not self._protected and '/'.join([group,result['label']]) in f:
                         dataset = f['/'.join([group,result['label']])]
                         dataset[...] = result['data']
                         dataset.attrs['overwritten'] = True
