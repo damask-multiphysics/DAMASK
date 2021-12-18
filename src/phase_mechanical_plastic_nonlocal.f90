@@ -1592,21 +1592,15 @@ subroutine stateInit(ini,phase,Nentries)
         stt%rhoSglMobile(s,e) = densityBinning
       end do
     else                                ! homogeneous distribution with noise
-      do e = 1, Nentries
-        do f = 1,size(ini%N_sl,1)
-          from = 1 + sum(ini%N_sl(1:f-1))
-          upto = sum(ini%N_sl(1:f))
-          do s = from,upto
-            noise = [math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u), &
-                     math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u)]
-            stt%rho_sgl_mob_edg_pos(s,e) = ini%rho_u_ed_pos_0(f) + noise(1)
-            stt%rho_sgl_mob_edg_neg(s,e) = ini%rho_u_ed_neg_0(f) + noise(1)
-            stt%rho_sgl_mob_scr_pos(s,e) = ini%rho_u_sc_pos_0(f) + noise(2)
-            stt%rho_sgl_mob_scr_neg(s,e) = ini%rho_u_sc_neg_0(f) + noise(2)
-          end do
-          stt%rho_dip_edg(from:upto,e)   = ini%rho_d_ed_0(f)
-          stt%rho_dip_scr(from:upto,e)   = ini%rho_d_sc_0(f)
-        end do
+      do f = 1,size(ini%N_sl,1)
+        from = 1 + sum(ini%N_sl(1:f-1))
+        upto = sum(ini%N_sl(1:f))
+        call math_normal(stt%rho_sgl_mob_edg_pos(from:upto,:),ini%rho_u_ed_pos_0(f),ini%sigma_rho_u)
+        call math_normal(stt%rho_sgl_mob_edg_neg(from:upto,:),ini%rho_u_ed_neg_0(f),ini%sigma_rho_u)
+        call math_normal(stt%rho_sgl_mob_scr_pos(from:upto,:),ini%rho_u_sc_pos_0(f),ini%sigma_rho_u)
+        call math_normal(stt%rho_sgl_mob_scr_neg(from:upto,:),ini%rho_u_sc_neg_0(f),ini%sigma_rho_u)
+        stt%rho_dip_edg(from:upto,:) = ini%rho_d_ed_0(f)
+        stt%rho_dip_scr(from:upto,:) = ini%rho_d_sc_0(f)
       end do
     end if
 
