@@ -476,18 +476,18 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
     C66_tw, &
     C66_tr
   integer :: i
-  real(pReal) :: f_unrotated
+  real(pReal) :: f_matrix
 
 
   C = elastic_C66(ph,en)
 
   associate(prm => param(ph), stt => state(ph))
 
-    f_unrotated = 1.0_pReal &
-                - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
-                - sum(stt%f_tr(1:prm%sum_N_tr,en))
+    f_matrix = 1.0_pReal &
+             - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
+             - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    homogenizedC = f_unrotated * C
+    homogenizedC = f_matrix * C
 
     twinActive: if (prm%sum_N_tw > 0) then
       C66_tw    = lattice_C66_twin(prm%N_tw,C,phase_lattice(ph),phase_cOverA(ph))
@@ -522,7 +522,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   integer :: i,k,l,m,n
   real(pReal) :: &
-    f_unrotated,StressRatio_p,&
+    f_matrix,StressRatio_p,&
     E_kB_T, &
     ddot_gamma_dtau, &
     tau, &
@@ -563,9 +563,9 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   associate(prm => param(ph), stt => state(ph))
 
-    f_unrotated = 1.0_pReal &
-                - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
-                - sum(stt%f_tr(1:prm%sum_N_tr,en))
+    f_matrix = 1.0_pReal &
+             - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
+             - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
     call kinetics_sl(Mp,T,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
     slipContribution: do i = 1, prm%sum_N_sl
@@ -591,8 +591,8 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
                          + ddot_gamma_dtau_tr(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
     end do transContibution
 
-    Lp      = Lp      * f_unrotated
-    dLp_dMp = dLp_dMp * f_unrotated
+    Lp      = Lp      * f_matrix
+    dLp_dMp = dLp_dMp * f_matrix
 
     shearBandingContribution: if (dNeq0(prm%v_sb)) then
 
@@ -640,7 +640,7 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
 
   integer :: i
   real(pReal) :: &
-    f_unrotated, &
+    f_matrix, &
     d_hat, &
     v_cl, &                                                                                         !< climb velocity
     tau, &
@@ -663,9 +663,9 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
     mu = elastic_mu(ph,en)
     nu = elastic_nu(ph,en)
 
-    f_unrotated = 1.0_pReal &
-                - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
-                - sum(stt%f_tr(1:prm%sum_N_tr,en))
+    f_matrix = 1.0_pReal &
+             - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
+             - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
     call kinetics_sl(Mp,T,ph,en,dot_gamma_sl)
     dot%gamma_sl(:,en) = abs(dot_gamma_sl)
@@ -711,10 +711,10 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
                       - dot_rho_dip_climb
 
     call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw)
-    dot%f_tw(:,en) = f_unrotated*dot_gamma_tw/prm%gamma_char
+    dot%f_tw(:,en) = f_matrix*dot_gamma_tw/prm%gamma_char
 
     call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr)
-    dot%f_tr(:,en) = f_unrotated*dot_gamma_tr
+    dot%f_tr(:,en) = f_matrix*dot_gamma_tr
 
   end associate
 
