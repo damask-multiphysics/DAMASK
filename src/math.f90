@@ -895,7 +895,7 @@ pure function math_33toVoigt6_stress(sigma) result(sigma_tilde)
 
 
   sigma_tilde = [sigma(1,1), sigma(2,2), sigma(3,3), &
-                 sigma(3,2), sigma(3,1), sigma(1,2)] 
+                 sigma(3,2), sigma(3,1), sigma(1,2)]
 
 end function math_33toVoigt6_stress
 
@@ -910,7 +910,7 @@ pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
 
 
   epsilon_tilde = [          epsilon(1,1),           epsilon(2,2),           epsilon(3,3), &
-                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)] 
+                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)]
 
 end function math_33toVoigt6_strain
 
@@ -961,39 +961,36 @@ pure function math_3333toVoigt66(m3333)
 end function math_3333toVoigt66
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief draw a random sample from Gauss variable
+!> @brief Draw a sample from a normal distribution.
+!> @details https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+!>          https://masuday.github.io/fortran_tutorial/random.html
 !--------------------------------------------------------------------------------------------------
-real(pReal) function math_sampleGaussVar(mu, sigma, width)
+impure elemental subroutine math_normal(x,mu,sigma)
 
-  real(pReal), intent(in) ::            mu, &                                                       !< mean
-                                        sigma                                                       !< standard deviation
-  real(pReal), intent(in), optional ::  width                                                       !< cut off as multiples of standard deviation
+  real(pReal), intent(out) :: x
+  real(pReal), intent(in), optional :: mu, sigma
 
-  real(pReal), dimension(2) ::          rnd                                                         ! random numbers
-  real(pReal) ::                        scatter, &                                                  ! normalized scatter around mean
-                                        width_
+  real(pReal) :: sigma_, mu_
+  real(pReal), dimension(2) :: rnd
 
-  if (abs(sigma) < tol_math_check) then
-    math_sampleGaussVar = mu
+
+  if (present(mu)) then
+    mu_ = mu
   else
-    if (present(width)) then
-      width_ = width
-    else
-      width_ = 3.0_pReal                                                                            ! use +-3*sigma as default scatter
-    endif
+    mu_ = 0.0_pReal
+  end if
 
-    do
-      call random_number(rnd)
-      scatter = width_ * (2.0_pReal * rnd(1) - 1.0_pReal)
-      if (rnd(2) <= exp(-0.5_pReal * scatter**2)) exit                                              ! test if scattered value is drawn
-    enddo
+  if (present(sigma)) then
+    sigma_ = sigma
+  else
+    sigma_ = 1.0_pReal
+  end if
 
-    math_sampleGaussVar = scatter * sigma
-  endif
+  call random_number(rnd)
+  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(2.0_pReal*PI*(1.0_pReal - rnd(2)))
 
-end function math_sampleGaussVar
+end subroutine math_normal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1433,6 +1430,26 @@ subroutine selfTest
   ijk = cshift([2,2,1],int(r*2.0e2_pReal))
   if (dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
     error stop 'math_LeviCivita'
+
+  normal_distribution: block
+    real(pReal), dimension(500000) :: r
+    real(pReal) :: mu, sigma
+
+    call random_number(mu)
+    call random_number(sigma)
+
+    sigma = 1.0_pReal + sigma*5.0_pReal
+    mu = (mu-0.5_pReal)*10_pReal
+
+    call math_normal(r,mu,sigma)
+
+    if (abs(mu -sum(r)/real(size(r),pReal))>5.0e-2_pReal) &
+      error stop 'math_normal(mu)'
+
+    mu = sum(r)/real(size(r),pReal)
+    if (abs(sigma**2 -1.0_pReal/real(size(r)-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
+      error stop 'math_normal(sigma)'
+  end block normal_distribution
 
 end subroutine selfTest
 

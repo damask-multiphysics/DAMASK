@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Sequence, Union, TextIO
 
 import numpy as np
+try:
+    from numpy.typing import ArrayLike
+except ImportError:
+    ArrayLike = Union[np.ndarray,Sequence[float]] # type: ignore
 import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -78,8 +82,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_range(low: Sequence[float],
-                   high: Sequence[float],
+    def from_range(low: ArrayLike,
+                   high: ArrayLike,
                    name: str = 'DAMASK colormap',
                    N: int = 256,
                    model: str = 'rgb') -> 'Colormap':
@@ -129,7 +133,7 @@ class Colormap(mpl.colors.ListedColormap):
         if model.lower() not in toMsh:
             raise ValueError(f'Invalid color model: {model}.')
 
-        low_high = np.vstack((low,high))
+        low_high = np.vstack((low,high)).astype(float)
         out_of_bounds = np.bool_(False)
 
         if   model.lower() == 'rgb':
@@ -142,7 +146,7 @@ class Colormap(mpl.colors.ListedColormap):
             out_of_bounds = np.any(low_high[:,0]<0)
 
         if out_of_bounds:
-            raise ValueError(f'{model.upper()} colors {low} | {high} are out of bounds.')
+            raise ValueError(f'{model.upper()} colors {low_high[0]} | {low_high[1]} are out of bounds.')
 
         low_,high_ = map(toMsh[model.lower()],low_high)
         msh = map(functools.partial(Colormap._interpolate_msh,low=low_,high=high_),np.linspace(0,1,N))
@@ -225,7 +229,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def shade(self,
               field: np.ndarray,
-              bounds: Sequence[float] = None,
+              bounds: ArrayLike = None,
               gap: float = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
@@ -235,7 +239,7 @@ class Colormap(mpl.colors.ListedColormap):
         field : numpy.array, shape (:,:)
             Data to be shaded.
         bounds : sequence of float, len (2), optional
-            Value range (low,high) spanned by colormap.
+            Value range (left,right) spanned by colormap.
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
 
@@ -248,17 +252,17 @@ class Colormap(mpl.colors.ListedColormap):
         mask = np.logical_not(np.isnan(field) if gap is None else \
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
-        lo,hi = (field[mask].min(),field[mask].max()) if bounds is None else \
-                (min(bounds[:2]),max(bounds[:2]))
+        l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
+              np.array(bounds,float)[:2]
 
-        delta,avg = hi-lo,0.5*(hi+lo)
+        delta,avg = r-l,0.5*abs(r+l)
 
-        if delta * 1e8 <= avg:                                                                      # delta is similar to numerical noise
-            hi,lo = hi+0.5*avg,lo-0.5*avg                                                           # extend range to have actual data centered within
+        if abs(delta) * 1e8 <= avg:                                                                 # delta is similar to numerical noise
+            l,r = l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta),                                # extend range to have actual data centered within
 
         return Image.fromarray(
             (np.dstack((
-                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0)*(self.N-1))).astype(np.uint16),:3],
+                        self.colors[(np.round(np.clip((field-l)/delta,0.0,1.0)*(self.N-1))).astype(np.uint16),:3],
                         mask.astype(float)
                        )
                       )*255
