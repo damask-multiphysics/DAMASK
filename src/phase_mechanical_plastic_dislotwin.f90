@@ -513,20 +513,20 @@ end function plastic_dislotwin_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
+module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   real(pReal), dimension(3,3),     intent(out) :: Lp
   real(pReal), dimension(3,3,3,3), intent(out) :: dLp_dMp
   real(pReal), dimension(3,3),     intent(in)  :: Mp
   integer,                         intent(in)  :: ph,en
-  real(pReal),                     intent(in)  :: T
 
   integer :: i,k,l,m,n
   real(pReal) :: &
-     f_unrotated,StressRatio_p,&
-     E_kB_T, &
-     ddot_gamma_dtau, &
-     tau
+    f_unrotated,StressRatio_p,&
+    E_kB_T, &
+    ddot_gamma_dtau, &
+    tau, &
+    T
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_sl,ddot_gamma_dtau_sl
   real(pReal), dimension(param(ph)%sum_N_tw) :: &
@@ -556,69 +556,71 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
          0, 1, 1  &
          ],pReal),[ 3,6])
 
-  associate(prm => param(ph), stt => state(ph))
 
-  f_unrotated = 1.0_pReal &
-              - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
-              - sum(stt%f_tr(1:prm%sum_N_tr,en))
-
+  T = thermal_T(ph,en)
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 
-  call kinetics_sl(Mp,T,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
-  slipContribution: do i = 1, prm%sum_N_sl
-    Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
-  end do slipContribution
+  associate(prm => param(ph), stt => state(ph))
 
-  call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
-  twinContibution: do i = 1, prm%sum_N_tw
-    Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_tw(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
-  end do twinContibution
+    f_unrotated = 1.0_pReal &
+                - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
+                - sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-  call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr,ddot_gamma_dtau_tr)
-  transContibution: do i = 1, prm%sum_N_tr
-    Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i)
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_tr(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
-  end do transContibution
+    call kinetics_sl(Mp,T,ph,en,dot_gamma_sl,ddot_gamma_dtau_sl)
+    slipContribution: do i = 1, prm%sum_N_sl
+      Lp = Lp + dot_gamma_sl(i)*prm%P_sl(1:3,1:3,i)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                         + ddot_gamma_dtau_sl(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
+    end do slipContribution
 
-  Lp      = Lp      * f_unrotated
-  dLp_dMp = dLp_dMp * f_unrotated
+    call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw,ddot_gamma_dtau_tw)
+    twinContibution: do i = 1, prm%sum_N_tw
+      Lp = Lp + dot_gamma_tw(i)*prm%P_tw(1:3,1:3,i)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                         + ddot_gamma_dtau_tw(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
+    end do twinContibution
 
-  shearBandingContribution: if (dNeq0(prm%v_sb)) then
+    call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr,ddot_gamma_dtau_tr)
+    transContibution: do i = 1, prm%sum_N_tr
+      Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                         + ddot_gamma_dtau_tr(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
+    end do transContibution
 
-    E_kB_T = prm%E_sb/(K_B*T)
-    call math_eigh33(eigValues,eigVectors,Mp)                                                       ! is Mp symmetric by design?
+    Lp      = Lp      * f_unrotated
+    dLp_dMp = dLp_dMp * f_unrotated
 
-    do i = 1,6
-      P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&
-                                    matmul(eigVectors,sb_mComposition(1:3,i)))
-      tau = math_tensordot(Mp,P_sb)
+    shearBandingContribution: if (dNeq0(prm%v_sb)) then
 
-      significantShearBandStress: if (abs(tau) > tol_math_check) then
-        StressRatio_p = (abs(tau)/prm%xi_sb)**prm%p_sb
-        dot_gamma_sb = sign(prm%v_sb*exp(-E_kB_T*(1-StressRatio_p)**prm%q_sb), tau)
-        ddot_gamma_dtau = abs(dot_gamma_sb)*E_kB_T*prm%p_sb*prm%q_sb/prm%xi_sb &
-                        * (abs(tau)/prm%xi_sb)**(prm%p_sb-1.0_pReal) &
-                        * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
+      E_kB_T = prm%E_sb/(K_B*T)
+      call math_eigh33(eigValues,eigVectors,Mp)                                                       ! is Mp symmetric by design?
 
-        Lp = Lp + dot_gamma_sb * P_sb
-        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-          dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                           + ddot_gamma_dtau * P_sb(k,l) * P_sb(m,n)
-      end if significantShearBandStress
-    end do
+      do i = 1,6
+        P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&
+                                      matmul(eigVectors,sb_mComposition(1:3,i)))
+        tau = math_tensordot(Mp,P_sb)
 
-  end if shearBandingContribution
+        significantShearBandStress: if (abs(tau) > tol_math_check) then
+          StressRatio_p = (abs(tau)/prm%xi_sb)**prm%p_sb
+          dot_gamma_sb = sign(prm%v_sb*exp(-E_kB_T*(1-StressRatio_p)**prm%q_sb), tau)
+          ddot_gamma_dtau = abs(dot_gamma_sb)*E_kB_T*prm%p_sb*prm%q_sb/prm%xi_sb &
+                          * (abs(tau)/prm%xi_sb)**(prm%p_sb-1.0_pReal) &
+                          * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
 
-  end associate
+          Lp = Lp + dot_gamma_sb * P_sb
+          forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+            dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                             + ddot_gamma_dtau * P_sb(k,l) * P_sb(m,n)
+        end if significantShearBandStress
+      end do
+
+    end if shearBandingContribution
+
+    end associate
 
 end subroutine dislotwin_LpAndItsTangent
 

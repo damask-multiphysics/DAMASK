@@ -73,47 +73,37 @@ submodule(phase:mechanical) plastic
         en
     end subroutine kinehardening_LpAndItsTangent
 
-    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
+    module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp
-      real(pReal),                     intent(in) :: &
-        T
       integer,                         intent(in) :: &
         ph, &
         en
     end subroutine dislotwin_LpAndItsTangent
 
-    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,ph,en)
+    pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp
-      real(pReal),                     intent(in) :: &
-        T
       integer,                         intent(in) :: &
         ph, &
         en
     end subroutine dislotungsten_LpAndItsTangent
 
-    module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                       Mp,Temperature,ph,en)
+    module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp
       real(pReal), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp
-
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp                                                                                          !< Mandel stress
-      real(pReal),                     intent(in) :: &
-        Temperature
       integer,                         intent(in) :: &
         ph, &
         en
@@ -282,13 +272,13 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
         call kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
       case (PLASTIC_NONLOCAL_ID) plasticType
-        call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,en),ph,en)
+        call nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
       case (PLASTIC_DISLOTWIN_ID) plasticType
-        call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,en),ph,en)
+        call dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
       case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
-        call dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,en),ph,en)
+        call dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
     end select plasticType
 

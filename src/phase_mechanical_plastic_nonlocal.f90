@@ -741,7 +741,7 @@ end subroutine nonlocal_dependentState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                   Mp,Temperature,ph,en)
+                                                   Mp,ph,en)
   real(pReal), dimension(3,3), intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -749,9 +749,6 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal), intent(in) :: &
-    Temperature                                                                                     !< temperature
-
   real(pReal), dimension(3,3), intent(in) :: &
     Mp
                                                                                                     !< derivative of Lp with respect to Mp
@@ -771,7 +768,13 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     dot_gamma                                                                                       !< shear rate
+  real(pReal) :: &
+    Temperature                                                                                     !< temperature
 
+
+  Temperature = thermal_T(ph,en)
+  Lp = 0.0_pReal
+  dLp_dMp = 0.0_pReal
 
   associate(prm => param(ph),dst=>dependentState(ph),stt=>state(ph))
 
@@ -821,8 +824,6 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
 
     dot_gamma = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
 
-    Lp = 0.0_pReal
-    dLp_dMp = 0.0_pReal
     do s = 1,prm%sum_N_sl
       Lp = Lp + dot_gamma(s) * prm%P_sl(1:3,1:3,s)
       forall (i=1:3,j=1:3,k=1:3,l=1:3) &
@@ -1649,10 +1650,12 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
     criticalStress_P, &                                                                             !< maximum obstacle strength
     criticalStress_S                                                                                !< maximum obstacle strength
 
+
+  v = 0.0_pReal
+  dv_dtau = 0.0_pReal
+  dv_dtauNS = 0.0_pReal
+
   associate(prm => param(ph))
-    v = 0.0_pReal
-    dv_dtau = 0.0_pReal
-    dv_dtauNS = 0.0_pReal
 
     do s = 1,prm%sum_N_sl
       if (abs(tau(s)) > tauThreshold(s)) then

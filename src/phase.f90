@@ -155,7 +155,7 @@ module phase
       real(pReal), dimension(3,3) :: P
     end function phase_P
 
-    module function thermal_T(ph,en) result(T)
+    pure module function thermal_T(ph,en) result(T)
       integer, intent(in) :: ph,en
       real(pReal) :: T
     end function thermal_T

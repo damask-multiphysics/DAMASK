@@ -271,7 +271,7 @@ end subroutine thermal_forward
 !----------------------------------------------------------------------------------------------
 !< @brief Get temperature (for use by non-thermal physics)
 !----------------------------------------------------------------------------------------------
-module function thermal_T(ph,en) result(T)
+pure module function thermal_T(ph,en) result(T)
 
   integer, intent(in) :: ph, en
   real(pReal) :: T
