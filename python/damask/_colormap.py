@@ -236,7 +236,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        field : numpy.array, shape (:,:)
+        field : numpy.ndarray, shape (:,:)
             Data to be shaded.
         bounds : sequence of float, len (2), optional
             Value range (left,right) spanned by colormap.
@@ -616,7 +616,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
+    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Lab to CIE Xyz.
 
@@ -624,6 +624,8 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         lab : numpy.ndarray, shape (3)
             CIE lab values.
+        ref_white : numpy.ndarray, shape (3)
+            Reference white, default value is the standard 2° observer for D65.
 
         Returns
         -------
@@ -642,10 +644,10 @@ class Colormap(mpl.colors.ListedColormap):
                          f_x**3.                if f_x**3. > _EPS     else (116.*f_x-16.)/_KAPPA,
                          ((lab[0]+16.)/116.)**3 if lab[0]>_KAPPA*_EPS else lab[0]/_KAPPA,
                          f_z**3.                if f_z**3. > _EPS     else (116.*f_z-16.)/_KAPPA
-                        ])*(ref_white if ref_white is not None else _REF_WHITE)
+                        ])*ref_white
 
     @staticmethod
-    def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
+    def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
 
@@ -653,6 +655,8 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         xyz : numpy.ndarray, shape (3)
             CIE Xyz values.
+        ref_white : numpy.ndarray, shape (3)
+            Reference white, default value is the standard 2° observer for D65.
 
         Returns
         -------
@@ -664,7 +668,6 @@ class Colormap(mpl.colors.ListedColormap):
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
 
         """
-        ref_white = ref_white if ref_white is not None else _REF_WHITE
         f = np.where(xyz/ref_white > _EPS,(xyz/ref_white)**(1./3.),(_KAPPA*xyz/ref_white+16.)/116.)
 
         return np.array([
