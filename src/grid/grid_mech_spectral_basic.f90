@@ -159,16 +159,16 @@ subroutine grid_mechanical_spectral_basic_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(snes,'mechanical_',ierr);CHKERRQ(ierr)
-  localK            = 0
-  localK(worldrank) = grid3
+  localK            = 0_pPetscInt
+  localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         grid(1),grid(2),grid(3), &                                                                 ! global grid
-         1 , 1, worldsize, &
-         9, 0, &                                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
-         [grid(1)],[grid(2)],localK, &                                                              ! local grid
+         int(grid(1),pPetscInt),int(grid(2),pPetscInt),int(grid(3),pPetscInt), &                    ! global grid
+         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
+         9_pPetscInt, 0_pPetscInt, &                                                                ! #dof (F, tensor), ghost boundary width (domain overlap)
+         [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          da,ierr)                                                                                   ! handle, error
   CHKERRQ(ierr)
   call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                       ! connect snes to da

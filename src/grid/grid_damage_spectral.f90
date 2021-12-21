@@ -108,16 +108,16 @@ subroutine grid_damage_spectral_init()
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,damage_snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(damage_snes,'damage_',ierr);CHKERRQ(ierr)
-  localK            = 0
-  localK(worldrank) = grid3
+  localK            = 0_pPetscInt
+  localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         grid(1),grid(2),grid(3), &                                                                 ! global grid
-         1, 1, worldsize, &
-         1, 0, &                                                                                    ! #dof (damage phase field), ghost boundary width (domain overlap)
-         [grid(1)],[grid(2)],localK, &                                                              ! local grid
+         int(grid(1),pPetscInt),int(grid(2),pPetscInt),int(grid(3),pPetscInt), &                    ! global grid
+         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
+         1_pPetscInt, 0_pPetscInt, &                                                                ! #dof (phi, scalar), ghost boundary width (domain overlap)
+         [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          damage_grid,ierr)                                                                          ! handle, error
   CHKERRQ(ierr)
   call SNESSetDM(damage_snes,damage_grid,ierr); CHKERRQ(ierr)                                       ! connect snes to da

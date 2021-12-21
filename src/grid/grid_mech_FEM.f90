@@ -164,16 +164,16 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(ierr)
   call SNESSetOptionsPrefix(mechanical_snes,'mechanical_',ierr)
   CHKERRQ(ierr)
-  localK            = 0
-  localK(worldrank) = grid3
+  localK            = 0_pPetscInt
+  localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
-         grid(1),grid(2),grid(3), &
-         1, 1, worldsize, &
-         3, 1, &
-         [grid(1)],[grid(2)],localK, &
+         int(grid(1),pPetscInt),int(grid(2),pPetscInt),int(grid(3),pPetscInt), &                    ! global grid
+         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
+         3_pPetscInt, 1_pPetscInt, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
+         [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          mechanical_grid,ierr)
   CHKERRQ(ierr)
   call SNESSetDM(mechanical_snes,mechanical_grid,ierr)
@@ -196,7 +196,7 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(ierr)
   call SNESSetConvergenceTest(mechanical_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)   ! specify custom convergence check function "_converged"
   CHKERRQ(ierr)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1), ierr)                                ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPetscInt), ierr)                      ! ignore linear solve failures
   CHKERRQ(ierr)
   call SNESSetFromOptions(mechanical_snes,ierr)                                                     ! pull it all together with additional cli arguments
   CHKERRQ(ierr)
@@ -687,7 +687,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
             matmul(transpose(BMatFull), &
                    matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ele), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
-    call MatSetValuesStencil(Jac,24,row,24,col,K_ele,ADD_VALUES,ierr)
+    call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,ierr)
     CHKERRQ(ierr)
   enddo; enddo; enddo
   call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,ierr); CHKERRQ(ierr)
@@ -700,7 +700,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
   diag = (C_volAvg(1,1,1,1)/delta(1)**2 + &
           C_volAvg(2,2,2,2)/delta(2)**2 + &
           C_volAvg(3,3,3,3)/delta(3)**2)*detJ
-  call MatZeroRowsColumns(Jac,size(rows),rows,diag,PETSC_NULL_VEC,PETSC_NULL_VEC,ierr)
+  call MatZeroRowsColumns(Jac,size(rows,kind=pPetscInt),rows,diag,PETSC_NULL_VEC,PETSC_NULL_VEC,ierr)
   CHKERRQ(ierr)
   call DMGetGlobalVector(da_local,coordinates,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,ierr); CHKERRQ(ierr)

@@ -10,6 +10,11 @@ module prec
   use, intrinsic :: IEEE_arithmetic
   use, intrinsic :: ISO_C_binding
 
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+  use PETScSys
+#endif
+
   implicit none
   public
 
@@ -21,6 +26,10 @@ module prec
   integer,     parameter :: pInt       = pI64
 #else
   integer,     parameter :: pInt       = pI32
+#endif
+#ifdef PETSC
+  PetscInt,    private   :: dummy
+  integer,     parameter :: pPetscInt  = kind(dummy)
 #endif
   integer,     parameter :: pStringLen = 256                                                        !< default string length
   integer,     parameter :: pPathLen   = 4096                                                       !< maximum length of a path name on linux
