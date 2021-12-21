@@ -741,7 +741,7 @@ end subroutine nonlocal_dependentState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
-                                                   Mp,Temperature,ph,en)
+                                                   Mp,ph,en)
   real(pReal), dimension(3,3), intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -749,9 +749,6 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal), intent(in) :: &
-    Temperature                                                                                     !< temperature
-
   real(pReal), dimension(3,3), intent(in) :: &
     Mp
                                                                                                     !< derivative of Lp with respect to Mp
@@ -771,67 +768,72 @@ module subroutine nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     dot_gamma                                                                                       !< shear rate
+  real(pReal) :: &
+    Temperature                                                                                     !< temperature
+
+
+  Temperature = thermal_T(ph,en)
+  Lp = 0.0_pReal
+  dLp_dMp = 0.0_pReal
 
   associate(prm => param(ph),dst=>dependentState(ph),stt=>state(ph))
 
-  !*** shortcut to state variables
-  rho = getRho(ph,en)
-  rhoSgl = rho(:,sgl)
+    !*** shortcut to state variables
+    rho = getRho(ph,en)
+    rhoSgl = rho(:,sgl)
 
-  do s = 1,prm%sum_N_sl
-    tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s))
-    tauNS(s,1) = tau(s)
-    tauNS(s,2) = tau(s)
-    if (tau(s) > 0.0_pReal) then
-      tauNS(s,3) = math_tensordot(Mp, +prm%P_nS_pos(1:3,1:3,s))
-      tauNS(s,4) = math_tensordot(Mp, -prm%P_nS_neg(1:3,1:3,s))
-    else
-      tauNS(s,3) = math_tensordot(Mp, +prm%P_nS_neg(1:3,1:3,s))
-      tauNS(s,4) = math_tensordot(Mp, -prm%P_nS_pos(1:3,1:3,s))
-    end if
-  end do
-  tauNS = tauNS + spread(dst%tau_back(:,en),2,4)
-  tau   = tau   + dst%tau_back(:,en)
-
-  ! edges
-  call kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
-                tau, tauNS(:,1), dst%tau_pass(:,en),1,Temperature, ph)
-  v(:,2)         = v(:,1)
-  dv_dtau(:,2)   = dv_dtau(:,1)
-  dv_dtauNS(:,2) = dv_dtauNS(:,1)
-
-  !screws
-  if (prm%nonSchmidActive) then
-    do t = 3,4
-      call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
-                    tau, tauNS(:,t), dst%tau_pass(:,en),2,Temperature, ph)
+    do s = 1,prm%sum_N_sl
+      tau(s) = math_tensordot(Mp, prm%P_sl(1:3,1:3,s))
+      tauNS(s,1) = tau(s)
+      tauNS(s,2) = tau(s)
+      if (tau(s) > 0.0_pReal) then
+        tauNS(s,3) = math_tensordot(Mp, +prm%P_nS_pos(1:3,1:3,s))
+        tauNS(s,4) = math_tensordot(Mp, -prm%P_nS_neg(1:3,1:3,s))
+      else
+        tauNS(s,3) = math_tensordot(Mp, +prm%P_nS_neg(1:3,1:3,s))
+        tauNS(s,4) = math_tensordot(Mp, -prm%P_nS_pos(1:3,1:3,s))
+      end if
     end do
-  else
-    v(:,3:4)         = spread(v(:,1),2,2)
-    dv_dtau(:,3:4)   = spread(dv_dtau(:,1),2,2)
-    dv_dtauNS(:,3:4) = spread(dv_dtauNS(:,1),2,2)
-  end if
+    tauNS = tauNS + spread(dst%tau_back(:,en),2,4)
+    tau   = tau   + dst%tau_back(:,en)
 
-  stt%v(:,en) = pack(v,.true.)
+    ! edges
+    call kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
+                  tau, tauNS(:,1), dst%tau_pass(:,en),1,Temperature, ph)
+    v(:,2)         = v(:,1)
+    dv_dtau(:,2)   = dv_dtau(:,1)
+    dv_dtauNS(:,2) = dv_dtauNS(:,1)
 
-  !*** Bauschinger effect
-  forall (s = 1:prm%sum_N_sl, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
-    rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
+    !screws
+    if (prm%nonSchmidActive) then
+      do t = 3,4
+        call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
+                      tau, tauNS(:,t), dst%tau_pass(:,en),2,Temperature, ph)
+      end do
+    else
+      v(:,3:4)         = spread(v(:,1),2,2)
+      dv_dtau(:,3:4)   = spread(dv_dtau(:,1),2,2)
+      dv_dtauNS(:,3:4) = spread(dv_dtauNS(:,1),2,2)
+    end if
 
-  dot_gamma = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
+    stt%v(:,en) = pack(v,.true.)
 
-  Lp = 0.0_pReal
-  dLp_dMp = 0.0_pReal
-  do s = 1,prm%sum_N_sl
-    Lp = Lp + dot_gamma(s) * prm%P_sl(1:3,1:3,s)
-    forall (i=1:3,j=1:3,k=1:3,l=1:3) &
-      dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
-          + prm%P_sl(i,j,s) * prm%P_sl(k,l,s) &
-          * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
-          + prm%P_sl(i,j,s) &
-          * (+ prm%P_nS_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
-             - prm%P_nS_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
-  end do
+    !*** Bauschinger effect
+    forall (s = 1:prm%sum_N_sl, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
+      rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
+
+    dot_gamma = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
+
+    do s = 1,prm%sum_N_sl
+      Lp = Lp + dot_gamma(s) * prm%P_sl(1:3,1:3,s)
+      forall (i=1:3,j=1:3,k=1:3,l=1:3) &
+        dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
+            + prm%P_sl(i,j,s) * prm%P_sl(k,l,s) &
+            * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
+            + prm%P_sl(i,j,s) &
+            * (+ prm%P_nS_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
+               - prm%P_nS_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
+    end do
 
   end associate
 
@@ -870,7 +872,8 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
     dUpper, &                                                                                       ! current maximum stable dipole distance for edges and screws
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
-   
+
+
   associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph))
 
   mu = elastic_mu(ph,en)
@@ -1394,78 +1397,79 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     belowThreshold
   type(rotation) :: mis
 
+
   associate(prm => param(ph))
-  ns = prm%sum_N_sl
+    ns = prm%sum_N_sl
 
-  en = material_phaseMemberAt(1,i,e)
-  !*** start out fully compatible
-  my_compatibility = 0.0_pReal
-  forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
+    en = material_phaseMemberAt(1,i,e)
+    !*** start out fully compatible
+    my_compatibility = 0.0_pReal
+    forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
 
-  neighbors: do n = 1,nIPneighbors
-    neighbor_e = IPneighborhood(1,n,i,e)
-    neighbor_i = IPneighborhood(2,n,i,e)
-    neighbor_me = material_phaseMemberAt(1,neighbor_i,neighbor_e)
-    neighbor_phase = material_phaseAt(1,neighbor_e)
+    neighbors: do n = 1,nIPneighbors
+      neighbor_e = IPneighborhood(1,n,i,e)
+      neighbor_i = IPneighborhood(2,n,i,e)
+      neighbor_me = material_phaseMemberAt(1,neighbor_i,neighbor_e)
+      neighbor_phase = material_phaseAt(1,neighbor_e)
 
-    if (neighbor_e <= 0 .or. neighbor_i <= 0) then
-      !* FREE SURFACE
-      forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
-    elseif (neighbor_phase /= ph) then
-      !* PHASE BOUNDARY
-      if (plasticState(neighbor_phase)%nonlocal .and. plasticState(ph)%nonlocal) &
-        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
-    elseif (prm%chi_GB >= 0.0_pReal) then
-      !* GRAIN BOUNDARY
-      if (any(dNeq(phase_O_0(ph)%data(en)%asQuaternion(), &
-                   phase_O_0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
-          plasticState(neighbor_phase)%nonlocal) &
-        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
-    else
-      !* GRAIN BOUNDARY ?
-      !* Compatibility defined by relative orientation of slip systems:
-      !* The my_compatibility value is defined as the product of the slip normal projection and the slip direction projection.
-      !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection.
-      !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one),
-      !* only values above or equal to a certain threshold value are considered. This threshold value is chosen, such that
-      !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
-      !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
-      !* All values below the threshold are set to zero.
-      mis = orientation(ph)%data(en)%misorientation(orientation(neighbor_phase)%data(neighbor_me))
-      mySlipSystems: do s1 = 1,ns
-        neighborSlipSystems: do s2 = 1,ns
-          my_compatibility(1,s2,s1,n) =     math_inner(prm%slip_normal(1:3,s1), &
-                                                       mis%rotate(prm%slip_normal(1:3,s2))) &
-                                      * abs(math_inner(prm%slip_direction(1:3,s1), &
-                                                       mis%rotate(prm%slip_direction(1:3,s2))))
-          my_compatibility(2,s2,s1,n) = abs(math_inner(prm%slip_normal(1:3,s1), &
-                                                       mis%rotate(prm%slip_normal(1:3,s2)))) &
-                                      * abs(math_inner(prm%slip_direction(1:3,s1), &
-                                                       mis%rotate(prm%slip_direction(1:3,s2))))
-        end do neighborSlipSystems
+      if (neighbor_e <= 0 .or. neighbor_i <= 0) then
+        !* FREE SURFACE
+        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
+      elseif (neighbor_phase /= ph) then
+        !* PHASE BOUNDARY
+        if (plasticState(neighbor_phase)%nonlocal .and. plasticState(ph)%nonlocal) &
+          forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
+      elseif (prm%chi_GB >= 0.0_pReal) then
+        !* GRAIN BOUNDARY
+        if (any(dNeq(phase_O_0(ph)%data(en)%asQuaternion(), &
+                     phase_O_0(neighbor_phase)%data(neighbor_me)%asQuaternion())) .and. &
+            plasticState(neighbor_phase)%nonlocal) &
+          forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
+      else
+        !* GRAIN BOUNDARY ?
+        !* Compatibility defined by relative orientation of slip systems:
+        !* The my_compatibility value is defined as the product of the slip normal projection and the slip direction projection.
+        !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection.
+        !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one),
+        !* only values above or equal to a certain threshold value are considered. This threshold value is chosen, such that
+        !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
+        !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
+        !* All values below the threshold are set to zero.
+        mis = orientation(ph)%data(en)%misorientation(orientation(neighbor_phase)%data(neighbor_me))
+        mySlipSystems: do s1 = 1,ns
+          neighborSlipSystems: do s2 = 1,ns
+            my_compatibility(1,s2,s1,n) =     math_inner(prm%slip_normal(1:3,s1), &
+                                                         mis%rotate(prm%slip_normal(1:3,s2))) &
+                                        * abs(math_inner(prm%slip_direction(1:3,s1), &
+                                                         mis%rotate(prm%slip_direction(1:3,s2))))
+            my_compatibility(2,s2,s1,n) = abs(math_inner(prm%slip_normal(1:3,s1), &
+                                                         mis%rotate(prm%slip_normal(1:3,s2)))) &
+                                        * abs(math_inner(prm%slip_direction(1:3,s1), &
+                                                         mis%rotate(prm%slip_direction(1:3,s2))))
+          end do neighborSlipSystems
 
-        my_compatibilitySum = 0.0_pReal
-        belowThreshold = .true.
-        do while (my_compatibilitySum < 1.0_pReal .and. any(belowThreshold))
-          thresholdValue = maxval(my_compatibility(2,:,s1,n), belowThreshold)                       ! screws always positive
-          nThresholdValues = real(count(my_compatibility(2,:,s1,n) >= thresholdValue),pReal)
-          where (my_compatibility(2,:,s1,n) >= thresholdValue) belowThreshold = .false.
-          if (my_compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
-            where (abs(my_compatibility(:,:,s1,n)) >= thresholdValue) &
-              my_compatibility(:,:,s1,n) = sign((1.0_pReal - my_compatibilitySum)/nThresholdValues,&
-                                                 my_compatibility(:,:,s1,n))
-          my_compatibilitySum = my_compatibilitySum + nThresholdValues * thresholdValue
-        end do
+          my_compatibilitySum = 0.0_pReal
+          belowThreshold = .true.
+          do while (my_compatibilitySum < 1.0_pReal .and. any(belowThreshold))
+            thresholdValue = maxval(my_compatibility(2,:,s1,n), belowThreshold)                     ! screws always positive
+            nThresholdValues = real(count(my_compatibility(2,:,s1,n) >= thresholdValue),pReal)
+            where (my_compatibility(2,:,s1,n) >= thresholdValue) belowThreshold = .false.
+            if (my_compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
+              where (abs(my_compatibility(:,:,s1,n)) >= thresholdValue) &
+                my_compatibility(:,:,s1,n) = sign((1.0_pReal - my_compatibilitySum)/nThresholdValues,&
+                                                   my_compatibility(:,:,s1,n))
+            my_compatibilitySum = my_compatibilitySum + nThresholdValues * thresholdValue
+          end do
 
-        where(belowThreshold) my_compatibility(1,:,s1,n) = 0.0_pReal
-        where(belowThreshold) my_compatibility(2,:,s1,n) = 0.0_pReal
+          where(belowThreshold) my_compatibility(1,:,s1,n) = 0.0_pReal
+          where(belowThreshold) my_compatibility(2,:,s1,n) = 0.0_pReal
 
-      end do mySlipSystems
-    end if
+        end do mySlipSystems
+      end if
 
-  end do neighbors
+    end do neighbors
 
-  compatibility(:,:,:,:,i,e) = my_compatibility
+    compatibility(:,:,:,:,i,e) = my_compatibility
 
   end associate
 
@@ -1646,53 +1650,55 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, T, 
     criticalStress_P, &                                                                             !< maximum obstacle strength
     criticalStress_S                                                                                !< maximum obstacle strength
 
-  associate(prm => param(ph))
+
   v = 0.0_pReal
   dv_dtau = 0.0_pReal
   dv_dtauNS = 0.0_pReal
 
-  do s = 1,prm%sum_N_sl
-    if (abs(tau(s)) > tauThreshold(s)) then
+  associate(prm => param(ph))
 
-      !* Peierls contribution
-      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))
-      lambda_P = prm%b_sl(s)
-      activationVolume_P = prm%w *prm%b_sl(s)**3
-      criticalStress_P = prm%peierlsStress(s,c)
-      activationEnergy_P = criticalStress_P * activationVolume_P
-      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)
-      tPeierls = 1.0_pReal / prm%nu_a &
-               * exp(activationEnergy_P / (K_B * T) &
-                     * (1.0_pReal - tauRel_P**prm%p)**prm%q)
-      dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (K_B * T) &
-                             * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal), &
-                             0.0_pReal, &
-                             tauEff < criticalStress_P)
+    do s = 1,prm%sum_N_sl
+      if (abs(tau(s)) > tauThreshold(s)) then
 
-      ! Contribution from solid solution strengthening
-      tauEff = abs(tau(s)) - tauThreshold(s)
-      lambda_S = prm%b_sl(s) / sqrt(prm%c_sol)
-      activationVolume_S = prm%f_sol * prm%b_sl(s)**3 / sqrt(prm%c_sol)
-      criticalStress_S = prm%Q_sol / activationVolume_S
-      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
-      tSolidSolution = 1.0_pReal /  prm%nu_a &
-                     * exp(prm%Q_sol / (K_B * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
-      dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (K_B * T) &
-                                   * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal), &
-                                   0.0_pReal, &
-                                   tauEff < criticalStress_S)
+        !* Peierls contribution
+        tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))
+        lambda_P = prm%b_sl(s)
+        activationVolume_P = prm%w *prm%b_sl(s)**3
+        criticalStress_P = prm%peierlsStress(s,c)
+        activationEnergy_P = criticalStress_P * activationVolume_P
+        tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)
+        tPeierls = 1.0_pReal / prm%nu_a &
+                 * exp(activationEnergy_P / (K_B * T) &
+                       * (1.0_pReal - tauRel_P**prm%p)**prm%q)
+        dtPeierls_dtau = merge(tPeierls * prm%p * prm%q * activationVolume_P / (K_B * T) &
+                               * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal), &
+                               0.0_pReal, &
+                               tauEff < criticalStress_P)
 
-      !* viscous glide velocity
-      tauEff = abs(tau(s)) - tauThreshold(s)
+        ! Contribution from solid solution strengthening
+        tauEff = abs(tau(s)) - tauThreshold(s)
+        lambda_S = prm%b_sl(s) / sqrt(prm%c_sol)
+        activationVolume_S = prm%f_sol * prm%b_sl(s)**3 / sqrt(prm%c_sol)
+        criticalStress_S = prm%Q_sol / activationVolume_S
+        tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)
+        tSolidSolution = 1.0_pReal /  prm%nu_a &
+                       * exp(prm%Q_sol / (K_B * T)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
+        dtSolidSolution_dtau = merge(tSolidSolution * prm%p * prm%q * activationVolume_S / (K_B * T) &
+                                     * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal), &
+                                     0.0_pReal, &
+                                     tauEff < criticalStress_S)
+
+        !* viscous glide velocity
+        tauEff = abs(tau(s)) - tauThreshold(s)
 
 
-      v(s) = sign(1.0_pReal,tau(s)) &
-           / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%B /(prm%b_sl(s) * tauEff))
-      dv_dtau(s)   = v(s)**2 * (dtSolidSolution_dtau / lambda_S + prm%B / (prm%b_sl(s) * tauEff**2))
-      dv_dtauNS(s) = v(s)**2 * dtPeierls_dtau / lambda_P
+        v(s) = sign(1.0_pReal,tau(s)) &
+             / (tPeierls / lambda_P + tSolidSolution / lambda_S + prm%B /(prm%b_sl(s) * tauEff))
+        dv_dtau(s)   = v(s)**2 * (dtSolidSolution_dtau / lambda_S + prm%B / (prm%b_sl(s) * tauEff**2))
+        dv_dtauNS(s) = v(s)**2 * dtPeierls_dtau / lambda_P
 
-    end if
-  end do
+      end if
+    end do
 
   end associate
 
