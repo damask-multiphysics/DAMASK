@@ -25,7 +25,7 @@ def default(tmp_path,ref_path):
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(ref_path/fname,tmp_path)
     f = Result(tmp_path/fname)
-    return f.view('times',20.0)
+    return f.view(times=20.0)
 
 @pytest.fixture
 def single_phase(tmp_path,ref_path):
@@ -58,14 +58,14 @@ class TestResult:
 
 
     def test_view_all(self,default):
-        a = default.view('increments',True).get('F')
+        a = default.view(increments=True).get('F')
 
-        assert dict_equal(a,default.view('increments','*').get('F'))
-        assert dict_equal(a,default.view('increments',default.increments_in_range(0,np.iinfo(int).max)).get('F'))
+        assert dict_equal(a,default.view(increments='*').get('F'))
+        assert dict_equal(a,default.view(increments=default.increments_in_range(0,np.iinfo(int).max)).get('F'))
 
-        assert dict_equal(a,default.view('times',True).get('F'))
-        assert dict_equal(a,default.view('times','*').get('F'))
-        assert dict_equal(a,default.view('times',default.times_in_range(0.0,np.inf)).get('F'))
+        assert dict_equal(a,default.view(times=True).get('F'))
+        assert dict_equal(a,default.view(times='*').get('F'))
+        assert dict_equal(a,default.view(times=default.times_in_range(0.0,np.inf)).get('F'))
 
     @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_none(self,default,what):
@@ -314,7 +314,7 @@ class TestResult:
 
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
-        last = default.view('increments',-1)
+        last = default.view(increments=-1)
 
         last.add_stress_Cauchy()
 
@@ -322,9 +322,9 @@ class TestResult:
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            last = last.modification_enable()
+            last = last.view(protected=False)
         else:
-            last = last.modification_disable()
+            last = last.view(protected=True)
 
         time.sleep(2.)
         try:
@@ -344,10 +344,10 @@ class TestResult:
     def test_rename(self,default,allowed):
         if allowed == 'on':
             F = default.place('F')
-            default = default.modification_enable()
+            default = default.view(protected=False)
             default.rename('F','new_name')
             assert np.all(F == default.place('new_name'))
-            default = default.modification_disable()
+            default = default.view(protected=True)
 
         with pytest.raises(PermissionError):
             default.rename('P','another_new_name')
@@ -355,7 +355,7 @@ class TestResult:
     @pytest.mark.parametrize('allowed',['off','on'])
     def test_remove(self,default,allowed):
         if allowed == 'on':
-            unsafe = default.modification_enable()
+            unsafe = default.view(protected=False)
             unsafe.remove('F')
             assert unsafe.get('F') is None
         else:
@@ -377,7 +377,7 @@ class TestResult:
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
     def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
-        result = Result(ref_path/fname).view('increments',inc)
+        result = Result(ref_path/fname).view(increments=inc)
         os.chdir(tmp_path)
         result.export_VTK(output,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
@@ -400,7 +400,7 @@ class TestResult:
         result.export_VTK(output,mode)
 
     def test_marc_coordinates(self,ref_path):
-        result = Result(ref_path/'check_compile_job1.hdf5').view('increments',-1)
+        result = Result(ref_path/'check_compile_job1.hdf5').view(increments=-1)
         c_n = result.coordinates0_node + result.get('u_n')
         c_p = result.coordinates0_point + result.get('u_p')
         assert len(c_n) > len(c_p)
@@ -440,7 +440,7 @@ class TestResult:
         dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
         bounds_xdmf = reader_xdmf.GetOutput().GetBounds()
 
-        single_phase.view('increments',0).export_VTK(parallel=False)
+        single_phase.view(increments=0).export_VTK(parallel=False)
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'_inc00.vti'
         reader_vti = vtk.vtkXMLImageDataReader()
         reader_vti.SetFileName(fname)
