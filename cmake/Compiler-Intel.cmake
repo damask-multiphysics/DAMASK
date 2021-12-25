@@ -106,7 +106,7 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
 #set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
 #   ... warnings about Fortran standard violations are changed to errors
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
+#set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all") 
 # generate debug information for parameters
 
 # Additional options
