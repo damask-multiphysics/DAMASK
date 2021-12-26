@@ -6,15 +6,15 @@ if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 18.0)
 endif ()
 
 if (OPENMP)
-  set (OPENMP_FLAGS "-qopenmp -parallel")
+  set (OPENMP_FLAGS "-qopenmp")
 endif ()
 
 if (OPTIMIZATION STREQUAL "OFF")
-  set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
+  set (OPTIMIZATION_FLAGS    "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
+  set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost")
   # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
 endif ()
 
