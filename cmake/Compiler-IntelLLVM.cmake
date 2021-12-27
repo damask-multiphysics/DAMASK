@@ -6,21 +6,21 @@ if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 18.0)
 endif ()
 
 if (OPENMP)
-  set (OPENMP_FLAGS "-qopenmp -parallel")
+  set (OPENMP_FLAGS "-qopenmp")
 endif ()
 
 if (OPTIMIZATION STREQUAL "OFF")
-  set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
+  set (OPTIMIZATION_FLAGS    "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
+  set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost")
   # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
 # (PETSc, HDF5) are not compiled with this option (https://software.intel.com/en-us/forums/intel-fortran-compiler-for-linux-and-mac-os-x/topic/62172)
-set (STANDARD_CHECK "-stand f18 -standard-semantics -assume nostd_mod_proc_name")
+set (STANDARD_CHECK "-stand f18 -assume nostd_mod_proc_name")
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
 # Link against shared Intel libraries instead of static ones
 
@@ -106,9 +106,8 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
 #set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
 #   ... warnings about Fortran standard violations are changed to errors
 
-#set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
 # generate debug information for parameters
-# Disabled due to ICE when compiling phase_damage.f90 (not understandable, there is no parameter in there)
 
 # Additional options
 # -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
