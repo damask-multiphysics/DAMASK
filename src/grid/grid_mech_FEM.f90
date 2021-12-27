@@ -145,8 +145,7 @@ subroutine grid_mechanical_FEM_init
 ! set default and user defined options for PETSc
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
                                 '-mechanical_snes_type newtonls -mechanical_ksp_type fgmres &
-                                &-mechanical_ksp_max_it 25 -mechanical_pc_type ml &
-                                &-mechanical_mg_levels_ksp_type chebyshev', &
+                                &-mechanical_ksp_max_it 25 -mechanical_mg_levels_ksp_type chebyshev', &
                                 ierr)
   CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
