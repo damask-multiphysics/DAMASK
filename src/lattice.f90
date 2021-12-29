@@ -2070,7 +2070,7 @@ end function getlabels
 !> @brief Equivalent Poisson's ratio (ν)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
-function lattice_equivalent_nu(C,assumption) result(nu)
+pure function lattice_equivalent_nu(C,assumption) result(nu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=5),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
@@ -2103,7 +2103,7 @@ end function lattice_equivalent_nu
 !> @brief Equivalent shear modulus (μ)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
-function lattice_equivalent_mu(C,assumption) result(mu)
+pure function lattice_equivalent_mu(C,assumption) result(mu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=5),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)

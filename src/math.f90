@@ -512,7 +512,7 @@ end subroutine math_invert33
 !--------------------------------------------------------------------------------------------------
 !> @brief Inversion of symmetriced 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
-function math_invSym3333(A)
+pure function math_invSym3333(A)
 
   real(pReal),dimension(3,3,3,3)            :: math_invSym3333
 
@@ -538,7 +538,7 @@ end function math_invSym3333
 !--------------------------------------------------------------------------------------------------
 !> @brief invert quadratic matrix of arbitrary dimension
 !--------------------------------------------------------------------------------------------------
-subroutine math_invert(InvA, error, A)
+pure subroutine math_invert(InvA, error, A)
 
   real(pReal), dimension(:,:),                 intent(in)  :: A
   real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
@@ -996,7 +996,7 @@ end subroutine math_normal
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh(w,v,error,m)
+pure subroutine math_eigh(w,v,error,m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
@@ -1021,7 +1021,7 @@ end subroutine math_eigh
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh33(w,v,m)
+pure subroutine math_eigh33(w,v,m)
 
   real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
   real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
@@ -1114,7 +1114,7 @@ end function math_rotationalPart
 !> @brief Eigenvalues of symmetric matrix
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
-function math_eigvalsh(m)
+pure function math_eigvalsh(m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< symmetric matrix to compute eigenvalues of
   real(pReal), dimension(size(m,1))                         :: math_eigvalsh
@@ -1137,7 +1137,7 @@ end function math_eigvalsh
 !> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
 !> matrices as fallback
 !--------------------------------------------------------------------------------------------------
-function math_eigvalsh33(m)
+pure function math_eigvalsh33(m)
 
   real(pReal), intent(in), dimension(3,3) :: m                                                      !< 3x3 symmetric matrix to compute eigenvalues of
   real(pReal), dimension(3) :: math_eigvalsh33,I
