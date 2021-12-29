@@ -23,7 +23,7 @@ module LAPACK_interface
       integer,     intent(in)                             :: n,nrhs,lda,ldb
       real(pReal), intent(inout), dimension(lda,n)        :: a
       integer,     intent(out),   dimension(n)            :: ipiv
-      real(pReal), intent(out),   dimension(ldb,nrhs)     :: b
+      real(pReal), intent(inout), dimension(ldb,nrhs)     :: b
       integer,     intent(out)                            :: info
     end subroutine dgesv
 
@@ -39,7 +39,7 @@ module LAPACK_interface
       use prec
       integer,     intent(in)                             :: n,lda,lwork
       real(pReal), intent(inout), dimension(lda,n)        :: a
-      integer,     intent(out),   dimension(n)            :: ipiv
+      integer,     intent(in),    dimension(n)            :: ipiv
       real(pReal), intent(out),   dimension(max(1,lwork)) :: work
       integer,     intent(out)                            :: info
     end subroutine dgetri
