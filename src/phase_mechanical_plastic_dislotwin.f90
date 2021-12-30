@@ -153,10 +153,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
   print'(/,1x,a)', 'A. Ma and F. Roters, Acta Materialia 52(12):3603–3612, 2004'
-  print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
+  print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2004.04.012'
 
   print'(/,1x,a)', 'F. Roters et al., Computational Materials Science 39:91–95, 2007'
-  print'(  1x,a)', 'https://doi.org/10.1016/j.commatsci.2006.04.014'//IO_EOL
+  print'(  1x,a)', 'https://doi.org/10.1016/j.commatsci.2006.04.014'
 
   print'(/,1x,a)', 'S.L. Wong et al., Acta Materialia 118:140–151, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2016.07.032'
@@ -656,12 +656,14 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
     dot_gamma_tr
   real(pReal) :: &
     mu, &
-    nu
+    nu, &
+    Gamma
 
   associate(prm => param(ph), stt => state(ph), dot => dotState(ph), dst => dependentState(ph))
 
     mu = elastic_mu(ph,en)
     nu = elastic_nu(ph,en)
+    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * (T-prm%T_ref)
 
     f_matrix = 1.0_pReal &
              - sum(stt%f_tw(1:prm%sum_N_tw,en)) &
@@ -689,8 +691,7 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
         else
           ! Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
           sigma_cl = dot_product(prm%n0_sl(1:3,i),matmul(Mp,prm%n0_sl(1:3,i)))
-          b_d = merge(24.0_pReal*PI*(1.0_pReal - nu)/(2.0_pReal + nu) &
-                        * (prm%Gamma_sf(1) + prm%Gamma_sf(2) * T) / (mu*prm%b_sl(i)), &
+          b_d = merge(24.0_pReal*PI*(1.0_pReal - nu)/(2.0_pReal + nu) * Gamma / (mu*prm%b_sl(i)), &
                       1.0_pReal, &
                       prm%ExtendedDislocations)
           v_cl = 2.0_pReal*prm%omega*b_d**2*exp(-prm%Q_cl/(K_B*T)) &
@@ -756,7 +757,7 @@ module subroutine dislotwin_dependentState(T,ph,en)
     sumf_tw = sum(stt%f_tw(1:prm%sum_N_tw,en))
     sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
 
-    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * T
+    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * (T-prm%T_ref)
 
     !* rescaled volume fraction for topology
     f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,en)/prm%t_tw                                              ! this is per system ...
