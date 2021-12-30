@@ -25,9 +25,9 @@ submodule(phase:plastic) dislotwin
       xi_sb               = 1.0_pReal, &                                                            !< value for shearband resistance
       v_sb                = 1.0_pReal, &                                                            !< value for shearband velocity_0
       E_sb                = 1.0_pReal, &                                                            !< activation energy for shear bands
-      delta_G             = 1.0_pReal, &                                                            !< Free energy difference between austensite and martensite
+      delta_G             = 1.0_pReal, &                                                            !< free energy difference between austensite and martensite
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
-      h                   = 1.0_pReal, &                                                            !< Stack height of hex nucleus
+      h                   = 1.0_pReal, &                                                            !< stack height of hex nucleus
       T_ref               = T_ROOM, &
       a_cI                = 1.0_pReal, &
       a_cF                = 1.0_pReal
@@ -40,14 +40,13 @@ submodule(phase:plastic) dislotwin
       Q_sl,&                                                                                        !< activation energy for glide [J] for each slip system
       v_0, &                                                                                        !< dislocation velocity prefactor [m/s] for each slip system
       dot_N_0_tw, &                                                                                 !< twin nucleation rate [1/m³s] for each twin system
-      dot_N_0_tr, &                                                                                 !< trans nucleation rate [1/m³s] for each trans system
       t_tw, &                                                                                       !< twin thickness [m] for each twin system
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations for each slip system
       t_tr, &                                                                                       !< martensite lamellar thickness [m] for each trans system
       p, &                                                                                          !< p-exponent in glide velocity
       q, &                                                                                          !< q-exponent in glide velocity
-      r, &                                                                                          !< r-exponent in twin nucleation rate
-      s, &                                                                                          !< s-exponent in trans nucleation rate
+      r, &                                                                                          !< exponent in twin nucleation rate
+      s, &                                                                                          !< exponent in trans nucleation rate
       tau_0, &                                                                                      !< strength due to elements in solid solution
       gamma_char, &                                                                                 !< characteristic shear for twins
       B, &                                                                                          !< drag coefficient
@@ -306,10 +305,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%b_tr = pl%get_as1dFloat('b_tr')
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
-      prm%h             = pl%get_asFloat('h',       defaultVal=0.0_pReal) ! ToDo: How to handle that???
-      prm%i_tr          = pl%get_asFloat('i_tr',    defaultVal=0.0_pReal) ! ToDo: How to handle that???
+      prm%h             = pl%get_asFloat('h',       defaultVal=0.0_pReal) ! ToDo: This is not optional!
+      prm%i_tr          = pl%get_asFloat('i_tr',    defaultVal=0.0_pReal) ! ToDo: This is not optional!
       prm%delta_G       = pl%get_asFloat('delta_G')
-      prm%x_c_tr        = pl%get_asFloat('x_c_tr',  defaultVal=0.0_pReal) ! ToDo: How to handle that???
+      prm%x_c_tr        = pl%get_asFloat('x_c_tr',  defaultVal=0.0_pReal) ! ToDo: This is not optional!
       prm%L_tr          = pl%get_asFloat('L_tr')
       prm%a_cI          = pl%get_asFloat('a_cI',    defaultVal=0.0_pReal)
       prm%a_cF          = pl%get_asFloat('a_cF',    defaultVal=0.0_pReal)
@@ -324,10 +323,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                                prm%a_cI, &
                                                prm%a_cF)
 
-      if (phase_lattice(ph) /= 'cF') then
-        prm%dot_N_0_tr = pl%get_as1dFloat('dot_N_0_tr')
-        prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,prm%N_tr)
-      endif
       prm%t_tr = pl%get_as1dFloat('t_tr')
       prm%t_tr = math_expand(prm%t_tr,prm%N_tr)
       prm%s    = pl%get_as1dFloat('p_tr',defaultVal=[0.0_pReal])
@@ -339,11 +334,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
       if (any(prm%s             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tr'
-      if (phase_lattice(ph) /= 'cF') then
-        if (any(prm%dot_N_0_tr  < 0.0_pReal)) extmsg = trim(extmsg)//' dot_N_0_tr'
-      end if
     else transActive
-      allocate(prm%s,prm%b_tr,prm%t_tr,prm%dot_N_0_tr,source=emptyRealArray)
+      allocate(prm%s,prm%b_tr,prm%t_tr,source=emptyRealArray)
       allocate(prm%h_tr_tr(0,0))
     end if transActive
 
@@ -1042,20 +1034,16 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
     do i = 1, prm%sum_N_tr
       tau(i) = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      isFCC: if (prm%fccTwinTransNucleation) then
-        s1=prm%fcc_twinNucleationSlipPair(1,i)
-        s2=prm%fcc_twinNucleationSlipPair(2,i)
-        if (tau(i) < dst%tau_r_tr(i,en)) then                                                       ! ToDo: correct?
-          Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,en)+stt%rho_dip(s2,en))+&
-                 abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,en)+stt%rho_dip(s1,en)))/&
-                  (prm%L_tr*prm%b_sl(i))*&
-                  (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tr(i,en)-tau(i))))
-        else
-          Ndot0=0.0_pReal
-        end if
-      else isFCC
-        Ndot0=prm%dot_N_0_tr(i)
-      end if isFCC
+      s1=prm%fcc_twinNucleationSlipPair(1,i)
+      s2=prm%fcc_twinNucleationSlipPair(2,i)
+      if (tau(i) < dst%tau_r_tr(i,en)) then                                                         ! ToDo: correct?
+        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,en)+stt%rho_dip(s2,en))+&
+               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,en)+stt%rho_dip(s1,en)))/&
+                (prm%L_tr*prm%b_sl(i))*&
+                (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tr(i,en)-tau(i))))
+      else
+        Ndot0=0.0_pReal
+      end if
     end do
 
     significantStress: where(tau > tol_math_check)
