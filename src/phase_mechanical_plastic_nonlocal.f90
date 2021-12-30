@@ -1570,7 +1570,6 @@ subroutine stateInit(ini,phase,Nentries)
     upto, &
     s
   real(pReal), dimension(2) :: &
-    noise, &
     rnd
   real(pReal) :: &
     meanDensity, &

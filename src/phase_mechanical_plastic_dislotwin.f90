@@ -779,9 +779,8 @@ module subroutine dislotwin_dependentState(T,ph,en)
                          + 3.0_pReal*prm%b_tr*mu/(prm%L_tr*prm%b_tr) &
                          + prm%h*prm%delta_G/(3.0_pReal*prm%b_tr)
 
-    dst%V_tw(:,en) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,en)**2
-    dst%V_tr(:,en) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,en)**2
-
+    dst%V_tw(:,en) = PI/4.0_pReal*dst%Lambda_tw(:,en)**2*prm%t_tw
+    dst%V_tr(:,en) = PI/4.0_pReal*dst%Lambda_tr(:,en)**2*prm%t_tr
 
     x0 = mu*prm%b_tw**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
     dst%tau_r_tw(:,en) = mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
@@ -954,11 +953,12 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
   real, dimension(param(ph)%sum_N_tw) :: &
     tau, &
-    Ndot0, &
+    dot_N_0, &
     stressRatio_r, &
     ddot_gamma_dtau
-
-  integer :: i,s1,s2
+  integer, dimension(2) :: &
+    s
+  integer :: i
 
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
@@ -966,24 +966,23 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
     do i = 1, prm%sum_N_tw
       tau(i) = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
       isFCC: if (prm%fccTwinTransNucleation) then
-        s1=prm%fcc_twinNucleationSlipPair(1,i)
-        s2=prm%fcc_twinNucleationSlipPair(2,i)
         if (tau(i) < dst%tau_r_tw(i,en)) then                                                       ! ToDo: correct?
-          Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,en)+stt%rho_dip(s2,en))+&
-                 abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,en)+stt%rho_dip(s1,en)))/&
+          s=prm%fcc_twinNucleationSlipPair(1:2,i)
+          dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
+                   abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
                   (prm%L_tw*prm%b_sl(i))*&
                   (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tw(i,en)-tau(i))))
         else
-          Ndot0=0.0_pReal
+          dot_N_0=0.0_pReal
         end if
       else isFCC
-        Ndot0=prm%dot_N_0_tw(i)
+        dot_N_0=prm%dot_N_0_tw(i)
       end if isFCC
     end do
 
     significantStress: where(tau > tol_math_check)
       StressRatio_r   = (dst%tau_hat_tw(:,en)/tau)**prm%r
-      dot_gamma_tw    = prm%gamma_char * dst%V_tw(:,en) * Ndot0*exp(-StressRatio_r)
+      dot_gamma_tw    = prm%gamma_char * dst%V_tw(:,en) * dot_N_0*exp(-StressRatio_r)
       ddot_gamma_dtau = (dot_gamma_tw*prm%r/tau)*StressRatio_r
     else where significantStress
       dot_gamma_tw    = 0.0_pReal
@@ -1024,31 +1023,32 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
   real, dimension(param(ph)%sum_N_tr) :: &
     tau, &
-    Ndot0, &
+    dot_N_0, &
     stressRatio_s, &
     ddot_gamma_dtau
-  integer :: i,s1,s2
+  integer, dimension(2) :: &
+    s
+  integer :: i
 
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
     do i = 1, prm%sum_N_tr
       tau(i) = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      s1=prm%fcc_twinNucleationSlipPair(1,i)
-      s2=prm%fcc_twinNucleationSlipPair(2,i)
       if (tau(i) < dst%tau_r_tr(i,en)) then                                                         ! ToDo: correct?
-        Ndot0=(abs(dot_gamma_sl(s1))*(stt%rho_mob(s2,en)+stt%rho_dip(s2,en))+&
-               abs(dot_gamma_sl(s2))*(stt%rho_mob(s1,en)+stt%rho_dip(s1,en)))/&
+        s=prm%fcc_twinNucleationSlipPair(1:2,i)
+        dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
+                 abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
                 (prm%L_tr*prm%b_sl(i))*&
                 (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tr(i,en)-tau(i))))
       else
-        Ndot0=0.0_pReal
+        dot_N_0=0.0_pReal
       end if
     end do
 
     significantStress: where(tau > tol_math_check)
       StressRatio_s   = (dst%tau_hat_tr(:,en)/tau)**prm%s
-      dot_gamma_tr    = dst%V_tr(:,en) * Ndot0*exp(-StressRatio_s)
+      dot_gamma_tr    = dst%V_tr(:,en) * dot_N_0*exp(-StressRatio_s)
       ddot_gamma_dtau = (dot_gamma_tr*prm%s/tau)*StressRatio_s
     else where significantStress
       dot_gamma_tr  = 0.0_pReal
