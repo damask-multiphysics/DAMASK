@@ -969,15 +969,14 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
         tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
         if (tau(i) < tau_r) then                                                                    ! ToDo: correct?
           s=prm%fcc_twinNucleationSlipPair(1:2,i)
-          dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
-                   abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
-                  (prm%L_tw*prm%b_sl(i))*&
-                  (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
+          dot_N_0(i)=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
+                      abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
+                     (prm%L_tw*prm%b_sl(i))*(1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
         else
-          dot_N_0=0.0_pReal
+          dot_N_0(i)=0.0_pReal
         end if
       else isFCC
-        dot_N_0=prm%dot_N_0_tw(i)
+        dot_N_0(i)=prm%dot_N_0_tw(i)
       end if isFCC
     end do
 
@@ -1045,16 +1044,15 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
     do i = 1, prm%sum_N_tr
       tau(i) = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, this is the Burgers vector for slip              ! ToDo: In the paper, this is the Burgers vector for slip
+      x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, this is the Burgers vector for slip
       tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
       if (tau(i) < tau_r) then                                                                      ! ToDo: correct?
         s=prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
-                 abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
-                (prm%L_tr*prm%b_sl(i))*&
-                (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
+        dot_N_0(i)=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
+                    abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
+                   (prm%L_tr*prm%b_sl(i))*(1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
       else
-        dot_N_0=0.0_pReal
+        dot_N_0(i)=0.0_pReal
       end if
     end do
 
