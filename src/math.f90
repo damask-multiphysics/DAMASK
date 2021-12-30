@@ -1432,9 +1432,11 @@ subroutine selfTest
     error stop 'math_LeviCivita'
 
   normal_distribution: block
-    real(pReal), dimension(500000) :: r
+    integer, parameter :: N = 1000000
+    real(pReal), dimension(:), allocatable :: r
     real(pReal) :: mu, sigma
 
+    allocate(r(N))
     call random_number(mu)
     call random_number(sigma)
 
@@ -1443,11 +1445,11 @@ subroutine selfTest
 
     call math_normal(r,mu,sigma)
 
-    if (abs(mu -sum(r)/real(size(r),pReal))>5.0e-2_pReal) &
+    if (abs(mu -sum(r)/real(N,pReal))>5.0e-2_pReal) &
       error stop 'math_normal(mu)'
 
-    mu = sum(r)/real(size(r),pReal)
-    if (abs(sigma**2 -1.0_pReal/real(size(r)-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
+    mu = sum(r)/real(N,pReal)
+    if (abs(sigma**2 -1.0_pReal/real(N-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
       error stop 'math_normal(sigma)'
   end block normal_distribution
 
