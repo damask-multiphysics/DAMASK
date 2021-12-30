@@ -103,9 +103,7 @@ submodule(phase:plastic) dislotwin
       tau_hat_tw, &                                                                                 !< threshold stress for twinning
       tau_hat_tr, &                                                                                 !< threshold stress for transformation
       V_tw, &                                                                                       !< volume of a new twin
-      V_tr, &                                                                                       !< volume of a new martensite disc
-      tau_r_tw, &                                                                                   !< stress to bring partials close together (twin)
-      tau_r_tr                                                                                      !< stress to bring partials close together (trans)
+      V_tr                                                                                          !< volume of a new martensite disc
   end type tDislotwinDependentState
 
 !--------------------------------------------------------------------------------------------------
@@ -435,12 +433,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
     allocate(dst%Lambda_tw             (prm%sum_N_tw,Nmembers),source=0.0_pReal)
     allocate(dst%tau_hat_tw            (prm%sum_N_tw,Nmembers),source=0.0_pReal)
-    allocate(dst%tau_r_tw              (prm%sum_N_tw,Nmembers),source=0.0_pReal)
     allocate(dst%V_tw                  (prm%sum_N_tw,Nmembers),source=0.0_pReal)
 
     allocate(dst%Lambda_tr             (prm%sum_N_tr,Nmembers),source=0.0_pReal)
     allocate(dst%tau_hat_tr            (prm%sum_N_tr,Nmembers),source=0.0_pReal)
-    allocate(dst%tau_r_tr              (prm%sum_N_tr,Nmembers),source=0.0_pReal)
     allocate(dst%V_tr                  (prm%sum_N_tr,Nmembers),source=0.0_pReal)
 
     end associate
@@ -782,12 +778,6 @@ module subroutine dislotwin_dependentState(T,ph,en)
     dst%V_tw(:,en) = PI/4.0_pReal*dst%Lambda_tw(:,en)**2*prm%t_tw
     dst%V_tr(:,en) = PI/4.0_pReal*dst%Lambda_tr(:,en)**2*prm%t_tr
 
-    x0 = mu*prm%b_tw**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
-    dst%tau_r_tw(:,en) = mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
-
-    x0 = mu*prm%b_tr**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                  ! ToDo: In the paper, this is the Burgers vector for slip
-    dst%tau_r_tr(:,en) = mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
-
   end associate
 
 end subroutine dislotwin_dependentState
@@ -956,6 +946,11 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
     dot_N_0, &
     stressRatio_r, &
     ddot_gamma_dtau
+  real :: &
+    x0, &
+    tau_r, &
+    Gamma, &
+    mu, nu
   integer, dimension(2) :: &
     s
   integer :: i
@@ -963,15 +958,21 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
+    mu = elastic_mu(ph,en)
+    nu = elastic_nu(ph,en)
+    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * (T-prm%T_ref)
+
     do i = 1, prm%sum_N_tw
       tau(i) = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
       isFCC: if (prm%fccTwinTransNucleation) then
-        if (tau(i) < dst%tau_r_tw(i,en)) then                                                       ! ToDo: correct?
+        x0 = mu*prm%b_tw(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                   ! ToDo: In the paper, this is the Burgers vector for slip
+        tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
+        if (tau(i) < tau_r) then                                                                    ! ToDo: correct?
           s=prm%fcc_twinNucleationSlipPair(1:2,i)
           dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
                    abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
                   (prm%L_tw*prm%b_sl(i))*&
-                  (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tw(i,en)-tau(i))))
+                  (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
         else
           dot_N_0=0.0_pReal
         end if
@@ -1026,6 +1027,11 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
     dot_N_0, &
     stressRatio_s, &
     ddot_gamma_dtau
+  real :: &
+    x0, &
+    tau_r, &
+    Gamma, &
+    mu, nu
   integer, dimension(2) :: &
     s
   integer :: i
@@ -1033,14 +1039,20 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
+    mu = elastic_mu(ph,en)
+    nu = elastic_nu(ph,en)
+    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * (T-prm%T_ref)
+
     do i = 1, prm%sum_N_tr
       tau(i) = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      if (tau(i) < dst%tau_r_tr(i,en)) then                                                         ! ToDo: correct?
+      x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, this is the Burgers vector for slip              ! ToDo: In the paper, this is the Burgers vector for slip
+      tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
+      if (tau(i) < tau_r) then                                                                      ! ToDo: correct?
         s=prm%fcc_twinNucleationSlipPair(1:2,i)
         dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
                  abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
                 (prm%L_tr*prm%b_sl(i))*&
-                (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(dst%tau_r_tr(i,en)-tau(i))))
+                (1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
       else
         dot_N_0=0.0_pReal
       end if
