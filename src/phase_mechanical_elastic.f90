@@ -86,7 +86,7 @@ end subroutine elastic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief return 6x6 elasticity tensor
 !--------------------------------------------------------------------------------------------------
-module function elastic_C66(ph,en) result(C66)
+pure module function elastic_C66(ph,en) result(C66)
 
   integer, intent(in) :: &
     ph, &
@@ -140,7 +140,7 @@ end function elastic_C66
 !--------------------------------------------------------------------------------------------------
 !> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
-module function elastic_mu(ph,en) result(mu)
+pure module function elastic_mu(ph,en) result(mu)
 
   integer, intent(in) :: &
     ph, &
@@ -157,7 +157,7 @@ end function elastic_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
-module function elastic_nu(ph,en) result(nu)
+pure module function elastic_nu(ph,en) result(nu)
 
   integer, intent(in) :: &
     ph, &
