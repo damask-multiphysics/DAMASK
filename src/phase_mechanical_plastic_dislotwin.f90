@@ -944,7 +944,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
   real, dimension(param(ph)%sum_N_tw) :: &
     tau, &
     dot_N_0, &
-    stressRatio_r, &
+    ratio_tau_r, &
     ddot_gamma_dtau
   real :: &
     x0, &
@@ -981,11 +981,11 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
     end do
 
     significantStress: where(tau > tol_math_check)
-      StressRatio_r   = (dst%tau_hat_tw(:,en)/tau)**prm%r
-      dot_gamma_tw    = prm%gamma_char * dst%V_tw(:,en) * dot_N_0*exp(-StressRatio_r)
-      ddot_gamma_dtau = (dot_gamma_tw*prm%r/tau)*StressRatio_r
+      ratio_tau_r = (dst%tau_hat_tw(:,en)/tau)**prm%r
+      dot_gamma_tw = prm%gamma_char * dst%V_tw(:,en) * dot_N_0*exp(-ratio_tau_r)
+      ddot_gamma_dtau = (dot_gamma_tw*prm%r/tau)*ratio_tau_r
     else where significantStress
-      dot_gamma_tw    = 0.0_pReal
+      dot_gamma_tw = 0.0_pReal
       ddot_gamma_dtau = 0.0_pReal
     end where significantStress
 
@@ -1024,7 +1024,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
   real, dimension(param(ph)%sum_N_tr) :: &
     ddot_gamma_dtau
   real :: &
-    stressRatio_s, &
+    ratio_tau_s, &
     tau, tau_r, &
     dot_N_0, &
     x0, &
@@ -1046,13 +1046,16 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
       x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, this is the Burgers vector for slip
       tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(PI/3.0_pReal)/x0)
       if (tau > tol_math_check .and. tau < tau_r) then
+
+        ratio_tau_s = (dst%tau_hat_tr(i,en)/tau)**prm%s(i)
+
         s=prm%fcc_twinNucleationSlipPair(1:2,i)
         dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
                  abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
                 (prm%L_tr*prm%b_sl(i))*(1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau)))
-        StressRatio_s = (dst%tau_hat_tr(i,en)/tau)**prm%s(i)
-        dot_gamma_tr(i) = dst%V_tr(i,en) * dot_N_0*exp(-StressRatio_s)
-        ddot_gamma_dtau(i) = (dot_gamma_tr(i)*prm%s(i)/tau)*StressRatio_s
+
+        dot_gamma_tr(i) = dst%V_tr(i,en) * dot_N_0*exp(-ratio_tau_s)
+        ddot_gamma_dtau(i) = (dot_gamma_tr(i)*prm%s(i)/tau)*ratio_tau_s
       else
         dot_gamma_tr(i) = 0.0_pReal
         ddot_gamma_dtau(i) = 0.0_pReal
