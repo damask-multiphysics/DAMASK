@@ -17,8 +17,8 @@ submodule(phase:plastic) dislotwin
       p_sb                = 1.0_pReal, &                                                            !< p-exponent in shear band velocity
       q_sb                = 1.0_pReal, &                                                            !< q-exponent in shear band velocity
       i_tw                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for twinning
-      L_tw                = 1.0_pReal, &                                                            !< Length of twin nuclei in Burgers vectors
-      L_tr                = 1.0_pReal, &                                                            !< Length of trans nuclei in Burgers vectors
+      L_tw                = 1.0_pReal, &                                                            !< length of twin nuclei in Burgers vectors: TODO unit should be meters
+      L_tr                = 1.0_pReal, &                                                            !< length of trans nuclei in Burgers vectors: TODO unit should be meters
       x_c_tw              = 1.0_pReal, &                                                            !< critical distance for formation of twin nucleus
       x_c_tr              = 1.0_pReal, &                                                            !< critical distance for formation of trans nucleus
       V_cs                = 1.0_pReal, &                                                            !< cross slip volume
@@ -731,8 +731,6 @@ module subroutine dislotwin_dependentState(T,ph,en)
    real(pReal), dimension(param(ph)%sum_N_tr) :: &
     inv_lambda_tr_tr, &                                                                             !< 1/mean free distance between 2 martensite stacks from different systems seen by a growing martensite
     f_over_t_tr
-  real(pReal), dimension(:), allocatable :: &
-    x0
   real(pReal) :: &
     mu, &
     nu
@@ -941,16 +939,15 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
   real(pReal), dimension(param(ph)%sum_N_tw), optional, intent(out) :: &
     ddot_gamma_dtau_tw
 
-  real, dimension(param(ph)%sum_N_tw) :: &
-    tau, &
-    dot_N_0, &
-    ratio_tau_r, &
-    ddot_gamma_dtau
   real :: &
+    ratio_tau_s, &
+    tau, tau_r, &
+    dot_N_0, &
     x0, &
-    tau_r, &
     Gamma, &
-    mu, nu
+    mu, nu, &
+    P_ncs, dP_ncs_dtau, &
+    P, dP_dtau
   integer, dimension(2) :: &
     s
   integer :: i
@@ -958,40 +955,52 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
-    Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * (T-prm%T_ref)
+    isFCC: if (prm%fccTwinTransNucleation) then
+      mu = elastic_mu(ph,en)
+      nu = elastic_nu(ph,en)
+      Gamma = prm%Gamma_sf(1) + prm%Gamma_sf(2) * (T-prm%T_ref)
 
-    do i = 1, prm%sum_N_tw
-      tau(i) = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
-      isFCC: if (prm%fccTwinTransNucleation) then
-        x0 = mu*prm%b_tw(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                   ! ToDo: In the paper, this is the Burgers vector for slip
+      do i = 1, prm%sum_N_tw
+        tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
+        x0 = mu*prm%b_tw(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                   ! ToDo: In the paper, the Burgers vector for slip is used
         tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(PI/3.0_pReal)/x0)
-        if (tau(i) < tau_r) then                                                                    ! ToDo: correct?
-          s=prm%fcc_twinNucleationSlipPair(1:2,i)
-          dot_N_0(i)=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
-                      abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
-                     (prm%L_tw*prm%b_sl(i))*(1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau(i))))
-        else
-          dot_N_0(i)=0.0_pReal
-        end if
-      else isFCC
-        dot_N_0(i)=prm%dot_N_0_tw(i)
-      end if isFCC
-    end do
 
-    significantStress: where(tau > tol_math_check)
-      ratio_tau_r = (dst%tau_hat_tw(:,en)/tau)**prm%r
-      dot_gamma_tw = prm%gamma_char * dst%V_tw(:,en) * dot_N_0*exp(-ratio_tau_r)
-      ddot_gamma_dtau = (dot_gamma_tw*prm%r/tau)*ratio_tau_r
-    else where significantStress
-      dot_gamma_tw = 0.0_pReal
-      ddot_gamma_dtau = 0.0_pReal
-    end where significantStress
+        if (tau > tol_math_check .and. tau < tau_r) then
+          ratio_tau_s = (dst%tau_hat_tw(i,en)/tau)**prm%r(i)
+          P = exp(-ratio_tau_s)
+          dP_dTau = prm%r(i) * ratio_tau_s/tau * P
+
+          s=prm%fcc_twinNucleationSlipPair(1:2,i)
+          dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
+                   abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/(prm%L_tw*prm%b_sl(i))
+
+          P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
+          dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
+
+          dot_gamma_tw(i) = dst%V_tw(i,en)*dot_N_0*P_ncs*P
+          if (present(ddot_gamma_dtau_tw)) &
+            ddot_gamma_dtau_tw(i) = dst%V_tw(i,en)*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
+        else
+          dot_gamma_tw(i) = 0.0_pReal
+          if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
+        end if
+      end do
+
+    else isFCC
+      do i = 1, prm%sum_N_tw
+        error stop 'not implemented'
+        tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
+        if (tau > tol_math_check) then
+          dot_gamma_tw(i) = 0.0_pReal
+          if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
+        else
+          dot_gamma_tw(i) = 0.0_pReal
+          if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
+        end if
+      end do
+    end if isFCC
 
   end associate
-
-  if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw = ddot_gamma_dtau
 
 end subroutine kinetics_tw
 
@@ -1021,15 +1030,15 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
   real(pReal), dimension(param(ph)%sum_N_tr), optional, intent(out) :: &
     ddot_gamma_dtau_tr
 
-  real, dimension(param(ph)%sum_N_tr) :: &
-    ddot_gamma_dtau
   real :: &
     ratio_tau_s, &
     tau, tau_r, &
     dot_N_0, &
     x0, &
     Gamma, &
-    mu, nu
+    mu, nu, &
+    P_ncs, dP_ncs_dtau, &
+    P, dP_dtau
   integer, dimension(2) :: &
     s
   integer :: i
@@ -1043,28 +1052,31 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
     do i = 1, prm%sum_N_tr
       tau = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, this is the Burgers vector for slip
+      x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, the Burgers vector for slip is used
       tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(PI/3.0_pReal)/x0)
-      if (tau > tol_math_check .and. tau < tau_r) then
 
+      if (tau > tol_math_check .and. tau < tau_r) then
         ratio_tau_s = (dst%tau_hat_tr(i,en)/tau)**prm%s(i)
+        P = exp(-ratio_tau_s)
+        dP_dTau = prm%s(i) * ratio_tau_s/tau * P
 
         s=prm%fcc_twinNucleationSlipPair(1:2,i)
         dot_N_0=(abs(dot_gamma_sl(s(1)))*(stt%rho_mob(s(2),en)+stt%rho_dip(s(2),en))+&
-                 abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/&
-                (prm%L_tr*prm%b_sl(i))*(1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau)))
+                 abs(dot_gamma_sl(s(2)))*(stt%rho_mob(s(1),en)+stt%rho_dip(s(1),en)))/(prm%L_tr*prm%b_sl(i))
 
-        dot_gamma_tr(i) = dst%V_tr(i,en) * dot_N_0*exp(-ratio_tau_s)
-        ddot_gamma_dtau(i) = (dot_gamma_tr(i)*prm%s(i)/tau)*ratio_tau_s
+        P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
+        dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
+
+        dot_gamma_tr(i) = dst%V_tr(i,en)*dot_N_0*P_ncs*P
+        if (present(ddot_gamma_dtau_tr)) &
+          ddot_gamma_dtau_tr(i) = dst%V_tr(i,en)*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
       else
         dot_gamma_tr(i) = 0.0_pReal
-        ddot_gamma_dtau(i) = 0.0_pReal
+        if (present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr(i) = 0.0_pReal
       end if
     end do
 
   end associate
-
-  if (present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr = ddot_gamma_dtau
 
 end subroutine kinetics_tr
 
