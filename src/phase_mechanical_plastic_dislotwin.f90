@@ -940,7 +940,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
     ddot_gamma_dtau_tw
 
   real :: &
-    ratio_tau_s, &
+    ratio_tau_r, &
     tau, tau_r, &
     dot_N_0, &
     x0, &
@@ -962,13 +962,13 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
       do i = 1, prm%sum_N_tw
         tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
-        x0 = mu*prm%b_tw(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                   ! ToDo: In the paper, the Burgers vector for slip is used
-        tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(PI/3.0_pReal)/x0)
+        x0 = mu*prm%b_tr(i)**2*(2.0_pReal+nu)/(Gamma*8.0_pReal*PI*(1.0_pReal-nu))                   ! ToDo: In the paper, the Burgers vector for slip is used
+        tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(PI/3.0_pReal)/x0)      ! ToDo: In the paper, the Burgers vector for slip is used
 
         if (tau > tol_math_check .and. tau < tau_r) then
-          ratio_tau_s = (dst%tau_hat_tw(i,en)/tau)**prm%r(i)
-          P = exp(-ratio_tau_s)
-          dP_dTau = prm%r(i) * ratio_tau_s/tau * P
+          ratio_tau_r = (dst%tau_hat_tw(i,en)/tau)**prm%r(i)
+          P = exp(-ratio_tau_r)
+          dP_dTau = prm%r(i) * ratio_tau_r/tau * P
 
           s = prm%fcc_twinNucleationSlipPair(1:2,i)
           dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
@@ -1052,8 +1052,8 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
     do i = 1, prm%sum_N_tr
       tau = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      x0 = mu*prm%b_tr(i)**2/(Gamma*8.0_pReal*PI)*(2.0_pReal+nu)/(1.0_pReal-nu)                     ! ToDo: In the paper, the Burgers vector for slip is used
-      tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(PI/3.0_pReal)/x0)
+      x0 = mu*prm%b_tr(i)**2*(2.0_pReal+nu)/(Gamma*8.0_pReal*PI*(1.0_pReal-nu))                     ! ToDo: In the paper, the Burgers vector for slip is used
+      tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(PI/3.0_pReal)/x0)        ! ToDo: In the paper, the Burgers vector for slip is used
 
       if (tau > tol_math_check .and. tau < tau_r) then
         ratio_tau_s = (dst%tau_hat_tr(i,en)/tau)**prm%s(i)
