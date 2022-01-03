@@ -820,8 +820,7 @@ class Rotation:
 
     @staticmethod
     def from_parallel(a: np.ndarray,
-                      b: np.ndarray,
-                      **kwargs) -> "Rotation":
+                      b: np.ndarray ) -> "Rotation":
         """
         Initialize from pairs of two orthogonal lattice basis vectors.
 
@@ -971,8 +970,7 @@ class Rotation:
                  N: int = 500,
                  degrees: bool = True,
                  fractions: bool = True,
-                 rng_seed: Union[None, int, Sequence[int], np.ndarray] = None,
-                 **kwargs) -> "Rotation":
+                 rng_seed: Union[None, int, Sequence[int], np.ndarray] = None) -> "Rotation":
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -1029,7 +1027,7 @@ class Rotation:
                                  sigma: float,
                                  N: int = 500,
                                  degrees: bool = True,
-                                 rng_seed: Union[None, int, Sequence[float], np.ndarray] = None) -> "Rotation":
+                                 rng_seed: Union[None, int, Sequence[int], np.ndarray] = None) -> "Rotation":
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -1060,12 +1058,12 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha: np.ndarray,
-                             beta: np.ndarray,
+    def from_fiber_component(alpha: Union[Sequence[int], np.ndarray],
+                             beta: Union[Sequence[int], np.ndarray],
                              sigma: float = 0.0,
                              N: int = 500,
                              degrees: bool = True,
-                             rng_seed: bool = None):
+                             rng_seed: Union[None, int, Sequence[int], np.ndarray] = None):
         """
         Calculate set of rotations with Gaussian distribution around direction.
 
