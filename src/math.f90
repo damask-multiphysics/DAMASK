@@ -512,7 +512,7 @@ end subroutine math_invert33
 !--------------------------------------------------------------------------------------------------
 !> @brief Inversion of symmetriced 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
-function math_invSym3333(A)
+pure function math_invSym3333(A)
 
   real(pReal),dimension(3,3,3,3)            :: math_invSym3333
 
@@ -538,7 +538,7 @@ end function math_invSym3333
 !--------------------------------------------------------------------------------------------------
 !> @brief invert quadratic matrix of arbitrary dimension
 !--------------------------------------------------------------------------------------------------
-subroutine math_invert(InvA, error, A)
+pure subroutine math_invert(InvA, error, A)
 
   real(pReal), dimension(:,:),                 intent(in)  :: A
   real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
@@ -996,7 +996,7 @@ end subroutine math_normal
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh(w,v,error,m)
+pure subroutine math_eigh(w,v,error,m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
@@ -1021,7 +1021,7 @@ end subroutine math_eigh
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh33(w,v,m)
+pure subroutine math_eigh33(w,v,m)
 
   real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
   real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
@@ -1114,7 +1114,7 @@ end function math_rotationalPart
 !> @brief Eigenvalues of symmetric matrix
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
-function math_eigvalsh(m)
+pure function math_eigvalsh(m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< symmetric matrix to compute eigenvalues of
   real(pReal), dimension(size(m,1))                         :: math_eigvalsh
@@ -1137,7 +1137,7 @@ end function math_eigvalsh
 !> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
 !> matrices as fallback
 !--------------------------------------------------------------------------------------------------
-function math_eigvalsh33(m)
+pure function math_eigvalsh33(m)
 
   real(pReal), intent(in), dimension(3,3) :: m                                                      !< 3x3 symmetric matrix to compute eigenvalues of
   real(pReal), dimension(3) :: math_eigvalsh33,I
@@ -1432,9 +1432,11 @@ subroutine selfTest
     error stop 'math_LeviCivita'
 
   normal_distribution: block
-    real(pReal), dimension(500000) :: r
+    integer, parameter :: N = 1000000
+    real(pReal), dimension(:), allocatable :: r
     real(pReal) :: mu, sigma
 
+    allocate(r(N))
     call random_number(mu)
     call random_number(sigma)
 
@@ -1443,11 +1445,11 @@ subroutine selfTest
 
     call math_normal(r,mu,sigma)
 
-    if (abs(mu -sum(r)/real(size(r),pReal))>5.0e-2_pReal) &
+    if (abs(mu -sum(r)/real(N,pReal))>5.0e-2_pReal) &
       error stop 'math_normal(mu)'
 
-    mu = sum(r)/real(size(r),pReal)
-    if (abs(sigma**2 -1.0_pReal/real(size(r)-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
+    mu = sum(r)/real(N,pReal)
+    if (abs(sigma**2 -1.0_pReal/real(N-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
       error stop 'math_normal(sigma)'
   end block normal_distribution
 
