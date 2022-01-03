@@ -951,7 +951,7 @@ class Rotation:
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         """
-        rng = np.random.default_rng(rng_seed)
+        rng: np.random.Generator = np.random.default_rng(rng_seed)
         r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
 
         A = np.sqrt(r[...,2])
