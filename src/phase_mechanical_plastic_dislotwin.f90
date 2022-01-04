@@ -954,7 +954,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
       do i = 1, prm%sum_N_tw
         tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
-        x0 = mu*prm%b_tr(i)**2*(2.0_pReal+nu)/(Gamma*8.0_pReal*PI*(1.0_pReal-nu))                   ! ToDo: In the paper, the Burgers vector for slip is used
+        x0 = mu*prm%b_tw(i)**2*(2.0_pReal+nu)/(Gamma*8.0_pReal*PI*(1.0_pReal-nu))                   ! ToDo: In the paper, the Burgers vector for slip is used
         tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(PI/3.0_pReal)/x0)      ! ToDo: In the paper, the Burgers vector for slip is used
 
         if (tau > tol_math_check .and. tau < tau_r) then
