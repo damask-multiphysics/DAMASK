@@ -101,9 +101,7 @@ submodule(phase:plastic) dislotwin
       Lambda_tr, &                                                                                  !< mean free path between 2 obstacles seen by a growing martensite
       tau_pass, &                                                                                   !< threshold stress for slip
       tau_hat_tw, &                                                                                 !< threshold stress for twinning
-      tau_hat_tr, &                                                                                 !< threshold stress for transformation
-      V_tw, &                                                                                       !< volume of a new twin
-      V_tr                                                                                          !< volume of a new martensite disc
+      tau_hat_tr                                                                                    !< threshold stress for transformation
   end type tDislotwinDependentState
 
 !--------------------------------------------------------------------------------------------------
@@ -433,11 +431,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
     allocate(dst%Lambda_tw             (prm%sum_N_tw,Nmembers),source=0.0_pReal)
     allocate(dst%tau_hat_tw            (prm%sum_N_tw,Nmembers),source=0.0_pReal)
-    allocate(dst%V_tw                  (prm%sum_N_tw,Nmembers),source=0.0_pReal)
 
     allocate(dst%Lambda_tr             (prm%sum_N_tr,Nmembers),source=0.0_pReal)
     allocate(dst%tau_hat_tr            (prm%sum_N_tr,Nmembers),source=0.0_pReal)
-    allocate(dst%V_tr                  (prm%sum_N_tr,Nmembers),source=0.0_pReal)
 
     end associate
 
@@ -773,9 +769,6 @@ module subroutine dislotwin_dependentState(T,ph,en)
                          + 3.0_pReal*prm%b_tr*mu/(prm%L_tr*prm%b_tr) &
                          + prm%h*prm%delta_G/(3.0_pReal*prm%b_tr)
 
-    dst%V_tw(:,en) = PI/4.0_pReal*dst%Lambda_tw(:,en)**2*prm%t_tw
-    dst%V_tr(:,en) = PI/4.0_pReal*dst%Lambda_tr(:,en)**2*prm%t_tr
-
   end associate
 
 end subroutine dislotwin_dependentState
@@ -942,7 +935,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
   real :: &
     tau, tau_r, &
     dot_N_0, &
-    x0, &
+    x0, V, &
     Gamma, &
     mu, nu, &
     P_ncs, dP_ncs_dtau, &
@@ -975,9 +968,10 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
           P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
           dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
 
-          dot_gamma_tw(i) = dst%V_tw(i,en)*dot_N_0*P_ncs*P
+          V = PI/4.0_pReal*dst%Lambda_tw(i,en)**2*prm%t_tw(i)
+          dot_gamma_tw(i) = V*dot_N_0*P_ncs*P
           if (present(ddot_gamma_dtau_tw)) &
-            ddot_gamma_dtau_tw(i) = dst%V_tw(i,en)*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
+            ddot_gamma_dtau_tw(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
         else
           dot_gamma_tw(i) = 0.0_pReal
           if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
@@ -1031,7 +1025,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
   real :: &
     tau, tau_r, &
     dot_N_0, &
-    x0, &
+    x0, V, &
     Gamma, &
     mu, nu, &
     P_ncs, dP_ncs_dtau, &
@@ -1062,10 +1056,11 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
         P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
-
-        dot_gamma_tr(i) = dst%V_tr(i,en)*dot_N_0*P_ncs*P
+        
+        V = PI/4.0_pReal*dst%Lambda_tr(i,en)**2*prm%t_tr(i)
+        dot_gamma_tr(i) = V*dot_N_0*P_ncs*P
         if (present(ddot_gamma_dtau_tr)) &
-          ddot_gamma_dtau_tr(i) = dst%V_tr(i,en)*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
+          ddot_gamma_dtau_tr(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
       else
         dot_gamma_tr(i) = 0.0_pReal
         if (present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr(i) = 0.0_pReal
