@@ -114,12 +114,13 @@ class Crystal():
 
     def __repr__(self):
         """Represent."""
-        return '\n'.join([f'Crystal family {self.family}']
-                       + ([] if self.lattice is None else [f'Bravais lattice {self.lattice}']+
-                                                           list(map(lambda x:f'{x[0]}: {x[1]:.5g}',
-                                                                    zip(['a','b','c','α','β','γ',],
-                                                                         self.parameters))))
-                        )
+        family = f'Crystal family: {self.family}'
+        return family if self.lattice is None else \
+               '\n'.join([family,
+                          f'Bravais lattice: {self.lattice}',
+                          'a={:.5g}m, b={:.5g}m, c={:.5g}m'.format(*self.parameters[:3]),
+                          'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
+
 
     def __eq__(self,other):
         """
