@@ -952,7 +952,7 @@ class Rotation:
 
         """
         rng: np.random.Generator = np.random.default_rng(rng_seed)
-        r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
+        r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3)) #type: ignore
 
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
