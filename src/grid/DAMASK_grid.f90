@@ -43,6 +43,15 @@ program DAMASK_grid
     logical ::                  estimate_rate                                                       !< follow trajectory of former loadcase
   end type tLoadCase
 
+!--------------------------------------------------------------------------------------------------
+! field labels information
+  enum, bind(c); enumerator :: &
+    FIELD_UNDEFINED_ID, &
+    FIELD_MECH_ID, &
+    FIELD_THERMAL_ID, &
+    FIELD_DAMAGE_ID
+  end enum
+
   integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
 
 !--------------------------------------------------------------------------------------------------

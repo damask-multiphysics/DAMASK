@@ -3,9 +3,9 @@ submodule(phase:mechanical) eigen
   integer, dimension(:), allocatable :: &
     Nmodels
 
-  integer(kind(KINEMATICS_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
+  integer(kind(EIGEN_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     model
-  integer(kind(KINEMATICS_UNDEFINED_ID)),  dimension(:), allocatable :: &
+  integer(kind(EIGEN_UNDEFINED_ID)),  dimension(:), allocatable :: &
     model_damage
 
   interface
@@ -57,15 +57,15 @@ module subroutine eigen_init(phases)
     Nmodels(ph) = kinematics%length
   end do
 
-  allocate(model(maxval(Nmodels),phases%length), source = KINEMATICS_undefined_ID)
+  allocate(model(maxval(Nmodels),phases%length), source = EIGEN_undefined_ID)
 
   if (maxval(Nmodels) /= 0) then
-    where(thermalexpansion_init(maxval(Nmodels))) model = KINEMATICS_thermal_expansion_ID
+    where(thermalexpansion_init(maxval(Nmodels))) model = EIGEN_thermal_expansion_ID
   endif
 
-  allocate(model_damage(phases%length),  source = KINEMATICS_UNDEFINED_ID)
+  allocate(model_damage(phases%length),  source = EIGEN_UNDEFINED_ID)
 
-  where(damage_anisobrittle_init())  model_damage = KINEMATICS_cleavage_opening_ID
+  where(damage_anisobrittle_init())  model_damage = EIGEN_cleavage_opening_ID
 
 
 end subroutine eigen_init
@@ -173,7 +173,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
 
   plasticType: select case (phase_plasticity(ph))
-    case (PLASTICITY_isotropic_ID) plasticType
+    case (PLASTIC_isotropic_ID) plasticType
       call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,ph,en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS
@@ -182,7 +182,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   KinematicsLoop: do k = 1, Nmodels(ph)
     kinematicsType: select case (model(k,ph))
-      case (KINEMATICS_thermal_expansion_ID) kinematicsType
+      case (EIGEN_thermal_expansion_ID) kinematicsType
         call thermalexpansion_LiAndItsTangent(my_Li, my_dLi_dS, ph,en)
         Li = Li + my_Li
         dLi_dS = dLi_dS + my_dLi_dS
@@ -191,7 +191,7 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   end do KinematicsLoop
 
   select case (model_damage(ph))
-    case (KINEMATICS_cleavage_opening_ID)
+    case (EIGEN_cleavage_opening_ID)
       call damage_anisobrittle_LiAndItsTangent(my_Li, my_dLi_dS, S, ph, en)
       Li = Li + my_Li
       dLi_dS = dLi_dS + my_dLi_dS

@@ -257,27 +257,27 @@ end function plastic_dislotungsten_init
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
 pure module subroutine dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
-                                                     Mp,T,ph,en)
+                                                     Mp,ph,en)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to the Mandel stress
-
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
-  real(pReal),                 intent(in) :: &
-    T                                                                                               !< temperature
   integer,                     intent(in) :: &
     ph, &
     en
 
   integer :: &
     i,k,l,m,n
+  real(pReal) :: &
+    T                                                                                               !< temperature
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos,dot_gamma_neg, &
     ddot_gamma_dtau_pos,ddot_gamma_dtau_neg
 
 
+  T = thermal_T(ph,en)
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
 

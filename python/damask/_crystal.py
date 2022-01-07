@@ -1,3 +1,5 @@
+from typing import Union, Dict, List, Tuple
+
 import numpy as np
 
 from . import util
@@ -177,7 +179,7 @@ class Crystal():
 
 
     @property
-    def standard_triangle(self):
+    def standard_triangle(self) -> Union[Dict[str, np.ndarray], None]:
         """
         Corners of the standard triangle.
 
@@ -238,7 +240,7 @@ class Crystal():
                                                [-1., 0., 0.],
                                                [ 0., 1., 0.] ]),
                         }}
-        return _basis.get(self.family,None)
+        return _basis.get(self.family, None)
 
 
     @property
@@ -256,7 +258,7 @@ class Crystal():
 
 
     @property
-    def basis_real(self):
+    def basis_real(self) -> np.ndarray:
         """
         Return orthogonal real space crystal basis.
 
@@ -280,7 +282,7 @@ class Crystal():
 
 
     @property
-    def basis_reciprocal(self):
+    def basis_reciprocal(self) -> np.ndarray:
         """Return reciprocal (dual) crystal basis."""
         return np.linalg.inv(self.basis_real.T)
 
@@ -312,7 +314,7 @@ class Crystal():
                         + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
                                               self.lattice[-1],None),dtype=float)
 
-    def to_lattice(self,*,direction=None,plane=None):
+    def to_lattice(self, *, direction: np.ndarray = None, plane: np.ndarray = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -336,7 +338,7 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def to_frame(self,*,uvw=None,hkl=None):
+    def to_frame(self, *, uvw: np.ndarray = None, hkl: np.ndarray = None) -> np.ndarray:
         """
         Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -359,7 +361,7 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def kinematics(self,mode):
+    def kinematics(self, mode: str) -> Dict[str, List[np.ndarray]]:
         """
         Return crystal kinematics systems.
 
@@ -486,10 +488,6 @@ class Crystal():
                            [-1,+2,-1,+0, -1,+0,+1,+0],
                            [-1,-1,+2,+0, +1,-1,+0,+0]]),
                          np.array([
-                           [-1,+1,+0,+0, +1,+1,-2,+0],
-                           [+0,-1,+1,+0, -2,+1,+1,+0],
-                           [+1,+0,-1,+0, +1,-2,+1,+0]]),
-                         np.array([
                            [-1,+2,-1,+0, +1,+0,-1,+1],
                            [-2,+1,+1,+0, +0,+1,-1,+1],
                            [-1,-1,+2,+0, -1,+1,+0,+1],
@@ -555,7 +553,7 @@ class Crystal():
                     'plane':    [m[:,3:6] for m in master]}
 
 
-    def relation_operations(self,model):
+    def relation_operations(self, model: str) -> Tuple[str, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 

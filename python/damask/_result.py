@@ -4,6 +4,7 @@ import fnmatch
 import os
 import copy
 import datetime
+import warnings
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 from pathlib import Path
@@ -27,6 +28,20 @@ h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
+def _view_transition(what,datasets,increments,times,phases,homogenizations,fields):
+    if (datasets is not None and what is None) or (what is not None and datasets is None):
+        raise ValueError('"what" and "datasets" need to be used as a pair')
+    if datasets is not None or what is not None:
+        warnings.warn('Arguments "what" and "datasets" will be removed in DAMASK v3.0.0-alpha7', DeprecationWarning,2)
+        return what,datasets
+    if sum(1 for _ in filter(None.__ne__, [increments,times,phases,homogenizations,fields])) > 1:
+        raise ValueError('Only one out of "increments", "times", "phases", "homogenizations", and "fields" can be used')
+    else:
+        if increments is not None: return "increments", increments
+        if times is not None: return "times", times
+        if phases is not None: return "phases", phases
+        if homogenizations is not None: return "homogenizations", homogenizations
+        if fields is not None: return "fields", fields
 
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -79,7 +94,7 @@ class Result:
     >>> r.add_Cauchy()
     >>> r.add_equivalent_Mises('sigma')
     >>> r.export_VTK()
-    >>> r_last = r.view('increments',-1)
+    >>> r_last = r.view(increments=-1)
     >>> sigma_vM_last = r_last.get('sigma_vM')
 
     """
@@ -141,7 +156,7 @@ class Result:
 
         self.fname = Path(fname).absolute()
 
-        self._allow_modification = False
+        self._protected = True
 
 
     def __copy__(self):
@@ -155,10 +170,10 @@ class Result:
         """Show summary of file content."""
         visible_increments = self.visible['increments']
 
-        first = self.view('increments',visible_increments[0:1]).list_data()
+        first = self.view(increments=visible_increments[0:1]).list_data()
 
         last  = '' if len(visible_increments) < 2 else \
-                self.view('increments',visible_increments[-1:]).list_data()
+                self.view(increments=visible_increments[-1:]).list_data()
 
         in_between = '' if len(visible_increments) < 3 else \
                      ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-1]])
@@ -231,36 +246,6 @@ class Result:
         return dup
 
 
-    def modification_enable(self):
-        """
-        Allow modification of existing data.
-
-        Returns
-        -------
-        modified_view : damask.Result
-            View without write-protection of existing data.
-
-        """
-        print(util.warn('Warning: Modification of existing datasets allowed!'))
-        dup = self.copy()
-        dup._allow_modification = True
-        return dup
-
-    def modification_disable(self):
-        """
-        Prevent modification of existing data (default case).
-
-        Returns
-        -------
-        modified_view : damask.Result
-            View with write-protection of existing data.
-
-        """
-        dup = self.copy()
-        dup._allow_modification = False
-        return dup
-
-
     def increments_in_range(self,start,end):
         """
         Get all increments within a given range.
@@ -284,7 +269,6 @@ class Result:
             if s <= inc <= e:
                 selected.append(self.increments[i])
         return selected
-
 
     def times_in_range(self,start,end):
         """
@@ -310,17 +294,38 @@ class Result:
         return selected
 
 
-    def view(self,what,datasets):
+    def view(self,what=None,datasets=None,*,
+                  increments=None,
+                  times=None,
+                  phases=None,
+                  homogenizations=None,
+                  fields=None,
+                  protected=None):
         """
         Set view.
+
+        Wildcard matching with '?' and '*' is supported.
+        True is equivalent to '*', False is equivalent to [].
 
         Parameters
         ----------
         what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
-            Attribute to change.
+            Attribute to change. DEPRECATED.
         datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards.
+            Name of datasets; supports '?' and '*' wildcards. DEPRECATED.
             True is equivalent to '*', False is equivalent to [].
+        increments: (list of) int, (list of) str, or bool, optional.
+            Number(s) of increments to select.
+        times: (list of) float, (list of) str, or bool, optional.
+            Simulation time(s) of increments to select.
+        phases: (list of) str, or bool, optional.
+            Name(s) of phases to select.
+        homogenizations: (list of) str, or bool, optional.
+            Name(s) of homogenizations to select.
+        fields: (list of) str, or bool, optional.
+            Name(s) of fields to select.
+        protected: bool, optional.
+            Protection status of existing data.
 
         Returns
         -------
@@ -333,29 +338,61 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_first = r.view('increment',0)
+        >>> r_first = r.view(increment=0)
 
         Get a view that shows all results between simulation times of 10 to 40:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_t10to40 = r.view('times',r.times_in_range(10.0,40.0))
+        >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
 
         """
-        return self._manage_view('set',what,datasets)
+        v = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
+        if protected is not None:
+            if v is None:
+                dup = self.copy()
+            else:
+                what_,datasets_ = v
+                dup = self._manage_view('set',what_,datasets_)
+            if not protected:
+                print(util.warn('Warning: Modification of existing datasets allowed!'))
+            dup._protected = protected
+        else:
+            what_,datasets_ = v
+            dup = self._manage_view('set',what_,datasets_)
+
+        return dup
 
 
-    def view_more(self,what,datasets):
+    def view_more(self,what=None,datasets=None,*,
+                  increments=None,
+                  times=None,
+                  phases=None,
+                  homogenizations=None,
+                  fields=None):
         """
         Add to view.
+
+        Wildcard matching with '?' and '*' is supported.
+        True is equivalent to '*', False is equivalent to [].
 
         Parameters
         ----------
         what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
-            Attribute to change.
+            Attribute to change. DEPRECATED.
         datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards.
+            Name of datasets; supports '?' and '*' wildcards. DEPRECATED.
             True is equivalent to '*', False is equivalent to [].
+        increments: (list of) int, (list of) str, or bool, optional.
+            Number(s) of increments to select.
+        times: (list of) float, (list of) str, or bool, optional.
+            Simulation time(s) of increments to select.
+        phases: (list of) str, or bool, optional.
+            Name(s) of phases to select.
+        homogenizations: (list of) str, or bool, optional.
+            Name(s) of homogenizations to select.
+        fields: (list of) str, or bool, optional.
+            Name(s) of fields to select.
 
         Returns
         -------
@@ -367,25 +404,44 @@ class Result:
         Get a view that shows only results from first and last increment:
 
         >>> import damask
-        >>> r_empty = damask.Result('my_file.hdf5').view('increments',False)
-        >>> r_first = r_empty.view_more('increments',0)
-        >>> r_first_and_last = r.first.view_more('increments',-1)
+        >>> r_empty = damask.Result('my_file.hdf5').view(increments=False)
+        >>> r_first = r_empty.view_more(increments=0)
+        >>> r_first_and_last = r.first.view_more(increments=-1)
 
         """
-        return self._manage_view('add',what,datasets)
+        what_, datasets_ = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
+        return self._manage_view('add',what_,datasets_)
 
 
-    def view_less(self,what,datasets):
+    def view_less(self,what=None,datasets=None,*,
+                  increments=None,
+                  times=None,
+                  phases=None,
+                  homogenizations=None,
+                  fields=None):
         """
         Remove from view.
+
+        Wildcard matching with '?' and '*' is supported.
+        True is equivalent to '*', False is equivalent to [].
 
         Parameters
         ----------
         what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
-            Attribute to change.
+            Attribute to change. DEPRECATED.
         datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards.
+            Name of datasets; supports '?' and '*' wildcards. DEPRECATED.
             True is equivalent to '*', False is equivalent to [].
+        increments: (list of) int, (list of) str, or bool, optional.
+            Number(s) of increments to select.
+        times: (list of) float, (list of) str, or bool, optional.
+            Simulation time(s) of increments to select.
+        phases: (list of) str, or bool, optional.
+            Name(s) of phases to select.
+        homogenizations: (list of) str, or bool, optional.
+            Name(s) of homogenizations to select.
+        fields: (list of) str, or bool, optional.
+            Name(s) of fields to select.
 
         Returns
         -------
@@ -398,10 +454,11 @@ class Result:
 
         >>> import damask
         >>> r_all = damask.Result('my_file.hdf5')
-        >>> r_deformed = r_all.view_less('increments',0)
+        >>> r_deformed = r_all.view_less(increments=0)
 
         """
-        return self._manage_view('del',what,datasets)
+        what_, datasets_ = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
+        return self._manage_view('del',what_,datasets_)
 
 
     def rename(self,name_src,name_dst):
@@ -424,11 +481,11 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_unprotected = r.modification_enable()
+        >>> r_unprotected = r.view(protected=False)
         >>> r_unprotected.rename('F','def_grad')
 
         """
-        if not self._allow_modification:
+        if self._protected:
             raise PermissionError('Renaming datasets not permitted')
 
         with h5py.File(self.fname,'a') as f:
@@ -463,11 +520,11 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_unprotected = r.modification_enable()
+        >>> r_unprotected = r.view(protected=False)
         >>> r_unprotected.remove('F')
 
         """
-        if not self._allow_modification:
+        if self._protected:
             raise PermissionError('Removing datasets not permitted')
 
         with h5py.File(self.fname,'a') as f:
@@ -1358,7 +1415,7 @@ class Result:
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
-                    if self._allow_modification and '/'.join([group,result['label']]) in f:
+                    if not self._protected and '/'.join([group,result['label']]) in f:
                         dataset = f['/'.join([group,result['label']])]
                         dataset[...] = result['data']
                         dataset.attrs['overwritten'] = True
