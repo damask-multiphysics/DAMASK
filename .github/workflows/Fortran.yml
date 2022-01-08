@@ -2,11 +2,12 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  HOMEBREW_NO_ANALYTICS: "ON"     # Make Homebrew installation a little quicker
-  HOMEBREW_NO_AUTO_UPDATE: "ON"
-  HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: "ON"
-  HOMEBREW_NO_GITHUB_API: "ON"
-  HOMEBREW_NO_INSTALL_CLEANUP: "ON"
+  PETSC_VERSION: '3.16.2'
+  HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
+  HOMEBREW_NO_AUTO_UPDATE: 'ON'
+  HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
+  HOMEBREW_NO_GITHUB_API: 'ON'
+  HOMEBREW_NO_INSTALL_CLEANUP: 'ON'
 
 jobs:
 
@@ -48,17 +49,17 @@ jobs:
         uses: actions/cache@v2
         with:
           path: download
-          key: petsc-3.16.0.tar.gz
+          key: petsc-${{ env.PETSC_VERSION }}.tar.gz
 
       - name: PETSc - Download
         if: steps.petsc-download.outputs.cache-hit != 'true'
         run: |
-          wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.16.0.tar.gz -P download
+          wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
 
       - name: PETSc - Prepare
         run: |
-          tar -xf download/petsc-3.16.0.tar.gz -C .
-          export PETSC_DIR=${PWD}/petsc-3.16.0
+          tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
+          export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=gcc${GCC_V}
           printenv >> $GITHUB_ENV
 
@@ -66,13 +67,13 @@ jobs:
         id: petsc-install
         uses: actions/cache@v2
         with:
-          path: petsc-3.16.0
-          key: petsc-3.16.0-${{ matrix.os }}-gcc${{ matrix.gcc_v }}-${{ hashFiles('**/petscversion.h') }}
+          path: petsc-${{ env.PETSC_VERSION }}
+          key: petsc-${{ env.PETSC_VERSION }}-${{ matrix.os }}-gcc${{ matrix.gcc_v }}-${{ hashFiles('**/petscversion.h') }}
 
       - name: PETSc - Install (Linux)
         if: contains( matrix.os, 'ubuntu')
         run: |
-          cd petsc-3.16.0
+          cd petsc-${PETSC_VERSION}
           ./configure --with-fc=gfortran --with-cc=gcc --with-cxx=g++ \
           --download-mpich --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib \
           --with-mpi-f90module-visibility=0
@@ -81,7 +82,7 @@ jobs:
       - name: PETSc - Install (macOS)
         if: contains( matrix.os, 'macos')
         run: |
-          cd petsc-3.16.0
+          cd petsc-${PETSC_VERSION}
           ./configure --with-fc=gfortran-${GCC_V} --with-cc=gcc-${GCC_V} --with-cxx=g++-${GCC_V} \
           --download-openmpi --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
@@ -132,17 +133,17 @@ jobs:
         uses: actions/cache@v2
         with:
           path: download
-          key: petsc-3.16.0.tar.gz
+          key: petsc-${{ env.PETSC_VERSION }}.tar.gz
 
       - name: PETSc - Download
         if: steps.petsc-download.outputs.cache-hit != 'true'
         run: |
-          wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.16.0.tar.gz -P download
+          wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-${PETSC_VERSION}.tar.gz -P download
 
       - name: PETSc - Prepare
         run: |
-          tar -xf download/petsc-3.16.0.tar.gz -C .
-          export PETSC_DIR=${PWD}/petsc-3.16.0
+          tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
+          export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=intel-${INTEL_V}
           printenv >> $GITHUB_ENV
 
@@ -150,13 +151,13 @@ jobs:
         id: petsc-install
         uses: actions/cache@v2
         with:
-          path: petsc-3.16.0
-          key: petsc-3.16.0-intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}
+          path: petsc-${{ env.PETSC_VERSION }}
+          key: petsc-${{ env.PETSC_VERSION }}-intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}
 
       - name: PETSc - Install (classic)
         if: contains( matrix.intel_v, 'classic')
         run: |
-          cd petsc-3.16.0
+          cd petsc-${PETSC_VERSION}
           ./configure --with-fc=mpiifort --with-cc=mpiicc --with-cxx=mpiicpc \
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
@@ -164,7 +165,7 @@ jobs:
       - name: PETSc - Install (LLVM)
         if: contains( matrix.intel_v, 'llvm')
         run: |
-          cd petsc-3.16.0
+          cd petsc-${PETSC_VERSION}
           ./configure --with-fc=mpiifort --with-cc="mpiicc -cc=icx" --with-cxx="mpiicpc -cxx=icpx" \
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all

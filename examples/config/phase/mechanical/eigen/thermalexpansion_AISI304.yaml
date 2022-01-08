@@ -1,0 +1,7 @@
+type: thermalexpansion
+references:
+  - R.H. Bogaard et al.
+    Thermochimica Acta 218:373-393, 1993
+    https://doi.org/10.1016/0040-6031(93)80437-F
+A_11: 15.0e-6
+T_ref: 300.0
