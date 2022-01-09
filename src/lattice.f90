@@ -587,8 +587,8 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Non-schmid projections for bcc with up to 6 coefficients
-! Koester et al. 2012, Acta Materialia 60 (2012) 3894–3901, eq. (17)
-! Gröger et al. 2008, Acta Materialia 56 (2008) 5412–5425, table 1
+! https://doi.org/10.1016/j.actamat.2012.03.053, eq. (17)
+! https://doi.org/10.1016/j.actamat.2008.07.037, table 1
 !--------------------------------------------------------------------------------------------------
 function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
 
@@ -601,6 +601,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   real(pReal), dimension(3)                            :: direction, normal, np
   type(rotation)                                       :: R
   integer                                              :: i
+
 
   if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
@@ -634,7 +635,9 @@ end function lattice_nonSchmidMatrix
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Slip-slip interaction matrix
-!> details only active slip systems are considered
+!> @details only active slip systems are considered
+!> @details https://doi.org/10.1016/j.actamat.2016.12.040 (fcc: Tab S4-1, bcc: Tab S5-1)
+!> @details https://doi.org/10.1016/j.ijplas.2014.06.010 (hex: Tab 3b)
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(interactionMatrix)
 
@@ -645,6 +648,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
 
   integer, dimension(:),   allocatable :: NslipMax
   integer, dimension(:,:), allocatable :: interactionTypes
+
 
   integer, dimension(FCC_NSLIP,FCC_NSLIP), parameter :: &
     FCC_INTERACTIONSLIPSLIP = reshape( [&
