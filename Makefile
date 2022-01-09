@@ -10,14 +10,12 @@ all: grid mesh
 .PHONY: grid
 grid:
 	@cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP}
-	@cmake --build build/grid --parallel
-	@cmake --install build/grid
+	@cmake --build build/grid --parallel --target install
 
 .PHONY: mesh
 mesh:
 	@cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILDCMD_POST=${BUILDCMD_POST} -DBUILDCMD_PRE=${BUILDCMD_PRE} -DOPTIMIZATION=${OPTIMIZATION} -DOPENMP=${OPENMP}
-	@cmake --build build/mesh --parallel
-	@cmake --install build/mesh
+	@cmake --build build/mesh --parallel --target install
 
 .PHONY: clean
 clean:
