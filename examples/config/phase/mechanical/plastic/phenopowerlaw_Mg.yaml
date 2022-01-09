@@ -6,7 +6,7 @@ references:
 
 output: [xi_sl, xi_tw]
 
-N_sl: [3, 3, 6, 0, 6]  # basal, prism, -, 1. pyr<a>, -, 2. pyr<c+a>
+N_sl: [3, 3, 6, 0, 6]  # basal, prism, 1. pyr<a>, -, 2. pyr<c+a>
 N_tw: [6, 0, 6]        # tension, -, compression
 
 xi_0_sl:   [10.e+6,  55.e+6,  60.e+6, 0.,  60.e+6]
