@@ -17,6 +17,9 @@ module grid_thermal_spectral
   use parallelization
   use IO
   use spectral_utilities
+  use DAMASK_interface
+  use HDF5
+  use HDF5_utilities
   use discretization_grid
   use homogenization
   use YAML_types
@@ -55,6 +58,7 @@ module grid_thermal_spectral
   public :: &
     grid_thermal_spectral_init, &
     grid_thermal_spectral_solution, &
+    grid_thermal_spectral_restartWrite, &
     grid_thermal_spectral_forward
 
 contains
@@ -70,7 +74,9 @@ subroutine grid_thermal_spectral_init(T_0)
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: thermal_grid
+  real(pReal), dimension(:), allocatable :: T_restart, T_lastInc_restart
   PetscScalar, dimension(:,:,:), pointer :: T_PETSc
+  integer(HID_T) :: fileHandle, groupHandle
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
     num_grid
@@ -130,17 +136,26 @@ subroutine grid_thermal_spectral_init(T_0)
   xend = xstart + xend - 1
   yend = ystart + yend - 1
   zend = zstart + zend - 1
-  allocate(T_current(grid(1),grid(2),grid3), source=0.0_pReal)
-  allocate(T_lastInc(grid(1),grid(2),grid3), source=0.0_pReal)
-  allocate(T_stagInc(grid(1),grid(2),grid3), source=0.0_pReal)
+  allocate(T_current(grid(1),grid(2),grid3), source=T_0)
+  allocate(T_lastInc(grid(1),grid(2),grid3), source=T_0)
+  allocate(T_stagInc(grid(1),grid(2),grid3), source=T_0)
+
+  restartRead: if (interface_restartInc > 0) then
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
+
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
+
+    call HDF5_read(T_restart,groupHandle,'T',.false.)
+    T_current = reshape(T_restart,[grid(1),grid(2),grid3])
+    call HDF5_read(T_lastInc_restart,groupHandle,'T_lastInc',.false.)
+    T_lastInc = reshape(T_lastInc_restart,[grid(1),grid(2),grid3])
+  end if restartRead 
 
   ce = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     ce = ce + 1
-    T_current(i,j,k) = T_0
-    T_lastInc(i,j,k) = T_current(i,j,k)
-    T_stagInc(i,j,k) = T_current(i,j,k)
-    call homogenization_thermal_setField(T_0,0.0_pReal,ce)
+    call homogenization_thermal_setField(T_current(i,j,k),0.0_pReal,ce)
   end do; end do; end do
 
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,ierr); CHKERRQ(ierr)
@@ -240,6 +255,34 @@ subroutine grid_thermal_spectral_forward(cutBack)
   end if
 
 end subroutine grid_thermal_spectral_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_thermal_spectral_restartWrite
+
+  PetscErrorCode :: ierr
+  DM :: dm_local
+  integer(HID_T) :: fileHandle, groupHandle
+  PetscScalar, dimension(:,:,:), pointer :: T
+
+  call SNESGetDM(thermal_snes,dm_local,ierr); CHKERRQ(ierr)
+  call DMDAVecGetArrayF90(dm_local,solution_vec,T,ierr); CHKERRQ(ierr)
+
+  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
+
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
+  groupHandle = HDF5_addGroup(fileHandle,'solver')
+  call HDF5_write(T,groupHandle,'T')
+  call HDF5_write(T_lastInc,groupHandle,'T_lastInc')
+  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeFile(fileHandle)
+
+  call DMDAVecRestoreArrayF90(dm_local,solution_vec,T,ierr); CHKERRQ(ierr)
+
+end subroutine grid_thermal_spectral_restartWrite
+
 
 
 !--------------------------------------------------------------------------------------------------
