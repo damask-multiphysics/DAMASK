@@ -372,7 +372,7 @@ end function rotTensor4
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Rotate a rank-4 tensor in Voigt 6x6 notation passively (default) or actively.
+!> @brief Rotate a rank-4 stiffness tensor in Voigt 6x6 notation passively (default) or actively.
 !> @details: https://scicomp.stackexchange.com/questions/35600
 !! ToDo: Need to check active/passive !!!
 !---------------------------------------------------------------------------------------------------
@@ -393,11 +393,11 @@ pure function rotStiffness(self,C,active) result(cRot)
     R = self%asMatrix()
   endif
 
-  M = reshape([R(1,1)**2.0_pReal,           R(2,1)**2.0_pReal,           R(3,1)**2.0_pReal, &
+  M = reshape([R(1,1)**2,                   R(2,1)**2,                   R(3,1)**2, &
                R(2,1)*R(3,1),               R(1,1)*R(3,1),               R(1,1)*R(2,1), &
-               R(1,2)**2.0_pReal,           R(2,2)**2.0_pReal,           R(3,2)**2.0_pReal, &
+               R(1,2)**2,                   R(2,2)**2,                   R(3,2)**2, &
                R(2,2)*R(3,2),               R(1,2)*R(3,2),               R(1,2)*R(2,2), &
-               R(1,3)**2.0_pReal,           R(2,3)**2.0_pReal,           R(3,3)**2.0_pReal, &
+               R(1,3)**2,                   R(2,3)**2,                   R(3,3)**2, &
                R(2,3)*R(3,3),               R(1,3)*R(3,3),               R(1,3)*R(2,3), &
                2.0_pReal*R(1,2)*R(1,3),     2.0_pReal*R(2,2)*R(2,3),     2.0_pReal*R(3,2)*R(3,3), &
                R(2,2)*R(3,3)+R(2,3)*R(3,2), R(1,2)*R(3,3)+R(1,3)*R(3,2), R(1,2)*R(2,3)+R(1,3)*R(2,2), &
