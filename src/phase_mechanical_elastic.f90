@@ -30,7 +30,7 @@ module subroutine elastic_init(phases)
     phase, &
     mech, &
     elastic
-  logical :: thermal_active
+
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic:Hooke init  -+>>>'

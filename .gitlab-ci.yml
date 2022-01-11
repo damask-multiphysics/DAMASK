@@ -45,7 +45,7 @@ variables:
   MPI_INTEL:      "MPI/Intel/2022.0.1/IntelMPI/2021.5.0"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   PETSC_GNU:       "Libraries/PETSc/3.16.1/GNU-10-OpenMPI-4.1.1"
-  PETSC_INTELLLVM: "Libraries/PETSc/3.16.2/oneAPI-2022.0.1-IntelMPI-2021.5.0"
+  PETSC_INTELLLVM: "Libraries/PETSc/3.16.3/oneAPI-2022.0.1-IntelMPI-2021.5.0"
   PETSC_INTEL:    "Libraries/PETSc/3.16.2/Intel-2022.0.1-IntelMPI-2021.5.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC:            "FEM/MSC/2021.3.1"
