@@ -79,3 +79,23 @@ class TestCrystal:
                     a=a,b=b,c=c,
                     alpha=alpha,beta=beta,gamma=gamma)
         assert np.allclose(points,c.lattice_points)
+
+    @pytest.mark.parametrize('crystal,length',
+                            [(Crystal(lattice='cF'),[12,6]),
+                             (Crystal(lattice='cI'),[12,12,24]),
+                             (Crystal(lattice='hP'),[3,3,6,12,6]),
+                             (Crystal(lattice='tI',c=1.2),[2,2,2,4,2,4,2,2,4,8,4,8,8])
+                            ])
+    def test_N_slip(self,crystal,length):
+        assert [len(s) for s in crystal.kinematics('slip')['direction']] == length
+        assert [len(s) for s in crystal.kinematics('slip')['plane']] == length
+
+    @pytest.mark.parametrize('crystal,length',
+                            [(Crystal(lattice='cF'),[12]),
+                             (Crystal(lattice='cI'),[12]),
+                             (Crystal(lattice='hP'),[6,6,6,6]),
+                            ])
+    def test_N_twin(self,crystal,length):
+        assert [len(s) for s in crystal.kinematics('twin')['direction']] == length
+        assert [len(s) for s in crystal.kinematics('twin')['plane']] == length
+
