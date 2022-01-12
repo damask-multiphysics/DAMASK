@@ -1817,7 +1817,7 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to export to the file.
             Defaults to '*', in which case all datasets are exported.
-        overwrite : boolean, optional
+        overwrite : bool, optional
             Overwrite existing configuration files.
             Defaults to False.
 

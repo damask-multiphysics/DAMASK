@@ -39,7 +39,7 @@ class Grid:
 
         Parameters
         ----------
-        material : numpy.ndarray of shape (:,:,:)
+        material : numpy.ndarray, shape (:,:,:)
             Material indices. The shape of the material array defines
             the number of cells.
         size : sequence of float, len (3)
@@ -406,14 +406,14 @@ class Grid:
             Number of cells in x,y,z direction.
         size : sequence of float, len (3)
             Physical size of the grid in meter.
-        seeds : numpy.ndarray of shape (:,3)
+        seeds : numpy.ndarray, shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         weights : sequence of float, len (seeds.shape[0])
             Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
         Returns
@@ -462,12 +462,12 @@ class Grid:
             Number of cells in x,y,z direction.
         size : sequence of float, len (3)
             Physical size of the grid in meter.
-        seeds : numpy.ndarray of shape (:,3)
+        seeds : numpy.ndarray, shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
         Returns
@@ -706,10 +706,10 @@ class Grid:
             Fill value for primitive. Defaults to material.max()+1.
         R : damask.Rotation, optional
             Rotation of primitive. Defaults to no rotation.
-        inverse : Boolean, optional
+        inverse : bool, optional
             Retain original materials within primitive and fill outside.
             Defaults to False.
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
         Returns
@@ -858,7 +858,7 @@ class Grid:
         ----------
         cells : sequence of int, len (3)
             Number of cells in x,y,z direction.
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
         Returns
@@ -907,7 +907,7 @@ class Grid:
             Size of smoothing stencil.
         selection : sequence of int, optional
             Field values that can be altered. Defaults to all.
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
         Returns
@@ -1125,7 +1125,7 @@ class Grid:
         trigger : sequence of int, optional
             List of material indices that trigger a change.
             Defaults to [], meaning that any different neighbor triggers a change.
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
         Returns
@@ -1159,7 +1159,7 @@ class Grid:
 
         Parameters
         ----------
-        periodic : Boolean, optional
+        periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
         directions : (sequence of) string, optional
             Direction(s) along which the boundaries are determined.
