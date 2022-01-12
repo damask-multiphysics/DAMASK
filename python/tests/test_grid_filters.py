@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 
 from damask import grid_filters
+from damask import Grid
+from damask import seeds
 
 class TestGridFilters:
 
@@ -139,12 +141,19 @@ class TestGridFilters:
         else:
             function(unordered,mode)
 
-    def test_regrid(self):
+    def test_regrid_identity(self):
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
-         F    = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))
+         F = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))
          assert all(grid_filters.regrid(size,F,cells) == np.arange(cells.prod()))
 
+    def test_regrid_double_cells(self):
+         size = np.random.random(3)
+         cells = np.random.randint(8,32,(3))
+         g = Grid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10))
+         F = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))
+         assert all(g.scale(cells*2).material.flatten() ==
+                    g.material.flatten()[grid_filters.regrid(size,F,cells*2)])
 
     @pytest.mark.parametrize('differential_operator',[grid_filters.curl,
                                                       grid_filters.divergence,

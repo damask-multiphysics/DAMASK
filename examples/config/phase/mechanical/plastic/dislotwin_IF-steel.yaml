@@ -4,7 +4,8 @@ references:
     International Journal of Plasticity 134:102779, 2020,
     https://doi.org/10.1016/j.ijplas.2020.102779
   - K. Sedighiani et al.,
-    Mechanics of Materials, submitted
+    Mechanics of Materials, 164:104117, 2022,
+    https://doi.org/10.1016/j.mechmat.2021.104117
 output: [rho_dip, rho_mob]
 N_sl: [12, 12]
 b_sl: [2.49e-10, 2.49e-10]

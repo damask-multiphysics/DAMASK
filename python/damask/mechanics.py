@@ -5,7 +5,7 @@ All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 
-from typing import Sequence
+from typing import Sequence as _Sequence
 
 import numpy as _np
 
@@ -243,7 +243,7 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
     return _polar_decomposition(T,'U')[0]
 
 
-def _polar_decomposition(T: _np.ndarray, requested: Sequence[str]) -> tuple:
+def _polar_decomposition(T: _np.ndarray, requested: _Sequence[str]) -> tuple:
     """
     Perform singular value decomposition.
 

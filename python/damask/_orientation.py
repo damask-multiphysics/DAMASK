@@ -514,6 +514,17 @@ class Orientation(Rotation,Crystal):
          [ 0.07359167 -0.36505797  0.92807163]]
         Bunge Eulers / deg: (11.40, 21.86, 0.60)
 
+        Plot a sample from the Mackenzie distribution.
+
+        >>> import matplotlib.pyplot as plt
+        >>> import damask
+        >>> N = 10000
+        >>> a = damask.Orientation.from_random(shape=N,family='cubic')
+        >>> b = damask.Orientation.from_random(shape=N,family='cubic')
+        >>> d = a.disorientation(b).as_axis_angle(degrees=True,pair=True)[1]
+        >>> plt.hist(d,25)
+        >>> plt.show()
+
         """
         if self.family != other.family:
             raise NotImplementedError('disorientation between different crystal families')
