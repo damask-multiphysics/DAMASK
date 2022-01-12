@@ -507,6 +507,7 @@ subroutine results_mapping_phase(ID,entry,label)
     totalShape                                                                                      !< shape of the dataset (all processes)
 
   integer(HID_T) :: &
+    pI64_t, & ! NOT YET 64 bit!
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
     label_id, &                                                                                     !< identifier of label (string) in compound data type
@@ -567,14 +568,15 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5tget_size_f(dt_id, type_size_string, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, hdferr)
+  pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
+  call h5tget_size_f(pI64_t, type_size_int, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
@@ -586,7 +588,7 @@ subroutine results_mapping_phase(ID,entry,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -660,6 +662,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
     totalShape                                                                                      !< shape of the dataset (all processes)
 
   integer(HID_T) :: &
+    pI64_t, & ! NOT YET 64 bit!
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
     label_id, &                                                                                     !< identifier of label (string) in compound data type
@@ -716,14 +719,15 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5tget_size_f(dt_id, type_size_string, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, hdferr)
+  pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
+  call h5tget_size_f(pI64_t, type_size_int, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
@@ -735,7 +739,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
