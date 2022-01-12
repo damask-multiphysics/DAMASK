@@ -419,7 +419,7 @@ class VTK:
         return writer.GetOutputString()
 
 
-    def show(self):
+    def show(self) -> None:
         """
         Render.
 
