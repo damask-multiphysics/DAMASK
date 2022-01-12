@@ -74,7 +74,6 @@ subroutine grid_thermal_spectral_init(T_0)
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: thermal_grid
-  real(pReal), dimension(:), allocatable :: T_restart, T_lastInc_restart
   PetscScalar, dimension(:,:,:), pointer :: T_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   PetscErrorCode :: ierr
@@ -146,10 +145,8 @@ subroutine grid_thermal_spectral_init(T_0)
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(T_restart,groupHandle,'T',.false.)
-    T_current = reshape(T_restart,[grid(1),grid(2),grid3])
-    call HDF5_read(T_lastInc_restart,groupHandle,'T_lastInc',.false.)
-    T_lastInc = reshape(T_lastInc_restart,[grid(1),grid(2),grid3])
+    call HDF5_read(T_current,groupHandle,'T',.false.)
+    call HDF5_read(T_lastInc,groupHandle,'T_lastInc',.false.)
   end if restartRead 
 
   ce = 0
@@ -270,10 +267,10 @@ subroutine grid_thermal_spectral_restartWrite
   call SNESGetDM(thermal_snes,dm_local,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(dm_local,solution_vec,T,ierr); CHKERRQ(ierr)
 
-  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'writing thermal solver data required for restart to file'; flush(IO_STDOUT)
 
-  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
-  groupHandle = HDF5_addGroup(fileHandle,'solver')
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  groupHandle = HDF5_openGroup(fileHandle,'solver')
   call HDF5_write(T,groupHandle,'T')
   call HDF5_write(T_lastInc,groupHandle,'T_lastInc')
   call HDF5_closeGroup(groupHandle)
