@@ -1877,7 +1877,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
-    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
+    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)   ! get total output size over each process
     if (ierr /= 0) error stop 'MPI error'
   end if
 #endif
@@ -1977,7 +1977,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   writeSize(worldrank+1) = int(myShape(ubound(myShape,1)))
 #ifdef PETSC
   if (parallel) then
-    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)      ! get total output size over each process
+    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)  ! get total output size over each process
     if (ierr /= 0) error stop 'MPI error'
   end if
 #endif

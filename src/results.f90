@@ -499,8 +499,8 @@ subroutine results_mapping_phase(ID,entry,label)
 
   integer(pI64), dimension(size(entry,1),size(entry,2)) :: &
     entryGlobal
-  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                       !< offset in entry counting per process
-  integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
+  integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                 !< offset in entry counting per process
+  integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
@@ -536,21 +536,21 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)      ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
-  entryOffset = 0
+  entryOffset = 0_pI64
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
-      entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
+      entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1_pI64
     end do
   end do
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
-      entryGlobal(co,ce) = int(entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank),pI64)
+      entryGlobal(co,ce) = int(entry(co,ce),pI64) -1_pI64 + entryOffset(ID(co,ce),worldrank)
     end do
   end do
 #endif
@@ -654,8 +654,8 @@ subroutine results_mapping_homogenization(ID,entry,label)
 
   integer(pI64), dimension(size(entry,1)) :: &
     entryGlobal
-  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
-  integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
+  integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                !< offset in entry counting per process
+  integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
   integer(HSIZE_T), dimension(1) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
@@ -691,18 +691,18 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)      ! get output at each process
   if(ierr /= 0) error stop 'MPI error'
 
-  entryOffset = 0
+  entryOffset = 0_pI64
   do ce = 1, size(ID,1)
-    entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
+    entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1_pI64
   end do
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
-    entryGlobal(ce) = int(entry(ce) -1 + entryOffset(ID(ce),worldrank),pI64)
+    entryGlobal(ce) = int(entry(ce),pI64) -1_pI64 + entryOffset(ID(ce),worldrank)
   end do
 #endif
 

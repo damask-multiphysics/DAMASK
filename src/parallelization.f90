@@ -88,7 +88,8 @@ subroutine parallelization_init
 
   call MPI_Type_size(MPI_INTEGER8,typeSize,err)
   if (err /= 0)                              error stop 'Could not determine MPI integer size'
-  if (typeSize*8 /= bit_size(0_pI64))        error stop 'Mismatch between MPI and DAMASK integer (long long)'
+  if (int(typeSize,pI64)*8_pI64 /= bit_size(0_pI64)) &
+                                             error stop 'Mismatch between MPI and DAMASK integer (long long)'
 
   call MPI_Type_size(MPI_DOUBLE,typeSize,err)
   if (err /= 0)                              error stop 'Could not determine MPI real size'
