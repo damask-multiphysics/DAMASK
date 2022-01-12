@@ -497,9 +497,9 @@ subroutine results_mapping_phase(ID,entry,label)
   integer,          dimension(:,:), intent(in) :: entry                                             !< phase entry at (co,ce)
   character(len=*), dimension(:),   intent(in) :: label                                             !< label of each phase section
 
-  integer, dimension(size(entry,1),size(entry,2)) :: &
+  integer(pI64), dimension(size(entry,1),size(entry,2)) :: &
     entryGlobal
-  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
+  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                       !< offset in entry counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
@@ -507,7 +507,7 @@ subroutine results_mapping_phase(ID,entry,label)
     totalShape                                                                                      !< shape of the dataset (all processes)
 
   integer(HID_T) :: &
-    pI64_t, & ! NOT YET 64 bit!
+    pI64_t, &                                                                                       !< HDF5 type for pI64 (8 bit integer)
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
     label_id, &                                                                                     !< identifier of label (string) in compound data type
@@ -529,7 +529,7 @@ subroutine results_mapping_phase(ID,entry,label)
   if(hdferr < 0) error stop 'HDF5 error'
 
 #ifndef PETSC
-  entryGlobal = entry -1                                                                            ! 0-based
+  entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
@@ -550,7 +550,7 @@ subroutine results_mapping_phase(ID,entry,label)
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
-      entryGlobal(co,ce) = entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank)
+      entryGlobal(co,ce) = int(entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank),pI64)
     end do
   end do
 #endif
@@ -652,7 +652,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   integer,          dimension(:), intent(in) :: entry                                               !< homogenization entry at (ce)
   character(len=*), dimension(:), intent(in) :: label                                               !< label of each homogenization section
 
-  integer, dimension(size(entry,1)) :: &
+  integer(pI64), dimension(size(entry,1)) :: &
     entryGlobal
   integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
@@ -662,7 +662,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
     totalShape                                                                                      !< shape of the dataset (all processes)
 
   integer(HID_T) :: &
-    pI64_t, & ! NOT YET 64 bit!
+    pI64_t, &                                                                                       !< HDF5 type for pI64 (8 bit integer)
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
     label_id, &                                                                                     !< identifier of label (string) in compound data type
@@ -684,7 +684,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   if(hdferr < 0) error stop 'HDF5 error'
 
 #ifndef PETSC
-  entryGlobal = entry -1                                                                            ! 0-based
+  entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
@@ -702,7 +702,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   if(ierr /= 0) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
-    entryGlobal(ce) = entry(ce) -1 + entryOffset(ID(ce),worldrank)
+    entryGlobal(ce) = int(entry(ce) -1 + entryOffset(ID(ce),worldrank),pI64)
   end do
 #endif
 
