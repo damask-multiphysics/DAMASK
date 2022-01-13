@@ -1,12 +1,14 @@
 import re
 import copy
-from typing import Union, Optional, Tuple, List, TextIO, Set
 import pathlib
+from typing import Union, Optional, Tuple, List, TextIO, Set
+from _io import TextIOWrapper
 
 import pandas as pd
 import numpy as np
 
 from . import util
+
 
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
@@ -239,7 +241,7 @@ class Table:
             Table data from file.
 
         """
-        if isinstance(fname, TextIO):
+        if isinstance(fname, TextIOWrapper):
             f = fname
             f.seek(0)
         elif isinstance(fname, (str, pathlib.Path)):
@@ -298,7 +300,7 @@ class Table:
             Table data from file.
 
         """
-        if isinstance(fname, TextIO):
+        if isinstance(fname, TextIOWrapper):
             f = fname
             f.seek(0)
         elif isinstance(fname, (str, pathlib.Path)):
@@ -569,7 +571,7 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        if isinstance(fname, TextIO):
+        if isinstance(fname, TextIOWrapper):
             fhandle = fname
         elif isinstance(fname, (str, pathlib.Path)):
             fhandle = open(fname,'w',newline='\n')
