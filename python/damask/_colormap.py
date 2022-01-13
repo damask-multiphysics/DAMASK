@@ -205,7 +205,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Returns
         -------
-        color : np.ndarray, shape(...,4)
+        color : numpy.ndarray, shape(...,4)
             RGBA values of interpolated color(s).
 
         Examples

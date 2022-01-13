@@ -28,8 +28,8 @@ class VTK:
         ----------
         vtk_data : subclass of vtk.vtkDataSet
             Description of geometry and topology, optionally with attached data.
-            Valid types are vtk.vtkRectilinearGrid, vtk.vtkUnstructuredGrid,
-            or vtk.vtkPolyData.
+            Valid types are vtk.vtkImageData, vtk.vtkUnstructuredGrid,
+            vtk.vtkPolyData, and vtk.vtkRectilinearGrid.
 
         """
         self.vtk_data = vtk_data
@@ -242,7 +242,7 @@ class VTK:
         ----------
         fname : str or pathlib.Path
             Filename for writing.
-        parallel : boolean, optional
+        parallel : bool, optional
             Write data in parallel background process. Defaults to True.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
@@ -419,7 +419,7 @@ class VTK:
         return writer.GetOutputString()
 
 
-    def show(self):
+    def show(self) -> None:
         """
         Render.
 

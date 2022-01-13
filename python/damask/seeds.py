@@ -61,7 +61,7 @@ def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, dis
         Number of candidates to consider for finding best candidate.
     distance : float
         Minimum acceptable distance to other seeds.
-    periodic : boolean, optional
+    periodic : bool, optional
         Calculate minimum distance for periodically repeated grid.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
@@ -99,8 +99,8 @@ def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, dis
     return coords
 
 
-def from_grid(grid, selection: _IntSequence = None,
-              invert: bool = False, average: bool = False, periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
+def from_grid(grid, selection: _IntSequence = None, invert_selection: bool = False,
+              average: bool = False, periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
     """
     Create seeds from grid description.
 
@@ -110,11 +110,11 @@ def from_grid(grid, selection: _IntSequence = None,
         Grid from which the material IDs are used as seeds.
     selection : sequence of int, optional
         Material IDs to consider.
-    invert : boolean, false
+    invert_selection : bool, optional
         Consider all material IDs except those in selection. Defaults to False.
-    average : boolean, optional
+    average : bool, optional
         Seed corresponds to center of gravity of material ID cloud.
-    periodic : boolean, optional
+    periodic : bool, optional
         Center of gravity accounts for periodic boundaries.
 
     Returns
@@ -125,7 +125,7 @@ def from_grid(grid, selection: _IntSequence = None,
     """
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
-           _np.isin(material,selection,invert=invert).flatten()
+           _np.isin(material,selection,invert=invert_selection).flatten()
     coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:
