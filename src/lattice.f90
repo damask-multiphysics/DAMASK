@@ -791,33 +791,76 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
       ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme)
                                                                                                     !< 10.1016/j.ijplas.2014.06.010 table 3
                                                                                                     !< 10.1080/14786435.2012.699689 table 2 and 3
-                                                                                                    !<  1: S1 basal self-interaction
-                                                                                                    !<  2:  1 coplanar basal/basal
-                                                                                                    !<  3:  3 collinear basal/prismatic
-                                                                                                    !<  4:  4 non-collinear basal/prismatic
-                                                                                                    !<  5: S2 prismatic self-interaction
-                                                                                                    !<  6:  2 prismatic/prismatic
-                                                                                                    !<  7:  5 collinear prismatic/basal
-                                                                                                    !<  8:  6 non-collinear prismatic/basal
-                                                                                                    !<  9:    non-collinear basal/pyr a
-                                                                                                    !< 10:    collinear basal/pyr a
-                                                                                                    !< 11:    non-collinear prismatic/pyr a
-                                                                                                    !< 12:    collinear prismatic/pyr a
-                                                                                                    !< 16:    non-collinear pyr a/prismatic
-                                                                                                    !< 17:    collinear pyr a/prismatic
-                                                                                                    !< 18:    non-collinear pyr a/basal
-                                                                                                    !< 19:    collinear pyr a/basal
-                                                                                                    !< 47:  8 non-collinear basal/pyramidal
-                                                                                                    !< 48:  7 collinear basal/pyramidal
-                                                                                                    !< 49: 10 non-collinear prismatic/pyramidal
-                                                                                                    !< 50:  9 collinear prismatic/pyramidal
-                                                                                                    !< 57: S3 pyramidal c+a self-interaction
-                                                                                                    !< 58: 16 non-collinear pyramidal/pyramidal
-                                                                                                    !< 59: 15 collinear pyramidal/pyramidal
-                                                                                                    !< 66: 14 non-collienar pyramidal/prismatic
-                                                                                                    !< 67: 13 semi-collienar pyramidal/prismatic
-                                                                                                    !< 68: 12 non-collinear pyramidal/basal
-                                                                                                    !< 69: 11 semi-collinear pyramidal/basal
+                                                                                                    !< index & label & description
+                                                                                                    !<  1 & S1 & basal self-interaction
+                                                                                                    !<  2 &  1 & basal/basal coplanar
+                                                                                                    !<  3 &  3 & basal/prismatic collinear
+                                                                                                    !<  4 &  4 & basal/prismatic non-collinear
+                                                                                                    !<  5 & S2 & prismatic self-interaction
+                                                                                                    !<  6 &  2 & prismatic/prismatic
+                                                                                                    !<  7 &  5 & prismatic/basal collinear
+                                                                                                    !<  8 &  6 & prismatic/basal non-collinear
+                                                                                                    !<  9 &  - & basal/pyramidal <a> non-collinear
+                                                                                                    !< 10 &  - & basal/pyramidal <a> collinear
+                                                                                                    !< 11 &  - & prismatic/pyramidal <a> non-collinear
+                                                                                                    !< 12 &  - & prismatic/pyramidal <a> collinear
+                                                                                                    !< 13 &  - & pyramidal <a> self-interaction
+                                                                                                    !< 14 &  - & pyramidal <a> non-collinear
+                                                                                                    !< 15 &  - & pyramidal <a> collinear
+                                                                                                    !< 16 &  - & pyramidal <a>/prismatic non-collinear
+                                                                                                    !< 17 &  - & pyramidal <a>/prismatic collinear
+                                                                                                    !< 18 &  - & pyramidal <a>/basal non-collinear
+                                                                                                    !< 19 &  - & pyramidal <a>/basal collinear
+                                                                                                    !< 20 &  - & basal/1. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 21 &  - & basal/1. order pyramidal <c+a>
+                                                                                                    !< 22 &  - & basal/1. order pyramidal <c+a>
+                                                                                                    !< 23 &  - & prismatic/1. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 24 &  - & prismatic/1. order pyramidal <c+a>
+                                                                                                    !< 25 &  - & prismatic/1. order pyramidal <c+a> semi-coplanar?
+                                                                                                    !< 26 &  - & pyramidal <a>/1. order pyramidal <c+a> coplanar
+                                                                                                    !< 27 &  - & pyramidal <a>/1. order pyramidal <c+a>
+                                                                                                    !< 28 &  - & pyramidal <a>/1. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 29 &  - & pyramidal <a>/1. order pyramidal <c+a> semi-coplanar
+                                                                                                    !< 30 &  - & 1. order pyramidal <c+a> self-interaction
+                                                                                                    !< 31 &  - & 1. order pyramidal <c+a> coplanar
+                                                                                                    !< 32 &  - & 1. order pyramidal <c+a>
+                                                                                                    !< 33 &  - & 1. order pyramidal <c+a>
+                                                                                                    !< 34 &  - & 1. order pyramidal <c+a> semi-coplanar
+                                                                                                    !< 35 &  - & 1. order pyramidal <c+a> semi-coplanar
+                                                                                                    !< 36 &  - & 1. order pyramidal <c+a> collinear
+                                                                                                    !< 37 &  - & 1. order pyramidal <c+a>/pyramidal <a> coplanar
+                                                                                                    !< 38 &  - & 1. order pyramidal <c+a>/pyramidal <a> semi-collinear
+                                                                                                    !< 39 &  - & 1. order pyramidal <c+a>/pyramidal <a>
+                                                                                                    !< 40 &  - & 1. order pyramidal <c+a>/pyramidal <a> semi-coplanar
+                                                                                                    !< 41 &  - & 1. order pyramidal <c+a>/prismatic semi-collinear
+                                                                                                    !< 42 &  - & 1. order pyramidal <c+a>/prismatic semi-coplanar
+                                                                                                    !< 43 &  - & 1. order pyramidal <c+a>/prismatic
+                                                                                                    !< 44 &  - & 1. order pyramidal <c+a>/basal semi-collinear
+                                                                                                    !< 45 &  - & 1. order pyramidal <c+a>/basal
+                                                                                                    !< 46 &  - & 1. order pyramidal <c+a>/basal
+                                                                                                    !< 47 &  8 & basal/2. order pyramidal <c+a> non-collinear
+                                                                                                    !< 48 &  7 & basal/2. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 49 & 10 & prismatic/2. order pyramidal <c+a>
+                                                                                                    !< 50 &  9 & prismatic/2. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 51 &  - & pyramidal <a>/2. order pyramidal <c+a>
+                                                                                                    !< 52 &  - & pyramidal <a>/2. order pyramidal <c+a> semi collinear
+                                                                                                    !< 53 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a>
+                                                                                                    !< 54 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a>
+                                                                                                    !< 55 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a>
+                                                                                                    !< 56 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a> collinear
+                                                                                                    !< 57 & S3 & 2. order pyramidal <c+a> self-interaction
+                                                                                                    !< 58 & 16 & 2. order pyramidal <c+a> non-collinear
+                                                                                                    !< 59 & 15 & 2. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 60 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a>
+                                                                                                    !< 61 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a> collinear
+                                                                                                    !< 62 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a>
+                                                                                                    !< 63 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a>
+                                                                                                    !< 64 &  - & 2. order pyramidal <c+a>/pyramidal <a> non-collinear
+                                                                                                    !< 65 &  - & 2. order pyramidal <c+a>/pyramidal <a> semi-collinear
+                                                                                                    !< 66 & 14 & 2. order pyramidal <c+a>/prismatic non-collinear
+                                                                                                    !< 67 & 13 & 2. order pyramidal <c+a>/prismatic semi-collinear
+                                                                                                    !< 68 & 12 & 2. order pyramidal <c+a>/basal non-collinear
+                                                                                                    !< 69 & 11 & 2. order pyramidal <c+a>/basal semi-collinear
 
   integer, dimension(BCT_NSLIP,BCT_NSLIP), parameter :: &
     BCT_INTERACTIONSLIPSLIP = reshape( [&
