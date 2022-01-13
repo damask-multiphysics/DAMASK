@@ -67,5 +67,5 @@ class TestSeeds:
         coords = seeds.from_random(size,N_seeds,cells)
         grid = Grid.from_Voronoi_tessellation(cells,size,coords)
         selection=np.random.randint(N_seeds)+1
-        coords,material = seeds.from_grid(grid,average=average,periodic=periodic,invert=invert,selection=[selection])
+        coords,material = seeds.from_grid(grid,average=average,periodic=periodic,invert_selection=invert,selection=[selection])
         assert selection not in material if invert else (selection==material).all()

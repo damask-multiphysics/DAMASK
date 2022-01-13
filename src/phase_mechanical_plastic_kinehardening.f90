@@ -86,6 +86,8 @@ module function plastic_kinehardening_init() result(myPlasticity)
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:kinehardening init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
+  print'(/,1x,a)', 'J.A. Wollmershauser et al., International Journal of Fatigue 36:181–193, 2012'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.ijfatigue.2011.07.008'
 
   phases => config_material%get('phase')
   allocate(param(phases%length))

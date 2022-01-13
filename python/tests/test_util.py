@@ -59,9 +59,22 @@ class TestUtil:
                               ([1,1,0],'x',False,False,[0.5,0]),
                               ([1,1,1],'y',True, True, [0.3660254, 0,0.3660254]),
                              ])
-    def test_project_stereographic(self,point,direction,normalize,keepdims,answer):
-        assert np.allclose(util.project_stereographic(np.array(point),direction=direction,
-                                                      normalize=normalize,keepdims=keepdims),answer)
+    def test_project_equal_angle(self,point,direction,normalize,keepdims,answer):
+        assert np.allclose(util.project_equal_angle(np.array(point),direction=direction,
+                                                    normalize=normalize,keepdims=keepdims),answer)
+
+    @pytest.mark.parametrize('point,direction,normalize,keepdims,answer',
+                             [
+                              ([1,0,0],'z',False,True, [1,0,0]),
+                              ([1,0,0],'z',True, False,[1,0]),
+                              ([0,1,1],'z',False,True, [0,0.70710678,0]),
+                              ([0,1,1],'y',True, False,[0.5411961,0]),
+                              ([1,1,0],'x',False,False,[0.70710678,0]),
+                              ([1,1,1],'y',True, True, [0.45970084,0,0.45970084]),
+                             ])
+    def test_project_equal_area(self,point,direction,normalize,keepdims,answer):
+        assert np.allclose(util.project_equal_area(np.array(point),direction=direction,
+                                                   normalize=normalize,keepdims=keepdims),answer)
 
     @pytest.mark.parametrize('fro,to,mode,answer',
                              [

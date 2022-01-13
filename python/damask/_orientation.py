@@ -412,8 +412,8 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of quaternion.shape
-           Boolean array indicating whether Rodrigues-Frank vector falls into fundamental zone.
+        in : numpy.ndarray of bool, quaternion.shape
+            Whether Rodrigues-Frank vector falls into fundamental zone.
 
         Notes
         -----
@@ -456,8 +456,8 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of quaternion.shape
-           Boolean array indicating whether Rodrigues-Frank vector falls into disorientation FZ.
+        in : numpy.ndarray of bool, quaternion.shape
+            Whether Rodrigues-Frank vector falls into disorientation FZ.
 
         References
         ----------
@@ -531,6 +531,17 @@ class Orientation(Rotation,Crystal):
          [-0.19363288  0.90765544  0.37238141]
          [ 0.07359167 -0.36505797  0.92807163]]
         Bunge Eulers / deg: (11.40, 21.86, 0.60)
+
+        Plot a sample from the Mackenzie distribution.
+
+        >>> import matplotlib.pyplot as plt
+        >>> import damask
+        >>> N = 10000
+        >>> a = damask.Orientation.from_random(shape=N,family='cubic')
+        >>> b = damask.Orientation.from_random(shape=N,family='cubic')
+        >>> d = a.disorientation(b).as_axis_angle(degrees=True,pair=True)[1]
+        >>> plt.hist(d,25)
+        >>> plt.show()
 
         """
         if self.family != other.family:
@@ -660,8 +671,8 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of shape (...)
-           Boolean array indicating whether vector falls into SST.
+        in : numpy.ndarray, shape (...)
+            Whether vector falls into SST.
 
         """
         if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:

@@ -1,25 +1,27 @@
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
-from typing import Sequence,Tuple
+from typing import Tuple as _Tuple
 
 from scipy import spatial as _spatial
 import numpy as _np
 
+from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
 from . import util as _util
 from . import grid_filters as _grid_filters
 
 
-def from_random(size: _np.ndarray, N_seeds: int, cells: _np.ndarray = None, rng_seed=None) -> _np.ndarray:
+def from_random(size: _FloatSequence, N_seeds: int, cells: _IntSequence = None,
+                rng_seed=None) -> _np.ndarray:
     """
     Place seeds randomly in space.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the seeding domain.
     N_seeds : int
         Number of seeds.
-    cells : numpy.ndarray of shape (3), optional.
+    cells : sequence of int, len (3), optional.
         If given, ensures that each seed results in a grain when a standard Voronoi
         tessellation is performed using the given grid resolution (i.e. size/cells).
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -28,29 +30,30 @@ def from_random(size: _np.ndarray, N_seeds: int, cells: _np.ndarray = None, rng_
 
     Returns
     -------
-    coords : numpy.ndarray of shape (N_seeds,3)
+    coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
 
     """
+    size_ = _np.array(size,float)
     rng = _np.random.default_rng(rng_seed)
     if cells is None:
-        coords = rng.random((N_seeds,3)) * size
+        coords = rng.random((N_seeds,3)) * size_
     else:
         grid_coords = _grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
-               + _np.broadcast_to(size/cells,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)          # wobble without leaving cells
+               + _np.broadcast_to(size_/_np.array(cells,int),(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
 
     return coords
 
 
-def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distance: float,
+def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, distance: float,
                       periodic: bool = True, rng_seed=None) -> _np.ndarray:
     """
     Place seeds according to a Poisson disc distribution.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the seeding domain.
     N_seeds : int
         Number of seeds.
@@ -58,7 +61,7 @@ def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distan
         Number of candidates to consider for finding best candidate.
     distance : float
         Minimum acceptable distance to other seeds.
-    periodic : boolean, optional
+    periodic : bool, optional
         Calculate minimum distance for periodically repeated grid.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
@@ -66,13 +69,13 @@ def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distan
 
     Returns
     -------
-    coords : numpy.ndarray of shape (N_seeds,3)
+    coords : numpy.ndarray, shape (N_seeds,3)
         Seed coordinates in 3D space.
 
     """
     rng = _np.random.default_rng(rng_seed)
     coords = _np.empty((N_seeds,3))
-    coords[0] = rng.random(3) * size
+    coords[0] = rng.random(3) * _np.array(size,float)
 
     s = 1
     i = 0
@@ -96,8 +99,8 @@ def from_Poisson_disc(size: _np.ndarray, N_seeds: int, N_candidates: int, distan
     return coords
 
 
-def from_grid(grid, selection: Sequence[int] = None,
-              invert: bool = False, average: bool = False, periodic: bool = True) -> Tuple[_np.ndarray, _np.ndarray]:
+def from_grid(grid, selection: _IntSequence = None, invert_selection: bool = False,
+              average: bool = False, periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
     """
     Create seeds from grid description.
 
@@ -105,24 +108,24 @@ def from_grid(grid, selection: Sequence[int] = None,
     ----------
     grid : damask.Grid
         Grid from which the material IDs are used as seeds.
-    selection : iterable of integers, optional
+    selection : sequence of int, optional
         Material IDs to consider.
-    invert : boolean, false
+    invert_selection : bool, optional
         Consider all material IDs except those in selection. Defaults to False.
-    average : boolean, optional
+    average : bool, optional
         Seed corresponds to center of gravity of material ID cloud.
-    periodic : boolean, optional
+    periodic : bool, optional
         Center of gravity accounts for periodic boundaries.
 
     Returns
     -------
-    coords, materials : numpy.ndarray of shape (:,3), numpy.ndarray of shape (:)
+    coords, materials : numpy.ndarray, shape (:,3); numpy.ndarray, shape (:)
         Seed coordinates in 3D space, material IDs.
 
     """
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
-           _np.isin(material,selection,invert=invert).flatten()
+           _np.isin(material,selection,invert=invert_selection).flatten()
     coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:

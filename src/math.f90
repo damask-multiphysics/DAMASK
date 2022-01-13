@@ -512,7 +512,7 @@ end subroutine math_invert33
 !--------------------------------------------------------------------------------------------------
 !> @brief Inversion of symmetriced 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
-function math_invSym3333(A)
+pure function math_invSym3333(A)
 
   real(pReal),dimension(3,3,3,3)            :: math_invSym3333
 
@@ -538,7 +538,7 @@ end function math_invSym3333
 !--------------------------------------------------------------------------------------------------
 !> @brief invert quadratic matrix of arbitrary dimension
 !--------------------------------------------------------------------------------------------------
-subroutine math_invert(InvA, error, A)
+pure subroutine math_invert(InvA, error, A)
 
   real(pReal), dimension(:,:),                 intent(in)  :: A
   real(pReal), dimension(size(A,1),size(A,1)), intent(out) :: invA
@@ -895,7 +895,7 @@ pure function math_33toVoigt6_stress(sigma) result(sigma_tilde)
 
 
   sigma_tilde = [sigma(1,1), sigma(2,2), sigma(3,3), &
-                 sigma(3,2), sigma(3,1), sigma(1,2)] 
+                 sigma(3,2), sigma(3,1), sigma(1,2)]
 
 end function math_33toVoigt6_stress
 
@@ -910,7 +910,7 @@ pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
 
 
   epsilon_tilde = [          epsilon(1,1),           epsilon(2,2),           epsilon(3,3), &
-                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)] 
+                   2.0_pReal*epsilon(3,2), 2.0_pReal*epsilon(3,1), 2.0_pReal*epsilon(1,2)]
 
 end function math_33toVoigt6_strain
 
@@ -961,45 +961,42 @@ pure function math_3333toVoigt66(m3333)
 end function math_3333toVoigt66
 
 
-
 !--------------------------------------------------------------------------------------------------
-!> @brief draw a random sample from Gauss variable
+!> @brief Draw a sample from a normal distribution.
+!> @details https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+!>          https://masuday.github.io/fortran_tutorial/random.html
 !--------------------------------------------------------------------------------------------------
-real(pReal) function math_sampleGaussVar(mu, sigma, width)
+impure elemental subroutine math_normal(x,mu,sigma)
 
-  real(pReal), intent(in) ::            mu, &                                                       !< mean
-                                        sigma                                                       !< standard deviation
-  real(pReal), intent(in), optional ::  width                                                       !< cut off as multiples of standard deviation
+  real(pReal), intent(out) :: x
+  real(pReal), intent(in), optional :: mu, sigma
 
-  real(pReal), dimension(2) ::          rnd                                                         ! random numbers
-  real(pReal) ::                        scatter, &                                                  ! normalized scatter around mean
-                                        width_
+  real(pReal) :: sigma_, mu_
+  real(pReal), dimension(2) :: rnd
 
-  if (abs(sigma) < tol_math_check) then
-    math_sampleGaussVar = mu
+
+  if (present(mu)) then
+    mu_ = mu
   else
-    if (present(width)) then
-      width_ = width
-    else
-      width_ = 3.0_pReal                                                                            ! use +-3*sigma as default scatter
-    endif
+    mu_ = 0.0_pReal
+  end if
 
-    do
-      call random_number(rnd)
-      scatter = width_ * (2.0_pReal * rnd(1) - 1.0_pReal)
-      if (rnd(2) <= exp(-0.5_pReal * scatter**2)) exit                                              ! test if scattered value is drawn
-    enddo
+  if (present(sigma)) then
+    sigma_ = sigma
+  else
+    sigma_ = 1.0_pReal
+  end if
 
-    math_sampleGaussVar = scatter * sigma
-  endif
+  call random_number(rnd)
+  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(2.0_pReal*PI*(1.0_pReal - rnd(2)))
 
-end function math_sampleGaussVar
+end subroutine math_normal
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh(w,v,error,m)
+pure subroutine math_eigh(w,v,error,m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
@@ -1024,7 +1021,7 @@ end subroutine math_eigh
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh33(w,v,m)
+pure subroutine math_eigh33(w,v,m)
 
   real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
   real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
@@ -1117,7 +1114,7 @@ end function math_rotationalPart
 !> @brief Eigenvalues of symmetric matrix
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
-function math_eigvalsh(m)
+pure function math_eigvalsh(m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< symmetric matrix to compute eigenvalues of
   real(pReal), dimension(size(m,1))                         :: math_eigvalsh
@@ -1140,7 +1137,7 @@ end function math_eigvalsh
 !> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
 !> matrices as fallback
 !--------------------------------------------------------------------------------------------------
-function math_eigvalsh33(m)
+pure function math_eigvalsh33(m)
 
   real(pReal), intent(in), dimension(3,3) :: m                                                      !< 3x3 symmetric matrix to compute eigenvalues of
   real(pReal), dimension(3) :: math_eigvalsh33,I
@@ -1433,6 +1430,28 @@ subroutine selfTest
   ijk = cshift([2,2,1],int(r*2.0e2_pReal))
   if (dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
     error stop 'math_LeviCivita'
+
+  normal_distribution: block
+    integer, parameter :: N = 1000000
+    real(pReal), dimension(:), allocatable :: r
+    real(pReal) :: mu, sigma
+
+    allocate(r(N))
+    call random_number(mu)
+    call random_number(sigma)
+
+    sigma = 1.0_pReal + sigma*5.0_pReal
+    mu = (mu-0.5_pReal)*10_pReal
+
+    call math_normal(r,mu,sigma)
+
+    if (abs(mu -sum(r)/real(N,pReal))>5.0e-2_pReal) &
+      error stop 'math_normal(mu)'
+
+    mu = sum(r)/real(N,pReal)
+    if (abs(sigma**2 -1.0_pReal/real(N-1,pReal) * sum((r-mu)**2))/sigma > 5.0e-2_pReal) &
+      error stop 'math_normal(sigma)'
+  end block normal_distribution
 
 end subroutine selfTest
 

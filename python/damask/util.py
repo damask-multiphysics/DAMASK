@@ -18,11 +18,11 @@ from . import version
 __all__=[
          'srepr',
          'emph', 'deemph', 'warn', 'strikeout',
-         'run', 
+         'run',
          'natural_sort',
          'show_progress',
          'scale_to_coprime',
-         'project_stereographic',
+         'project_equal_angle', 'project_equal_area',
          'hybrid_IA',
          'execution_stamp',
          'shapeshifter', 'shapeblender',
@@ -267,13 +267,13 @@ def scale_to_coprime(v):
     return m
 
 
-def project_stereographic(vector,direction='z',normalize=True,keepdims=False):
+def project_equal_angle(vector,direction='z',normalize=True,keepdims=False):
     """
-    Apply stereographic projection to vector.
+    Apply equal-angle projection to vector.
 
     Parameters
     ----------
-    vector : numpy.ndarray of shape (...,3)
+    vector : numpy.ndarray, shape (...,3)
         Vector coordinates to be projected.
     direction : str
         Projection direction 'x', 'y', or 'z'.
@@ -281,32 +281,74 @@ def project_stereographic(vector,direction='z',normalize=True,keepdims=False):
     normalize : bool
         Ensure unit length of input vector. Defaults to True.
     keepdims : bool
-        Maintain three-dimensional output coordinates.
-        Default two-dimensional output uses right-handed frame spanned by
+        Maintain three-dimensional output coordinates. Defaults to False.
+        Two-dimensional output uses right-handed frame spanned by
         the next and next-next axis relative to the projection direction,
         e.g. x-y when projecting along z and z-x when projecting along y.
 
     Returns
     -------
-    coordinates : numpy.ndarray of shape (...,2 | 3)
+    coordinates : numpy.ndarray, shape (...,2 | 3)
         Projected coordinates.
 
     Examples
     --------
     >>> import damask
     >>> import numpy as np
-    >>> project_stereographic(np.ones(3))
+    >>> project_equal_angle(np.ones(3))
         [0.3660254, 0.3660254]
-    >>> project_stereographic(np.ones(3),direction='x',normalize=False,keepdims=True)
+    >>> project_equal_angle(np.ones(3),direction='x',normalize=False,keepdims=True)
         [0, 0.5, 0.5]
-    >>> project_stereographic([0,1,1],direction='y',normalize=True,keepdims=False)
+    >>> project_equal_angle([0,1,1],direction='y',normalize=True,keepdims=False)
         [0.41421356, 0]
 
     """
     shift = 'zyx'.index(direction)
-    v_ = np.roll(vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
-                 shift,axis=-1)
-    return np.roll(np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),np.zeros_like(v_[...,2:3])]),
+    v = np.roll(vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
+                shift,axis=-1)
+    return np.roll(np.block([v[...,:2]/(1.0+np.abs(v[...,2:3])),np.zeros_like(v[...,2:3])]),
+                   -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
+
+def project_equal_area(vector,direction='z',normalize=True,keepdims=False):
+    """
+    Apply equal-area projection to vector.
+
+    Parameters
+    ----------
+    vector : numpy.ndarray, shape (...,3)
+        Vector coordinates to be projected.
+    direction : str
+        Projection direction 'x', 'y', or 'z'.
+        Defaults to 'z'.
+    normalize : bool
+        Ensure unit length of input vector. Defaults to True.
+    keepdims : bool
+        Maintain three-dimensional output coordinates. Defaults to False.
+        Two-dimensional output uses right-handed frame spanned by
+        the next and next-next axis relative to the projection direction,
+        e.g. x-y when projecting along z and z-x when projecting along y.
+
+    Returns
+    -------
+    coordinates : numpy.ndarray, shape (...,2 | 3)
+        Projected coordinates.
+
+    Examples
+    --------
+    >>> import damask
+    >>> import numpy as np
+    >>> project_equal_area(np.ones(3))
+        [0.45970084, 0.45970084]
+    >>> project_equal_area(np.ones(3),direction='x',normalize=False,keepdims=True)
+        [0.0, 0.70710678, 0.70710678]
+    >>> project_equal_area([0,1,1],direction='y',normalize=True,keepdims=False)
+        [0.5411961, 0.0]
+
+    """
+    shift = 'zyx'.index(direction)
+    v = np.roll(vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
+                shift,axis=-1)
+    return np.roll(np.block([v[...,:2]/np.sqrt(1.0+np.abs(v[...,2:3])),np.zeros_like(v[...,2:3])]),
                    -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
 

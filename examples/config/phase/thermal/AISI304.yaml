@@ -1,0 +1,9 @@
+references:
+  - B.F. Blackwell et al.
+    Proceedings of 34th National Heat Transfer Conference 2000
+    https://www.osti.gov/servlets/purl/760791
+  - R.H. Bogaard et al.
+    Thermochimica Acta 218:373-393, 1993
+    https://doi.org/10.1016/0040-6031(93)80437-F
+C_p: 470.0
+K_11: 14.34

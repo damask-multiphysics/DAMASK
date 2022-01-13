@@ -3,9 +3,10 @@ import json
 import functools
 import colorsys
 from pathlib import Path
-from typing import Sequence, Union, TextIO
+from typing import Union, TextIO
 
 import numpy as np
+import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
@@ -13,6 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from PIL import Image
 
+from ._typehints import FloatSequence, FileHandle
 from . import util
 from . import Table
 
@@ -41,7 +43,7 @@ class Colormap(mpl.colors.ListedColormap):
     https://doi.org/10.1016/j.ijplas.2012.09.012
 
     Matplotlib colormaps overview
-    https://matplotlib.org/tutorials/colors/colormaps.html
+    https://matplotlib.org/stable/tutorials/colors/colormaps.html
 
     """
 
@@ -77,8 +79,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_range(low: Sequence[float],
-                   high: Sequence[float],
+    def from_range(low: FloatSequence,
+                   high: FloatSequence,
                    name: str = 'DAMASK colormap',
                    N: int = 256,
                    model: str = 'rgb') -> 'Colormap':
@@ -128,7 +130,7 @@ class Colormap(mpl.colors.ListedColormap):
         if model.lower() not in toMsh:
             raise ValueError(f'Invalid color model: {model}.')
 
-        low_high = np.vstack((low,high))
+        low_high = np.vstack((low,high)).astype(float)
         out_of_bounds = np.bool_(False)
 
         if   model.lower() == 'rgb':
@@ -141,7 +143,7 @@ class Colormap(mpl.colors.ListedColormap):
             out_of_bounds = np.any(low_high[:,0]<0)
 
         if out_of_bounds:
-            raise ValueError(f'{model.upper()} colors {low} | {high} are out of bounds.')
+            raise ValueError(f'{model.upper()} colors {low_high[0]} | {low_high[1]} are out of bounds.')
 
         low_,high_ = map(toMsh[model.lower()],low_high)
         msh = map(functools.partial(Colormap._interpolate_msh,low=low_,high=high_),np.linspace(0,1,N))
@@ -191,19 +193,50 @@ class Colormap(mpl.colors.ListedColormap):
             return Colormap.from_range(definition['low'],definition['high'],name,N)
 
 
+    def at(self,
+           fraction : Union[float,FloatSequence]) -> np.ndarray:
+        """
+        Interpolate color at fraction.
+
+        Parameters
+        ----------
+        fraction : float or sequence of float
+            Fractional coordinate(s) to evaluate Colormap at.
+
+        Returns
+        -------
+        color : numpy.ndarray, shape(...,4)
+            RGBA values of interpolated color(s).
+
+        Examples
+        --------
+        >>> import damask
+        >>> cmap = damask.Colormap.from_predefined('gray')
+        >>> cmap.at(0.5)
+        array([0.5, 0.5, 0.5, 1. ])
+        >>> 'rgb({},{},{})'.format(*cmap.at(0.5))
+        'rgb(0.5,0.5,0.5)'
+
+        """
+        return interp.interp1d(np.linspace(0,1,self.N),
+                               self.colors,
+                               axis=0,
+                               assume_sorted=True)(fraction)
+
+
     def shade(self,
               field: np.ndarray,
-              bounds: Sequence[float] = None,
+              bounds: FloatSequence = None,
               gap: float = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
 
         Parameters
         ----------
-        field : numpy.array, shape (:,:)
+        field : numpy.ndarray, shape (:,:)
             Data to be shaded.
         bounds : sequence of float, len (2), optional
-            Value range (low,high) spanned by colormap.
+            Value range (left,right) spanned by colormap.
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
 
@@ -213,21 +246,20 @@ class Colormap(mpl.colors.ListedColormap):
             RGBA image of shaded data.
 
         """
-        N = len(self.colors)
         mask = np.logical_not(np.isnan(field) if gap is None else \
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
-        lo,hi = (field[mask].min(),field[mask].max()) if bounds is None else \
-                (min(bounds[:2]),max(bounds[:2]))
+        l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
+              np.array(bounds,float)[:2]
 
-        delta,avg = hi-lo,0.5*(hi+lo)
+        delta,avg = r-l,0.5*abs(r+l)
 
-        if delta * 1e8 <= avg:                                                                      # delta is similar to numerical noise
-            hi,lo = hi+0.5*avg,lo-0.5*avg                                                           # extend range to have actual data centered within
+        if abs(delta) * 1e8 <= avg:                                                                 # delta is similar to numerical noise
+            l,r = l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta),                                # extend range to have actual data centered within
 
         return Image.fromarray(
             (np.dstack((
-                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1))).astype(np.uint16),:3],
+                        self.colors[(np.round(np.clip((field-l)/delta,0.0,1.0)*(self.N-1))).astype(np.uint16),:3],
                         mask.astype(float)
                        )
                       )*255
@@ -261,7 +293,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def _get_file_handle(self,
-                         fname: Union[TextIO, str, Path, None],
+                         fname: Union[FileHandle, None],
                          suffix: str = '') -> TextIO:
         """
         Provide file handle.
@@ -288,7 +320,7 @@ class Colormap(mpl.colors.ListedColormap):
             return fname
 
 
-    def save_paraview(self, fname: Union[TextIO, str, Path] = None):
+    def save_paraview(self, fname: FileHandle = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -315,7 +347,7 @@ class Colormap(mpl.colors.ListedColormap):
         fhandle.write('\n')
 
 
-    def save_ASCII(self, fname: Union[TextIO, str, Path] = None):
+    def save_ASCII(self, fname: FileHandle = None):
         """
         Save as ASCII file.
 
@@ -330,7 +362,7 @@ class Colormap(mpl.colors.ListedColormap):
         t.save(self._get_file_handle(fname,'.txt'))
 
 
-    def save_GOM(self, fname: Union[TextIO, str, Path] = None):
+    def save_GOM(self, fname: FileHandle = None):
         """
         Save as ASCII file for use in GOM Aramis.
 
@@ -343,14 +375,14 @@ class Colormap(mpl.colors.ListedColormap):
         # ToDo: test in GOM
         GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
                 +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
-                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(self.colors)}' \
+                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {self.N}' \
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
 
         self._get_file_handle(fname,'.legend').write(GOM_str)
 
 
-    def save_gmsh(self, fname: Union[TextIO, str, Path] = None):
+    def save_gmsh(self, fname: FileHandle = None):
         """
         Save as ASCII file for use in gmsh.
 
@@ -581,7 +613,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
+    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Lab to CIE Xyz.
 
@@ -589,6 +621,8 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         lab : numpy.ndarray, shape (3)
             CIE lab values.
+        ref_white : numpy.ndarray, shape (3)
+            Reference white, default value is the standard 2° observer for D65.
 
         Returns
         -------
@@ -607,10 +641,10 @@ class Colormap(mpl.colors.ListedColormap):
                          f_x**3.                if f_x**3. > _EPS     else (116.*f_x-16.)/_KAPPA,
                          ((lab[0]+16.)/116.)**3 if lab[0]>_KAPPA*_EPS else lab[0]/_KAPPA,
                          f_z**3.                if f_z**3. > _EPS     else (116.*f_z-16.)/_KAPPA
-                        ])*(ref_white if ref_white is not None else _REF_WHITE)
+                        ])*ref_white
 
     @staticmethod
-    def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = None) -> np.ndarray:
+    def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
 
@@ -618,6 +652,8 @@ class Colormap(mpl.colors.ListedColormap):
         ----------
         xyz : numpy.ndarray, shape (3)
             CIE Xyz values.
+        ref_white : numpy.ndarray, shape (3)
+            Reference white, default value is the standard 2° observer for D65.
 
         Returns
         -------
@@ -629,7 +665,6 @@ class Colormap(mpl.colors.ListedColormap):
         http://www.brucelindbloom.com/index.html?Eqn_Lab_to_XYZ.html
 
         """
-        ref_white = ref_white if ref_white is not None else _REF_WHITE
         f = np.where(xyz/ref_white > _EPS,(xyz/ref_white)**(1./3.),(_KAPPA*xyz/ref_white+16.)/116.)
 
         return np.array([
