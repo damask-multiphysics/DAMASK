@@ -1,14 +1,13 @@
 import re
 import copy
 import pathlib
-from typing import Union, Optional, Tuple, List, TextIO, Set
+from typing import Union, Optional, Tuple, List, TextIO
 from _io import TextIOWrapper
 
 import pandas as pd
 import numpy as np
 
 from . import util
-
 
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
@@ -372,7 +371,7 @@ class Table:
 
         """
         dup = self.copy()
-        dup._add_comment(label, data.shape[1:],info)
+        dup._add_comment(label, data.shape[1:], info)
         m = re.match(r'(.*)\[((\d+,)*(\d+))\]',label)
         if m:
             key = m.group(1)
@@ -559,9 +558,12 @@ class Table:
             Filename or file for writing.
 
         """
-        seen: Set = set()
+        data_column_items = []
+        for col in self.data.columns:
+            if col not in data_column_items:
+                data_column_items.append(col)
         labels = []
-        for l in [x for x in self.data.columns if x not in seen]:
+        for l in data_column_items:
             if self.shapes[l] == (1,):
                 labels.append(f'{l}')
             elif len(self.shapes[l]) == 1:
