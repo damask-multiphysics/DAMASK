@@ -88,12 +88,12 @@ subroutine discretization_grid_init(restart)
   end if
 
 
-  call MPI_Bcast(grid,3,MPI_INTEGER,0,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(grid,3_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (grid(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
-  call MPI_Bcast(geomSize,3,MPI_DOUBLE,0,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(geomSize,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Bcast(origin,3,MPI_DOUBLE,0,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(origin,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   print'(/,1x,a,3(i12,1x))',    'cells  a b c: ', grid

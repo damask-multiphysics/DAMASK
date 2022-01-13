@@ -590,7 +590,7 @@ real(pReal) function utilities_divergenceRMS()
                                   conjg(-xi1st(1:3,grid1Red,j,k))*rescaledGeom))**2)
   enddo; enddo
   if (grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                   ! counted twice in case of grid(1) == 1
-  call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
 
@@ -651,7 +651,7 @@ real(pReal) function utilities_curlRMS()
                       + sum(curl_fourier%re**2 + curl_fourier%im**2)                                ! this layer (Nyquist) does not have a conjugate complex counterpart (if grid(1) /= 1)
   enddo; enddo
 
-  call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
   if (grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                               ! counted twice in case of grid(1) == 1
@@ -820,7 +820,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
-  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (debugRotation) print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
     'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
@@ -845,21 +845,21 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   enddo
 
   valueAndRank = [dPdF_norm_max,real(worldrank,pReal)]
-  call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MAXLOC, MPI_COMM_WORLD, err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MAXLOC,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Bcast(dPdF_max,81,MPI_DOUBLE,int(valueAndRank(2)),MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(dPdF_max,81_MPI_INTEGER_KIND,MPI_DOUBLE,int(valueAndRank(2),MPI_INTEGER_KIND),MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   valueAndRank = [dPdF_norm_min,real(worldrank,pReal)]
-  call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD, err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Bcast(dPdF_min,81,MPI_DOUBLE,int(valueAndRank(2)),MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(dPdF_min,81_MPI_INTEGER_KIND,MPI_DOUBLE,int(valueAndRank(2),MPI_INTEGER_KIND),MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
 
   C_volAvg = sum(homogenization_dPdF,dim=5)
-  call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   C_volAvg = C_volAvg * wgt
 
@@ -914,7 +914,7 @@ function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
   utilities_forwardField = field_lastInc + rate*Delta_t
   if (present(aim)) then                                                                            !< correct to match average
     fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt
-    call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+    call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     fieldDiff = fieldDiff - aim
     utilities_forwardField = utilities_forwardField - &
@@ -985,8 +985,9 @@ subroutine utilities_updateCoords(F)
   real(pReal),   dimension(3,  grid(1)+1,grid(2)+1,grid3+1)       :: nodeCoords
   integer :: &
     i,j,k,n, &
-    rank_t, rank_b, &
     c
+  integer(MPI_INTEGER_KIND) :: &
+    rank_t, rank_b
   integer(MPI_INTEGER_KIND) :: err_MPI
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   type(MPI_Request), dimension(4) :: request
@@ -1029,26 +1030,26 @@ subroutine utilities_updateCoords(F)
  !--------------------------------------------------------------------------------------------------
  ! average F
   if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
-  call MPI_Bcast(Favg,9,MPI_DOUBLE,0,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
   IPfluct_padded(1:3,1:grid(1),1:grid(2),2:grid3+1) = vectorField_real(1:3,1:grid(1),1:grid(2),1:grid3)
   c = product(shape(IPfluct_padded(:,:,:,1)))                                                        !< amount of data to transfer
-  rank_t = modulo(worldrank+1,worldsize)
-  rank_b = modulo(worldrank-1,worldsize)
+  rank_t = modulo(worldrank+1_MPI_INTEGER_KIND,worldsize)
+  rank_b = modulo(worldrank-1_MPI_INTEGER_KIND,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,MPI_COMM_WORLD,request(1),err_MPI)
+  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,MPI_COMM_WORLD,request(2),err_MPI)
+  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   ! send top layer to process above
-  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,1,MPI_COMM_WORLD,request(3),err_MPI)
+  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,1,MPI_COMM_WORLD,request(4),err_MPI)
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call MPI_Waitall(4,request,status,err_MPI)

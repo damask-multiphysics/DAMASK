@@ -156,7 +156,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
   cutBack = .false.
 
   P_av = sum(homogenization_P,dim=3) * wgt
-  call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
 

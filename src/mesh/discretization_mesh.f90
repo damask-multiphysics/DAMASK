@@ -114,17 +114,17 @@ subroutine discretization_mesh_init(restart)
   ! get number of IDs in face sets (for boundary conditions?)
   call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MPI_Bcast(mesh_Nboundaries,1,MPI_INTEGER,0,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_Nboundaries,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_NcpElemsGlobal,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(dimPlex,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   if (worldrank == 0) then
     call DMClone(globalMesh,geomMesh,err_PETSc)
   else
-    call DMPlexDistribute(globalMesh,0,sf,geomMesh,err_PETSc)
+    call DMPlexDistribute(globalMesh,0_pPETSCINT,sf,geomMesh,err_PETSc)
   endif
   CHKERRQ(err_PETSc)
 
@@ -140,14 +140,14 @@ subroutine discretization_mesh_init(restart)
     CHKERRQ(err_PETSc)
     call ISRestoreIndicesF90(faceSetIS,pFaceSets,err_PETSc)
   endif
-  call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,MPI_COMM_WORLD,err_MPI)
+  call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call DMDestroy(globalMesh,err_PETSc); CHKERRQ(err_PETSc)
 
   call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,err_PETSc)
+  call DMGetStratumSize(geomMesh,'depth',0_pPETSCINT,mesh_Nnodes,err_PETSc)
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
@@ -197,7 +197,7 @@ subroutine mesh_FEM_build_ipVolumes(dimPlex)
 
   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
 
-  call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,err_PETSc)
+  call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
   allocate(pCent(dimPlex))
   allocate(pNorm(dimPlex))
@@ -229,7 +229,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   allocate(pV0(dimPlex))
   allocatE(pCellJ(dimPlex**2))
   allocatE(pinvCellJ(dimPlex**2))
-  call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,err_PETSc)
+  call DMPlexGetHeightStratum(geomMesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
   do cell = cellStart, cellEnd-1                                                                     !< loop over all elements
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,err_PETSc)
