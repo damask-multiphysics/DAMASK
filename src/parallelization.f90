@@ -33,6 +33,7 @@ module parallelization
 #endif
 
 #ifndef PETSC
+public :: parallelization_bcast_str
 
 contains
 subroutine parallelization_bcast_str(string)
