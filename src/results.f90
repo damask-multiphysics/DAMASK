@@ -499,7 +499,7 @@ subroutine results_mapping_phase(ID,entry,label)
 
   integer(pI64), dimension(size(entry,1),size(entry,2)) :: &
     entryGlobal
-  integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                 !< offset in entry counting per process
+  integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                !< offset in entry counting per process
   integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
