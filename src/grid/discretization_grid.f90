@@ -307,7 +307,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
       case('Float64')
         as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
       case default
-        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
+        call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
     end select
 
   end function as_Int
@@ -335,7 +335,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
       case('Float64')
         as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
       case default
-        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
+        call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
     end select
 
   end function as_pReal

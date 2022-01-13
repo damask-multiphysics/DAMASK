@@ -92,7 +92,7 @@ subroutine FEM_utilities_init
     p_i                                                                                             !< integration order (quadrature rule)
   character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
-  PetscErrorCode            :: ierr
+  PetscErrorCode :: ierr
   logical :: debugPETSc                                                                             !< use some in debug defined options for more verbose PETSc solution
 
 
@@ -103,9 +103,9 @@ subroutine FEM_utilities_init
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
 
-  if (p_s < 1_pInt .or. p_s > size(FEM_nQuadrature,2)) &
+  if (p_s < 1 .or. p_s > size(FEM_nQuadrature,2)) &
     call IO_error(821,ext_msg='shape function order (p_s) out of bounds')
-  if (p_i < max(1_pInt,p_s-1_pInt) .or. p_i > p_s) &
+  if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
   debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)

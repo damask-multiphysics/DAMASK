@@ -29,10 +29,10 @@ module prec
 #endif
 #ifdef PETSC
   PetscInt,    private   :: dummy
-  integer,     parameter :: pPetscInt  = kind(dummy)
+  integer,     parameter :: pPETSCINT  = kind(dummy)
 #endif
-  integer,     parameter :: pStringLen = 256                                                        !< default string length
-  integer,     parameter :: pPathLen   = 4096                                                       !< maximum length of a path name on linux
+  integer,     parameter :: pSTRINGLEN = 256                                                        !< default string length
+  integer,     parameter :: pPATHLEN   = 4096                                                       !< maximum length of a path name on linux
 
   real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
 
@@ -277,7 +277,7 @@ subroutine selfTest
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
   real(pReal),   dimension(1) :: f
-  integer(pInt), dimension(1) :: i
+  integer(pI64), dimension(1) :: i
   real(pReal),   dimension(2) :: r
 
 
@@ -298,11 +298,11 @@ subroutine selfTest
   f = real(prec_bytesToC_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pReal)
   if (dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_DOUBLE'
 
-  i = int(prec_bytesToC_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pInt)
-  if (i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT32_T'
+  i = int(prec_bytesToC_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pI64)
+  if (i(1) /= 20191102_pI64)                 error stop 'prec_bytesToC_INT32_T'
 
-  i = int(prec_bytesToC_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pInt)
-  if (i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT64_T'
+  i = int(prec_bytesToC_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pI64)
+  if (i(1) /= 20191102_pI64)                 error stop 'prec_bytesToC_INT64_T'
 
 end subroutine selfTest
 
