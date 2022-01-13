@@ -519,7 +519,8 @@ subroutine results_mapping_phase(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, ce, co
+  integer         :: hdferr, ce, co
+  integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   writeSize = 0
@@ -536,8 +537,8 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)      ! get output at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   entryOffset = 0_pI64
   do co = 1, size(ID,1)
@@ -545,8 +546,8 @@ subroutine results_mapping_phase(ID,entry,label)
       entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1_pI64
     end do
   end do
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
@@ -674,7 +675,8 @@ subroutine results_mapping_homogenization(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, ce
+  integer         :: hdferr, ce
+  integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   writeSize = 0
@@ -691,15 +693,15 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)      ! get output at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   entryOffset = 0_pI64
   do ce = 1, size(ID,1)
     entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1_pI64
   end do
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
     entryGlobal(ce) = int(entry(ce),pI64) -1_pI64 + entryOffset(ID(ce),worldrank)
