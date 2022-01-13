@@ -20,16 +20,18 @@ subroutine quit(stop_id)
   PetscErrorCode :: err_PETSc
  
   call h5open_f(err_HDF5)
-  if (err_HDF5 /= 0) write(6,'(a,i5)') ' Error in h5open_f ',err_HDF5                               ! prevents error if not opened yet
+  if (err_HDF5 /= 0_MPI_INTEGER_KIND) write(6,'(a,i5)') ' Error in h5open_f ',err_HDF5                               ! prevents error if not opened yet
   call h5close_f(err_HDF5)
-  if (err_HDF5 /= 0) write(6,'(a,i5)') ' Error in h5close_f ',err_HDF5
+  if (err_HDF5 /= 0_MPI_INTEGER_KIND) write(6,'(a,i5)') ' Error in h5close_f ',err_HDF5
  
   call PetscFinalize(err_PETSc)
   CHKERRQ(err_PETSc)
  
 #ifdef _OPENMP
   call MPI_finalize(err_MPI)
-  if (err_MPI /= 0) write(6,'(a,i5)') ' Error in MPI_finalize',err_MPI
+  if (err_MPI /= 0_MPI_INTEGER_KIND) write(6,'(a,i5)') ' Error in MPI_finalize',err_MPI
+#else
+  err_MPI = 0_MPI_INTEGER_KIND
 #endif
   
   call date_and_time(values = dateAndTime)
