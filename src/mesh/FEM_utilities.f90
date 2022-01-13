@@ -50,7 +50,7 @@ module FEM_utilities
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
     logical :: converged        = .true.
     logical :: stagConverged    = .true.
-    integer :: iterationsNeeded = 0
+    PetscInt :: iterationsNeeded = 0_pPETSCINT
   end type tSolutionState
 
   type, public :: tComponentBC

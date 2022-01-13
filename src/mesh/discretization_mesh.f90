@@ -71,22 +71,22 @@ subroutine discretization_mesh_init(restart)
 
   logical, intent(in) :: restart
 
-  integer :: dimPlex, &
+  PetscInt :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
     j, &
     debug_element, debug_ip
   PetscSF :: sf
   DM :: globalMesh
-  PetscInt :: nFaceSets
+  PetscInt :: nFaceSets, Nboundaries, NelemsGlobal, Nelems
   PetscInt, pointer, dimension(:) :: pFaceSets
   IS :: faceSetIS
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
-  integer, dimension(:), allocatable :: &
+  PetscInt, dimension(:), allocatable :: &
     materialAt
   class(tNode), pointer :: &
     num_mesh
-  integer :: p_i                                                                                    !< integration order (quadrature rule)
+  integer :: p_i, dim                                                                               !< integration order (quadrature rule)
   type(tvec) :: coords_node0
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
@@ -105,20 +105,23 @@ subroutine discretization_mesh_init(restart)
   CHKERRQ(err_PETSc)
   call DMGetDimension(globalMesh,dimPlex,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,err_PETSc)
+  call DMGetStratumSize(globalMesh,'depth',dimPlex,NelemsGlobal,err_PETSc)
   CHKERRQ(err_PETSc)
-  print'()'
+  mesh_NcpElemsGlobal = int(NelemsGlobal)
   call DMView(globalMesh, PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
   CHKERRQ(err_PETSc)
 
   ! get number of IDs in face sets (for boundary conditions?)
-  call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,err_PETSc)
+  call DMGetLabelSize(globalMesh,'Face Sets',Nboundaries,err_PETSc)
   CHKERRQ(err_PETSc)
+  mesh_Nboundaries = int(Nboundaries)
   call MPI_Bcast(mesh_Nboundaries,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Bcast(mesh_NcpElemsGlobal,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Bcast(dimPlex,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  dim = int(dimPlex)
+  call MPI_Bcast(dim,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  dimPlex = int(dim,pPETSCINT)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   if (worldrank == 0) then
@@ -128,7 +131,7 @@ subroutine discretization_mesh_init(restart)
   endif
   CHKERRQ(err_PETSc)
 
-  allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
+  allocate(mesh_boundaries(mesh_Nboundaries), source = 0_pPETSCINT)
   call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,err_PETSc)
@@ -145,8 +148,9 @@ subroutine discretization_mesh_init(restart)
 
   call DMDestroy(globalMesh,err_PETSc); CHKERRQ(err_PETSc)
 
-  call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,err_PETSc)
+  call DMGetStratumSize(geomMesh,'depth',dimPlex,Nelems,err_PETSc)
   CHKERRQ(err_PETSc)
+  mesh_NcpElems = int(Nelems)
   call DMGetStratumSize(geomMesh,'depth',0_pPETSCINT,mesh_Nnodes,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -166,7 +170,7 @@ subroutine discretization_mesh_init(restart)
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),err_PETSc)
     CHKERRQ(err_PETSc)
   enddo
-  materialAt = materialAt + 1
+  materialAt = materialAt + 1_pPETSCINT
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
@@ -175,7 +179,7 @@ subroutine discretization_mesh_init(restart)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
 
 
-  call discretization_init(materialAt,&
+  call discretization_init(int(materialAt),&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 

@@ -40,7 +40,7 @@ module mesh_mechanical_FEM
   type(tSolutionParams)  :: params
 
   type, private :: tNumerics
-    integer :: &
+    PetscInt :: &
       p_i, &                                                                                        !< integration order (quadrature rule)
       itmax
     logical :: &
@@ -55,7 +55,8 @@ module mesh_mechanical_FEM
 ! PETSc data
   SNES                           :: mechanical_snes
   Vec                            :: solution, solution_rate, solution_local
-  PetscInt                       :: dimPlex, cellDof, nQuadrature, nBasis
+  PetscInt                       :: dimPlex, cellDof, nBasis
+  integer                        :: nQuadrature
   PetscReal, allocatable, target :: qPoints(:), qWeights(:)
   MatNullSpace                   :: matnull
 
@@ -104,8 +105,8 @@ subroutine FEM_mechanical_init(fieldBC)
   PetscReal                              :: detJ
   PetscReal,         allocatable, target :: cellJMat(:,:)
 
-  PetscScalar,                   pointer :: px_scal(:)
-  PetscScalar,       allocatable, target ::  x_scal(:)
+  PetscScalar,                   pointer, dimension(:) :: px_scal
+  PetscScalar,       allocatable, target, dimension(:) ::  x_scal
 
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: err_PETSc
@@ -118,8 +119,8 @@ subroutine FEM_mechanical_init(fieldBC)
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
   num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
-  num%p_i               = num_mesh%get_asInt('p_i',defaultVal = 2)
-  num%itmax             = num_mesh%get_asInt('itmax',defaultVal=250)
+  num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal = 2),pPETSCINT)
+  num%itmax             = int(num_mesh%get_asInt('itmax',defaultVal=250),pPETSCINT)
   num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
   num%eps_struct_atol   = num_mesh%get_asFloat('eps_struct_atol', defaultVal = 1.0e-10_pReal)
   num%eps_struct_rtol   = num_mesh%get_asFloat('eps_struct_rtol', defaultVal = 1.0e-4_pReal)
@@ -143,7 +144,7 @@ subroutine FEM_mechanical_init(fieldBC)
   call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,err_PETSc)
   CHKERRQ(err_PETSc)
   nc = dimPlex
-  call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,err_PETSc)
+  call PetscQuadratureSetData(mechQuad,dimPlex,nc,int(nQuadrature,pPETSCINT),qPointsP,qWeightsP,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
                             num%p_i,mechFE,err_PETSc); CHKERRQ(err_PETSc)
@@ -165,7 +166,7 @@ subroutine FEM_mechanical_init(fieldBC)
   call DMPlexLabelComplete(mechanical_mesh,BCLabel,err_PETSc); CHKERRQ(err_PETSc)
   call DMGetLocalSection(mechanical_mesh,section,err_PETSc); CHKERRQ(err_PETSc)
   allocate(pnumComp(1), source=dimPlex)
-  allocate(pnumDof(0:dimPlex), source = 0)
+  allocate(pnumDof(0:dimPlex), source = 0_pPETSCINT)
   do topologDim = 0, dimPlex
     call DMPlexGetDepthStratum(mechanical_mesh,topologDim,cellStart,cellEnd,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -176,14 +177,14 @@ subroutine FEM_mechanical_init(fieldBC)
   do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
     if (fieldBC%componentBC(field)%Mask(faceSet)) numBC = numBC + 1
   enddo; enddo
-  allocate(pbcField(numBC), source=0)
+  allocate(pbcField(numBC), source=0_pPETSCINT)
   allocate(pbcComps(numBC))
   allocate(pbcPoints(numBC))
   numBC = 0
   do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
     if (fieldBC%componentBC(field)%Mask(faceSet)) then
       numBC = numBC + 1
-      call ISCreateGeneral(PETSC_COMM_WORLD,1,[field-1],PETSC_COPY_VALUES,pbcComps(numBC),err_PETSc)
+      call ISCreateGeneral(PETSC_COMM_WORLD,1_pPETSCINT,[field-1],PETSC_COPY_VALUES,pbcComps(numBC),err_PETSc)
       CHKERRQ(err_PETSc)
       call DMGetStratumSize(mechanical_mesh,'Face Sets',mesh_boundaries(faceSet),bcSize,err_PETSc)
       CHKERRQ(err_PETSc)
@@ -196,7 +197,7 @@ subroutine FEM_mechanical_init(fieldBC)
         call ISRestoreIndicesF90(bcPoint,pBcPoint,err_PETSc); CHKERRQ(err_PETSc)
         call ISDestroy(bcPoint,err_PETSc); CHKERRQ(err_PETSc)
       else
-        call ISCreateGeneral(PETSC_COMM_WORLD,0,[0],PETSC_COPY_VALUES,pbcPoints(numBC),err_PETSc)
+        call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES,pbcPoints(numBC),err_PETSc)
         CHKERRQ(err_PETSc)
       endif
     endif
@@ -226,7 +227,7 @@ subroutine FEM_mechanical_init(fieldBC)
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(mechanical_mesh,FEM_mechanical_formJacobian,PETSC_NULL_VEC,err_PETSc) ! function to evaluate stiffness matrix
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1), err_PETSc)                           ! ignore linear solve failures CHKERRQ(err_PETSc)                                                                                !< ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPETSCINT), err_PETSc)                 ! ignore linear solve failures
   CHKERRQ(err_PETSc)
   call SNESSetConvergenceTest(mechanical_snes,FEM_mechanical_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -245,10 +246,10 @@ subroutine FEM_mechanical_init(fieldBC)
   allocate(pcellJ(dimPlex**2))
   allocate(pinvcellJ(dimPlex**2))
   allocate(cellJMat(dimPlex,dimPlex))
-  call PetscDSGetDiscretization(mechDS,0,mechFE,err_PETSc)
+  call PetscDSGetDiscretization(mechDS,0_pPETSCINT,mechFE,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscFEGetDualSpace(mechFE,mechDualSpace,err_PETSc); CHKERRQ(err_PETSc)
-  call DMPlexGetHeightStratum(mechanical_mesh,0,cellStart,cellEnd,err_PETSc)
+  call DMPlexGetHeightStratum(mechanical_mesh,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
     x_scal = 0.0_pReal
@@ -352,19 +353,21 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
   call DMGetLocalSection(dm_local,section,err_PETSc); CHKERRQ(err_PETSc)
   call DMGetDS(dm_local,prob,err_PETSc); CHKERRQ(err_PETSc)
-  call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,err_PETSc)
+  call PetscDSGetTabulation(prob,0_pPETSCINT,basisField,basisFieldDer,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMPlexGetHeightStratum(dm_local,0,cellStart,cellEnd,err_PETSc)
+  call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMGetLocalVector(dm_local,x_local,err_PETSc); CHKERRQ(err_PETSc)
-  call VecWAXPY(x_local,1.0,xx_local,solution_local,err_PETSc); CHKERRQ(err_PETSc)
+  call DMGetLocalVector(dm_local,x_local,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecWAXPY(x_local,1.0,xx_local,solution_local,err_PETSc)
+  CHKERRQ(err_PETSc)
   do field = 1, dimPlex; do face = 1, mesh_Nboundaries
     if (params%fieldBC%componentBC(field)%Mask(face)) then
       call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
       if (bcSize > 0) then
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
-        call utilities_projectBCValues(x_local,section,0,field-1,bcPoints, &
+        call utilities_projectBCValues(x_local,section,0_pPETSCINT,field-1,bcPoints, &
                                        0.0_pReal,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
         call ISDestroy(bcPoints,err_PETSc); CHKERRQ(err_PETSc)
       endif
@@ -515,7 +518,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
       if (bcSize > 0) then
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
-        call utilities_projectBCValues(x_local,section,0,field-1,bcPoints, &
+        call utilities_projectBCValues(x_local,section,0_pPETSCINT,field-1,bcPoints, &
                                        0.0_pReal,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
         call ISDestroy(bcPoints,err_PETSc); CHKERRQ(err_PETSc)
       endif
@@ -553,11 +556,11 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0/real(dimPlex))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[dimPlex*dimPlex,1]), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[dimPlex**2,1_pPETSCINT]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
-                                                      shape=[1,dimPlex*dimPlex],order=[2,1]),BMat))),MatA)
+                                                      shape=[1_pPETSCINT,dimPlex**2],order=[2,1]),BMat))),MatA)
         MatB = MatB &
-             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[1,dimPlex*dimPlex]),MatA)
+             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[1_pPETSCINT,dimPlex**2]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else
@@ -568,12 +571,12 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
       FInv = math_inv33(FAvg)
       K_e = K_eA*math_det33(FAvg/real(nQuadrature))**(1.0/real(dimPlex)) + &
             (matmul(matmul(transpose(BMatAvg), &
-                           reshape(FInv(1:dimPlex,1:dimPlex),shape=[dimPlex*dimPlex,1],order=[2,1])),MatB) + &
+                           reshape(FInv(1:dimPlex,1:dimPlex),shape=[dimPlex**2,1_pPETSCINT],order=[2,1])),MatB) + &
              K_eB)/real(dimPlex)
     else
       K_e = K_eA
     endif
-    K_e = (K_e + eps*math_eye(cellDof)) * abs(detJ)
+    K_e = (K_e + eps*math_eye(int(cellDof))) * abs(detJ)
 #ifndef __INTEL_COMPILER
     pK_e(1:cellDOF**2) => K_e
 #else
@@ -596,7 +599,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
 #if (PETSC_VERSION_MINOR < 14)
   call DMPlexCreateRigidBody(dm_local,matnull,err_PETSc); CHKERRQ(err_PETSc)
 #else
-  call DMPlexCreateRigidBody(dm_local,0,matnull,err_PETSc); CHKERRQ(err_PETSc)
+  call DMPlexCreateRigidBody(dm_local,0_pPETSCINT,matnull,err_PETSc)
+  CHKERRQ(err_PETSc)
 #endif
   call MatSetNullSpace(Jac,matnull,err_PETSc); CHKERRQ(err_PETSc)
   call MatSetNearNullSpace(Jac,matnull,err_PETSc); CHKERRQ(err_PETSc)
@@ -645,7 +649,7 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
         if (bcSize > 0) then
           call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,err_PETSc)
           CHKERRQ(err_PETSc)
-          call utilities_projectBCValues(solution_local,section,0,field-1,bcPoints, &
+          call utilities_projectBCValues(solution_local,section,0_pPETSCINT,field-1,bcPoints, &
                                          0.0_pReal,fieldBC%componentBC(field)%Value(face),timeinc_old)
           call ISDestroy(bcPoints,err_PETSc); CHKERRQ(err_PETSc)
         endif
@@ -684,7 +688,7 @@ subroutine FEM_mechanical_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reaso
   if (terminallyIll) reason = SNES_DIVERGED_FUNCTION_DOMAIN
   print'(/,1x,a,a,i0,a,i0,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
-                                                  int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
+                                                  int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)  ! ToDo: int casting?
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
     'Piola--Kirchhoff stress / MPa =',transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
@@ -697,9 +701,7 @@ end subroutine FEM_mechanical_converged
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mechanical_updateCoords()
 
-  real(pReal), pointer, dimension(:) :: &
-    nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
-  real(pReal), pointer, dimension(:,:) :: &
+  PetscReal, pointer, dimension(:,:) :: &
     nodeCoords                                                                                      !< nodal coordinates (3,Nnodes)
   real(pReal), pointer, dimension(:,:,:) :: &
     ipCoords                                                                                        !< ip coordinates (3,nQuadrature,mesh_NcpElems)
@@ -717,8 +719,9 @@ subroutine FEM_mechanical_updateCoords()
               cellStart, cellEnd, c, n
   PetscSection :: section
   PetscQuadrature :: mechQuad
-  PetscReal,      dimension(:),  pointer :: basisField, basisFieldDer
-  PetscScalar, dimension(:),   pointer :: x_scal
+  PetscReal, dimension(:), pointer :: basisField, basisFieldDer, &
+    nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
+  PetscScalar, dimension(:), pointer :: x_scal
 
   call SNESGetDM(mechanical_snes,dm_local,err_PETSc); CHKERRQ(err_PETSc)
   call DMGetDS(dm_local,mechQuad,err_PETSc); CHKERRQ(err_PETSc)
@@ -727,7 +730,8 @@ subroutine FEM_mechanical_updateCoords()
   call DMGetDimension(dm_local,dimPlex,err_PETSc); CHKERRQ(err_PETSc)
 
   ! write cell vertex displacements
-  call DMPlexGetDepthStratum(dm_local,0,pStart,pEnd,err_PETSc); CHKERRQ(err_PETSc)
+  call DMPlexGetDepthStratum(dm_local,0_pPETSCINT,pStart,pEnd,err_PETSc)
+  CHKERRQ(err_PETSc)
   allocate(nodeCoords(3,pStart:pEnd-1),source=0.0_pReal)
   call VecGetArrayF90(x_local,nodeCoords_linear,err_PETSc); CHKERRQ(err_PETSc)
   do p=pStart, pEnd-1
