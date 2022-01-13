@@ -788,7 +788,26 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
       68,68,69,  66,66,67,  64,64,65,64,64,65,  60,63,63,60,62,62,60,61,61,60,62,62,  59,58,58,57,58,58, & ! 2. pyr<c+a>
       68,69,68,  66,67,66,  65,64,64,65,64,64,  62,62,60,63,63,60,62,62,60,61,61,60,  58,59,58,58,57,58, &
       69,68,68,  67,66,66,  64,65,64,64,65,64,  61,60,62,62,60,63,63,60,62,62,60,61,  58,58,59,58,58,57  &
-      ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme)
+      ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme and 10.1016/j.ijplas.2014.06.010 table 3)
+                                                                                                    !<  1: S1 basal self-interaction
+                                                                                                    !<  2:  1 coplanar basal/basal
+                                                                                                    !<  3:  3 collinear basal/prismatic
+                                                                                                    !<  4:  4 non-collinear basal prismatic
+                                                                                                    !<  5: S2 prismatic self-interaction
+                                                                                                    !<  6:  2 prismatic/prismatic
+                                                                                                    !<  7:  5 collinear prismatic/basal
+                                                                                                    !<  8:  6 non-collinear prismatic/basal
+                                                                                                    !< 47:  8 non-collinear basal/pyramidal
+                                                                                                    !< 48:  7 collinear basal/pyramidal
+                                                                                                    !< 49: 10 non-collinear prismatic/pyramidal
+                                                                                                    !< 50:  9 collinear prismatic/pyramidal
+                                                                                                    !< 57: S3 pyramidal c+a self-interaction
+                                                                                                    !< 58: 16 non-collinear pyramidal/pyramidal
+                                                                                                    !< 59: 15 collinear pyramidal/pyramidal
+                                                                                                    !< 66: 14 non-collienar pyramidal/prismatic
+                                                                                                    !< 67: 13 semi-collienar pyramidal/prismatic
+                                                                                                    !< 68: 12 non-collinear pyramidal/basal
+                                                                                                    !< 69: 11 semi-collinear pyramidal/basal
 
   integer, dimension(BCT_NSLIP,BCT_NSLIP), parameter :: &
     BCT_INTERACTIONSLIPSLIP = reshape( [&
