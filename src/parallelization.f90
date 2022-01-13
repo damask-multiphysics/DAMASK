@@ -50,7 +50,7 @@ subroutine parallelization_init
 !$ character(len=6) NumThreadsString
 
 
-  PetscErrorCode :: petsc_err
+  PetscErrorCode :: err_PETSc
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   ! Otherwise, the first call to PETSc will do the initialization.
@@ -60,18 +60,18 @@ subroutine parallelization_init
 #endif
 
 #if defined(DEBUG)
-  call PetscInitialize(PETSC_NULL_CHARACTER,petsc_err)
+  call PetscInitialize(PETSC_NULL_CHARACTER,err_PETSc)
 #else
-  call PetscInitializeNoArguments(petsc_err)
+  call PetscInitializeNoArguments(err_PETSc)
 #endif
-  CHKERRQ(petsc_err)
+  CHKERRQ(err_PETSc)
 
 #if defined(DEBUG) && defined(__INTEL_COMPILER)
-  call PetscSetFPTrap(PETSC_FP_TRAP_ON,petsc_err)
+  call PetscSetFPTrap(PETSC_FP_TRAP_ON,err_PETSc)
 #else
-  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,petsc_err)
+  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,err_PETSc)
 #endif
-  CHKERRQ(petsc_err)
+  CHKERRQ(err_PETSc)
 
   call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err)
   if (err /= 0)                              error stop 'Could not determine worldrank'

@@ -292,12 +292,12 @@ subroutine spectral_utilities_init
                                         tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        tensorField_real, tensorField_fourier, &     ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planTensorForth)) error stop 'FFTW error'
+  if (.not. c_associated(planTensorForth)) error stop 'FFTW error'
   planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
                                        tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                         tensorField_fourier,tensorField_real, &     ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
-  if (.not. C_ASSOCIATED(planTensorBack)) error stop 'FFTW error'
+  if (.not. c_associated(planTensorBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
