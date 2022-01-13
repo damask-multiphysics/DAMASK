@@ -788,15 +788,25 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
       68,68,69,  66,66,67,  64,64,65,64,64,65,  60,63,63,60,62,62,60,61,61,60,62,62,  59,58,58,57,58,58, & ! 2. pyr<c+a>
       68,69,68,  66,67,66,  65,64,64,65,64,64,  62,62,60,63,63,60,62,62,60,61,61,60,  58,59,58,58,57,58, &
       69,68,68,  67,66,66,  64,65,64,64,65,64,  61,60,62,62,60,63,63,60,62,62,60,61,  58,58,59,58,58,57  &
-      ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme and 10.1016/j.ijplas.2014.06.010 table 3)
+      ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme)
+                                                                                                    !< 10.1016/j.ijplas.2014.06.010 table 3
+                                                                                                    !< 10.1080/14786435.2012.699689 table 2 and 3
                                                                                                     !<  1: S1 basal self-interaction
                                                                                                     !<  2:  1 coplanar basal/basal
                                                                                                     !<  3:  3 collinear basal/prismatic
-                                                                                                    !<  4:  4 non-collinear basal prismatic
+                                                                                                    !<  4:  4 non-collinear basal/prismatic
                                                                                                     !<  5: S2 prismatic self-interaction
                                                                                                     !<  6:  2 prismatic/prismatic
                                                                                                     !<  7:  5 collinear prismatic/basal
                                                                                                     !<  8:  6 non-collinear prismatic/basal
+                                                                                                    !<  9:    non-collinear basal/pyr a
+                                                                                                    !< 10:    collinear basal/pyr a
+                                                                                                    !< 11:    non-collinear prismatic/pyr a
+                                                                                                    !< 12:    collinear prismatic/pyr a
+                                                                                                    !< 16:    non-collinear pyr a/prismatic
+                                                                                                    !< 17:    collinear pyr a/prismatic
+                                                                                                    !< 18:    non-collinear pyr a/basal
+                                                                                                    !< 19:    collinear pyr a/basal
                                                                                                     !< 47:  8 non-collinear basal/pyramidal
                                                                                                     !< 48:  7 collinear basal/pyramidal
                                                                                                     !< 49: 10 non-collinear prismatic/pyramidal
