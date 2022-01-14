@@ -535,7 +535,7 @@ class Rotation:
 
     def as_axis_angle(self,
                       degrees: bool = False,
-                      pair: bool = False) -> Union[Tuple[float, ...], np.ndarray]:
+                      pair: bool = False) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """
         Represent as axis–angle pair.
 

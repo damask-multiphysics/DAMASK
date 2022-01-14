@@ -8,7 +8,7 @@ from . import Crystal
 from . import util
 from . import tensor
 
-from typing import Union, Callable, Sequence, Dict, Any, Tuple, List
+from typing import Union, Callable, Dict, Any, Tuple, List
 from ._typehints import FloatSequence, IntSequence
 
 
