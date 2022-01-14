@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence
+from typing import Union, Optional, TextIO, List, Sequence, Literal, Dict, Callable
 from pathlib import Path
 
 import numpy as np
@@ -422,6 +422,7 @@ class Grid:
             Grid-based geometry from tessellation.
 
         """
+        weights_p: FloatSequence
         if periodic:
             weights_p = np.tile(weights,27)                                                         # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
@@ -821,7 +822,7 @@ class Grid:
                    )
 
 
-    def flip(self, directions: Sequence[str]) -> "Grid":
+    def flip(self, directions: Union[Literal['x', 'y', 'z'], Sequence[Literal['x', 'y', 'z']]]) -> "Grid":
         """
         Flip grid along given directions.
 
@@ -841,7 +842,8 @@ class Grid:
         if not set(directions).issubset(valid):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
-        mat = np.flip(self.material, (valid.index(d) for d in directions if d in valid))
+
+        mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
 
         return Grid(material = mat,
                     size     = self.size,
@@ -1034,7 +1036,7 @@ class Grid:
         if fill is None: fill = np.nanmax(self.material) + 1
         dtype = float if int(fill) != fill or self.material.dtype in np.sctypes['float'] else int
 
-        canvas = np.full(cells_,fill,dtype)
+        canvas: np.ndarray = np.full(cells_,fill,dtype)
 
         LL = np.clip( offset_,           0,np.minimum(self.cells,     cells_+offset_))
         UR = np.clip( offset_+cells_,    0,np.minimum(self.cells,     cells_+offset_))
@@ -1067,13 +1069,13 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def mp(entry, mapper):
+        def mp(entry: np.ndarray, mapper:Dict[np.ndarray, np.ndarray]) -> np.ndarray:
             return mapper[entry] if entry in mapper else entry
 
-        mp = np.vectorize(mp)
+        mp_: Callable = np.vectorize(mp)
         mapper = dict(zip(from_material,to_material))
 
-        return Grid(material = mp(self.material,mapper).reshape(self.cells),
+        return Grid(material = mp_(self.material,mapper).reshape(self.cells),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Grid','substitute')],
