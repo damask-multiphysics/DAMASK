@@ -1,6 +1,5 @@
 import inspect
 import copy
-from typing import Union, Callable, Sequence, Dict, Any, Tuple, List
 
 import numpy as np
 
@@ -8,6 +7,9 @@ from . import Rotation
 from . import Crystal
 from . import util
 from . import tensor
+
+from typing import Union, Callable, Sequence, Dict, Any, Tuple, List
+from ._typehints import FloatSequence, IntSequence
 
 
 _parameter_doc = \
@@ -94,7 +96,7 @@ class Orientation(Rotation,Crystal):
 
     @util.extend_docstring(_parameter_doc)
     def __init__(self,
-                 rotation: Union[Sequence[float], np.ndarray, Rotation] = np.array([1.,0.,0.,0.]), *,
+                 rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]), *,
                  family: str = None,
                  lattice: str = None,
                  a: float = None, b: float = None, c: float = None,
@@ -121,7 +123,7 @@ class Orientation(Rotation,Crystal):
         return '\n'.join([Crystal.__repr__(self),
                           Rotation.__repr__(self)])
 
-    def __copy__(self,rotation: Union[Sequence[float], np.ndarray, Rotation] = None) -> "Orientation":
+    def __copy__(self,rotation: Union[FloatSequence, Rotation] = None) -> "Orientation":
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -360,8 +362,8 @@ class Orientation(Rotation,Crystal):
     @classmethod
     @util.extend_docstring(_parameter_doc)
     def from_directions(cls,
-                        uvw: Union[Sequence[float], np.ndarray],
-                        hkl: Union[Sequence[float], np.ndarray],
+                        uvw: FloatSequence,
+                        hkl: FloatSequence,
                         **kwargs) -> "Orientation":
         """
         Initialize orientation object from two crystallographic directions.
@@ -874,8 +876,8 @@ class Orientation(Rotation,Crystal):
 
 
     def Schmid(self, *,
-               N_slip: Sequence[int] = None,
-               N_twin: Sequence[int] = None) -> np.ndarray:
+               N_slip: IntSequence = None,
+               N_twin: IntSequence = None) -> np.ndarray:
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 

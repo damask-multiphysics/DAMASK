@@ -7,6 +7,7 @@ from . import util
 from . import grid_filters
 
 from typing import Union, Sequence, Tuple, Literal, List
+from ._typehints import FloatSequence, IntSequence
 
 _P = -1
 
@@ -63,7 +64,7 @@ class Rotation:
 
     __slots__ = ['quaternion']
 
-    def __init__(self, rotation: Union[Sequence[float], np.ndarray, "Rotation"] = np.array([1.0,0.0,0.0,0.0])):
+    def __init__(self, rotation: Union[FloatSequence, "Rotation"] = np.array([1.0,0.0,0.0,0.0])):
         """
         New rotation.
 
@@ -90,7 +91,7 @@ class Rotation:
                + str(self.quaternion)
 
 
-    def __copy__(self, rotation: Union[Sequence[float], np.ndarray, "Rotation"] = None) -> "Rotation":
+    def __copy__(self, rotation: Union[FloatSequence, "Rotation"] = None) -> "Rotation":
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -668,7 +669,7 @@ class Rotation:
     # Static constructors. The input data needs to follow the conventions, options allow to
     # relax the conventions.
     @staticmethod
-    def from_quaternion(q: Union[Sequence[Sequence[float]], np.ndarray],
+    def from_quaternion(q: Union[Sequence[FloatSequence], np.ndarray],
                         accept_homomorph: bool = False,
                         P: Literal[1, -1] = -1) -> "Rotation":
         """
@@ -936,7 +937,7 @@ class Rotation:
 
     @staticmethod
     def from_random(shape: Tuple[int, ...] = None,
-                    rng_seed: Union[None, int, Sequence[int], np.ndarray] = None) -> "Rotation":
+                    rng_seed: Union[int, IntSequence] = None) -> "Rotation":
         """
         Initialize with random rotation.
 
@@ -970,7 +971,7 @@ class Rotation:
                  N: int = 500,
                  degrees: bool = True,
                  fractions: bool = True,
-                 rng_seed: Union[None, int, Sequence[int], np.ndarray] = None) -> "Rotation":
+                 rng_seed: Union[None, int, IntSequence] = None) -> "Rotation":
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -1027,7 +1028,7 @@ class Rotation:
                                  sigma: float,
                                  N: int = 500,
                                  degrees: bool = True,
-                                 rng_seed: Union[None, int, Sequence[int], np.ndarray] = None) -> "Rotation":
+                                 rng_seed: Union[None, int, IntSequence] = None) -> "Rotation":
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -1058,12 +1059,12 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha: Union[Sequence[int], np.ndarray],
-                             beta: Union[Sequence[int], np.ndarray],
+    def from_fiber_component(alpha: IntSequence,
+                             beta: IntSequence,
                              sigma: float = 0.0,
                              N: int = 500,
                              degrees: bool = True,
-                             rng_seed: Union[None, int, Sequence[int], np.ndarray] = None):
+                             rng_seed: Union[int, IntSequence] = None):
         """
         Calculate set of rotations with Gaussian distribution around direction.
 
