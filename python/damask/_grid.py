@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence, Literal, Dict, Callable
+from typing import Union, Optional, TextIO, List, Sequence, Literal
 from pathlib import Path
 
 import numpy as np
@@ -1069,13 +1069,11 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def mp(entry: np.ndarray, mapper:Dict[np.ndarray, np.ndarray]) -> np.ndarray:
-            return mapper[entry] if entry in mapper else entry
+        material = self.material.copy()
+        for f,t in zip(from_material,to_material):        # ToDo Python 3.10 has strict mode for zip
+            material[self.material==f] = t
 
-        mp_: Callable = np.vectorize(mp)
-        mapper = dict(zip(from_material,to_material))
-
-        return Grid(material = mp_(self.material,mapper).reshape(self.cells),
+        return Grid(material = material,
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Grid','substitute')],
