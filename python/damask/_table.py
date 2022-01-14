@@ -2,7 +2,6 @@ import re
 import copy
 import pathlib
 from typing import Union, Optional, Tuple, List, TextIO
-from _io import TextIOWrapper
 
 import pandas as pd
 import numpy as np
@@ -238,15 +237,13 @@ class Table:
         -------
         loaded : damask.Table
             Table data from file.
-
+            
         """
-        if isinstance(fname, TextIOWrapper):
-            f = fname
-            f.seek(0)
-        elif isinstance(fname, (str, pathlib.Path)):
+        if isinstance(fname, (str, pathlib.Path)):
             f = open(fname)
         else:
-            raise TypeError
+            f = fname
+            f.seek(0)
 
         comments = []
         line = f.readline().strip()
@@ -299,13 +296,11 @@ class Table:
             Table data from file.
 
         """
-        if isinstance(fname, TextIOWrapper):
-            f = fname
-            f.seek(0)
-        elif isinstance(fname, (str, pathlib.Path)):
+        if isinstance(fname, (str, pathlib.Path)):
             f = open(fname)
         else:
-            raise TypeError
+            f = fname
+            f.seek(0)
 
         content = f.readlines()
 
@@ -573,12 +568,10 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        if isinstance(fname, TextIOWrapper):
-            fhandle = fname
-        elif isinstance(fname, (str, pathlib.Path)):
+        if isinstance(fname, (str, pathlib.Path)):
             fhandle = open(fname,'w',newline='\n')
         else:
-            raise TypeError
+            fhandle = fname
 
         fhandle.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
         self.data.to_csv(fhandle,sep=' ',na_rep='nan',index=False,header=False)
