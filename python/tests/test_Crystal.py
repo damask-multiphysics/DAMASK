@@ -40,6 +40,9 @@ class TestCrystal:
                     alpha=alpha,beta=beta,gamma=gamma)
         assert np.allclose(np.eye(3),np.einsum('ik,jk',c.basis_real,c.basis_reciprocal))
 
+    def test_basis_invalid(self):
+        with pytest.raises(KeyError):
+            Crystal(family='cubic').basis_real
 
     @pytest.mark.parametrize('keyFrame,keyLattice',[('uvw','direction'),('hkl','plane'),])
     @pytest.mark.parametrize('vector',np.array([

@@ -793,6 +793,11 @@ class TestRotation:
         assert R == R if shape is None else (R == R).all()
 
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
+    def test_allclose(self,shape):
+        R = Rotation.from_random(shape,rng_seed=1)
+        assert R.allclose(R)
+
+    @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_unequal(self,shape):
         R = Rotation.from_random(shape,rng_seed=1)
         assert not (R != R if shape is None else (R != R).any())
@@ -1124,3 +1129,7 @@ class TestRotation:
         weights_r = np.histogramdd(Eulers_r,steps,rng)[0].flatten(order='F')/N * np.sum(weights)
 
         assert np.sqrt(((weights_r - weights) ** 2).mean()) < 5
+
+    def test_mul_invalid(self):
+        with pytest.raises(TypeError):
+            Rotation.from_random()*np.ones(3)
