@@ -37,7 +37,7 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
 
-  real   (C_DOUBLE),        public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real      !< real representation (some stress or deformation) of field_fourier
+  real(C_DOUBLE),           public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real      !< real representation (some stress or deformation) of field_fourier
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:,:),     pointer     :: tensorField_fourier   !< field on which the Fourier transform operates
   real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real      !< vector field real representation for fftw
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier   !< vector field fourier representation for fftw
@@ -156,7 +156,7 @@ subroutine spectral_utilities_init
   integer(C_INTPTR_T) :: alloc_local, local_K, local_K_offset
   integer(C_INTPTR_T), parameter :: &
     scalarSize = 1_C_INTPTR_T, &
-    vecSize    = 3_C_INTPTR_T, &
+    vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
   character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
@@ -274,7 +274,7 @@ subroutine spectral_utilities_init
   call c_f_pointer(tensorField, tensorField_fourier, [3_C_INTPTR_T,3_C_INTPTR_T, &
                    gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              gridFFTW(2),local_K])     ! place a pointer for a fourier tensor representation
 
-  vectorField = fftw_alloc_complex(vecSize*alloc_local)
+  vectorField = fftw_alloc_complex(vectorSize*alloc_local)
   call c_f_pointer(vectorField, vectorField_real,   [3_C_INTPTR_T,&
                    2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])     ! place a pointer for a real vector representation
   call c_f_pointer(vectorField, vectorField_fourier,[3_C_INTPTR_T,&
@@ -288,42 +288,42 @@ subroutine spectral_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
-  planTensorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
-                                        tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                       tensorField_real, tensorField_fourier, &     ! input data, output data
-                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planTensorForth)) error stop 'FFTW error'
-  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
-                                       tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                        tensorField_fourier,tensorField_real, &     ! input data, output data
-                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
-  if (.not. C_ASSOCIATED(planTensorBack)) error stop 'FFTW error'
+  planTensorForth = fftw_mpi_plan_many_dft_r2c(3,gridFFTW(3:1:-1),tensorSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
+                                               tensorField_real,tensorField_fourier, &
+                                               PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planTensorForth)) error stop 'FFTW error'
+  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3,gridFFTW(3:1:-1),tensorSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
+                                               tensorField_fourier,tensorField_real, &
+                                               PETSC_COMM_WORLD, FFTW_planner_flag)
+  if (.not. c_associated(planTensorBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
-  planVectorForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
-                                           vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK,&! no. of transforms, default iblock and oblock
-                                                       vectorField_real, vectorField_fourier, &     ! input data, output data
-                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planVectorForth)) error stop 'FFTW error'
-  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &         ! dimension, logical length in each dimension in reversed order
-                                         vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
-                                                      vectorField_fourier,vectorField_real, &       ! input data, output data
-                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
-  if (.not. C_ASSOCIATED(planVectorBack)) error stop 'FFTW error'
+  planVectorForth = fftw_mpi_plan_many_dft_r2c(3,gridFFTW(3:1:-1),vectorSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
+                                               vectorField_real,vectorField_fourier, &
+                                               PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planVectorForth)) error stop 'FFTW error'
+  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3,gridFFTW(3:1:-1),vectorSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
+                                               vectorField_fourier,vectorField_real, &
+                                               PETSC_COMM_WORLD, FFTW_planner_flag)
+  if (.not. c_associated(planVectorBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans
-  planScalarForth = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
-                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                       scalarField_real, scalarField_fourier, &     ! input data, output data
-                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planScalarForth)) error stop 'FFTW error'
-  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order, no. of transforms
-                                       scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
-                                                       scalarField_fourier,scalarField_real, &      ! input data, output data
-                                                               PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planScalarBack)) error stop 'FFTW error'
+  planScalarForth = fftw_mpi_plan_many_dft_r2c(3,gridFFTW(3:1:-1),scalarSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
+                                               scalarField_real,scalarField_fourier, &
+                                               PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planScalarForth)) error stop 'FFTW error'
+  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3,gridFFTW(3:1:-1),scalarSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
+                                               scalarField_fourier,scalarField_real, &
+                                               PETSC_COMM_WORLD, FFTW_planner_flag)
+  if (.not. c_associated(planScalarBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
