@@ -674,7 +674,7 @@ class Grid:
 
     def show(self) -> None:
         """Show on screen."""
-        VTK.from_rectilinear_grid(self.cells,self.size,self.origin).show()
+        VTK.from_image_data(self.cells,self.size,self.origin).show()
 
 
     def add_primitive(self,
