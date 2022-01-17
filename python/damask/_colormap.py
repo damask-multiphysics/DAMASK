@@ -3,13 +3,9 @@ import json
 import functools
 import colorsys
 from pathlib import Path
-from typing import Sequence, Union, TextIO
+from typing import Union, TextIO
 
 import numpy as np
-try:
-    from numpy.typing import ArrayLike
-except ImportError:
-    ArrayLike = Union[np.ndarray,Sequence[float]] # type: ignore
 import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -18,6 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from PIL import Image
 
+from ._typehints import FloatSequence, FileHandle
 from . import util
 from . import Table
 
@@ -82,8 +79,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_range(low: ArrayLike,
-                   high: ArrayLike,
+    def from_range(low: FloatSequence,
+                   high: FloatSequence,
                    name: str = 'DAMASK colormap',
                    N: int = 256,
                    model: str = 'rgb') -> 'Colormap':
@@ -197,7 +194,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def at(self,
-           fraction : Union[float,Sequence[float]]) -> np.ndarray:
+           fraction : Union[float,FloatSequence]) -> np.ndarray:
         """
         Interpolate color at fraction.
 
@@ -208,7 +205,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Returns
         -------
-        color : np.ndarray, shape(...,4)
+        color : numpy.ndarray, shape(...,4)
             RGBA values of interpolated color(s).
 
         Examples
@@ -229,7 +226,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def shade(self,
               field: np.ndarray,
-              bounds: ArrayLike = None,
+              bounds: FloatSequence = None,
               gap: float = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
@@ -296,7 +293,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def _get_file_handle(self,
-                         fname: Union[TextIO, str, Path, None],
+                         fname: Union[FileHandle, None],
                          suffix: str = '') -> TextIO:
         """
         Provide file handle.
@@ -323,7 +320,7 @@ class Colormap(mpl.colors.ListedColormap):
             return fname
 
 
-    def save_paraview(self, fname: Union[TextIO, str, Path] = None):
+    def save_paraview(self, fname: FileHandle = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -350,7 +347,7 @@ class Colormap(mpl.colors.ListedColormap):
         fhandle.write('\n')
 
 
-    def save_ASCII(self, fname: Union[TextIO, str, Path] = None):
+    def save_ASCII(self, fname: FileHandle = None):
         """
         Save as ASCII file.
 
@@ -365,7 +362,7 @@ class Colormap(mpl.colors.ListedColormap):
         t.save(self._get_file_handle(fname,'.txt'))
 
 
-    def save_GOM(self, fname: Union[TextIO, str, Path] = None):
+    def save_GOM(self, fname: FileHandle = None):
         """
         Save as ASCII file for use in GOM Aramis.
 
@@ -385,7 +382,7 @@ class Colormap(mpl.colors.ListedColormap):
         self._get_file_handle(fname,'.legend').write(GOM_str)
 
 
-    def save_gmsh(self, fname: Union[TextIO, str, Path] = None):
+    def save_gmsh(self, fname: FileHandle = None):
         """
         Save as ASCII file for use in gmsh.
 

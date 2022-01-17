@@ -393,8 +393,8 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of quaternion.shape
-           Boolean array indicating whether Rodrigues-Frank vector falls into fundamental zone.
+        in : numpy.ndarray of bool, quaternion.shape
+            Whether Rodrigues-Frank vector falls into fundamental zone.
 
         Notes
         -----
@@ -437,8 +437,8 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of quaternion.shape
-           Boolean array indicating whether Rodrigues-Frank vector falls into disorientation FZ.
+        in : numpy.ndarray of bool, quaternion.shape
+            Whether Rodrigues-Frank vector falls into disorientation FZ.
 
         References
         ----------
@@ -651,8 +651,8 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of shape (...)
-           Boolean array indicating whether vector falls into SST.
+        in : numpy.ndarray, shape (...)
+            Whether vector falls into SST.
 
         """
         if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:

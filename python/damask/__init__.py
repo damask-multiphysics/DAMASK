@@ -8,6 +8,7 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
     __version__ = version
 
+from .                 import _typehints       # noqa
 from .                 import util             # noqa
 from .                 import seeds            # noqa
 from .                 import tensor           # noqa

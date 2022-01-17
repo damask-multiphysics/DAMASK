@@ -1857,13 +1857,13 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
     localShape
   integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
     myStart, &
-    globalShape                                                                                    !< shape of the dataset (all processes)
+    globalShape                                                                                     !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
 
   integer, dimension(worldsize) :: &
     readSize                                                                                        !< contribution of all processes
-  integer :: ierr
   integer :: hdferr
+  integer(MPI_INTEGER_KIND) :: err_MPI
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
@@ -1877,8 +1877,8 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
-    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)       ! get total output size over each process
-    if (ierr /= 0) error stop 'MPI error'
+    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,err_MPI) ! get total output size over each process
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
 #endif
   myStart                   = int(0,HSIZE_T)
@@ -1956,7 +1956,8 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 
   integer, dimension(worldsize) :: writeSize                                                        !< contribution of all processes
   integer(HID_T) ::  dcpl
-  integer :: ierr, hdferr
+  integer :: hdferr
+  integer(MPI_INTEGER_KIND) :: err_MPI
   integer(HSIZE_T), parameter :: chunkSize = 1024_HSIZE_T**2/8_HSIZE_T
 
 
@@ -1977,8 +1978,8 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   writeSize(worldrank+1) = int(myShape(ubound(myShape,1)))
 #ifdef PETSC
   if (parallel) then
-    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)      ! get total output size over each process
-    if (ierr /= 0) error stop 'MPI error'
+    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,err_MPI) ! get total output size over each process
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
 #endif
   myStart                   = int(0,HSIZE_T)
