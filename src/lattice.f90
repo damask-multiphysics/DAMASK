@@ -587,8 +587,8 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Non-schmid projections for bcc with up to 6 coefficients
-! Koester et al. 2012, Acta Materialia 60 (2012) 3894–3901, eq. (17)
-! Gröger et al. 2008, Acta Materialia 56 (2008) 5412–5425, table 1
+! https://doi.org/10.1016/j.actamat.2012.03.053, eq. (17)
+! https://doi.org/10.1016/j.actamat.2008.07.037, table 1
 !--------------------------------------------------------------------------------------------------
 function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSchmidMatrix)
 
@@ -601,6 +601,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   real(pReal), dimension(3)                            :: direction, normal, np
   type(rotation)                                       :: R
   integer                                              :: i
+
 
   if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
@@ -634,7 +635,9 @@ end function lattice_nonSchmidMatrix
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Slip-slip interaction matrix
-!> details only active slip systems are considered
+!> @details only active slip systems are considered
+!> @details https://doi.org/10.1016/j.actamat.2016.12.040 (fcc: Tab S4-1, bcc: Tab S5-1)
+!> @details https://doi.org/10.1016/j.ijplas.2014.06.010 (hex: Tab 3b)
 !--------------------------------------------------------------------------------------------------
 function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(interactionMatrix)
 
@@ -645,6 +648,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
 
   integer, dimension(:),   allocatable :: NslipMax
   integer, dimension(:,:), allocatable :: interactionTypes
+
 
   integer, dimension(FCC_NSLIP,FCC_NSLIP), parameter :: &
     FCC_INTERACTIONSLIPSLIP = reshape( [&
@@ -750,41 +754,113 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
   integer, dimension(HEX_NSLIP,HEX_NSLIP), parameter :: &
     HEX_INTERACTIONSLIPSLIP = reshape( [&
     ! basal      prism      1. pyr<a>           1. pyr<c+a>                           2. pyr<c+a>
-       1, 2, 2,   3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13,13,13,13,13,13,13,  21,21,21,21,21,21, & ! -----> acting (forest)
-       2, 1, 2,   3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13,13,13,13,13,13,13,  21,21,21,21,21,21, & ! | basal
-       2, 2, 1,   3, 3, 3,   7, 7, 7, 7, 7, 7,  13,13,13,13,13,13,13,13,13,13,13,13,  21,21,21,21,21,21, & ! |
+       1, 2, 2,   3, 4, 4,   9,10, 9, 9,10, 9,  20,21,22,22,21,20,20,21,22,22,21,20,  47,47,48,47,47,48, & ! -----> acting (forest)
+       2, 1, 2,   4, 3, 4,  10, 9, 9,10, 9, 9,  22,22,21,20,20,21,22,22,21,20,20,21,  47,48,47,47,48,47, & ! | basal
+       2, 2, 1,   4, 4, 3,   9, 9,10, 9, 9,10,  21,20,20,21,22,22,21,20,20,21,22,22,  48,47,47,48,47,47, & ! |
                                                                                                            ! v
-       6, 6, 6,   4, 5, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14,14,14,14,14,14,14,  22,22,22,22,22,22, & ! reacting (primary)
-       6, 6, 6,   5, 4, 5,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14,14,14,14,14,14,14,  22,22,22,22,22,22, & ! prism
-       6, 6, 6,   5, 5, 4,   8, 8, 8, 8, 8, 8,  14,14,14,14,14,14,14,14,14,14,14,14,  22,22,22,22,22,22, &
+       7, 8, 8,   5, 6, 6,  11,12,11,11,12,11,  23,24,25,25,24,23,23,24,25,25,24,23,  49,49,50,49,49,50, & ! reacting (primary)
+       8, 7, 8,   6, 5, 6,  12,11,11,12,11,11,  25,25,24,23,23,24,25,25,24,23,23,24,  49,50,49,49,50,49, & ! prism
+       8, 8, 7,   6, 6, 5,  11,11,12,11,11,12,  24,23,23,24,25,25,24,23,23,24,25,25,  50,49,49,50,49,49, &
 
-      12,12,12,  11,11,11,   9,10,10,10,10,10,  15,15,15,15,15,15,15,15,15,15,15,15,  23,23,23,23,23,23, &
-      12,12,12,  11,11,11,  10, 9,10,10,10,10,  15,15,15,15,15,15,15,15,15,15,15,15,  23,23,23,23,23,23, &
-      12,12,12,  11,11,11,  10,10, 9,10,10,10,  15,15,15,15,15,15,15,15,15,15,15,15,  23,23,23,23,23,23, &
-      12,12,12,  11,11,11,  10,10,10, 9,10,10,  15,15,15,15,15,15,15,15,15,15,15,15,  23,23,23,23,23,23, & ! 1. pyr<a>
-      12,12,12,  11,11,11,  10,10,10,10, 9,10,  15,15,15,15,15,15,15,15,15,15,15,15,  23,23,23,23,23,23, &
-      12,12,12,  11,11,11,  10,10,10,10,10, 9,  15,15,15,15,15,15,15,15,15,15,15,15,  23,23,23,23,23,23, &
+      18,19,18,  16,17,16,  13,14,14,15,14,14,  26,26,27,28,28,27,29,29,27,28,28,27,  51,52,51,51,52,51, &
+      19,18,18,  17,16,16,  14,13,14,14,15,14,  28,27,26,26,27,28,28,27,29,29,27,28,  51,51,52,51,51,52, &
+      18,18,19,  16,16,17,  14,14,13,14,14,15,  27,28,28,27,26,26,27,28,28,27,29,29,  52,51,51,52,51,51, &
+      18,19,18,  16,17,16,  15,14,14,13,14,14,  29,29,27,28,28,27,26,26,27,28,28,27,  51,52,51,51,52,51, & ! 1. pyr<a>
+      19,18,18,  17,16,16,  14,15,14,14,13,14,  28,27,29,29,27,28,28,27,26,26,27,28,  51,51,52,51,51,52, &
+      18,18,19,  16,16,17,  14,14,15,14,14,13,  27,28,28,27,29,29,27,28,28,27,26,26,  52,51,51,52,51,51, &
 
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  16,17,17,17,17,17,17,17,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,16,17,17,17,17,17,17,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,16,17,17,17,17,17,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,16,17,17,17,17,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,16,17,17,17,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16,17,17,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,17,16,17,17,17,17,17,  24,24,24,24,24,24, & ! 1. pyr<c+a>
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,17,17,16,17,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,17,17,17,16,17,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,17,17,17,17,16,17,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,17,17,17,17,17,16,17,  24,24,24,24,24,24, &
-      20,20,20,  19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,17,17,17,17,17,17,16,  24,24,24,24,24,24, &
+      44,45,46,  41,42,43,  37,38,39,40,38,39,  30,31,32,32,32,33,34,35,32,32,32,36,  53,54,55,53,54,56, &
+      46,45,44,  43,42,41,  37,39,38,40,39,38,  31,30,36,32,32,32,35,34,33,32,32,32,  56,54,53,55,54,53, &
+      45,46,44,  42,43,41,  39,37,38,39,40,38,  32,36,30,31,32,32,32,33,34,35,32,32,  56,53,54,55,53,54, &
+      45,44,46,  42,41,43,  38,37,39,38,40,39,  32,32,31,30,36,32,32,32,35,34,33,32,  53,56,54,53,55,54, &
+      46,44,45,  43,41,42,  38,39,37,38,39,40,  32,32,32,36,30,31,32,32,32,33,34,35,  54,56,53,54,55,53, &
+      44,46,45,  41,43,42,  39,38,37,39,38,40,  33,32,32,32,31,30,36,32,32,32,35,34,  54,53,56,54,53,55, &
+      44,45,46,  41,42,43,  40,38,39,37,38,39,  34,35,32,32,32,36,30,31,32,32,32,33,  53,54,56,53,54,55, & ! 1. pyr<c+a>
+      46,45,44,  43,42,41,  40,39,38,37,39,38,  35,34,33,32,32,32,31,30,36,32,32,32,  55,54,53,56,54,53, &
+      45,46,44,  42,43,41,  39,40,38,39,37,38,  32,33,34,35,32,32,32,36,30,31,32,32,  55,53,54,56,53,54, &
+      45,44,46,  42,41,43,  38,40,39,38,37,39,  32,32,35,34,33,32,32,32,31,30,36,32,  53,55,54,53,56,54, &
+      46,44,45,  43,41,42,  38,39,40,38,39,37,  32,32,32,33,34,35,32,32,32,36,30,31,  54,55,53,54,56,53, &
+      44,46,45,  41,43,42,  39,38,40,39,38,37,  36,32,32,32,35,34,33,32,32,32,31,30,  54,53,55,54,53,56, &
 
-      30,30,30,  29,29,29,  28,28,28,28,28,28,  27,27,27,27,27,27,27,27,27,27,27,27,  25,26,26,26,26,26, &
-      30,30,30,  29,29,29,  28,28,28,28,28,28,  27,27,27,27,27,27,27,27,27,27,27,27,  26,25,26,26,26,26, &
-      30,30,30,  29,29,29,  28,28,28,28,28,28,  27,27,27,27,27,27,27,27,27,27,27,27,  26,26,25,26,26,26, &
-      30,30,30,  29,29,29,  28,28,28,28,28,28,  27,27,27,27,27,27,27,27,27,27,27,27,  26,26,26,25,26,26, & ! 2. pyr<c+a>
-      30,30,30,  29,29,29,  28,28,28,28,28,28,  27,27,27,27,27,27,27,27,27,27,27,27,  26,26,26,26,25,26, &
-      30,30,30,  29,29,29,  28,28,28,28,28,28,  27,27,27,27,27,27,27,27,27,27,27,27,  26,26,26,26,26,25  &
+      68,68,69,  66,66,67,  64,64,65,64,65,65,  60,61,61,60,62,62,60,63,63,60,62,62,  57,58,58,59,58,58, &
+      68,69,68,  66,67,66,  65,64,64,65,64,64,  62,62,60,61,61,60,62,62,60,63,63,60,  58,57,58,58,59,58, &
+      69,68,68,  67,66,66,  64,65,64,64,65,64,  63,60,62,62,60,61,61,60,62,62,60,63,  58,58,57,58,58,59, &
+      68,68,69,  66,66,67,  64,64,65,64,64,65,  60,63,63,60,62,62,60,61,61,60,62,62,  59,58,58,57,58,58, & ! 2. pyr<c+a>
+      68,69,68,  66,67,66,  65,64,64,65,64,64,  62,62,60,63,63,60,62,62,60,61,61,60,  58,59,58,58,57,58, &
+      69,68,68,  67,66,66,  64,65,64,64,65,64,  61,60,62,62,60,63,63,60,62,62,60,61,  58,58,59,58,58,57  &
       ],shape(HEX_INTERACTIONSLIPSLIP))                                                             !< Slip-slip interaction types for hex (onion peel naming scheme)
+                                                                                                    !< 10.1016/j.ijplas.2014.06.010 table 3
+                                                                                                    !< 10.1080/14786435.2012.699689 table 2 and 3
+                                                                                                    !< index & label & description
+                                                                                                    !<  1 & S1 & basal self-interaction
+                                                                                                    !<  2 &  1 & basal/basal coplanar
+                                                                                                    !<  3 &  3 & basal/prismatic collinear
+                                                                                                    !<  4 &  4 & basal/prismatic non-collinear
+                                                                                                    !<  5 & S2 & prismatic self-interaction
+                                                                                                    !<  6 &  2 & prismatic/prismatic
+                                                                                                    !<  7 &  5 & prismatic/basal collinear
+                                                                                                    !<  8 &  6 & prismatic/basal non-collinear
+                                                                                                    !<  9 &  - & basal/pyramidal <a> non-collinear
+                                                                                                    !< 10 &  - & basal/pyramidal <a> collinear
+                                                                                                    !< 11 &  - & prismatic/pyramidal <a> non-collinear
+                                                                                                    !< 12 &  - & prismatic/pyramidal <a> collinear
+                                                                                                    !< 13 &  - & pyramidal <a> self-interaction
+                                                                                                    !< 14 &  - & pyramidal <a> non-collinear
+                                                                                                    !< 15 &  - & pyramidal <a> collinear
+                                                                                                    !< 16 &  - & pyramidal <a>/prismatic non-collinear
+                                                                                                    !< 17 &  - & pyramidal <a>/prismatic collinear
+                                                                                                    !< 18 &  - & pyramidal <a>/basal non-collinear
+                                                                                                    !< 19 &  - & pyramidal <a>/basal collinear
+                                                                                                    !< 20 &  - & basal/1. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 21 &  - & basal/1. order pyramidal <c+a>
+                                                                                                    !< 22 &  - & basal/1. order pyramidal <c+a>
+                                                                                                    !< 23 &  - & prismatic/1. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 24 &  - & prismatic/1. order pyramidal <c+a>
+                                                                                                    !< 25 &  - & prismatic/1. order pyramidal <c+a> semi-coplanar?
+                                                                                                    !< 26 &  - & pyramidal <a>/1. order pyramidal <c+a> coplanar
+                                                                                                    !< 27 &  - & pyramidal <a>/1. order pyramidal <c+a>
+                                                                                                    !< 28 &  - & pyramidal <a>/1. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 29 &  - & pyramidal <a>/1. order pyramidal <c+a> semi-coplanar
+                                                                                                    !< 30 &  - & 1. order pyramidal <c+a> self-interaction
+                                                                                                    !< 31 &  - & 1. order pyramidal <c+a> coplanar
+                                                                                                    !< 32 &  - & 1. order pyramidal <c+a>
+                                                                                                    !< 33 &  - & 1. order pyramidal <c+a>
+                                                                                                    !< 34 &  - & 1. order pyramidal <c+a> semi-coplanar
+                                                                                                    !< 35 &  - & 1. order pyramidal <c+a> semi-coplanar
+                                                                                                    !< 36 &  - & 1. order pyramidal <c+a> collinear
+                                                                                                    !< 37 &  - & 1. order pyramidal <c+a>/pyramidal <a> coplanar
+                                                                                                    !< 38 &  - & 1. order pyramidal <c+a>/pyramidal <a> semi-collinear
+                                                                                                    !< 39 &  - & 1. order pyramidal <c+a>/pyramidal <a>
+                                                                                                    !< 40 &  - & 1. order pyramidal <c+a>/pyramidal <a> semi-coplanar
+                                                                                                    !< 41 &  - & 1. order pyramidal <c+a>/prismatic semi-collinear
+                                                                                                    !< 42 &  - & 1. order pyramidal <c+a>/prismatic semi-coplanar
+                                                                                                    !< 43 &  - & 1. order pyramidal <c+a>/prismatic
+                                                                                                    !< 44 &  - & 1. order pyramidal <c+a>/basal semi-collinear
+                                                                                                    !< 45 &  - & 1. order pyramidal <c+a>/basal
+                                                                                                    !< 46 &  - & 1. order pyramidal <c+a>/basal
+                                                                                                    !< 47 &  8 & basal/2. order pyramidal <c+a> non-collinear
+                                                                                                    !< 48 &  7 & basal/2. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 49 & 10 & prismatic/2. order pyramidal <c+a>
+                                                                                                    !< 50 &  9 & prismatic/2. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 51 &  - & pyramidal <a>/2. order pyramidal <c+a>
+                                                                                                    !< 52 &  - & pyramidal <a>/2. order pyramidal <c+a> semi collinear
+                                                                                                    !< 53 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a>
+                                                                                                    !< 54 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a>
+                                                                                                    !< 55 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a>
+                                                                                                    !< 56 &  - & 1. order pyramidal <c+a>/2. order pyramidal <c+a> collinear
+                                                                                                    !< 57 & S3 & 2. order pyramidal <c+a> self-interaction
+                                                                                                    !< 58 & 16 & 2. order pyramidal <c+a> non-collinear
+                                                                                                    !< 59 & 15 & 2. order pyramidal <c+a> semi-collinear
+                                                                                                    !< 60 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a>
+                                                                                                    !< 61 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a> collinear
+                                                                                                    !< 62 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a>
+                                                                                                    !< 63 &  - & 2. order pyramidal <c+a>/1. order pyramidal <c+a>
+                                                                                                    !< 64 &  - & 2. order pyramidal <c+a>/pyramidal <a> non-collinear
+                                                                                                    !< 65 &  - & 2. order pyramidal <c+a>/pyramidal <a> semi-collinear
+                                                                                                    !< 66 & 14 & 2. order pyramidal <c+a>/prismatic non-collinear
+                                                                                                    !< 67 & 13 & 2. order pyramidal <c+a>/prismatic semi-collinear
+                                                                                                    !< 68 & 12 & 2. order pyramidal <c+a>/basal non-collinear
+                                                                                                    !< 69 & 11 & 2. order pyramidal <c+a>/basal semi-collinear
 
   integer, dimension(BCT_NSLIP,BCT_NSLIP), parameter :: &
     BCT_INTERACTIONSLIPSLIP = reshape( [&
