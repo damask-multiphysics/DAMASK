@@ -15,20 +15,23 @@ subroutine quit(stop_id)
   implicit none
   integer, intent(in) :: stop_id
   integer, dimension(8) :: dateAndTime
-  integer :: error
-  PetscErrorCode :: ierr = 0
+  integer :: err_HDF5
+  integer(MPI_INTEGER_KIND) :: err_MPI
+  PetscErrorCode :: err_PETSc
  
-  call h5open_f(error)
-  if (error /= 0) write(6,'(a,i5)') ' Error in h5open_f ',error                                     ! prevents error if not opened yet
-  call h5close_f(error)
-  if (error /= 0) write(6,'(a,i5)') ' Error in h5close_f ',error
+  call h5open_f(err_HDF5)
+  if (err_HDF5 /= 0_MPI_INTEGER_KIND) write(6,'(a,i5)') ' Error in h5open_f ',err_HDF5                               ! prevents error if not opened yet
+  call h5close_f(err_HDF5)
+  if (err_HDF5 /= 0_MPI_INTEGER_KIND) write(6,'(a,i5)') ' Error in h5close_f ',err_HDF5
  
-  call PetscFinalize(ierr)
-  CHKERRQ(ierr)
+  call PetscFinalize(err_PETSc)
+  CHKERRQ(err_PETSc)
  
 #ifdef _OPENMP
-  call MPI_finalize(error)
-  if (error /= 0) write(6,'(a,i5)') ' Error in MPI_finalize',error
+  call MPI_finalize(err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) write(6,'(a,i5)') ' Error in MPI_finalize',err_MPI
+#else
+  err_MPI = 0_MPI_INTEGER_KIND
 #endif
   
   call date_and_time(values = dateAndTime)
@@ -40,7 +43,10 @@ subroutine quit(stop_id)
                                                         dateAndTime(6),':',&
                                                         dateAndTime(7)
  
-  if (stop_id == 0 .and. ierr == 0 .and. error == 0) stop 0                                         ! normal termination
+  if (stop_id == 0 .and. &
+      err_HDF5 == 0 .and. &
+      err_MPI == 0_MPI_INTEGER_KIND .and. &
+      err_PETSC == 0) stop 0                                                                        ! normal termination
   stop 1                                                                                            ! error (message from IO_error)
 
 end subroutine quit

@@ -93,6 +93,27 @@ test_mesh_GNU:
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
 
+test_grid_GNU-64bit:
+  stage: compile
+  script:
+    - module load Compiler/GNU/10 Libraries/PETSc/3.16.2/64bit
+    - cd PRIVATE/testing/pytest
+    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU-64bit
+
+test_mesh_GNU-64bit:
+  stage: compile
+  script:
+    - module load Compiler/GNU/10 Libraries/PETSc/3.16.2/64bit
+    - cd PRIVATE/testing/pytest
+    - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU-64bit
+
+test_grid_IntelLLVM:
+  stage: compile
+  script:
+    - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
+    - cd PRIVATE/testing/pytest
+    - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_IntelLLVM
+
 test_mesh_IntelLLVM:
   stage: compile
   script:
@@ -120,7 +141,6 @@ test_Marc:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and Marc' --basetemp ${TESTROOT}/compile_Marc
-
 
 setup_grid:
   stage: compile
