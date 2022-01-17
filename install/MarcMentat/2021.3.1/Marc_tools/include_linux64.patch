@@ -12,17 +12,15 @@
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -439,8 +444,8 @@ if test "$MARC_INTEGER_SIZE" = "i4" ; then
+@@ -439,7 +444,7 @@ if test "$MARC_INTEGER_SIZE" = "i4" ; then
    I8DEFINES=
    I8CDEFINES=
  else
 -  I8FFLAGS="-i8"
--  I8DEFINES="-DI64"
 +  I8FFLAGS="-i8 -integer-size 64"
-+  I8DEFINES="-DI64 -DINT=8"
+   I8DEFINES="-DI64"
    I8CDEFINES="-U_DOUBLE -D_SINGLE"
  fi
- 
 @@ -556,7 +561,7 @@ then
  PROFILE=" $PROFILE -pg"
  fi
