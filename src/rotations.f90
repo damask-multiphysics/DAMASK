@@ -792,7 +792,7 @@ pure function eu2ax(eu) result(ax)
   else
     ax(1:3) = -P/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                                   ! passive axis-angle pair so a minus sign in front
     ax(4) = alpha
-    if (sign(1.0_pReal,alpha) < 0.0_pReal) ax = -ax                                                                 ! ensure alpha is positive
+    if (sign(1.0_pReal,alpha) < 0.0_pReal) ax = -ax                                                 ! ensure alpha is positive
   end if
 
 end function eu2ax

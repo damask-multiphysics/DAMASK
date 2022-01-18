@@ -223,9 +223,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   integer :: computationMode, i, node, CPnodeID
   integer(pI32) :: defaultNumThreadsInt                                                             !< default value set by Marc
 
-  integer(pInt), save :: &
-    theInc       = -1_pInt, &                                                                       !< needs description
-    lastLovl     =  0_pInt                                                                          !< lovl in previous call to marc hypela2
+  integer, save :: &
+    theInc       = -1, &                                                                            !< needs description
+    lastLovl     =  0                                                                               !< lovl in previous call to marc hypela2
   real(pReal), save :: &
     theTime      = 0.0_pReal, &                                                                     !< needs description
     theDelta     = 0.0_pReal
