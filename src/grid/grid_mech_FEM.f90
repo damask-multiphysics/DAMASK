@@ -60,7 +60,6 @@ module grid_mechanical_FEM
   real(pReal), dimension(3)   :: delta
   real(pReal), dimension(3,8) :: BMat
   real(pReal), dimension(8,8) :: HGMat
-  PetscInt :: xstart,ystart,zstart,xend,yend,zend
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -146,7 +145,7 @@ subroutine grid_mechanical_FEM_init
 ! set default and user defined options for PETSc
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
                                 '-mechanical_snes_type newtonls -mechanical_ksp_type fgmres &
-                                &-mechanical_ksp_max_it 25 -mechanical_mg_levels_ksp_type chebyshev', &
+                                &-mechanical_ksp_max_it 25', &
                                 err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
@@ -212,11 +211,6 @@ subroutine grid_mechanical_FEM_init
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call DMDAGetCorners(mechanical_grid,xstart,ystart,zstart,xend,yend,zend,err_PETSc)                ! local grid extent
-  CHKERRQ(err_PETSc)
-  xend = xstart+xend-1
-  yend = ystart+yend-1
-  zend = zstart+zend-1
   delta = geomSize/real(grid,pReal)                                                                 ! grid spacing
   detJ = product(delta)                                                                             ! cell volume
 
@@ -560,14 +554,13 @@ subroutine formResidual(da_local,x_local, &
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
-  do k = zstart+1, zend+1; do j = 1, grid(2); do i = 1, grid(1)
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    kk = k-zstart
-    F(1:3,1:3,i,j,kk) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
+    F(1:3,1:3,i,j,k-grid3offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
 
@@ -590,15 +583,14 @@ subroutine formResidual(da_local,x_local, &
   call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
   ele = 0
-  do k = zstart+1, zend+1; do j = 1, grid(2); do i = 1, grid(1)
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    kk = k-zstart
     ele = ele + 1
-    f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,kk)))*detJ + &
+    f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-grid3offset)))*detJ + &
              matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
                                    homogenization_dPdF(2,2,2,2,ele) + &
                                    homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
@@ -614,18 +606,18 @@ subroutine formResidual(da_local,x_local, &
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
   call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
-  if (zstart == 0) then
-    f_scal(0:2,xstart,ystart,zstart) = 0.0
-    f_scal(0:2,xend+1,ystart,zstart) = 0.0
-    f_scal(0:2,xstart,yend+1,zstart) = 0.0
-    f_scal(0:2,xend+1,yend+1,zstart) = 0.0
-  endif
-  if (zend + 1 == grid(3)) then
-    f_scal(0:2,xstart,ystart,zend+1) = 0.0
-    f_scal(0:2,xend+1,ystart,zend+1) = 0.0
-    f_scal(0:2,xstart,yend+1,zend+1) = 0.0
-    f_scal(0:2,xend+1,yend+1,zend+1) = 0.0
-  endif
+  if (grid3offset == 0) then
+    f_scal(0:2,0,      0,      0) = 0.0_pReal
+    f_scal(0:2,grid(1),0,      0) = 0.0_pReal
+    f_scal(0:2,0,      grid(2),0) = 0.0_pReal
+    f_scal(0:2,grid(1),grid(2),0) = 0.0_pReal
+  end if
+  if (grid3+grid3offset == grid(3)) then
+    f_scal(0:2,0,      0,      grid(3)) = 0.0_pReal
+    f_scal(0:2,grid(1),0,      grid(3)) = 0.0_pReal
+    f_scal(0:2,0,      grid(2),grid(3)) = 0.0_pReal
+    f_scal(0:2,grid(1),grid(2),grid(3)) = 0.0_pReal
+  end if
   call DMDAVecRestoreArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
 
 end subroutine formResidual
@@ -660,7 +652,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatZeroEntries(Jac,err_PETSc); CHKERRQ(err_PETSc)
   ele = 0
-  do k = zstart+1, zend+1; do j = ystart+1, yend+1; do i = xstart+1, xend+1
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
