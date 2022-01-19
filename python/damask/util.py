@@ -14,6 +14,7 @@ import pathlib
 import numpy as np
 import h5py
 
+from ._typehints import IntSequence
 from . import version
 
 # limit visibility
@@ -366,7 +367,7 @@ def execution_stamp(class_name: str, function_name: str = None) -> str:
     return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
-def hybrid_IA(dist: np.ndarray, N: int, rng_seed: Union[int, np.ndarray] = None) -> np.ndarray:
+def hybrid_IA(dist: np.ndarray, N: int, rng_seed: Union[int, IntSequence] = None) -> np.ndarray:
     """
     Hybrid integer approximation.
 
