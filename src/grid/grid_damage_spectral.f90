@@ -41,7 +41,6 @@ module grid_damage_spectral
 ! PETSc data
   SNES :: damage_snes
   Vec  :: solution_vec
-  PetscInt :: xstart, xend, ystart, yend, zstart, zend
   real(pReal), dimension(:,:,:), allocatable :: &
     phi_current, &                                                                                  !< field of current damage
     phi_lastInc, &                                                                                  !< field of previous damage
@@ -143,11 +142,6 @@ subroutine grid_damage_spectral_init()
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAGetCorners(damage_grid,xstart,ystart,zstart,xend,yend,zend,err_PETSc)
-  CHKERRQ(err_PETSc)
-  xend = xstart + xend - 1
-  yend = ystart + yend - 1
-  zend = zstart + zend - 1
   allocate(phi_current(grid(1),grid(2),grid3), source=1.0_pReal)
   allocate(phi_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
   allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
@@ -239,7 +233,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     call SNESGetDM(damage_snes,dm_local,err_PETSc); CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    x_scal(xstart:xend,ystart:yend,zstart:zend) = phi_current
+    x_scal = phi_current
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0

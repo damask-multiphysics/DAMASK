@@ -40,7 +40,6 @@ module grid_thermal_spectral
 ! PETSc data
   SNES     :: thermal_snes
   Vec      :: solution_vec
-  PetscInt :: xstart, xend, ystart, yend, zstart, zend
   real(pReal), dimension(:,:,:), allocatable :: &
     T_current, &                                                                                    !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
@@ -128,11 +127,6 @@ subroutine grid_thermal_spectral_init(T_0)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAGetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,err_PETSc)
-  CHKERRQ(err_PETSc)
-  xend = xstart + xend - 1
-  yend = ystart + yend - 1
-  zend = zstart + zend - 1
   allocate(T_current(grid(1),grid(2),grid3), source=0.0_pReal)
   allocate(T_lastInc(grid(1),grid(2),grid3), source=0.0_pReal)
   allocate(T_stagInc(grid(1),grid(2),grid3), source=0.0_pReal)
@@ -148,7 +142,7 @@ subroutine grid_thermal_spectral_init(T_0)
 
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  T_PETSc(xstart:xend,ystart:yend,zstart:zend) = T_current
+  T_PETSc = T_current
   call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -239,7 +233,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
     CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    x_scal(xstart:xend,ystart:yend,zstart:zend) = T_current
+    x_scal = T_current
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
