@@ -560,13 +560,13 @@ subroutine formResidual(da_local,x_local, &
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  do k = zstart+1, zend+1; do j = ystart+1, yend+1; do i = xstart+1, xend+1
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
+    ii = i-xstart; jj = j-ystart; kk = k-zstart
     F(1:3,1:3,ii,jj,kk) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
@@ -590,20 +590,20 @@ subroutine formResidual(da_local,x_local, &
   call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
   ele = 0
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  do k = zstart+1, zend+1; do j = ystart+1, yend+1; do i = xstart+1, xend+1
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
+    ii = i-xstart; jj = j-ystart; kk = k-zstart
     ele = ele + 1
     f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,ii,jj,kk)))*detJ + &
              matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
                                    homogenization_dPdF(2,2,2,2,ele) + &
                                    homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       f_scal(0:2,i+ii,j+jj,k+kk) = f_scal(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     enddo; enddo; enddo
@@ -660,9 +660,9 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatZeroEntries(Jac,err_PETSc); CHKERRQ(err_PETSc)
   ele = 0
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  do k = zstart+1, zend+1; do j = ystart+1, yend+1; do i = xstart+1, xend+1
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       col(MatStencil_i,ctr   ) = i+ii
       col(MatStencil_j,ctr   ) = j+jj
@@ -713,14 +713,14 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ele = 0
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  do k = zstart+1, zend+1; do j = ystart+1, yend+1; do i = xstart+1, xend+1
     ele = ele + 1
-    x_scal(0:2,i,j,k) = discretization_IPcoords(1:3,ele)
+    x_scal(0:2,i-1,j-1,k-1) = discretization_IPcoords(1:3,ele)
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)
-  CHKERRQ(err_PETSc)                                                                          ! initialize to undeformed coordinates (ToDo: use ip coordinates)
+  CHKERRQ(err_PETSc)                                                                                ! initialize to undeformed coordinates (ToDo: use ip coordinates)
   call MatNullSpaceCreateRigidBody(coordinates,matnull,err_PETSc)
-  CHKERRQ(err_PETSc)                                                                          ! get rigid body deformation modes
+  CHKERRQ(err_PETSc)                                                                                ! get rigid body deformation modes
   call DMRestoreGlobalVector(da_local,coordinates,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatSetNullSpace(Jac,matnull,err_PETSc)
