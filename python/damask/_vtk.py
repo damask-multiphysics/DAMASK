@@ -10,6 +10,7 @@ from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 
+from ._typehints import FloatSequence
 from . import util
 from . import Table
 
@@ -68,7 +69,7 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: np.ndarray, size: np.ndarray, origin: np.ndarray = np.zeros(3)) -> "VTK":
+    def from_rectilinear_grid(grid: np.ndarray, size: FloatSequence, origin: FloatSequence = np.zeros(3)) -> "VTK":
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
