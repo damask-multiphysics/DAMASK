@@ -193,7 +193,6 @@ subroutine grid_mechanical_spectral_polarisation_init
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          da,err_PETSc)                                                                              ! handle, error
   CHKERRQ(err_PETSc)
-  call SNESSetDM(snes,da,err_PETSc); CHKERRQ(err_PETSc)                                             ! connect snes to da
   call DMsetFromOptions(da,err_PETSc); CHKERRQ(err_PETSc)
   call DMsetUp(da,err_PETSc); CHKERRQ(err_PETSc)
   call DMcreateGlobalVector(da,solution_vec,err_PETSc); CHKERRQ(err_PETSc)                          ! global solution vector (grid x 18, i.e. every def grad tensor)
@@ -201,6 +200,7 @@ subroutine grid_mechanical_spectral_polarisation_init
   CHKERRQ(err_PETSc)
   call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)         ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
+  call SNESSetDM(snes,da,err_PETSc); CHKERRQ(err_PETSc)                                             ! connect snes to da
   call SNESsetFromOptions(snes,err_PETSc); CHKERRQ(err_PETSc)                                       ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------

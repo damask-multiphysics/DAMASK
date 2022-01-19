@@ -128,13 +128,13 @@ subroutine grid_thermal_spectral_init(T_0)
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          thermal_grid,err_PETSc)                                                                    ! handle, error
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
   call DMsetFromOptions(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
   call DMsetUp(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
   call DMCreateGlobalVector(thermal_grid,solution_vec,err_PETSc)                                    ! global solution vector (grid x 1, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
   call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)  ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
+  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
   call SNESSetFromOptions(SNES_thermal,err_PETSc); CHKERRQ(err_PETSc)                               ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------

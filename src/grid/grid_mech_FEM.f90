@@ -176,8 +176,6 @@ subroutine grid_mechanical_FEM_init
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetDM(mechanical_snes,mechanical_grid,err_PETSc)
-  CHKERRQ(err_PETSc)
   call DMsetFromOptions(mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMsetUp(mechanical_grid,err_PETSc)
@@ -197,6 +195,8 @@ subroutine grid_mechanical_FEM_init
   call SNESSetConvergenceTest(mechanical_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
   CHKERRQ(err_PETSc)
   call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
+  CHKERRQ(err_PETSc)
+  call SNESSetDM(mechanical_snes,mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
   call SNESSetFromOptions(mechanical_snes,err_PETSc)                                                ! pull it all together with additional cli arguments
   CHKERRQ(err_PETSc)
