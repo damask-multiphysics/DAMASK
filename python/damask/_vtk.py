@@ -21,7 +21,7 @@ class VTK:
     High-level interface to VTK.
     """
 
-    def __init__(self, vtk_data: vtk.vtkImageData):
+    def __init__(self, vtk_data: vtk.vtkDataSet):
         """
         New spatial visualization.
 
