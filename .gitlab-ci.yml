@@ -46,7 +46,7 @@ variables:
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   PETSC_GNU:       "Libraries/PETSc/3.16.1/GNU-10-OpenMPI-4.1.1"
   PETSC_INTELLLVM: "Libraries/PETSc/3.16.3/oneAPI-2022.0.1-IntelMPI-2021.5.0"
-  PETSC_INTEL:    "Libraries/PETSc/3.16.2/Intel-2022.0.1-IntelMPI-2021.5.0"
+  PETSC_INTEL:    "Libraries/PETSc/3.16.3/Intel-2022.0.1-IntelMPI-2021.5.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC:            "FEM/MSC/2021.3.1"
   IntelMarc:      "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
@@ -79,63 +79,63 @@ mypy:
 
 
 ###################################################################################################
-test_grid_GNU:
+grid_GNU:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU
 
-test_mesh_GNU:
+mesh_GNU:
   stage: compile
   script:
     - module load ${COMPILER_GNU} ${MPI_GNU} ${PETSC_GNU}
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU
 
-test_grid_GNU-64bit:
+grid_GNU-64bit:
   stage: compile
   script:
     - module load Compiler/GNU/10 Libraries/PETSc/3.16.2/64bit
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU-64bit
 
-test_mesh_GNU-64bit:
+mesh_GNU-64bit:
   stage: compile
   script:
     - module load Compiler/GNU/10 Libraries/PETSc/3.16.2/64bit
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU-64bit
 
-test_grid_IntelLLVM:
+grid_IntelLLVM:
   stage: compile
   script:
     - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_IntelLLVM
 
-test_mesh_IntelLLVM:
+mesh_IntelLLVM:
   stage: compile
   script:
     - module load ${COMPILER_INTELLLVM} ${MPI_INTELLLVM} ${PETSC_INTELLLVM}
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_IntelLLVM
 
-test_grid_Intel:
+grid_Intel:
   stage: compile
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_Intel
 
-test_mesh_Intel:
+mesh_Intel:
   stage: compile
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_Intel
 
-test_Marc:
+Marc_Intel:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC
@@ -158,7 +158,7 @@ setup_mesh:
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${TESTROOT} ${CI_PROJECT_DIR}
     - make -j2 all install
 
-compile_Marc:
+setup_Marc:
   stage: compile
   script:
     - module load $IntelMarc $HDF5Marc $MSC

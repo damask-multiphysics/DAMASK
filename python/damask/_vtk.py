@@ -442,22 +442,24 @@ class VTK:
 
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
+
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(230/255,150/255,68/255)
 
         ren = vtk.vtkRenderer()
+        ren.AddActor(actor)
+        ren.SetBackground(67/255,128/255,208/255)
 
         window = vtk.vtkRenderWindow()
         window.AddRenderer(ren)
-
-        ren.AddActor(actor)
-        ren.SetBackground(0.2,0.2,0.2)
-
         window.SetSize(width,height)
+        window.SetWindowName(util.execution_stamp('VTK','show'))
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
-
-        iren.Initialize()
-        window.Render()
-        iren.Start()
+        if os.name == 'posix' and 'DISPLAY' not in os.environ:
+            print('Found no rendering device')
+        else:
+            window.Render()
+            iren.Start()
