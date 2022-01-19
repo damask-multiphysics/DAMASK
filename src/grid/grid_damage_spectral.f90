@@ -39,7 +39,7 @@ module grid_damage_spectral
   type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  SNES :: damage_snes
+  SNES :: SNES_damage
   Vec  :: solution_vec
   real(pReal), dimension(:,:,:), allocatable :: &
     phi_current, &                                                                                  !< field of current damage
@@ -105,9 +105,15 @@ subroutine grid_damage_spectral_init()
  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
+! init fields
+  allocate(phi_current(grid(1),grid(2),grid3), source=1.0_pReal)
+  allocate(phi_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
+  allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
+
+!--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,damage_snes,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(damage_snes,'damage_',err_PETSc);CHKERRQ(err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_damage,err_PETSc); CHKERRQ(err_PETSc)
+  call SNESSetOptionsPrefix(SNES_damage,'damage_',err_PETSc);CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
@@ -121,34 +127,29 @@ subroutine grid_damage_spectral_init()
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          damage_grid,err_PETSc)                                                                     ! handle, error
   CHKERRQ(err_PETSc)
-  call SNESSetDM(damage_snes,damage_grid,err_PETSc); CHKERRQ(err_PETSc)                             ! connect snes to da
+  call SNESSetDM(SNES_damage,damage_grid,err_PETSc); CHKERRQ(err_PETSc)                             ! connect snes to da
   call DMsetFromOptions(damage_grid,err_PETSc); CHKERRQ(err_PETSc)
   call DMsetUp(damage_grid,err_PETSc); CHKERRQ(err_PETSc)
   call DMCreateGlobalVector(damage_grid,solution_vec,err_PETSc); CHKERRQ(err_PETSc)                 ! global solution vector (grid x 1, i.e. every def grad tensor)
   call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)   ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(damage_snes,err_PETSc); CHKERRQ(err_PETSc)                                ! pull it all together with additional CLI arguments
-  call SNESGetType(damage_snes,snes_type,err_PETSc); CHKERRQ(err_PETSc)
+  call SNESSetFromOptions(SNES_damage,err_PETSc); CHKERRQ(err_PETSc)                                ! pull it all together with additional CLI arguments
+  call SNESGetType(SNES_damage,snes_type,err_PETSc); CHKERRQ(err_PETSc)
   if (trim(snes_type) == 'vinewtonrsls' .or. &
       trim(snes_type) == 'vinewtonssls') then
     call DMGetGlobalVector(damage_grid,lBound,err_PETSc); CHKERRQ(err_PETSc)
     call DMGetGlobalVector(damage_grid,uBound,err_PETSc); CHKERRQ(err_PETSc)
     call VecSet(lBound,0.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
     call VecSet(uBound,1.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
-    call SNESVISetVariableBounds(damage_snes,lBound,uBound,err_PETSc)                                ! variable bounds for variational inequalities like contact mechanics, damage etc.
+    call SNESVISetVariableBounds(SNES_damage,lBound,uBound,err_PETSc)                                ! variable bounds for variational inequalities like contact mechanics, damage etc.
     call DMRestoreGlobalVector(damage_grid,lBound,err_PETSc); CHKERRQ(err_PETSc)
     call DMRestoreGlobalVector(damage_grid,uBound,err_PETSc); CHKERRQ(err_PETSc)
   end if
 
 !--------------------------------------------------------------------------------------------------
-! init fields
-  allocate(phi_current(grid(1),grid(2),grid3), source=1.0_pReal)
-  allocate(phi_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
-  allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
-
   call VecSet(solution_vec,1.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
 
-  call updateReference
+  call updateReference()
 
 end subroutine grid_damage_spectral_init
 
@@ -175,9 +176,9 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
 ! set module wide availabe data
   params%Delta_t = Delta_t
 
-  call SNESSolve(damage_snes,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESSolve(SNES_damage,PETSC_NULL_VEC,solution_vec,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetConvergedReason(damage_snes,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_damage,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (reason < 1) then
@@ -230,7 +231,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     phi_stagInc = phi_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state
-    call SNESGetDM(damage_snes,dm_local,err_PETSc); CHKERRQ(err_PETSc)
+    call SNESGetDM(SNES_damage,dm_local,err_PETSc); CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
     x_scal = phi_current

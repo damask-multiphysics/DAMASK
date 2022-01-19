@@ -38,7 +38,7 @@ module grid_thermal_spectral
   type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  SNES :: thermal_snes
+  SNES :: SNES_thermal
   Vec :: solution_vec
   real(pReal), dimension(:,:,:), allocatable :: &
     T_current, &                                                                                    !< field of current temperature
@@ -113,8 +113,8 @@ subroutine grid_thermal_spectral_init(T_0)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,thermal_snes,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(thermal_snes,'thermal_',err_PETSc);CHKERRQ(err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_thermal,err_PETSc); CHKERRQ(err_PETSc)
+  call SNESSetOptionsPrefix(SNES_thermal,'thermal_',err_PETSc);CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
@@ -128,14 +128,14 @@ subroutine grid_thermal_spectral_init(T_0)
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          thermal_grid,err_PETSc)                                                                    ! handle, error
   CHKERRQ(err_PETSc)
-  call SNESSetDM(thermal_snes,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
+  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
   call DMsetFromOptions(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
   call DMsetUp(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
   call DMCreateGlobalVector(thermal_grid,solution_vec,err_PETSc)                                    ! global solution vector (grid x 1, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
   call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)  ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(thermal_snes,err_PETSc); CHKERRQ(err_PETSc)                               ! pull it all together with additional CLI arguments
+  call SNESSetFromOptions(SNES_thermal,err_PETSc); CHKERRQ(err_PETSc)                               ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
@@ -144,7 +144,7 @@ subroutine grid_thermal_spectral_init(T_0)
   call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call updateReference
+  call updateReference()
 
 end subroutine grid_thermal_spectral_init
 
@@ -171,9 +171,9 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 ! set module wide availabe data
   params%Delta_t = Delta_t
 
-  call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESSolve(SNES_thermal,PETSC_NULL_VEC,solution_vec,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetConvergedReason(thermal_snes,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_thermal,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (reason < 1) then
@@ -227,7 +227,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
 !--------------------------------------------------------------------------------------------------
 ! reverting thermal field state
-    call SNESGetDM(thermal_snes,dm_local,err_PETSc)
+    call SNESGetDM(SNES_thermal,dm_local,err_PETSc)
     CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
