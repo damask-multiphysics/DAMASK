@@ -703,9 +703,8 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  diag = (C_volAvg(1,1,1,1)/delta(1)**2 + &
-          C_volAvg(2,2,2,2)/delta(2)**2 + &
-          C_volAvg(3,3,3,3)/delta(3)**2)*detJ
+  diag = (C_volAvg(1,1,1,1)/delta(1)**2 + C_volAvg(2,2,2,2)/delta(2)**2 + C_volAvg(3,3,3,3)/delta(3)**2) &
+       * detJ
   call MatZeroRowsColumns(Jac,size(rows,kind=pPetscInt),rows,diag,PETSC_NULL_VEC,PETSC_NULL_VEC,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetGlobalVector(da_local,coordinates,err_PETSc)
