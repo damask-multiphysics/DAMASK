@@ -218,7 +218,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
   logical, intent(in) :: cutBack
   integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer :: x_scal
+  PetscScalar,  dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: err_PETSc
 
   if (cutBack) then
@@ -229,10 +229,10 @@ subroutine grid_thermal_spectral_forward(cutBack)
 ! reverting thermal field state
     call SNESGetDM(SNES_thermal,dm_local,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
+    call DMDAVecGetArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    x_scal = T_current
-    call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,err_PETSc)
+    T_PETSc = T_current
+    call DMDAVecRestoreArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)

@@ -223,7 +223,7 @@ subroutine grid_damage_spectral_forward(cutBack)
   logical, intent(in) :: cutBack
   integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer :: x_scal
+  PetscScalar,  dimension(:,:,:), pointer :: phi_PETSc
   PetscErrorCode :: err_PETSc
 
   if (cutBack) then
@@ -232,10 +232,10 @@ subroutine grid_damage_spectral_forward(cutBack)
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state
     call SNESGetDM(SNES_damage,dm_local,err_PETSc); CHKERRQ(err_PETSc)
-    call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
+    call DMDAVecGetArrayF90(dm_local,solution_vec,phi_PETSc,err_PETSc)                              !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    x_scal = phi_current
-    call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,err_PETSc)
+    phi_PETSc = phi_current
+    call DMDAVecRestoreArrayF90(dm_local,solution_vec,phi_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
