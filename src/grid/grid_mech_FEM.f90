@@ -636,7 +636,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   PetscScalar,pointer,dimension(:,:,:,:) :: x_scal
   PetscScalar,dimension(24,24)         :: K_ele
   PetscScalar,dimension(9,24)          :: BMatFull
-  PetscInt                             :: i, ii, j, jj, k, kk, ctr, ele
+  PetscInt                             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
   PetscScalar                          :: diag
   PetscObject                          :: dummy
@@ -652,7 +652,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   call MatSetOption(Jac,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatZeroEntries(Jac,err_PETSc); CHKERRQ(err_PETSc)
-  ele = 0
+  ce = 0
   do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
@@ -671,20 +671,20 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
       col(MatStencil_c,ctr+16) = 2
     enddo; enddo; enddo
     row = col
-    ele = ele + 1
+    ce = ce + 1
     K_ele = 0.0
-    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,ele) + &
-                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
-    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,ele) + &
-                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
-    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,ele) + &
-                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
+    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
+                                homogenization_dPdF(2,2,2,2,ce) + &
+                                homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
+    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
+                                homogenization_dPdF(2,2,2,2,ce) + &
+                                homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
+    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
+                                homogenization_dPdF(2,2,2,2,ce) + &
+                                homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
     K_ele = K_ele + &
             matmul(transpose(BMatFull), &
-                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ele), &
+                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ce), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -704,10 +704,10 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  ele = 0
+  ce = 0
   do k = grid3offset, grid3offset+grid3-1; do j = 0, grid(2)-1; do i = 0, grid(1)-1
-    ele = ele + 1
-    x_scal(0:2,i,j,k) = discretization_IPcoords(1:3,ele)
+    ce = ce + 1
+    x_scal(0:2,i,j,k) = discretization_IPcoords(1:3,ce)
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)                                                                                ! initialize to undeformed coordinates (ToDo: use ip coordinates)
