@@ -63,6 +63,8 @@ module YAML_types
     procedure :: &
       getKey                       => tNode_get_byIndex_asKey
     procedure :: &
+      Keys                         => tNode_getKeys
+    procedure :: &
       getIndex                     => tNode_get_byKey_asIndex
     procedure :: &
       contains                     => tNode_contains
@@ -623,6 +625,32 @@ function tNode_get_byIndex_asKey(self,i)  result(key)
   key = item%key
 
 end function tNode_get_byIndex_asKey
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get all keys from a dictionary
+!--------------------------------------------------------------------------------------------------
+function tNode_getKeys(self) result(keys)
+
+  class(tNode), intent(in) :: self
+  character(len=:), dimension(:), allocatable :: keys
+
+  character(len=pStringLen), dimension(:), allocatable :: temp
+  integer :: j, l
+
+  allocate(temp(self%length))
+  l = 0
+  do j = 1, self%length
+    temp(j) = self%getKey(j)
+    l = max(len_trim(temp(j)),l)
+  end do
+
+  allocate(character(l)::keys(self%length))
+  do j = 1, self%length
+    keys(j) = trim(temp(j))
+  end do
+
+end function tNode_getKeys
 
 
 !-------------------------------------------------------------------------------------------------
