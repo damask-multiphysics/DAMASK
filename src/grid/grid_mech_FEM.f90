@@ -521,7 +521,7 @@ subroutine formResidual(da_local,x_local, &
 
   DM                   :: da_local
   Vec                  :: x_local, f_local
-  PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, f_scal
+  PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, r
   PetscScalar, dimension(8,3) :: x_elem,  f_elem
   PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
   PetscInt :: &
@@ -580,7 +580,7 @@ subroutine formResidual(da_local,x_local, &
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
   call VecSet(f_local,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
   ele = 0
   do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
@@ -597,28 +597,28 @@ subroutine formResidual(da_local,x_local, &
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
-      f_scal(0:2,i+ii,j+jj,k+kk) = f_scal(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
+      r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     enddo; enddo; enddo
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
   if (grid3offset == 0) then
-    f_scal(0:2,0,      0,      0) = 0.0_pReal
-    f_scal(0:2,grid(1),0,      0) = 0.0_pReal
-    f_scal(0:2,0,      grid(2),0) = 0.0_pReal
-    f_scal(0:2,grid(1),grid(2),0) = 0.0_pReal
+    r(0:2,0,      0,      0) = 0.0_pReal
+    r(0:2,grid(1),0,      0) = 0.0_pReal
+    r(0:2,0,      grid(2),0) = 0.0_pReal
+    r(0:2,grid(1),grid(2),0) = 0.0_pReal
   end if
   if (grid3+grid3offset == grid(3)) then
-    f_scal(0:2,0,      0,      grid(3)) = 0.0_pReal
-    f_scal(0:2,grid(1),0,      grid(3)) = 0.0_pReal
-    f_scal(0:2,0,      grid(2),grid(3)) = 0.0_pReal
-    f_scal(0:2,grid(1),grid(2),grid(3)) = 0.0_pReal
+    r(0:2,0,      0,      grid(3)) = 0.0_pReal
+    r(0:2,grid(1),0,      grid(3)) = 0.0_pReal
+    r(0:2,0,      grid(2),grid(3)) = 0.0_pReal
+    r(0:2,grid(1),grid(2),grid(3)) = 0.0_pReal
   end if
-  call DMDAVecRestoreArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
 
 end subroutine formResidual
 

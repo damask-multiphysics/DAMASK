@@ -531,13 +531,13 @@ end subroutine converged
 !> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, FandF_tau, &
-                        residuum, dummy,err_PETSc)
+                        r, dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   PetscScalar, dimension(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE), &
     target, intent(in) :: FandF_tau
   PetscScalar, dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE),&
-    target,  intent(out) :: residuum                                                                !< residuum field
+    target, intent(out) :: r                                                                        !< residuum field
   PetscScalar, pointer, dimension(:,:,:,:,:) :: &
     F, &
     F_tau, &
@@ -558,10 +558,10 @@ subroutine formResidual(in, FandF_tau, &
                               XG_RANGE,YG_RANGE,ZG_RANGE)
   F_tau          => FandF_tau(1:3,1:3,2,&
                               XG_RANGE,YG_RANGE,ZG_RANGE)
-  residual_F     => residuum(1:3,1:3,1,&
-                             X_RANGE, Y_RANGE, Z_RANGE)
-  residual_F_tau => residuum(1:3,1:3,2,&
-                             X_RANGE, Y_RANGE, Z_RANGE)
+  residual_F     => r(1:3,1:3,1,&
+                      X_RANGE, Y_RANGE, Z_RANGE)
+  residual_F_tau => r(1:3,1:3,2,&
+                      X_RANGE, Y_RANGE, Z_RANGE)
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,F_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)

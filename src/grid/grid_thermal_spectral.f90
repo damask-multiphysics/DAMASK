@@ -250,7 +250,7 @@ end subroutine grid_thermal_spectral_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral thermal residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,f_scal,dummy,dummy_err)
+subroutine formResidual(in,x_scal,r,dummy,dummy_err)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in
@@ -259,7 +259,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,dummy_err)
     x_scal
   PetscScalar, dimension( &
     X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-    f_scal
+    r
   PetscObject :: dummy
   PetscErrorCode :: dummy_err
   integer :: i, j, k, ce
@@ -296,7 +296,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,dummy_err)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  f_scal = T_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
+  r = T_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
 
 end subroutine formResidual
 

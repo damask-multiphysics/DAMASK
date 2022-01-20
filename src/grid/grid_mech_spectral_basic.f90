@@ -465,13 +465,13 @@ end subroutine converged
 !> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, F, &
-                        residuum, dummy, err_PETSc)
+                        r, dummy, err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
     intent(in) :: F                                                                                 !< deformation gradient field
   PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
-    intent(out) :: residuum                                                                         !< residuum field
+    intent(out) :: r                                                                                !< residuum field
   real(pReal),  dimension(3,3) :: &
     deltaF_aim
   PetscInt :: &
@@ -500,7 +500,7 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(residuum, &                                                   ! "residuum" gets field of first PK stress (to save memory)
+  call utilities_constitutiveResponse(r, &                                                          ! residuum gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
                                       F,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
@@ -515,7 +515,7 @@ subroutine formResidual(in, F, &
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
   tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
+  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = r                                         ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
   err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
@@ -523,7 +523,7 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                   ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+  r = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                         ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
 
 end subroutine formResidual
 
