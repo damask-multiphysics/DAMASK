@@ -253,7 +253,7 @@ end subroutine grid_damage_spectral_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral damage residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,r,dummy,dummy_err)
+subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in
@@ -264,7 +264,7 @@ subroutine formResidual(in,x_scal,r,dummy,dummy_err)
     X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
     r
   PetscObject :: dummy
-  PetscErrorCode :: dummy_err
+  PetscErrorCode :: err_PETSc
   integer :: i, j, k, ce
 
 
@@ -306,6 +306,7 @@ subroutine formResidual(in,x_scal,r,dummy,dummy_err)
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
   r = scalarField_real(1:grid(1),1:grid(2),1:grid3) - phi_current
+  err_PETSc = 0
 
 end subroutine formResidual
 

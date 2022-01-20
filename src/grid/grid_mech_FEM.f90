@@ -509,6 +509,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
+  err_PETSc = 0
 
 end subroutine converged
 
