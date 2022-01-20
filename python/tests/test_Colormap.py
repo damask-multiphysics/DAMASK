@@ -81,6 +81,7 @@ class TestColormap:
         assert Colormap.from_predefined('strain') == Colormap.from_predefined('strain')
         assert Colormap.from_predefined('strain') != Colormap.from_predefined('stress')
         assert Colormap.from_predefined('strain',N=128) != Colormap.from_predefined('strain',N=64)
+        assert not Colormap.from_predefined('strain',N=128) == 1
 
     @pytest.mark.parametrize('low,high',[((0,0,0),(1,1,1)),
                                          ([0,0,0],[1,1,1])])

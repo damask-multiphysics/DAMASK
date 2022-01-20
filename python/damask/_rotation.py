@@ -812,8 +812,7 @@ class Rotation:
         return Rotation.from_basis(R)
 
     @staticmethod
-    def from_parallel(a,b,
-                      **kwargs):
+    def from_parallel(a,b):
         """
         Initialize from pairs of two orthogonal lattice basis vectors.
 
@@ -963,8 +962,7 @@ class Rotation:
                  N = 500,
                  degrees = True,
                  fractions = True,
-                 rng_seed = None,
-                 **kwargs):
+                 rng_seed = None):
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 

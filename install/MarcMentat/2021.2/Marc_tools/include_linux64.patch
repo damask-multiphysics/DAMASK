@@ -12,17 +12,15 @@
  
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
-@@ -439,8 +444,8 @@
+@@ -439,7 +444,7 @@
    I8DEFINES=
    I8CDEFINES=
  else
 -  I8FFLAGS="-i8"
--  I8DEFINES="-DI64"
 +  I8FFLAGS="-i8 -integer-size 64"
-+  I8DEFINES="-DI64 -DINT=8"
+   I8DEFINES="-DI64"
    I8CDEFINES="-U_DOUBLE -D_SINGLE"
  fi
- 
 @@ -556,7 +561,7 @@
  PROFILE=" $PROFILE -pg"
  fi

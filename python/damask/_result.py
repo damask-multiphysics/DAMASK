@@ -981,7 +981,7 @@ class Result:
             t = 'tensor'
             if o is None: o = 'fro'
         else:
-            raise ValueError(f'invalid norm order {ord}')
+            raise ValueError(f'invalid shape of {x["label"]}')
 
         return {
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),

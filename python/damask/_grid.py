@@ -429,7 +429,7 @@ class Grid:
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
         else:
-            weights_p = weights
+            weights_p = np.array(weights,float)
             seeds_p   = seeds
 
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
@@ -675,7 +675,7 @@ class Grid:
 
     def show(self) -> None:
         """Show on screen."""
-        VTK.from_rectilinear_grid(self.cells,self.size,self.origin).show()
+        VTK.from_image_data(self.cells,self.size,self.origin).show()
 
 
     def add_primitive(self,
@@ -975,14 +975,13 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        if fill is None: fill = np.nanmax(self.material) + 1
-        dtype = float if isinstance(fill,float) or self.material.dtype in np.sctypes['float'] else int
-
         material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
         for angle,axes in zip(R.as_Euler_angles(degrees=True)[::-1], [(0,1),(1,2),(0,1)]):
-            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,output=dtype,cval=fill)
+            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,
+                                           output=self.material.dtype,
+                                           cval=np.nanmax(self.material) + 1 if fill is None else fill)
             # avoid scipy interpolation errors for rotations close to multiples of 90°
             material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
                        np.rot90(material,k=np.rint(angle/90.).astype(int),axes=axes)
@@ -1033,10 +1032,8 @@ class Grid:
         """
         offset_ = np.array(offset,int) if offset is not None else np.zeros(3,int)
         cells_ = np.array(cells,int) if cells is not None else self.cells
-        if fill is None: fill = np.nanmax(self.material) + 1
-        dtype = float if int(fill) != fill or self.material.dtype in np.sctypes['float'] else int
 
-        canvas: np.ndarray = np.full(cells_,fill,dtype)
+        canvas = np.full(cells_,np.nanmax(self.material) + 1 if fill is None else fill,self.material.dtype)
 
         LL = np.clip( offset_,           0,np.minimum(self.cells,     cells_+offset_))
         UR = np.clip( offset_+cells_,    0,np.minimum(self.cells,     cells_+offset_))
