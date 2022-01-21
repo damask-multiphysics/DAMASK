@@ -8,7 +8,7 @@ import shlex
 import re
 import fractions
 from functools import reduce
-from typing import Union, Tuple, Sequence, Callable, Dict, List, Any, Literal
+from typing import Union, Tuple, Sequence, Callable, Dict, List, Any, Literal, Optional
 import pathlib
 
 import numpy as np
@@ -398,7 +398,7 @@ def hybrid_IA(dist: np.ndarray, N: int, rng_seed: Union[int, IntSequence] = None
 def shapeshifter(fro: Tuple[int, ...],
                  to: Tuple[int, ...],
                  mode: Literal['left','right'] = 'left',
-                 keep_ones: bool = False) -> Tuple[int, ...]:
+                 keep_ones: bool = False) -> Tuple[Optional[int], ...]:
     """
     Return dimensions that reshape 'fro' to become broadcastable to 'to'.
 
@@ -454,7 +454,7 @@ def shapeshifter(fro: Tuple[int, ...],
     except AssertionError:
         raise ValueError(f'Shapes can not be shifted {fro} --> {to}')
     grp: Sequence[str] = match.groups()
-    fill: Tuple[int, ...] = ()
+    fill: Tuple[Optional[int], ...] = ()
     for g,d in zip(grp,fro+(None,)):
         fill += (1,)*g.count(',')+(d,)
     return fill[:-1]
