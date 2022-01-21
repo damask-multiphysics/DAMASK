@@ -134,10 +134,8 @@ subroutine grid_thermal_spectral_init(T_0)
   CHKERRQ(err_PETSc)
   call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)  ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
+  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
   call SNESSetFromOptions(SNES_thermal,err_PETSc); CHKERRQ(err_PETSc)                               ! pull it all together with additional CLI arguments
-
-!--------------------------------------------------------------------------------------------------
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   T_PETSc = T_current

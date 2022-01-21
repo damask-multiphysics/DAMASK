@@ -50,7 +50,7 @@ module grid_mechanical_spectral_basic
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM   :: da
-  SNES :: snes
+  SNES :: SNES_mechanical
   Vec  :: solution_vec
 
 !--------------------------------------------------------------------------------------------------
@@ -158,8 +158,10 @@ subroutine grid_mechanical_spectral_basic_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,snes,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(snes,'mechanical_',err_PETSc);CHKERRQ(err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
+  CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
@@ -178,10 +180,10 @@ subroutine grid_mechanical_spectral_basic_init
   call DMcreateGlobalVector(da,solution_vec,err_PETSc); CHKERRQ(err_PETSc)                          ! global solution vector (grid x 9, i.e. every def grad tensor)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)            ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc)         ! specify custom convergence check function "converged"
+  call SNESsetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
-  call SNESSetDM(snes,da,err_PETSc); CHKERRQ(err_PETSc)                                             ! connect snes to da
-  call SNESsetFromOptions(snes,err_PETSc); CHKERRQ(err_PETSc)                                       ! pull it all together with additional CLI arguments
+  call SNESSetDM(SNES_mechanical,da,err_PETSc); CHKERRQ(err_PETSc)
+  call SNESsetFromOptions(SNES_mechanical,err_PETSc); CHKERRQ(err_PETSc)                            ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
@@ -270,13 +272,10 @@ function grid_mechanical_spectral_basic_solution(incInfoIn) result(solution)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
   if (num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
 
-!--------------------------------------------------------------------------------------------------
-! solve BVP
-  call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,err_PETSc); CHKERRQ(err_PETSc)
-
-!--------------------------------------------------------------------------------------------------
-! check convergence
-  call SNESGetConvergedReason(snes,reason,err_PETSc); CHKERRQ(err_PETSc)
+  call SNESsolve(SNES_mechanical,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
@@ -482,8 +481,10 @@ subroutine formResidual(in, F, &
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
 
-  call SNESGetNumberFunctionEvals(snes,nfuncs,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESGetIterationNumber(snes,PETScIter,err_PETSc);  CHKERRQ(err_PETSc)
+  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 

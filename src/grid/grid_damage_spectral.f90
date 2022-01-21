@@ -132,7 +132,7 @@ subroutine grid_damage_spectral_init()
   call DMCreateGlobalVector(damage_grid,solution_vec,err_PETSc); CHKERRQ(err_PETSc)                 ! global solution vector (grid x 1, i.e. every def grad tensor)
   call DMDASNESSetFunctionLocal(damage_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)   ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_damage,damage_grid,err_PETSc); CHKERRQ(err_PETSc)                             ! connect snes to da
+  call SNESSetDM(SNES_damage,damage_grid,err_PETSc); CHKERRQ(err_PETSc)
   call SNESSetFromOptions(SNES_damage,err_PETSc); CHKERRQ(err_PETSc)                                ! pull it all together with additional CLI arguments
   call SNESGetType(SNES_damage,snes_type,err_PETSc); CHKERRQ(err_PETSc)
   if (trim(snes_type) == 'vinewtonrsls' .or. &
@@ -141,12 +141,10 @@ subroutine grid_damage_spectral_init()
     call DMGetGlobalVector(damage_grid,uBound,err_PETSc); CHKERRQ(err_PETSc)
     call VecSet(lBound,0.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
     call VecSet(uBound,1.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
-    call SNESVISetVariableBounds(SNES_damage,lBound,uBound,err_PETSc)                                ! variable bounds for variational inequalities like contact mechanics, damage etc.
+    call SNESVISetVariableBounds(SNES_damage,lBound,uBound,err_PETSc)                               ! variable bounds for variational inequalities
     call DMRestoreGlobalVector(damage_grid,lBound,err_PETSc); CHKERRQ(err_PETSc)
     call DMRestoreGlobalVector(damage_grid,uBound,err_PETSc); CHKERRQ(err_PETSc)
   end if
-
-!--------------------------------------------------------------------------------------------------
   call VecSet(solution_vec,1.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
 
   call updateReference()

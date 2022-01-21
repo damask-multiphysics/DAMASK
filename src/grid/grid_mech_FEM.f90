@@ -50,7 +50,7 @@ module grid_mechanical_FEM
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM   :: mechanical_grid
-  SNES :: mechanical_snes
+  SNES :: SNES_mechanical
   Vec  :: solution_current, solution_lastInc, solution_rate
 
 !--------------------------------------------------------------------------------------------------
@@ -159,9 +159,9 @@ subroutine grid_mechanical_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,mechanical_snes,err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(mechanical_snes,'mechanical_',err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
@@ -192,13 +192,13 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(mechanical_grid,formJacobian,PETSC_NULL_SNES,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetConvergenceTest(mechanical_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
+  call SNESSetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(SNES_mechanical, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
   CHKERRQ(err_PETSc)
-  call SNESSetDM(mechanical_snes,mechanical_grid,err_PETSc)
+  call SNESSetDM(SNES_mechanical,mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(mechanical_snes,err_PETSc)                                                ! pull it all together with additional cli arguments
+  call SNESSetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional cli arguments
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -305,14 +305,9 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
-!--------------------------------------------------------------------------------------------------
-! solve BVP
-  call SNESsolve(mechanical_snes,PETSC_NULL_VEC,solution_current,err_PETSc)
+  call SNESsolve(SNES_mechanical,PETSC_NULL_VEC,solution_current,err_PETSc)
   CHKERRQ(err_PETSc)
-
-!--------------------------------------------------------------------------------------------------
-! check convergence
-  call SNESGetConvergedReason(mechanical_snes,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
@@ -533,9 +528,9 @@ subroutine formResidual(da_local,x_local, &
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pReal), dimension(3,3,3,3) :: devNull
 
-  call SNESGetNumberFunctionEvals(mechanical_snes,nfuncs,err_PETSc)
+  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetIterationNumber(mechanical_snes,PETScIter,err_PETSc)
+  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
