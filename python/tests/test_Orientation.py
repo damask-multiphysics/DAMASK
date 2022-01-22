@@ -364,6 +364,11 @@ class TestOrientation:
                 table.save(reference)
             assert np.allclose(P,Table.load(reference).get('Schmid'))
 
+    def test_Schmid_invalid(self):
+        with pytest.raises(KeyError):
+            Orientation(lattice='fcc').Schmid()
+
+
 ### vectorization tests ###
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF']) # tI not included yet
@@ -505,3 +510,7 @@ class TestOrientation:
         for loc in np.random.randint(0,blend,(10,len(blend))):
             assert np.allclose(o[tuple(loc[:len(o.shape)])].to_pole(uvw=v[tuple(loc[-len(v.shape[:-1]):])]),
                                o.to_pole(uvw=v)[tuple(loc)])
+
+    def test_mul_invalid(self):
+        with pytest.raises(TypeError):
+            Orientation.from_random(lattice='cF')*np.ones(3)

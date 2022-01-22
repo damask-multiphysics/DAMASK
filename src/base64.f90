@@ -151,7 +151,7 @@ pure logical function validBase64(base64_str)
   l = len(base64_str,pI64)
   validBase64 = .true.
 
-  if(mod(l,4_pI64)/=0_pI64 .or. l < 4_pInt)                                  validBase64 = .false.
+  if(mod(l,4_pI64)/=0_pI64 .or. l < 4_pI64)                                  validBase64 = .false.
   if(verify(base64_str(:l-2_pI64),base64_encoding,     kind=pI64) /= 0_pI64) validBase64 = .false.
   if(verify(base64_str(l-1_pI64:),base64_encoding//'=',kind=pI64) /= 0_pI64) validBase64 = .false.
 

@@ -102,6 +102,9 @@ class TestResult:
         with pytest.raises(AttributeError):
             default.view('invalid',True)
 
+    def test_add_invalid(self,default):
+        default.add_absolute('xxxx')
+
     def test_add_absolute(self,default):
         default.add_absolute('F_e')
         in_memory = np.abs(default.place('F_e'))
