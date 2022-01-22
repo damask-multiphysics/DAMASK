@@ -2,7 +2,7 @@ import os
 import warnings
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Optional, Literal, List
+from typing import Union, Literal, List
 
 import numpy as np
 import vtk
@@ -10,7 +10,7 @@ from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 
-from ._typehints import FloatSequence
+from ._typehints import FloatSequence, IntSequence
 from . import util
 from . import Table
 
@@ -38,8 +38,7 @@ class VTK:
 
 
     @staticmethod
-    #ITERABLES PROPER
-    def from_image_data(cells: np.ndarray, size: np.ndarray, origin: Optional[np.ndarray] = np.zeros(3)) -> "VTK":
+    def from_image_data(cells: IntSequence, size: FloatSequence, origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
         Create VTK of type vtk.vtkImageData.
 
@@ -63,13 +62,13 @@ class VTK:
         vtk_data = vtk.vtkImageData()
         vtk_data.SetDimensions(*(np.array(cells)+1))
         vtk_data.SetOrigin(*(np.array(origin)))
-        vtk_data.SetSpacing(*(size/cells))
+        vtk_data.SetSpacing(*(np.array(size)/np.array(cells)))
 
         return VTK(vtk_data)
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: np.ndarray, size: FloatSequence, origin: FloatSequence = np.zeros(3)) -> "VTK":
+    def from_rectilinear_grid(grid: np.ndarray, size: FloatSequence, origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
@@ -101,7 +100,7 @@ class VTK:
 
 
     @staticmethod
-    def from_unstructured_grid(nodes: np.ndarray, connectivity: np.ndarray, cell_type: str) -> "VTK":
+    def from_unstructured_grid(nodes: np.ndarray, connectivity: np.ndarray, cell_type: str) -> 'VTK':
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
@@ -141,7 +140,7 @@ class VTK:
 
 
     @staticmethod
-    def from_poly_data(points: np.ndarray) -> "VTK":
+    def from_poly_data(points: np.ndarray) -> 'VTK':
         """
         Create VTK of type vtk.polyData.
 
@@ -176,15 +175,16 @@ class VTK:
 
     @staticmethod
     def load(fname: Union[str, Path],
-             dataset_type: Literal['vtkImageData', 'vtkRectilinearGrid', 'vtkUnstructuredGrid', 'vtkPolyData'] = None) -> "VTK":
+             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData'] = None) -> 'VTK':
         """
         Load from VTK file.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename for reading. Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
-        dataset_type : {'vtkImageData', ''vtkRectilinearGrid', 'vtkUnstructuredGrid', 'vtkPolyData'}, optional
+            Filename for reading.
+            Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
+        dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
 
         Returns
@@ -193,7 +193,7 @@ class VTK:
             VTK-based geometry from file.
 
         """
-        if not os.path.isfile(fname):                                                  # vtk has a strange error handling
+        if not os.path.isfile(fname):                                                               # vtk has a strange error handling
             raise FileNotFoundError(f'No such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
@@ -423,7 +423,7 @@ class VTK:
         return writer.GetOutputString()
 
 
-    def show(self) -> None:
+    def show(self):
         """
         Render.
 

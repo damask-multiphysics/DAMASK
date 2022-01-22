@@ -9,14 +9,14 @@ import re
 import fractions
 import collections.abc as abc
 from functools import reduce
-from typing import Union, Tuple, Iterable, Sequence, Callable, Dict, List, Any, Literal, Optional
+from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal, Optional
 from pathlib import Path
 
 import numpy as np
 import h5py
 
 from . import version
-from ._typehints import FloatSequence, IntSequence
+from ._typehints import FloatSequence
 
 # limit visibility
 __all__=[
