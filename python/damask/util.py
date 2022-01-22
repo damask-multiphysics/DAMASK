@@ -7,8 +7,9 @@ import subprocess
 import shlex
 import re
 import fractions
+import collections.abc as abc
 from functools import reduce
-from typing import Union, Tuple, Sequence, Callable, Dict, List, Any, Literal, Optional
+from typing import Union, Tuple, Iterable, Sequence, Callable, Dict, List, Any, Literal, Optional
 from pathlib import Path
 
 import numpy as np
@@ -203,7 +204,7 @@ def natural_sort(key: str) -> List[Union[int, str]]:
     return [ convert(c) for c in re.split('([0-9]+)', key) ]
 
 
-def show_progress(iterable: Sequence[Any],
+def show_progress(iterable: Iterable,
                   N_iter: int = None,
                   prefix: str = '',
                   bar_length: int = 50) -> Any:
@@ -214,22 +215,32 @@ def show_progress(iterable: Sequence[Any],
 
     Parameters
     ----------
-    iterable : iterable or function with yield statement
-        Iterable (or function with yield statement) to be decorated.
+    iterable : iterable
+        Iterable to be decorated.
     N_iter : int, optional
-        Total number of iterations. Required unless obtainable as len(iterable).
+        Total number of iterations. Required if iterable is not a sequence.
     prefix : str, optional
         Prefix string.
     bar_length : int, optional
         Length of progress bar in characters. Defaults to 50.
 
     """
-    if N_iter in [0,1] or (hasattr(iterable,'__len__') and len(iterable) <= 1):
+    if isinstance(iterable,abc.Sequence):
+       if N_iter is None:
+          N = len(iterable)
+       else:
+          raise ValueError('N_iter given for sequence')
+    else:
+       if N_iter is None:
+          raise ValueError('N_iter not given')
+       else:
+          N = N_iter
+
+    if N <= 1:
         for item in iterable:
             yield item
     else:
-        status = _ProgressBar(N_iter if N_iter is not None else len(iterable),prefix,bar_length)
-
+        status = ProgressBar(N,prefix,bar_length)
         for i,item in enumerate(iterable):
             yield item
             status.update(i)
@@ -692,7 +703,7 @@ def dict_flatten(d: Dict) -> Dict:
 ####################################################################################################
 # Classes
 ####################################################################################################
-class _ProgressBar:
+class ProgressBar:
     """
     Report progress of an interation as a status bar.
 
