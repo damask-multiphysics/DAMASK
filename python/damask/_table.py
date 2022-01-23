@@ -548,12 +548,8 @@ class Table:
             Filename or file for writing.
 
         """
-        data_column_items = []
-        for col in self.data.columns:
-            if col not in data_column_items:
-                data_column_items.append(col)
         labels = []
-        for l in data_column_items:
+        for l in list(dict.fromkeys(self.data.columns)):
             if self.shapes[l] == (1,):
                 labels.append(f'{l}')
             elif len(self.shapes[l]) == 1:
