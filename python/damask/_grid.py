@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence
+from typing import Union, Optional, TextIO, List, Sequence, Literal
 from pathlib import Path
 
 import numpy as np
@@ -70,7 +70,7 @@ class Grid:
               ])
 
 
-    def __copy__(self) -> "Grid":
+    def __copy__(self) -> 'Grid':
         """Create deep copy."""
         return copy.deepcopy(self)
 
@@ -161,7 +161,7 @@ class Grid:
 
 
     @staticmethod
-    def load(fname: Union[str, Path]) -> "Grid":
+    def load(fname: Union[str, Path]) -> 'Grid':
         """
         Load from VTK image data file.
 
@@ -190,7 +190,7 @@ class Grid:
 
     @typing. no_type_check
     @staticmethod
-    def load_ASCII(fname)-> "Grid":
+    def load_ASCII(fname)-> 'Grid':
         """
         Load from geom file.
 
@@ -264,7 +264,7 @@ class Grid:
 
 
     @staticmethod
-    def load_Neper(fname: Union[str, Path]) -> "Grid":
+    def load_Neper(fname: Union[str, Path]) -> 'Grid':
         """
         Load from Neper VTK file.
 
@@ -279,7 +279,7 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        v = VTK.load(fname,'vtkImageData')
+        v = VTK.load(fname,'ImageData')
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
@@ -292,7 +292,7 @@ class Grid:
     def load_DREAM3D(fname: Union[str, Path],
                      feature_IDs: str = None, cell_data: str = None,
                      phases: str = 'Phases', Euler_angles: str = 'EulerAngles',
-                     base_group: str = None) -> "Grid":
+                     base_group: str = None) -> 'Grid':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -354,7 +354,7 @@ class Grid:
     @staticmethod
     def from_table(table: Table,
                    coordinates: str,
-                   labels: Union[str, Sequence[str]]) -> "Grid":
+                   labels: Union[str, Sequence[str]]) -> 'Grid':
         """
         Create grid from ASCII table.
 
@@ -422,6 +422,7 @@ class Grid:
             Grid-based geometry from tessellation.
 
         """
+        weights_p: FloatSequence
         if periodic:
             weights_p = np.tile(weights,27)                                                         # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
@@ -452,7 +453,7 @@ class Grid:
                                   size: FloatSequence,
                                   seeds: np.ndarray,
                                   material: IntSequence = None,
-                                  periodic: bool = True) -> "Grid":
+                                  periodic: bool = True) -> 'Grid':
         """
         Create grid from Voronoi tessellation.
 
@@ -538,7 +539,7 @@ class Grid:
                              surface: str,
                              threshold: float = 0.0,
                              periods: int = 1,
-                             materials: IntSequence = (0,1)) -> "Grid":
+                             materials: IntSequence = (0,1)) -> 'Grid':
         """
         Create grid from definition of triply periodic minimal surface.
 
@@ -684,7 +685,7 @@ class Grid:
                       fill: int = None,
                       R: Rotation = Rotation(),
                       inverse: bool = False,
-                      periodic: bool = True) -> "Grid":
+                      periodic: bool = True) -> 'Grid':
         """
         Insert a primitive geometric object at a given position.
 
@@ -769,7 +770,7 @@ class Grid:
                    )
 
 
-    def mirror(self, directions: Sequence[str], reflect: bool = False) -> "Grid":
+    def mirror(self, directions: Sequence[str], reflect: bool = False) -> 'Grid':
         """
         Mirror grid along given directions.
 
@@ -821,7 +822,7 @@ class Grid:
                    )
 
 
-    def flip(self, directions: Sequence[str]) -> "Grid":
+    def flip(self, directions: Union[Literal['x', 'y', 'z'], Sequence[Literal['x', 'y', 'z']]]) -> 'Grid':
         """
         Flip grid along given directions.
 
@@ -851,7 +852,7 @@ class Grid:
                    )
 
 
-    def scale(self, cells: IntSequence, periodic: bool = True) -> "Grid":
+    def scale(self, cells: IntSequence, periodic: bool = True) -> 'Grid':
         """
         Scale grid to new cells.
 
@@ -898,7 +899,7 @@ class Grid:
     def clean(self,
               stencil: int = 3,
               selection: IntSequence = None,
-              periodic: bool = True) -> "Grid":
+              periodic: bool = True) -> 'Grid':
         """
         Smooth grid by selecting most frequent material index within given stencil at each location.
 
@@ -938,7 +939,7 @@ class Grid:
                    )
 
 
-    def renumber(self) -> "Grid":
+    def renumber(self) -> 'Grid':
         """
         Renumber sorted material indices as 0,...,N-1.
 
@@ -957,7 +958,7 @@ class Grid:
                    )
 
 
-    def rotate(self, R: Rotation, fill: int = None) -> "Grid":
+    def rotate(self, R: Rotation, fill: int = None) -> 'Grid':
         """
         Rotate grid (pad if required).
 
@@ -997,7 +998,7 @@ class Grid:
     def canvas(self,
                cells: IntSequence = None,
                offset: IntSequence = None,
-               fill: int = None) -> "Grid":
+               fill: int = None) -> 'Grid':
         """
         Crop or enlarge/pad grid.
 
@@ -1048,7 +1049,7 @@ class Grid:
                    )
 
 
-    def substitute(self, from_material: IntSequence, to_material: IntSequence) -> "Grid":
+    def substitute(self, from_material: IntSequence, to_material: IntSequence) -> 'Grid':
         """
         Substitute material indices.
 
@@ -1076,7 +1077,7 @@ class Grid:
                    )
 
 
-    def sort(self) -> "Grid":
+    def sort(self) -> 'Grid':
         """
         Sort material indices such that min(material) is located at (0,0,0).
 
@@ -1102,7 +1103,7 @@ class Grid:
                         vicinity: int = 1,
                         offset: int = None,
                         trigger: IntSequence = [],
-                        periodic: bool = True) -> "Grid":
+                        periodic: bool = True) -> 'Grid':
         """
         Offset material index of points in the vicinity of xxx.
 
