@@ -250,7 +250,7 @@ class Colormap(mpl.colors.ListedColormap):
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
         l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
-              np.array(bounds,float)[:2]
+              (bounds[0],bounds[1])
 
         delta,avg = r-l,0.5*abs(r+l)
 

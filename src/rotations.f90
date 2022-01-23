@@ -270,7 +270,7 @@ pure elemental subroutine standardize(self)
 
   class(rotation), intent(inout) :: self
 
-  if (self%q(1) < 0.0_pReal) self%q = - self%q
+  if (sign(1.0_pReal,self%q(1)) < 0.0_pReal) self%q = - self%q
 
 end subroutine standardize
 
@@ -450,7 +450,7 @@ pure function qu2om(qu) result(om)
   om(3,2) = 2.0_pReal*(qu(4)*qu(3)+qu(1)*qu(2))
   om(1,3) = 2.0_pReal*(qu(2)*qu(4)+qu(1)*qu(3))
 
-  if (P < 0.0_pReal) om = transpose(om)
+  if (sign(1.0_pReal,P) < 0.0_pReal) om = transpose(om)
 
 end function qu2om
 
@@ -480,7 +480,7 @@ pure function qu2eu(qu) result(eu)
           atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
   endif degenerated
-  where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
+  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
 
 end function qu2eu
 
@@ -602,7 +602,7 @@ pure function om2qu(om) result(qu)
           qu = [ (om(2,1) - om(1,2)) /s,(om(1,3) + om(3,1)) / s,(om(2,3) + om(3,2)) / s,0.25_pReal * s]
       endif
   endif
-  if(qu(1)<0._pReal) qu =-1.0_pReal * qu
+  if(sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
   qu = qu*[1.0_pReal,P,P,P]
 
 end function om2qu
@@ -628,7 +628,7 @@ pure function om2eu(om) result(eu)
     eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
   end if
   where(abs(eu) < 1.e-8_pReal) eu = 0.0_pReal
-  where(eu<0.0_pReal)          eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
+  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
 
 end function om2eu
 
@@ -735,7 +735,7 @@ pure function eu2qu(eu) result(qu)
         -P*sPhi*cos(ee(1)-ee(3)), &
         -P*sPhi*sin(ee(1)-ee(3)), &
         -P*cPhi*sin(ee(1)+ee(3))]
-  if(qu(1) < 0.0_pReal) qu = qu * (-1.0_pReal)
+  if(sign(1.0_pReal,qu(1)) < 0.0_pReal) qu = qu * (-1.0_pReal)
 
 end function eu2qu
 
@@ -792,7 +792,7 @@ pure function eu2ax(eu) result(ax)
   else
     ax(1:3) = -P/tau * [ t*cos(delta), t*sin(delta), sin(sigma) ]                                   ! passive axis-angle pair so a minus sign in front
     ax(4) = alpha
-    if (alpha < 0.0_pReal) ax = -ax                                                                 ! ensure alpha is positive
+    if (sign(1.0_pReal,alpha) < 0.0_pReal) ax = -ax                                                 ! ensure alpha is positive
   end if
 
 end function eu2ax

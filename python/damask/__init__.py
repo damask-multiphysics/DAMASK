@@ -21,8 +21,8 @@ from ._rotation        import Rotation         # noqa
 from ._crystal         import Crystal          # noqa
 from ._orientation     import Orientation      # noqa
 from ._table           import Table            # noqa
-from ._vtk             import VTK              # noqa
 from ._colormap        import Colormap         # noqa
+from ._vtk             import VTK              # noqa
 from ._config          import Config           # noqa
 from ._configmaterial  import ConfigMaterial   # noqa
 from ._grid            import Grid             # noqa
