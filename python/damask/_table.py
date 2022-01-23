@@ -1,11 +1,12 @@
 import re
 import copy
-import pathlib
-from typing import Union, Optional, Tuple, List, TextIO
+from pathlib import Path
+from typing import Union, Optional, Tuple, List
 
 import pandas as pd
 import numpy as np
 
+from ._typehints import FileHandle
 from . import util
 
 class Table:
@@ -40,7 +41,7 @@ class Table:
         return '\n'.join(['# '+c for c in self.comments])+'\n'+data_repr
 
 
-    def __getitem__(self, item: Union[slice, Tuple[slice, ...]]) -> "Table":
+    def __getitem__(self, item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
         Slice the Table according to item.
 
@@ -92,7 +93,7 @@ class Table:
         return len(self.data)
 
 
-    def __copy__(self) -> "Table":
+    def __copy__(self) -> 'Table':
         """Create deep copy."""
         return copy.deepcopy(self)
 
@@ -154,7 +155,7 @@ class Table:
 
 
     def isclose(self,
-                    other: "Table",
+                    other: 'Table',
                     rtol: float = 1e-5,
                     atol: float = 1e-8,
                     equal_nan: bool = True) -> np.ndarray:
@@ -186,7 +187,7 @@ class Table:
 
 
     def allclose(self,
-                 other: "Table",
+                 other: 'Table',
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
                  equal_nan: bool = True) -> bool:
@@ -218,7 +219,7 @@ class Table:
 
 
     @staticmethod
-    def load(fname: Union[TextIO, str, pathlib.Path]) -> "Table":
+    def load(fname: FileHandle) -> 'Table':
         """
         Load from ASCII table file.
 
@@ -237,13 +238,10 @@ class Table:
         -------
         loaded : damask.Table
             Table data from file.
-            
+
         """
-        if isinstance(fname, (str, pathlib.Path)):
-            f = open(fname)
-        else:
-            f = fname
-            f.seek(0)
+        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f.seek(0)
 
         comments = []
         line = f.readline().strip()
@@ -271,7 +269,7 @@ class Table:
 
 
     @staticmethod
-    def load_ang(fname: Union[TextIO, str, pathlib.Path]) -> "Table":
+    def load_ang(fname: FileHandle) -> 'Table':
         """
         Load from ang file.
 
@@ -296,11 +294,8 @@ class Table:
             Table data from file.
 
         """
-        if isinstance(fname, (str, pathlib.Path)):
-            f = open(fname)
-        else:
-            f = fname
-            f.seek(0)
+        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f.seek(0)
 
         content = f.readlines()
 
@@ -346,7 +341,7 @@ class Table:
         return data.astype(type(data.flatten()[0]))
 
 
-    def set(self, label: str, data: np.ndarray, info: str = None) -> "Table":
+    def set(self, label: str, data: np.ndarray, info: str = None) -> 'Table':
         """
         Set column data.
 
@@ -379,7 +374,7 @@ class Table:
         return dup
 
 
-    def add(self, label: str, data: np.ndarray, info: str = None) -> "Table":
+    def add(self, label: str, data: np.ndarray, info: str = None) -> 'Table':
         """
         Add column data.
 
@@ -411,7 +406,7 @@ class Table:
         return dup
 
 
-    def delete(self, label: str) -> "Table":
+    def delete(self, label: str) -> 'Table':
         """
         Delete column data.
 
@@ -432,7 +427,7 @@ class Table:
         return dup
 
 
-    def rename(self, old: Union[str, List[str]], new: Union[str, List[str]], info: str = None) -> "Table":
+    def rename(self, old: Union[str, List[str]], new: Union[str, List[str]], info: str = None) -> 'Table':
         """
         Rename column data.
 
@@ -458,7 +453,7 @@ class Table:
         return dup
 
 
-    def sort_by(self, labels: Union[str, List[str]], ascending: Union[bool, List[bool]] = True) -> "Table":
+    def sort_by(self, labels: Union[str, List[str]], ascending: Union[bool, List[bool]] = True) -> 'Table':
         """
         Sort table by values of given labels.
 
@@ -491,7 +486,7 @@ class Table:
         return dup
 
 
-    def append(self, other: "Table") -> "Table":
+    def append(self, other: 'Table') -> 'Table':
         """
         Append other table vertically (similar to numpy.vstack).
 
@@ -516,7 +511,7 @@ class Table:
             return dup
 
 
-    def join(self, other: "Table") -> "Table":
+    def join(self, other: 'Table') -> 'Table':
         """
         Append other table horizontally (similar to numpy.hstack).
 
@@ -543,7 +538,7 @@ class Table:
             return dup
 
 
-    def save(self, fname: Union[TextIO, str, pathlib.Path]):
+    def save(self, fname: FileHandle):
         """
         Save as plain text file.
 
@@ -568,10 +563,7 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        if isinstance(fname, (str, pathlib.Path)):
-            fhandle = open(fname,'w',newline='\n')
-        else:
-            fhandle = fname
+        f = open(fname,'w',newline='\n') if isinstance(fname, (str, Path)) else fname
 
-        fhandle.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
-        self.data.to_csv(fhandle,sep=' ',na_rep='nan',index=False,header=False)
+        f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
+        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
