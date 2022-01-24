@@ -65,9 +65,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def __mul__(self, factor: int) -> 'Colormap':
         """Repeat."""
-        return Colormap(np.broadcast_to(self.colors,(factor,)+self.colors.shape)
-                          .reshape((factor*self.colors.shape[0],)+self.colors.shape[1:]),
-                        f'{self.name}*{factor}')
+        return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
 
     def __imul__(self, factor: int) -> 'Colormap':
         """Repeat (in-place)."""
