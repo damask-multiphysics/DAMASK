@@ -140,6 +140,11 @@ class TestColormap:
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
+    def test_mul(self):
+        c = o = Colormap.from_predefined('jet')
+        o *= 2
+        assert c+c == o
+
     @pytest.mark.parametrize('N,cmap,at,result',[
            (8,'gray',0.5,[0.5,0.5,0.5]),
            (17,'gray',0.5,[0.5,0.5,0.5]),
