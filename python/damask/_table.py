@@ -108,7 +108,7 @@ class Table:
         ----------
         what : str or list
             Labels to expand.
-        how : str
+        how : {'uniform, 'shapes', 'linear'}
             Mode of labeling.
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
@@ -137,7 +137,7 @@ class Table:
 
         Parameters
         ----------
-        how : str
+        how : {'uniform, 'shapes', 'linear'}
             Mode of labeling.
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
@@ -155,10 +155,10 @@ class Table:
 
 
     def isclose(self,
-                    other: 'Table',
-                    rtol: float = 1e-5,
-                    atol: float = 1e-8,
-                    equal_nan: bool = True) -> np.ndarray:
+                other: 'Table',
+                rtol: float = 1e-5,
+                atol: float = 1e-8,
+                equal_nan: bool = True) -> np.ndarray:
         """
         Report where values are approximately equal to corresponding ones of other Table.
 
