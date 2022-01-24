@@ -63,6 +63,14 @@ class Colormap(mpl.colors.ListedColormap):
         """Concatenate (in-place)."""
         return self.__add__(other)
 
+    def __mul__(self, factor: int) -> 'Colormap':
+        """Repeat."""
+        return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
+
+    def __imul__(self, factor: int) -> 'Colormap':
+        """Repeat (in-place)."""
+        return self.__mul__(factor)
+
     def __invert__(self) -> 'Colormap':
         """Reverse."""
         return self.reversed()
