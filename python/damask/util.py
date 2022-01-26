@@ -16,7 +16,7 @@ import numpy as np
 import h5py
 
 from . import version
-from ._typehints import FloatSequence
+from ._typehints import IntSequence, FloatSequence
 
 # limit visibility
 __all__=[
@@ -387,7 +387,7 @@ def execution_stamp(class_name: str,
 
 def hybrid_IA(dist: np.ndarray,
               N: int,
-              rng_seed = None) -> np.ndarray:
+              rng_seed: Union[int, IntSequence] = None) -> np.ndarray:
     """
     Hybrid integer approximation.
 
