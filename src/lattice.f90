@@ -533,7 +533,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
   character(len=2),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
   real(pReal), dimension(6,6),           intent(in) :: C_parent66
-  real(pReal),                 optional, intent(in) :: a_bcc, a_fcc, cOverA_trans
+  real(pReal),                 optional, intent(in) :: cOverA_trans, a_fcc, a_bcc
   real(pReal), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
 
   real(pReal), dimension(6,6)             :: C_bar66, C_target_unrotated66

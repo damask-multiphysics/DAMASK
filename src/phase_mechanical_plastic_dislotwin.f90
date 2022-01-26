@@ -27,8 +27,8 @@ submodule(phase:plastic) dislotwin
       E_sb                = 1.0_pReal, &                                                            !< activation energy for shear bands
       h                   = 1.0_pReal, &                                                            !< stack height of hex nucleus
       T_ref               = T_ROOM, &
-      a_cI                = 1.0_pReal, &
-      a_cF                = 1.0_pReal
+      a_cF                = 1.0_pReal, &
+      cOverA_hP           = 1.0_pReal
     real(pReal),                            dimension(3) :: &
       Gamma_sf = 0.0_pReal, &                                                                       !< stacking fault energy
       Delta_G = 0.0_pReal                                                                           !< free energy difference between austensite and martensite
@@ -126,6 +126,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
     N_sl
+  real(pReal) :: a_cF
   real(pReal), allocatable, dimension(:) :: &
     rho_mob_0, &                                                                                    !< initial unipolar dislocation density per slip system
     rho_dip_0                                                                                       !< initial dipole dislocation density per slip system
@@ -289,24 +290,19 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%b_tr = pl%get_as1dFloat('b_tr')
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
-      prm%h             = pl%get_asFloat('h')
-      prm%i_tr          = pl%get_asFloat('i_tr')
-      prm%Delta_G(1)    = pl%get_asFloat('Delta_G')
-      prm%Delta_G(2)    = pl%get_asFloat('Delta_G,T',  defaultVal=0.0_pReal)
-      prm%Delta_G(3)    = pl%get_asFloat('Delta_G,T^2',defaultVal=0.0_pReal)
-      prm%L_tr          = pl%get_asFloat('L_tr')
-      prm%a_cI          = pl%get_asFloat('a_cI',    defaultVal=0.0_pReal)
-      prm%a_cF          = pl%get_asFloat('a_cF',    defaultVal=0.0_pReal)
-
-      prm%lattice_tr    = pl%get_asString('lattice_tr')
+      prm%h          = pl%get_asFloat('h')
+      prm%i_tr       = pl%get_asFloat('i_tr')
+      prm%Delta_G(1) = pl%get_asFloat('Delta_G')
+      prm%Delta_G(2) = pl%get_asFloat('Delta_G,T',  defaultVal=0.0_pReal)
+      prm%Delta_G(3) = pl%get_asFloat('Delta_G,T^2',defaultVal=0.0_pReal)
+      prm%L_tr       = pl%get_asFloat('L_tr')
+      a_cF           = pl%get_asFloat('a_cF')
+      prm%cOverA_hP  = pl%get_asFloat('c/a_hP')
 
       prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,pl%get_as1dFloat('h_tr-tr'),&
                                                      phase_lattice(ph))
 
-      prm%P_tr    = lattice_SchmidMatrix_trans(prm%N_tr,prm%lattice_tr, &
-                                               0.0_pReal, &
-                                               prm%a_cI, &
-                                               prm%a_cF)
+      prm%P_tr    = lattice_SchmidMatrix_trans(prm%N_tr,'hP',prm%cOverA_hP)
 
       prm%t_tr = pl%get_as1dFloat('t_tr')
       prm%t_tr = math_expand(prm%t_tr,prm%N_tr)
@@ -472,7 +468,7 @@ module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
      end if twinActive
 
     transActive: if (prm%sum_N_tr > 0) then
-      C66_tr    = lattice_C66_trans(prm%N_tr,C,prm%lattice_tr,0.0_pReal,prm%a_cI,prm%a_cF)
+      C66_tr    = lattice_C66_trans(prm%N_tr,C,'hP',prm%cOverA_hP)
       do i=1,prm%sum_N_tr
         homogenizedC = homogenizedC &
                      + stt%f_tr(i,en)*C66_tr(1:6,1:6,i)
