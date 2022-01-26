@@ -99,9 +99,7 @@ submodule(phase:plastic) dislotwin
       Lambda_sl, &                                                                                  !< mean free path between 2 obstacles seen by a moving dislocation
       Lambda_tw, &                                                                                  !< mean free path between 2 obstacles seen by a growing twin
       Lambda_tr, &                                                                                  !< mean free path between 2 obstacles seen by a growing martensite
-      tau_pass, &                                                                                   !< threshold stress for slip
-      tau_hat_tw, &                                                                                 !< threshold stress for twinning
-      tau_hat_tr                                                                                    !< threshold stress for transformation
+      tau_pass                                                                                      !< threshold stress for slip
   end type tDislotwinDependentState
 
 !--------------------------------------------------------------------------------------------------
@@ -429,14 +427,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_f_tr',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_f_tr'
 
-    allocate(dst%Lambda_sl             (prm%sum_N_sl,Nmembers),source=0.0_pReal)
     allocate(dst%tau_pass              (prm%sum_N_sl,Nmembers),source=0.0_pReal)
-
+    allocate(dst%Lambda_sl             (prm%sum_N_sl,Nmembers),source=0.0_pReal)
     allocate(dst%Lambda_tw             (prm%sum_N_tw,Nmembers),source=0.0_pReal)
-    allocate(dst%tau_hat_tw            (prm%sum_N_tw,Nmembers),source=0.0_pReal)
-
     allocate(dst%Lambda_tr             (prm%sum_N_tr,Nmembers),source=0.0_pReal)
-    allocate(dst%tau_hat_tr            (prm%sum_N_tr,Nmembers),source=0.0_pReal)
 
     end associate
 
@@ -723,7 +717,6 @@ module subroutine dislotwin_dependentState(T,ph,en)
     T
 
   real(pReal) :: &
-    Gamma_sf, Delta_G, &
     sumf_tw, sumf_tr
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     inv_lambda_sl
@@ -740,17 +733,8 @@ module subroutine dislotwin_dependentState(T,ph,en)
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
     mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
-
     sumf_tw = sum(stt%f_tw(1:prm%sum_N_tw,en))
     sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
-
-    Gamma_sf = prm%Gamma_sf(1) &
-             + prm%Gamma_sf(2) * (T-prm%T_ref) &
-             + prm%Gamma_sf(3) * (T-prm%T_ref)**2
-    Delta_G = prm%Delta_G(1) &
-            + prm%Delta_G(2) * (T-prm%T_ref) &
-            + prm%Delta_G(3) * (T-prm%T_ref)**2
 
     !* rescaled volume fraction for topology
     f_over_t_tw = stt%f_tw(1:prm%sum_N_tw,en)/prm%t_tw                                              ! this is per system ...
@@ -772,13 +756,6 @@ module subroutine dislotwin_dependentState(T,ph,en)
 
     !* threshold stress for dislocation motion
     dst%tau_pass(:,en) = mu*prm%b_sl* sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
-
-    !* threshold stress for growing twin/martensite
-    dst%tau_hat_tw(:,en) = Gamma_sf/(3.0_pReal*prm%b_tw) &
-                         + 3.0_pReal*prm%b_tw*mu/(prm%L_tw*prm%b_tw)
-    dst%tau_hat_tr(:,en) = Gamma_sf/(3.0_pReal*prm%b_tr) &
-                         + 3.0_pReal*prm%b_tr*mu/(prm%L_tr*prm%b_tr) &
-                         + prm%h*Delta_G/(3.0_pReal*prm%b_tr)
 
   end associate
 
@@ -824,9 +801,6 @@ module subroutine plastic_dislotwin_results(ph,group)
         case('Lambda_tw')
           call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
                                        'mean free path for twinning','m',prm%systems_tw)
-        case('tau_hat_tw')
-          call results_writeDataset(dst%tau_hat_tw,group,trim(prm%output(ou)), &
-                                       'threshold stress for twinning','Pa',prm%systems_tw)
 
         case('f_tr')
           if (prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
@@ -944,7 +918,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
     ddot_gamma_dtau_tw
 
   real :: &
-    tau, tau_r, &
+    tau, tau_r, tau_hat, &
     dot_N_0, &
     x0, V, &
     Gamma_sf, &
@@ -959,11 +933,14 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
     isFCC: if (prm%fccTwinTransNucleation) then
+
       mu = elastic_mu(ph,en)
       nu = elastic_nu(ph,en)
       Gamma_sf = prm%Gamma_sf(1) &
                + prm%Gamma_sf(2) * (T-prm%T_ref) &
                + prm%Gamma_sf(3) * (T-prm%T_ref)**2
+      tau_hat = 3.0_pReal*prm%b_tw(1)*mu/prm%L_tw &
+              + Gamma_sf/(3.0_pReal*prm%b_tw(1))
 
       do i = 1, prm%sum_N_tw
         tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
@@ -971,8 +948,8 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
         tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(PI/3.0_pReal)/x0)      ! ToDo: In the paper, the Burgers vector for slip is used
 
         if (tau > tol_math_check .and. tau < tau_r) then
-          P = exp(-(dst%tau_hat_tw(i,en)/tau)**prm%r(i))
-          dP_dTau = prm%r(i) * (dst%tau_hat_tw(i,en)/tau)**prm%r(i)/tau * P
+          P = exp(-(tau_hat/tau)**prm%r(i))
+          dP_dTau = prm%r(i) * (tau_hat/tau)**prm%r(i)/tau * P
 
           s = prm%fcc_twinNucleationSlipPair(1:2,i)
           dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
@@ -1036,10 +1013,10 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
     ddot_gamma_dtau_tr
 
   real :: &
-    tau, tau_r, &
+    tau, tau_r, tau_hat, &
     dot_N_0, &
     x0, V, &
-    Gamma_sf, &
+    Gamma_sf, Delta_G, &
     mu, nu, &
     P_ncs, dP_ncs_dtau, &
     P, dP_dtau
@@ -1055,6 +1032,12 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
     Gamma_sf = prm%Gamma_sf(1) &
              + prm%Gamma_sf(2) * (T-prm%T_ref) &
              + prm%Gamma_sf(3) * (T-prm%T_ref)**2
+    Delta_G = prm%Delta_G(1) &
+            + prm%Delta_G(2) * (T-prm%T_ref) &
+            + prm%Delta_G(3) * (T-prm%T_ref)**2
+    tau_hat = 3.0_pReal*prm%b_tr(1)*mu/prm%L_tr &
+            + Gamma_sf/(3.0_pReal*prm%b_tr(1)) &
+            + prm%h*Delta_G/(3.0_pReal*prm%b_tr(1))
 
     do i = 1, prm%sum_N_tr
       tau = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
@@ -1062,8 +1045,8 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
       tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(PI/3.0_pReal)/x0)        ! ToDo: In the paper, the Burgers vector for slip is used
 
       if (tau > tol_math_check .and. tau < tau_r) then
-        P = exp(-(dst%tau_hat_tr(i,en)/tau)**prm%s(i))
-        dP_dTau = prm%s(i) * (dst%tau_hat_tr(i,en)/tau)**prm%s(i)/tau * P
+        P = exp(-(tau_hat/tau)**prm%s(i))
+        dP_dTau = prm%s(i) * (tau_hat/tau)**prm%s(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
         dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
