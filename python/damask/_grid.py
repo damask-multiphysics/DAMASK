@@ -101,7 +101,8 @@ class Grid:
         return self._material
 
     @material.setter
-    def material(self, material: np.ndarray):
+    def material(self,
+                 material: np.ndarray):
         if len(material.shape) != 3:
             raise ValueError(f'invalid material shape {material.shape}')
         elif material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
@@ -120,7 +121,8 @@ class Grid:
         return self._size
 
     @size.setter
-    def size(self, size: FloatSequence):
+    def size(self,
+             size: FloatSequence):
         if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
         else:
@@ -132,7 +134,8 @@ class Grid:
         return self._origin
 
     @origin.setter
-    def origin(self, origin: FloatSequence):
+    def origin(self,
+               origin: FloatSequence):
         if len(origin) != 3:
             raise ValueError(f'invalid origin {origin}')
         else:
@@ -144,7 +147,8 @@ class Grid:
         return self._comments
 
     @comments.setter
-    def comments(self, comments: Union[str, Sequence[str]]):
+    def comments(self,
+                 comments: Union[str, Sequence[str]]):
         self._comments = [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
 
 
@@ -387,7 +391,9 @@ class Grid:
 
 
     @staticmethod
-    def _find_closest_seed(seeds: np.ndarray, weights: np.ndarray, point: np.ndarray) -> np.integer:
+    def _find_closest_seed(seeds: np.ndarray,
+                           weights: np.ndarray,
+                           point: np.ndarray) -> np.integer:
         return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
 
     @staticmethod
@@ -624,7 +630,9 @@ class Grid:
                    )
 
 
-    def save(self, fname: Union[str, Path], compress: bool = True):
+    def save(self,
+             fname: Union[str, Path],
+             compress: bool = True):
         """
         Save as VTK image data file.
 
@@ -643,7 +651,8 @@ class Grid:
         v.save(fname,parallel=False,compress=compress)
 
 
-    def save_ASCII(self, fname: Union[str, TextIO]):
+    def save_ASCII(self,
+                   fname: Union[str, TextIO]):
         """
         Save as geom file.
 
@@ -770,7 +779,9 @@ class Grid:
                    )
 
 
-    def mirror(self, directions: Sequence[str], reflect: bool = False) -> 'Grid':
+    def mirror(self,
+               directions: Sequence[str],
+               reflect: bool = False) -> 'Grid':
         """
         Mirror grid along given directions.
 
@@ -822,7 +833,9 @@ class Grid:
                    )
 
 
-    def flip(self, directions: Union[Literal['x', 'y', 'z'], Sequence[Literal['x', 'y', 'z']]]) -> 'Grid':
+    def flip(self,
+             directions: Union[Literal['x', 'y', 'z'],
+             Sequence[Literal['x', 'y', 'z']]]) -> 'Grid':
         """
         Flip grid along given directions.
 
@@ -852,7 +865,9 @@ class Grid:
                    )
 
 
-    def scale(self, cells: IntSequence, periodic: bool = True) -> 'Grid':
+    def scale(self,
+              cells: IntSequence,
+              periodic: bool = True) -> 'Grid':
         """
         Scale grid to new cells.
 
@@ -958,7 +973,9 @@ class Grid:
                    )
 
 
-    def rotate(self, R: Rotation, fill: int = None) -> 'Grid':
+    def rotate(self,
+               R: Rotation,
+               fill: int = None) -> 'Grid':
         """
         Rotate grid (pad if required).
 
@@ -1049,7 +1066,9 @@ class Grid:
                    )
 
 
-    def substitute(self, from_material: IntSequence, to_material: IntSequence) -> 'Grid':
+    def substitute(self,
+                   from_material: IntSequence,
+                   to_material: IntSequence) -> 'Grid':
         """
         Substitute material indices.
 
@@ -1150,7 +1169,9 @@ class Grid:
                    )
 
 
-    def get_grain_boundaries(self, periodic: bool = True, directions: Sequence[str] = 'xyz'):
+    def get_grain_boundaries(self,
+                             periodic: bool = True,
+                             directions: Sequence[str] = 'xyz'):
         """
         Create VTK unstructured grid containing grain boundaries.
 

@@ -12,7 +12,10 @@ from . import util
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
-    def __init__(self, data: np.ndarray, shapes: dict, comments: Union[str, list] = None):
+    def __init__(self,
+                 data: np.ndarray,
+                 shapes: dict, 
+                 comments: Union[str, list] = None):
         """
         New spreadsheet.
 
@@ -41,7 +44,8 @@ class Table:
         return '\n'.join(['# '+c for c in self.comments])+'\n'+data_repr
 
 
-    def __getitem__(self, item: Union[slice, Tuple[slice, ...]]) -> 'Table':
+    def __getitem__(self,
+                    item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
         Slice the Table according to item.
 
@@ -100,7 +104,9 @@ class Table:
     copy = __copy__
 
 
-    def _label(self, what: Union[str, List[str]], how: str) -> List[str]:
+    def _label(self,
+               what: Union[str, List[str]],
+               how: str) -> List[str]:
         """
         Expand labels according to data shape.
 
@@ -147,7 +153,10 @@ class Table:
         self.data.columns = self._label(self.shapes,how) #type: ignore
 
 
-    def _add_comment(self, label: str, shape: Tuple[int, ...], info: str = None):
+    def _add_comment(self,
+                     label: str,
+                     shape: Tuple[int, ...],
+                     info: str = None):
         if info is not None:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
@@ -321,7 +330,8 @@ class Table:
         return list(self.shapes)
 
 
-    def get(self, label: str) -> np.ndarray:
+    def get(self,
+            label: str) -> np.ndarray:
         """
         Get column data.
 
@@ -341,7 +351,10 @@ class Table:
         return data.astype(type(data.flatten()[0]))
 
 
-    def set(self, label: str, data: np.ndarray, info: str = None) -> 'Table':
+    def set(self,
+            label: str,
+            data: np.ndarray,
+            info: str = None) -> 'Table':
         """
         Set column data.
 
@@ -374,7 +387,10 @@ class Table:
         return dup
 
 
-    def add(self, label: str, data: np.ndarray, info: str = None) -> 'Table':
+    def add(self,
+            label: str,
+            data: np.ndarray,
+            info: str = None) -> 'Table':
         """
         Add column data.
 
@@ -406,7 +422,8 @@ class Table:
         return dup
 
 
-    def delete(self, label: str) -> 'Table':
+    def delete(self,
+               label: str) -> 'Table':
         """
         Delete column data.
 
@@ -427,7 +444,10 @@ class Table:
         return dup
 
 
-    def rename(self, old: Union[str, List[str]], new: Union[str, List[str]], info: str = None) -> 'Table':
+    def rename(self,
+               old: Union[str, List[str]],
+               new: Union[str, List[str]],
+               info: str = None) -> 'Table':
         """
         Rename column data.
 
@@ -453,7 +473,9 @@ class Table:
         return dup
 
 
-    def sort_by(self, labels: Union[str, List[str]], ascending: Union[bool, List[bool]] = True) -> 'Table':
+    def sort_by(self,
+                labels: Union[str, List[str]],
+                ascending: Union[bool, List[bool]] = True) -> 'Table':
         """
         Sort table by values of given labels.
 
@@ -486,7 +508,8 @@ class Table:
         return dup
 
 
-    def append(self, other: 'Table') -> 'Table':
+    def append(self,
+               other: 'Table') -> 'Table':
         """
         Append other table vertically (similar to numpy.vstack).
 
@@ -511,7 +534,8 @@ class Table:
             return dup
 
 
-    def join(self, other: 'Table') -> 'Table':
+    def join(self,
+             other: 'Table') -> 'Table':
         """
         Append other table horizontally (similar to numpy.hstack).
 
@@ -538,7 +562,8 @@ class Table:
             return dup
 
 
-    def save(self, fname: FileHandle):
+    def save(self,
+             fname: FileHandle):
         """
         Save as plain text file.
 

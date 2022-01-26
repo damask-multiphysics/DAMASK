@@ -161,7 +161,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_predefined(name: str, N: int = 256) -> 'Colormap':
+    def from_predefined(name: str,
+                        N: int = 256) -> 'Colormap':
         """
         Select from a set of predefined colormaps.
 

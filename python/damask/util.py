@@ -54,7 +54,8 @@ _colors = {
 ####################################################################################################
 # Functions
 ####################################################################################################
-def srepr(msg, glue: str = '\n') -> str:
+def srepr(msg,
+          glue: str = '\n') -> str:
     r"""
     Join items with glue string.
 
@@ -148,7 +149,10 @@ def strikeout(msg) -> str:
     return _colors['crossout']+srepr(msg)+_colors['end_color']
 
 
-def run(cmd: str, wd: str = './', env: Dict[str, str] = None, timeout: int = None) -> Tuple[str, str]:
+def run(cmd: str,
+        wd: str = './',
+        env: Dict[str, str] = None,
+        timeout: int = None) -> Tuple[str, str]:
     """
     Run a command.
 
@@ -373,14 +377,17 @@ def project_equal_area(vector: np.ndarray,
     return np.roll(np.block([v[...,:2]/np.sqrt(1.0+np.abs(v[...,2:3])),np.zeros_like(v[...,2:3])]),
                    -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
-def execution_stamp(class_name: str, function_name: str = None) -> str:
+def execution_stamp(class_name: str,
+                    function_name: str = None) -> str:
     """Timestamp the execution of a (function within a) class."""
     now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
     _function_name = '' if function_name is None else f'.{function_name}'
     return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
-def hybrid_IA(dist: np.ndarray, N: int, rng_seed = None) -> np.ndarray:
+def hybrid_IA(dist: np.ndarray,
+              N: int,
+              rng_seed = None) -> np.ndarray:
     """
     Hybrid integer approximation.
 
@@ -473,7 +480,8 @@ def shapeshifter(fro: Tuple[int, ...],
     return fill[:-1]
 
 
-def shapeblender(a: Tuple[int, ...], b: Tuple[int, ...]) -> Tuple[int, ...]:
+def shapeblender(a: Tuple[int, ...],
+                 b: Tuple[int, ...]) -> Tuple[int, ...]:
     """
     Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
@@ -517,7 +525,8 @@ def extend_docstring(extra_docstring: str) -> Callable:
     return _decorator
 
 
-def extended_docstring(f: Callable, extra_docstring: str) -> Callable:
+def extended_docstring(f: Callable,
+                       extra_docstring: str) -> Callable:
     """
     Decorator: Combine another function's docstring with a given docstring.
 
@@ -593,7 +602,9 @@ def DREAM3D_cell_data_group(fname: Union[str, Path]) -> str:
     return cell_data_group
 
 
-def Bravais_to_Miller(*, uvtw: np.ndarray = None, hkil: np.ndarray = None) -> np.ndarray:
+def Bravais_to_Miller(*,
+                      uvtw: np.ndarray = None,
+                      hkil: np.ndarray = None) -> np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -620,7 +631,9 @@ def Bravais_to_Miller(*, uvtw: np.ndarray = None, hkil: np.ndarray = None) -> np
     return np.einsum('il,...l',basis,axis)
 
 
-def Miller_to_Bravais(*, uvw: np.ndarray = None, hkl: np.ndarray = None) -> np.ndarray:
+def Miller_to_Bravais(*,
+                      uvw: np.ndarray = None,
+                      hkl: np.ndarray = None) -> np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
@@ -710,7 +723,10 @@ class ProgressBar:
     Works for 0-based loops, ETA is estimated by linear extrapolation.
     """
 
-    def __init__(self, total: int, prefix: str, bar_length: int):
+    def __init__(self,
+                 total: int,
+                 prefix: str,
+                 bar_length: int):
         """
         Set current time as basis for ETA estimation.
 
@@ -733,7 +749,8 @@ class ProgressBar:
         sys.stderr.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
         sys.stderr.flush()
 
-    def update(self, iteration: int) -> None:
+    def update(self,
+               iteration: int) -> None:
 
         fraction = (iteration+1) / self.total
         filled_length = int(self.bar_length * fraction)
