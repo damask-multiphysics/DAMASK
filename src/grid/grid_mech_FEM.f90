@@ -203,9 +203,12 @@ subroutine grid_mechanical_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call VecSet(solution_current,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call VecSet(solution_lastInc,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call VecSet(solution_rate   ,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
+  call VecSet(solution_current,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecSet(solution_lastInc,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecSet(solution_rate   ,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
@@ -375,9 +378,11 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
       call VecScale(solution_rate,1.0_pReal/Delta_t_old,err_PETSc)
       CHKERRQ(err_PETSc)
     else
-      call VecSet(solution_rate,0.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
+      call VecSet(solution_rate,0.0_pReal,err_PETSc)
+      CHKERRQ(err_PETSc)
     endif
-    call VecCopy(solution_current,solution_lastInc,err_PETSc); CHKERRQ(err_PETSc)
+    call VecCopy(solution_current,solution_lastInc,err_PETSc)
+    CHKERRQ(err_PETSc)
 
     F_lastInc = F
 
@@ -549,7 +554,8 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
   do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
@@ -558,7 +564,8 @@ subroutine formResidual(da_local,x_local, &
     enddo; enddo; enddo
     F(1:3,1:3,i,j,k-grid3offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   enddo; enddo; enddo
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -575,9 +582,12 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  call VecSet(f_local,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call VecSet(f_local,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
   ele = 0
   do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
@@ -596,12 +606,15 @@ subroutine formResidual(da_local,x_local, &
       r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     enddo; enddo; enddo
   enddo; enddo; enddo
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
   if (grid3offset == 0) then
     r(0:2,0,      0,      0) = 0.0_pReal
     r(0:2,grid(1),0,      0) = 0.0_pReal
@@ -614,7 +627,8 @@ subroutine formResidual(da_local,x_local, &
     r(0:2,0,      grid(2),grid(3)) = 0.0_pReal
     r(0:2,grid(1),grid(2),grid(3)) = 0.0_pReal
   end if
-  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 end subroutine formResidual
 
@@ -646,7 +660,8 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatSetOption(Jac,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatZeroEntries(Jac,err_PETSc); CHKERRQ(err_PETSc)
+  call MatZeroEntries(Jac,err_PETSc)
+  CHKERRQ(err_PETSc)
   ce = 0
   do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
@@ -684,10 +699,14 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
   enddo; enddo; enddo
-  call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
-  call MatAssemblyBegin(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
+  call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatAssemblyBegin(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions

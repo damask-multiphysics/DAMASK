@@ -113,8 +113,10 @@ subroutine grid_thermal_spectral_init(T_0)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,SNES_thermal,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(SNES_thermal,'thermal_',err_PETSc);CHKERRQ(err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_thermal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetOptionsPrefix(SNES_thermal,'thermal_',err_PETSc)
+  CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
@@ -128,14 +130,18 @@ subroutine grid_thermal_spectral_init(T_0)
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          thermal_grid,err_PETSc)                                                                    ! handle, error
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
-  call DMsetUp(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
+  call DMsetFromOptions(thermal_grid,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMsetUp(thermal_grid,err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMCreateGlobalVector(thermal_grid,solution_vec,err_PETSc)                                    ! global solution vector (grid x 1, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
   call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)  ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(SNES_thermal,err_PETSc); CHKERRQ(err_PETSc)                               ! pull it all together with additional CLI arguments
+  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetFromOptions(SNES_thermal,err_PETSc)                                                   ! pull it all together with additional CLI arguments
+  CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   T_PETSc = T_current
@@ -197,8 +203,10 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
     call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
   end do; end do; end do
 
-  call VecMin(solution_vec,devNull,T_min,err_PETSc); CHKERRQ(err_PETSc)
-  call VecMax(solution_vec,devNull,T_max,err_PETSc); CHKERRQ(err_PETSc)
+  call VecMin(solution_vec,devNull,T_min,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecMax(solution_vec,devNull,T_max,err_PETSc)
+  CHKERRQ(err_PETSc)
   if (solution%converged) &
     print'(/,1x,a)', '... thermal conduction converged ..................................'
   print'(/,1x,a,f8.4,2x,f8.4,2x,f8.4)', 'Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm

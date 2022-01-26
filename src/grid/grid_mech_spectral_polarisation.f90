@@ -178,7 +178,8 @@ subroutine grid_mechanical_spectral_polarisation_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc); CHKERRQ(err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
+  CHKERRQ(err_PETSc)
   call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
@@ -194,19 +195,25 @@ subroutine grid_mechanical_spectral_polarisation_init
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          da,err_PETSc)                                                                              ! handle, error
   CHKERRQ(err_PETSc)
-  call DMsetFromOptions(da,err_PETSc); CHKERRQ(err_PETSc)
-  call DMsetUp(da,err_PETSc); CHKERRQ(err_PETSc)
-  call DMcreateGlobalVector(da,solution_vec,err_PETSc); CHKERRQ(err_PETSc)                          ! global solution vector (grid x 18, i.e. every def grad tensor)
+  call DMsetFromOptions(da,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMsetUp(da,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMcreateGlobalVector(da,solution_vec,err_PETSc)                                              ! global solution vector (grid x 18, i.e. every def grad tensor)
+  CHKERRQ(err_PETSc)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)            ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
   call SNESsetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "converged"
   CHKERRQ(err_PETSc)
-  call SNESSetDM(SNES_mechanical,da,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESsetFromOptions(SNES_mechanical,err_PETSc); CHKERRQ(err_PETSc)                            ! pull it all together with additional CLI arguments
+  call SNESSetDM(SNES_mechanical,da,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESsetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional CLI arguments
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc); CHKERRQ(err_PETSc)                  ! places pointer on PETSc data
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                      ! places pointer on PETSc data
+  CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
@@ -343,7 +350,8 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
   real(pReal), dimension(3,3) :: F_lambda33
 
 
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc); CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
@@ -444,7 +452,8 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
   integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
 
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc); CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
