@@ -123,7 +123,8 @@ class Orientation(Rotation,Crystal):
         return '\n'.join([Crystal.__repr__(self),
                           Rotation.__repr__(self)])
 
-    def __copy__(self,rotation: Union[FloatSequence, Rotation] = None) -> "Orientation":
+    def __copy__(self,
+                 rotation: Union[FloatSequence, Rotation] = None) -> "Orientation":
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -134,7 +135,8 @@ class Orientation(Rotation,Crystal):
 
 
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,
+               other: object) -> bool:
         """
         Equal to other.
 
@@ -151,7 +153,8 @@ class Orientation(Rotation,Crystal):
                         self.parameters == other.parameters
         return np.logical_and(matching_type,super(self.__class__,self.reduced).__eq__(other.reduced))
 
-    def __ne__(self, other: object) -> bool:
+    def __ne__(self,
+               other: object) -> bool:
         """
         Not equal to other.
 
@@ -230,7 +233,8 @@ class Orientation(Rotation,Crystal):
         return np.all(self.isclose(other,rtol,atol,equal_nan))
 
 
-    def __mul__(self, other: Union[Rotation, "Orientation"]) -> "Orientation":
+    def __mul__(self,
+                other: Union[Rotation, "Orientation"]) -> "Orientation":
         """
         Compose this orientation with other.
 
@@ -252,7 +256,8 @@ class Orientation(Rotation,Crystal):
 
 
     @staticmethod
-    def _split_kwargs(kwargs: Dict[str, Any], target: Callable) -> Tuple[Dict[str, Any], ...]:
+    def _split_kwargs(kwargs: Dict[str, Any],
+                      target: Callable) -> Tuple[Dict[str, Any], ...]:
         """
         Separate keyword arguments in 'kwargs' targeted at 'target' from general keyword arguments of Orientation objects.
 
@@ -492,7 +497,9 @@ class Orientation(Rotation,Crystal):
             else:
                 return np.ones_like(rho[...,0],dtype=bool)
 
-    def disorientation(self, other, return_operators = False):
+    def disorientation(self,
+                       other,
+                       return_operators = False):
         """
         Calculate disorientation between myself and given other orientation.
 
@@ -576,7 +583,9 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def average(self, weights = None, return_cloud = False):
+    def average(self,
+                weights = None,
+                return_cloud = False):
         """
         Return orientation average over last dimension.
 
@@ -659,7 +668,9 @@ class Orientation(Rotation,Crystal):
                )
 
 
-    def in_SST(self, vector: np.ndarray, proper: bool = False) -> Union[np.bool_, np.ndarray]:
+    def in_SST(self,
+               vector: np.ndarray,
+               proper: bool = False) -> Union[np.bool_, np.ndarray]:
         """
         Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
 
@@ -700,7 +711,10 @@ class Orientation(Rotation,Crystal):
             return np.all(components >= 0.0,axis=-1)
 
 
-    def IPF_color(self, vector: np.ndarray, in_SST: bool = True, proper: bool = False) -> np.ndarray:
+    def IPF_color(self,
+                  vector: np.ndarray,
+                  in_SST: bool = True,
+                  proper: bool = False) -> np.ndarray:
         """
         Map vector to RGB color within standard stereographic triangle of own symmetry.
 
@@ -925,7 +939,8 @@ class Orientation(Rotation,Crystal):
                @ np.broadcast_to(P.reshape(util.shapeshifter(P.shape,shape)),shape)
 
 
-    def related(self, model: str) -> "Orientation":
+    def related(self,
+                model: str) -> "Orientation":
         """
         Orientations derived from the given relationship.
 

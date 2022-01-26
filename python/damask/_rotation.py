@@ -64,7 +64,8 @@ class Rotation:
 
     __slots__ = ['quaternion']
 
-    def __init__(self, rotation: Union[FloatSequence, "Rotation"] = np.array([1.0,0.0,0.0,0.0])):
+    def __init__(self,
+                 rotation: Union[FloatSequence, "Rotation"] = np.array([1.0,0.0,0.0,0.0])):
         """
         New rotation.
 
@@ -91,7 +92,8 @@ class Rotation:
                + str(self.quaternion)
 
 
-    def __copy__(self, rotation: Union[FloatSequence, "Rotation"] = None) -> "Rotation":
+    def __copy__(self,
+                 rotation: Union[FloatSequence, "Rotation"] = None) -> "Rotation":
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -101,7 +103,8 @@ class Rotation:
     copy = __copy__
 
 
-    def __getitem__(self, item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
+    def __getitem__(self,
+                    item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
         """Return slice according to item."""
         return self.copy() \
                if self.shape == () else \
@@ -139,7 +142,11 @@ class Rotation:
         return np.logical_not(self==other)
 
 
-    def isclose(self, other: "Rotation", rtol: float = 1e-5, atol: float = 1e-8, equal_nan: bool = True) -> bool:
+    def isclose(self,
+                other: "Rotation",
+                rtol: float = 1e-5,
+                atol: float = 1e-8,
+                equal_nan: bool = True) -> bool:
         """
         Report where values are approximately equal to corresponding ones of other Rotation.
 
@@ -166,7 +173,11 @@ class Rotation:
                              np.all(np.isclose(s,-1.0*o,rtol,atol,equal_nan),axis=-1))
 
 
-    def allclose(self, other: "Rotation", rtol: float = 1e-5, atol: float = 1e-8, equal_nan: bool = True) -> Union[np.bool_, bool]:
+    def allclose(self,
+                 other: "Rotation",
+                 rtol: float = 1e-5,
+                 atol: float = 1e-8,
+                 equal_nan: bool = True) -> Union[np.bool_, bool]:
         """
         Test whether all values are approximately equal to corresponding ones of other Rotation.
 
@@ -330,7 +341,7 @@ class Rotation:
             Rotated vector or tensor, i.e. transformed to frame defined by rotation.
 
         """
-        if isinstance(other,np.ndarray):
+        if isinstance(other, np.ndarray):
             if self.shape + (3,) == other.shape:
                 q_m = self.quaternion[...,0]
                 p_m = self.quaternion[...,1:]
@@ -350,7 +361,7 @@ class Rotation:
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
                 raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
-        elif isinstance(other,Rotation):
+        elif isinstance(other, Rotation):
             raise TypeError('Use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
             raise TypeError(f'Cannot rotate {type(other)}')
@@ -364,7 +375,9 @@ class Rotation:
         return self
 
 
-    def append(self, other: Union["Rotation", List["Rotation"]]) -> "Rotation":
+    def append(self,
+               other: Union["Rotation",
+               List["Rotation"]]) -> "Rotation":
         """
         Extend array along first dimension with other array(s).
 
@@ -377,7 +390,8 @@ class Rotation:
                                                       [self]+other if isinstance(other,list) else [self,other]))))
 
 
-    def flatten(self, order: Literal['C','F','A'] = 'C') -> "Rotation":
+    def flatten(self,
+                order: Literal['C','F','A'] = 'C') -> "Rotation":
         """
         Flatten array.
 
@@ -390,7 +404,9 @@ class Rotation:
         return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
 
 
-    def reshape(self,shape: Union[int, Tuple[int, ...]], order: Literal['C','F','A'] = 'C') -> "Rotation":
+    def reshape(self,
+                shape: Union[int, Tuple[int, ...]],
+                order: Literal['C','F','A'] = 'C') -> "Rotation":
         """
         Reshape array.
 
@@ -404,7 +420,9 @@ class Rotation:
         return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
 
-    def broadcast_to(self, shape: Union[int, Tuple[int, ...]], mode: Literal["left", "right"] = 'right') -> "Rotation":
+    def broadcast_to(self,
+                     shape: Union[int, Tuple[int, ...]],
+                     mode: Literal["left", "right"] = 'right') -> "Rotation":
         """
         Broadcast array.
 
@@ -427,7 +445,8 @@ class Rotation:
                                                   shape+(4,)))
 
 
-    def average(self, weights: np.ndarray = None) -> "Rotation":
+    def average(self,
+                weights: np.ndarray = None) -> "Rotation":
         """
         Average along last array dimension.
 
@@ -466,7 +485,8 @@ class Rotation:
                                         accept_homomorph = True)
 
 
-    def misorientation(self, other: "Rotation") -> "Rotation":
+    def misorientation(self,
+                       other: "Rotation") -> "Rotation":
         """
         Calculate misorientation to other Rotation.
 
@@ -1649,7 +1669,8 @@ class Rotation:
 
 
     @staticmethod
-    def _get_pyramid_order(xyz: np.ndarray, direction: Literal['forward', 'backward']) -> np.ndarray:
+    def _get_pyramid_order(xyz: np.ndarray,
+                           direction: Literal['forward', 'backward']) -> np.ndarray:
         """
         Get order of the coordinates.
 
