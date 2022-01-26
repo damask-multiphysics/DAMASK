@@ -247,7 +247,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
-    prm%N_tw     = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
+    prm%N_tw = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(prm%N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
       prm%systems_tw = lattice_labels_twin(prm%N_tw,phase_lattice(ph))
@@ -264,40 +264,33 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       prm%gamma_char= lattice_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
 
-      if (.not. prm%fccTwinTransNucleation) then
-        prm%dot_N_0_tw = pl%get_as1dFloat('dot_N_0_tw')
-        prm%dot_N_0_tw = math_expand(prm%dot_N_0_tw,prm%N_tw)
-      endif
-
       ! expand: family => system
       prm%b_tw = math_expand(prm%b_tw,prm%N_tw)
       prm%t_tw = math_expand(prm%t_tw,prm%N_tw)
       prm%r    = math_expand(prm%r,prm%N_tw)
 
       ! sanity checks
+      if (.not. prm%fccTwinTransNucleation)   extmsg = trim(extmsg)//' TWIP for non-fcc'
       if (    prm%L_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tw'
       if (    prm%i_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tw'
       if (any(prm%b_tw          < 0.0_pReal)) extmsg = trim(extmsg)//' b_tw'
       if (any(prm%t_tw          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tw'
       if (any(prm%r             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tw'
-      if (.not. prm%fccTwinTransNucleation) then
-        if (any(prm%dot_N_0_tw  < 0.0_pReal)) extmsg = trim(extmsg)//' dot_N_0_tw'
-      end if
     else twinActive
-      allocate(prm%gamma_char,prm%b_tw,prm%dot_N_0_tw,prm%t_tw,prm%r,source=emptyRealArray)
+      allocate(prm%gamma_char,prm%b_tw,prm%t_tw,prm%r,source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
     end if twinActive
 
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
-    prm%N_tr         = pl%get_as1dInt('N_tr', defaultVal=emptyIntArray)
+    prm%N_tr = pl%get_as1dInt('N_tr', defaultVal=emptyIntArray)
     prm%sum_N_tr = sum(abs(prm%N_tr))
     transActive: if (prm%sum_N_tr > 0) then
       prm%b_tr = pl%get_as1dFloat('b_tr')
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
-      prm%h             = pl%get_asFloat('h',       defaultVal=0.0_pReal) ! ToDo: This is not optional!
-      prm%i_tr          = pl%get_asFloat('i_tr',    defaultVal=0.0_pReal) ! ToDo: This is not optional!
+      prm%h             = pl%get_asFloat('h')
+      prm%i_tr          = pl%get_asFloat('i_tr')
       prm%Delta_G(1)    = pl%get_asFloat('Delta_G')
       prm%Delta_G(2)    = pl%get_asFloat('Delta_G,T',  defaultVal=0.0_pReal)
       prm%Delta_G(3)    = pl%get_asFloat('Delta_G,T^2',defaultVal=0.0_pReal)
@@ -317,10 +310,11 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       prm%t_tr = pl%get_as1dFloat('t_tr')
       prm%t_tr = math_expand(prm%t_tr,prm%N_tr)
-      prm%s    = pl%get_as1dFloat('p_tr',defaultVal=[0.0_pReal])
+      prm%s    = pl%get_as1dFloat('p_tr')
       prm%s    = math_expand(prm%s,prm%N_tr)
 
       ! sanity checks
+      if (.not. prm%fccTwinTransNucleation)   extmsg = trim(extmsg)//' TRIP for non-fcc'
       if (    prm%L_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tr'
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
@@ -931,55 +925,39 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    isFCC: if (prm%fccTwinTransNucleation) then
+    mu = elastic_mu(ph,en)
+    nu = elastic_nu(ph,en)
+    Gamma_sf = prm%Gamma_sf(1) &
+             + prm%Gamma_sf(2) * (T-prm%T_ref) &
+             + prm%Gamma_sf(3) * (T-prm%T_ref)**2
+    tau_hat = 3.0_pReal*prm%b_tw(1)*mu/prm%L_tw &
+            + Gamma_sf/(3.0_pReal*prm%b_tw(1))
+    x0 = mu*prm%b_sl(1)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))
+    tau_r = mu*prm%b_sl(1)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c)+cos(PI/3.0_pReal)/x0)
 
-      mu = elastic_mu(ph,en)
-      nu = elastic_nu(ph,en)
-      Gamma_sf = prm%Gamma_sf(1) &
-               + prm%Gamma_sf(2) * (T-prm%T_ref) &
-               + prm%Gamma_sf(3) * (T-prm%T_ref)**2
-      tau_hat = 3.0_pReal*prm%b_tw(1)*mu/prm%L_tw &
-              + Gamma_sf/(3.0_pReal*prm%b_tw(1))
-      x0 = mu*prm%b_sl(1)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))
-      tau_r = mu*prm%b_sl(1)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c)+cos(PI/3.0_pReal)/x0)
+    do i = 1, prm%sum_N_tw
+      tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
 
-      do i = 1, prm%sum_N_tw
-        tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
+      if (tau > tol_math_check .and. tau < tau_r) then
+        P = exp(-(tau_hat/tau)**prm%r(i))
+        dP_dTau = prm%r(i) * (tau_hat/tau)**prm%r(i)/tau * P
 
-        if (tau > tol_math_check .and. tau < tau_r) then
-          P = exp(-(tau_hat/tau)**prm%r(i))
-          dP_dTau = prm%r(i) * (tau_hat/tau)**prm%r(i)/tau * P
+        s = prm%fcc_twinNucleationSlipPair(1:2,i)
+        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
+                / (prm%L_tw*prm%b_sl(i))
 
-          s = prm%fcc_twinNucleationSlipPair(1:2,i)
-          dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
-                  / (prm%L_tw*prm%b_sl(i))
+        P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
+        dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
 
-          P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
-          dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
-
-          V = PI/4.0_pReal*dst%Lambda_tw(i,en)**2*prm%t_tw(i)
-          dot_gamma_tw(i) = V*dot_N_0*P_ncs*P
-          if (present(ddot_gamma_dtau_tw)) &
-            ddot_gamma_dtau_tw(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
-        else
-          dot_gamma_tw(i) = 0.0_pReal
-          if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
-        end if
-      end do
-
-    else isFCC
-      do i = 1, prm%sum_N_tw
-        error stop 'not implemented'
-        tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
-        if (tau > tol_math_check) then
-          dot_gamma_tw(i) = 0.0_pReal
-          if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
-        else
-          dot_gamma_tw(i) = 0.0_pReal
-          if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
-        end if
-      end do
-    end if isFCC
+        V = PI/4.0_pReal*dst%Lambda_tw(i,en)**2*prm%t_tw(i)
+        dot_gamma_tw(i) = V*dot_N_0*P_ncs*P
+        if (present(ddot_gamma_dtau_tw)) &
+          ddot_gamma_dtau_tw(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
+      else
+        dot_gamma_tw(i) = 0.0_pReal
+        if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
+      end if
+    end do
 
   end associate
 
