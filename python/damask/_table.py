@@ -1,7 +1,7 @@
 import re
 import copy
 from pathlib import Path
-from typing import Union, Optional, Tuple, List
+from typing import Union, Tuple, List
 
 import pandas as pd
 import numpy as np
@@ -12,7 +12,7 @@ from . import util
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
-    def __init__(self, data: np.ndarray, shapes: dict, comments: Optional[Union[str, list]] = None):
+    def __init__(self, data: np.ndarray, shapes: dict, comments: Union[str, list] = None):
         """
         New spreadsheet.
 
@@ -147,7 +147,7 @@ class Table:
         self.data.columns = self._label(self.shapes,how) #type: ignore
 
 
-    def _add_comment(self, label: str, shape: Tuple[int, ...], info: Optional[str]):
+    def _add_comment(self, label: str, shape: Tuple[int, ...], info: str = None):
         if info is not None:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
