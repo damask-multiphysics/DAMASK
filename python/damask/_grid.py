@@ -77,7 +77,8 @@ class Grid:
     copy = __copy__
 
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,
+               other: object) -> bool:
         """
         Test equality of other.
 

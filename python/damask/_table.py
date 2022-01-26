@@ -137,7 +137,8 @@ class Table:
         return labels
 
 
-    def _relabel(self, how: str):
+    def _relabel(self,
+                 how: str):
         """
         Modify labeling of data in-place.
 

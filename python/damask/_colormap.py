@@ -47,27 +47,32 @@ class Colormap(mpl.colors.ListedColormap):
 
     """
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,
+               other: object) -> bool:
         """Test equality of colormaps."""
         if not isinstance(other, Colormap):
             return NotImplemented
         return         len(self.colors) == len(other.colors) \
            and bool(np.all(self.colors  ==     other.colors))
 
-    def __add__(self, other: 'Colormap') -> 'Colormap':
+    def __add__(self,
+                other: 'Colormap') -> 'Colormap':
         """Concatenate."""
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
-    def __iadd__(self, other: 'Colormap') -> 'Colormap':
+    def __iadd__(self,
+                 other: 'Colormap') -> 'Colormap':
         """Concatenate (in-place)."""
         return self.__add__(other)
 
-    def __mul__(self, factor: int) -> 'Colormap':
+    def __mul__(self,
+                factor: int) -> 'Colormap':
         """Repeat."""
         return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
 
-    def __imul__(self, factor: int) -> 'Colormap':
+    def __imul__(self,
+                 factor: int) -> 'Colormap':
         """Repeat (in-place)."""
         return self.__mul__(factor)
 
@@ -276,7 +281,8 @@ class Colormap(mpl.colors.ListedColormap):
             mode='RGBA')
 
 
-    def reversed(self, name: str = None) -> 'Colormap':
+    def reversed(self,
+                 name: str = None) -> 'Colormap':
         """
         Reverse.
 
@@ -329,7 +335,8 @@ class Colormap(mpl.colors.ListedColormap):
             return fname
 
 
-    def save_paraview(self, fname: FileHandle = None):
+    def save_paraview(self,
+                      fname: FileHandle = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -356,7 +363,8 @@ class Colormap(mpl.colors.ListedColormap):
         fhandle.write('\n')
 
 
-    def save_ASCII(self, fname: FileHandle = None):
+    def save_ASCII(self,
+                   fname: FileHandle = None):
         """
         Save as ASCII file.
 
@@ -391,7 +399,8 @@ class Colormap(mpl.colors.ListedColormap):
         self._get_file_handle(fname,'.legend').write(GOM_str)
 
 
-    def save_gmsh(self, fname: FileHandle = None):
+    def save_gmsh(self,
+                  fname: FileHandle = None):
         """
         Save as ASCII file for use in gmsh.
 
@@ -622,7 +631,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
+    def _lab2xyz(lab: np.ndarray,
+                 ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Lab to CIE Xyz.
 
@@ -653,7 +663,8 @@ class Colormap(mpl.colors.ListedColormap):
                         ])*ref_white
 
     @staticmethod
-    def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
+    def _xyz2lab(xyz: np.ndarray,
+                 ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
 
