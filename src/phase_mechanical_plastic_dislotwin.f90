@@ -17,15 +17,14 @@ submodule(phase:plastic) dislotwin
       p_sb                = 1.0_pReal, &                                                            !< p-exponent in shear band velocity
       q_sb                = 1.0_pReal, &                                                            !< q-exponent in shear band velocity
       i_tw                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for twinning
-      L_tw                = 1.0_pReal, &                                                            !< length of twin nuclei in Burgers vectors: TODO unit should be meters
-      L_tr                = 1.0_pReal, &                                                            !< length of trans nuclei in Burgers vectors: TODO unit should be meters
-      x_c_tw              = 1.0_pReal, &                                                            !< critical distance for formation of twin nucleus
-      x_c_tr              = 1.0_pReal, &                                                            !< critical distance for formation of trans nucleus
+      i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
+      L_tw                = 1.0_pReal, &                                                            !< length of twin nuclei
+      L_tr                = 1.0_pReal, &                                                            !< length of trans nuclei
+      x_c                 = 1.0_pReal, &                                                            !< critical distance for formation of twin/trans nucleus
       V_cs                = 1.0_pReal, &                                                            !< cross slip volume
       xi_sb               = 1.0_pReal, &                                                            !< value for shearband resistance
       v_sb                = 1.0_pReal, &                                                            !< value for shearband velocity_0
       E_sb                = 1.0_pReal, &                                                            !< activation energy for shear bands
-      i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
       h                   = 1.0_pReal, &                                                            !< stack height of hex nucleus
       T_ref               = T_ROOM, &
       a_cI                = 1.0_pReal, &
@@ -260,7 +259,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%t_tw      = pl%get_as1dFloat('t_tw',     requiredSize=size(prm%N_tw))
       prm%r         = pl%get_as1dFloat('p_tw',     requiredSize=size(prm%N_tw))
 
-      prm%x_c_tw    = pl%get_asFloat('x_c_tw')
       prm%L_tw      = pl%get_asFloat('L_tw')
       prm%i_tw      = pl%get_asFloat('i_tw')
 
@@ -277,7 +275,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%r    = math_expand(prm%r,prm%N_tw)
 
       ! sanity checks
-      if (    prm%x_c_tw        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_tw'
       if (    prm%L_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tw'
       if (    prm%i_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tw'
       if (any(prm%b_tw          < 0.0_pReal)) extmsg = trim(extmsg)//' b_tw'
@@ -304,7 +301,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%Delta_G(1)    = pl%get_asFloat('Delta_G')
       prm%Delta_G(2)    = pl%get_asFloat('Delta_G,T',  defaultVal=0.0_pReal)
       prm%Delta_G(3)    = pl%get_asFloat('Delta_G,T^2',defaultVal=0.0_pReal)
-      prm%x_c_tr        = pl%get_asFloat('x_c_tr',  defaultVal=0.0_pReal) ! ToDo: This is not optional!
       prm%L_tr          = pl%get_asFloat('L_tr')
       prm%a_cI          = pl%get_asFloat('a_cI',    defaultVal=0.0_pReal)
       prm%a_cF          = pl%get_asFloat('a_cF',    defaultVal=0.0_pReal)
@@ -325,7 +321,6 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%s    = math_expand(prm%s,prm%N_tr)
 
       ! sanity checks
-      if (    prm%x_c_tr        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_tr'
       if (    prm%L_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tr'
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
@@ -356,8 +351,12 @@ module function plastic_dislotwin_init() result(myPlasticity)
     if (prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
       prm%D = pl%get_asFloat('D')
 
-    if (prm%sum_N_tw + prm%sum_N_tr > 0) &
+    if (prm%sum_N_tw + prm%sum_N_tr > 0) then
+      prm%x_c  = pl%get_asFloat('x_c')
       prm%V_cs = pl%get_asFloat('V_cs')
+      if (prm%x_c  < 0.0_pReal)  extmsg = trim(extmsg)//' x_c'
+      if (prm%V_cs < 0.0_pReal)  extmsg = trim(extmsg)//' V_cs'
+    end if
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0 .or. prm%ExtendedDislocations) then
       prm%T_ref       = pl%get_asFloat('T_ref')
@@ -941,11 +940,11 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
                + prm%Gamma_sf(3) * (T-prm%T_ref)**2
       tau_hat = 3.0_pReal*prm%b_tw(1)*mu/prm%L_tw &
               + Gamma_sf/(3.0_pReal*prm%b_tw(1))
+      x0 = mu*prm%b_sl(1)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))
+      tau_r = mu*prm%b_sl(1)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c)+cos(PI/3.0_pReal)/x0)
 
       do i = 1, prm%sum_N_tw
         tau = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
-        x0 = mu*prm%b_tw(i)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))                ! ToDo: In the paper, the Burgers vector for slip is used
-        tau_r = mu*prm%b_tw(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(PI/3.0_pReal)/x0)      ! ToDo: In the paper, the Burgers vector for slip is used
 
         if (tau > tol_math_check .and. tau < tau_r) then
           P = exp(-(tau_hat/tau)**prm%r(i))
@@ -1038,11 +1037,11 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
     tau_hat = 3.0_pReal*prm%b_tr(1)*mu/prm%L_tr &
             + Gamma_sf/(3.0_pReal*prm%b_tr(1)) &
             + prm%h*Delta_G/(3.0_pReal*prm%b_tr(1))
+    x0 = mu*prm%b_sl(1)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))
+    tau_r = mu*prm%b_sl(1)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c)+cos(PI/3.0_pReal)/x0)
 
     do i = 1, prm%sum_N_tr
       tau = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
-      x0 = mu*prm%b_tr(i)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))                  ! ToDo: In the paper, the Burgers vector for slip is used
-      tau_r = mu*prm%b_tr(i)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(PI/3.0_pReal)/x0)        ! ToDo: In the paper, the Burgers vector for slip is used
 
       if (tau > tol_math_check .and. tau < tau_r) then
         P = exp(-(tau_hat/tau)**prm%s(i))
