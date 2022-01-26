@@ -49,7 +49,7 @@ submodule(phase:plastic) dislotwin
       r, &                                                                                          !< exponent in twin nucleation rate
       s, &                                                                                          !< exponent in trans nucleation rate
       tau_0, &                                                                                      !< strength due to elements in solid solution
-      gamma_char, &                                                                                 !< characteristic shear for twins
+      gamma_char_tw, &                                                                              !< characteristic shear for twins
       B, &                                                                                          !< drag coefficient
       d_caron                                                                                       !< distance of spontaneous annhihilation
     real(pReal),               allocatable, dimension(:,:) :: &
@@ -265,7 +265,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%L_tw      = pl%get_asFloat('L_tw')
       prm%i_tw      = pl%get_asFloat('i_tw')
 
-      prm%gamma_char= lattice_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%gamma_char_tw = lattice_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
 
       ! expand: family => system
       prm%b_tw = math_expand(prm%b_tw,prm%N_tw)
@@ -280,7 +280,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (any(prm%t_tw          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tw'
       if (any(prm%r             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tw'
     else twinActive
-      allocate(prm%gamma_char,prm%b_tw,prm%t_tw,prm%r,source=emptyRealArray)
+      allocate(prm%gamma_char_tw,prm%b_tw,prm%t_tw,prm%r,source=emptyRealArray)
       allocate(prm%h_tw_tw(0,0))
     end if twinActive
 
@@ -569,7 +569,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     shearBandingContribution: if (dNeq0(prm%v_sb)) then
 
       E_kB_T = prm%E_sb/(K_B*T)
-      call math_eigh33(eigValues,eigVectors,Mp)                                                       ! is Mp symmetric by design?
+      call math_eigh33(eigValues,eigVectors,Mp)                                                     ! is Mp symmetric by design?
 
       do i = 1,6
         P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&
@@ -626,6 +626,8 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
     dot_gamma_tw
   real(pReal), dimension(param(ph)%sum_N_tr) :: &
     dot_gamma_tr
+  real(pReal), parameter :: &
+    gamma_char_tr = 1.0_pReal !!! TODO
   real(pReal) :: &
     mu, &
     nu, &
@@ -686,10 +688,10 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
                       - dot_rho_dip_climb
 
     if (prm%sum_N_tw > 0) call kinetics_tw(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tw)
-    dot%f_tw(:,en) = f_matrix*dot_gamma_tw/prm%gamma_char
+    dot%f_tw(:,en) = f_matrix*dot_gamma_tw/prm%gamma_char_tw
 
     if (prm%sum_N_tr > 0) call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr)
-    dot%f_tr(:,en) = f_matrix*dot_gamma_tr
+    dot%f_tr(:,en) = f_matrix*dot_gamma_tr/gamma_char_tr
 
   end associate
 
@@ -941,8 +943,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
         dP_dTau = prm%r(i) * (tau_hat/tau)**prm%r(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
-                / (prm%L_tw*prm%b_sl(i))
+        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/prm%L_tw
 
         P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
@@ -1023,8 +1024,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
         dP_dTau = prm%s(i) * (tau_hat/tau)**prm%s(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en))) &
-                / (prm%L_tr*prm%b_sl(i))
+        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/prm%L_tr
 
         P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
