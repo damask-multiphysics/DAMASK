@@ -50,7 +50,7 @@ module grid_mechanical_FEM
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM   :: mechanical_grid
-  SNES :: mechanical_snes
+  SNES :: SNES_mechanical
   Vec  :: solution_current, solution_lastInc, solution_rate
 
 !--------------------------------------------------------------------------------------------------
@@ -60,7 +60,6 @@ module grid_mechanical_FEM
   real(pReal), dimension(3)   :: delta
   real(pReal), dimension(3,8) :: BMat
   real(pReal), dimension(8,8) :: HGMat
-  PetscInt :: xstart,ystart,zstart,xend,yend,zend
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -146,7 +145,7 @@ subroutine grid_mechanical_FEM_init
 ! set default and user defined options for PETSc
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
                                 '-mechanical_snes_type newtonls -mechanical_ksp_type fgmres &
-                                &-mechanical_ksp_max_it 25 -mechanical_mg_levels_ksp_type chebyshev', &
+                                &-mechanical_ksp_max_it 25', &
                                 err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
@@ -160,9 +159,9 @@ subroutine grid_mechanical_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,mechanical_snes,err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(mechanical_snes,'mechanical_',err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
@@ -176,8 +175,6 @@ subroutine grid_mechanical_FEM_init
          3_pPetscInt, 1_pPetscInt, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          mechanical_grid,err_PETSc)
-  CHKERRQ(err_PETSc)
-  call SNESSetDM(mechanical_snes,mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -195,28 +192,28 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(err_PETSc)
   call DMSNESSetJacobianLocal(mechanical_grid,formJacobian,PETSC_NULL_SNES,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESSetConvergenceTest(mechanical_snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
+  call SNESSetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "_converged"
   CHKERRQ(err_PETSc)
-  call SNESSetMaxLinearSolveFailures(mechanical_snes, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
+  call SNESSetMaxLinearSolveFailures(SNES_mechanical, huge(1_pPetscInt), err_PETSc)                 ! ignore linear solve failures
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(mechanical_snes,err_PETSc)                                                ! pull it all together with additional cli arguments
+  call SNESSetDM(SNES_mechanical,mechanical_grid,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional cli arguments
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call VecSet(solution_current,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call VecSet(solution_lastInc,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call VecSet(solution_rate   ,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
+  call VecSet(solution_current,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecSet(solution_lastInc,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecSet(solution_rate   ,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call DMDAGetCorners(mechanical_grid,xstart,ystart,zstart,xend,yend,zend,err_PETSc)                ! local grid extent
-  CHKERRQ(err_PETSc)
-  xend = xstart+xend-1
-  yend = ystart+yend-1
-  zend = zstart+zend-1
   delta = geomSize/real(grid,pReal)                                                                 ! grid spacing
   detJ = product(delta)                                                                             ! cell volume
 
@@ -311,14 +308,9 @@ function grid_mechanical_FEM_solution(incInfoIn) result(solution)
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
-!--------------------------------------------------------------------------------------------------
-! solve BVP
-  call SNESsolve(mechanical_snes,PETSC_NULL_VEC,solution_current,err_PETSc)
+  call SNESsolve(SNES_mechanical,PETSC_NULL_VEC,solution_current,err_PETSc)
   CHKERRQ(err_PETSc)
-
-!--------------------------------------------------------------------------------------------------
-! check convergence
-  call SNESGetConvergedReason(mechanical_snes,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
@@ -386,9 +378,11 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
       call VecScale(solution_rate,1.0_pReal/Delta_t_old,err_PETSc)
       CHKERRQ(err_PETSc)
     else
-      call VecSet(solution_rate,0.0_pReal,err_PETSc); CHKERRQ(err_PETSc)
+      call VecSet(solution_rate,0.0_pReal,err_PETSc)
+      CHKERRQ(err_PETSc)
     endif
-    call VecCopy(solution_current,solution_lastInc,err_PETSc); CHKERRQ(err_PETSc)
+    call VecCopy(solution_current,solution_lastInc,err_PETSc)
+    CHKERRQ(err_PETSc)
 
     F_lastInc = F
 
@@ -515,6 +509,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
+  err_PETSc = 0
 
 end subroutine converged
 
@@ -527,7 +522,7 @@ subroutine formResidual(da_local,x_local, &
 
   DM                   :: da_local
   Vec                  :: x_local, f_local
-  PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, f_scal
+  PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, r
   PetscScalar, dimension(8,3) :: x_elem,  f_elem
   PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
   PetscInt :: &
@@ -538,9 +533,9 @@ subroutine formResidual(da_local,x_local, &
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pReal), dimension(3,3,3,3) :: devNull
 
-  call SNESGetNumberFunctionEvals(mechanical_snes,nfuncs,err_PETSc)
+  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetIterationNumber(mechanical_snes,PETScIter,err_PETSc)
+  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
@@ -559,17 +554,18 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
-    F(1:3,1:3,ii,jj,kk) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
+    F(1:3,1:3,i,j,k-grid3offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   enddo; enddo; enddo
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -586,47 +582,53 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  call VecSet(f_local,0.0_pReal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call VecSet(f_local,0.0_pReal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
   ele = 0
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
     ele = ele + 1
-    f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,ii,jj,kk)))*detJ + &
+    f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-grid3offset)))*detJ + &
              matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
                                    homogenization_dPdF(2,2,2,2,ele) + &
                                    homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
-      f_scal(0:2,i+ii,j+jj,k+kk) = f_scal(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
+      r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
     enddo; enddo; enddo
   enddo; enddo; enddo
-  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc);CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  call DMDAVecGetArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
-  if (zstart == 0) then
-    f_scal(0:2,xstart,ystart,zstart) = 0.0
-    f_scal(0:2,xend+1,ystart,zstart) = 0.0
-    f_scal(0:2,xstart,yend+1,zstart) = 0.0
-    f_scal(0:2,xend+1,yend+1,zstart) = 0.0
-  endif
-  if (zend + 1 == grid(3)) then
-    f_scal(0:2,xstart,ystart,zend+1) = 0.0
-    f_scal(0:2,xend+1,ystart,zend+1) = 0.0
-    f_scal(0:2,xstart,yend+1,zend+1) = 0.0
-    f_scal(0:2,xend+1,yend+1,zend+1) = 0.0
-  endif
-  call DMDAVecRestoreArrayF90(da_local,f_local,f_scal,err_PETSc);CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
+  if (grid3offset == 0) then
+    r(0:2,0,      0,      0) = 0.0_pReal
+    r(0:2,grid(1),0,      0) = 0.0_pReal
+    r(0:2,0,      grid(2),0) = 0.0_pReal
+    r(0:2,grid(1),grid(2),0) = 0.0_pReal
+  end if
+  if (grid3+grid3offset == grid(3)) then
+    r(0:2,0,      0,      grid(3)) = 0.0_pReal
+    r(0:2,grid(1),0,      grid(3)) = 0.0_pReal
+    r(0:2,0,      grid(2),grid(3)) = 0.0_pReal
+    r(0:2,grid(1),grid(2),grid(3)) = 0.0_pReal
+  end if
+  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 end subroutine formResidual
 
@@ -643,7 +645,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   PetscScalar,pointer,dimension(:,:,:,:) :: x_scal
   PetscScalar,dimension(24,24)         :: K_ele
   PetscScalar,dimension(9,24)          :: BMatFull
-  PetscInt                             :: i, ii, j, jj, k, kk, ctr, ele
+  PetscInt                             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
   PetscScalar                          :: diag
   PetscObject                          :: dummy
@@ -658,11 +660,12 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatSetOption(Jac,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,err_PETSc)
   CHKERRQ(err_PETSc)
-  call MatZeroEntries(Jac,err_PETSc); CHKERRQ(err_PETSc)
-  ele = 0
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
+  call MatZeroEntries(Jac,err_PETSc)
+  CHKERRQ(err_PETSc)
+  ce = 0
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ctr = 0
-    do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
+    do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       col(MatStencil_i,ctr   ) = i+ii
       col(MatStencil_j,ctr   ) = j+jj
@@ -678,49 +681,52 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
       col(MatStencil_c,ctr+16) = 2
     enddo; enddo; enddo
     row = col
-    ele = ele + 1
+    ce = ce + 1
     K_ele = 0.0
-    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,ele) + &
-                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
-    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,ele) + &
-                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
-    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,ele) + &
-                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
+    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
+                                homogenization_dPdF(2,2,2,2,ce) + &
+                                homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
+    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
+                                homogenization_dPdF(2,2,2,2,ce) + &
+                                homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
+    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
+                                homogenization_dPdF(2,2,2,2,ce) + &
+                                homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
     K_ele = K_ele + &
             matmul(transpose(BMatFull), &
-                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ele), &
+                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ce), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
   enddo; enddo; enddo
-  call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
-  call MatAssemblyBegin(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
-  call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc); CHKERRQ(err_PETSc)
+  call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatAssemblyBegin(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call MatAssemblyEnd(Jac_pre,MAT_FINAL_ASSEMBLY,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  diag = (C_volAvg(1,1,1,1)/delta(1)**2 + &
-          C_volAvg(2,2,2,2)/delta(2)**2 + &
-          C_volAvg(3,3,3,3)/delta(3)**2)*detJ
+  diag = (C_volAvg(1,1,1,1)/delta(1)**2 + C_volAvg(2,2,2,2)/delta(2)**2 + C_volAvg(3,3,3,3)/delta(3)**2) &
+       * detJ
   call MatZeroRowsColumns(Jac,size(rows,kind=pPetscInt),rows,diag,PETSC_NULL_VEC,PETSC_NULL_VEC,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMGetGlobalVector(da_local,coordinates,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  ele = 0
-  do k = zstart, zend; do j = ystart, yend; do i = xstart, xend
-    ele = ele + 1
-    x_scal(0:2,i,j,k) = discretization_IPcoords(1:3,ele)
+  ce = 0
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
+    ce = ce + 1
+    x_scal(0:2,i-1,j-1,k-1) = discretization_IPcoords(1:3,ce)
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)
-  CHKERRQ(err_PETSc)                                                                          ! initialize to undeformed coordinates (ToDo: use ip coordinates)
+  CHKERRQ(err_PETSc)                                                                                ! initialize to undeformed coordinates (ToDo: use ip coordinates)
   call MatNullSpaceCreateRigidBody(coordinates,matnull,err_PETSc)
-  CHKERRQ(err_PETSc)                                                                          ! get rigid body deformation modes
+  CHKERRQ(err_PETSc)                                                                                ! get rigid body deformation modes
   call DMRestoreGlobalVector(da_local,coordinates,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatSetNullSpace(Jac,matnull,err_PETSc)
