@@ -167,12 +167,10 @@ submodule(phase:mechanical) plastic
         el                                                                                          !< current element number
     end subroutine nonlocal_dotState
 
-    module subroutine dislotwin_dependentState(T,ph,en)
+    module subroutine dislotwin_dependentState(ph,en)
       integer,       intent(in) :: &
         ph, &
         en
-      real(pReal),   intent(in) :: &
-        T
     end subroutine dislotwin_dependentState
 
     module subroutine dislotungsten_dependentState(ph,en)
@@ -363,7 +361,7 @@ module subroutine plastic_dependentState(co, ip, el)
   plasticType: select case (phase_plasticity(ph))
 
     case (PLASTIC_DISLOTWIN_ID) plasticType
-      call dislotwin_dependentState(thermal_T(ph,en),ph,en)
+      call dislotwin_dependentState(ph,en)
 
     case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
       call dislotungsten_dependentState(ph,en)

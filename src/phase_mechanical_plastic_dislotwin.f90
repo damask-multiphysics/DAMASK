@@ -701,13 +701,11 @@ end subroutine dislotwin_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine dislotwin_dependentState(T,ph,en)
+module subroutine dislotwin_dependentState(ph,en)
 
   integer,       intent(in) :: &
     ph, &
     en
-  real(pReal),   intent(in) :: &
-    T
 
   real(pReal) :: &
     sumf_tw, sumf_tr
