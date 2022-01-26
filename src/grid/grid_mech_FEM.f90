@@ -719,9 +719,9 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ce = 0
-  do k = grid3offset, grid3offset+grid3-1; do j = 0, grid(2)-1; do i = 0, grid(1)-1
+  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
     ce = ce + 1
-    x_scal(0:2,i,j,k) = discretization_IPcoords(1:3,ce)
+    x_scal(0:2,i-1,j-1,k-1) = discretization_IPcoords(1:3,ce)
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)                                                                                ! initialize to undeformed coordinates (ToDo: use ip coordinates)
