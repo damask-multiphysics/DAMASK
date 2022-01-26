@@ -28,7 +28,9 @@ submodule(phase:plastic) dislotwin
       h                   = 1.0_pReal, &                                                            !< stack height of hex nucleus
       T_ref               = T_ROOM, &
       a_cF                = 1.0_pReal, &
-      cOverA_hP           = 1.0_pReal
+      cOverA_hP           = 1.0_pReal, &
+      V_mol               = 1.0_pReal, &
+      rho                 = 1.0_pReal
     real(pReal),                            dimension(3) :: &
       Gamma_sf = 0.0_pReal, &                                                                       !< stacking fault energy
       Delta_G = 0.0_pReal                                                                           !< free energy difference between austensite and martensite
@@ -290,15 +292,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%b_tr = pl%get_as1dFloat('b_tr')
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
-      prm%h          = pl%get_asFloat('h')
       prm%i_tr       = pl%get_asFloat('i_tr')
       prm%Delta_G(1) = pl%get_asFloat('Delta_G')
       prm%Delta_G(2) = pl%get_asFloat('Delta_G,T',  defaultVal=0.0_pReal)
       prm%Delta_G(3) = pl%get_asFloat('Delta_G,T^2',defaultVal=0.0_pReal)
       prm%L_tr       = pl%get_asFloat('L_tr')
       a_cF           = pl%get_asFloat('a_cF')
+      prm%h          = 5.0_pReal * a_cF/sqrt(3.0_pReal)
       prm%cOverA_hP  = pl%get_asFloat('c/a_hP')
-
+      prm%rho        = 4.0_pReal/(sqrt(3.0_pReal)*a_cF**2)/N_A
       prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,pl%get_as1dFloat('h_tr-tr'),&
                                                      phase_lattice(ph))
 
@@ -1009,8 +1011,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
             + prm%Delta_G(2) * (T-prm%T_ref) &
             + prm%Delta_G(3) * (T-prm%T_ref)**2
     tau_hat = 3.0_pReal*prm%b_tr(1)*mu/prm%L_tr &
-            + Gamma_sf/(3.0_pReal*prm%b_tr(1)) &
-            + prm%h*Delta_G/(3.0_pReal*prm%b_tr(1))
+            + (Gamma_sf + (prm%h/prm%V_mol - 2.0_pReal*prm%rho)*Delta_G)/(3.0_pReal*prm%b_tr(1))
     x0 = mu*prm%b_sl(1)**2*(2.0_pReal+nu)/(Gamma_sf*8.0_pReal*PI*(1.0_pReal-nu))
     tau_r = mu*prm%b_sl(1)/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c)+cos(PI/3.0_pReal)/x0)
 
