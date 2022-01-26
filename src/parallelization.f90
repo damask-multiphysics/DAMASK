@@ -53,6 +53,7 @@ contains
 subroutine parallelization_init
 
   integer(MPI_INTEGER_KIND) :: err_MPI, typeSize
+  character(len=4) :: rank_str
 !$ integer :: got_env, threadLevel
 !$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
@@ -112,6 +113,7 @@ subroutine parallelization_init
 
   if (worldrank /= 0) then
     close(OUTPUT_UNIT)                                                                              ! disable output
+    write(rank_str,'(i4.4)') worldrank                                                              ! use for MPI debug filenames
     open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
   endif
 
