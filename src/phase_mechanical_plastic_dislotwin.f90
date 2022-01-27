@@ -27,6 +27,7 @@ submodule(phase:plastic) dislotwin
       E_sb                = 1.0_pReal, &                                                            !< activation energy for shear bands
       h                   = 1.0_pReal, &                                                            !< stack height of hex nucleus
       T_ref               = T_ROOM, &
+      gamma_char_tr       = sqrt(0.125_pReal), &                                                    !< Characteristic shear for transformation
       a_cF                = 1.0_pReal, &
       cOverA_hP           = 1.0_pReal, &
       V_mol               = 1.0_pReal, &
@@ -626,8 +627,6 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
     dot_gamma_tw
   real(pReal), dimension(param(ph)%sum_N_tr) :: &
     dot_gamma_tr
-  real(pReal), parameter :: &
-    gamma_char_tr = 1.0_pReal ! ToDo: get correct value
   real(pReal) :: &
     mu, &
     nu, &
@@ -691,7 +690,7 @@ module subroutine dislotwin_dotState(Mp,T,ph,en)
     dot%f_tw(:,en) = f_matrix*dot_gamma_tw/prm%gamma_char_tw
 
     if (prm%sum_N_tr > 0) call kinetics_tr(Mp,T,dot_gamma_sl,ph,en,dot_gamma_tr)
-    dot%f_tr(:,en) = f_matrix*dot_gamma_tr/gamma_char_tr
+    dot%f_tr(:,en) = f_matrix*dot_gamma_tr/prm%gamma_char_tr
 
   end associate
 
@@ -947,9 +946,9 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
 
         V = PI/4.0_pReal*dst%Lambda_tw(i,en)**2*prm%t_tw(i)
-        dot_gamma_tw(i) = V*dot_N_0*P_ncs*P
+        dot_gamma_tw(i) = V*dot_N_0*P_ncs*P*prm%gamma_char_tw(i)
         if (present(ddot_gamma_dtau_tw)) &
-          ddot_gamma_dtau_tw(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
+          ddot_gamma_dtau_tw(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)*prm%gamma_char_tw(i)
       else
         dot_gamma_tw(i) = 0.0_pReal
         if (present(ddot_gamma_dtau_tw)) ddot_gamma_dtau_tw(i) = 0.0_pReal
@@ -1028,9 +1027,9 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
         
         V = PI/4.0_pReal*dst%Lambda_tr(i,en)**2*prm%t_tr(i)
-        dot_gamma_tr(i) = V*dot_N_0*P_ncs*P
+        dot_gamma_tr(i) = V*dot_N_0*P_ncs*P*prm%gamma_char_tr
         if (present(ddot_gamma_dtau_tr)) &
-          ddot_gamma_dtau_tr(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)
+          ddot_gamma_dtau_tr(i) = V*dot_N_0*(P*dP_ncs_dtau + P_ncs*dP_dtau)*prm%gamma_char_tr
       else
         dot_gamma_tr(i) = 0.0_pReal
         if (present(ddot_gamma_dtau_tr)) ddot_gamma_dtau_tr(i) = 0.0_pReal
