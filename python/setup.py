@@ -16,7 +16,7 @@ setuptools.setup(
     url='https://damask.mpie.de',
     packages=setuptools.find_packages(),
     include_package_data=True,
-    python_requires = '>=3.7',
+    python_requires = '>=3.8',
     install_requires = [
         'pandas>=0.24',                                                                             # requires numpy
         'numpy>=1.17',                                                                              # needed for default_rng
@@ -30,7 +30,7 @@ setuptools.setup(
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
         'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
         'Operating System :: OS Independent',
     ],
 )
