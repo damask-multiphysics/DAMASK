@@ -33,9 +33,9 @@ class Crystal():
     def __init__(self,*,
                  family = None,
                  lattice = None,
-                 a = None,b = None,c = None,
-                 alpha = None,beta = None,gamma = None,
-                 degrees = False):
+                 a: float = None, b: float = None, c: float = None,
+                 alpha: float = None, beta: float = None, gamma: float = None,
+                 degrees: bool = False):
         """
         Representation of crystal in terms of crystal family or Bravais lattice.
 
@@ -62,7 +62,7 @@ class Crystal():
             Angles are given in degrees. Defaults to False.
 
         """
-        if family not in [None] + list(lattice_symmetries.values()):
+        if family is not None and family not in list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
             raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
@@ -107,9 +107,6 @@ class Crystal():
             if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
               >= np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('each lattice angle must be less than sum of others')
-        else:
-            self.a = self.b = self.c = None
-            self.alpha = self.beta = self.gamma = None
 
 
     def __repr__(self):
@@ -139,8 +136,7 @@ class Crystal():
     @property
     def parameters(self):
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
-
+        if hasattr(self,'a'): return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
 
     @property
     def immutable(self):
@@ -269,7 +265,7 @@ class Crystal():
         https://doi.org/10.1063/1.1661333
 
         """
-        if None in self.parameters:
+        if self.parameters is None:
             raise KeyError('missing crystal lattice parameters')
         return np.array([
                           [1,0,0],
