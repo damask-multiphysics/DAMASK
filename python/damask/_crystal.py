@@ -311,8 +311,8 @@ class Crystal():
                         + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
                                               self.lattice[-1],None),dtype=float)
 
-    def to_lattice(self,
-                   *, direction: np.ndarray = None,
+    def to_lattice(self, *,
+                   direction: np.ndarray = None,
                    plane: np.ndarray = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
@@ -337,8 +337,7 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def to_frame(self,
-                 *,
+    def to_frame(self, *,
                  uvw: np.ndarray = None,
                  hkl: np.ndarray = None) -> np.ndarray:
         """
