@@ -119,7 +119,8 @@ class Crystal():
                           'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
 
 
-    def __eq__(self,other):
+    def __eq__(self,
+               other: object) -> bool:
         """
         Equal to other.
 
@@ -129,6 +130,8 @@ class Crystal():
             Crystal to check for equality.
 
         """
+        if not isinstance(other, Crystal):
+            return NotImplemented
         return self.lattice == other.lattice and \
                self.parameters == other.parameters and \
                self.family == other.family
