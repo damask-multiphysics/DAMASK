@@ -311,7 +311,9 @@ class Crystal():
                         + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
                                               self.lattice[-1],None),dtype=float)
 
-    def to_lattice(self, *, direction: np.ndarray = None, plane: np.ndarray = None) -> np.ndarray:
+    def to_lattice(self,
+                   *, direction: np.ndarray = None,
+                   plane: np.ndarray = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -335,7 +337,10 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def to_frame(self, *, uvw: np.ndarray = None, hkl: np.ndarray = None) -> np.ndarray:
+    def to_frame(self,
+                 *,
+                 uvw: np.ndarray = None,
+                 hkl: np.ndarray = None) -> np.ndarray:
         """
         Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -358,7 +363,8 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def kinematics(self, mode: str) -> Dict[str, List[np.ndarray]]:
+    def kinematics(self,
+                   mode: str) -> Dict[str, List[np.ndarray]]:
         """
         Return crystal kinematics systems.
 
@@ -617,7 +623,8 @@ class Crystal():
                     'plane':    [m[:,3:6] for m in master]}
 
 
-    def relation_operations(self, model: str) -> Tuple[str, Rotation]:
+    def relation_operations(self,
+                            model: str) -> Tuple[str, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 

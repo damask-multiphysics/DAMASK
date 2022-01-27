@@ -45,7 +45,8 @@ def eigenvalues(T_sym: _np.ndarray) -> _np.ndarray:
     return _np.linalg.eigvalsh(symmetric(T_sym))
 
 
-def eigenvectors(T_sym: _np.ndarray, RHS: bool = False) -> _np.ndarray:
+def eigenvectors(T_sym: _np.ndarray,
+                 RHS: bool = False) -> _np.ndarray:
     """
     Eigenvectors of a symmetric tensor.
 
@@ -70,7 +71,8 @@ def eigenvectors(T_sym: _np.ndarray, RHS: bool = False) -> _np.ndarray:
     return v
 
 
-def spherical(T: _np.ndarray, tensor: bool = True) -> _np.ndarray:
+def spherical(T: _np.ndarray,
+              tensor: bool = True) -> _np.ndarray:
     """
     Calculate spherical part of a tensor.
 
