@@ -27,14 +27,14 @@ module discretization_grid
   private
 
   integer,     dimension(3), public, protected :: &
-    grid                                                                                           !< (global) grid
+    grid                                                                                            !< (global) grid
   integer,                   public, protected :: &
-    grid3, &                                                                                       !< (local) grid in 3rd direction
+    grid3, &                                                                                        !< (local) grid in 3rd direction
     grid3Offset                                                                                     !< (local) grid offset in 3rd direction
   real(pReal), dimension(3), public, protected :: &
-    geomSize                                                                                       !< (global) physical size
+    geomSize                                                                                        !< (global) physical size
   real(pReal),               public, protected :: &
-    size3, &                                                                                       !< (local) size in 3rd direction
+    size3, &                                                                                        !< (local) size in 3rd direction
     size3offset                                                                                     !< (local) size offset in 3rd direction
 
   public :: &

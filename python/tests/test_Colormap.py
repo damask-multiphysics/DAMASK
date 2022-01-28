@@ -81,6 +81,7 @@ class TestColormap:
         assert Colormap.from_predefined('strain') == Colormap.from_predefined('strain')
         assert Colormap.from_predefined('strain') != Colormap.from_predefined('stress')
         assert Colormap.from_predefined('strain',N=128) != Colormap.from_predefined('strain',N=64)
+        assert not Colormap.from_predefined('strain',N=128) == 1
 
     @pytest.mark.parametrize('low,high',[((0,0,0),(1,1,1)),
                                          ([0,0,0],[1,1,1])])
@@ -138,6 +139,11 @@ class TestColormap:
         c = Colormap.from_predefined('jet')
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
+
+    def test_mul(self):
+        c = o = Colormap.from_predefined('jet')
+        o *= 2
+        assert c+c == o
 
     @pytest.mark.parametrize('N,cmap,at,result',[
            (8,'gray',0.5,[0.5,0.5,0.5]),
