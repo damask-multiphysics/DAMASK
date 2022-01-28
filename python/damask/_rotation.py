@@ -376,8 +376,7 @@ class Rotation:
 
 
     def append(self,
-               other: Union["Rotation",
-               List["Rotation"]]) -> "Rotation":
+           other: Union["Rotation", List["Rotation"]]) -> "Rotation":
         """
         Extend array along first dimension with other array(s).
 
