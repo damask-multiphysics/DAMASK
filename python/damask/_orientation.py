@@ -96,7 +96,8 @@ class Orientation(Rotation,Crystal):
 
     @util.extend_docstring(_parameter_doc)
     def __init__(self,
-                 rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]), *,
+                 rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
+                 *,
                  family: str = None,
                  lattice: str = None,
                  a: float = None, b: float = None, c: float = None,
