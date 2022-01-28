@@ -382,7 +382,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : damask.Rotation
+        other : (list of) damask.Rotation
 
         """
         return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
@@ -427,7 +427,7 @@ class Rotation:
 
         Parameters
         ----------
-        shape : tuple
+        shape : int, tuple
             Shape of broadcasted array.
         mode : str, optional
             Where to preferentially locate missing dimensions.
@@ -451,7 +451,7 @@ class Rotation:
 
         Parameters
         ----------
-        weights : list of floats, optional
+        weights : numpy.ndarray, optional
             Relative weight of each rotation.
 
         Returns
@@ -1107,7 +1107,7 @@ class Rotation:
         """
         rng = np.random.default_rng(rng_seed)
         sigma_: np.ndarray; alpha_: np.ndarray; beta_: np.ndarray
-        sigma_,alpha_,beta_ = map(np.radians,(sigma,alpha,beta)) if degrees else (sigma,alpha,beta) # type: ignore
+        sigma_,alpha_,beta_ = (np.radians(coordinate for coordinate in (sigma,alpha,beta))) if degrees else (sigma,alpha,beta) #type: ignore
 
         d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
         d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
