@@ -79,7 +79,7 @@ def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, dis
 
     s = 1
     i = 0
-    progress = _util._ProgressBar(N_seeds+1,'',50)
+    progress = _util.ProgressBar(N_seeds+1,'',50)
     while s < N_seeds:
         i += 1
         candidates = rng.random((N_candidates,3))*_np.broadcast_to(size,(N_candidates,3))

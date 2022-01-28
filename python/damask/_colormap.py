@@ -63,6 +63,14 @@ class Colormap(mpl.colors.ListedColormap):
         """Concatenate (in-place)."""
         return self.__add__(other)
 
+    def __mul__(self, factor: int) -> 'Colormap':
+        """Repeat."""
+        return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
+
+    def __imul__(self, factor: int) -> 'Colormap':
+        """Repeat (in-place)."""
+        return self.__mul__(factor)
+
     def __invert__(self) -> 'Colormap':
         """Reverse."""
         return self.reversed()
@@ -250,7 +258,7 @@ class Colormap(mpl.colors.ListedColormap):
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
         l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
-              np.array(bounds,float)[:2]
+              (bounds[0],bounds[1])
 
         delta,avg = r-l,0.5*abs(r+l)
 

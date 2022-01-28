@@ -38,9 +38,8 @@ module grid_thermal_spectral
   type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  SNES     :: thermal_snes
-  Vec      :: solution_vec
-  PetscInt :: xstart, xend, ystart, yend, zstart, zend
+  SNES :: SNES_thermal
+  Vec :: solution_vec
   real(pReal), dimension(:,:,:), allocatable :: &
     T_current, &                                                                                    !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
@@ -101,9 +100,23 @@ subroutine grid_thermal_spectral_init(T_0)
  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
+! init fields
+  allocate(T_current(grid(1),grid(2),grid3), source=T_0)
+  allocate(T_lastInc(grid(1),grid(2),grid3), source=T_0)
+  allocate(T_stagInc(grid(1),grid(2),grid3), source=T_0)
+
+  ce = 0
+  do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
+    ce = ce + 1
+    call homogenization_thermal_setField(T_0,0.0_pReal,ce)
+  end do; end do; end do
+
+!--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,thermal_snes,err_PETSc); CHKERRQ(err_PETSc)
-  call SNESSetOptionsPrefix(thermal_snes,'thermal_',err_PETSc);CHKERRQ(err_PETSc)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_thermal,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetOptionsPrefix(SNES_thermal,'thermal_',err_PETSc)
+  CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
   localK(worldrank) = int(grid3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
@@ -117,42 +130,25 @@ subroutine grid_thermal_spectral_init(T_0)
          [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
          thermal_grid,err_PETSc)                                                                    ! handle, error
   CHKERRQ(err_PETSc)
-  call SNESSetDM(thermal_snes,thermal_grid,err_PETSc); CHKERRQ(err_PETSc)                           ! connect snes to da
-  call DMsetFromOptions(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
-  call DMsetUp(thermal_grid,err_PETSc); CHKERRQ(err_PETSc)
+  call DMsetFromOptions(thermal_grid,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMsetUp(thermal_grid,err_PETSc)
+  CHKERRQ(err_PETSc)
   call DMCreateGlobalVector(thermal_grid,solution_vec,err_PETSc)                                    ! global solution vector (grid x 1, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
   call DMDASNESSetFunctionLocal(thermal_grid,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)  ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
-  call SNESSetFromOptions(thermal_snes,err_PETSc); CHKERRQ(err_PETSc)                               ! pull it all together with additional CLI arguments
-
-!--------------------------------------------------------------------------------------------------
-! init fields
-  call DMDAGetCorners(thermal_grid,xstart,ystart,zstart,xend,yend,zend,err_PETSc)
+  call SNESSetDM(SNES_thermal,thermal_grid,err_PETSc)
   CHKERRQ(err_PETSc)
-  xend = xstart + xend - 1
-  yend = ystart + yend - 1
-  zend = zstart + zend - 1
-  allocate(T_current(grid(1),grid(2),grid3), source=0.0_pReal)
-  allocate(T_lastInc(grid(1),grid(2),grid3), source=0.0_pReal)
-  allocate(T_stagInc(grid(1),grid(2),grid3), source=0.0_pReal)
-
-  ce = 0
-  do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
-    ce = ce + 1
-    T_current(i,j,k) = T_0
-    T_lastInc(i,j,k) = T_current(i,j,k)
-    T_stagInc(i,j,k) = T_current(i,j,k)
-    call homogenization_thermal_setField(T_0,0.0_pReal,ce)
-  end do; end do; end do
-
+  call SNESSetFromOptions(SNES_thermal,err_PETSc)                                                   ! pull it all together with additional CLI arguments
+  CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  T_PETSc(xstart:xend,ystart:yend,zstart:zend) = T_current
+  T_PETSc = T_current
   call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  call updateReference
+  call updateReference()
 
 end subroutine grid_thermal_spectral_init
 
@@ -179,9 +175,9 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
 ! set module wide availabe data
   params%Delta_t = Delta_t
 
-  call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  call SNESSolve(SNES_thermal,PETSC_NULL_VEC,solution_vec,err_PETSc)
   CHKERRQ(err_PETSc)
-  call SNESGetConvergedReason(thermal_snes,reason,err_PETSc)
+  call SNESGetConvergedReason(SNES_thermal,reason,err_PETSc)
   CHKERRQ(err_PETSc)
 
   if (reason < 1) then
@@ -207,8 +203,10 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
     call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
   end do; end do; end do
 
-  call VecMin(solution_vec,devNull,T_min,err_PETSc); CHKERRQ(err_PETSc)
-  call VecMax(solution_vec,devNull,T_max,err_PETSc); CHKERRQ(err_PETSc)
+  call VecMin(solution_vec,devNull,T_min,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecMax(solution_vec,devNull,T_max,err_PETSc)
+  CHKERRQ(err_PETSc)
   if (solution%converged) &
     print'(/,1x,a)', '... thermal conduction converged ..................................'
   print'(/,1x,a,f8.4,2x,f8.4,2x,f8.4)', 'Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
@@ -226,7 +224,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
   logical, intent(in) :: cutBack
   integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer :: x_scal
+  PetscScalar,  dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: err_PETSc
 
   if (cutBack) then
@@ -235,12 +233,12 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
 !--------------------------------------------------------------------------------------------------
 ! reverting thermal field state
-    call SNESGetDM(thermal_snes,dm_local,err_PETSc)
+    call SNESGetDM(SNES_thermal,dm_local,err_PETSc)
     CHKERRQ(err_PETSc)
-    call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,err_PETSc)                                 !< get the data out of PETSc to work with
+    call DMDAVecGetArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    x_scal(xstart:xend,ystart:yend,zstart:zend) = T_current
-    call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,err_PETSc)
+    T_PETSc = T_current
+    call DMDAVecRestoreArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
@@ -258,7 +256,7 @@ end subroutine grid_thermal_spectral_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the spectral thermal residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,f_scal,dummy,dummy_err)
+subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     in
@@ -267,9 +265,9 @@ subroutine formResidual(in,x_scal,f_scal,dummy,dummy_err)
     x_scal
   PetscScalar, dimension( &
     X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-    f_scal
+    r
   PetscObject :: dummy
-  PetscErrorCode :: dummy_err
+  PetscErrorCode :: err_PETSc
   integer :: i, j, k, ce
 
   T_current = x_scal
@@ -304,7 +302,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,dummy_err)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  f_scal = T_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
+  r = T_current - scalarField_real(1:grid(1),1:grid(2),1:grid3)
+  err_PETSc = 0
 
 end subroutine formResidual
 

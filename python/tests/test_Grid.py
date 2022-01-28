@@ -44,6 +44,7 @@ class TestGrid:
 
     def test_equal(self,default):
         assert default == default
+        assert not default == 42
 
     def test_repr(self,default):
         print(default)
