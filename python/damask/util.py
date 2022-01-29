@@ -7,7 +7,7 @@ import subprocess
 import shlex
 import re
 import fractions
-import collections.abc as abc
+from collections import abc
 from functools import reduce
 from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal, Optional
 from pathlib import Path
@@ -77,7 +77,7 @@ def srepr(msg,
             hasattr(msg, '__iter__'))):
         return glue.join(str(x) for x in msg)
     else:
-       return msg if isinstance(msg,str) else repr(msg)
+        return msg if isinstance(msg,str) else repr(msg)
 
 
 def emph(msg) -> str:
@@ -230,15 +230,15 @@ def show_progress(iterable: Iterable,
 
     """
     if isinstance(iterable,abc.Sequence):
-       if N_iter is None:
-          N = len(iterable)
-       else:
-          raise ValueError('N_iter given for sequence')
+        if N_iter is None:
+            N = len(iterable)
+        else:
+            raise ValueError('N_iter given for sequence')
     else:
-       if N_iter is None:
-          raise ValueError('N_iter not given')
-       else:
-          N = N_iter
+        if N_iter is None:
+            raise ValueError('N_iter not given')
+
+        N = N_iter
 
     if N <= 1:
         for item in iterable:
@@ -454,7 +454,7 @@ def shapeshifter(fro: Tuple[int, ...],
 
 
     """
-    if not len(fro) and not len(to): return ()
+    if len(fro) == 0 and len(to) == 0: return ()
 
     beg = dict(left ='(^.*\\b)',
                right='(^.*?\\b)')
@@ -462,8 +462,8 @@ def shapeshifter(fro: Tuple[int, ...],
                right='(.*?\\b)')
     end = dict(left ='(.*?$)',
                right='(.*$)')
-    fro = (1,) if not len(fro) else fro
-    to  = (1,) if not len(to)  else to
+    fro = (1,) if len(fro) == 0 else fro
+    to  = (1,) if len(to) == 0 else to
     try:
         match = re.match(beg[mode]
                       +f',{sep[mode]}'.join(map(lambda x: f'{x}'

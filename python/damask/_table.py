@@ -14,7 +14,7 @@ class Table:
 
     def __init__(self,
                  data: np.ndarray,
-                 shapes: dict, 
+                 shapes: dict,
                  comments: Union[str, list] = None):
         """
         New spreadsheet.
@@ -526,10 +526,10 @@ class Table:
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
             raise KeyError('Labels or shapes or order do not match')
-        else:
-            dup = self.copy()
-            dup.data = dup.data.append(other.data,ignore_index=True)
-            return dup
+
+        dup = self.copy()
+        dup.data = dup.data.append(other.data,ignore_index=True)
+        return dup
 
 
     def join(self,
@@ -552,12 +552,12 @@ class Table:
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('Duplicated keys or row count mismatch')
-        else:
-            dup = self.copy()
-            dup.data = dup.data.join(other.data)
-            for key in other.shapes:
-                dup.shapes[key] = other.shapes[key]
-            return dup
+
+        dup = self.copy()
+        dup.data = dup.data.join(other.data)
+        for key in other.shapes:
+            dup.shapes[key] = other.shapes[key]
+        return dup
 
 
     def save(self,

@@ -33,7 +33,7 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 comments: Union[str, Sequence[str]] = []):
+                 comments: Union[str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
 
@@ -53,7 +53,7 @@ class Grid:
         self.material = material
         self.size = size                                                                            # type: ignore
         self.origin = origin                                                                        # type: ignore
-        self.comments = comments                                                                    # type: ignore
+        self.comments = [] if comments is None else comments                                        # type: ignore
 
 
     def __repr__(self) -> str:
@@ -106,14 +106,14 @@ class Grid:
                  material: np.ndarray):
         if len(material.shape) != 3:
             raise ValueError(f'invalid material shape {material.shape}')
-        elif material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
+        if material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
             raise TypeError(f'invalid material data type {material.dtype}')
-        else:
-            self._material = np.copy(material)
 
-            if self.material.dtype in np.sctypes['float'] and \
-               np.all(self.material == self.material.astype(int).astype(float)):
-                self._material = self.material.astype(int)
+        self._material = np.copy(material)
+
+        if self.material.dtype in np.sctypes['float'] and \
+           np.all(self.material == self.material.astype(int).astype(float)):
+            self._material = self.material.astype(int)
 
 
     @property
@@ -126,8 +126,8 @@ class Grid:
              size: FloatSequence):
         if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
-        else:
-            self._size = np.array(size)
+
+        self._size = np.array(size)
 
     @property
     def origin(self) -> np.ndarray:
@@ -139,8 +139,8 @@ class Grid:
                origin: FloatSequence):
         if len(origin) != 3:
             raise ValueError(f'invalid origin {origin}')
-        else:
-            self._origin = np.array(origin)
+
+        self._origin = np.array(origin)
 
     @property
     def comments(self) -> List[str]:

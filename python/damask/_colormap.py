@@ -267,7 +267,7 @@ class Colormap(mpl.colors.ListedColormap):
               (bounds[0],bounds[1])
 
         if abs(delta := r-l) * 1e8 <= (avg := 0.5*abs(r+l)):                                        # delta is similar to numerical noise
-            l,r = l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta),                                # extend range to have actual data centered within
+            l,r = (l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta))                               # extend range to have actual data centered within
 
         return Image.fromarray(
             (np.dstack((
@@ -301,7 +301,7 @@ class Colormap(mpl.colors.ListedColormap):
         >>> damask.Colormap.from_predefined('stress').reversed()
 
         """
-        rev = super(Colormap,self).reversed(name)
+        rev = super().reversed(name)
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
@@ -436,11 +436,11 @@ class Colormap(mpl.colors.ListedColormap):
         def adjust_hue(msh_sat, msh_unsat):
             """If saturation of one of the two colors is much less than the other, hue of the less."""
             if msh_sat[0] >= msh_unsat[0]:
-               return msh_sat[2]
-            else:
-                hSpin = msh_sat[1]/np.sin(msh_sat[1])*np.sqrt(msh_unsat[0]**2.0-msh_sat[0]**2)/msh_sat[0]
-                if msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
-                return msh_sat[2] + hSpin
+                return msh_sat[2]
+
+            hSpin = msh_sat[1]/np.sin(msh_sat[1])*np.sqrt(msh_unsat[0]**2.0-msh_sat[0]**2)/msh_sat[0]
+            if msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
+            return msh_sat[2] + hSpin
 
         lo = np.array(low)
         hi = np.array(high)
@@ -453,9 +453,9 @@ class Colormap(mpl.colors.ListedColormap):
             else:
                 lo = np.array([M_mid,0.0,0.0])
                 frac = 2.0*frac - 1.0
-        if   lo[1] < 0.05 and hi[1] > 0.05:
+        if   lo[1] < 0.05 < hi[1]:
             lo[2] = adjust_hue(hi,lo)
-        elif lo[1] > 0.05 and hi[1] < 0.05:
+        elif hi[1] < 0.05 < lo[1]:
             hi[2] = adjust_hue(lo,hi)
 
         return (1.0 - frac) * lo + frac * hi
