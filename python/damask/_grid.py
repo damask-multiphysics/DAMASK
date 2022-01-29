@@ -786,9 +786,8 @@ class Grid:
 
         Parameters
         ----------
-        directions : (sequence of) str
+        directions : (sequence of) {'x', 'y', 'z'}
             Direction(s) along which the grid is mirrored.
-            Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
             Reflect (include) outermost layers. Defaults to False.
 
@@ -832,16 +831,14 @@ class Grid:
 
 
     def flip(self,
-             directions: Union[Literal['x', 'y', 'z'],
-             Sequence[Literal['x', 'y', 'z']]]) -> 'Grid':
+             directions: Sequence[str]) -> 'Grid':
         """
         Flip grid along given directions.
 
         Parameters
         ----------
-        directions : (sequence of) str
+        directions : (sequence of) {'x', 'y', 'z'}
             Direction(s) along which the grid is flipped.
-            Valid entries are 'x', 'y', 'z'.
 
         Returns
         -------
@@ -1176,9 +1173,9 @@ class Grid:
         ----------
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
-        directions : (sequence of) string, optional
+        directions : (sequence of) {'x', 'y', 'z'}, optional
             Direction(s) along which the boundaries are determined.
-            Valid entries are 'x', 'y', 'z'. Defaults to 'xyz'.
+            Defaults to 'xyz'.
 
         Returns
         -------

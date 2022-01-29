@@ -305,15 +305,19 @@ def project_equal_angle(vector: np.ndarray,
     normalize : bool
         Ensure unit length of input vector. Defaults to True.
     keepdims : bool
-        Maintain three-dimensional output coordinates. Defaults to False.
-        Two-dimensional output uses right-handed frame spanned by
-        the next and next-next axis relative to the projection direction,
-        e.g. x-y when projecting along z and z-x when projecting along y.
+        Maintain three-dimensional output coordinates.
+        Defaults to False.
 
     Returns
     -------
     coordinates : numpy.ndarray, shape (...,2 | 3)
         Projected coordinates.
+
+    Notes
+    -----
+    Two-dimensional output uses right-handed frame spanned by
+    the next and next-next axis relative to the projection direction,
+    e.g. x-y when projecting along z and z-x when projecting along y.
 
     Examples
     --------
@@ -349,15 +353,20 @@ def project_equal_area(vector: np.ndarray,
     normalize : bool
         Ensure unit length of input vector. Defaults to True.
     keepdims : bool
-        Maintain three-dimensional output coordinates. Defaults to False.
-        Two-dimensional output uses right-handed frame spanned by
-        the next and next-next axis relative to the projection direction,
-        e.g. x-y when projecting along z and z-x when projecting along y.
+        Maintain three-dimensional output coordinates.
+        Defaults to False.
 
     Returns
     -------
     coordinates : numpy.ndarray, shape (...,2 | 3)
         Projected coordinates.
+
+    Notes
+    -----
+    Two-dimensional output uses right-handed frame spanned by
+    the next and next-next axis relative to the projection direction,
+    e.g. x-y when projecting along z and z-x when projecting along y.
+
 
     Examples
     --------
