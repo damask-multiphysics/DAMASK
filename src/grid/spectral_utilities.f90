@@ -86,7 +86,7 @@ module spectral_utilities
   type, public :: tSolutionParams
     real(pReal), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
-    type(rotation)              :: rotation_BC
+    type(tRotation)             :: rotation_BC
     real(pReal) :: Delta_t
   end type tSolutionParams
 
@@ -666,7 +666,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
   real(pReal),                dimension(3,3,3,3) :: utilities_maskedCompliance                      !< masked compliance
   real(pReal),    intent(in), dimension(3,3,3,3) :: C                                               !< current average stiffness
-  type(rotation), intent(in)                     :: rot_BC                                          !< rotation of load frame
+  type(tRotation), intent(in)                    :: rot_BC                                          !< rotation of load frame
   logical,        intent(in), dimension(3,3)     :: mask_stress                                     !< mask of stress BC
 
   integer :: i, j
@@ -798,7 +798,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pReal),    intent(out), dimension(3,3,cells(1),cells(2),cells3) :: P                         !< PK stress
   real(pReal),    intent(in),  dimension(3,3,cells(1),cells(2),cells3) :: F                         !< deformation gradient target
   real(pReal),    intent(in)                                        :: Delta_t                      !< loading time
-  type(rotation), intent(in),  optional                             :: rotation_BC                  !< rotation of load frame
+  type(tRotation), intent(in),  optional                            :: rotation_BC                  !< rotation of load frame
 
 
   integer :: i

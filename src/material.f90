@@ -18,7 +18,7 @@ module material
   private
 
   type :: tRotationContainer
-    type(Rotation), dimension(:),  allocatable :: data
+    type(tRotation), dimension(:),  allocatable :: data
   end type
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data

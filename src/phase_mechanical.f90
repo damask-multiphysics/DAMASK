@@ -958,7 +958,7 @@ subroutine crystallite_results(group,ph)
 !--------------------------------------------------------------------------------------------------
   function to_quaternion(dataset)
 
-    type(rotation), dimension(:), intent(in) :: dataset
+    type(tRotation), dimension(:), intent(in) :: dataset
     real(pReal), dimension(4,size(dataset,1)) :: to_quaternion
 
     integer :: i

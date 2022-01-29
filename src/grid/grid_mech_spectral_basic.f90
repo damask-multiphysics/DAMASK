@@ -310,7 +310,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
   type(tBoundaryCondition), intent(in) :: &
     stress_BC, &
     deformation_BC
-  type(rotation),           intent(in) :: &
+  type(tRotation),           intent(in) :: &
     rotation_BC
   PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: F

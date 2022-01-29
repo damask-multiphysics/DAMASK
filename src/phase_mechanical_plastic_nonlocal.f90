@@ -1395,7 +1395,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     nThresholdValues
   logical, dimension(param(ph)%sum_N_sl) :: &
     belowThreshold
-  type(rotation) :: mis
+  type(tRotation) :: mis
 
 
   associate(prm => param(ph))

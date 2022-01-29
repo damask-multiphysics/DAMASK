@@ -55,7 +55,7 @@ module rotations
 
   real(pReal), parameter :: P = -1.0_pReal                                                          !< parameter for orientation conversion.
 
-  type, public :: rotation
+  type, public :: tRotation
     real(pReal), dimension(4) :: q
     contains
       procedure, public :: asQuaternion
@@ -78,7 +78,7 @@ module rotations
       procedure, public  :: rotStiffness
       procedure, public  :: misorientation
       procedure, public  :: standardize
-  end type rotation
+  end type tRotation
 
   real(pReal), parameter :: &
     PREF = sqrt(6.0_pReal/PI), &
@@ -117,8 +117,8 @@ end subroutine rotations_init
 !---------------------------------------------------------------------------------------------------
 pure function asQuaternion(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asQuaternion
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(4)    :: asQuaternion
 
   asQuaternion = self%q
 
@@ -126,8 +126,8 @@ end function asQuaternion
 !---------------------------------------------------------------------------------------------------
 pure function asEulers(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(3)   :: asEulers
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(3)    :: asEulers
 
   asEulers = qu2eu(self%q)
 
@@ -135,8 +135,8 @@ end function asEulers
 !---------------------------------------------------------------------------------------------------
 pure function asAxisAngle(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asAxisAngle
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(4)    :: asAxisAngle
 
   asAxisAngle = qu2ax(self%q)
 
@@ -144,8 +144,8 @@ end function asAxisAngle
 !---------------------------------------------------------------------------------------------------
 pure function asMatrix(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(3,3) :: asMatrix
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(3,3)  :: asMatrix
 
   asMatrix = qu2om(self%q)
 
@@ -153,8 +153,8 @@ end function asMatrix
 !---------------------------------------------------------------------------------------------------
 pure function asRodrigues(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asRodrigues
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(4)    :: asRodrigues
 
   asRodrigues = qu2ro(self%q)
 
@@ -162,8 +162,8 @@ end function asRodrigues
 !---------------------------------------------------------------------------------------------------
 pure function asHomochoric(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(3)   :: asHomochoric
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(3)    :: asHomochoric
 
   asHomochoric = qu2ho(self%q)
 
@@ -174,7 +174,7 @@ end function asHomochoric
 !---------------------------------------------------------------------------------------------------
 subroutine fromQuaternion(self,qu)
 
-  class(rotation), intent(out)          :: self
+  class(tRotation), intent(out)         :: self
   real(pReal), dimension(4), intent(in) :: qu
 
   if (dNeq(norm2(qu),1.0_pReal,1.0e-8_pReal)) call IO_error(402,ext_msg='fromQuaternion')
@@ -185,7 +185,7 @@ end subroutine fromQuaternion
 !---------------------------------------------------------------------------------------------------
 subroutine fromEulers(self,eu,degrees)
 
-  class(rotation), intent(out)          :: self
+  class(tRotation), intent(out)         :: self
   real(pReal), dimension(3), intent(in) :: eu
   logical, intent(in), optional         :: degrees
 
@@ -206,7 +206,7 @@ end subroutine fromEulers
 !---------------------------------------------------------------------------------------------------
 subroutine fromAxisAngle(self,ax,degrees,P)
 
-  class(rotation), intent(out)          :: self
+  class(tRotation), intent(out)         :: self
   real(pReal), dimension(4), intent(in) :: ax
   logical, intent(in), optional         :: degrees
   integer, intent(in), optional         :: P
@@ -236,7 +236,7 @@ end subroutine fromAxisAngle
 !---------------------------------------------------------------------------------------------------
 subroutine fromMatrix(self,om)
 
-  class(rotation), intent(out)            :: self
+  class(tRotation), intent(out)           :: self
   real(pReal), dimension(3,3), intent(in) :: om
 
   if (dNeq(math_det33(om),1.0_pReal,tol=1.0e-5_pReal)) &
@@ -253,10 +253,10 @@ end subroutine fromMatrix
 !---------------------------------------------------------------------------------------------------
 pure elemental function rotRot__(self,R) result(rRot)
 
-  type(rotation)              :: rRot
-  class(rotation), intent(in) :: self,R
+  type(tRotation)              :: rRot
+  class(tRotation), intent(in) :: self,R
 
-  rRot = rotation(multiply_quaternion(self%q,R%q))
+  rRot = tRotation(multiply_quaternion(self%q,R%q))
   call rRot%standardize()
 
 end function rotRot__
@@ -267,7 +267,7 @@ end function rotRot__
 !---------------------------------------------------------------------------------------------------
 pure elemental subroutine standardize(self)
 
-  class(rotation), intent(inout) :: self
+  class(tRotation), intent(inout) :: self
 
   if (sign(1.0_pReal,self%q(1)) < 0.0_pReal) self%q = - self%q
 
@@ -281,7 +281,7 @@ end subroutine standardize
 pure function rotVector(self,v,active) result(vRot)
 
   real(pReal),                 dimension(3) :: vRot
-  class(rotation), intent(in)               :: self
+  class(tRotation), intent(in)              :: self
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
 
@@ -317,7 +317,7 @@ end function rotVector
 pure function rotTensor2(self,T,active) result(tRot)
 
   real(pReal),                 dimension(3,3) :: tRot
-  class(rotation), intent(in)                 :: self
+  class(tRotation), intent(in)                :: self
   real(pReal),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
 
@@ -346,7 +346,7 @@ end function rotTensor2
 pure function rotTensor4(self,T,active) result(tRot)
 
   real(pReal),                 dimension(3,3,3,3) :: tRot
-  class(rotation), intent(in)                     :: self
+  class(tRotation), intent(in)                    :: self
   real(pReal),     intent(in), dimension(3,3,3,3) :: T
   logical,         intent(in), optional           :: active
 
@@ -378,7 +378,7 @@ end function rotTensor4
 pure function rotStiffness(self,C,active) result(cRot)
 
   real(pReal),                 dimension(6,6) :: cRot
-  class(rotation), intent(in)                 :: self
+  class(tRotation), intent(in)                :: self
   real(pReal),     intent(in), dimension(6,6) :: C
   logical,         intent(in), optional       :: active
 
@@ -415,8 +415,8 @@ end function rotStiffness
 !---------------------------------------------------------------------------------------------------
 pure elemental function misorientation(self,other)
 
-  type(rotation)              :: misorientation
-  class(rotation), intent(in) :: self, other
+  type(tRotation)              :: misorientation
+  class(tRotation), intent(in) :: self, other
 
 
   misorientation%q = multiply_quaternion(other%q, conjugate_quaternion(self%q))
@@ -1415,7 +1415,7 @@ end function conjugate_quaternion
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest()
 
-  type(rotation)                  :: R
+  type(tRotation)                 :: R
   real(pReal), dimension(4)       :: qu, ax, ro
   real(pReal), dimension(3)       :: x, eu, ho, v3
   real(pReal), dimension(3,3)     :: om, t33
