@@ -26,7 +26,6 @@ module math
     TAU = 2.0_pReal*PI, &                                                                           !< ratio of a circle's circumference to its radius
     INDEG = 360.0_pReal/TAU, &                                                                      !< conversion from radian to degree
     INRAD = TAU/360.0_pReal                                                                         !< conversion from degree to radian
-  complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,TAU)                                      !< Re(0.0), Im(Tau)
 
   real(pReal), dimension(3,3), parameter :: &
     math_I3 = reshape([&
