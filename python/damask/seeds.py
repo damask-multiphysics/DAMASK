@@ -92,10 +92,9 @@ def from_Poisson_disc(size: _FloatSequence,
         tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
                _spatial.cKDTree(coords[:s])
         distances = tree.query(candidates)[0]
-        best = distances.argmax()
-        if distances[best] > distance:                                                              # require minimum separation
+        if distances.max() > distance:                                                              # require minimum separation
             i = 0
-            coords[s] = candidates[best]                                                            # maximum separation to existing point cloud
+            coords[s] = candidates[distances.argmax()]                                              # maximum separation to existing point cloud
             s += 1
             progress.update(s)
 

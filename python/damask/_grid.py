@@ -234,8 +234,7 @@ class Grid:
         content = f.readlines()
         for i,line in enumerate(content[:header_length]):
             items = line.split('#')[0].lower().strip().split()
-            key = items[0] if items else ''
-            if   key == 'grid':
+            if (key := items[0] if items else '') ==  'grid':
                 cells  = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
             elif key == 'size':
                 size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
@@ -247,8 +246,7 @@ class Grid:
         material = np.empty(int(cells.prod()))                                                      # initialize as flat array
         i = 0
         for line in content[header_length:]:
-            items = line.split('#')[0].split()
-            if len(items) == 3:
+            if len(items := line.split('#')[0].split()) == 3:
                 if items[1].lower() == 'of':
                     material_entry = np.ones(int(items[0]))*float(items[2])
                 elif items[1].lower() == 'to':
@@ -813,8 +811,7 @@ class Grid:
         # materials: 1
 
         """
-        valid = ['x','y','z']
-        if not set(directions).issubset(valid):
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
@@ -852,8 +849,7 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        valid = ['x','y','z']
-        if not set(directions).issubset(valid):
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
 
@@ -1190,8 +1186,7 @@ class Grid:
             VTK-based geometry of grain boundary network.
 
         """
-        valid = ['x','y','z']
-        if not set(directions).issubset(valid):
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         o = [[0, self.cells[0]+1,           np.prod(self.cells[:2]+1)+self.cells[0]+1, np.prod(self.cells[:2]+1)],

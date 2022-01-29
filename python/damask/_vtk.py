@@ -22,7 +22,7 @@ class VTK:
     High-level interface to VTK.
     """
 
-    def __init__(self, 
+    def __init__(self,
                  vtk_data: vtk.vtkDataSet):
         """
         New spatial visualization.
@@ -202,8 +202,7 @@ class VTK:
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
             raise FileNotFoundError(f'No such file: {fname}')
-        ext = Path(fname).suffix
-        if ext == '.vtk' or dataset_type is not None:
+        if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
             if dataset_type is None:

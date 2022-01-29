@@ -266,9 +266,7 @@ class Colormap(mpl.colors.ListedColormap):
         l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
               (bounds[0],bounds[1])
 
-        delta,avg = r-l,0.5*abs(r+l)
-
-        if abs(delta) * 1e8 <= avg:                                                                 # delta is similar to numerical noise
+        if abs(delta := r-l) * 1e8 <= (avg := 0.5*abs(r+l)):                                        # delta is similar to numerical noise
             l,r = l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta),                                # extend range to have actual data centered within
 
         return Image.fromarray(

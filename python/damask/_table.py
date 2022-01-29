@@ -319,8 +319,7 @@ class Table:
         data = np.loadtxt(content)
 
         shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
-        remainder = data.shape[1]-sum(shapes.values())
-        if remainder > 0:                                                       # 3.8 can do: if (remainder := data.shape[1]-sum(shapes.values())) > 0
+        if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 
         return Table(data,shapes,comments)
@@ -376,8 +375,7 @@ class Table:
         """
         dup = self.copy()
         dup._add_comment(label, data.shape[1:], info)
-        m = re.match(r'(.*)\[((\d+,)*(\d+))\]',label)
-        if m:
+        if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label):
             key = m.group(1)
             idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
                                        self.shapes[key])
@@ -495,8 +493,7 @@ class Table:
         """
         labels_ = [labels] if isinstance(labels,str) else labels.copy()
         for i,l in enumerate(labels_):
-            m = re.match(r'(.*)\[((\d+,)*(\d+))\]',l)
-            if m:
+            if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',l):
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(','))),
                                            self.shapes[m.group(1)])
                 labels_[i] = f'{1+idx}_{m.group(1)}'

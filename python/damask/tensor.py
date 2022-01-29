@@ -66,8 +66,7 @@ def eigenvectors(T_sym: _np.ndarray,
     """
     (u,v) = _np.linalg.eigh(symmetric(T_sym))
 
-    if RHS:
-        v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
+    if RHS: v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
     return v
 
 

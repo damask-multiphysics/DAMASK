@@ -753,9 +753,8 @@ class ProgressBar:
                iteration: int) -> None:
 
         fraction = (iteration+1) / self.total
-        filled_length = int(self.bar_length * fraction)
 
-        if filled_length > int(self.bar_length * self.fraction_last) or \
+        if filled_length := int(self.bar_length * fraction) > int(self.bar_length * self.fraction_last) or \
             datetime.datetime.now() - self.time_last_update > datetime.timedelta(seconds=10):
             self.time_last_update = datetime.datetime.now()
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
