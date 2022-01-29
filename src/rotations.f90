@@ -81,7 +81,6 @@ module rotations
   end type rotation
 
   real(pReal), parameter :: &
-    SPI  = sqrt(PI), &
     PREF = sqrt(6.0_pReal/PI), &
     A    = PI**(5.0_pReal/6.0_pReal)/6.0_pReal**(1.0_pReal/6.0_pReal), &
     AP   = PI**(2.0_pReal/3.0_pReal), &
@@ -1209,7 +1208,7 @@ pure function ho2cu(ho) result(cu)
     else special
       q2 = qxy + maxval(abs(xyz2))**2
       sq2 = sqrt(q2)
-      q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
+      q = (BETA/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
       tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy
       Tinv = q * sign(1.0_pReal,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
                                               [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
@@ -1217,7 +1216,7 @@ pure function ho2cu(ho) result(cu)
     endif special
 
     ! inverse M_1
-    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
+    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / PREF ]/SC
 
     ! reverse the coordinates back to order according to the original pyramid number
     cu = xyz1(p(:,2))
@@ -1323,26 +1322,26 @@ pure function cu2ho(cu) result(ho)
   else center
     ! get pyramide and scale by grid parameter ratio
     p = GetPyramidOrder(cu)
-    XYZ = cu(p(:,1)) * sc
+    XYZ = cu(p(:,1)) * SC
 
     ! intercept all the points along the z-axis
     special: if (all(dEq0(XYZ(1:2)))) then
-      LamXYZ = [ 0.0_pReal, 0.0_pReal, pref * XYZ(3) ]
+      LamXYZ = [ 0.0_pReal, 0.0_pReal, PREF * XYZ(3) ]
     else special
       order = merge( [2,1], [1,2], abs(XYZ(2)) <= abs(XYZ(1)))                                      ! order of absolute values of XYZ
       q = PI12 *  XYZ(order(1))/XYZ(order(2))                                                       ! smaller by larger
       c = cos(q)
       s = sin(q)
-      q = prek * XYZ(order(2))/ sqrt(R2-c)
+      q = PREK * XYZ(order(2))/ sqrt(R2-c)
       T = [ (R2*c - 1.0), R2 * s] * q
 
       ! transform to sphere grid (inverse Lambert)
       ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
       c = sum(T**2)
       s = Pi * c/(24.0*XYZ(3)**2)
-      c = sPi * c / sqrt(24.0_pReal) / XYZ(3)
+      c = sqrt(PI) * c / sqrt(24.0_pReal) / XYZ(3)
       q = sqrt( 1.0 - s )
-      LamXYZ = [ T(order(2)) * q, T(order(1)) * q, pref * XYZ(3) - c ]
+      LamXYZ = [ T(order(2)) * q, T(order(1)) * q, PREF * XYZ(3) - c ]
     endif special
 
     ! reverse the coordinates back to order according to the original pyramid number
