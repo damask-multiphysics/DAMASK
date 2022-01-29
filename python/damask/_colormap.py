@@ -484,7 +484,7 @@ class Colormap(mpl.colors.ListedColormap):
                          'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
                          'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar']}
 
-    _predefined_DAMASK = {'orientation':   {'low':  [0.933334,0.878432,0.878431],
+    _predefined_DAMASK = {'orientation':   {'low':  [0.933334,0.878432,0.878431],                   # noqa
                                             'high': [0.250980,0.007843,0.000000]},
                           'strain':        {'low':  [0.941177,0.941177,0.870588],
                                             'high': [0.266667,0.266667,0.000000]},

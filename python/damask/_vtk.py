@@ -455,7 +455,7 @@ class VTK:
                 width  = tk.winfo_screenwidth()
                 height = tk.winfo_screenheight()
                 tk.destroy()
-            except Exception as e:
+            except Exception:
                 width  = 1024
                 height =  768
 
