@@ -21,10 +21,12 @@ module math
     config
 #endif
 
-  real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
-  real(pReal),    parameter :: INDEG = 180.0_pReal/PI                                               !< conversion from radian to degree
-  real(pReal),    parameter :: INRAD = PI/180.0_pReal                                               !< conversion from degree to radian
-  complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,2.0_pReal*PI)                             !< Re(0.0), Im(2xPi)
+  real(pReal), parameter :: &
+    PI = acos(-1.0_pReal), &                                                                        !< ratio of a circle's circumference to its diameter
+    TAU = 2.0_pReal*PI, &                                                                           !< ratio of a circle's circumference to its radius
+    INDEG = 360.0_pReal/TAU, &                                                                      !< conversion from radian to degree
+    INRAD = TAU/360.0_pReal                                                                         !< conversion from degree to radian
+  complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,TAU)                                      !< Re(0.0), Im(Tau)
 
   real(pReal), dimension(3,3), parameter :: &
     math_I3 = reshape([&
@@ -984,7 +986,7 @@ impure elemental subroutine math_normal(x,mu,sigma)
   end if
 
   call random_number(rnd)
-  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(2.0_pReal*PI*(1.0_pReal - rnd(2)))
+  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(TAU*(1.0_pReal - rnd(2)))
 
 end subroutine math_normal
 
@@ -1088,7 +1090,7 @@ pure function math_rotationalPart(F) result(R)
   if (dNeq0(x)) then
     Phi = acos(math_clip((I_C(1)**3 -4.5_pReal*I_C(1)*I_C(2) +13.5_pReal*I_C(3))/x,-1.0_pReal,1.0_pReal))
     lambda = I_C(1) +(2.0_pReal * sqrt(math_clip(I_C(1)**2-3.0_pReal*I_C(2),0.0_pReal))) &
-                    *cos((Phi-2.0_pReal * PI*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
+                    *cos((Phi-TAU*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
     lambda = sqrt(math_clip(lambda,0.0_pReal)/3.0_pReal)
   else
     lambda = sqrt(I_C(1)/3.0_pReal)
@@ -1154,8 +1156,8 @@ pure function math_eigvalsh33(m)
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                                                             [cos( phi              /3.0_pReal), &
-                                                             cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                                                             cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                                             cos((phi+TAU)/3.0_pReal), &
+                                                             cos((phi+2.0_pReal*TAU)/3.0_pReal) &
                                                             ] &
                     + I(1)/3.0_pReal
   endif

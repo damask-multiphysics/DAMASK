@@ -936,36 +936,36 @@ pure function utilities_getFreqDerivative(k_s)
 
   select case (spectral_derivative_ID)
     case (DERIVATIVE_CONTINUOUS_ID)
-      utilities_getFreqDerivative = cmplx(0.0_pReal, 2.0_pReal*PI*real(k_s,pReal)/geomSize,pReal)
+      utilities_getFreqDerivative = cmplx(0.0_pReal, TAU*real(k_s,pReal)/geomSize,pReal)
 
     case (DERIVATIVE_CENTRAL_DIFF_ID)
-      utilities_getFreqDerivative = cmplx(0.0_pReal, sin(2.0_pReal*PI*real(k_s,pReal)/real(grid,pReal)), pReal)/ &
+      utilities_getFreqDerivative = cmplx(0.0_pReal, sin(TAU*real(k_s,pReal)/real(grid,pReal)), pReal)/ &
                                     cmplx(2.0_pReal*geomSize/real(grid,pReal), 0.0_pReal, pReal)
 
     case (DERIVATIVE_FWBW_DIFF_ID)
       utilities_getFreqDerivative(1) = &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) - 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                               cmplx(cos(TAU*real(k_s(1),pReal)/real(grid(1),pReal)) - 1.0_pReal, &
+                                     sin(TAU*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                               cmplx(cos(TAU*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
+                                     sin(TAU*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                               cmplx(cos(TAU*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
+                                     sin(TAU*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
                                cmplx(4.0_pReal*geomSize(1)/real(grid(1),pReal), 0.0_pReal, pReal)
       utilities_getFreqDerivative(2) = &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) - 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                               cmplx(cos(TAU*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
+                                     sin(TAU*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                               cmplx(cos(TAU*real(k_s(2),pReal)/real(grid(2),pReal)) - 1.0_pReal, &
+                                     sin(TAU*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                               cmplx(cos(TAU*real(k_s(3),pReal)/real(grid(3),pReal)) + 1.0_pReal, &
+                                     sin(TAU*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
                                cmplx(4.0_pReal*geomSize(2)/real(grid(2),pReal), 0.0_pReal, pReal)
       utilities_getFreqDerivative(3) = &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
-                               cmplx(cos(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)) - 1.0_pReal, &
-                                     sin(2.0_pReal*PI*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
+                               cmplx(cos(TAU*real(k_s(1),pReal)/real(grid(1),pReal)) + 1.0_pReal, &
+                                     sin(TAU*real(k_s(1),pReal)/real(grid(1),pReal)), pReal)* &
+                               cmplx(cos(TAU*real(k_s(2),pReal)/real(grid(2),pReal)) + 1.0_pReal, &
+                                     sin(TAU*real(k_s(2),pReal)/real(grid(2),pReal)), pReal)* &
+                               cmplx(cos(TAU*real(k_s(3),pReal)/real(grid(3),pReal)) - 1.0_pReal, &
+                                     sin(TAU*real(k_s(3),pReal)/real(grid(3),pReal)), pReal)/ &
                                cmplx(4.0_pReal*geomSize(3)/real(grid(3),pReal), 0.0_pReal, pReal)
   end select
 

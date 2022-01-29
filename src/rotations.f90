@@ -198,7 +198,7 @@ subroutine fromEulers(self,eu,degrees)
     Eulers = merge(eu*INRAD,eu,degrees)
   endif
 
-  if (any(Eulers<0.0_pReal) .or. any(Eulers>2.0_pReal*PI) .or. Eulers(2) > PI) &
+  if (any(Eulers<0.0_pReal) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
     call IO_error(402,ext_msg='fromEulers')
 
   self%q = eu2qu(Eulers)
@@ -480,7 +480,7 @@ pure function qu2eu(qu) result(eu)
           atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
   endif degenerated
-  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
+  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function qu2eu
 
@@ -628,7 +628,7 @@ pure function om2eu(om) result(eu)
     eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
   end if
   where(abs(eu) < 1.e-8_pReal) eu = 0.0_pReal
-  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
+  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function om2eu
 
@@ -1437,7 +1437,7 @@ subroutine selfTest()
     elseif(i==2) then
       qu = eu2qu([0.0_pReal,0.0_pReal,0.0_pReal])
     elseif(i==3) then
-      qu = eu2qu([2.0_pReal*PI,PI,2.0_pReal*PI])
+      qu = eu2qu([TAU,PI,TAU])
     elseif(i==4) then
       qu = [0.0_pReal,0.0_pReal,1.0_pReal,0.0_pReal]
     elseif(i==5) then
@@ -1448,10 +1448,10 @@ subroutine selfTest()
       call random_number(x)
       A = sqrt(x(3))
       B = sqrt(1-0_pReal -x(3))
-      qu = [cos(2.0_pReal*PI*x(1))*A,&
-            sin(2.0_pReal*PI*x(2))*B,&
-            cos(2.0_pReal*PI*x(2))*B,&
-            sin(2.0_pReal*PI*x(1))*A]
+      qu = [cos(TAU*x(1))*A,&
+            sin(TAU*x(2))*B,&
+            cos(TAU*x(2))*B,&
+            sin(TAU*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
 
