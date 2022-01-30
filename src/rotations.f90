@@ -1503,7 +1503,8 @@ subroutine selfTest()
 
     call random_number(C)
     C = C+transpose(C)
-    if (any(dNeq(R%rotStiffness(C),math_3333toVoigt66(R%rotate(math_Voigt66to3333(C))),1.0e-12_pReal))) &
+    if (any(dNeq(R%rotStiffness(C), &
+                 math_3333toVoigt66_stiffness(R%rotate(math_Voigt66to3333_stiffness(C))),1.0e-12_pReal))) &
       error stop 'rotStiffness'
 
     call R%fromQuaternion(qu * (1.0_pReal + merge(+5.e-9_pReal,-5.e-9_pReal, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML

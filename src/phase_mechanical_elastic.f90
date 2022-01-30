@@ -52,20 +52,20 @@ module subroutine elastic_init(phases)
       prm%C_11(1) = elastic%get_asFloat('C_11')
       prm%C_11(2) = elastic%get_asFloat('C_11,T',  defaultVal=0.0_pReal)
       prm%C_11(3) = elastic%get_asFloat('C_11,T^2',defaultVal=0.0_pReal)
- 
+
       prm%C_12(1) = elastic%get_asFloat('C_12')
       prm%C_12(2) = elastic%get_asFloat('C_12,T',  defaultVal=0.0_pReal)
       prm%C_12(3) = elastic%get_asFloat('C_12,T^2',defaultVal=0.0_pReal)
- 
+
       prm%C_44(1) = elastic%get_asFloat('C_44')
       prm%C_44(2) = elastic%get_asFloat('C_44,T',  defaultVal=0.0_pReal)
       prm%C_44(3) = elastic%get_asFloat('C_44,T^2',defaultVal=0.0_pReal)
- 
+
       if (any(phase_lattice(ph) == ['hP','tI'])) then
         prm%C_13(1) = elastic%get_asFloat('C_13')
         prm%C_13(2) = elastic%get_asFloat('C_13,T',  defaultVal=0.0_pReal)
         prm%C_13(3) = elastic%get_asFloat('C_13,T^2',defaultVal=0.0_pReal)
- 
+
         prm%C_33(1) = elastic%get_asFloat('C_33')
         prm%C_33(2) = elastic%get_asFloat('C_33,T',  defaultVal=0.0_pReal)
         prm%C_33(3) = elastic%get_asFloat('C_33,T^2',defaultVal=0.0_pReal)
@@ -200,7 +200,7 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
 
 
   C66 = phase_damage_C66(phase_homogenizedC66(ph,en),ph,en)
-  C = math_Voigt66to3333(C66)
+  C = math_Voigt66to3333_stiffness(C66)
 
   E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
   S = math_Voigt6to33_stress(matmul(C66,math_33toVoigt6_strain(matmul(matmul(transpose(Fi),E),Fi))))!< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
