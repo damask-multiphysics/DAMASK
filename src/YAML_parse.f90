@@ -191,8 +191,10 @@ logical function isScalar(line)
 
   character(len=*), intent(in) :: line
 
-  isScalar = (.not.isKeyValue(line) .and. .not.isKey(line) .and. .not.isListItem(line) &
-                                                            .and. .not.isFlow(line))
+  isScalar = (.not. isKeyValue(line) .and. &
+              .not. isKey(line) .and. &
+              .not. isListItem(line) .and. &
+              .not. isFlow(line))
 
 end function isScalar
 
