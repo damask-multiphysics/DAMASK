@@ -10,7 +10,9 @@ from . import util as _util
 from . import grid_filters as _grid_filters
 
 
-def from_random(size: _FloatSequence, N_seeds: int, cells: _IntSequence = None,
+def from_random(size: _FloatSequence,
+                N_seeds: int,
+                cells: _IntSequence = None,
                 rng_seed=None) -> _np.ndarray:
     """
     Place seeds randomly in space.
@@ -46,8 +48,12 @@ def from_random(size: _FloatSequence, N_seeds: int, cells: _IntSequence = None,
     return coords
 
 
-def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, distance: float,
-                      periodic: bool = True, rng_seed=None) -> _np.ndarray:
+def from_Poisson_disc(size: _FloatSequence,
+                      N_seeds: int,
+                      N_candidates: int,
+                      distance: float,
+                      periodic: bool = True,
+                      rng_seed=None) -> _np.ndarray:
     """
     Place seeds according to a Poisson disc distribution.
 
@@ -86,10 +92,9 @@ def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, dis
         tree = _spatial.cKDTree(coords[:s],boxsize=size) if periodic else \
                _spatial.cKDTree(coords[:s])
         distances = tree.query(candidates)[0]
-        best = distances.argmax()
-        if distances[best] > distance:                                                              # require minimum separation
+        if distances.max() > distance:                                                              # require minimum separation
             i = 0
-            coords[s] = candidates[best]                                                            # maximum separation to existing point cloud
+            coords[s] = candidates[distances.argmax()]                                              # maximum separation to existing point cloud
             s += 1
             progress.update(s)
 
@@ -99,8 +104,11 @@ def from_Poisson_disc(size: _FloatSequence, N_seeds: int, N_candidates: int, dis
     return coords
 
 
-def from_grid(grid, selection: _IntSequence = None, invert_selection: bool = False,
-              average: bool = False, periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
+def from_grid(grid,
+              selection: _IntSequence = None,
+              invert_selection: bool = False,
+              average: bool = False,
+              periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
     """
     Create seeds from grid description.
 

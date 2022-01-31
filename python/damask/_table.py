@@ -1,7 +1,7 @@
 import re
 import copy
 from pathlib import Path
-from typing import Union, Optional, Tuple, List
+from typing import Union, Tuple, List
 
 import pandas as pd
 import numpy as np
@@ -12,7 +12,10 @@ from . import util
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
-    def __init__(self, data: np.ndarray, shapes: dict, comments: Optional[Union[str, list]] = None):
+    def __init__(self,
+                 data: np.ndarray,
+                 shapes: dict,
+                 comments: Union[str, list] = None):
         """
         New spreadsheet.
 
@@ -41,7 +44,8 @@ class Table:
         return '\n'.join(['# '+c for c in self.comments])+'\n'+data_repr
 
 
-    def __getitem__(self, item: Union[slice, Tuple[slice, ...]]) -> 'Table':
+    def __getitem__(self,
+                    item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
         Slice the Table according to item.
 
@@ -100,7 +104,9 @@ class Table:
     copy = __copy__
 
 
-    def _label(self, what: Union[str, List[str]], how: str) -> List[str]:
+    def _label(self,
+               what: Union[str, List[str]],
+               how: str) -> List[str]:
         """
         Expand labels according to data shape.
 
@@ -131,7 +137,8 @@ class Table:
         return labels
 
 
-    def _relabel(self, how: str):
+    def _relabel(self,
+                 how: str):
         """
         Modify labeling of data in-place.
 
@@ -147,7 +154,10 @@ class Table:
         self.data.columns = self._label(self.shapes,how) #type: ignore
 
 
-    def _add_comment(self, label: str, shape: Tuple[int, ...], info: Optional[str]):
+    def _add_comment(self,
+                     label: str,
+                     shape: Tuple[int, ...],
+                     info: str = None):
         if info is not None:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
@@ -309,8 +319,7 @@ class Table:
         data = np.loadtxt(content)
 
         shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
-        remainder = data.shape[1]-sum(shapes.values())
-        if remainder > 0:                                                       # 3.8 can do: if (remainder := data.shape[1]-sum(shapes.values())) > 0
+        if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 
         return Table(data,shapes,comments)
@@ -321,7 +330,8 @@ class Table:
         return list(self.shapes)
 
 
-    def get(self, label: str) -> np.ndarray:
+    def get(self,
+            label: str) -> np.ndarray:
         """
         Get column data.
 
@@ -341,7 +351,10 @@ class Table:
         return data.astype(type(data.flatten()[0]))
 
 
-    def set(self, label: str, data: np.ndarray, info: str = None) -> 'Table':
+    def set(self,
+            label: str,
+            data: np.ndarray,
+            info: str = None) -> 'Table':
         """
         Set column data.
 
@@ -362,8 +375,7 @@ class Table:
         """
         dup = self.copy()
         dup._add_comment(label, data.shape[1:], info)
-        m = re.match(r'(.*)\[((\d+,)*(\d+))\]',label)
-        if m:
+        if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label):
             key = m.group(1)
             idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
                                        self.shapes[key])
@@ -374,7 +386,10 @@ class Table:
         return dup
 
 
-    def add(self, label: str, data: np.ndarray, info: str = None) -> 'Table':
+    def add(self,
+            label: str,
+            data: np.ndarray,
+            info: str = None) -> 'Table':
         """
         Add column data.
 
@@ -406,7 +421,8 @@ class Table:
         return dup
 
 
-    def delete(self, label: str) -> 'Table':
+    def delete(self,
+               label: str) -> 'Table':
         """
         Delete column data.
 
@@ -427,7 +443,10 @@ class Table:
         return dup
 
 
-    def rename(self, old: Union[str, List[str]], new: Union[str, List[str]], info: str = None) -> 'Table':
+    def rename(self,
+               old: Union[str, List[str]],
+               new: Union[str, List[str]],
+               info: str = None) -> 'Table':
         """
         Rename column data.
 
@@ -453,7 +472,9 @@ class Table:
         return dup
 
 
-    def sort_by(self, labels: Union[str, List[str]], ascending: Union[bool, List[bool]] = True) -> 'Table':
+    def sort_by(self,
+                labels: Union[str, List[str]],
+                ascending: Union[bool, List[bool]] = True) -> 'Table':
         """
         Sort table by values of given labels.
 
@@ -472,8 +493,7 @@ class Table:
         """
         labels_ = [labels] if isinstance(labels,str) else labels.copy()
         for i,l in enumerate(labels_):
-            m = re.match(r'(.*)\[((\d+,)*(\d+))\]',l)
-            if m:
+            if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',l):
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(','))),
                                            self.shapes[m.group(1)])
                 labels_[i] = f'{1+idx}_{m.group(1)}'
@@ -486,7 +506,8 @@ class Table:
         return dup
 
 
-    def append(self, other: 'Table') -> 'Table':
+    def append(self,
+               other: 'Table') -> 'Table':
         """
         Append other table vertically (similar to numpy.vstack).
 
@@ -505,13 +526,14 @@ class Table:
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
             raise KeyError('Labels or shapes or order do not match')
-        else:
-            dup = self.copy()
-            dup.data = dup.data.append(other.data,ignore_index=True)
-            return dup
+
+        dup = self.copy()
+        dup.data = dup.data.append(other.data,ignore_index=True)
+        return dup
 
 
-    def join(self, other: 'Table') -> 'Table':
+    def join(self,
+             other: 'Table') -> 'Table':
         """
         Append other table horizontally (similar to numpy.hstack).
 
@@ -530,15 +552,16 @@ class Table:
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('Duplicated keys or row count mismatch')
-        else:
-            dup = self.copy()
-            dup.data = dup.data.join(other.data)
-            for key in other.shapes:
-                dup.shapes[key] = other.shapes[key]
-            return dup
+
+        dup = self.copy()
+        dup.data = dup.data.join(other.data)
+        for key in other.shapes:
+            dup.shapes[key] = other.shapes[key]
+        return dup
 
 
-    def save(self, fname: FileHandle):
+    def save(self,
+             fname: FileHandle):
         """
         Save as plain text file.
 
