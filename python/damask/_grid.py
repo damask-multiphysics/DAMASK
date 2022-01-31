@@ -1165,7 +1165,7 @@ class Grid:
 
     def get_grain_boundaries(self,
                              periodic: bool = True,
-                             directions: Sequence[str] = 'xyz'):
+                             directions: Sequence[str] = 'xyz') -> VTK:
         """
         Create VTK unstructured grid containing grain boundaries.
 
