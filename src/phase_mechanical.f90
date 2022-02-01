@@ -628,12 +628,12 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
                                                   dotState(1:sizeDotState,2))
     plasticState(ph)%dotState(:,en) = plasticState(ph)%dotState(:,en) * zeta &
                                     + dotState(1:sizeDotState,1) * (1.0_pReal - zeta)
-    r(1:sizeDotState) = plasticState(ph)%state(1:sizeDotState,en) &
-                      - subState0 &
-                      - plasticState(ph)%dotState(1:sizeDotState,en) * Delta_t
-    plasticState(ph)%state(1:sizeDotState,en) = plasticState(ph)%state(1:sizeDotState,en) &
-                                              - r(1:sizeDotState)
-    if (converged(r(1:sizeDotState),plasticState(ph)%state(1:sizeDotState,en),plasticState(ph)%atol(1:sizeDotState))) then
+    r = plasticState(ph)%state(1:sizeDotState,en) &
+      - subState0 &
+      - plasticState(ph)%dotState(1:sizeDotState,en) * Delta_t
+    plasticState(ph)%state(1:sizeDotState,en) = plasticState(ph)%state(1:sizeDotState,en) - r
+
+    if (converged(r,plasticState(ph)%state(1:sizeDotState,en),plasticState(ph)%atol(1:sizeDotState))) then
       broken = plastic_deltaState(ph,en)
       exit iteration
     endif
@@ -648,19 +648,18 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
   !--------------------------------------------------------------------------------------------------
   real(pReal) pure function damper(omega_0,omega_1,omega_2)
 
-  real(pReal), dimension(:), intent(in) :: &
-    omega_0, omega_1, omega_2
+    real(pReal), dimension(:), intent(in) :: &
+      omega_0, omega_1, omega_2
 
-  real(pReal) :: dot_prod12, dot_prod22
+    real(pReal) :: dot_prod12, dot_prod22
 
-  dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
-  dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
 
-  if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
-    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
-  else
-    damper = 1.0_pReal
-  endif
+    dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
+    dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
+
+    damper = merge(0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22), &
+                   1.0_pReal, &
+                   min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal)
 
   end function damper
 
