@@ -600,7 +600,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
   real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
     r                                                                                               ! state residuum
   real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState,2) :: &
-    dotState
+    dotState_last
 
 
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
@@ -615,8 +615,8 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
 
   iteration: do NiterationState = 1, num%nState
 
-    dotState(1:sizeDotState,2) = merge(dotState(1:sizeDotState,1),0.0, nIterationState > 1)
-    dotState(1:sizeDotState,1) = plasticState(ph)%dotState(:,en)
+    dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0, nIterationState > 1)
+    dotState_last(1:sizeDotState,1) = plasticState(ph)%dotState(:,en)
 
     broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
     if(broken) exit iteration
@@ -624,10 +624,10 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
     if(broken) exit iteration
 
-    zeta = damper(plasticState(ph)%dotState(:,en),dotState(1:sizeDotState,1),&
-                                                  dotState(1:sizeDotState,2))
+    zeta = damper(plasticState(ph)%dotState(:,en),dotState_last(1:sizeDotState,1),&
+                                                  dotState_last(1:sizeDotState,2))
     plasticState(ph)%dotState(:,en) = plasticState(ph)%dotState(:,en) * zeta &
-                                    + dotState(1:sizeDotState,1) * (1.0_pReal - zeta)
+                                    + dotState_last(1:sizeDotState,1) * (1.0_pReal - zeta)
     r = plasticState(ph)%state(1:sizeDotState,en) &
       - subState0 &
       - plasticState(ph)%dotState(1:sizeDotState,en) * Delta_t
