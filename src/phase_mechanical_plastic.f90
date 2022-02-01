@@ -296,7 +296,7 @@ end subroutine plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
+module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
 
   integer, intent(in) :: &
     co, &                                                                                           !< component-ID of integration point
@@ -308,7 +308,8 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
     subdt                                                                                           !< timestep
   real(pReal),              dimension(3,3) :: &
     Mp
-  logical :: broken
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+    dotState
 
 
   if (phase_plasticity(ph) /= PLASTIC_NONE_ID) then
@@ -337,7 +338,7 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
     end select plasticType
   end if
 
-  broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,en)))
+  dotState = plasticState(ph)%dotState(:,en)
 
 end function plastic_dotState
 
