@@ -44,6 +44,7 @@ class TestGrid:
 
     def test_equal(self,default):
         assert default == default
+        assert not default == 42
 
     def test_repr(self,default):
         print(default)
@@ -237,12 +238,27 @@ class TestGrid:
                           modified)
 
 
-    def test_canvas(self,default):
+    def test_canvas_extend(self,default):
         cells = default.cells
-        grid_add = np.random.randint(0,30,(3))
-        modified = default.canvas(cells + grid_add)
+        cells_add = np.random.randint(0,30,(3))
+        modified = default.canvas(cells + cells_add)
         assert np.all(modified.material[:cells[0],:cells[1],:cells[2]] == default.material)
 
+    @pytest.mark.parametrize('sign',[+1,-1])
+    @pytest.mark.parametrize('extra_offset',[0,-1])
+    def test_canvas_move_out(self,sign,extra_offset):
+        g = Grid(np.zeros(np.random.randint(3,30,(3)),int),np.ones(3))
+        o = sign*np.ones(3)*g.cells.min() +extra_offset*sign
+        if extra_offset == 0:
+            assert np.all(g.canvas(offset=o).material == 1)
+        else:
+            assert np.all(np.unique(g.canvas(offset=o).material) == (0,1))
+
+    def test_canvas_cells(self,default):
+        g = Grid(np.zeros(np.random.randint(3,30,(3)),int),np.ones(3))
+        cells = np.random.randint(1,30,(3))
+        offset = np.random.randint(-30,30,(3))
+        assert np.all(g.canvas(cells,offset).cells == cells)
 
     @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random()*8),
                                                 (np.random.randint(4,8,(3)),np.random.randint(9,12,(3)))])

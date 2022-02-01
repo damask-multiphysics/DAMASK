@@ -33,9 +33,9 @@ class Crystal():
     def __init__(self,*,
                  family = None,
                  lattice = None,
-                 a = None,b = None,c = None,
-                 alpha = None,beta = None,gamma = None,
-                 degrees = False):
+                 a: float = None, b: float = None, c: float = None,
+                 alpha: float = None, beta: float = None, gamma: float = None,
+                 degrees: bool = False):
         """
         Representation of crystal in terms of crystal family or Bravais lattice.
 
@@ -62,7 +62,7 @@ class Crystal():
             Angles are given in degrees. Defaults to False.
 
         """
-        if family not in [None] + list(lattice_symmetries.values()):
+        if family is not None and family not in list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
             raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
@@ -107,21 +107,20 @@ class Crystal():
             if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
               >= np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('each lattice angle must be less than sum of others')
-        else:
-            self.a = self.b = self.c = None
-            self.alpha = self.beta = self.gamma = None
 
 
     def __repr__(self):
         """Represent."""
-        return '\n'.join([f'Crystal family {self.family}']
-                       + ([] if self.lattice is None else [f'Bravais lattice {self.lattice}']+
-                                                           list(map(lambda x:f'{x[0]}: {x[1]:.5g}',
-                                                                    zip(['a','b','c','α','β','γ',],
-                                                                         self.parameters))))
-                        )
+        family = f'Crystal family: {self.family}'
+        return family if self.lattice is None else \
+               '\n'.join([family,
+                          f'Bravais lattice: {self.lattice}',
+                          'a={:.5g}m, b={:.5g}m, c={:.5g}m'.format(*self.parameters[:3]),
+                          'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
 
-    def __eq__(self,other):
+
+    def __eq__(self,
+               other: object) -> bool:
         """
         Equal to other.
 
@@ -131,6 +130,8 @@ class Crystal():
             Crystal to check for equality.
 
         """
+        if not isinstance(other, Crystal):
+            return NotImplemented
         return self.lattice == other.lattice and \
                self.parameters == other.parameters and \
                self.family == other.family
@@ -138,8 +139,7 @@ class Crystal():
     @property
     def parameters(self):
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
-
+        if hasattr(self,'a'): return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
 
     @property
     def immutable(self):
@@ -268,7 +268,7 @@ class Crystal():
         https://doi.org/10.1063/1.1661333
 
         """
-        if None in self.parameters:
+        if self.parameters is None:
             raise KeyError('missing crystal lattice parameters')
         return np.array([
                           [1,0,0],
@@ -314,7 +314,9 @@ class Crystal():
                         + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
                                               self.lattice[-1],None),dtype=float)
 
-    def to_lattice(self, *, direction: np.ndarray = None, plane: np.ndarray = None) -> np.ndarray:
+    def to_lattice(self, *,
+                   direction: np.ndarray = None,
+                   plane: np.ndarray = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -338,7 +340,9 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def to_frame(self, *, uvw: np.ndarray = None, hkl: np.ndarray = None) -> np.ndarray:
+    def to_frame(self, *,
+                 uvw: np.ndarray = None,
+                 hkl: np.ndarray = None) -> np.ndarray:
         """
         Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -361,7 +365,8 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def kinematics(self, mode: str) -> Dict[str, List[np.ndarray]]:
+    def kinematics(self,
+                   mode: str) -> Dict[str, List[np.ndarray]]:
         """
         Return crystal kinematics systems.
 
@@ -378,7 +383,7 @@ class Crystal():
         """
         _kinematics = {
             'cF': {
-                'slip' :[np.array([
+                'slip': [np.array([
                            [+0,+1,-1, +1,+1,+1],
                            [-1,+0,+1, +1,+1,+1],
                            [+1,-1,+0, +1,+1,+1],
@@ -398,7 +403,7 @@ class Crystal():
                            [+1,+0,-1, +1,+0,+1],
                            [+0,+1,+1, +0,+1,-1],
                            [+0,+1,-1, +0,+1,+1]])],
-                'twin' :[np.array([
+                'twin': [np.array([
                            [-2, 1, 1,  1, 1, 1],
                            [ 1,-2, 1,  1, 1, 1],
                            [ 1, 1,-2,  1, 1, 1],
@@ -413,7 +418,7 @@ class Crystal():
                            [-1, 1, 2, -1, 1,-1]])]
             },
             'cI': {
-                'slip' :[np.array([
+                'slip': [np.array([
                            [+1,-1,+1, +0,+1,+1],
                            [-1,-1,+1, +0,+1,+1],
                            [+1,+1,+1, +0,-1,+1],
@@ -464,7 +469,7 @@ class Crystal():
                            [+1,+1,+1, -3,+2,+1],
                            [+1,+1,-1, +3,-2,+1],
                            [+1,-1,+1, +3,+2,-1]])],
-                'twin' :[np.array([
+                'twin': [np.array([
                            [-1, 1, 1,  2, 1, 1],
                            [ 1, 1, 1, -2, 1, 1],
                            [ 1, 1,-1,  2,-1, 1],
@@ -479,7 +484,7 @@ class Crystal():
                            [ 1, 1, 1,  1, 1,-2]])]
             },
             'hP': {
-                'slip' :[np.array([
+                'slip': [np.array([
                            [+2,-1,-1,+0, +0,+0,+0,+1],
                            [-1,+2,-1,+0, +0,+0,+0,+1],
                            [-1,-1,+2,+0, +0,+0,+0,+1]]),
@@ -514,7 +519,7 @@ class Crystal():
                            [+1,+1,-2,+3, -1,-1,+2,+2],
                            [-1,+2,-1,+3, +1,-2,+1,+2],
                            [-2,+1,+1,+3, +2,-1,-1,+2]])],
-                'twin' :[np.array([
+                'twin': [np.array([
                            [-1, 0, 1, 1,  1, 0,-1, 2],   # shear = (3-(c/a)^2)/(sqrt(3) c/a) <-10.1>{10.2}
                            [ 0,-1, 1, 1,  0, 1,-1, 2],
                            [ 1,-1, 0, 1, -1, 1, 0, 2],
@@ -542,7 +547,74 @@ class Crystal():
                            [-1,-1, 2,-3, -1,-1, 2, 2],
                            [ 1,-2, 1,-3,  1,-2, 1, 2],
                            [ 2,-1,-1,-3,  2,-1,-1, 2]])]
-                },
+            },
+            'tI': {
+                'slip': [np.array([
+                           [+0,+0,+1, +1,+0,+0],
+                           [+0,+0,+1, +0,+1,+0]]),
+                         np.array([
+                           [+0,+0,+1, +1,+1,+0],
+                           [+0,+0,+1, -1,+1,+0]]),
+                         np.array([
+                           [+0,+1,+0, +1,+0,+0],
+                           [+1,+0,+0, +0,+1,+0]]),
+                         np.array([
+                           [+1,-1,+1, +1,+1,+0],
+                           [+1,-1,-1, +1,+1,+0],
+                           [-1,-1,-1, -1,+1,+0],
+                           [-1,-1,+1, -1,+1,+0]]),
+                         np.array([
+                           [+1,-1,+0, +1,+1,+0],
+                           [+1,+1,+0, +1,-1,+0]]),
+                         np.array([
+                           [+0,+1,+1, +1,+0,+0],
+                           [+0,-1,+1, +1,+0,+0],
+                           [-1,+0,+1, +0,+1,+0],
+                           [+1,+0,+1, +0,+1,+0]]),
+                         np.array([
+                           [+0,+1,+0, +0,+0,+1],
+                           [+1,+0,+0, +0,+0,+1]]),
+                         np.array([
+                           [+1,+1,+0, +0,+0,+1],
+                           [-1,+1,+0, +0,+0,+1]]),
+                         np.array([
+                           [+0,+1,-1, +0,+1,+1],
+                           [+0,-1,-1, +0,-1,+1],
+                           [-1,+0,-1, -1,+0,+1],
+                           [+1,+0,-1, +1,+0,+1]]),
+                         np.array([
+                           [+1,-1,+1, +0,+1,+1],
+                           [+1,+1,-1, +0,+1,+1],
+                           [+1,+1,+1, +0,+1,-1],
+                           [-1,+1,+1, +0,+1,-1],
+                           [+1,-1,-1, +1,+0,+1],
+                           [-1,-1,+1, +1,+0,+1],
+                           [+1,+1,+1, +1,+0,-1],
+                           [+1,-1,+1, +1,+0,-1]]),
+                         np.array([
+                           [+1,+0,+0, +0,+1,+1],
+                           [+1,+0,+0, +0,+1,-1],
+                           [+0,+1,+0, +1,+0,+1],
+                           [+0,+1,+0, +1,+0,-1]]),
+                         np.array([
+                           [+0,+1,-1, +2,+1,+1],
+                           [+0,-1,-1, +2,-1,+1],
+                           [+1,+0,-1, +1,+2,+1],
+                           [-1,+0,-1, -1,+2,+1],
+                           [+0,+1,-1, -2,+1,+1],
+                           [+0,-1,-1, -2,-1,+1],
+                           [-1,+0,-1, -1,-2,+1],
+                           [+1,+0,-1, +1,-2,+1]]),
+                         np.array([
+                           [-1,+1,+1, +2,+1,+1],
+                           [-1,-1,+1, +2,-1,+1],
+                           [+1,-1,+1, +1,+2,+1],
+                           [-1,-1,+1, -1,+2,+1],
+                           [+1,+1,+1, -2,+1,+1],
+                           [+1,-1,+1, -2,-1,+1],
+                           [-1,+1,+1, -1,-2,+1],
+                           [+1,+1,+1, +1,-2,+1]])]
+                }
         }
         master = _kinematics[self.lattice][mode]
         if self.lattice == 'hP':
@@ -553,7 +625,8 @@ class Crystal():
                     'plane':    [m[:,3:6] for m in master]}
 
 
-    def relation_operations(self, model: str) -> Tuple[str, Rotation]:
+    def relation_operations(self,
+                            model: str) -> Tuple[str, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 

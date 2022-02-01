@@ -66,7 +66,7 @@ subroutine material_init(restart)
   print'(/,1x,a)', '<<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
 
-  call parse
+  call parse()
   print'(/,1x,a)', 'parsed material.yaml'
 
 
@@ -108,8 +108,14 @@ subroutine parse()
   homogenizations => config_material%get('homogenization')
 
   call sanityCheck(materials, homogenizations)
+
+#if defined (__GFORTRAN__)
   material_name_phase          = getKeys(phases)
   material_name_homogenization = getKeys(homogenizations)
+#else
+  material_name_phase          = phases%Keys()
+  material_name_homogenization = homogenizations%Keys()
+#endif
 
   allocate(homogenization_Nconstituents(homogenizations%length))
   do h=1, homogenizations%length
@@ -203,9 +209,9 @@ subroutine sanityCheck(materials,homogenizations)
 
 end subroutine sanityCheck
 
-
+#if defined (__GFORTRAN__)
 !--------------------------------------------------------------------------------------------------
-!> @brief Get all keys from a dictionary
+!> @brief %keys() is broken on gfortran
 !--------------------------------------------------------------------------------------------------
 function getKeys(dict)
 
@@ -228,5 +234,6 @@ function getKeys(dict)
   end do
 
 end function getKeys
+#endif
 
 end module material

@@ -8,6 +8,7 @@ module phase
   use constants
   use math
   use rotations
+  use polynomials
   use IO
   use config
   use material

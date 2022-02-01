@@ -8,6 +8,7 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
     __version__ = version
 
+from .                 import _typehints       # noqa
 from .                 import util             # noqa
 from .                 import seeds            # noqa
 from .                 import tensor           # noqa
@@ -20,8 +21,8 @@ from ._rotation        import Rotation         # noqa
 from ._crystal         import Crystal          # noqa
 from ._orientation     import Orientation      # noqa
 from ._table           import Table            # noqa
-from ._vtk             import VTK              # noqa
 from ._colormap        import Colormap         # noqa
+from ._vtk             import VTK              # noqa
 from ._config          import Config           # noqa
 from ._configmaterial  import ConfigMaterial   # noqa
 from ._grid            import Grid             # noqa

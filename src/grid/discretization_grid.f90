@@ -62,8 +62,8 @@ subroutine discretization_grid_init(restart)
 
   integer :: &
     j, &
-    debug_element, debug_ip, &
-    ierr
+    debug_element, debug_ip
+  integer(MPI_INTEGER_KIND) :: err_MPI
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
   integer, dimension(worldsize) :: &
@@ -88,13 +88,13 @@ subroutine discretization_grid_init(restart)
   end if
 
 
-  call MPI_Bcast(grid,3,MPI_INTEGER,0,MPI_COMM_WORLD, ierr)
-  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Bcast(grid,3_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (grid(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
-  call MPI_Bcast(geomSize,3,MPI_DOUBLE,0,MPI_COMM_WORLD, ierr)
-  if (ierr /= 0) error stop 'MPI error'
-  call MPI_Bcast(origin,3,MPI_DOUBLE,0,MPI_COMM_WORLD, ierr)
-  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Bcast(geomSize,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call MPI_Bcast(origin,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   print'(/,1x,a,3(i12,1x))',    'cells  a b c: ', grid
   print  '(1x,a,3(es12.5,1x))', 'size   x y z: ', geomSize
@@ -118,14 +118,17 @@ subroutine discretization_grid_init(restart)
   myGrid = [grid(1:2),grid3]
   mySize = [geomSize(1:2),size3]
 
-  call MPI_Gather(product(grid(1:2))*grid3Offset,1,MPI_INTEGER,displs,    1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  if (ierr /= 0) error stop 'MPI error'
-  call MPI_Gather(product(myGrid),               1,MPI_INTEGER,sendcounts,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Gather(product(grid(1:2))*grid3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
+                  1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call MPI_Gather(product(myGrid),               1_MPI_INTEGER_KIND,MPI_INTEGER,sendcounts,&
+                  1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   allocate(materialAt(product(myGrid)))
-  call MPI_Scatterv(materialAt_global,sendcounts,displs,MPI_INTEGER,materialAt,size(materialAt),MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Scatterv(materialAt_global,sendcounts,displs,MPI_INTEGER,materialAt,size(materialAt),&
+                    MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call discretization_init(materialAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
@@ -307,7 +310,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
       case('Float64')
         as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
       case default
-        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
+        call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
     end select
 
   end function as_Int
@@ -335,7 +338,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
       case('Float64')
         as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
       case default
-        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
+        call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
     end select
 
   end function as_pReal

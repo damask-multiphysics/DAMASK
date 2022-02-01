@@ -2,6 +2,7 @@ import os
 import warnings
 import multiprocessing as mp
 from pathlib import Path
+from typing import Union, Literal, List
 
 import numpy as np
 import vtk
@@ -9,6 +10,7 @@ from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 
+from ._typehints import FloatSequence, IntSequence
 from . import util
 from . import Table
 
@@ -20,7 +22,8 @@ class VTK:
     High-level interface to VTK.
     """
 
-    def __init__(self,vtk_data):
+    def __init__(self,
+                 vtk_data: vtk.vtkDataSet):
         """
         New spatial visualization.
 
@@ -28,15 +31,17 @@ class VTK:
         ----------
         vtk_data : subclass of vtk.vtkDataSet
             Description of geometry and topology, optionally with attached data.
-            Valid types are vtk.vtkRectilinearGrid, vtk.vtkUnstructuredGrid,
-            or vtk.vtkPolyData.
+            Valid types are vtk.vtkImageData, vtk.vtkUnstructuredGrid,
+            vtk.vtkPolyData, and vtk.vtkRectilinearGrid.
 
         """
         self.vtk_data = vtk_data
 
 
     @staticmethod
-    def from_image_data(cells,size,origin=np.zeros(3)):
+    def from_image_data(cells: IntSequence,
+                        size: FloatSequence,
+                        origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
         Create VTK of type vtk.vtkImageData.
 
@@ -60,13 +65,15 @@ class VTK:
         vtk_data = vtk.vtkImageData()
         vtk_data.SetDimensions(*(np.array(cells)+1))
         vtk_data.SetOrigin(*(np.array(origin)))
-        vtk_data.SetSpacing(*(size/cells))
+        vtk_data.SetSpacing(*(np.array(size)/np.array(cells)))
 
         return VTK(vtk_data)
 
 
     @staticmethod
-    def from_rectilinear_grid(grid,size,origin=np.zeros(3)):
+    def from_rectilinear_grid(grid: np.ndarray,
+                              size: FloatSequence,
+                              origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
@@ -98,7 +105,9 @@ class VTK:
 
 
     @staticmethod
-    def from_unstructured_grid(nodes,connectivity,cell_type):
+    def from_unstructured_grid(nodes: np.ndarray,
+                               connectivity: np.ndarray,
+                               cell_type: str) -> 'VTK':
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
@@ -138,7 +147,7 @@ class VTK:
 
 
     @staticmethod
-    def from_poly_data(points):
+    def from_poly_data(points: np.ndarray) -> 'VTK':
         """
         Create VTK of type vtk.polyData.
 
@@ -172,15 +181,17 @@ class VTK:
 
 
     @staticmethod
-    def load(fname,dataset_type=None):
+    def load(fname: Union[str, Path],
+             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData'] = None) -> 'VTK':
         """
         Load from VTK file.
 
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename for reading. Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
-        dataset_type : {'vtkImageData', ''vtkRectilinearGrid', 'vtkUnstructuredGrid', 'vtkPolyData'}, optional
+            Filename for reading.
+            Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
+        dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
 
         Returns
@@ -191,8 +202,7 @@ class VTK:
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
             raise FileNotFoundError(f'No such file: {fname}')
-        ext = Path(fname).suffix
-        if ext == '.vtk' or dataset_type is not None:
+        if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
             if dataset_type is None:
@@ -234,7 +244,11 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
-    def save(self,fname,parallel=True,compress=True):
+
+    def save(self,
+             fname: Union[str, Path],
+             parallel: bool = True,
+             compress: bool = True):
         """
         Save as VTK file.
 
@@ -242,7 +256,7 @@ class VTK:
         ----------
         fname : str or pathlib.Path
             Filename for writing.
-        parallel : boolean, optional
+        parallel : bool, optional
             Write data in parallel background process. Defaults to True.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
@@ -280,7 +294,9 @@ class VTK:
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     # Needs support for damask.Table
-    def add(self,data,label=None):
+    def add(self,
+            data: Union[np.ndarray, np.ma.MaskedArray],
+            label: str = None):
         """
         Add data to either cells or points.
 
@@ -327,7 +343,8 @@ class VTK:
             raise TypeError
 
 
-    def get(self,label):
+    def get(self,
+            label: str) -> np.ndarray:
         """
         Get either cell or point data.
 
@@ -369,7 +386,7 @@ class VTK:
             raise ValueError(f'Array "{label}" not found.')
 
 
-    def get_comments(self):
+    def get_comments(self) -> List[str]:
         """Return the comments."""
         fielddata = self.vtk_data.GetFieldData()
         for a in range(fielddata.GetNumberOfArrays()):
@@ -379,7 +396,8 @@ class VTK:
         return []
 
 
-    def set_comments(self,comments):
+    def set_comments(self,
+                     comments: Union[str, List[str]]):
         """
         Set comments.
 
@@ -396,7 +414,8 @@ class VTK:
         self.vtk_data.GetFieldData().AddArray(s)
 
 
-    def add_comments(self,comments):
+    def add_comments(self,
+                     comments: Union[str, List[str]]):
         """
         Add comments.
 
@@ -409,7 +428,7 @@ class VTK:
         self.set_comments(self.get_comments() + ([comments] if isinstance(comments,str) else comments))
 
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
         writer.SetHeader(f'# {util.execution_stamp("VTK")}')
@@ -436,28 +455,30 @@ class VTK:
                 width  = tk.winfo_screenwidth()
                 height = tk.winfo_screenheight()
                 tk.destroy()
-            except Exception as e:
+            except Exception:
                 width  = 1024
                 height =  768
 
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
+
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(230/255,150/255,68/255)
 
         ren = vtk.vtkRenderer()
+        ren.AddActor(actor)
+        ren.SetBackground(67/255,128/255,208/255)
 
         window = vtk.vtkRenderWindow()
         window.AddRenderer(ren)
-
-        ren.AddActor(actor)
-        ren.SetBackground(0.2,0.2,0.2)
-
         window.SetSize(width,height)
+        window.SetWindowName(util.execution_stamp('VTK','show'))
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
-
-        iren.Initialize()
-        window.Render()
-        iren.Start()
+        if os.name == 'posix' and 'DISPLAY' not in os.environ:
+            print('Found no rendering device')
+        else:
+            window.Render()
+            iren.Start()

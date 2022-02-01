@@ -5,7 +5,7 @@ All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 
-from typing import Sequence
+from typing import Sequence as _Sequence
 
 import numpy as _np
 
@@ -122,7 +122,9 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
     return _rotation.Rotation.from_matrix(_polar_decomposition(T,'R')[0])
 
 
-def strain(F: _np.ndarray, t: str, m: float) -> _np.ndarray:
+def strain(F: _np.ndarray,
+           t: str,
+           m: float) -> _np.ndarray:
     """
     Calculate strain tensor (Seth–Hill family).
 
@@ -162,7 +164,8 @@ def strain(F: _np.ndarray, t: str, m: float) -> _np.ndarray:
     return eps
 
 
-def stress_Cauchy(P: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def stress_Cauchy(P: _np.ndarray,
+                  F: _np.ndarray) -> _np.ndarray:
     """
     Calculate the Cauchy stress (true stress).
 
@@ -184,7 +187,8 @@ def stress_Cauchy(P: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
     return _tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
 
 
-def stress_second_Piola_Kirchhoff(P: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def stress_second_Piola_Kirchhoff(P: _np.ndarray,
+                                  F: _np.ndarray) -> _np.ndarray:
     """
     Calculate the second Piola-Kirchhoff stress.
 
@@ -243,7 +247,8 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
     return _polar_decomposition(T,'U')[0]
 
 
-def _polar_decomposition(T: _np.ndarray, requested: Sequence[str]) -> tuple:
+def _polar_decomposition(T: _np.ndarray,
+                         requested: _Sequence[str]) -> tuple:
     """
     Perform singular value decomposition.
 
@@ -251,7 +256,7 @@ def _polar_decomposition(T: _np.ndarray, requested: Sequence[str]) -> tuple:
     ----------
     T : numpy.ndarray, shape (...,3,3)
         Tensor of which the singular values are computed.
-    requested : iterable of str
+    requested : sequence of {'R', 'U', 'V'}
         Requested outputs: ‘R’ for the rotation tensor,
         ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
 
@@ -273,7 +278,8 @@ def _polar_decomposition(T: _np.ndarray, requested: Sequence[str]) -> tuple:
     return tuple(output)
 
 
-def _equivalent_Mises(T_sym: _np.ndarray, s: float) -> _np.ndarray:
+def _equivalent_Mises(T_sym: _np.ndarray,
+                      s: float) -> _np.ndarray:
     """
     Base equation for Mises equivalent of a stress or strain tensor.
 

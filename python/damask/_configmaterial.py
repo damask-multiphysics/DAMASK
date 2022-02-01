@@ -1,10 +1,14 @@
 import numpy as np
 import h5py
+from typing import Sequence, Dict, Any, Collection
 
+from ._typehints import FileHandle
 from . import Config
 from . import Rotation
 from . import Orientation
 from . import util
+from . import Table
+
 
 class ConfigMaterial(Config):
     """
@@ -17,7 +21,9 @@ class ConfigMaterial(Config):
 
     """
 
-    def __init__(self,d=None,**kwargs):
+    def __init__(self,
+                 d: Dict[str, Any] = None,
+                 **kwargs):
         """
         New material configuration.
 
@@ -30,14 +36,17 @@ class ConfigMaterial(Config):
             Initial content specified as pairs of key=value.
 
         """
+        default: Collection
         if d is None:
-            for section,default in {'material':[],'homogenization':{},'phase':{}}.items():
+            for section, default in {'material':[],'homogenization':{},'phase':{}}.items():
                 if section not in kwargs: kwargs.update({section:default})
 
         super().__init__(d,**kwargs)
 
 
-    def save(self,fname='material.yaml',**kwargs):
+    def save(self,
+             fname: FileHandle = 'material.yaml',
+             **kwargs):
         """
         Save to yaml file.
 
@@ -53,7 +62,8 @@ class ConfigMaterial(Config):
 
 
     @classmethod
-    def load(cls,fname='material.yaml'):
+    def load(cls,
+             fname: FileHandle = 'material.yaml') -> 'ConfigMaterial':
         """
         Load from yaml file.
 
@@ -72,10 +82,14 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_DREAM3D(fname,
-                     grain_data=None,cell_data=None,cell_ensemble_data='CellEnsembleData',
-                     phases='Phases',Euler_angles='EulerAngles',phase_names='PhaseName',
-                     base_group=None):
+    def load_DREAM3D(fname: str,
+                     grain_data: str = None,
+                     cell_data: str = None,
+                     cell_ensemble_data: str = 'CellEnsembleData',
+                     phases: str = 'Phases',
+                     Euler_angles: str = 'EulerAngles',
+                     phase_names: str = 'PhaseName',
+                     base_group: str = None) -> 'ConfigMaterial':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -154,7 +168,8 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table,**kwargs):
+    def from_table(table: Table,
+                   **kwargs) -> 'ConfigMaterial':
         """
         Generate from an ASCII table.
 
@@ -207,7 +222,7 @@ class ConfigMaterial(Config):
 
 
     @property
-    def is_complete(self):
+    def is_complete(self) -> bool:
         """
         Check for completeness.
 
@@ -267,12 +282,11 @@ class ConfigMaterial(Config):
             if homogenization - set(self['homogenization']):
                 print(f'Homogenization(s) {homogenization-set(self["homogenization"])} missing')
                 ok = False
-
         return ok
 
 
     @property
-    def is_valid(self):
+    def is_valid(self) -> bool:
         """
         Check for valid content.
 
@@ -316,7 +330,10 @@ class ConfigMaterial(Config):
         return ok
 
 
-    def material_rename_phase(self,mapping,ID=None,constituent=None):
+    def material_rename_phase(self,
+                              mapping: Dict[str, str],
+                              ID: Sequence[int] = None,
+                              constituent: Sequence[int] = None) -> 'ConfigMaterial':
         """
         Change phase name in material.
 
@@ -347,7 +364,9 @@ class ConfigMaterial(Config):
         return dup
 
 
-    def material_rename_homogenization(self,mapping,ID=None):
+    def material_rename_homogenization(self,
+                                       mapping: Dict[str, str],
+                                       ID: Sequence[int] = None) -> 'ConfigMaterial':
         """
         Change homogenization name in material.
 
@@ -374,7 +393,8 @@ class ConfigMaterial(Config):
         return dup
 
 
-    def material_add(self,**kwargs):
+    def material_add(self,
+                     **kwargs: Any) -> 'ConfigMaterial':
         """
         Add material entries.
 
@@ -453,7 +473,7 @@ class ConfigMaterial(Config):
             N = max(N,s[0]) if len(s)>0 else N
             n = max(n,s[1]) if len(s)>1 else n
 
-        mat = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
+        mat: Sequence[dict] = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
 
         if 'v' not in kwargs:
             shaped['v'] = np.broadcast_to(1/n,(N,n))
@@ -461,7 +481,7 @@ class ConfigMaterial(Config):
         map_shape = {'O':(N,n,4),'F_i':(N,n,3,3)}
         for k,v in shaped.items():
             target = map_shape.get(k,(N,n))
-            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape,target,mode='right')),target)
+            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape, target, mode = 'right')), target)
             for i in range(N):
                 if k in ['phase','O','v','F_i']:
                     for j in range(n):

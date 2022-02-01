@@ -671,7 +671,7 @@ class Rotation:
         ----------
         q : numpy.ndarray of shape (...,4)
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
-        accept_homomorph : boolean, optional
+        accept_homomorph : bool, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
         P : int ∈ {-1,1}, optional
@@ -706,7 +706,7 @@ class Rotation:
         phi : numpy.ndarray of shape (...,3)
             Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
             or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
-        degrees : boolean, optional
+        degrees : bool, optional
             Euler angles are given in degrees. Defaults to False.
 
         Notes
@@ -737,9 +737,9 @@ class Rotation:
         axis_angle : numpy.ndarray of shape (...,4)
             Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
             or ω ∈ [0,180] if degrees == True.
-        degrees : boolean, optional
+        degrees : bool, optional
             Angle ω is given in degrees. Defaults to False.
-        normalize: boolean, optional
+        normalize: bool, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
@@ -773,9 +773,9 @@ class Rotation:
         ----------
         basis : numpy.ndarray of shape (...,3,3)
             Three three-dimensional lattice basis vectors.
-        orthonormal : boolean, optional
+        orthonormal : bool, optional
             Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
-        reciprocal : boolean, optional
+        reciprocal : bool, optional
             Basis vectors are given in reciprocal (instead of real) space. Defaults to False.
 
         """
@@ -812,8 +812,7 @@ class Rotation:
         return Rotation.from_basis(R)
 
     @staticmethod
-    def from_parallel(a,b,
-                      **kwargs):
+    def from_parallel(a,b):
         """
         Initialize from pairs of two orthogonal lattice basis vectors.
 
@@ -851,7 +850,7 @@ class Rotation:
         ----------
         rho : numpy.ndarray of shape (...,4)
             Rodrigues–Frank vector (n_1, n_2, n_3, tan(ω/2)) with ǀnǀ = 1  and ω ∈ [0,π].
-        normalize : boolean, optional
+        normalize : bool, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
@@ -963,8 +962,7 @@ class Rotation:
                  N = 500,
                  degrees = True,
                  fractions = True,
-                 rng_seed = None,
-                 **kwargs):
+                 rng_seed = None):
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -977,9 +975,9 @@ class Rotation:
         N : integer, optional
             Number of discrete orientations to be sampled from the given ODF.
             Defaults to 500.
-        degrees : boolean, optional
+        degrees : bool, optional
             Euler space grid coordinates are in degrees. Defaults to True.
-        fractions : boolean, optional
+        fractions : bool, optional
             ODF values correspond to volume fractions, not probability densities.
             Defaults to True.
         rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -1033,7 +1031,7 @@ class Rotation:
             Standard deviation of (Gaussian) misorientation distribution.
         N : int, optional
             Number of samples. Defaults to 500.
-        degrees : boolean, optional
+        degrees : bool, optional
             sigma is given in degrees. Defaults to True.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
@@ -1072,7 +1070,7 @@ class Rotation:
             Defaults to 0.
         N : int, optional
             Number of samples. Defaults to 500.
-        degrees : boolean, optional
+        degrees : bool, optional
             sigma, alpha, and beta are given in degrees.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.

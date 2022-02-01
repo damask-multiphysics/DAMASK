@@ -20,9 +20,17 @@ module parallelization
   implicit none
   private
 
-  integer, protected, public :: &
-    worldrank = 0, &                                                                                !< MPI worldrank (/=0 for MPI simulations only)
-    worldsize = 1                                                                                   !< MPI worldsize (/=1 for MPI simulations only)
+#ifndef PETSC
+  integer, parameter, public :: &
+    MPI_INTEGER_KIND = pI64
+  integer(MPI_INTEGER_KIND), parameter, public :: &
+    worldrank = 0_MPI_INTEGER_KIND, &                                                               !< MPI dummy worldrank
+    worldsize = 1_MPI_INTEGER_KIND                                                                  !< MPI dummy worldsize
+#else
+  integer(MPI_INTEGER_KIND), protected, public :: &
+    worldrank = 0_MPI_INTEGER_KIND, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
+    worldsize = 1_MPI_INTEGER_KIND                                                                  !< MPI worldsize (/=1 for MPI simulations only)
+#endif
 
 #ifndef PETSC
 public :: parallelization_bcast_str
@@ -44,54 +52,68 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine parallelization_init
 
-  integer :: err, typeSize
+  integer(MPI_INTEGER_KIND) :: err_MPI, typeSize
+  character(len=4) :: rank_str
 !$ integer :: got_env, threadLevel
 !$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
 
 
-  PetscErrorCode :: petsc_err
+  PetscErrorCode :: err_PETSc
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   ! Otherwise, the first call to PETSc will do the initialization.
-  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err)
-  if (err /= 0)                        error stop 'MPI init failed'
+  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND)   error stop 'MPI init failed'
   if (threadLevel<MPI_THREAD_FUNNELED) error stop 'MPI library does not support OpenMP'
 #endif
 
 #if defined(DEBUG)
-  call PetscInitialize(PETSC_NULL_CHARACTER,petsc_err)
+  call PetscInitialize(PETSC_NULL_CHARACTER,err_PETSc)
 #else
-  call PetscInitializeNoArguments(petsc_err)
+  call PetscInitializeNoArguments(err_PETSc)
 #endif
-  CHKERRQ(petsc_err)
+  CHKERRQ(err_PETSc)
 
 #if defined(DEBUG) && defined(__INTEL_COMPILER)
-  call PetscSetFPTrap(PETSC_FP_TRAP_ON,petsc_err)
+  call PetscSetFPTrap(PETSC_FP_TRAP_ON,err_PETSc)
 #else
-  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,petsc_err)
+  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,err_PETSc)
 #endif
-  CHKERRQ(petsc_err)
+  CHKERRQ(err_PETSc)
 
-  call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err)
-  if (err /= 0)                              error stop 'Could not determine worldrank'
+  call MPI_Comm_rank(MPI_COMM_WORLD,worldrank,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) &
+    error stop 'Could not determine worldrank'
 
   if (worldrank == 0) print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
 
-  call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err)
-  if (err /= 0)                              error stop 'Could not determine worldsize'
+  call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) &
+    error stop 'Could not determine worldsize'
   if (worldrank == 0) print'(/,1x,a,i3)', 'MPI processes: ',worldsize
 
-  call MPI_Type_size(MPI_INTEGER,typeSize,err)
-  if (err /= 0)                              error stop 'Could not determine MPI integer size'
-  if (typeSize*8 /= bit_size(0))             error stop 'Mismatch between MPI and DAMASK integer'
+  call MPI_Type_size(MPI_INTEGER,typeSize,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) &
+    error stop 'Could not determine size of MPI_INTEGER'
+  if (typeSize*8_MPI_INTEGER_KIND /= int(bit_size(0),MPI_INTEGER_KIND)) &
+    error stop 'Mismatch between MPI_INTEGER and DAMASK default integer'
 
-  call MPI_Type_size(MPI_DOUBLE,typeSize,err)
-  if (err /= 0)                              error stop 'Could not determine MPI real size'
-  if (typeSize*8 /= storage_size(0.0_pReal)) error stop 'Mismatch between MPI and DAMASK real'
+  call MPI_Type_size(MPI_INTEGER8,typeSize,err_MPI)
+  if (err_MPI /= 0) &
+    error stop 'Could not determine size of MPI_INTEGER8'
+  if (typeSize*8_MPI_INTEGER_KIND /= int(bit_size(0_pI64),MPI_INTEGER_KIND)) &
+    error stop 'Mismatch between MPI_INTEGER8 and DAMASK pI64'
+
+  call MPI_Type_size(MPI_DOUBLE,typeSize,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) &
+    error stop 'Could not determine size of MPI_DOUBLE'
+  if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pReal),MPI_INTEGER_KIND)) &
+    error stop 'Mismatch between MPI_DOUBLE and DAMASK pReal'
 
   if (worldrank /= 0) then
     close(OUTPUT_UNIT)                                                                              ! disable output
+    write(rank_str,'(i4.4)') worldrank                                                              ! use for MPI debug filenames
     open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
   endif
 
@@ -119,14 +141,14 @@ subroutine parallelization_bcast_str(string)
 
   character(len=:), allocatable, intent(inout) :: string
 
-  integer :: strlen, ierr                                                                           ! pI64 for strlen not supported by MPI
+  integer(MPI_INTEGER_KIND) :: strlen, err_MPI
 
 
-  if (worldrank == 0) strlen = len(string)
-  call MPI_Bcast(strlen,1,MPI_INTEGER,0,MPI_COMM_WORLD, ierr)
+  if (worldrank == 0) strlen = len(string,MPI_INTEGER_KIND)
+  call MPI_Bcast(strlen,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (worldrank /= 0) allocate(character(len=strlen)::string)
 
-  call MPI_Bcast(string,strlen,MPI_CHARACTER,0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(string,strlen,MPI_CHARACTER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
 
 
 end subroutine parallelization_bcast_str

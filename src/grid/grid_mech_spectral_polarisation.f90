@@ -55,7 +55,7 @@ module grid_mechanical_spectral_polarisation
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM   :: da
-  SNES :: snes
+  SNES :: SNES_mechanical
   Vec  :: solution_vec
 
 !--------------------------------------------------------------------------------------------------
@@ -108,7 +108,8 @@ contains
 subroutine grid_mechanical_spectral_polarisation_init
 
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
-  PetscErrorCode :: ierr
+  PetscErrorCode :: err_PETSc
+  integer(MPI_INTEGER_KIND) :: err_MPI
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     FandF_tau, &                                                                                    ! overall pointer to solution data
     F, &                                                                                            ! specific (sub)pointer
@@ -163,10 +164,10 @@ subroutine grid_mechanical_spectral_polarisation_init
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type ngmres',ierr)
-  CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
-  CHKERRQ(ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type ngmres',err_PETSc)
+  CHKERRQ(err_PETSc)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
@@ -177,33 +178,42 @@ subroutine grid_mechanical_spectral_polarisation_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
-  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
-  call SNESSetOptionsPrefix(snes,'mechanical_',ierr);CHKERRQ(ierr)
-  localK            = 0
-  localK(worldrank) = grid3
-  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,ierr)
+  call SNESCreate(PETSC_COMM_WORLD,SNES_mechanical,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
+  CHKERRQ(err_PETSc)
+  localK            = 0_pPetscInt
+  localK(worldrank) = int(grid3,pPetscInt)
+  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         grid(1),grid(2),grid(3), &                                                                 ! global grid
-         1 , 1, worldsize, &
-         18, 0, &                                                                                   ! #dof (F tensor), ghost boundary width (domain overlap)
-         [grid(1)],[grid(2)],localK, &                                                              ! local grid
-         da,ierr)                                                                                   ! handle, error
-  CHKERRQ(ierr)
-  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                       ! connect snes to da
-  call DMsetFromOptions(da,ierr); CHKERRQ(ierr)
-  call DMsetUp(da,ierr); CHKERRQ(ierr)
-  call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                    ! global solution vector (grid x 18, i.e. every def grad tensor)
-  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)                 ! residual vector of same shape as solution vector
-  CHKERRQ(ierr)
-  call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)              ! specify custom convergence check function "converged"
-  CHKERRQ(ierr)
-  call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                 ! pull it all together with additional CLI arguments
+         int(grid(1),pPetscInt),int(grid(2),pPetscInt),int(grid(3),pPetscInt), &                    ! global grid
+         1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
+         18_pPetscInt, 0_pPetscInt, &                                                               ! #dof (2xtensor), ghost boundary width (domain overlap)
+         [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
+         da,err_PETSc)                                                                              ! handle, error
+  CHKERRQ(err_PETSc)
+  call DMsetFromOptions(da,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMsetUp(da,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call DMcreateGlobalVector(da,solution_vec,err_PETSc)                                              ! global solution vector (grid x 18, i.e. every def grad tensor)
+  CHKERRQ(err_PETSc)
+  call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)            ! residual vector of same shape as solution vector
+  CHKERRQ(err_PETSc)
+  call SNESsetConvergenceTest(SNES_mechanical,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,err_PETSc) ! specify custom convergence check function "converged"
+  CHKERRQ(err_PETSc)
+  call SNESSetDM(SNES_mechanical,da,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESsetFromOptions(SNES_mechanical,err_PETSc)                                                ! pull it all together with additional CLI arguments
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                             ! places pointer on PETSc data
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                      ! places pointer on PETSc data
+  CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
@@ -214,17 +224,17 @@ subroutine grid_mechanical_spectral_polarisation_init
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
-    call MPI_Bcast(P_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if (ierr /=0) error stop 'MPI error'
+    call MPI_Bcast(P_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
-    call MPI_Bcast(F_aim,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if (ierr /=0) error stop 'MPI error'
+    call MPI_Bcast(F_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
-    call MPI_Bcast(F_aim_lastInc,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if (ierr /=0) error stop 'MPI error'
+    call MPI_Bcast(F_aim_lastInc,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
-    call MPI_Bcast(F_aimDot,9,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if (ierr /=0) error stop 'MPI error'
+    call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F,groupHandle,'F')
     call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
     call HDF5_read(F_tau,groupHandle,'F_tau')
@@ -242,24 +252,28 @@ subroutine grid_mechanical_spectral_polarisation_init
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                  ! deassociate pointer
+  CHKERRQ(err_PETSc)
 
   restartRead2: if (interface_restartInc > 0) then
     print'(1x,a,i0,a)', 'reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
-    call MPI_Bcast(C_volAvg,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if (ierr /=0) error stop 'MPI error'
+    call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-    call MPI_Bcast(C_volAvgLastInc,81,MPI_DOUBLE,0,MPI_COMM_WORLD,ierr)
-    if (ierr /=0) error stop 'MPI error'
+    call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
     call MPI_File_open(MPI_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
-                       MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,ierr)
-    call MPI_File_read(fileUnit,C_minMaxAvg,81,MPI_DOUBLE,MPI_STATUS_IGNORE,ierr)
-    call MPI_File_close(fileUnit,ierr)
+                       MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_STATUS_IGNORE,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call MPI_File_close(fileUnit,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if restartRead2
 
   call utilities_updateGamma(C_minMaxAvg)
@@ -279,11 +293,11 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
 ! input data for solution
   character(len=*), intent(in) :: &
     incInfoIn
-  type(tSolutionState)                    :: &
+  type(tSolutionState) :: &
     solution
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
-  PetscErrorCode :: ierr
+  PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
 
   incInfo = incInfoIn
@@ -297,13 +311,10 @@ function grid_mechanical_spectral_polarisation_solution(incInfoIn) result(soluti
     S_scale = math_invSym3333(C_minMaxAvg)
   end if
 
-!--------------------------------------------------------------------------------------------------
-! solve BVP
-  call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
-
-!--------------------------------------------------------------------------------------------------
-! check convergence
-  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
+  call SNESSolve(SNES_mechanical,PETSC_NULL_VEC,solution_vec,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESGetConvergedReason(SNES_mechanical,reason,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
@@ -333,13 +344,14 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     deformation_BC
   type(rotation),           intent(in) :: &
     rotation_BC
-  PetscErrorCode :: ierr
+  PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: FandF_tau, F, F_tau
   integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
 
 
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
@@ -402,7 +414,8 @@ subroutine grid_mechanical_spectral_polarisation_forward(cutBack,guess,Delta_t,D
     end do; end do; end do
   end if
 
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data
@@ -418,12 +431,14 @@ end subroutine grid_mechanical_spectral_polarisation_forward
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_polarisation_updateCoords
 
-  PetscErrorCode :: ierr
+  PetscErrorCode :: err_PETSc
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau
 
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
   call utilities_updateCoords(FandF_tau(0:8,:,:,:))
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_polarisation_updateCoords
 
@@ -433,11 +448,12 @@ end subroutine grid_mechanical_spectral_polarisation_updateCoords
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_polarisation_restartWrite
 
-  PetscErrorCode :: ierr
+  PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
 
-  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
@@ -467,7 +483,8 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   if (num%update_gamma) call utilities_saveReferenceStiffness
 
-  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
+  call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)
+  CHKERRQ(err_PETSc)
 
 end subroutine grid_mechanical_spectral_polarisation_restartWrite
 
@@ -475,7 +492,7 @@ end subroutine grid_mechanical_spectral_polarisation_restartWrite
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,ierr)
+subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,err_PETSc)
 
   SNES :: snes_local
   PetscInt,  intent(in) :: PETScIter
@@ -485,7 +502,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     devNull3
   SNESConvergedReason :: reason
   PetscObject :: dummy
-  PetscErrorCode :: ierr
+  PetscErrorCode :: err_PETSc
   real(pReal) :: &
     curlTol, &
     divTol, &
@@ -513,6 +530,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
+  err_PETSc = 0
 
 end subroutine converged
 
@@ -521,42 +539,46 @@ end subroutine converged
 !> @brief forms the residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, FandF_tau, &
-                        residuum, dummy,ierr)
+                        r, dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
   PetscScalar, dimension(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE), &
     target, intent(in) :: FandF_tau
   PetscScalar, dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE),&
-    target,  intent(out) :: residuum                                                                !< residuum field
+    target, intent(out) :: r                                                                        !< residuum field
   PetscScalar, pointer, dimension(:,:,:,:,:) :: &
     F, &
     F_tau, &
-    residual_F, &
-    residual_F_tau
+    r_F, &
+    r_F_tau
   PetscInt :: &
     PETScIter, &
     nfuncs
   PetscObject :: dummy
-  PetscErrorCode :: ierr
- integer :: &
+  PetscErrorCode :: err_PETSc
+  integer(MPI_INTEGER_KIND) :: err_MPI
+  integer :: &
     i, j, k, e
 
 !---------------------------------------------------------------------------------------------------
 
-  F              => FandF_tau(1:3,1:3,1,&
-                              XG_RANGE,YG_RANGE,ZG_RANGE)
-  F_tau          => FandF_tau(1:3,1:3,2,&
-                              XG_RANGE,YG_RANGE,ZG_RANGE)
-  residual_F     => residuum(1:3,1:3,1,&
-                             X_RANGE, Y_RANGE, Z_RANGE)
-  residual_F_tau => residuum(1:3,1:3,2,&
-                             X_RANGE, Y_RANGE, Z_RANGE)
+  F       => FandF_tau(1:3,1:3,1,&
+                       XG_RANGE,YG_RANGE,ZG_RANGE)
+  F_tau   => FandF_tau(1:3,1:3,2,&
+                       XG_RANGE,YG_RANGE,ZG_RANGE)
+  r_F     => r(1:3,1:3,1,&
+               X_RANGE, Y_RANGE, Z_RANGE)
+  r_F_tau => r(1:3,1:3,2,&
+               X_RANGE, Y_RANGE, Z_RANGE)
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
-  call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,ierr)
+  call MPI_Allreduce(MPI_IN_PLACE,F_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
-  call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
+  call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
@@ -590,14 +612,14 @@ subroutine formResidual(in, FandF_tau, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  residual_F_tau = num%beta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
+  r_F_tau = num%beta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call utilities_constitutiveResponse(residual_F, &                                                 ! "residuum" gets field of first PK stress (to save memory)
+  call utilities_constitutiveResponse(r_F, &                                                        ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
-                                      F - residual_F_tau/num%beta,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,ierr)
+                                      F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
+  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
@@ -607,7 +629,7 @@ subroutine formResidual(in, FandF_tau, &
                             params%stress_mask)))
 ! calculate divergence
   tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                !< stress field in disguise
+  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = r_F                                       !< stress field in disguise
   call utilities_FFTtensorForward
   err_div = utilities_divergenceRMS()                                                               !< root mean squared error in divergence of stress
 
@@ -616,11 +638,11 @@ subroutine formResidual(in, FandF_tau, &
   e = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
     e = e + 1
-    residual_F(1:3,1:3,i,j,k) = &
+    r_F(1:3,1:3,i,j,k) = &
       math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
-                       residual_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
+                       r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
-                       + residual_F_tau(1:3,1:3,i,j,k)
+                       + r_F_tau(1:3,1:3,i,j,k)
   end do; end do; end do
 
 !--------------------------------------------------------------------------------------------------

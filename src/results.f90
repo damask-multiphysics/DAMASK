@@ -497,16 +497,17 @@ subroutine results_mapping_phase(ID,entry,label)
   integer,          dimension(:,:), intent(in) :: entry                                             !< phase entry at (co,ce)
   character(len=*), dimension(:),   intent(in) :: label                                             !< label of each phase section
 
-  integer, dimension(size(entry,1),size(entry,2)) :: &
+  integer(pI64), dimension(size(entry,1),size(entry,2)) :: &
     entryGlobal
-  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
-  integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
+  integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                !< offset in entry counting per process
+  integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
     totalShape                                                                                      !< shape of the dataset (all processes)
 
   integer(HID_T) :: &
+    pI64_t, &                                                                                       !< HDF5 type for pI64 (8 bit integer)
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
     label_id, &                                                                                     !< identifier of label (string) in compound data type
@@ -518,7 +519,8 @@ subroutine results_mapping_phase(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, ce, co
+  integer         :: hdferr, ce, co
+  integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   writeSize = 0
@@ -528,28 +530,28 @@ subroutine results_mapping_phase(ID,entry,label)
   if(hdferr < 0) error stop 'HDF5 error'
 
 #ifndef PETSC
-  entryGlobal = entry -1                                                                            ! 0-based
+  entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  entryOffset = 0
+  entryOffset = 0_pI64
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
-      entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1
+      entryOffset(ID(co,ce),worldrank) = entryOffset(ID(co,ce),worldrank) +1_pI64
     end do
   end do
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
-      entryGlobal(co,ce) = entry(co,ce) -1 + entryOffset(ID(co,ce),worldrank)
+      entryGlobal(co,ce) = int(entry(co,ce),pI64) -1_pI64 + entryOffset(ID(co,ce),worldrank)
     end do
   end do
 #endif
@@ -567,14 +569,15 @@ subroutine results_mapping_phase(ID,entry,label)
   call h5tget_size_f(dt_id, type_size_string, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, hdferr)
+  pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
+  call h5tget_size_f(pI64_t, type_size_int, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
@@ -586,7 +589,7 @@ subroutine results_mapping_phase(ID,entry,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
@@ -650,16 +653,17 @@ subroutine results_mapping_homogenization(ID,entry,label)
   integer,          dimension(:), intent(in) :: entry                                               !< homogenization entry at (ce)
   character(len=*), dimension(:), intent(in) :: label                                               !< label of each homogenization section
 
-  integer, dimension(size(entry,1)) :: &
+  integer(pI64), dimension(size(entry,1)) :: &
     entryGlobal
-  integer, dimension(size(label),0:worldsize-1) :: entryOffset                                      !< offset in entry counting per process
-  integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
+  integer(pI64), dimension(size(label),0:worldsize-1) :: entryOffset                                !< offset in entry counting per process
+  integer, dimension(0:worldsize-1) :: writeSize                                                    !< amount of data written per process
   integer(HSIZE_T), dimension(1) :: &
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
     totalShape                                                                                      !< shape of the dataset (all processes)
 
   integer(HID_T) :: &
+    pI64_t, &                                                                                       !< HDF5 type for pI64 (8 bit integer)
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
     label_id, &                                                                                     !< identifier of label (string) in compound data type
@@ -671,7 +675,8 @@ subroutine results_mapping_homogenization(ID,entry,label)
     dt_id
 
   integer(SIZE_T) :: type_size_string, type_size_int
-  integer         :: hdferr, ierr, ce
+  integer         :: hdferr, ce
+  integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   writeSize = 0
@@ -681,25 +686,25 @@ subroutine results_mapping_homogenization(ID,entry,label)
   if(hdferr < 0) error stop 'HDF5 error'
 
 #ifndef PETSC
-  entryGlobal = entry -1                                                                            ! 0-based
+  entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
 #else
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)          ! get output at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  entryOffset = 0
+  entryOffset = 0_pI64
   do ce = 1, size(ID,1)
-    entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1
+    entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1_pI64
   end do
-  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INT,MPI_SUM,MPI_COMM_WORLD,ierr)! get offset at each process
-  if(ierr /= 0) error stop 'MPI error'
+  call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
+  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
-    entryGlobal(ce) = entry(ce) -1 + entryOffset(ID(ce),worldrank)
+    entryGlobal(ce) = int(entry(ce),pI64) -1_pI64 + entryOffset(ID(ce),worldrank)
   end do
 #endif
 
@@ -716,14 +721,15 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call h5tget_size_f(dt_id, type_size_string, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
-  call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, hdferr)
+  pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
+  call h5tget_size_f(pI64_t, type_size_int, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(dtype_id, 'entry', type_size_string, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
@@ -735,7 +741,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
 
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+  call h5tinsert_f(entry_id, 'entry', 0_SIZE_T, pI64_t, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
   call h5tclose_f(dt_id, hdferr)
