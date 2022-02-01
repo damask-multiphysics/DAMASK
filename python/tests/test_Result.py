@@ -367,7 +367,7 @@ class TestResult:
 
     @pytest.mark.parametrize('mode',['cell','node'])
     def test_coordinates(self,default,mode):
-         if   mode == 'cell':
+         if   mode == 'cell':                                                                       # noqa
              a = grid_filters.coordinates0_point(default.cells,default.size,default.origin)
              b = default.coordinates0_point.reshape(tuple(default.cells)+(3,),order='F')
          elif mode == 'node':
@@ -421,7 +421,7 @@ class TestResult:
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
             for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
-                 single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')
+                 single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')  # noqa
         fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         os.chdir(tmp_path)
         single_phase.export_XDMF()

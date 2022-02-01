@@ -1076,7 +1076,7 @@ class TestRotation:
     def test_from_fiber_component(self,N,sigma):
         p = []
         for run in range(5):
-             alpha = np.random.random()*2*np.pi,np.arccos(np.random.random())
+             alpha = np.random.random()*2*np.pi,np.arccos(np.random.random())                       # noqa
              beta  = np.random.random()*2*np.pi,np.arccos(np.random.random())
 
              f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])

@@ -173,9 +173,9 @@ class TestVTK:
         polyData = VTK.from_poly_data(points)
         polyData.add(points,'coordinates')
         if update:
-             polyData.save(ref_path/'polyData')
+             polyData.save(ref_path/'polyData')                                                     # noqa
         else:
-             reference = VTK.load(ref_path/'polyData.vtp')
+             reference = VTK.load(ref_path/'polyData.vtp')                                          # noqa
              assert polyData.__repr__() == reference.__repr__() and \
                     np.allclose(polyData.get('coordinates'),points)
 
@@ -189,8 +189,8 @@ class TestVTK:
         rectilinearGrid.add(np.ascontiguousarray(c),'cell')
         rectilinearGrid.add(np.ascontiguousarray(n),'node')
         if update:
-             rectilinearGrid.save(ref_path/'rectilinearGrid')
+             rectilinearGrid.save(ref_path/'rectilinearGrid')                                       # noqa
         else:
-             reference = VTK.load(ref_path/'rectilinearGrid.vtr')
+             reference = VTK.load(ref_path/'rectilinearGrid.vtr')                                   # noqa
              assert rectilinearGrid.__repr__() == reference.__repr__() and \
                     np.allclose(rectilinearGrid.get('cell'),c)
