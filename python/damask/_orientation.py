@@ -657,7 +657,7 @@ class Orientation(Rotation,Crystal):
         """
         eq  = self.equivalent
         blend = util.shapeblender(eq.shape,np.array(vector).shape[:-1])
-        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(np.array(vector),blend+(3,))
+        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(np.array(vector),blend+(3,)) #type: ignore
         ok    = self.in_SST(poles,proper=proper)
         ok   &= np.cumsum(ok,axis=0) == 1
         loc   = np.where(ok)
@@ -886,8 +886,7 @@ class Orientation(Rotation,Crystal):
             blend += sym_ops.shape
             v = sym_ops.broadcast_to(shape) \
               @ np.broadcast_to(v.reshape(util.shapeshifter(v.shape,shape+(3,))),shape+(3,))
-        return ~(self.broadcast_to(blend)) \
-               @ np.broadcast_to(v,blend+(3,))
+        return ~(self.broadcast_to(blend))@ np.broadcast_to(v,blend+(3,)) #type: ignore
 
 
     def Schmid(self, *,
