@@ -997,7 +997,7 @@ class Rotation:
                  N: int = 500,
                  degrees: bool = True,
                  fractions: bool = True,
-                 rng_seed: Union[None, int, IntSequence] = None) -> 'Rotation':
+                 rng_seed: Union[int, IntSequence] = None) -> 'Rotation':
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -1054,7 +1054,7 @@ class Rotation:
                                  sigma: float,
                                  N: int = 500,
                                  degrees: bool = True,
-                                 rng_seed: Union[None, int, IntSequence] = None) -> 'Rotation':
+                                 rng_seed: Union[int, IntSequence] = None) -> 'Rotation':
         """
         Calculate set of rotations with Gaussian distribution around center.
 

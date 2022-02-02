@@ -148,7 +148,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if not isinstance(other, Orientation):
-            raise NotImplemented
+            return NotImplemented
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
