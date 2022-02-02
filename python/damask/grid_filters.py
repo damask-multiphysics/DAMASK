@@ -12,21 +12,25 @@ the following operations are required for tensorial data:
 
 """
 
-from typing import Sequence, Tuple, Union
+from typing import Tuple as _Tuple
 
 from scipy import spatial as _spatial
 import numpy as _np
 
+from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
 
-def _ks(size: _np.ndarray, cells: Union[_np.ndarray,Sequence[int]], first_order: bool = False) -> _np.ndarray:
+
+def _ks(size: _FloatSequence,
+        cells: _IntSequence,
+        first_order: bool = False) -> _np.ndarray:
     """
     Get wave numbers operator.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    cells : numpy.ndarray of shape (3)
+    cells : sequence of int, len (3)
         Number of cells.
     first_order : bool, optional
         Correction for first order derivatives, defaults to False.
@@ -45,20 +49,21 @@ def _ks(size: _np.ndarray, cells: Union[_np.ndarray,Sequence[int]], first_order:
     return _np.stack(_np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij'), axis=-1)
 
 
-def curl(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
+def curl(size: _FloatSequence,
+         f: _np.ndarray) -> _np.ndarray:
     u"""
     Calculate curl of a vector or tensor field in Fourier space.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    f : numpy.ndarray of shape (:,:,:,3) or (:,:,:,3,3)
+    f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
         Periodic field of which the curl is calculated.
 
     Returns
     -------
-    ∇ × f : numpy.ndarray
+    ∇ × f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
         Curl of f.
 
     """
@@ -76,20 +81,21 @@ def curl(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(curl_,axes=(0,1,2),s=f.shape[:3])
 
 
-def divergence(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
+def divergence(size: _FloatSequence,
+               f: _np.ndarray) -> _np.ndarray:
     u"""
     Calculate divergence of a vector or tensor field in Fourier space.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    f : numpy.ndarray of shape (:,:,:,3) or (:,:,:,3,3)
+    f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
         Periodic field of which the divergence is calculated.
 
     Returns
     -------
-    ∇ · f : numpy.ndarray
+    ∇ · f : numpy.ndarray, shape (:,:,:,1) or (:,:,:,3)
         Divergence of f.
 
     """
@@ -103,20 +109,21 @@ def divergence(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(div_,axes=(0,1,2),s=f.shape[:3])
 
 
-def gradient(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
+def gradient(size: _FloatSequence,
+             f: _np.ndarray) -> _np.ndarray:
     u"""
-    Calculate gradient of a scalar or vector fieldin Fourier space.
+    Calculate gradient of a scalar or vector field in Fourier space.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    f : numpy.ndarray of shape (:,:,:,1) or (:,:,:,3)
+    f : numpy.ndarray, shape (:,:,:,1) or (:,:,:,3)
         Periodic field of which the gradient is calculated.
 
     Returns
     -------
-    ∇ f : numpy.ndarray
+    ∇ f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
         Divergence of f.
 
     """
@@ -130,29 +137,30 @@ def gradient(size: _np.ndarray, f: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(grad_,axes=(0,1,2),s=f.shape[:3])
 
 
-def coordinates0_point(cells: Union[ _np.ndarray,Sequence[int]],
-                       size: _np.ndarray,
-                       origin: _np.ndarray = _np.zeros(3)) -> _np.ndarray:
+def coordinates0_point(cells: _IntSequence,
+                       size: _FloatSequence,
+                       origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
     """
     Cell center positions (undeformed).
 
     Parameters
     ----------
-    cells : numpy.ndarray of shape (3)
+    cells : sequence of int, len (3)
         Number of cells.
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    origin : numpy.ndarray, optional
+    origin : sequence of float, len(3), optional
         Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     Returns
     -------
-    x_p_0 : numpy.ndarray
+    x_p_0 : numpy.ndarray, shape (:,:,:,3)
         Undeformed cell center coordinates.
 
     """
-    start = origin        + size/_np.array(cells)*.5
-    end   = origin + size - size/_np.array(cells)*.5
+    size_ = _np.array(size,float)
+    start = origin         + size_/_np.array(cells,int)*.5
+    end   = origin + size_ - size_/_np.array(cells,int)*.5
 
     return _np.stack(_np.meshgrid(_np.linspace(start[0],end[0],cells[0]),
                                   _np.linspace(start[1],end[1],cells[1]),
@@ -160,24 +168,25 @@ def coordinates0_point(cells: Union[ _np.ndarray,Sequence[int]],
                      axis = -1)
 
 
-def displacement_fluct_point(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def displacement_fluct_point(size: _FloatSequence,
+                             F: _np.ndarray) -> _np.ndarray:
     """
     Cell center displacement field from fluctuation part of the deformation gradient field.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
 
     Returns
     -------
-    u_p_fluct : numpy.ndarray
+    u_p_fluct : numpy.ndarray, shape (:,:,:,3)
         Fluctuating part of the cell center displacements.
 
     """
-    integrator = 0.5j*size/_np.pi
+    integrator = 0.5j*_np.array(size,float)/_np.pi
 
     k_s = _ks(size,F.shape[:3],False)
     k_s_squared = _np.einsum('...l,...l',k_s,k_s)
@@ -192,20 +201,21 @@ def displacement_fluct_point(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
 
-def displacement_avg_point(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def displacement_avg_point(size: _FloatSequence,
+                           F: _np.ndarray) -> _np.ndarray:
     """
     Cell center displacement field from average part of the deformation gradient field.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
 
     Returns
     -------
-    u_p_avg : numpy.ndarray
+    u_p_avg : numpy.ndarray, shape (:,:,:,3)
         Average part of the cell center displacements.
 
     """
@@ -213,42 +223,45 @@ def displacement_avg_point(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
     return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_point(F.shape[:3],size))
 
 
-def displacement_point(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def displacement_point(size: _FloatSequence,
+                       F: _np.ndarray) -> _np.ndarray:
     """
     Cell center displacement field from deformation gradient field.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
 
     Returns
     -------
-    u_p : numpy.ndarray
+    u_p : numpy.ndarray, shape (:,:,:,3)
         Cell center displacements.
 
     """
     return displacement_avg_point(size,F) + displacement_fluct_point(size,F)
 
 
-def coordinates_point(size: _np.ndarray, F: _np.ndarray, origin: _np.ndarray = _np.zeros(3)) -> _np.ndarray:
+def coordinates_point(size: _FloatSequence,
+                      F: _np.ndarray,
+                      origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
     """
     Cell center positions.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
-    origin : numpy.ndarray of shape (3), optional
+    origin : sequence of float, len(3), optional
         Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     Returns
     -------
-    x_p : numpy.ndarray
+    x_p : numpy.ndarray, shape (:,:,:,3)
         Cell center coordinates.
 
     """
@@ -256,14 +269,14 @@ def coordinates_point(size: _np.ndarray, F: _np.ndarray, origin: _np.ndarray = _
 
 
 def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
-                                       ordered: bool = True) -> Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
+                                       ordered: bool = True) -> _Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of point positions.
 
     Parameters
     ----------
-    coordinates0 : numpy.ndarray of shape (:,3)
-        Undeformed cell coordinates.
+    coordinates0 : numpy.ndarray, shape (:,3)
+        Undeformed cell center coordinates.
     ordered : bool, optional
         Expect coordinates0 data to be ordered (x fast, z slow).
         Defaults to True.
@@ -277,7 +290,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
-    cells     = _np.array(list(map(len,coords)),'i')
+    cells     = _np.array(list(map(len,coords)),int)
     size      = cells/_np.maximum(cells-1,1) * (maxcorner-mincorner)
     delta     = size/cells
     origin    = mincorner - delta*.5
@@ -305,24 +318,24 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     return (cells,size,origin)
 
 
-def coordinates0_node(cells: Union[_np.ndarray,Sequence[int]],
-                      size: _np.ndarray,
-                      origin: _np.ndarray = _np.zeros(3)) -> _np.ndarray:
+def coordinates0_node(cells: _IntSequence,
+                      size: _FloatSequence,
+                      origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
     """
     Nodal positions (undeformed).
 
     Parameters
     ----------
-    cells : numpy.ndarray of shape (3)
+    cells : sequence of int, len (3)
         Number of cells.
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    origin : numpy.ndarray of shape (3), optional
+    origin : sequence of float, len(3), optional
         Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     Returns
     -------
-    x_n_0 : numpy.ndarray
+    x_n_0 : numpy.ndarray, shape (:,:,:,3)
         Undeformed nodal coordinates.
 
     """
@@ -332,40 +345,42 @@ def coordinates0_node(cells: Union[_np.ndarray,Sequence[int]],
                      axis = -1)
 
 
-def displacement_fluct_node(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def displacement_fluct_node(size: _FloatSequence,
+                            F: _np.ndarray) -> _np.ndarray:
     """
     Nodal displacement field from fluctuation part of the deformation gradient field.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
 
     Returns
     -------
-    u_n_fluct : numpy.ndarray
+    u_n_fluct : numpy.ndarray, shape (:,:,:,3)
         Fluctuating part of the nodal displacements.
 
     """
     return point_to_node(displacement_fluct_point(size,F))
 
 
-def displacement_avg_node(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def displacement_avg_node(size: _FloatSequence,
+                          F: _np.ndarray) -> _np.ndarray:
     """
     Nodal displacement field from average part of the deformation gradient field.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
 
     Returns
     -------
-    u_n_avg : numpy.ndarray
+    u_n_avg : numpy.ndarray, shape (:,:,:,3)
         Average part of the nodal displacements.
 
     """
@@ -373,42 +388,45 @@ def displacement_avg_node(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
     return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_node(F.shape[:3],size))
 
 
-def displacement_node(size: _np.ndarray, F: _np.ndarray) -> _np.ndarray:
+def displacement_node(size: _FloatSequence,
+                      F: _np.ndarray) -> _np.ndarray:
     """
     Nodal displacement field from deformation gradient field.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
 
     Returns
     -------
-    u_p : numpy.ndarray
+    u_p : numpy.ndarray, shape (:,:,:,3)
         Nodal displacements.
 
     """
     return displacement_avg_node(size,F) + displacement_fluct_node(size,F)
 
 
-def coordinates_node(size: _np.ndarray, F: _np.ndarray, origin: _np.ndarray = _np.zeros(3)) -> _np.ndarray:
+def coordinates_node(size: _FloatSequence,
+                     F: _np.ndarray,
+                     origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
     """
     Nodal positions.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size of the periodic field.
-    F : numpy.ndarray
+    F : numpy.ndarray, shape (:,:,:,3,3)
         Deformation gradient field.
-    origin : numpy.ndarray of shape (3), optional
+    origin : sequence of float, len(3), optional
         Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     Returns
     -------
-    x_n : numpy.ndarray
+    x_n : numpy.ndarray, shape (:,:,:,3)
         Nodal coordinates.
 
     """
@@ -416,13 +434,13 @@ def coordinates_node(size: _np.ndarray, F: _np.ndarray, origin: _np.ndarray = _n
 
 
 def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
-                                      ordered: bool = True) -> Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
+                                      ordered: bool = True) -> _Tuple[_np.ndarray,_np.ndarray,_np.ndarray]:
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
     Parameters
     ----------
-    coordinates0 : numpy.ndarray of shape (:,3)
+    coordinates0 : numpy.ndarray, shape (:,3)
         Undeformed nodal coordinates.
     ordered : bool, optional
         Expect coordinates0 data to be ordered (x fast, z slow).
@@ -437,7 +455,7 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
-    cells     = _np.array(list(map(len,coords)),'i') - 1
+    cells     = _np.array(list(map(len,coords)),int) - 1
     size      = maxcorner-mincorner
     origin    = mincorner
 
@@ -463,12 +481,12 @@ def point_to_node(cell_data: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    cell_data : numpy.ndarray of shape (:,:,:,...)
+    cell_data : numpy.ndarray, shape (:,:,:,...)
         Data defined on the cell centers of a periodic grid.
 
     Returns
     -------
-    node_data : numpy.ndarray of shape (:,:,:,...)
+    node_data : numpy.ndarray, shape (:,:,:,...)
         Data defined on the nodes of a periodic grid.
 
     """
@@ -485,12 +503,12 @@ def node_to_point(node_data: _np.ndarray) -> _np.ndarray:
 
     Parameters
     ----------
-    node_data : numpy.ndarray of shape (:,:,:,...)
+    node_data : numpy.ndarray, shape (:,:,:,...)
         Data defined on the nodes of a periodic grid.
 
     Returns
     -------
-    cell_data : numpy.ndarray of shape (:,:,:,...)
+    cell_data : numpy.ndarray, shape (:,:,:,...)
         Data defined on the cell centers of a periodic grid.
 
     """
@@ -507,7 +525,7 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
 
     Parameters
     ----------
-    coordinates0 : numpy.ndarray
+    coordinates0 : numpy.ndarray, shape (:,3)
         Array of undeformed cell coordinates.
 
     Returns
@@ -523,17 +541,19 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
         return False
 
 
-def regrid(size: _np.ndarray, F: _np.ndarray, cells: Union[_np.ndarray,Sequence[int]]) -> _np.ndarray:
+def regrid(size: _FloatSequence,
+           F: _np.ndarray,
+           cells: _IntSequence) -> _np.ndarray:
     """
     Return mapping from coordinates in deformed configuration to a regular grid.
 
     Parameters
     ----------
-    size : numpy.ndarray of shape (3)
+    size : sequence of float, len (3)
         Physical size.
-    F : numpy.ndarray of shape (:,:,:,3,3)
+    F : numpy.ndarray, shape (:,:,:,3,3), shape (:,:,:,3,3)
         Deformation gradient field.
-    cells : numpy.ndarray of shape (3)
+    cells : sequence of int, len (3)
         Cell count along x,y,z of remapping grid.
 
     """

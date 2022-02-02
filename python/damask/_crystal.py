@@ -33,9 +33,9 @@ class Crystal():
     def __init__(self,*,
                  family = None,
                  lattice = None,
-                 a = None,b = None,c = None,
-                 alpha = None,beta = None,gamma = None,
-                 degrees = False):
+                 a: float = None, b: float = None, c: float = None,
+                 alpha: float = None, beta: float = None, gamma: float = None,
+                 degrees: bool = False):
         """
         Representation of crystal in terms of crystal family or Bravais lattice.
 
@@ -62,7 +62,7 @@ class Crystal():
             Angles are given in degrees. Defaults to False.
 
         """
-        if family not in [None] + list(lattice_symmetries.values()):
+        if family is not None and family not in list(lattice_symmetries.values()):
             raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
             raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
@@ -107,9 +107,6 @@ class Crystal():
             if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
               >= np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
                 raise ValueError ('each lattice angle must be less than sum of others')
-        else:
-            self.a = self.b = self.c = None
-            self.alpha = self.beta = self.gamma = None
 
 
     def __repr__(self):
@@ -122,7 +119,8 @@ class Crystal():
                           'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
 
 
-    def __eq__(self,other):
+    def __eq__(self,
+               other: object) -> bool:
         """
         Equal to other.
 
@@ -132,6 +130,8 @@ class Crystal():
             Crystal to check for equality.
 
         """
+        if not isinstance(other, Crystal):
+            return NotImplemented
         return self.lattice == other.lattice and \
                self.parameters == other.parameters and \
                self.family == other.family
@@ -139,8 +139,7 @@ class Crystal():
     @property
     def parameters(self):
         """Return lattice parameters a, b, c, alpha, beta, gamma."""
-        return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
-
+        if hasattr(self,'a'): return (self.a,self.b,self.c,self.alpha,self.beta,self.gamma)
 
     @property
     def immutable(self):
@@ -269,7 +268,7 @@ class Crystal():
         https://doi.org/10.1063/1.1661333
 
         """
-        if None in self.parameters:
+        if self.parameters is None:
             raise KeyError('missing crystal lattice parameters')
         return np.array([
                           [1,0,0],
@@ -315,7 +314,9 @@ class Crystal():
                         + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
                                               self.lattice[-1],None),dtype=float)
 
-    def to_lattice(self, *, direction: np.ndarray = None, plane: np.ndarray = None) -> np.ndarray:
+    def to_lattice(self, *,
+                   direction: np.ndarray = None,
+                   plane: np.ndarray = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -339,7 +340,9 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def to_frame(self, *, uvw: np.ndarray = None, hkl: np.ndarray = None) -> np.ndarray:
+    def to_frame(self, *,
+                 uvw: np.ndarray = None,
+                 hkl: np.ndarray = None) -> np.ndarray:
         """
         Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -362,7 +365,8 @@ class Crystal():
         return np.einsum('il,...l',basis,axis)
 
 
-    def kinematics(self, mode: str) -> Dict[str, List[np.ndarray]]:
+    def kinematics(self,
+                   mode: str) -> Dict[str, List[np.ndarray]]:
         """
         Return crystal kinematics systems.
 
@@ -621,7 +625,8 @@ class Crystal():
                     'plane':    [m[:,3:6] for m in master]}
 
 
-    def relation_operations(self, model: str) -> Tuple[str, Rotation]:
+    def relation_operations(self,
+                            model: str) -> Tuple[str, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 

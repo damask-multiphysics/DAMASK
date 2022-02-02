@@ -3,13 +3,9 @@ import json
 import functools
 import colorsys
 from pathlib import Path
-from typing import Sequence, Union, TextIO
+from typing import Union, TextIO
 
 import numpy as np
-try:
-    from numpy.typing import ArrayLike
-except ImportError:
-    ArrayLike = Union[np.ndarray,Sequence[float]] # type: ignore
 import scipy.interpolate as interp
 import matplotlib as mpl
 if os.name == 'posix' and 'DISPLAY' not in os.environ:
@@ -18,6 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from PIL import Image
 
+from ._typehints import FloatSequence, FileHandle
 from . import util
 from . import Table
 
@@ -50,21 +47,34 @@ class Colormap(mpl.colors.ListedColormap):
 
     """
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,
+               other: object) -> bool:
         """Test equality of colormaps."""
         if not isinstance(other, Colormap):
             return NotImplemented
         return         len(self.colors) == len(other.colors) \
            and bool(np.all(self.colors  ==     other.colors))
 
-    def __add__(self, other: 'Colormap') -> 'Colormap':
+    def __add__(self,
+                other: 'Colormap') -> 'Colormap':
         """Concatenate."""
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
-    def __iadd__(self, other: 'Colormap') -> 'Colormap':
+    def __iadd__(self,
+                 other: 'Colormap') -> 'Colormap':
         """Concatenate (in-place)."""
         return self.__add__(other)
+
+    def __mul__(self,
+                factor: int) -> 'Colormap':
+        """Repeat."""
+        return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
+
+    def __imul__(self,
+                 factor: int) -> 'Colormap':
+        """Repeat (in-place)."""
+        return self.__mul__(factor)
 
     def __invert__(self) -> 'Colormap':
         """Reverse."""
@@ -82,8 +92,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_range(low: ArrayLike,
-                   high: ArrayLike,
+    def from_range(low: FloatSequence,
+                   high: FloatSequence,
                    name: str = 'DAMASK colormap',
                    N: int = 256,
                    model: str = 'rgb') -> 'Colormap':
@@ -156,7 +166,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_predefined(name: str, N: int = 256) -> 'Colormap':
+    def from_predefined(name: str,
+                        N: int = 256) -> 'Colormap':
         """
         Select from a set of predefined colormaps.
 
@@ -197,7 +208,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def at(self,
-           fraction : Union[float,Sequence[float]]) -> np.ndarray:
+           fraction : Union[float,FloatSequence]) -> np.ndarray:
         """
         Interpolate color at fraction.
 
@@ -208,7 +219,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Returns
         -------
-        color : np.ndarray, shape(...,4)
+        color : numpy.ndarray, shape(...,4)
             RGBA values of interpolated color(s).
 
         Examples
@@ -229,7 +240,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def shade(self,
               field: np.ndarray,
-              bounds: ArrayLike = None,
+              bounds: FloatSequence = None,
               gap: float = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
@@ -253,12 +264,10 @@ class Colormap(mpl.colors.ListedColormap):
                np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
         l,r = (field[mask].min(),field[mask].max()) if bounds is None else \
-              np.array(bounds,float)[:2]
+              (bounds[0],bounds[1])
 
-        delta,avg = r-l,0.5*abs(r+l)
-
-        if abs(delta) * 1e8 <= avg:                                                                 # delta is similar to numerical noise
-            l,r = l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta),                                # extend range to have actual data centered within
+        if abs(delta := r-l) * 1e8 <= (avg := 0.5*abs(r+l)):                                        # delta is similar to numerical noise
+            l,r = (l-0.5*avg*np.sign(delta),r+0.5*avg*np.sign(delta))                               # extend range to have actual data centered within
 
         return Image.fromarray(
             (np.dstack((
@@ -270,7 +279,8 @@ class Colormap(mpl.colors.ListedColormap):
             mode='RGBA')
 
 
-    def reversed(self, name: str = None) -> 'Colormap':
+    def reversed(self,
+                 name: str = None) -> 'Colormap':
         """
         Reverse.
 
@@ -291,12 +301,12 @@ class Colormap(mpl.colors.ListedColormap):
         >>> damask.Colormap.from_predefined('stress').reversed()
 
         """
-        rev = super(Colormap,self).reversed(name)
+        rev = super().reversed(name)
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
     def _get_file_handle(self,
-                         fname: Union[TextIO, str, Path, None],
+                         fname: Union[FileHandle, None],
                          suffix: str = '') -> TextIO:
         """
         Provide file handle.
@@ -323,7 +333,8 @@ class Colormap(mpl.colors.ListedColormap):
             return fname
 
 
-    def save_paraview(self, fname: Union[TextIO, str, Path] = None):
+    def save_paraview(self,
+                      fname: FileHandle = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -350,7 +361,8 @@ class Colormap(mpl.colors.ListedColormap):
         fhandle.write('\n')
 
 
-    def save_ASCII(self, fname: Union[TextIO, str, Path] = None):
+    def save_ASCII(self,
+                   fname: FileHandle = None):
         """
         Save as ASCII file.
 
@@ -365,7 +377,7 @@ class Colormap(mpl.colors.ListedColormap):
         t.save(self._get_file_handle(fname,'.txt'))
 
 
-    def save_GOM(self, fname: Union[TextIO, str, Path] = None):
+    def save_GOM(self, fname: FileHandle = None):
         """
         Save as ASCII file for use in GOM Aramis.
 
@@ -385,7 +397,8 @@ class Colormap(mpl.colors.ListedColormap):
         self._get_file_handle(fname,'.legend').write(GOM_str)
 
 
-    def save_gmsh(self, fname: Union[TextIO, str, Path] = None):
+    def save_gmsh(self,
+                  fname: FileHandle = None):
         """
         Save as ASCII file for use in gmsh.
 
@@ -423,11 +436,11 @@ class Colormap(mpl.colors.ListedColormap):
         def adjust_hue(msh_sat, msh_unsat):
             """If saturation of one of the two colors is much less than the other, hue of the less."""
             if msh_sat[0] >= msh_unsat[0]:
-               return msh_sat[2]
-            else:
-                hSpin = msh_sat[1]/np.sin(msh_sat[1])*np.sqrt(msh_unsat[0]**2.0-msh_sat[0]**2)/msh_sat[0]
-                if msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
-                return msh_sat[2] + hSpin
+                return msh_sat[2]
+
+            hSpin = msh_sat[1]/np.sin(msh_sat[1])*np.sqrt(msh_unsat[0]**2.0-msh_sat[0]**2)/msh_sat[0]
+            if msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
+            return msh_sat[2] + hSpin
 
         lo = np.array(low)
         hi = np.array(high)
@@ -440,9 +453,9 @@ class Colormap(mpl.colors.ListedColormap):
             else:
                 lo = np.array([M_mid,0.0,0.0])
                 frac = 2.0*frac - 1.0
-        if   lo[1] < 0.05 and hi[1] > 0.05:
+        if   lo[1] < 0.05 < hi[1]:
             lo[2] = adjust_hue(hi,lo)
-        elif lo[1] > 0.05 and hi[1] < 0.05:
+        elif hi[1] < 0.05 < lo[1]:
             hi[2] = adjust_hue(lo,hi)
 
         return (1.0 - frac) * lo + frac * hi
@@ -471,7 +484,7 @@ class Colormap(mpl.colors.ListedColormap):
                          'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
                          'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar']}
 
-    _predefined_DAMASK = {'orientation':   {'low':  [0.933334,0.878432,0.878431],
+    _predefined_DAMASK = {'orientation':   {'low':  [0.933334,0.878432,0.878431],                   # noqa
                                             'high': [0.250980,0.007843,0.000000]},
                           'strain':        {'low':  [0.941177,0.941177,0.870588],
                                             'high': [0.266667,0.266667,0.000000]},
@@ -616,7 +629,8 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def _lab2xyz(lab: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
+    def _lab2xyz(lab: np.ndarray,
+                 ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Lab to CIE Xyz.
 
@@ -647,7 +661,8 @@ class Colormap(mpl.colors.ListedColormap):
                         ])*ref_white
 
     @staticmethod
-    def _xyz2lab(xyz: np.ndarray, ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
+    def _xyz2lab(xyz: np.ndarray,
+                 ref_white: np.ndarray = _REF_WHITE) -> np.ndarray:
         """
         CIE Xyz to CIE Lab.
 

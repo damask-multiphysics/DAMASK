@@ -1,15 +1,21 @@
 import re
 import copy
+from pathlib import Path
+from typing import Union, Tuple, List
 
 import pandas as pd
 import numpy as np
 
+from ._typehints import FileHandle
 from . import util
 
 class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
-    def __init__(self,data,shapes,comments=None):
+    def __init__(self,
+                 data: np.ndarray,
+                 shapes: dict,
+                 comments: Union[str, list] = None):
         """
         New spreadsheet.
 
@@ -30,7 +36,7 @@ class Table:
         self._relabel('uniform')
 
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Brief overview."""
         self._relabel('shapes')
         data_repr = self.data.__repr__()
@@ -38,7 +44,8 @@ class Table:
         return '\n'.join(['# '+c for c in self.comments])+'\n'+data_repr
 
 
-    def __getitem__(self,item):
+    def __getitem__(self,
+                    item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
         Slice the Table according to item.
 
@@ -85,19 +92,21 @@ class Table:
                               comments=self.comments)
 
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Number of rows."""
         return len(self.data)
 
 
-    def __copy__(self):
+    def __copy__(self) -> 'Table':
         """Create deep copy."""
         return copy.deepcopy(self)
 
     copy = __copy__
 
 
-    def _label(self,what,how):
+    def _label(self,
+               what: Union[str, List[str]],
+               how: str) -> List[str]:
         """
         Expand labels according to data shape.
 
@@ -105,7 +114,7 @@ class Table:
         ----------
         what : str or list
             Labels to expand.
-        how : str
+        how : {'uniform, 'shapes', 'linear'}
             Mode of labeling.
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
@@ -128,30 +137,38 @@ class Table:
         return labels
 
 
-    def _relabel(self,how):
+    def _relabel(self,
+                 how: str):
         """
         Modify labeling of data in-place.
 
         Parameters
         ----------
-        how : str
+        how : {'uniform, 'shapes', 'linear'}
             Mode of labeling.
             'uniform' ==> v v v
             'shapes'  ==> 3:v v v
             'linear'  ==> 1_v 2_v 3_v
 
         """
-        self.data.columns = self._label(self.shapes,how)
+        self.data.columns = self._label(self.shapes,how) #type: ignore
 
 
-    def _add_comment(self,label,shape,info):
+    def _add_comment(self,
+                     label: str,
+                     shape: Tuple[int, ...],
+                     info: str = None):
         if info is not None:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
             self.comments.append(f'{specific} / {general}')
 
 
-    def isclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+    def isclose(self,
+                other: 'Table',
+                rtol: float = 1e-5,
+                atol: float = 1e-8,
+                equal_nan: bool = True) -> np.ndarray:
         """
         Report where values are approximately equal to corresponding ones of other Table.
 
@@ -179,7 +196,11 @@ class Table:
                           equal_nan=equal_nan)
 
 
-    def allclose(self,other,rtol=1e-5,atol=1e-8,equal_nan=True):
+    def allclose(self,
+                 other: 'Table',
+                 rtol: float = 1e-5,
+                 atol: float = 1e-8,
+                 equal_nan: bool = True) -> bool:
         """
         Test whether all values are approximately equal to corresponding ones of other Table.
 
@@ -208,7 +229,7 @@ class Table:
 
 
     @staticmethod
-    def load(fname):
+    def load(fname: FileHandle) -> 'Table':
         """
         Load from ASCII table file.
 
@@ -229,11 +250,8 @@ class Table:
             Table data from file.
 
         """
-        try:
-            f = open(fname)
-        except TypeError:
-            f = fname
-            f.seek(0)
+        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f.seek(0)
 
         comments = []
         line = f.readline().strip()
@@ -261,7 +279,7 @@ class Table:
 
 
     @staticmethod
-    def load_ang(fname):
+    def load_ang(fname: FileHandle) -> 'Table':
         """
         Load from ang file.
 
@@ -286,11 +304,8 @@ class Table:
             Table data from file.
 
         """
-        try:
-            f = open(fname)
-        except TypeError:
-            f = fname
-            f.seek(0)
+        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f.seek(0)
 
         content = f.readlines()
 
@@ -304,19 +319,19 @@ class Table:
         data = np.loadtxt(content)
 
         shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
-        remainder = data.shape[1]-sum(shapes.values())
-        if remainder > 0:                                                       # 3.8 can do: if (remainder := data.shape[1]-sum(shapes.values())) > 0
+        if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 
         return Table(data,shapes,comments)
 
 
     @property
-    def labels(self):
+    def labels(self) -> List[Tuple[int, ...]]:
         return list(self.shapes)
 
 
-    def get(self,label):
+    def get(self,
+            label: str) -> np.ndarray:
         """
         Get column data.
 
@@ -336,7 +351,10 @@ class Table:
         return data.astype(type(data.flatten()[0]))
 
 
-    def set(self,label,data,info=None):
+    def set(self,
+            label: str,
+            data: np.ndarray,
+            info: str = None) -> 'Table':
         """
         Set column data.
 
@@ -356,9 +374,8 @@ class Table:
 
         """
         dup = self.copy()
-        dup._add_comment(label,data.shape[1:],info)
-        m = re.match(r'(.*)\[((\d+,)*(\d+))\]',label)
-        if m:
+        dup._add_comment(label, data.shape[1:], info)
+        if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label):
             key = m.group(1)
             idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
                                        self.shapes[key])
@@ -369,7 +386,10 @@ class Table:
         return dup
 
 
-    def add(self,label,data,info=None):
+    def add(self,
+            label: str,
+            data: np.ndarray,
+            info: str = None) -> 'Table':
         """
         Add column data.
 
@@ -401,7 +421,8 @@ class Table:
         return dup
 
 
-    def delete(self,label):
+    def delete(self,
+               label: str) -> 'Table':
         """
         Delete column data.
 
@@ -422,7 +443,10 @@ class Table:
         return dup
 
 
-    def rename(self,old,new,info=None):
+    def rename(self,
+               old: Union[str, List[str]],
+               new: Union[str, List[str]],
+               info: str = None) -> 'Table':
         """
         Rename column data.
 
@@ -448,7 +472,9 @@ class Table:
         return dup
 
 
-    def sort_by(self,labels,ascending=True):
+    def sort_by(self,
+                labels: Union[str, List[str]],
+                ascending: Union[bool, List[bool]] = True) -> 'Table':
         """
         Sort table by values of given labels.
 
@@ -467,8 +493,7 @@ class Table:
         """
         labels_ = [labels] if isinstance(labels,str) else labels.copy()
         for i,l in enumerate(labels_):
-            m = re.match(r'(.*)\[((\d+,)*(\d+))\]',l)
-            if m:
+            if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',l):
                 idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(','))),
                                            self.shapes[m.group(1)])
                 labels_[i] = f'{1+idx}_{m.group(1)}'
@@ -481,7 +506,8 @@ class Table:
         return dup
 
 
-    def append(self,other):
+    def append(self,
+               other: 'Table') -> 'Table':
         """
         Append other table vertically (similar to numpy.vstack).
 
@@ -500,13 +526,14 @@ class Table:
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
             raise KeyError('Labels or shapes or order do not match')
-        else:
-            dup = self.copy()
-            dup.data = dup.data.append(other.data,ignore_index=True)
-            return dup
+
+        dup = self.copy()
+        dup.data = dup.data.append(other.data,ignore_index=True)
+        return dup
 
 
-    def join(self,other):
+    def join(self,
+             other: 'Table') -> 'Table':
         """
         Append other table horizontally (similar to numpy.hstack).
 
@@ -525,15 +552,16 @@ class Table:
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('Duplicated keys or row count mismatch')
-        else:
-            dup = self.copy()
-            dup.data = dup.data.join(other.data)
-            for key in other.shapes:
-                dup.shapes[key] = other.shapes[key]
-            return dup
+
+        dup = self.copy()
+        dup.data = dup.data.join(other.data)
+        for key in other.shapes:
+            dup.shapes[key] = other.shapes[key]
+        return dup
 
 
-    def save(self,fname):
+    def save(self,
+             fname: FileHandle):
         """
         Save as plain text file.
 
@@ -543,9 +571,8 @@ class Table:
             Filename or file for writing.
 
         """
-        seen = set()
         labels = []
-        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
+        for l in list(dict.fromkeys(self.data.columns)):
             if self.shapes[l] == (1,):
                 labels.append(f'{l}')
             elif len(self.shapes[l]) == 1:
@@ -555,10 +582,7 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        try:
-            fhandle = open(fname,'w',newline='\n')
-        except TypeError:
-            fhandle = fname
+        f = open(fname,'w',newline='\n') if isinstance(fname, (str, Path)) else fname
 
-        fhandle.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
-        self.data.to_csv(fhandle,sep=' ',na_rep='nan',index=False,header=False)
+        f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
+        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)

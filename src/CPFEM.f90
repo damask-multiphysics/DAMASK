@@ -14,6 +14,7 @@ module CPFEM
   use config
   use math
   use rotations
+  use polynomials
   use lattice
   use material
   use phase
@@ -32,18 +33,18 @@ module CPFEM
   real(pReal), dimension (:,:,:,:), allocatable, private :: &
     CPFEM_dcsdE_knownGood                                                                           !< known good tangent
 
-  integer(pInt),                                 public :: &
-    cycleCounter =  0_pInt                                                                          !< needs description
+  integer,                                       public :: &
+    cycleCounter = 0                                                                                !< needs description
 
-  integer(pInt), parameter,                      public :: &
-    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
-    CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
-    CPFEM_BACKUPJACOBIAN  = 2_pInt**2_pInt, &
-    CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt
+  integer, parameter,                            public :: &
+    CPFEM_CALCRESULTS     = 2**0, &
+    CPFEM_AGERESULTS      = 2**1, &
+    CPFEM_BACKUPJACOBIAN  = 2**2, &
+    CPFEM_RESTOREJACOBIAN = 2**3
 
   type, private :: tNumerics
     integer :: &
-      iJacoStiffness                                                                                !< frequency of stiffness update
+      iJacoStiffness                                                                                 !< frequency of stiffness update
   end type tNumerics
 
   type(tNumerics), private :: num
@@ -83,6 +84,7 @@ subroutine CPFEM_initAll
   call config_init
   call math_init
   call rotations_init
+  call polynomials_init
   call lattice_init
   call discretization_marc_init
   call material_init(.false.)
@@ -134,12 +136,12 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
 
-  integer(pInt), intent(in) ::                        elFE, &                                       !< FE element number
+  integer, intent(in) ::                              elFE, &                                       !< FE element number
                                                       ip                                            !< integration point number
   real(pReal), intent(in) ::                          dt                                            !< time increment
   real(pReal), dimension (3,3), intent(in) ::         ffn, &                                        !< deformation gradient for t=t0
                                                       ffn1                                          !< deformation gradient for t=t1
-  integer(pInt), intent(in) ::                        mode                                          !< computation mode  1: regular computation plus aging of results
+  integer, intent(in) ::                              mode                                          !< computation mode  1: regular computation plus aging of results
   real(pReal), intent(in) ::                          temperature_inp                               !< temperature
   real(pReal), dimension(6), intent(out) ::           cauchyStress                                  !< stress as 6 vector
   real(pReal), dimension(6,6), intent(out) ::         jacobian                                      !< jacobian as 66 tensor (Consistent tangent dcs/dE)
@@ -150,7 +152,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
   real(pReal), dimension (3,3,3,3) ::                 H_sym, &
                                                       H
 
-  integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
+  integer                                             elCP, &                                       ! crystal plasticity element number
                                                       i, j, k, l, m, n, ph, homog, mySource,ce
 
   real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
@@ -171,17 +173,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
     print'(a,/)', '#############################################'; flush (6)
   endif
 
-  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
+  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0) &
     CPFEM_dcsde_knownGood = CPFEM_dcsde
-  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
+  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0) &
     CPFEM_dcsde = CPFEM_dcsde_knownGood
 
-  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) call CPFEM_forward
+  if (iand(mode, CPFEM_AGERESULTS) /= 0) call CPFEM_forward
 
     homogenization_F0(1:3,1:3,ce) = ffn
     homogenization_F(1:3,1:3,ce) = ffn1
 
-  if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
+  if (iand(mode, CPFEM_CALCRESULTS) /= 0) then
 
     validCalculation: if (terminallyIll) then
       call random_number(rnd)
@@ -264,8 +266,8 @@ end subroutine CPFEM_forward
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
 
-  integer(pInt), intent(in) :: inc
-  real(pReal),   intent(in) :: time
+  integer,     intent(in) :: inc
+  real(pReal), intent(in) :: time
 
   call results_openJobFile
   call results_addIncrement(inc,time)

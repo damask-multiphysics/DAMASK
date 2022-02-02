@@ -84,38 +84,34 @@ contains
 subroutine math_init
 
   real(pReal), dimension(4) :: randTest
-  integer :: &
-    randSize, &
-    randomSeed                                                                                      !< fixed seeding for pseudo-random number generator, Default 0: use random seed
-  integer, dimension(:), allocatable :: randInit
+  integer :: randSize
+  integer, dimension(:), allocatable :: seed
   class(tNode), pointer :: &
     num_generic
+
 
   print'(/,1x,a)', '<<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
   num_generic => config_numerics%get('generic',defaultVal=emptyDict)
-  randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
 
   call random_seed(size=randSize)
-  allocate(randInit(randSize))
-  if (randomSeed > 0) then
-    randInit = randomSeed
+  allocate(seed(randSize))
+
+  if (num_generic%contains('random_seed')) then
+    seed = num_generic%get_as1dInt('random_seed',requiredSize=randSize)
   else
     call random_seed()
-    call random_seed(get = randInit)
-    randInit(2:randSize) = randInit(1)
-  endif
+    call random_seed(get = seed)
+  end if
 
-  call random_seed(put = randInit)
+  call random_seed(put = seed)
   call random_number(randTest)
 
-  print'(/,a,i2)',                ' size  of random seed:     ', randSize
-  print'(  a,i0)',                ' value of random seed:     ', randInit(1)
-  print'(  a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
+  print'(/,a,i2)',              ' size  of random seed:     ', randSize
+  print*,                       'value of random seed:     ', seed
+  print'(  a,4(/,26x,f17.14))', ' start of random sequence: ', randTest
 
-  call random_seed(put = randInit)
-
-  call selfTest
+  call selfTest()
 
 end subroutine math_init
 

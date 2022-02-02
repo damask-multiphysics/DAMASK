@@ -28,6 +28,10 @@ class TestVTK:
     def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
+    def test_show(sef,default,monkeypatch):
+        monkeypatch.delenv('DISPLAY',raising=False)
+        default.show()
+
     def test_rectilinearGrid(self,tmp_path):
         cells  = np.random.randint(5,10,3)*2
         size   = np.random.random(3) + 1.0

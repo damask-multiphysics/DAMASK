@@ -981,7 +981,7 @@ class Result:
             t = 'tensor'
             if o is None: o = 'fro'
         else:
-            raise ValueError(f'invalid norm order {ord}')
+            raise ValueError(f'invalid shape of {x["label"]}')
 
         return {
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
@@ -1817,7 +1817,7 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to export to the file.
             Defaults to '*', in which case all datasets are exported.
-        overwrite : boolean, optional
+        overwrite : bool, optional
             Overwrite existing configuration files.
             Defaults to False.
 
