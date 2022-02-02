@@ -65,7 +65,7 @@ class Rotation:
     __slots__ = ['quaternion']
 
     def __init__(self,
-                 rotation: Union[FloatSequence, "Rotation"] = np.array([1.0,0.0,0.0,0.0])):
+                 rotation: Union[FloatSequence, 'Rotation'] = np.array([1.0,0.0,0.0,0.0])):
         """
         New rotation.
 
@@ -83,7 +83,7 @@ class Rotation:
         elif np.array(rotation).shape[-1] == 4:
             self.quaternion = np.array(rotation)
         else:
-            raise TypeError('"rotation" is neither a Rotation nor a quaternion')
+            raise TypeError('Rotation is neither a Rotation nor a quaternion')
 
 
     def __repr__(self) -> str:
@@ -93,7 +93,7 @@ class Rotation:
 
 
     def __copy__(self,
-                 rotation: Union[FloatSequence, "Rotation"] = None) -> "Rotation":
+                 rotation: Union[FloatSequence, 'Rotation'] = None) -> 'Rotation':
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -122,7 +122,7 @@ class Rotation:
 
         """
         if not isinstance(other, Rotation):
-            raise TypeError
+            return NotImplemented
         return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
 
@@ -143,7 +143,7 @@ class Rotation:
 
 
     def isclose(self,
-                other: "Rotation",
+                other: 'Rotation',
                 rtol: float = 1e-5,
                 atol: float = 1e-8,
                 equal_nan: bool = True) -> bool:
@@ -174,7 +174,7 @@ class Rotation:
 
 
     def allclose(self,
-                 other: "Rotation",
+                 other: 'Rotation',
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
                  equal_nan: bool = True) -> Union[np.bool_, bool]:
@@ -220,14 +220,14 @@ class Rotation:
         return 0 if self.shape == () else self.shape[0]
 
 
-    def __invert__(self) -> "Rotation":
+    def __invert__(self) -> 'Rotation':
         """Inverse rotation (backward rotation)."""
         dup = self.copy()
         dup.quaternion[...,1:] *= -1
         return dup
 
 
-    def __pow__(self, exp: int) -> "Rotation":
+    def __pow__(self, exp: int) -> 'Rotation':
         """
         Perform the rotation 'exp' times.
 
@@ -241,7 +241,7 @@ class Rotation:
         p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
         return self.copy(rotation=Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
-    def __ipow__(self, exp: int) -> "Rotation":
+    def __ipow__(self, exp: int) -> 'Rotation':
         """
         Perform the rotation 'exp' times (in-place).
 
@@ -254,7 +254,7 @@ class Rotation:
         return self**exp
 
 
-    def __mul__(self, other: "Rotation") -> "Rotation":
+    def __mul__(self, other: 'Rotation') -> 'Rotation':
         """
         Compose with other.
 
@@ -280,7 +280,7 @@ class Rotation:
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
-    def __imul__(self, other: "Rotation") -> "Rotation":
+    def __imul__(self, other: 'Rotation') -> 'Rotation':
         """
         Compose with other (in-place).
 
@@ -293,7 +293,7 @@ class Rotation:
         return self*other
 
 
-    def __truediv__(self, other: "Rotation") -> "Rotation":
+    def __truediv__(self, other: 'Rotation') -> 'Rotation':
         """
         Compose with inverse of other.
 
@@ -313,7 +313,7 @@ class Rotation:
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
-    def __itruediv__(self, other: "Rotation") -> "Rotation":
+    def __itruediv__(self, other: 'Rotation') -> 'Rotation':
         """
         Compose with inverse of other (in-place).
 
@@ -369,14 +369,14 @@ class Rotation:
     apply = __matmul__
 
 
-    def _standardize(self) -> "Rotation":
+    def _standardize(self) -> 'Rotation':
         """Standardize quaternion (ensure positive real hemisphere)."""
         self.quaternion[self.quaternion[...,0] < 0.0] *= -1
         return self
 
 
     def append(self,
-           other: Union["Rotation", List["Rotation"]]) -> "Rotation":
+           other: Union['Rotation', List['Rotation']]) -> 'Rotation':
         """
         Extend array along first dimension with other array(s).
 
@@ -390,7 +390,7 @@ class Rotation:
 
 
     def flatten(self,
-                order: Literal['C','F','A'] = 'C') -> "Rotation":
+                order: Literal['C','F','A'] = 'C') -> 'Rotation':
         """
         Flatten array.
 
@@ -405,7 +405,7 @@ class Rotation:
 
     def reshape(self,
                 shape: Union[int, Tuple[int, ...]],
-                order: Literal['C','F','A'] = 'C') -> "Rotation":
+                order: Literal['C','F','A'] = 'C') -> 'Rotation':
         """
         Reshape array.
 
@@ -421,7 +421,7 @@ class Rotation:
 
     def broadcast_to(self,
                      shape: Union[int, Tuple[int, ...]],
-                     mode: Literal["left", "right"] = 'right') -> "Rotation":
+                     mode: Literal['left', 'right'] = 'right') -> 'Rotation':
         """
         Broadcast array.
 
@@ -445,7 +445,7 @@ class Rotation:
 
 
     def average(self,
-                weights: np.ndarray = None) -> "Rotation":
+                weights: np.ndarray = None) -> 'Rotation':
         """
         Average along last array dimension.
 
@@ -485,7 +485,7 @@ class Rotation:
 
 
     def misorientation(self,
-                       other: "Rotation") -> "Rotation":
+                       other: 'Rotation') -> 'Rotation':
         """
         Calculate misorientation to other Rotation.
 
@@ -690,7 +690,7 @@ class Rotation:
     @staticmethod
     def from_quaternion(q: Union[Sequence[FloatSequence], np.ndarray],
                         accept_homomorph: bool = False,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+                        P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from quaternion.
 
@@ -724,7 +724,7 @@ class Rotation:
 
     @staticmethod
     def from_Euler_angles(phi: np.ndarray,
-                          degrees: bool = False) -> "Rotation":
+                          degrees: bool = False) -> 'Rotation':
         """
         Initialize from Bunge Euler angles.
 
@@ -755,7 +755,7 @@ class Rotation:
     def from_axis_angle(axis_angle: np.ndarray,
                         degrees:bool = False,
                         normalize: bool = False,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+                        P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from Axis angle pair.
 
@@ -792,7 +792,7 @@ class Rotation:
     @staticmethod
     def from_basis(basis: np.ndarray,
                    orthonormal: bool = True,
-                   reciprocal: bool = False) -> "Rotation":
+                   reciprocal: bool = False) -> 'Rotation':
         """
         Initialize from lattice basis vectors.
 
@@ -826,7 +826,7 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(R: np.ndarray) -> "Rotation":
+    def from_matrix(R: np.ndarray) -> 'Rotation':
         """
         Initialize from rotation matrix.
 
@@ -840,7 +840,7 @@ class Rotation:
 
     @staticmethod
     def from_parallel(a: np.ndarray,
-                      b: np.ndarray ) -> "Rotation":
+                      b: np.ndarray ) -> 'Rotation':
         """
         Initialize from pairs of two orthogonal lattice basis vectors.
 
@@ -870,7 +870,7 @@ class Rotation:
     @staticmethod
     def from_Rodrigues_vector(rho: np.ndarray,
                               normalize: bool = False,
-                              P: Literal[1, -1] = -1) -> "Rotation":
+                              P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from Rodrigues–Frank vector (angle separated from axis).
 
@@ -901,7 +901,7 @@ class Rotation:
 
     @staticmethod
     def from_homochoric(h: np.ndarray,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+                        P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from homochoric vector.
 
@@ -928,7 +928,7 @@ class Rotation:
 
     @staticmethod
     def from_cubochoric(x: np.ndarray,
-                        P: Literal[1, -1] = -1) -> "Rotation":
+                        P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from cubochoric vector.
 
@@ -956,7 +956,7 @@ class Rotation:
 
     @staticmethod
     def from_random(shape: Tuple[int, ...] = None,
-                    rng_seed: Union[int, IntSequence] = None) -> "Rotation":
+                    rng_seed: Union[int, IntSequence] = None) -> 'Rotation':
         """
         Initialize with random rotation.
 
@@ -990,7 +990,7 @@ class Rotation:
                  N: int = 500,
                  degrees: bool = True,
                  fractions: bool = True,
-                 rng_seed: Union[None, int, IntSequence] = None) -> "Rotation":
+                 rng_seed: Union[None, int, IntSequence] = None) -> 'Rotation':
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -1043,11 +1043,11 @@ class Rotation:
 
 
     @staticmethod
-    def from_spherical_component(center: "Rotation",
+    def from_spherical_component(center: 'Rotation',
                                  sigma: float,
                                  N: int = 500,
                                  degrees: bool = True,
-                                 rng_seed: Union[None, int, IntSequence] = None) -> "Rotation":
+                                 rng_seed: Union[None, int, IntSequence] = None) -> 'Rotation':
         """
         Calculate set of rotations with Gaussian distribution around center.
 

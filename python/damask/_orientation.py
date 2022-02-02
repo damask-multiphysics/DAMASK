@@ -125,7 +125,7 @@ class Orientation(Rotation,Crystal):
                           Rotation.__repr__(self)])
 
     def __copy__(self,
-                 rotation: Union[FloatSequence, Rotation] = None) -> "Orientation":
+                 rotation: Union[FloatSequence, Rotation] = None) -> 'Orientation':
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -148,7 +148,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if not isinstance(other, Orientation):
-            raise TypeError
+            raise NotImplemented
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
@@ -235,7 +235,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __mul__(self,
-                other: Union[Rotation, "Orientation"]) -> "Orientation":
+                other: Union[Rotation, 'Orientation']) -> 'Orientation':
         """
         Compose this orientation with other.
 
@@ -290,77 +290,77 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     @util.extended_docstring(Rotation.from_random, _parameter_doc)
-    def from_random(cls, **kwargs) -> "Orientation":
+    def from_random(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
         return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
-    def from_quaternion(cls, **kwargs) -> "Orientation":
+    def from_quaternion(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
         return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
-    def from_Euler_angles(cls, **kwargs) -> "Orientation":
+    def from_Euler_angles(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
         return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
-    def from_axis_angle(cls, **kwargs) -> "Orientation":
+    def from_axis_angle(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
         return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_basis,_parameter_doc)
-    def from_basis(cls, **kwargs) -> "Orientation":
+    def from_basis(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
         return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
-    def from_matrix(cls, **kwargs) -> "Orientation":
+    def from_matrix(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
         return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
-    def from_Rodrigues_vector(cls, **kwargs) -> "Orientation":
+    def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
         return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
-    def from_homochoric(cls, **kwargs) -> "Orientation":
+    def from_homochoric(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
         return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
-    def from_cubochoric(cls, **kwargs) -> "Orientation":
+    def from_cubochoric(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
         return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
-    def from_spherical_component(cls, **kwargs) -> "Orientation":
+    def from_spherical_component(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
         return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
     @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
-    def from_fiber_component(cls, **kwargs) -> "Orientation":
+    def from_fiber_component(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
         return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
 
@@ -370,7 +370,7 @@ class Orientation(Rotation,Crystal):
     def from_directions(cls,
                         uvw: FloatSequence,
                         hkl: FloatSequence,
-                        **kwargs) -> "Orientation":
+                        **kwargs) -> 'Orientation':
         """
         Initialize orientation object from two crystallographic directions.
 
@@ -390,7 +390,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def equivalent(self) -> "Orientation":
+    def equivalent(self) -> 'Orientation':
         """
         Orientations that are symmetrically equivalent.
 
@@ -404,7 +404,7 @@ class Orientation(Rotation,Crystal):
 
 
     @property
-    def reduced(self) -> "Orientation":
+    def reduced(self) -> 'Orientation':
         """Select symmetrically equivalent orientation that falls into fundamental zone according to symmetry."""
         eq   = self.equivalent
         ok   = eq.in_FZ
@@ -940,7 +940,7 @@ class Orientation(Rotation,Crystal):
 
 
     def related(self,
-                model: str) -> "Orientation":
+                model: str) -> 'Orientation':
         """
         Orientations derived from the given relationship.
 
