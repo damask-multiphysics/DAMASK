@@ -9,3 +9,5 @@ import numpy as np
 FloatSequence = Union[np.ndarray,Sequence[float]]
 IntSequence = Union[np.ndarray,Sequence[int]]
 FileHandle = Union[TextIO, str, Path]
+
+NumpyRngSeed = Union[int, IntSequence, np.random.SeedSequence, np.random.BitGenerator, np.random.Generator]
