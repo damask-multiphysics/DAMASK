@@ -163,7 +163,7 @@ subroutine selfTest
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
   Dict => YAML_parse_str(trim(YAML_s))
   p2 = polynomial(dict%asDict(),'C','T')
-  if (dNeq(p1%at(x),p2%at(x),1.0e-12_pReal))                      error stop 'polynomials: init'
+  if (dNeq(p1%at(x),p2%at(x),1.0e-10_pReal))                      error stop 'polynomials: init'
 
   p1 = polynomial(coef*[0.0_pReal,1.0_pReal,0.0_pReal],x_ref)
   if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-10_pReal))         error stop 'polynomials: eval(odd)'

@@ -1076,19 +1076,19 @@ class TestRotation:
     def test_from_fiber_component(self,N,sigma):
         p = []
         for run in range(5):
-             alpha = np.random.random()*2*np.pi,np.arccos(np.random.random())                       # noqa
-             beta  = np.random.random()*2*np.pi,np.arccos(np.random.random())
+            alpha = np.random.random()*2*np.pi,np.arccos(np.random.random())
+            beta  = np.random.random()*2*np.pi,np.arccos(np.random.random())
 
-             f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
-             f_in_S = np.array([np.sin(beta[0] )*np.cos(beta[1] ), np.sin(beta[0] )*np.sin(beta[1] ), np.cos(beta[0] )])
-             ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
-             n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)           # rotation to align fiber axis in crystal and sample system
+            f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
+            f_in_S = np.array([np.sin(beta[0] )*np.cos(beta[1] ), np.sin(beta[0] )*np.sin(beta[1] ), np.cos(beta[0] )])
+            ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
+            n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)           # rotation to align fiber axis in crystal and sample system
 
-             o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),N,False)
-             angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,(N,3)),n@f_in_S),-1,1))
-             dist   = np.array(angles) * (np.random.randint(0,2,N)*2-1)
+            o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),N,False)
+            angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,(N,3)),n@f_in_S),-1,1))
+            dist   = np.array(angles) * (np.random.randint(0,2,N)*2-1)
 
-             p.append(stats.normaltest(dist)[1])
+            p.append(stats.normaltest(dist)[1])
 
         sigma_out = np.degrees(np.std(dist))
         p = np.average(p)

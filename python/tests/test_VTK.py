@@ -173,11 +173,11 @@ class TestVTK:
         polyData = VTK.from_poly_data(points)
         polyData.add(points,'coordinates')
         if update:
-             polyData.save(ref_path/'polyData')                                                     # noqa
+            polyData.save(ref_path/'polyData')
         else:
-             reference = VTK.load(ref_path/'polyData.vtp')                                          # noqa
-             assert polyData.__repr__() == reference.__repr__() and \
-                    np.allclose(polyData.get('coordinates'),points)
+            reference = VTK.load(ref_path/'polyData.vtp')
+            assert polyData.__repr__() == reference.__repr__() and \
+                   np.allclose(polyData.get('coordinates'),points)
 
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
@@ -189,8 +189,8 @@ class TestVTK:
         rectilinearGrid.add(np.ascontiguousarray(c),'cell')
         rectilinearGrid.add(np.ascontiguousarray(n),'node')
         if update:
-             rectilinearGrid.save(ref_path/'rectilinearGrid')                                       # noqa
+            rectilinearGrid.save(ref_path/'rectilinearGrid')
         else:
-             reference = VTK.load(ref_path/'rectilinearGrid.vtr')                                   # noqa
-             assert rectilinearGrid.__repr__() == reference.__repr__() and \
-                    np.allclose(rectilinearGrid.get('cell'),c)
+            reference = VTK.load(ref_path/'rectilinearGrid.vtr')
+            assert rectilinearGrid.__repr__() == reference.__repr__() and \
+                   np.allclose(rectilinearGrid.get('cell'),c)
