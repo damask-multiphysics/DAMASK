@@ -259,8 +259,8 @@ module subroutine thermal_restartWrite(groupHandle,ph)
   integer(HID_T), intent(in) :: groupHandle
   integer, intent(in) :: ph
 
-  integer(HID_T) :: new_group
   integer :: so
+
 
   do so = 1,thermal_Nsources(ph)
     call HDF5_write(thermalState(ph)%p(so)%state,groupHandle,'omega_thermal')
@@ -274,8 +274,8 @@ module subroutine thermal_restartRead(groupHandle,ph)
   integer(HID_T), intent(in) :: groupHandle
   integer, intent(in) :: ph
 
-  integer(HID_T) :: new_group
   integer :: so
+
 
   do so = 1,thermal_Nsources(ph)
     call HDF5_read(thermalState(ph)%p(so)%state0,groupHandle,'omega_thermal')
