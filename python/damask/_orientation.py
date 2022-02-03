@@ -165,8 +165,10 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
+
+        eq = self.__eq__(other)
+        if not isinstance(eq, bool):
+            return eq
         return np.logical_not(self==other)
 
 
@@ -557,7 +559,7 @@ class Orientation(Rotation,Crystal):
         if self.family != other.family:
             raise NotImplementedError('disorientation between different crystal families')
 
-        blend: Tuple[int, ...] = util.shapeblender(self.shape,other.shape)
+        blend = util.shapeblender(self.shape,other.shape)
         s = self.equivalent
         o = other.equivalent
 
@@ -764,7 +766,7 @@ class Orientation(Rotation,Crystal):
                                                       np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
                                                       vector_), 12)
             in_SST_ = np.all(components_proper   >= 0.0,axis=-1) \
-                   | np.all(components_improper >= 0.0,axis=-1)
+                    | np.all(components_improper >= 0.0,axis=-1)
             components = np.where((in_SST_ & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
@@ -928,7 +930,8 @@ class Orientation(Rotation,Crystal):
                             (self.kinematics('twin'),N_twin)
         if active == '*': active = [len(a) for a in kinematics['direction']]
 
-        assert active
+        if not active:
+            raise RuntimeError
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
         p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),

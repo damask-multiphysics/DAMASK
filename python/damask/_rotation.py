@@ -85,7 +85,7 @@ class Rotation:
         elif np.array(rotation).shape[-1] == 4:
             self.quaternion = np.array(rotation)
         else:
-            raise TypeError('Rotation is neither a Rotation nor a quaternion')
+            raise TypeError('"rotation" is neither a Rotation nor a quaternion')
 
 
     def __repr__(self) -> str:
@@ -139,8 +139,9 @@ class Rotation:
             Rotation to check for inequality.
 
         """
-        if not isinstance(other, Rotation):
-            raise TypeError
+        eq = self.__eq__(other)
+        if not isinstance(eq, bool):
+            return eq
         return np.logical_not(self==other)
 
 
