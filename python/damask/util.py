@@ -7,16 +7,16 @@ import subprocess
 import shlex
 import re
 import fractions
-import collections.abc as abc
+from collections import abc
 from functools import reduce
-from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal, Optional
+from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal, SupportsIndex, Sequence
 from pathlib import Path
 
 import numpy as np
 import h5py
 
 from . import version
-from ._typehints import FloatSequence
+from ._typehints import FloatSequence, NumpyRngSeed
 
 # limit visibility
 __all__=[
@@ -54,7 +54,8 @@ _colors = {
 ####################################################################################################
 # Functions
 ####################################################################################################
-def srepr(msg, glue: str = '\n') -> str:
+def srepr(msg,
+          glue: str = '\n') -> str:
     r"""
     Join items with glue string.
 
@@ -76,7 +77,7 @@ def srepr(msg, glue: str = '\n') -> str:
             hasattr(msg, '__iter__'))):
         return glue.join(str(x) for x in msg)
     else:
-       return msg if isinstance(msg,str) else repr(msg)
+        return msg if isinstance(msg,str) else repr(msg)
 
 
 def emph(msg) -> str:
@@ -148,7 +149,10 @@ def strikeout(msg) -> str:
     return _colors['crossout']+srepr(msg)+_colors['end_color']
 
 
-def run(cmd: str, wd: str = './', env: Dict[str, str] = None, timeout: int = None) -> Tuple[str, str]:
+def run(cmd: str,
+        wd: str = './',
+        env: Dict[str, str] = None,
+        timeout: int = None) -> Tuple[str, str]:
     """
     Run a command.
 
@@ -226,15 +230,15 @@ def show_progress(iterable: Iterable,
 
     """
     if isinstance(iterable,abc.Sequence):
-       if N_iter is None:
-          N = len(iterable)
-       else:
-          raise ValueError('N_iter given for sequence')
+        if N_iter is None:
+            N = len(iterable)
+        else:
+            raise ValueError('N_iter given for sequence')
     else:
-       if N_iter is None:
-          raise ValueError('N_iter not given')
-       else:
-          N = N_iter
+        if N_iter is None:
+            raise ValueError('N_iter not given')
+
+        N = N_iter
 
     if N <= 1:
         for item in iterable:
@@ -301,15 +305,19 @@ def project_equal_angle(vector: np.ndarray,
     normalize : bool
         Ensure unit length of input vector. Defaults to True.
     keepdims : bool
-        Maintain three-dimensional output coordinates. Defaults to False.
-        Two-dimensional output uses right-handed frame spanned by
-        the next and next-next axis relative to the projection direction,
-        e.g. x-y when projecting along z and z-x when projecting along y.
+        Maintain three-dimensional output coordinates.
+        Defaults to False.
 
     Returns
     -------
     coordinates : numpy.ndarray, shape (...,2 | 3)
         Projected coordinates.
+
+    Notes
+    -----
+    Two-dimensional output uses right-handed frame spanned by
+    the next and next-next axis relative to the projection direction,
+    e.g. x-y when projecting along z and z-x when projecting along y.
 
     Examples
     --------
@@ -345,15 +353,20 @@ def project_equal_area(vector: np.ndarray,
     normalize : bool
         Ensure unit length of input vector. Defaults to True.
     keepdims : bool
-        Maintain three-dimensional output coordinates. Defaults to False.
-        Two-dimensional output uses right-handed frame spanned by
-        the next and next-next axis relative to the projection direction,
-        e.g. x-y when projecting along z and z-x when projecting along y.
+        Maintain three-dimensional output coordinates.
+        Defaults to False.
 
     Returns
     -------
     coordinates : numpy.ndarray, shape (...,2 | 3)
         Projected coordinates.
+
+    Notes
+    -----
+    Two-dimensional output uses right-handed frame spanned by
+    the next and next-next axis relative to the projection direction,
+    e.g. x-y when projecting along z and z-x when projecting along y.
+
 
     Examples
     --------
@@ -373,14 +386,17 @@ def project_equal_area(vector: np.ndarray,
     return np.roll(np.block([v[...,:2]/np.sqrt(1.0+np.abs(v[...,2:3])),np.zeros_like(v[...,2:3])]),
                    -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
-def execution_stamp(class_name: str, function_name: str = None) -> str:
+def execution_stamp(class_name: str,
+                    function_name: str = None) -> str:
     """Timestamp the execution of a (function within a) class."""
     now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
     _function_name = '' if function_name is None else f'.{function_name}'
     return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
-def hybrid_IA(dist: np.ndarray, N: int, rng_seed = None) -> np.ndarray:
+def hybrid_IA(dist: np.ndarray,
+              N: int,
+              rng_seed: NumpyRngSeed = None) -> np.ndarray:
     """
     Hybrid integer approximation.
 
@@ -411,7 +427,7 @@ def hybrid_IA(dist: np.ndarray, N: int, rng_seed = None) -> np.ndarray:
 def shapeshifter(fro: Tuple[int, ...],
                  to: Tuple[int, ...],
                  mode: Literal['left','right'] = 'left',
-                 keep_ones: bool = False) -> Tuple[Optional[int], ...]:
+                 keep_ones: bool = False) -> Sequence[SupportsIndex]:
     """
     Return dimensions that reshape 'fro' to become broadcastable to 'to'.
 
@@ -447,7 +463,7 @@ def shapeshifter(fro: Tuple[int, ...],
 
 
     """
-    if not len(fro) and not len(to): return ()
+    if len(fro) == 0 and len(to) == 0: return ()
 
     beg = dict(left ='(^.*\\b)',
                right='(^.*?\\b)')
@@ -455,8 +471,8 @@ def shapeshifter(fro: Tuple[int, ...],
                right='(.*?\\b)')
     end = dict(left ='(.*?$)',
                right='(.*$)')
-    fro = (1,) if not len(fro) else fro
-    to  = (1,) if not len(to)  else to
+    fro = (1,) if len(fro) == 0 else fro
+    to  = (1,) if len(to) == 0 else to
     try:
         match = re.match(beg[mode]
                       +f',{sep[mode]}'.join(map(lambda x: f'{x}'
@@ -467,13 +483,14 @@ def shapeshifter(fro: Tuple[int, ...],
         grp = match.groups()
     except AssertionError:
         raise ValueError(f'Shapes can not be shifted {fro} --> {to}')
-    fill: Tuple[Optional[int], ...] = ()
+    fill: Any = ()
     for g,d in zip(grp,fro+(None,)):
         fill += (1,)*g.count(',')+(d,)
     return fill[:-1]
 
 
-def shapeblender(a: Tuple[int, ...], b: Tuple[int, ...]) -> Tuple[int, ...]:
+def shapeblender(a: Tuple[int, ...],
+                 b: Tuple[int, ...]) -> Sequence[SupportsIndex]:
     """
     Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
@@ -517,7 +534,8 @@ def extend_docstring(extra_docstring: str) -> Callable:
     return _decorator
 
 
-def extended_docstring(f: Callable, extra_docstring: str) -> Callable:
+def extended_docstring(f: Callable,
+                       extra_docstring: str) -> Callable:
     """
     Decorator: Combine another function's docstring with a given docstring.
 
@@ -593,7 +611,9 @@ def DREAM3D_cell_data_group(fname: Union[str, Path]) -> str:
     return cell_data_group
 
 
-def Bravais_to_Miller(*, uvtw: np.ndarray = None, hkil: np.ndarray = None) -> np.ndarray:
+def Bravais_to_Miller(*,
+                      uvtw: np.ndarray = None,
+                      hkil: np.ndarray = None) -> np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -620,7 +640,9 @@ def Bravais_to_Miller(*, uvtw: np.ndarray = None, hkil: np.ndarray = None) -> np
     return np.einsum('il,...l',basis,axis)
 
 
-def Miller_to_Bravais(*, uvw: np.ndarray = None, hkl: np.ndarray = None) -> np.ndarray:
+def Miller_to_Bravais(*,
+                      uvw: np.ndarray = None,
+                      hkl: np.ndarray = None) -> np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
@@ -710,7 +732,10 @@ class ProgressBar:
     Works for 0-based loops, ETA is estimated by linear extrapolation.
     """
 
-    def __init__(self, total: int, prefix: str, bar_length: int):
+    def __init__(self,
+                 total: int,
+                 prefix: str,
+                 bar_length: int):
         """
         Set current time as basis for ETA estimation.
 
@@ -733,12 +758,12 @@ class ProgressBar:
         sys.stderr.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
         sys.stderr.flush()
 
-    def update(self, iteration: int) -> None:
+    def update(self,
+               iteration: int) -> None:
 
         fraction = (iteration+1) / self.total
-        filled_length = int(self.bar_length * fraction)
 
-        if filled_length > int(self.bar_length * self.fraction_last) or \
+        if filled_length := int(self.bar_length * fraction) > int(self.bar_length * self.fraction_last) or \
             datetime.datetime.now() - self.time_last_update > datetime.timedelta(seconds=10):
             self.time_last_update = datetime.datetime.now()
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)

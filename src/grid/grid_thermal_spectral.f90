@@ -16,6 +16,9 @@ module grid_thermal_spectral
   use prec
   use parallelization
   use IO
+  use DAMASK_interface
+  use HDF5_utilities
+  use HDF5
   use spectral_utilities
   use discretization_grid
   use homogenization
@@ -54,13 +57,13 @@ module grid_thermal_spectral
   public :: &
     grid_thermal_spectral_init, &
     grid_thermal_spectral_solution, &
+    grid_thermal_spectral_restartWrite, &
     grid_thermal_spectral_forward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
-! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_init(T_0)
 
@@ -72,6 +75,7 @@ subroutine grid_thermal_spectral_init(T_0)
   PetscScalar, dimension(:,:,:), pointer :: T_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
+  integer(HID_T) :: fileHandle, groupHandle
   class(tNode), pointer :: &
     num_grid
 
@@ -105,12 +109,6 @@ subroutine grid_thermal_spectral_init(T_0)
   allocate(T_lastInc(cells(1),cells(2),cells3), source=T_0)
   allocate(T_stagInc(cells(1),cells(2),cells3), source=T_0)
 
-  ce = 0
-  do k = 1, cells3; do j = 1, cells(2); do i = 1,cells(1)
-    ce = ce + 1
-    call homogenization_thermal_setField(T_0,0.0_pReal,ce)
-  end do; end do; end do
-
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,SNES_thermal,err_PETSc)
@@ -142,6 +140,24 @@ subroutine grid_thermal_spectral_init(T_0)
   CHKERRQ(err_PETSc)
   call SNESSetFromOptions(SNES_thermal,err_PETSc)                                                   ! pull it all together with additional CLI arguments
   CHKERRQ(err_PETSc)
+
+
+  restartRead: if (interface_restartInc > 0) then
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
+
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
+
+    call HDF5_read(T_current,groupHandle,'T',.false.)
+    call HDF5_read(T_lastInc,groupHandle,'T_lastInc',.false.)
+  end if restartRead
+
+  ce = 0
+  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+    ce = ce + 1
+    call homogenization_thermal_setField(T_current(i,j,k),0.0_pReal,ce)
+  end do; end do; end do
+
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
   T_PETSc = T_current
@@ -251,6 +267,37 @@ subroutine grid_thermal_spectral_forward(cutBack)
   end if
 
 end subroutine grid_thermal_spectral_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file
+!--------------------------------------------------------------------------------------------------
+subroutine grid_thermal_spectral_restartWrite
+
+  PetscErrorCode :: err_PETSc
+  DM :: dm_local
+  integer(HID_T) :: fileHandle, groupHandle
+  PetscScalar, dimension(:,:,:), pointer :: T
+
+  call SNESGetDM(SNES_thermal,dm_local,err_PETSc);
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(dm_local,solution_vec,T,err_PETSc);
+  CHKERRQ(err_PETSc)
+
+  print'(1x,a)', 'writing thermal solver data required for restart to file'; flush(IO_STDOUT)
+
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  groupHandle = HDF5_openGroup(fileHandle,'solver')
+  call HDF5_write(T,groupHandle,'T')
+  call HDF5_write(T_lastInc,groupHandle,'T_lastInc')
+  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeFile(fileHandle)
+
+  call DMDAVecRestoreArrayF90(dm_local,solution_vec,T,err_PETSc);
+  CHKERRQ(err_PETSc)
+
+end subroutine grid_thermal_spectral_restartWrite
+
 
 
 !--------------------------------------------------------------------------------------------------

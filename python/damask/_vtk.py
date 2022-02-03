@@ -22,7 +22,8 @@ class VTK:
     High-level interface to VTK.
     """
 
-    def __init__(self, vtk_data: vtk.vtkDataSet):
+    def __init__(self,
+                 vtk_data: vtk.vtkDataSet):
         """
         New spatial visualization.
 
@@ -38,7 +39,9 @@ class VTK:
 
 
     @staticmethod
-    def from_image_data(cells: IntSequence, size: FloatSequence, origin: FloatSequence = np.zeros(3)) -> 'VTK':
+    def from_image_data(cells: IntSequence,
+                        size: FloatSequence,
+                        origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
         Create VTK of type vtk.vtkImageData.
 
@@ -68,7 +71,9 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: np.ndarray, size: FloatSequence, origin: FloatSequence = np.zeros(3)) -> 'VTK':
+    def from_rectilinear_grid(grid: np.ndarray,
+                              size: FloatSequence,
+                              origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
@@ -100,7 +105,9 @@ class VTK:
 
 
     @staticmethod
-    def from_unstructured_grid(nodes: np.ndarray, connectivity: np.ndarray, cell_type: str) -> 'VTK':
+    def from_unstructured_grid(nodes: np.ndarray,
+                               connectivity: np.ndarray,
+                               cell_type: str) -> 'VTK':
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
@@ -195,8 +202,7 @@ class VTK:
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
             raise FileNotFoundError(f'No such file: {fname}')
-        ext = Path(fname).suffix
-        if ext == '.vtk' or dataset_type is not None:
+        if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
             if dataset_type is None:
@@ -238,7 +244,11 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
-    def save(self, fname: Union[str, Path], parallel: bool = True, compress: bool = True):
+
+    def save(self,
+             fname: Union[str, Path],
+             parallel: bool = True,
+             compress: bool = True):
         """
         Save as VTK file.
 
@@ -284,7 +294,9 @@ class VTK:
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     # Needs support for damask.Table
-    def add(self, data: Union[np.ndarray, np.ma.MaskedArray], label: str = None):
+    def add(self,
+            data: Union[np.ndarray, np.ma.MaskedArray],
+            label: str = None):
         """
         Add data to either cells or points.
 
@@ -331,7 +343,8 @@ class VTK:
             raise TypeError
 
 
-    def get(self, label: str) -> np.ndarray:
+    def get(self,
+            label: str) -> np.ndarray:
         """
         Get either cell or point data.
 
@@ -383,7 +396,8 @@ class VTK:
         return []
 
 
-    def set_comments(self, comments: Union[str, List[str]]):
+    def set_comments(self,
+                     comments: Union[str, List[str]]):
         """
         Set comments.
 
@@ -400,7 +414,8 @@ class VTK:
         self.vtk_data.GetFieldData().AddArray(s)
 
 
-    def add_comments(self, comments: Union[str, List[str]]):
+    def add_comments(self,
+                     comments: Union[str, List[str]]):
         """
         Add comments.
 
@@ -440,7 +455,7 @@ class VTK:
                 width  = tk.winfo_screenwidth()
                 height = tk.winfo_screenheight()
                 tk.destroy()
-            except Exception as e:
+            except Exception:
                 width  = 1024
                 height =  768
 

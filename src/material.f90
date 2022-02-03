@@ -66,7 +66,7 @@ subroutine material_init(restart)
   print'(/,1x,a)', '<<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
 
-  call parse
+  call parse()
   print'(/,1x,a)', 'parsed material.yaml'
 
 

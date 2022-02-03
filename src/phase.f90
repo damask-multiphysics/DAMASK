@@ -8,6 +8,7 @@ module phase
   use constants
   use math
   use rotations
+  use polynomials
   use IO
   use config
   use material
@@ -123,11 +124,20 @@ module phase
       integer, intent(in) :: ph
     end subroutine mechanical_restartWrite
 
+    module subroutine thermal_restartWrite(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine thermal_restartWrite
+
     module subroutine mechanical_restartRead(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
     end subroutine mechanical_restartRead
 
+    module subroutine thermal_restartRead(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine thermal_restartRead
 
     module function mechanical_S(ph,en) result(S)
       integer, intent(in) :: ph,en
@@ -640,6 +650,7 @@ subroutine phase_restartWrite(fileHandle)
     groupHandle(2) = HDF5_addGroup(groupHandle(1),material_name_phase(ph))
 
     call mechanical_restartWrite(groupHandle(2),ph)
+    call thermal_restartWrite(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -668,6 +679,7 @@ subroutine phase_restartRead(fileHandle)
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_phase(ph))
 
     call mechanical_restartRead(groupHandle(2),ph)
+    call thermal_restartRead(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
