@@ -415,10 +415,9 @@ module function plastic_deltaState(ph, en) result(broken)
 
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))
       if (.not. broken) then
-        myOffset = plasticState(ph)%offsetDeltaState
-        mySize   = plasticState(ph)%sizeDeltaState
-        plasticState(ph)%state(myOffset + 1:myOffset + mySize,en) = &
-        plasticState(ph)%state(myOffset + 1:myOffset + mySize,en) + plasticState(ph)%deltaState(1:mySize,en)
+        mySize = plasticState(ph)%sizeDeltaState
+        plasticState(ph)%deltaState2(1:mySize,en) = plasticState(ph)%deltaState2(1:mySize,en) &
+                                                  + plasticState(ph)%deltaState(1:mySize,en)
       end if
 
   end select

@@ -436,6 +436,8 @@ subroutine phase_allocateState(state, &
   allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pReal)
 
   allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pReal)
+  state%deltaState2 => state%state(state%offsetDeltaState+1: &
+                                   state%offsetDeltaState+state%sizeDeltaState,:)
 
 end subroutine phase_allocateState
 
