@@ -408,7 +408,7 @@ end subroutine phase_init
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine phase_allocateState(state, &
-                               NEntries,sizeState,sizeDotState,sizeDeltaState)
+                               NEntries,sizeState,sizeDotState,sizeDeltaState,offsetDeltaState)
 
   class(tState), intent(inout) :: &
     state
@@ -417,12 +417,17 @@ subroutine phase_allocateState(state, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
-
+  integer, intent(in), optional :: &
+    offsetDeltaState
 
   state%sizeState        = sizeState
   state%sizeDotState     = sizeDotState
   state%sizeDeltaState   = sizeDeltaState
-  state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
+  if (present(offsetDeltaState)) then
+    state%offsetDeltaState = offsetDeltaState                                                       ! ToDo: this is a fix for broken nonlocal
+  else
+    state%offsetDeltaState = sizeState-sizeDeltaState                                               ! deltaState occupies latter part of state by definition
+  end if
 
   allocate(state%atol             (sizeState),          source=0.0_pReal)
   allocate(state%state0           (sizeState,NEntries), source=0.0_pReal)
@@ -431,7 +436,6 @@ subroutine phase_allocateState(state, &
   allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pReal)
 
   allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pReal)
-
 
 end subroutine phase_allocateState
 

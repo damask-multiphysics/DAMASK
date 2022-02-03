@@ -154,11 +154,10 @@ submodule(phase:mechanical) plastic
         en
     end subroutine dislotungsten_dotState
 
-    module subroutine nonlocal_dotState(Mp,Temperature,timestep,ph,en,ip,el)
+    module subroutine nonlocal_dotState(Mp,timestep,ph,en,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
       real(pReal), intent(in) :: &
-        Temperature, &                                                                              !< temperature
         timestep                                                                                    !< substepped crystallite time increment
       integer, intent(in) :: &
         ph, &
@@ -308,7 +307,7 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
     subdt                                                                                           !< timestep
   real(pReal),              dimension(3,3) :: &
     Mp
-  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
 
 
@@ -334,7 +333,7 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
         call dislotungsten_dotState(Mp,thermal_T(ph,en),ph,en)
 
       case (PLASTIC_NONLOCAL_ID) plasticType
-        call nonlocal_dotState(Mp,thermal_T(ph,en),subdt,ph,en,ip,el)
+        call nonlocal_dotState(Mp,subdt,ph,en,ip,el)
     end select plasticType
   end if
 
@@ -393,6 +392,7 @@ module function plastic_deltaState(ph, en) result(broken)
   integer :: &
     myOffset, &
     mySize
+
 
   broken = .false.
 

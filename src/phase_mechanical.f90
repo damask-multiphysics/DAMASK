@@ -88,7 +88,7 @@ submodule(phase) mechanical
         en
       real(pReal),  intent(in) :: &
         subdt                                                                                           !< timestep
-      real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function plastic_dotState
 
