@@ -1338,16 +1338,16 @@ pure function cu2ho(cu) result(ho)
       ! transform to sphere grid (inverse Lambert)
       ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
       c = sum(T**2)
-      s = Pi * c/(24.0*XYZ(3)**2)
+      s = PI * c/(24.0*XYZ(3)**2)
       c = sqrt(PI) * c / sqrt(24.0_pReal) / XYZ(3)
       q = sqrt( 1.0 - s )
       LamXYZ = [ T(order(2)) * q, T(order(1)) * q, PREF * XYZ(3) - c ]
-    endif special
+    end if special
 
     ! reverse the coordinates back to order according to the original pyramid number
     ho = LamXYZ(p(:,2))
 
-  endif center
+  end if center
 
 end function cu2ho
 
