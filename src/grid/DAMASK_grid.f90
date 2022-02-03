@@ -466,7 +466,14 @@ program DAMASK_grid
         call MPI_Allreduce(interface_SIGUSR2,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
-          call mechanical_restartWrite
+          do field = 1, nActiveFields
+            select case (ID(field))
+              case(FIELD_MECH_ID)
+                call mechanical_restartWrite
+              case(FIELD_THERMAL_ID)
+                call grid_thermal_spectral_restartWrite
+            end select
+          end do
           call CPFEM_restartWrite
         endif
         if (signal) call interface_setSIGUSR2(.false.)

@@ -1248,7 +1248,7 @@ module subroutine mechanical_restartWrite(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  call HDF5_write(plasticState(ph)%state,groupHandle,'omega')
+  call HDF5_write(plasticState(ph)%state,groupHandle,'omega_plastic')
   call HDF5_write(phase_mechanical_Fi(ph)%data,groupHandle,'F_i')
   call HDF5_write(phase_mechanical_Li(ph)%data,groupHandle,'L_i')
   call HDF5_write(phase_mechanical_Lp(ph)%data,groupHandle,'L_p')
@@ -1265,7 +1265,7 @@ module subroutine mechanical_restartRead(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  call HDF5_read(plasticState(ph)%state0,groupHandle,'omega')
+  call HDF5_read(plasticState(ph)%state0,groupHandle,'omega_plastic')
   call HDF5_read(phase_mechanical_Fi0(ph)%data,groupHandle,'F_i')
   call HDF5_read(phase_mechanical_Li0(ph)%data,groupHandle,'L_i')
   call HDF5_read(phase_mechanical_Lp0(ph)%data,groupHandle,'L_p')
