@@ -7,7 +7,7 @@ from . import util
 from . import grid_filters
 
 from typing import Union, Sequence, Tuple, Literal, List, TypeVar
-from ._typehints import FloatSequence, IntSequence
+from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 
 _P = -1
 
@@ -963,7 +963,7 @@ class Rotation:
 
     @staticmethod
     def from_random(shape: Tuple[int, ...] = None,
-                    rng_seed: Union[int, IntSequence] = None) -> 'Rotation':
+                    rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
         Initialize with random rotation.
 
@@ -997,7 +997,7 @@ class Rotation:
                  N: int = 500,
                  degrees: bool = True,
                  fractions: bool = True,
-                 rng_seed: Union[int, IntSequence] = None) -> 'Rotation':
+                 rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
         Sample discrete values from a binned orientation distribution function (ODF).
 
@@ -1054,7 +1054,7 @@ class Rotation:
                                  sigma: float,
                                  N: int = 500,
                                  degrees: bool = True,
-                                 rng_seed: Union[int, IntSequence] = None) -> 'Rotation':
+                                 rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -1090,7 +1090,7 @@ class Rotation:
                              sigma: float = 0.0,
                              N: int = 500,
                              degrees: bool = True,
-                             rng_seed: Union[int, IntSequence] = None):
+                             rng_seed: NumpyRngSeed = None):
         """
         Calculate set of rotations with Gaussian distribution around direction.
 
