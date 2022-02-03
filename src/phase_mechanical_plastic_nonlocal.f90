@@ -123,8 +123,10 @@ submodule(phase:plastic) nonlocal
 
   type :: tNonlocalDependentState
     real(pReal), allocatable, dimension(:,:) :: &
-     tau_pass, &
-     tau_Back
+      tau_pass, &
+      tau_Back
+    real(pReal), allocatable, dimension(:,:,:,:,:) :: &
+      compatibility
   end type tNonlocalDependentState
 
   type :: tNonlocalState
@@ -160,7 +162,6 @@ submodule(phase:plastic) nonlocal
     state0
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters
-
   type(tNonlocalDependentState), dimension(:), allocatable :: dependentState
 
 contains
@@ -489,6 +490,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),source=0.0_pReal)
     allocate(dst%tau_back(prm%sum_N_sl,Nmembers),source=0.0_pReal)
+    allocate(dst%compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,Nmembers),source=0.0_pReal)
     end associate
 
     if (Nmembers > 0) call stateInit(ini,ph,Nmembers)
@@ -669,7 +671,7 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
                                           - discretization_IPcoords(1:3,el+neighbor_ip-1))
             normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &         ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el)  ! instead take the surface normal scaled with the diameter of the cell
+              connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%V_0(en)/IParea(n,ip,el)  ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pReal
@@ -1110,7 +1112,7 @@ module subroutine nonlocal_dotState(Mp,timestep, &
      .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
-      print'(a,i5,a,i2)', '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
+      print'(a,i5,a,i2)', '<< CONST >> evolution rate leads to negative density at ph ',ph,' en ',en
       print'(a)', '<< CONST >> enforcing cutback !!!'
     end if
 #endif
@@ -1215,14 +1217,14 @@ function rhoDotFlux(timestep,ph,en,ip,el)
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(dot_gamma) > 0.0_pReal &                                                           ! any active slip system ...
             .and. prm%C_CFL * abs(v0) * timestep &
-                > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+                > geom(ph)%V_0(en)/ maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
-      print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
+      print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at ph ',ph,' en ',en
       print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(dot_gamma) > 0.0_pReal &
                        .and.  prm%C_CFL * abs(v0) * timestep &
-                             > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
+                             > geom(ph)%V_0(en) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       print*, '<< CONST >> enforcing cutback !!!'
     end if
@@ -1277,7 +1279,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
       !* compatibility
       if (neighbor_n > 0) then
       if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTIC_NONLOCAL_ID .and. &
-          any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) then
+          any(dependentState(ph)%compatibility(:,:,:,n,en) > 0.0_pReal)) then
 
         forall (s = 1:ns, t = 1:4)
           neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,neighbor_ph),no)
@@ -1301,12 +1303,12 @@ function rhoDotFlux(timestep,ph,en,ip,el)
                 .and. v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal ) then                                ! ... only if no sign change in flux density
               lineLength = neighbor_rhoSgl0(s,t) * neighbor_v0(s,t) &
                          * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
-              where (compatibility(c,:,s,n,ip,el) > 0.0_pReal) &
+              where (dependentState(ph)%compatibility(c,:,s,n,en) > 0.0_pReal) &
                 rhoDotFlux(:,t) = rhoDotFlux(1:ns,t) &
-                                + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2        ! transferring to equally signed mobile dislocation type
-              where (compatibility(c,:,s,n,ip,el) < 0.0_pReal) &
+                                + lineLength/geom(ph)%V_0(en)*dependentState(ph)%compatibility(c,:,s,n,en)**2        ! transferring to equally signed mobile dislocation type
+              where (dependentState(ph)%compatibility(c,:,s,n,en) < 0.0_pReal) &
                 rhoDotFlux(:,topp) = rhoDotFlux(:,topp) &
-                                   + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2     ! transferring to opposite signed mobile dislocation type
+                                   + lineLength/geom(ph)%V_0(en)*dependentState(ph)%compatibility(c,:,s,n,en)**2     ! transferring to opposite signed mobile dislocation type
 
             end if
           end do
@@ -1335,15 +1337,15 @@ function rhoDotFlux(timestep,ph,en,ip,el)
             c = (t + 1) / 2
             if (v0(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then             ! flux from en to my neighbor == leaving flux for en (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
               if (v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal) then                                     ! no sign change in flux density
-                transmissivity = sum(compatibility(c,:,s,n,ip,el)**2)                               ! overall transmissivity from this slip system to my neighbor
+                transmissivity = sum(dependentState(ph)%compatibility(c,:,s,n,en)**2)               ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pReal
               end if
               lineLength = my_rhoSgl0(s,t) * v0(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * area                        ! positive line length of mobiles that wants to leave through this interface
-              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                      ! subtract dislocation flux from current type
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / geom(ph)%V_0(en)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
-                                + lineLength / IPvolume(ip,el) * (1.0_pReal - transmissivity) &
+                                + lineLength / geom(ph)%V_0(en) * (1.0_pReal - transmissivity) &
                                 * sign(1.0_pReal, v0(s,t))                                          ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
             end if
           end do
@@ -1465,7 +1467,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
     end do neighbors
 
-    compatibility(:,:,:,:,i,e) = my_compatibility
+    dependentState(ph)%compatibility(:,:,:,:,material_phaseEntry(1,(e-1)*discretization_nIPs + i)) = my_compatibility
 
   end associate
 
