@@ -8,19 +8,19 @@ from damask import seeds
 class TestGridFilters:
 
     def test_coordinates0_point(self):
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          coord = grid_filters.coordinates0_point(cells,size)
          assert np.allclose(coord[0,0,0],size/cells*.5) and coord.shape == tuple(cells) + (3,)
 
     def test_coordinates0_node(self):
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          coord = grid_filters.coordinates0_node(cells,size)
          assert np.allclose(coord[-1,-1,-1],size) and coord.shape == tuple(cells+1) + (3,)
 
     def test_coord0(self):
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          c = grid_filters.coordinates0_point(cells+1,size+size/cells)
          n = grid_filters.coordinates0_node(cells,size) + size/cells*.5
@@ -28,16 +28,16 @@ class TestGridFilters:
 
     @pytest.mark.parametrize('mode',['point','node'])
     def test_grid_DNA(self,mode):
-         """Ensure that cellsSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""
+         """Ensure that cellsSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""       # noqa
          cells   = np.random.randint(8,32,(3))
          size   = np.random.random(3)
          origin = np.random.random(3)
-         coord0 = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')                     # noqa
+         coord0 = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')                      # noqa
          _cells,_size,_origin = eval(f'grid_filters.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"))')
          assert np.allclose(cells,_cells) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):
-         """Ensure that fluctuations are periodic."""
+         """Ensure that fluctuations are periodic."""                                               # noqa
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(cells)+(3,3))
@@ -45,14 +45,14 @@ class TestGridFilters:
                             grid_filters.point_to_node(grid_filters.displacement_fluct_point(size,F)))
 
     def test_interpolation_to_node(self):
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(cells)+(3,3))
          assert np.allclose(grid_filters.coordinates_node(size,F) [1:-1,1:-1,1:-1],
                             grid_filters.point_to_node(grid_filters.coordinates_point(size,F))[1:-1,1:-1,1:-1])
 
     def test_interpolation_to_cell(self):
-         cells = np.random.randint(1,30,(3))
+         cells = np.random.randint(1,30,(3))                                                        # noqa
 
          coordinates_node_x = np.linspace(0,np.pi*2,num=cells[0]+1)
          node_field_x = np.cos(coordinates_node_x)
@@ -66,7 +66,7 @@ class TestGridFilters:
 
     @pytest.mark.parametrize('mode',['point','node'])
     def test_coordinates0_origin(self,mode):
-         origin= np.random.random(3)
+         origin= np.random.random(3)                                                                # noqa
          size  = np.random.random(3)                                                                # noqa
          cells  = np.random.randint(8,32,(3))
          shifted   = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')
@@ -79,7 +79,7 @@ class TestGridFilters:
     @pytest.mark.parametrize('function',[grid_filters.displacement_avg_point,
                                          grid_filters.displacement_avg_node])
     def test_displacement_avg_vanishes(self,function):
-         """Ensure that random fluctuations in F do not result in average displacement."""
+         """Ensure that random fluctuations in F do not result in average displacement."""          # noqa
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(cells)+(3,3))
@@ -89,7 +89,7 @@ class TestGridFilters:
     @pytest.mark.parametrize('function',[grid_filters.displacement_fluct_point,
                                          grid_filters.displacement_fluct_node])
     def test_displacement_fluct_vanishes(self,function):
-         """Ensure that constant F does not result in fluctuating displacement."""
+         """Ensure that constant F does not result in fluctuating displacement."""                  # noqa
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
          F    = np.broadcast_to(np.random.random((3,3)), tuple(cells)+(3,3))
@@ -142,13 +142,13 @@ class TestGridFilters:
             function(unordered,mode)
 
     def test_regrid_identity(self):
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          F = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))
          assert all(grid_filters.regrid(size,F,cells) == np.arange(cells.prod()))
 
     def test_regrid_double_cells(self):
-         size = np.random.random(3)
+         size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          g = Grid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10))
          F = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))

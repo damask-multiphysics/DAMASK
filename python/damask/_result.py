@@ -5,7 +5,7 @@ import os
 import copy
 import datetime
 import warnings
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET                                                                  # noqa
 import xml.dom.minidom
 from pathlib import Path
 from functools import partial
