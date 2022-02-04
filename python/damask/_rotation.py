@@ -458,7 +458,7 @@ class Rotation:
 
         Parameters
         ----------
-        weights : numpy.ndarray, optional
+        weights : FloatSequence, optional
             Relative weight of each rotation.
 
         Returns
