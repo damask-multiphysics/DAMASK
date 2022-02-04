@@ -1366,14 +1366,14 @@ end function rhoDotFlux
 ! plane normals and signed cosine of the angle between the slip directions. Only the largest values
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
+module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
 
   type(tRotationContainer), dimension(:), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
     ph, &
-    i, &
-    e
+    ip, &
+    el
 
   integer :: &
     n, &                                                                                            ! neighbor index
@@ -1399,14 +1399,14 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
   associate(prm => param(ph))
     ns = prm%sum_N_sl
 
-    en = material_phaseMemberAt(1,i,e)
+    en = material_phaseMemberAt(1,ip,el)
     !*** start out fully compatible
     my_compatibility = 0.0_pReal
     forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
 
     neighbors: do n = 1,nIPneighbors
-      neighbor_e = IPneighborhood(1,n,i,e)
-      neighbor_i = IPneighborhood(2,n,i,e)
+      neighbor_e = IPneighborhood(1,n,ip,el)
+      neighbor_i = IPneighborhood(2,n,ip,el)
       neighbor_me = material_phaseMemberAt(1,neighbor_i,neighbor_e)
       neighbor_phase = material_phaseAt(1,neighbor_e)
 
@@ -1467,7 +1467,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
 
     end do neighbors
 
-    dependentState(ph)%compatibility(:,:,:,:,material_phaseEntry(1,(e-1)*discretization_nIPs + i)) = my_compatibility
+    dependentState(ph)%compatibility(:,:,:,:,material_phaseEntry(1,(el-1)*discretization_nIPs + ip)) = my_compatibility
 
   end associate
 

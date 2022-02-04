@@ -264,11 +264,11 @@ module phase
       real(pReal) :: f
     end function phase_f_T
 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
       integer, intent(in) :: &
         ph, &
-        i, &
-        e
+        ip, &
+        el
         type(tRotationContainer), dimension(:), intent(in) :: orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
