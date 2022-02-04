@@ -291,12 +291,9 @@ end subroutine plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
+module function plastic_dotState(subdt,ph,en) result(dotState)
 
   integer, intent(in) :: &
-    co, &                                                                                           !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
     ph, &
     en
   real(pReal),  intent(in) :: &
