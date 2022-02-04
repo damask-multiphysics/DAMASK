@@ -259,7 +259,7 @@ class Rotation:
         return self**exp
 
 
-    def __mul__(self, other: 'Rotation') -> 'Rotation':
+    def __mul__(self: MyType, other: MyType) -> MyType:
         """
         Compose with other.
 
@@ -281,12 +281,12 @@ class Rotation:
             p_o = other.quaternion[...,1:]
             q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
-            return Rotation(np.block([q,p]))._standardize()
+            return Rotation(np.block([q,p]))._standardize() #type: ignore
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
-    def __imul__(self,
-                 other: 'Rotation') -> 'Rotation':
+    def __imul__(self: MyType,
+                 other: MyType) -> MyType:
         """
         Compose with other (in-place).
 
@@ -299,8 +299,8 @@ class Rotation:
         return self*other
 
 
-    def __truediv__(self: 'Rotation',
-                    other: 'Rotation') -> 'Rotation':
+    def __truediv__(self: MyType,
+                    other: MyType) -> MyType:
         """
         Compose with inverse of other.
 
@@ -320,8 +320,8 @@ class Rotation:
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
-    def __itruediv__(self: 'Rotation',
-                     other: 'Rotation') -> 'Rotation':
+    def __itruediv__(self: MyType,
+                     other: MyType) -> MyType:
         """
         Compose with inverse of other (in-place).
 
@@ -492,8 +492,8 @@ class Rotation:
                                         accept_homomorph = True)
 
 
-    def misorientation(self,
-                       other: 'Rotation') -> 'Rotation':
+    def misorientation(self: MyType,
+                       other: MyType) -> MyType:
         """
         Calculate misorientation to other Rotation.
 

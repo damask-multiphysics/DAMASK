@@ -165,7 +165,6 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-
         eq = self.__eq__(other)
         if not isinstance(eq, bool):
             return eq
@@ -501,8 +500,8 @@ class Orientation(Rotation,Crystal):
                 return np.ones_like(rho[...,0],dtype=bool)
 
     def disorientation(self,
-                       other,
-                       return_operators = False):
+                       other: "Orientation",
+                       return_operators: bool = False) -> object:
         """
         Calculate disorientation between myself and given other orientation.
 
@@ -575,9 +574,9 @@ class Orientation(Rotation,Crystal):
         r = np.where(np.any(forward[...,np.newaxis],axis=(0,1),keepdims=True),
                      r_.quaternion,
                      _r.quaternion)
-        loc: Tuple[float]  = np.where(ok)
-        sort: np.ndarray = 0 if len(loc) == 2 else np.lexsort(loc[:1:-1])
-        quat: np.ndarray = r[ok][sort].reshape(blend+(4,))
+        loc  = np.where(ok)
+        sort = 0 if len(loc) == 2 else np.lexsort(loc[:1:-1])
+        quat = r[ok][sort].reshape(blend+(4,))
         return (
                 (self.copy(rotation=quat),
                  (np.vstack(loc[:2]).T)[sort].reshape(blend+(2,)))
