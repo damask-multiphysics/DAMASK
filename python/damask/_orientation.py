@@ -562,8 +562,8 @@ class Orientation(Rotation,Crystal):
         s = self.equivalent
         o = other.equivalent
 
-        s_ = s.reshape((s.shape[0],1)+ self.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right')
-        o_ = o.reshape((1,o.shape[0])+other.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right')
+        s_ = s.reshape((s.shape[0],1)+ self.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right') #type: ignore
+        o_ = o.reshape((1,o.shape[0])+other.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right') #type: ignore
         r_ = s_.misorientation(o_)
         _r = ~r_
 
