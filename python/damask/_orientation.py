@@ -148,7 +148,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if not isinstance(other, Orientation):
-            raise NotImplementedError
+            return NotImplemented
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
@@ -165,8 +165,7 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        self.__eq__(other)
-        return np.logical_not(self==other)
+        return np.logical_not(self==other) if isinstance(other, Orientation) else NotImplemented
 
 
     def isclose(self,
@@ -498,7 +497,7 @@ class Orientation(Rotation,Crystal):
                 return np.ones_like(rho[...,0],dtype=bool)
 
     def disorientation(self,
-                       other: "Orientation",
+                       other: 'Orientation',
                        return_operators: bool = False) -> object:
         """
         Calculate disorientation between myself and given other orientation.
@@ -612,8 +611,7 @@ class Orientation(Rotation,Crystal):
         """
         eq = self.equivalent
         m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))
-                                          .broadcast_to(eq.shape))\
-               .as_axis_angle()[...,3]
+                                          .broadcast_to(eq.shape)).as_axis_angle()[...,3]
         r = Rotation(np.squeeze(np.take_along_axis(eq.quaternion,
                                                    np.argmin(m,axis=0)[np.newaxis,...,np.newaxis],
                                                    axis=0),

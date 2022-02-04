@@ -124,12 +124,13 @@ class Rotation:
 
         """
         if not isinstance(other, Rotation):
-            raise NotImplementedError
+            return NotImplemented
         return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
 
 
-    def __ne__(self, other: object) -> bool:
+    def __ne__(self,
+               other: object) -> bool:
         """
         Not equal to other.
 
@@ -139,9 +140,7 @@ class Rotation:
             Rotation to check for inequality.
 
         """
-        self.__eq__(other)
-        return np.logical_not(self==other)
-
+        return np.logical_not(self==other) if isinstance(other, Rotation) else NotImplemented
 
     def isclose(self,
                 other: 'Rotation',
@@ -257,7 +256,8 @@ class Rotation:
         return self**exp
 
 
-    def __mul__(self: MyType, other: MyType) -> MyType:
+    def __mul__(self: MyType,
+                other: MyType) -> MyType:
         """
         Compose with other.
 
@@ -332,7 +332,8 @@ class Rotation:
         return self/other
 
 
-    def __matmul__(self, other: np.ndarray) -> np.ndarray:
+    def __matmul__(self,
+                   other: np.ndarray) -> np.ndarray:
         """
         Rotate vector, second order tensor, or fourth order tensor.
 
@@ -451,7 +452,7 @@ class Rotation:
 
 
     def average(self,
-                weights: np.ndarray = None) -> 'Rotation':
+                weights: FloatSequence = None) -> 'Rotation':
         """
         Average along last array dimension.
 
@@ -475,11 +476,10 @@ class Rotation:
             """Intermediate representation supporting quaternion averaging."""
             return np.einsum('...i,...j',quat,quat)
 
-        if weights is None:
-            weights = np.ones(self.shape,dtype=float)
+        weights_ = np.ones(self.shape,dtype=float) if weights is None else np.array(weights,float)
 
-        eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights[...,np.newaxis,np.newaxis],axis=-3) \
-                                /np.sum(                      weights[...,np.newaxis,np.newaxis],axis=-3))
+        eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights_[...,np.newaxis,np.newaxis],axis=-3) \
+                                /np.sum(                      weights_[...,np.newaxis,np.newaxis],axis=-3))
 
         return Rotation.from_quaternion(np.real(
                                         np.squeeze(
