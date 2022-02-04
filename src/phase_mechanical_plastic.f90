@@ -341,20 +341,12 @@ end function plastic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different plasticity constitutive models
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dependentState(co, ip, el)
+module subroutine plastic_dependentState(en,ph)
 
   integer, intent(in) :: &
-    co, &                                                                                           !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    en, &
+    ph
 
-  integer :: &
-    ph, &
-    en
-
-
-  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
-  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
   plasticType: select case (phase_plasticity(ph))
 

@@ -431,7 +431,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
 
-  call plastic_dependentState(co,ip,el)
+  call plastic_dependentState(en,ph)
 
   Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                              ! take as first guess
   Liguess = phase_mechanical_Li(ph)%data(1:3,1:3,en)                                              ! take as first guess

@@ -272,13 +272,11 @@ module phase
         type(tRotationContainer), dimension(:), intent(in) :: orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
-    module subroutine plastic_dependentState(co,ip,el)
+    module subroutine plastic_dependentState(en,ph)
       integer, intent(in) :: &
-        co, &                                                                                       !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
+        en, &
+        ph
     end subroutine plastic_dependentState
-
 
     module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
       integer, intent(in) :: ph, en
@@ -503,7 +501,8 @@ subroutine crystallite_init()
     el, &                                                                                           !< counter in element loop
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
-    eMax                                                                                            !< maximum number of elements
+    eMax, &                                                                                         !< maximum number of elements
+    en, ph
 
   class(tNode), pointer :: &
     num_crystallite, &
@@ -560,8 +559,10 @@ subroutine crystallite_init()
     do ip = 1, iMax
       ce = (el-1)*discretization_nIPs + ip
       do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+        en = material_phaseEntry(co,ce)
+        ph = material_phaseID(co,ce)
         call crystallite_orientations(co,ip,el)
-        call plastic_dependentState(co,ip,el)                                                       ! update dependent state variables to be consistent with basic states
+        call plastic_dependentState(en,ph)                                                          ! update dependent state variables to be consistent with basic states
      end do
     end do
   end do

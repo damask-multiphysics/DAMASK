@@ -672,8 +672,8 @@ module subroutine nonlocal_dependentState(ph, en)
             neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor0(:,edg)),2)
             neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor0(:,scr)),2)
 
-            connection_latticeConf(1:3,n) = matmul(invFe, geom(ph)%IPcoordinates(1:3,en) &
-                                          - geom(ph)%IPcoordinates(1:3,en-1))                       ! ToDo: broken for different materials
+            connection_latticeConf(1:3,n) = matmul(invFe, geom(ph)%IPcoordinates(1:3,no) &
+                                          - geom(ph)%IPcoordinates(1:3,en))
             normal_latticeConf = matmul(transpose(invFp), geom(ph)%IPareaNormal(1:3,n,en))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &         ! neighboring connection points in opposite direction to face normal: must be periodic image
               connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%V_0(en)/geom(ph)%IParea(n,en)  ! instead take the surface normal scaled with the diameter of the cell
