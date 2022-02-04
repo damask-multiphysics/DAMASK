@@ -228,15 +228,15 @@ module phase
 
     end function phase_thermal_constitutive
 
-    module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
+    module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: co, ip, el
+      integer, intent(in) :: co, ce
       logical :: converged_
     end function phase_damage_constitutive
 
-    module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
+    module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: co, ip, el
+      integer, intent(in) :: co, ce
       logical :: converged_
     end function phase_mechanical_constitutive
 

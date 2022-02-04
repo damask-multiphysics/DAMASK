@@ -414,8 +414,6 @@ function integrateStress(F,subFp0,subFi0,Delta_t,en,ph) result(broken)
                                       ierr, &                                                       ! error indicator for LAPACK
                                       o, &
                                       p, &
-                                      ph, &
-                                      en, &
                                       jacoCounterLp, &
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
   logical :: error,broken
@@ -583,8 +581,6 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(b
 
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
-    ph, &
-    en, &
     sizeDotState
   real(pReal) :: &
     zeta
@@ -674,8 +670,6 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result
   real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
   integer :: &
-    ph, &
-    en, &
     sizeDotState
 
 
@@ -711,8 +705,6 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph
     broken
 
   integer :: &
-    ph, &
-    en, &
     sizeDotState
   real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
     r, &
@@ -829,8 +821,6 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C,DB) 
   integer :: &
     stage, &                                                                                        ! stage index in integration stage loop
     n, &
-    ph, &
-    en, &
     sizeDotState
   real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
@@ -985,13 +975,12 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
+module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
-    ip, &
-    el
+    ce
   logical :: converged_
 
   real(pReal) :: &
@@ -1010,6 +999,8 @@ module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged
   real(pReal), dimension(:), allocatable :: subState0
 
 
+  ph = material_phaseID(co,ce)
+  en = material_phaseEntry(co,ce)
   sizeDotState = plasticState(ph)%sizeDotState
 
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)

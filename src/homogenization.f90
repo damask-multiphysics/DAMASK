@@ -259,7 +259,7 @@ subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving
         NiterationMPstate = NiterationMPstate + 1
 
         call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-        converged = all([(phase_mechanical_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
+        converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
         if (converged) then
           doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
           converged = all(doneAndHappy)
@@ -268,7 +268,7 @@ subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving
         endif
       enddo convergenceLooping
 
-      converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
+      converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
 
       if (.not. converged) then
         if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
