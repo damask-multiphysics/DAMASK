@@ -15,6 +15,9 @@ submodule(phase:plastic) nonlocal
 
   type :: tGeometry
     real(pReal), dimension(:), allocatable :: V_0
+    integer, dimension(:,:,:), allocatable :: IPneighborhood
+    real(pReal), dimension(:,:), allocatable :: IParea
+    real(pReal), dimension(:,:,:), allocatable :: IPareaNormal
   end type tGeometry
 
   type(tGeometry), dimension(:), allocatable :: geom
@@ -407,6 +410,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState,0)     ! ToDo: state structure does not follow convention
 
     allocate(geom(ph)%V_0(Nmembers))
+    allocate(geom(ph)%IPneighborhood(3,nIPneighbors,Nmembers))
+    allocate(geom(ph)%IPareaNormal(3,nIPneighbors,Nmembers))
+    allocate(geom(ph)%IParea(nIPneighbors,Nmembers))
     call storeGeometry(ph)
 
     if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
@@ -652,8 +658,8 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
     nRealNeighbors = 0.0_pReal
     neighbor_rhoTotal = 0.0_pReal
     do n = 1,nIPneighbors
-      neighbor_el = IPneighborhood(1,n,ip,el)
-      neighbor_ip = IPneighborhood(2,n,ip,el)
+      neighbor_el = geom(ph)%IPneighborhood(1,n,en)
+      neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
       no = material_phasememberAt(1,neighbor_ip,neighbor_el)
       if (neighbor_el > 0 .and. neighbor_ip > 0) then
         if (material_phaseAt(1,neighbor_el) == ph) then
@@ -669,9 +675,9 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
 
             connection_latticeConf(1:3,n) = matmul(invFe, discretization_IPcoords(1:3,neighbor_el+neighbor_ip-1) &
                                           - discretization_IPcoords(1:3,el+neighbor_ip-1))
-            normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
+            normal_latticeConf = matmul(transpose(invFp), geom(ph)%IPareaNormal(1:3,n,en))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &         ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%V_0(en)/IParea(n,ip,el)  ! instead take the surface normal scaled with the diameter of the cell
+              connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%V_0(en)/geom(ph)%IParea(n,en)  ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pReal
@@ -1101,7 +1107,7 @@ module subroutine nonlocal_dotState(Mp,timestep, &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
-  rhoDot = rhoDotFlux(timestep, ph,en,ip,el) &
+  rhoDot = rhoDotFlux(timestep, ph,en) &
          + rhoDotMultiplication &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
@@ -1131,17 +1137,15 @@ end subroutine nonlocal_dotState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 #if __INTEL_COMPILER >= 2020
-non_recursive function rhoDotFlux(timestep,ph,en,ip,el)
+non_recursive function rhoDotFlux(timestep,ph,en)
 #else
-function rhoDotFlux(timestep,ph,en,ip,el)
+function rhoDotFlux(timestep,ph,en)
 #endif
   real(pReal), intent(in) :: &
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
     ph, &
-    en, &
-    ip, &                                                                                           !< current integration point
-    el                                                                                              !< current element number
+    en
 
   integer ::  &
     neighbor_ph, &                                                                                  !< phase of my neighbor's plasticity
@@ -1217,14 +1221,14 @@ function rhoDotFlux(timestep,ph,en,ip,el)
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(dot_gamma) > 0.0_pReal &                                                           ! any active slip system ...
             .and. prm%C_CFL * abs(v0) * timestep &
-                > geom(ph)%V_0(en)/ maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+                > geom(ph)%V_0(en)/ maxval(geom(ph)%IParea(:,en)))) then                            ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
       print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at ph ',ph,' en ',en
       print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(dot_gamma) > 0.0_pReal &
                        .and.  prm%C_CFL * abs(v0) * timestep &
-                             > geom(ph)%V_0(en) / maxval(IParea(:,ip,el))), &
+                             > geom(ph)%V_0(en) / maxval(geom(ph)%IParea(:,en))), &
         ' at a timestep of ',timestep
       print*, '<< CONST >> enforcing cutback !!!'
     end if
@@ -1247,16 +1251,16 @@ function rhoDotFlux(timestep,ph,en,ip,el)
 
     neighbors: do n = 1,nIPneighbors
 
-      neighbor_el = IPneighborhood(1,n,ip,el)
-      neighbor_ip = IPneighborhood(2,n,ip,el)
-      neighbor_n  = IPneighborhood(3,n,ip,el)
+      neighbor_el = geom(ph)%IPneighborhood(1,n,en)
+      neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
+      neighbor_n  = geom(ph)%IPneighborhood(3,n,en)
       np = material_phaseAt(1,neighbor_el)
       no = material_phasememberAt(1,neighbor_ip,neighbor_el)
 
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
-      opposite_el = IPneighborhood(1,opposite_neighbor,ip,el)
-      opposite_ip = IPneighborhood(2,opposite_neighbor,ip,el)
-      opposite_n  = IPneighborhood(3,opposite_neighbor,ip,el)
+      opposite_el = geom(ph)%IPneighborhood(1,opposite_neighbor,en)
+      opposite_ip = geom(ph)%IPneighborhood(2,opposite_neighbor,en)
+      opposite_n  = geom(ph)%IPneighborhood(3,opposite_neighbor,en)
 
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_ph = material_phaseAt(1,neighbor_el)
@@ -1327,10 +1331,10 @@ function rhoDotFlux(timestep,ph,en,ip,el)
       if (phase_plasticity(material_phaseAt(1,opposite_el)) == PLASTIC_NONLOCAL_ID) then
 
         normal_me2neighbor_defConf = math_det33(Favg) &
-                                   * matmul(math_inv33(transpose(Favg)),IPareaNormal(1:3,n,ip,el))  ! normal of the interface in (average) deformed configuration (pointing en => neighbor)
+                                   * matmul(math_inv33(transpose(Favg)),geom(ph)%IPareaNormal(1:3,n,en))  ! normal of the interface in (average) deformed configuration (pointing en => neighbor)
         normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
                            / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
-        area = IParea(n,ip,el) * norm2(normal_me2neighbor)
+        area = geom(ph)%IParea(n,en) * norm2(normal_me2neighbor)
         normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                         ! normalize the surface normal to unit length
         do s = 1,ns
           do t = 1,4
@@ -1758,14 +1762,27 @@ subroutine storeGeometry(ph)
 
   integer, intent(in) :: ph
 
-  integer :: ce, co
+  integer :: ce, co, nCell
   real(pReal), dimension(:), allocatable :: V
+  integer, dimension(:,:,:), allocatable :: neighborhood
+  real(pReal), dimension(:,:), allocatable :: area
+  real(pReal), dimension(:,:,:), allocatable :: areaNormal
 
+  nCell = product(shape(IPvolume))
 
-  V = reshape(IPvolume,[product(shape(IPvolume))])
+  V = reshape(IPvolume,[nCell])
+  neighborhood = reshape(IPneighborhood,[3,nIPneighbors,nCell])
+  area = reshape(IParea,[nIPneighbors,nCell])
+  areaNormal = reshape(IPareaNormal,[3,nIPneighbors,nCell])
+
   do ce = 1, size(material_homogenizationEntry,1)
     do co = 1, homogenization_maxNconstituents
-      if (material_phaseID(co,ce) == ph) geom(ph)%V_0(material_phaseEntry(co,ce)) = V(ce)
+      if (material_phaseID(co,ce) == ph) then
+        geom(ph)%V_0(material_phaseEntry(co,ce)) = V(ce)
+        geom(ph)%IPneighborhood(:,:,material_phaseEntry(co,ce)) = neighborhood(:,:,ce)
+        geom(ph)%IParea(:,material_phaseEntry(co,ce)) = area(:,ce)
+        geom(ph)%IPareaNormal(:,:,material_phaseEntry(co,ce)) = areaNormal(:,:,ce)
+      end if
     end do
   end do
 
