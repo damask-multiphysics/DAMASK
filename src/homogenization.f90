@@ -237,7 +237,7 @@ subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving
     doneAndHappy
 
 
-  !$OMP PARALLEL DO PRIVATE(ce,en,ho,NiterationMPstate,converged,doneAndHappy)
+  !$OMP PARALLEL DO PRIVATE(ce,co,en,ho,NiterationMPstate,converged,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
 
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
