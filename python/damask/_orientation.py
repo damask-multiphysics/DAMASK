@@ -148,7 +148,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if not isinstance(other, Orientation):
-            return NotImplemented
+            raise NotImplementedError
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
@@ -165,9 +165,7 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        eq = self.__eq__(other)
-        if not isinstance(eq, bool):
-            return eq
+        self.__eq__(other)
         return np.logical_not(self==other)
 
 

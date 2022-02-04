@@ -124,7 +124,7 @@ class Rotation:
 
         """
         if not isinstance(other, Rotation):
-            return NotImplemented
+            raise NotImplementedError
         return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
 
@@ -139,9 +139,7 @@ class Rotation:
             Rotation to check for inequality.
 
         """
-        eq = self.__eq__(other)
-        if not isinstance(eq, bool):
-            return eq
+        self.__eq__(other)
         return np.logical_not(self==other)
 
 
