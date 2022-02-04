@@ -362,11 +362,11 @@ end subroutine mechanical_results
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
-function integrateStress(F,subFp0,subFi0,Delta_t,en,ph) result(broken)
+function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
 
   real(pReal), dimension(3,3), intent(in) :: F,subFp0,subFi0
   real(pReal),                 intent(in) :: Delta_t
-  integer, intent(in) :: en, ph
+  integer, intent(in) :: ph, en
 
   real(pReal), dimension(3,3)::       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
                                       invFp_new, &                                                  ! inverse of Fp_new
@@ -420,7 +420,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,en,ph) result(broken)
 
 
   broken = .true.
-  call plastic_dependentState(en,ph)
+  call plastic_dependentState(ph,en)
 
   Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                              ! take as first guess
   Liguess = phase_mechanical_Li(ph)%data(1:3,1:3,en)                                              ! take as first guess
@@ -568,14 +568,14 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(broken)
+function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
   real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
-    en, &
-    ph
+    ph, &
+    en
   logical :: &
     broken
 
@@ -604,7 +604,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(b
     dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0, nIterationState > 1)
     dotState_last(1:sizeDotState,1) = dotState
 
-    broken = integrateStress(F,subFp0,subFi0,Delta_t,en,ph)
+    broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
     if(broken) exit iteration
 
     dotState = plastic_dotState(Delta_t,ph,en)
@@ -656,14 +656,14 @@ end function integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(broken)
+function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
   real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
-    en, &
-    ph                                                                                               !< grain index in grain loop
+    ph, &
+    en                                                                                               !< grain index in grain loop
   logical :: &
     broken
 
@@ -685,7 +685,7 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result
   broken = plastic_deltaState(ph,en)
   if(broken) return
 
-  broken = integrateStress(F,subFp0,subFi0,Delta_t,en,ph)
+  broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
 
 end function integrateStateEuler
 
@@ -693,14 +693,14 @@ end function integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(broken)
+function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
   real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
-    en, &
-    ph
+    ph, &
+    en
   logical :: &
     broken
 
@@ -725,7 +725,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph
   broken = plastic_deltaState(ph,en)
   if(broken) return
 
-  broken = integrateStress(F,subFp0,subFi0,Delta_t,en,ph)
+  broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
   if(broken) return
 
   dotState = plastic_dotState(Delta_t,ph,en)
@@ -741,12 +741,12 @@ end function integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
-function integrateStateRK4(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(broken)
+function integrateStateRK4(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
   real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
-  integer, intent(in) :: en, ph
+  integer, intent(in) :: ph, en
   logical :: broken
 
   real(pReal), dimension(3,3), parameter :: &
@@ -761,7 +761,7 @@ function integrateStateRK4(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(b
     B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
 
 
-  broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C)
+  broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C)
 
 end function integrateStateRK4
 
@@ -769,12 +769,12 @@ end function integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the Cash-Carp method
 !---------------------------------------------------------------------------------------------------
-function integrateStateRKCK45(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) result(broken)
+function integrateStateRKCK45(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
   real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
-  integer, intent(in) :: en, ph
+  integer, intent(in) :: ph, en
   logical :: broken
 
   real(pReal), dimension(5,5), parameter :: &
@@ -796,7 +796,7 @@ function integrateStateRKCK45(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph) resul
       13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
 
 
-  broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C,DB)
+  broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB)
 
 end function integrateStateRKCK45
 
@@ -805,7 +805,7 @@ end function integrateStateRKCK45
 !> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
 !! embedded explicit Runge-Kutta method
 !--------------------------------------------------------------------------------------------------
-function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C,DB) result(broken)
+function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
   real(pReal), intent(in),dimension(:)   :: subState0
@@ -814,8 +814,8 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C,DB) 
   real(pReal), dimension(:),   intent(in) :: B, C
   real(pReal), dimension(:),   intent(in), optional :: DB
   integer, intent(in) :: &
-    en, &
-    ph
+    ph, &
+    en
   logical :: broken
 
   integer :: &
@@ -848,7 +848,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C,DB) 
     plasticState(ph)%state(1:sizeDotState,en) = subState0 &
                                               + dotState * Delta_t
 
-    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),en,ph)
+    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),ph,en)
     if(broken) exit
 
     dotState = plastic_dotState(Delta_t,ph,en)
@@ -873,7 +873,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,en,ph,A,B,C,DB) 
   broken = plastic_deltaState(ph,en)
   if(broken) return
 
-  broken = integrateStress(F,subFp0,subFi0,Delta_t,en,ph)
+  broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
 
 end function integrateStateRK
 
@@ -1052,7 +1052,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
     if (todo) then
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
-      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * Delta_t,en,ph)
+      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * Delta_t,ph,en)
     endif
 
   enddo cutbackLooping

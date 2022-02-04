@@ -272,10 +272,10 @@ module phase
         type(tRotationContainer), dimension(:), intent(in) :: orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
-    module subroutine plastic_dependentState(en,ph)
+    module subroutine plastic_dependentState(ph,en)
       integer, intent(in) :: &
-        en, &
-        ph
+        ph, &
+        en
     end subroutine plastic_dependentState
 
     module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
@@ -562,7 +562,7 @@ subroutine crystallite_init()
         en = material_phaseEntry(co,ce)
         ph = material_phaseID(co,ce)
         call crystallite_orientations(co,ip,el)
-        call plastic_dependentState(en,ph)                                                          ! update dependent state variables to be consistent with basic states
+        call plastic_dependentState(ph,en)                                                          ! update dependent state variables to be consistent with basic states
      end do
     end do
   end do

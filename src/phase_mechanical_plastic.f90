@@ -178,7 +178,7 @@ submodule(phase:mechanical) plastic
         en
     end subroutine dislotungsten_dependentState
 
-    module subroutine nonlocal_dependentState(ph, en)
+    module subroutine nonlocal_dependentState(ph,en)
       integer, intent(in) :: &
         ph, &
         en
@@ -338,11 +338,11 @@ end function plastic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different plasticity constitutive models
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dependentState(en,ph)
+module subroutine plastic_dependentState(ph,en)
 
   integer, intent(in) :: &
-    en, &
-    ph
+    ph, &
+    en
 
 
   plasticType: select case (phase_plasticity(ph))
