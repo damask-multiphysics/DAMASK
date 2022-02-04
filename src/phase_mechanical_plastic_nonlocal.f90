@@ -16,7 +16,7 @@ submodule(phase:plastic) nonlocal
   type :: tGeometry
     real(pReal), dimension(:), allocatable :: V_0
     integer, dimension(:,:,:), allocatable :: IPneighborhood
-    real(pReal), dimension(:,:), allocatable :: IParea
+    real(pReal), dimension(:,:), allocatable :: IParea, IPcoordinates
     real(pReal), dimension(:,:,:), allocatable :: IPareaNormal
   end type tGeometry
 
@@ -413,6 +413,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(geom(ph)%IPneighborhood(3,nIPneighbors,Nmembers))
     allocate(geom(ph)%IPareaNormal(3,nIPneighbors,Nmembers))
     allocate(geom(ph)%IParea(nIPneighbors,Nmembers))
+    allocate(geom(ph)%IPcoordinates(3,Nmembers))
     call storeGeometry(ph)
 
     if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
@@ -551,13 +552,11 @@ end function plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine nonlocal_dependentState(ph, en, ip, el)
+module subroutine nonlocal_dependentState(ph, en)
 
   integer, intent(in) :: &
     ph, &
-    en, &
-    ip, &
-    el
+    en
 
   integer :: &
     no, &                                                                                           !< neighbor offset
@@ -673,8 +672,8 @@ module subroutine nonlocal_dependentState(ph, en, ip, el)
             neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor0(:,edg)),2)
             neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor0(:,scr)),2)
 
-            connection_latticeConf(1:3,n) = matmul(invFe, discretization_IPcoords(1:3,neighbor_el+neighbor_ip-1) &
-                                          - discretization_IPcoords(1:3,el+neighbor_ip-1))
+            connection_latticeConf(1:3,n) = matmul(invFe, geom(ph)%IPcoordinates(1:3,en) &
+                                          - geom(ph)%IPcoordinates(1:3,en-1))                       ! ToDo: broken for different materials
             normal_latticeConf = matmul(transpose(invFp), geom(ph)%IPareaNormal(1:3,n,en))
             if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &         ! neighboring connection points in opposite direction to face normal: must be periodic image
               connection_latticeConf(1:3,n) = normal_latticeConf * geom(ph)%V_0(en)/geom(ph)%IParea(n,en)  ! instead take the surface normal scaled with the diameter of the cell
@@ -947,7 +946,7 @@ end subroutine plastic_nonlocal_deltaState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 module subroutine nonlocal_dotState(Mp,timestep, &
-                                    ph,en,ip,el)
+                                    ph,en)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
@@ -955,9 +954,7 @@ module subroutine nonlocal_dotState(Mp,timestep, &
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
     ph, &
-    en, &
-    ip, &                                                                                           !< current integration point
-    el                                                                                              !< current element number
+    en
 
   integer ::  &
     c, &                                                                                            !< character of dislocation
@@ -1765,7 +1762,7 @@ subroutine storeGeometry(ph)
   integer :: ce, co, nCell
   real(pReal), dimension(:), allocatable :: V
   integer, dimension(:,:,:), allocatable :: neighborhood
-  real(pReal), dimension(:,:), allocatable :: area
+  real(pReal), dimension(:,:), allocatable :: area, coords
   real(pReal), dimension(:,:,:), allocatable :: areaNormal
 
   nCell = product(shape(IPvolume))
@@ -1774,6 +1771,7 @@ subroutine storeGeometry(ph)
   neighborhood = reshape(IPneighborhood,[3,nIPneighbors,nCell])
   area = reshape(IParea,[nIPneighbors,nCell])
   areaNormal = reshape(IPareaNormal,[3,nIPneighbors,nCell])
+  coords = reshape(discretization_IPcoords,[3,nCell])
 
   do ce = 1, size(material_homogenizationEntry,1)
     do co = 1, homogenization_maxNconstituents
@@ -1782,6 +1780,7 @@ subroutine storeGeometry(ph)
         geom(ph)%IPneighborhood(:,:,material_phaseEntry(co,ce)) = neighborhood(:,:,ce)
         geom(ph)%IParea(:,material_phaseEntry(co,ce)) = area(:,ce)
         geom(ph)%IPareaNormal(:,:,material_phaseEntry(co,ce)) = areaNormal(:,:,ce)
+        geom(ph)%IPcoordinates(:,material_phaseEntry(co,ce)) = coords(:,ce)
       end if
     end do
   end do

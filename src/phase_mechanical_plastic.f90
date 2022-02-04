@@ -154,16 +154,14 @@ submodule(phase:mechanical) plastic
         en
     end subroutine dislotungsten_dotState
 
-    module subroutine nonlocal_dotState(Mp,timestep,ph,en,ip,el)
+    module subroutine nonlocal_dotState(Mp,timestep,ph,en)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
       real(pReal), intent(in) :: &
         timestep                                                                                    !< substepped crystallite time increment
       integer, intent(in) :: &
         ph, &
-        en, &
-        ip, &                                                                                       !< current integration point
-        el                                                                                          !< current element number
+        en
     end subroutine nonlocal_dotState
 
     module subroutine dislotwin_dependentState(T,ph,en)
@@ -180,12 +178,10 @@ submodule(phase:mechanical) plastic
         en
     end subroutine dislotungsten_dependentState
 
-    module subroutine nonlocal_dependentState(ph, en, ip, el)
+    module subroutine nonlocal_dependentState(ph, en)
       integer, intent(in) :: &
         ph, &
-        en, &
-        ip, &                                                                                       !< current integration point
-        el                                                                                          !< current element number
+        en
     end subroutine nonlocal_dependentState
 
     module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
@@ -333,7 +329,7 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
         call dislotungsten_dotState(Mp,thermal_T(ph,en),ph,en)
 
       case (PLASTIC_NONLOCAL_ID) plasticType
-        call nonlocal_dotState(Mp,subdt,ph,en,ip,el)
+        call nonlocal_dotState(Mp,subdt,ph,en)
     end select plasticType
   end if
 
@@ -369,7 +365,7 @@ module subroutine plastic_dependentState(co, ip, el)
       call dislotungsten_dependentState(ph,en)
 
     case (PLASTIC_NONLOCAL_ID) plasticType
-      call nonlocal_dependentState(ph,en,ip,el)
+      call nonlocal_dependentState(ph,en)
 
   end select plasticType
 
