@@ -812,9 +812,9 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   homogenization_F  = reshape(F,[3,3,product(cells(1:2))*cells3])                                   ! set materialpoint target F to estimated field
 
-  call homogenization_mechanical_response(Delta_t,[1,1],[1,product(cells(1:2))*cells3])             ! calculate P field
+  call homogenization_mechanical_response(Delta_t,1,product(cells(1:2))*cells3)                     ! calculate P field
   if (.not. terminallyIll) &
-    call homogenization_thermal_response(Delta_t,[1,1],[1,product(cells(1:2))*cells3])
+    call homogenization_thermal_response(Delta_t,1,product(cells(1:2))*cells3)
   if (.not. terminallyIll) &
     call homogenization_mechanical_response2(Delta_t,[1,1],[1,product(cells(1:2))*cells3])
 
