@@ -659,10 +659,10 @@ module subroutine nonlocal_dependentState(ph, en)
     do n = 1,nIPneighbors
       neighbor_el = geom(ph)%IPneighborhood(1,n,en)
       neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
-      no = material_phasememberAt(1,neighbor_ip,neighbor_el)
-      if (neighbor_el > 0 .and. neighbor_ip > 0) then
-        if (material_phaseAt(1,neighbor_el) == ph) then
 
+      if (neighbor_el > 0 .and. neighbor_ip > 0) then
+        if (material_phaseID(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip) == ph) then
+            no = material_phaseEntry(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
             nRealNeighbors = nRealNeighbors + 1.0_pReal
             rho_neighbor0 = getRho0(ph,no)
 
@@ -1145,7 +1145,6 @@ function rhoDotFlux(timestep,ph,en)
     en
 
   integer ::  &
-    neighbor_ph, &                                                                                  !< phase of my neighbor's plasticity
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
     n, &                                                                                            !< index of my current neighbor
@@ -1251,8 +1250,8 @@ function rhoDotFlux(timestep,ph,en)
       neighbor_el = geom(ph)%IPneighborhood(1,n,en)
       neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
       neighbor_n  = geom(ph)%IPneighborhood(3,n,en)
-      np = material_phaseAt(1,neighbor_el)
-      no = material_phasememberAt(1,neighbor_ip,neighbor_el)
+      np = material_phaseID(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      no = material_phaseEntry(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
 
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
       opposite_el = geom(ph)%IPneighborhood(1,opposite_neighbor,en)
@@ -1260,7 +1259,6 @@ function rhoDotFlux(timestep,ph,en)
       opposite_n  = geom(ph)%IPneighborhood(3,opposite_neighbor,en)
 
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
-        neighbor_ph = material_phaseAt(1,neighbor_el)
         neighbor_F = phase_mechanical_F(np)%data(1:3,1:3,no)
         neighbor_Fe = matmul(neighbor_F, math_inv33(phase_mechanical_Fp(np)%data(1:3,1:3,no)))
         Favg = 0.5_pReal * (my_F + neighbor_F)
@@ -1279,12 +1277,12 @@ function rhoDotFlux(timestep,ph,en)
       !* The entering flux from my neighbor will be distributed on my slip systems according to the
       !* compatibility
       if (neighbor_n > 0) then
-      if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTIC_NONLOCAL_ID .and. &
+      if (phase_plasticity(np) == PLASTIC_NONLOCAL_ID .and. &
           any(dependentState(ph)%compatibility(:,:,:,n,en) > 0.0_pReal)) then
 
         forall (s = 1:ns, t = 1:4)
-          neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,neighbor_ph),no)
-          neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,neighbor_ph),no),0.0_pReal)
+          neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,np),no)
+          neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,np),no),0.0_pReal)
         endforall
 
         where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%rho_min &
@@ -1325,7 +1323,7 @@ function rhoDotFlux(timestep,ph,en)
       !* In case of reduced transmissivity, part of the leaving flux is stored as dead dislocation density.
       !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
       if (opposite_n > 0) then
-      if (phase_plasticity(material_phaseAt(1,opposite_el)) == PLASTIC_NONLOCAL_ID) then
+      if (phase_plasticity(np) == PLASTIC_NONLOCAL_ID) then
 
         normal_me2neighbor_defConf = math_det33(Favg) &
                                    * matmul(math_inv33(transpose(Favg)),geom(ph)%IPareaNormal(1:3,n,en))  ! normal of the interface in (average) deformed configuration (pointing en => neighbor)
@@ -1400,7 +1398,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
   associate(prm => param(ph))
     ns = prm%sum_N_sl
 
-    en = material_phaseMemberAt(1,ip,el)
+    en = material_phaseEntry(1,(el-1)*discretization_nIPs + ip)
     !*** start out fully compatible
     my_compatibility = 0.0_pReal
     forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
@@ -1408,8 +1406,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
     neighbors: do n = 1,nIPneighbors
       neighbor_e = IPneighborhood(1,n,ip,el)
       neighbor_i = IPneighborhood(2,n,ip,el)
-      neighbor_me = material_phaseMemberAt(1,neighbor_i,neighbor_e)
-      neighbor_phase = material_phaseAt(1,neighbor_e)
+      neighbor_me = material_phaseEntry(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
+      neighbor_phase = material_phaseID(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
 
       if (neighbor_e <= 0 .or. neighbor_i <= 0) then
         !* FREE SURFACE
