@@ -9,12 +9,12 @@ if (OPENMP)
   set (OPENMP_FLAGS "-qopenmp -parallel")
 endif ()
 
-if (OPTIMIZATION STREQUAL "OFF")
+if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
   set (OPTIMIZATION_FLAGS    "-O0 -no-ip")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS    "-ipo -O3 -no-prec-div -fp-model fast=2 -xHost")
+  set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost")
   # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
 endif ()
 
@@ -109,6 +109,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
 #set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
 # generate debug information for parameters
 # Disabled due to ICE when compiling phase_damage.f90 (not understandable, there is no parameter in there)
+
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug all")
+# generate complete debugging information
 
 # Additional options
 # -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
