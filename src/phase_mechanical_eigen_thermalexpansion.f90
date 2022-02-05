@@ -27,7 +27,7 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstances,p,i,k
+  integer :: Ninstances, p, k
   class(tNode), pointer :: &
     phases, &
     phase, &
