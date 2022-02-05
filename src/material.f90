@@ -17,16 +17,17 @@ module material
   implicit none
   private
 
-  type :: tRotationContainer
-    type(tRotation), dimension(:),  allocatable :: data
-  end type
-  type :: tTensorContainer
+  type, public :: tRotationContainer
+    type(tRotation), dimension(:), allocatable :: data
+  end type tRotationContainer
+
+  type, public :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
-  end type
+  end type tTensorContainer
 
 
-  type(tRotationContainer), dimension(:), allocatable :: material_O_0
-  type(tTensorContainer),   dimension(:), allocatable :: material_F_i_0
+  type(tRotationContainer), dimension(:), allocatable, public, protected :: material_O_0
+  type(tTensorContainer),   dimension(:), allocatable, public, protected :: material_F_i_0
 
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
@@ -37,20 +38,14 @@ module material
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
 
-  integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
-    material_homogenizationID, &                                                                    !< per cell TODO: material_ID_homogenization
-    material_homogenizationEntry                                                                    !< per cell TODO: material_entry_homogenization
-  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
-    material_phaseAt, &                                                                             !< phase ID of each element TODO: remove
-    material_phaseID, &                                                                             !< per (constituent,cell) TODO: material_ID_phase
-    material_phaseEntry                                                                             !< per (constituent,cell) TODO: material_entry_phase
-  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
-    material_phaseMemberAt                                                                          !TODO: remove
+  integer, dimension(:),   allocatable, public, protected :: &                                      ! (cell)
+    material_homogenizationID, &                                                                    ! TODO: rename to material_ID_homogenization
+    material_homogenizationEntry                                                                    ! TODO: rename to material_entry_homogenization
+  integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,cell)
+    material_phaseID, &                                                                             ! TODO: rename to material_ID_phase
+    material_phaseEntry                                                                             ! TODO: rename to material_entry_phase
+
   public :: &
-    tTensorContainer, &
-    tRotationContainer, &
-    material_F_i_0, &
-    material_O_0, &
     material_init
 
 contains
@@ -97,11 +92,12 @@ subroutine parse()
     counterPhase, &
     counterHomogenization
 
-  real(pReal) :: &
-    frac
+  real(pReal) :: v
   integer :: &
-    el, ip, co, ma, &
-    h, ce
+    el, ip, &
+    ho, ph, &
+    co, ce, &
+    ma
 
   materials       => config_material%get('material')
   phases          => config_material%get('phase')
@@ -118,51 +114,48 @@ subroutine parse()
 #endif
 
   allocate(homogenization_Nconstituents(homogenizations%length))
-  do h=1, homogenizations%length
-    homogenization => homogenizations%get(h)
-    homogenization_Nconstituents(h) = homogenization%get_asInt('N_constituents')
+  do ho=1, homogenizations%length
+    homogenization => homogenizations%get(ho)
+    homogenization_Nconstituents(ho) = homogenization%get_asInt('N_constituents')
   end do
   homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
 
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  allocate(material_phaseAt(homogenization_maxNconstituents,discretization_Nelems),source=0)
-  allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
-
-
   allocate(material_homogenizationID(discretization_nIPs*discretization_Nelems),source=0)
   allocate(material_homogenizationEntry(discretization_nIPs*discretization_Nelems),source=0)
+
   allocate(material_phaseID(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
   allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
 
   do el = 1, discretization_Nelems
-    material     => materials%get(discretization_materialAt(el))
-    constituents => material%get('constituents')
+    material => materials%get(discretization_materialAt(el))
 
+    ho = homogenizations%getIndex(material%get_asString('homogenization'))
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
-      material_homogenizationID(ce) = homogenizations%getIndex(material%get_asString('homogenization'))
-      counterHomogenization(material_homogenizationID(ce)) = counterHomogenization(material_homogenizationID(ce)) + 1
-      material_homogenizationEntry(ce) = counterHomogenization(material_homogenizationID(ce))
+      material_homogenizationID(ce) = ho
+      counterHomogenization(ho) = counterHomogenization(ho) + 1
+      material_homogenizationEntry(ce) = counterHomogenization(ho)
     end do
 
-    frac = 0.0_pReal
+    v = 0.0_pReal
+    constituents => material%get('constituents')
     do co = 1, constituents%length
       constituent => constituents%get(co)
-      frac = frac + constituent%get_asFloat('v')
+      v = v + constituent%get_asFloat('v')
 
-      material_phaseAt(co,el) = phases%getIndex(constituent%get_asString('phase'))
+      ph = phases%getIndex(constituent%get_asString('phase'))
       do ip = 1, discretization_nIPs
         ce = (el-1)*discretization_nIPs + ip
-        counterPhase(material_phaseAt(co,el)) = counterPhase(material_phaseAt(co,el)) + 1
-        material_phaseMemberAt(co,ip,el)      = counterPhase(material_phaseAt(co,el))
-        material_phaseEntry(co,ce) = counterPhase(material_phaseAt(co,el))
-        material_phaseID(co,ce) = material_phaseAt(co,el)
+        material_phaseID(co,ce) = ph
+        counterPhase(ph) = counterPhase(ph) + 1
+        material_phaseEntry(co,ce) = counterPhase(ph)
       end do
 
     end do
-    if (dNeq(frac,1.0_pReal,1.e-12_pReal)) call IO_error(153,ext_msg='constituent')
+    if (dNeq(v,1.0_pReal,1.e-12_pReal)) call IO_error(153,ext_msg='constituent')
 
   end do
 

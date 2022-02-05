@@ -590,8 +590,8 @@ subroutine crystallite_orientations(co,ip,el)
 
   call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
-  if (plasticState(material_phaseAt(1,el))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(phase_O,material_phaseAt(1,el),ip,el)
+  if (plasticState(material_phaseID(1,(el-1)*discretization_nIPs + ip))%nonlocal) &
+    call plastic_nonlocal_updateCompatibility(phase_O,material_phaseID(1,(el-1)*discretization_nIPs + ip),ip,el)
 
 
 end subroutine crystallite_orientations
