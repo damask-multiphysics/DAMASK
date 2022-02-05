@@ -11,8 +11,8 @@ module HDF5_utilities
   use PETScSys
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
-#endif
   use MPI, only: MPI_INFO_NULL_F90 => MPI_INFO_NULL
+#endif
 #endif
 
   use prec
@@ -179,9 +179,15 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
 #ifdef PETSC
   if (present(parallel)) then
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
     if (parallel) call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
   else
     call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
+#else
+    if (parallel) call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+  else
+    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+#endif
   end if
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
