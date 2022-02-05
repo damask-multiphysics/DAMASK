@@ -12,9 +12,9 @@ endif ()
 if (OPTIMIZATION STREQUAL "OFF")
   set (OPTIMIZATION_FLAGS "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
-  set (OPTIMIZATION_FLAGS "-O2 -mtune=generic -flto")
+  set (OPTIMIZATION_FLAGS "-O2 -mtune=native -flto")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS "-O3 -march=native -mtune=native -ffast-math -funroll-loops -ftree-vectorize -flto")
+  set (OPTIMIZATION_FLAGS "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
 endif ()
 
 set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
@@ -122,6 +122,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
 # Generate symbolic debugging information in the object file
+
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -Og")
+# Optimize debugging experience
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core")
