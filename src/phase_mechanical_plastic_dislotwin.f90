@@ -942,7 +942,7 @@ pure subroutine kinetics_tw(Mp,T,dot_gamma_sl,ph,en,&
         dP_dTau = prm%r(i) * (tau_hat/tau)**prm%r(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/prm%L_tw  ! ToDo: factor 3
+        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/(prm%L_tw*3.0_pReal)
 
         P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
@@ -1023,7 +1023,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
         dP_dTau = prm%s(i) * (tau_hat/tau)**prm%s(i)/tau * P
 
         s = prm%fcc_twinNucleationSlipPair(1:2,i)
-        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/prm%L_tr  ! ToDo: factor 3
+        dot_N_0 = sum(abs(dot_gamma_sl(s(2:1:-1)))*(stt%rho_mob(s,en)+stt%rho_dip(s,en)))/(prm%L_tr*3.0_pReal)
 
         P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
