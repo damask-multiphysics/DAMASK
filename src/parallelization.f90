@@ -52,12 +52,12 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine parallelization_init
 
-  integer(MPI_INTEGER_KIND) :: err_MPI, typeSize
+  integer(MPI_INTEGER_KIND) :: err_MPI, typeSize, version, subversion, devNull
   character(len=4) :: rank_str
+  character(len=MPI_MAX_LIBRARY_VERSION_STRING) :: MPI_library_version
 !$ integer :: got_env, threadLevel
 !$ integer(pI32) :: OMP_NUM_THREADS
 !$ character(len=6) NumThreadsString
-
 
   PetscErrorCode :: err_PETSc
 #ifdef _OPENMP
@@ -86,12 +86,22 @@ subroutine parallelization_init
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine worldrank'
 
-  if (worldrank == 0) print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
+  if (worldrank == 0) then
+    print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
+
+    call MPI_Get_library_version(MPI_library_version,devNull,err_MPI)
+    print'(/,1x,a)', trim(MPI_library_version)
+    call MPI_Get_version(version,subversion,err_MPI)
+    print'(1x,a,i0,a,i0)', 'MPI standard: ',version,'.',subversion
+#ifdef _OPENMP
+    print'(1x,a,i0)',      'OpenMP version: ',openmp_version
+#endif
+  end if
 
   call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine worldsize'
-  if (worldrank == 0) print'(/,1x,a,i3)', 'MPI processes: ',worldsize
+  if (worldrank == 0) print'(/,1x,a,i0)', 'MPI processes: ',worldsize
 
   call MPI_Type_size(MPI_INTEGER,typeSize,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
@@ -128,7 +138,7 @@ subroutine parallelization_init
 !$     OMP_NUM_THREADS = 4_pI32
 !$   endif
 !$ endif
-!$ print'(1x,a,1x,i2)',   'OMP_NUM_THREADS:',OMP_NUM_THREADS
+!$ print'(1x,a,i0)',   'OMP_NUM_THREADS: ',OMP_NUM_THREADS
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init
