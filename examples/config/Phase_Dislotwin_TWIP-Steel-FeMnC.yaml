@@ -24,10 +24,10 @@ h_tw-sl: [0.0] # ToDo: values not known
 # Twin
 N_tw: [12]
 b_tw: [1.40e-10]
-L_tw: 2.e-7 # 800 b_sl
+L_tw: 1.8e-7
 i_tw: 10.0
 t_tw: [5.0e-8]
-p_tw: [2.5] # A
+p_tw: [3.0] # A
 
 h_tw-tw: [0.0, 1.0] # ToDo: values not known
 h_sl-tw: [0.0, 1.0, 1.0] # ToDo: values not known
@@ -35,10 +35,10 @@ h_sl-tw: [0.0, 1.0, 1.0] # ToDo: values not known
 # Transformation
 N_tr: [12]
 b_tr: [1.40e-10]
-L_tr: 2.e-7 # 800 b_sl
+L_tr: 1.8e-7
 i_tr: 3.0
 t_tr: [1.0e-7]
-p_tr: [2.5] # B
+p_tr: [3.0] # B
 V_mol: 7.09e-6
 Delta_G: 1.33343932e+02
 Delta_G,T: 2.56640412
