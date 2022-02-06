@@ -1,15 +1,15 @@
 import inspect
 import copy
+from typing import Union, Callable, Dict, Any, Tuple
 
 import numpy as np
 
+from ._typehints import FloatSequence, IntSequence
 from . import Rotation
 from . import Crystal
 from . import util
 from . import tensor
 
-from typing import Union, Callable, Dict, Any, Tuple, List
-from ._typehints import FloatSequence, IntSequence
 
 
 _parameter_doc = \
@@ -165,7 +165,7 @@ class Orientation(Rotation,Crystal):
             Orientation to check for equality.
 
         """
-        return np.logical_not(self==other) if isinstance(other, Orientation) else NotImplemented
+        return np.logical_not(self==other)
 
 
     def isclose(self,
@@ -206,7 +206,7 @@ class Orientation(Rotation,Crystal):
                  other: object,
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
-                 equal_nan: bool = True) -> Union[bool, np.bool_]:
+                 equal_nan: bool = True) -> bool:
         """
         Test whether all values are approximately equal to corresponding ones of other Orientation.
 
@@ -227,9 +227,7 @@ class Orientation(Rotation,Crystal):
             Whether all values are close between both orientations.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
-        return np.all(self.isclose(other,rtol,atol,equal_nan))
+        return bool(np.all(self.isclose(other,rtol,atol,equal_nan)))
 
 
     def __mul__(self,
@@ -411,6 +409,7 @@ class Orientation(Rotation,Crystal):
         sort = 0 if len(loc) == 1 else np.lexsort(loc[:0:-1])
         return eq[ok][sort].reshape(self.shape)
 
+
     @property
     def in_FZ(self) -> Union[np.bool_, np.ndarray]:
         """
@@ -574,6 +573,7 @@ class Orientation(Rotation,Crystal):
         loc  = np.where(ok)
         sort = 0 if len(loc) == 2 else np.lexsort(loc[:1:-1])
         quat = r[ok][sort].reshape(blend+(4,))
+
         return (
                 (self.copy(rotation=quat),
                  (np.vstack(loc[:2]).T)[sort].reshape(blend+(2,)))
@@ -783,7 +783,7 @@ class Orientation(Rotation,Crystal):
     @property
     def symmetry_operations(self) -> Rotation:
         """Symmetry operations as Rotations."""
-        _symmetry_operations: Dict[str, List[List]] = {
+        _symmetry_operations  = {
             'cubic':         [
                               [ 1.0,            0.0,            0.0,            0.0            ],
                               [ 0.0,            1.0,            0.0,            0.0            ],
@@ -854,8 +854,8 @@ class Orientation(Rotation,Crystal):
     # functions that require lattice, not just family
 
     def to_pole(self, *,
-                uvw: np.ndarray = None,
-                hkl: np.ndarray = None,
+                uvw: FloatSequence = None,
+                hkl: FloatSequence = None,
                 with_symmetry: bool = False) -> np.ndarray:
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
@@ -926,7 +926,7 @@ class Orientation(Rotation,Crystal):
         if active == '*': active = [len(a) for a in kinematics['direction']]
 
         if not active:
-            raise RuntimeError
+            raise RuntimeError # ToDo
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
         p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
