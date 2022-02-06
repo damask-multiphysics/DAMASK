@@ -996,16 +996,15 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
     subLi0, &
     subF0, &
     subF
-  real(pReal), dimension(:), allocatable :: subState0
+  real(pReal), dimension(plasticState(material_phaseID(co,ce))%sizeState) :: subState0
 
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
-  sizeDotState = plasticState(ph)%sizeDotState
 
+  subState0 = plasticState(ph)%state0(:,en)
   subLi0 = phase_mechanical_Li0(ph)%data(1:3,1:3,en)
   subLp0 = phase_mechanical_Lp0(ph)%data(1:3,1:3,en)
-  allocate(subState0,source=plasticState(ph)%State0(:,en))
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
@@ -1038,7 +1037,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
       subStep       = num%subStepSizeCryst * subStep
       phase_mechanical_Fp(ph)%data(1:3,1:3,en) = subFp0
       phase_mechanical_Fi(ph)%data(1:3,1:3,en) = subFi0
-      phase_mechanical_S(ph)%data(1:3,1:3,en) = phase_mechanical_S0(ph)%data(1:3,1:3,en)            ! why no subS0 ? is S0 of any use?
+      phase_mechanical_S(ph)%data(1:3,1:3,en) = phase_mechanical_S0(ph)%data(1:3,1:3,en)
       if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
         phase_mechanical_Lp(ph)%data(1:3,1:3,en) = subLp0
         phase_mechanical_Li(ph)%data(1:3,1:3,en) = subLi0
@@ -1050,6 +1049,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
 !--------------------------------------------------------------------------------------------------
 !  prepare for integration
     if (todo) then
+      sizeDotState = plasticState(ph)%sizeDotState
       subF = subF0 &
            + subStep * (phase_mechanical_F(ph)%data(1:3,1:3,en) - phase_mechanical_F0(ph)%data(1:3,1:3,en))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * Delta_t,ph,en)
