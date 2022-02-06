@@ -302,6 +302,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%h          = 5.0_pReal * a_cF/sqrt(3.0_pReal)
       prm%cOverA_hP  = pl%get_asFloat('c/a_hP')
       prm%rho        = 4.0_pReal/(sqrt(3.0_pReal)*a_cF**2)/N_A
+      prm%V_mol      = pl%get_asFloat('V_mol')
       prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,pl%get_as1dFloat('h_tr-tr'),&
                                                      phase_lattice(ph))
 
@@ -315,6 +316,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       ! sanity checks
       if (.not. prm%fccTwinTransNucleation)   extmsg = trim(extmsg)//' TRIP for non-fcc'
       if (    prm%L_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tr'
+      if (    prm%V_mol         < 0.0_pReal)  extmsg = trim(extmsg)//' V_mol'
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
       if (any(prm%s             < 0.0_pReal)) extmsg = trim(extmsg)//' p_tr'
@@ -1025,7 +1027,7 @@ pure subroutine kinetics_tr(Mp,T,dot_gamma_sl,ph,en,&
 
         P_ncs = 1.0_pReal-exp(-prm%V_cs/(K_B*T)*(tau_r-tau))
         dP_ncs_dtau = prm%V_cs / (K_B * T) * (P_ncs - 1.0_pReal)
-        
+
         V = PI/4.0_pReal*dst%Lambda_tr(i,en)**2*prm%t_tr(i)
         dot_gamma_tr(i) = V*dot_N_0*P_ncs*P*prm%gamma_char_tr
         if (present(ddot_gamma_dtau_tr)) &
