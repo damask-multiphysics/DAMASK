@@ -145,13 +145,11 @@ subroutine parse()
       material_homogenizationEntry(ce) = counterHomogenization(ho)
     end do
 
-    v = 0.0_pReal
     constituents => material%get('constituents')
     do co = 1, constituents%length
       constituent => constituents%get(co)
 
-      material_v(co,ce) = constituent%get_asFloat('v')
-      v = v + material_v(co,ce)
+      v = constituent%get_asFloat('v')
 
       ph = phases%getIndex(constituent%get_asString('phase'))
       do ip = 1, discretization_nIPs
@@ -159,10 +157,12 @@ subroutine parse()
         material_phaseID(co,ce) = ph
         counterPhase(ph) = counterPhase(ph) + 1
         material_phaseEntry(co,ce) = counterPhase(ph)
+        material_v(co,ce) = v
       end do
 
     end do
-    if (dNeq(v,1.0_pReal,1.e-12_pReal)) call IO_error(153,ext_msg='constituent')
+    if (dNeq(sum(material_v(1:constituents%length,ce)),1.0_pReal,1.e-9_pReal)) &
+      call IO_error(153,ext_msg='constituent')
 
   end do
 
