@@ -45,6 +45,9 @@ module material
     material_phaseID, &                                                                             ! TODO: rename to material_ID_phase
     material_phaseEntry                                                                             ! TODO: rename to material_entry_phase
 
+  real(pReal), dimension(:,:), allocatable, public, protected :: &
+    material_v                                                                                      ! fraction
+
   public :: &
     material_init
 
@@ -123,11 +126,13 @@ subroutine parse()
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  allocate(material_homogenizationID(discretization_nIPs*discretization_Nelems),source=0)
-  allocate(material_homogenizationEntry(discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_homogenizationID(discretization_Ncells),source=0)
+  allocate(material_homogenizationEntry(discretization_Ncells),source=0)
 
-  allocate(material_phaseID(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
-  allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_phaseID(homogenization_maxNconstituents,discretization_Ncells),source=0)
+  allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_Ncells),source=0)
+
+  allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pReal)
 
   do el = 1, discretization_Nelems
     material => materials%get(discretization_materialAt(el))
@@ -144,7 +149,9 @@ subroutine parse()
     constituents => material%get('constituents')
     do co = 1, constituents%length
       constituent => constituents%get(co)
-      v = v + constituent%get_asFloat('v')
+
+      material_v(co,ce) = constituent%get_asFloat('v')
+      v = v + material_v(co,ce)
 
       ph = phases%getIndex(constituent%get_asString('phase'))
       do ip = 1, discretization_nIPs
