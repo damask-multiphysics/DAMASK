@@ -898,7 +898,7 @@ end function math_33toVoigt6_stress
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert 3x3 stress tensor into 6 Voigt vector.
+!> @brief Convert 3x3 strain tensor into 6 Voigt vector.
 !--------------------------------------------------------------------------------------------------
 pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
 
