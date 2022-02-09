@@ -584,8 +584,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   character(len=pStringLen)     :: formatString
 
   select case (warning_ID)
-    case (42)
-      msg = 'parameter has no effect'
     case (47)
       msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
     case (207)
@@ -594,8 +592,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'crystallite responds elastically'
     case (601)
       msg = 'stiffness close to zero'
-    case (700)
-      msg = 'unknown crystal symmetry'
     case (709)
       msg = 'read only the first document'
     case default

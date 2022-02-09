@@ -403,16 +403,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState)
+    call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState,0)     ! ToDo: state structure does not follow convention
 
     allocate(geom(ph)%V_0(Nmembers))
     call storeGeometry(ph)
 
     if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
       call IO_error(212,ext_msg='IPneighborhood does not exist')
-
-
-    plasticState(ph)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
 
     st0%rho => plasticState(ph)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
     stt%rho => plasticState(ph)%state                              (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
@@ -941,13 +938,12 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
+module subroutine nonlocal_dotState(Mp,timestep, &
                                     ph,en,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
   real(pReal), intent(in) :: &
-    Temperature, &                                                                                  !< temperature
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
     ph, &
@@ -984,7 +980,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
   real(pReal) :: &
     D_SD, &
     mu, &
-    nu
+    nu, Temperature
 
   if (timestep <= 0.0_pReal) then
     plasticState(ph)%dotState = 0.0_pReal
@@ -995,6 +991,7 @@ module subroutine nonlocal_dotState(Mp, Temperature,timestep, &
 
   mu = elastic_mu(ph,en)
   nu = elastic_nu(ph,en)
+  Temperature = thermal_T(ph,en)
 
   tau = 0.0_pReal
   dot_gamma = 0.0_pReal
@@ -1195,7 +1192,6 @@ function rhoDotFlux(timestep,ph,en,ip,el)
 
   associate(prm => param(ph), &
             dst => dependentState(ph), &
-            dot => dotState(ph), &
             stt => state(ph))
   ns = prm%sum_N_sl
 
@@ -1206,7 +1202,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   rho0 = getRho0(ph,en)
   my_rhoSgl0 = rho0(:,sgl)
 
-  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)                   !ToDo: MD: I think we should use state0 here
+  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)                         !ToDo: MD: I think we should use state0 here
   dot_gamma = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,ph),en)
@@ -1217,7 +1213,7 @@ function rhoDotFlux(timestep,ph,en,ip,el)
   if (plasticState(ph)%nonlocal) then
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
-    if (any( abs(dot_gamma) > 0.0_pReal &                                                                ! any active slip system ...
+    if (any( abs(dot_gamma) > 0.0_pReal &                                                           ! any active slip system ...
             .and. prm%C_CFL * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
@@ -1395,7 +1391,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
     nThresholdValues
   logical, dimension(param(ph)%sum_N_sl) :: &
     belowThreshold
-  type(rotation) :: mis
+  type(tRotation) :: mis
 
 
   associate(prm => param(ph))

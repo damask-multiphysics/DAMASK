@@ -498,7 +498,7 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
   real(pReal), dimension(6,6,sum(Ntwin))           :: lattice_C66_twin
 
   real(pReal), dimension(3,3,sum(Ntwin)):: coordinateSystem
-  type(rotation)                        :: R
+  type(tRotation)                       :: R
   integer                               :: i
 
 
@@ -537,7 +537,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   real(pReal), dimension(6,6)             :: C_bar66, C_target_unrotated66
   real(pReal), dimension(3,3,sum(Ntrans)) :: Q,S
-  type(rotation)                          :: R
+  type(tRotation)                         :: R
   real(pReal)                             :: a_bcc, a_fcc, cOverA_trans
   integer                                 :: i
 
@@ -599,7 +599,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
 
   real(pReal), dimension(1:3,1:3,sum(Nslip))           :: coordinateSystem                          !< coordinate system of slip system
   real(pReal), dimension(3)                            :: direction, normal, np
-  type(rotation)                                       :: R
+  type(tRotation)                                      :: R
   integer                                              :: i
 
 
@@ -1976,7 +1976,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
     a_bcc, &                                                                                        !< lattice parameter a for bcc target lattice
     a_fcc                                                                                           !< lattice parameter a for fcc parent lattice
 
-  type(rotation) :: &
+  type(tRotation) :: &
     R, &                                                                                            !< Pitsch rotation
     B                                                                                               !< Rotation of fcc to Bain coordinate system
   real(pReal), dimension(3,3) :: &

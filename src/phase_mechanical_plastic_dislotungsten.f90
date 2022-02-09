@@ -341,7 +341,7 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
       dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
                                     0.0_pReal, &
                                     prm%dipoleformation)
-      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(2.0_pReal*PI*K_B*T)) &
+      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(TAU*K_B*T)) &
            * (1.0_pReal/(d_hat+prm%d_caron))
       dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
     end where

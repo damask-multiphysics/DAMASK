@@ -55,7 +55,7 @@ module rotations
 
   real(pReal), parameter :: P = -1.0_pReal                                                          !< parameter for orientation conversion.
 
-  type, public :: rotation
+  type, public :: tRotation
     real(pReal), dimension(4) :: q
     contains
       procedure, public :: asQuaternion
@@ -78,10 +78,9 @@ module rotations
       procedure, public  :: rotStiffness
       procedure, public  :: misorientation
       procedure, public  :: standardize
-  end type rotation
+  end type tRotation
 
   real(pReal), parameter :: &
-    SPI  = sqrt(PI), &
     PREF = sqrt(6.0_pReal/PI), &
     A    = PI**(5.0_pReal/6.0_pReal)/6.0_pReal**(1.0_pReal/6.0_pReal), &
     AP   = PI**(2.0_pReal/3.0_pReal), &
@@ -118,8 +117,8 @@ end subroutine rotations_init
 !---------------------------------------------------------------------------------------------------
 pure function asQuaternion(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asQuaternion
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(4)    :: asQuaternion
 
   asQuaternion = self%q
 
@@ -127,8 +126,8 @@ end function asQuaternion
 !---------------------------------------------------------------------------------------------------
 pure function asEulers(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(3)   :: asEulers
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(3)    :: asEulers
 
   asEulers = qu2eu(self%q)
 
@@ -136,8 +135,8 @@ end function asEulers
 !---------------------------------------------------------------------------------------------------
 pure function asAxisAngle(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asAxisAngle
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(4)    :: asAxisAngle
 
   asAxisAngle = qu2ax(self%q)
 
@@ -145,8 +144,8 @@ end function asAxisAngle
 !---------------------------------------------------------------------------------------------------
 pure function asMatrix(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(3,3) :: asMatrix
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(3,3)  :: asMatrix
 
   asMatrix = qu2om(self%q)
 
@@ -154,8 +153,8 @@ end function asMatrix
 !---------------------------------------------------------------------------------------------------
 pure function asRodrigues(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(4)   :: asRodrigues
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(4)    :: asRodrigues
 
   asRodrigues = qu2ro(self%q)
 
@@ -163,8 +162,8 @@ end function asRodrigues
 !---------------------------------------------------------------------------------------------------
 pure function asHomochoric(self)
 
-  class(rotation), intent(in) :: self
-  real(pReal), dimension(3)   :: asHomochoric
+  class(tRotation), intent(in) :: self
+  real(pReal), dimension(3)    :: asHomochoric
 
   asHomochoric = qu2ho(self%q)
 
@@ -175,7 +174,7 @@ end function asHomochoric
 !---------------------------------------------------------------------------------------------------
 subroutine fromQuaternion(self,qu)
 
-  class(rotation), intent(out)          :: self
+  class(tRotation), intent(out)         :: self
   real(pReal), dimension(4), intent(in) :: qu
 
   if (dNeq(norm2(qu),1.0_pReal,1.0e-8_pReal)) call IO_error(402,ext_msg='fromQuaternion')
@@ -186,7 +185,7 @@ end subroutine fromQuaternion
 !---------------------------------------------------------------------------------------------------
 subroutine fromEulers(self,eu,degrees)
 
-  class(rotation), intent(out)          :: self
+  class(tRotation), intent(out)         :: self
   real(pReal), dimension(3), intent(in) :: eu
   logical, intent(in), optional         :: degrees
 
@@ -198,7 +197,7 @@ subroutine fromEulers(self,eu,degrees)
     Eulers = merge(eu*INRAD,eu,degrees)
   endif
 
-  if (any(Eulers<0.0_pReal) .or. any(Eulers>2.0_pReal*PI) .or. Eulers(2) > PI) &
+  if (any(Eulers<0.0_pReal) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
     call IO_error(402,ext_msg='fromEulers')
 
   self%q = eu2qu(Eulers)
@@ -207,7 +206,7 @@ end subroutine fromEulers
 !---------------------------------------------------------------------------------------------------
 subroutine fromAxisAngle(self,ax,degrees,P)
 
-  class(rotation), intent(out)          :: self
+  class(tRotation), intent(out)         :: self
   real(pReal), dimension(4), intent(in) :: ax
   logical, intent(in), optional         :: degrees
   integer, intent(in), optional         :: P
@@ -237,7 +236,7 @@ end subroutine fromAxisAngle
 !---------------------------------------------------------------------------------------------------
 subroutine fromMatrix(self,om)
 
-  class(rotation), intent(out)            :: self
+  class(tRotation), intent(out)           :: self
   real(pReal), dimension(3,3), intent(in) :: om
 
   if (dNeq(math_det33(om),1.0_pReal,tol=1.0e-5_pReal)) &
@@ -254,10 +253,10 @@ end subroutine fromMatrix
 !---------------------------------------------------------------------------------------------------
 pure elemental function rotRot__(self,R) result(rRot)
 
-  type(rotation)              :: rRot
-  class(rotation), intent(in) :: self,R
+  type(tRotation)              :: rRot
+  class(tRotation), intent(in) :: self,R
 
-  rRot = rotation(multiply_quaternion(self%q,R%q))
+  rRot = tRotation(multiply_quaternion(self%q,R%q))
   call rRot%standardize()
 
 end function rotRot__
@@ -268,7 +267,7 @@ end function rotRot__
 !---------------------------------------------------------------------------------------------------
 pure elemental subroutine standardize(self)
 
-  class(rotation), intent(inout) :: self
+  class(tRotation), intent(inout) :: self
 
   if (sign(1.0_pReal,self%q(1)) < 0.0_pReal) self%q = - self%q
 
@@ -282,7 +281,7 @@ end subroutine standardize
 pure function rotVector(self,v,active) result(vRot)
 
   real(pReal),                 dimension(3) :: vRot
-  class(rotation), intent(in)               :: self
+  class(tRotation), intent(in)              :: self
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
 
@@ -318,7 +317,7 @@ end function rotVector
 pure function rotTensor2(self,T,active) result(tRot)
 
   real(pReal),                 dimension(3,3) :: tRot
-  class(rotation), intent(in)                 :: self
+  class(tRotation), intent(in)                :: self
   real(pReal),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
 
@@ -347,7 +346,7 @@ end function rotTensor2
 pure function rotTensor4(self,T,active) result(tRot)
 
   real(pReal),                 dimension(3,3,3,3) :: tRot
-  class(rotation), intent(in)                     :: self
+  class(tRotation), intent(in)                    :: self
   real(pReal),     intent(in), dimension(3,3,3,3) :: T
   logical,         intent(in), optional           :: active
 
@@ -379,7 +378,7 @@ end function rotTensor4
 pure function rotStiffness(self,C,active) result(cRot)
 
   real(pReal),                 dimension(6,6) :: cRot
-  class(rotation), intent(in)                 :: self
+  class(tRotation), intent(in)                :: self
   real(pReal),     intent(in), dimension(6,6) :: C
   logical,         intent(in), optional       :: active
 
@@ -416,8 +415,8 @@ end function rotStiffness
 !---------------------------------------------------------------------------------------------------
 pure elemental function misorientation(self,other)
 
-  type(rotation)              :: misorientation
-  class(rotation), intent(in) :: self, other
+  type(tRotation)              :: misorientation
+  class(tRotation), intent(in) :: self, other
 
 
   misorientation%q = multiply_quaternion(other%q, conjugate_quaternion(self%q))
@@ -480,7 +479,7 @@ pure function qu2eu(qu) result(eu)
           atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
   endif degenerated
-  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
+  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function qu2eu
 
@@ -628,7 +627,7 @@ pure function om2eu(om) result(eu)
     eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
   end if
   where(abs(eu) < 1.e-8_pReal) eu = 0.0_pReal
-  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
+  where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function om2eu
 
@@ -1209,7 +1208,7 @@ pure function ho2cu(ho) result(cu)
     else special
       q2 = qxy + maxval(abs(xyz2))**2
       sq2 = sqrt(q2)
-      q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
+      q = (BETA/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
       tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy
       Tinv = q * sign(1.0_pReal,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
                                               [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
@@ -1217,7 +1216,7 @@ pure function ho2cu(ho) result(cu)
     endif special
 
     ! inverse M_1
-    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
+    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / PREF ]/SC
 
     ! reverse the coordinates back to order according to the original pyramid number
     cu = xyz1(p(:,2))
@@ -1323,32 +1322,32 @@ pure function cu2ho(cu) result(ho)
   else center
     ! get pyramide and scale by grid parameter ratio
     p = GetPyramidOrder(cu)
-    XYZ = cu(p(:,1)) * sc
+    XYZ = cu(p(:,1)) * SC
 
     ! intercept all the points along the z-axis
     special: if (all(dEq0(XYZ(1:2)))) then
-      LamXYZ = [ 0.0_pReal, 0.0_pReal, pref * XYZ(3) ]
+      LamXYZ = [ 0.0_pReal, 0.0_pReal, PREF * XYZ(3) ]
     else special
       order = merge( [2,1], [1,2], abs(XYZ(2)) <= abs(XYZ(1)))                                      ! order of absolute values of XYZ
       q = PI12 *  XYZ(order(1))/XYZ(order(2))                                                       ! smaller by larger
       c = cos(q)
       s = sin(q)
-      q = prek * XYZ(order(2))/ sqrt(R2-c)
+      q = PREK * XYZ(order(2))/ sqrt(R2-c)
       T = [ (R2*c - 1.0), R2 * s] * q
 
       ! transform to sphere grid (inverse Lambert)
       ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
       c = sum(T**2)
-      s = Pi * c/(24.0*XYZ(3)**2)
-      c = sPi * c / sqrt(24.0_pReal) / XYZ(3)
+      s = PI * c/(24.0*XYZ(3)**2)
+      c = sqrt(PI) * c / sqrt(24.0_pReal) / XYZ(3)
       q = sqrt( 1.0 - s )
-      LamXYZ = [ T(order(2)) * q, T(order(1)) * q, pref * XYZ(3) - c ]
-    endif special
+      LamXYZ = [ T(order(2)) * q, T(order(1)) * q, PREF * XYZ(3) - c ]
+    end if special
 
     ! reverse the coordinates back to order according to the original pyramid number
     ho = LamXYZ(p(:,2))
 
-  endif center
+  end if center
 
 end function cu2ho
 
@@ -1416,7 +1415,7 @@ end function conjugate_quaternion
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest()
 
-  type(rotation)                  :: R
+  type(tRotation)                 :: R
   real(pReal), dimension(4)       :: qu, ax, ro
   real(pReal), dimension(3)       :: x, eu, ho, v3
   real(pReal), dimension(3,3)     :: om, t33
@@ -1437,7 +1436,7 @@ subroutine selfTest()
     elseif(i==2) then
       qu = eu2qu([0.0_pReal,0.0_pReal,0.0_pReal])
     elseif(i==3) then
-      qu = eu2qu([2.0_pReal*PI,PI,2.0_pReal*PI])
+      qu = eu2qu([TAU,PI,TAU])
     elseif(i==4) then
       qu = [0.0_pReal,0.0_pReal,1.0_pReal,0.0_pReal]
     elseif(i==5) then
@@ -1448,10 +1447,10 @@ subroutine selfTest()
       call random_number(x)
       A = sqrt(x(3))
       B = sqrt(1-0_pReal -x(3))
-      qu = [cos(2.0_pReal*PI*x(1))*A,&
-            sin(2.0_pReal*PI*x(2))*B,&
-            cos(2.0_pReal*PI*x(2))*B,&
-            sin(2.0_pReal*PI*x(1))*A]
+      qu = [cos(TAU*x(1))*A,&
+            sin(TAU*x(2))*B,&
+            cos(TAU*x(2))*B,&
+            sin(TAU*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
 
@@ -1504,7 +1503,8 @@ subroutine selfTest()
 
     call random_number(C)
     C = C+transpose(C)
-    if (any(dNeq(R%rotStiffness(C),math_3333toVoigt66(R%rotate(math_Voigt66to3333(C))),1.0e-12_pReal))) &
+    if (any(dNeq(R%rotStiffness(C), &
+                 math_3333toVoigt66_stiffness(R%rotate(math_Voigt66to3333_stiffness(C))),1.0e-12_pReal))) &
       error stop 'rotStiffness'
 
     call R%fromQuaternion(qu * (1.0_pReal + merge(+5.e-9_pReal,-5.e-9_pReal, mod(i,2) == 0)))       ! allow reasonable tolerance for ASCII/YAML

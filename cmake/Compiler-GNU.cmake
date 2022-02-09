@@ -9,26 +9,24 @@ if (OPENMP)
   set (OPENMP_FLAGS "-fopenmp")
 endif ()
 
-if (OPTIMIZATION STREQUAL "OFF")
+if (OPTIMIZATION STREQUAL "DEBUG")
+  set (OPTIMIZATION_FLAGS "-Og")
+elseif (OPTIMIZATION STREQUAL "OFF")
   set (OPTIMIZATION_FLAGS "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
-  set (OPTIMIZATION_FLAGS "-O2 -mtune=generic")
+  set (OPTIMIZATION_FLAGS "-O2 -mtune=native")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS "-O3 -march=native -ffast-math -funroll-loops -ftree-vectorize")
+  set (OPTIMIZATION_FLAGS "-O3 -march=native -funroll-loops -ftree-vectorize -flto")
 endif ()
 
 set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
-set (LINKER_FLAGS  "${LINKER_FLAGS} -Wl")
-# options parsed directly to the linker
-set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
-#   ensure to link against dynamic libraries
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -cpp")
 # preprocessor
 
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIC -fPIE")
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIE")
 # position independent code
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132")
@@ -122,6 +120,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -ffpe-trap=invalid,zero,overflow")
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -g")
 # Generate symbolic debugging information in the object file
+
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -Og")
+# Optimize debugging experience
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fbacktrace")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fdump-core")

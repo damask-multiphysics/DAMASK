@@ -68,7 +68,6 @@ subroutine CPFEM_initAll
   call material_init(restart=interface_restartInc>0)
   call phase_init
   call homogenization_init
-  call crystallite_init
   call CPFEM_init
   call config_deallocate
 
