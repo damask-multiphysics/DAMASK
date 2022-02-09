@@ -879,10 +879,10 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
     plasticState(ph)%state(1:sizeDotState,en) = subState0 &
                                               + dotState * Delta_t
 
-    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),co,ip,el)
+    broken = integrateStress(F_0 + (F-F_0) * Delta_t*C(stage),subFp0,subFi0,Delta_t*C(stage),co,ip,el)
     if(broken) exit
 
-    dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+    dotState = plastic_dotState(Delta_t*C(stage), co,ip,el,ph,en)
     if (any(IEEE_is_NaN(dotState))) exit
 
   enddo
