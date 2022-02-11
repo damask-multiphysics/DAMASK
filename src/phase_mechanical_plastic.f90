@@ -140,15 +140,15 @@ submodule(phase:mechanical) plastic
         dotState
     end function plastic_kinehardening_dotState
 
-    module subroutine dislotwin_dotState(Mp,T,ph,en)
+    module function dislotwin_dotState(Mp,ph,en) result(dotState)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
-      real(pReal),                  intent(in) :: &
-        T
       integer,                      intent(in) :: &
         ph, &
         en
-    end subroutine dislotwin_dotState
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+        dotState
+    end function dislotwin_dotState
 
     module function dislotungsten_dotState(Mp,ph,en) result(dotState)
       real(pReal), dimension(3,3),  intent(in) :: &
@@ -331,8 +331,7 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
         dotState = plastic_kinehardening_dotState(Mp,ph,en)
 
       case (PLASTIC_DISLOTWIN_ID) plasticType
-        call dislotwin_dotState(Mp,thermal_T(ph,en),ph,en)
-        dotState = plasticState(ph)%dotState(:,en)
+        dotState = dislotwin_dotState(Mp,ph,en)
 
       case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
         dotState = dislotungsten_dotState(Mp,ph,en)
