@@ -1,10 +1,10 @@
 import inspect
 import copy
-from typing import Union, Callable, Dict, Any, Tuple
+from typing import Union, Callable, List, Dict, Any, Tuple
 
 import numpy as np
 
-from ._typehints import FloatSequence, IntSequence
+from ._typehints import FloatSequence, IntSequence, CrystalFamily, CrystalLattice
 from . import Rotation
 from . import Crystal
 from . import util
@@ -98,8 +98,8 @@ class Orientation(Rotation,Crystal):
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
-                 family: str = None,
-                 lattice: str = None,
+                 family: CrystalFamily = None,
+                 lattice: CrystalLattice = None,
                  a: float = None, b: float = None, c: float = None,
                  alpha: float = None, beta: float = None, gamma: float = None,
                  degrees: bool = False):
@@ -787,7 +787,7 @@ class Orientation(Rotation,Crystal):
     @property
     def symmetry_operations(self) -> Rotation:
         """Symmetry operations as Rotations."""
-        _symmetry_operations  = {
+        _symmetry_operations: Dict[CrystalFamily, List]  = {
             'cubic':         [
                               [ 1.0,            0.0,            0.0,            0.0            ],
                               [ 0.0,            1.0,            0.0,            0.0            ],

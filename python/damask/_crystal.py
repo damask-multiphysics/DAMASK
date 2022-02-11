@@ -2,11 +2,11 @@ from typing import Union, Dict, List, Tuple
 
 import numpy as np
 
-from ._typehints import FloatSequence
+from ._typehints import FloatSequence, CrystalFamily, CrystalLattice, CrystalKinematics
 from . import util
 from . import Rotation
 
-lattice_symmetries = {
+lattice_symmetries: Dict[CrystalLattice, CrystalFamily] = {
                 'aP': 'triclinic',
 
                 'mP': 'monoclinic',
@@ -32,8 +32,8 @@ class Crystal():
     """Crystal lattice."""
 
     def __init__(self,*,
-                 family = None,
-                 lattice = None,
+                 family: CrystalFamily = None,
+                 lattice: CrystalLattice = None,
                  a: float = None, b: float = None, c: float = None,
                  alpha: float = None, beta: float = None, gamma: float = None,
                  degrees: bool = False):
@@ -208,7 +208,7 @@ class Crystal():
         ...    }
 
         """
-        _basis  = {
+        _basis: Dict[CrystalFamily, Dict[str, np.ndarray]]  = {
             'cubic':    {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                                [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
                                                [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
@@ -322,12 +322,12 @@ class Crystal():
 
         Parameters
         ----------
-        direction|plane : numpy.ndarray of shape (...,3)
+        direction|plane : numpy.ndarray, shape (...,3)
             Vector along direction or plane normal.
 
         Returns
         -------
-        Miller : numpy.ndarray of shape (...,3)
+        Miller : numpy.ndarray, shape (...,3)
             Lattice vector of direction or plane.
             Use util.scale_to_coprime to convert to (integer) Miller indices.
 
@@ -348,12 +348,12 @@ class Crystal():
 
         Parameters
         ----------
-        uvw|hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray, shape (...,3)
             Miller indices of crystallographic direction or plane normal.
 
         Returns
         -------
-        vector : numpy.ndarray of shape (...,3)
+        vector : numpy.ndarray, shape (...,3)
             Crystal frame vector along [uvw] direction or (hkl) plane normal.
 
         """
@@ -366,7 +366,7 @@ class Crystal():
 
 
     def kinematics(self,
-                   mode: str) -> Dict[str, List[np.ndarray]]:
+                   mode: CrystalKinematics) -> Dict[str, List[np.ndarray]]:
         """
         Return crystal kinematics systems.
 
@@ -381,7 +381,7 @@ class Crystal():
             Directions and planes of deformation mode families.
 
         """
-        _kinematics = {
+        _kinematics: Dict[CrystalLattice, Dict[CrystalKinematics, List[np.ndarray]]] = {
             'cF': {
                 'slip': [np.array([
                            [+0,+1,-1, +1,+1,+1],
@@ -626,7 +626,7 @@ class Crystal():
 
 
     def relation_operations(self,
-                            model: str) -> Tuple[str, Rotation]:
+                            model: str) -> Tuple[CrystalLattice, Rotation]:
         """
         Crystallographic orientation relationships for phase transformations.
 
@@ -658,7 +658,7 @@ class Crystal():
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        _orientation_relationships = {
+        _orientation_relationships: Dict[str, Dict[CrystalLattice,np.ndarray]] = {
           'KS': {
             'cF' : np.array([
                 [[-1, 0, 1],[ 1, 1, 1]],
