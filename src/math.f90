@@ -21,10 +21,11 @@ module math
     config
 #endif
 
-  real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
-  real(pReal),    parameter :: INDEG = 180.0_pReal/PI                                               !< conversion from radian to degree
-  real(pReal),    parameter :: INRAD = PI/180.0_pReal                                               !< conversion from degree to radian
-  complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,2.0_pReal*PI)                             !< Re(0.0), Im(2xPi)
+  real(pReal), parameter :: &
+    PI = acos(-1.0_pReal), &                                                                        !< ratio of a circle's circumference to its diameter
+    TAU = 2.0_pReal*PI, &                                                                           !< ratio of a circle's circumference to its radius
+    INDEG = 360.0_pReal/TAU, &                                                                      !< conversion from radian to degree
+    INRAD = TAU/360.0_pReal                                                                         !< conversion from degree to radian
 
   real(pReal), dimension(3,3), parameter :: &
     math_I3 = reshape([&
@@ -882,7 +883,7 @@ end function math_Voigt6to33_strain
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert 3x3 tensor into 6 Voigt stress vector.
+!> @brief Convert 3x3 stress tensor into 6 Voigt vector.
 !--------------------------------------------------------------------------------------------------
 pure function math_33toVoigt6_stress(sigma) result(sigma_tilde)
 
@@ -897,7 +898,7 @@ end function math_33toVoigt6_stress
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert 3x3 tensor into 6 Voigt strain vector.
+!> @brief Convert 3x3 strain tensor into 6 Voigt vector.
 !--------------------------------------------------------------------------------------------------
 pure function math_33toVoigt6_strain(epsilon) result(epsilon_tilde)
 
@@ -913,48 +914,48 @@ end function math_33toVoigt6_strain
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert 6x6 Voigt matrix into symmetric 3x3x3x3 matrix.
+!> @brief Convert 6x6 Voigt stiffness matrix into symmetric 3x3x3x3 tensor.
 !--------------------------------------------------------------------------------------------------
-pure function math_Voigt66to3333(m66)
+pure function math_Voigt66to3333_stiffness(C_tilde) result(C)
 
-  real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
-  real(pReal), dimension(6,6), intent(in) :: m66                                                    !< 6x6 matrix
+  real(pReal), dimension(3,3,3,3) :: C
+  real(pReal), dimension(6,6), intent(in) :: C_tilde
 
   integer :: i,j
 
 
   do i=1,6; do j=1,6
-    math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
-    math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
-    math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
-    math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
+    C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = C_tilde(i,j)
+    C(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = C_tilde(i,j)
+    C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = C_tilde(i,j)
+    C(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = C_tilde(i,j)
   end do; end do
 
-end function math_Voigt66to3333
+end function math_Voigt66to3333_stiffness
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 Voigt matrix.
+!> @brief Convert 3x3x3x3 stiffness tensor into 6x6 Voigt matrix.
 !--------------------------------------------------------------------------------------------------
-pure function math_3333toVoigt66(m3333)
+pure function math_3333toVoigt66_stiffness(C) result(C_tilde)
 
-  real(pReal), dimension(6,6)                 :: math_3333toVoigt66
-  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
+  real(pReal), dimension(6,6) :: C_tilde
+  real(pReal), dimension(3,3,3,3), intent(in) :: C
 
   integer :: i,j
 
 
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:6, j=1:6)
-    math_3333toVoigt66(i,j) = m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+    C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
   end do
 #else
   do i=1,6; do j=1,6
-    math_3333toVoigt66(i,j) = m3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
+    C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
   end do; end do
 #endif
 
-end function math_3333toVoigt66
+end function math_3333toVoigt66_stiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -984,7 +985,7 @@ impure elemental subroutine math_normal(x,mu,sigma)
   end if
 
   call random_number(rnd)
-  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(2.0_pReal*PI*(1.0_pReal - rnd(2)))
+  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(TAU*(1.0_pReal - rnd(2)))
 
 end subroutine math_normal
 
@@ -1088,7 +1089,7 @@ pure function math_rotationalPart(F) result(R)
   if (dNeq0(x)) then
     Phi = acos(math_clip((I_C(1)**3 -4.5_pReal*I_C(1)*I_C(2) +13.5_pReal*I_C(3))/x,-1.0_pReal,1.0_pReal))
     lambda = I_C(1) +(2.0_pReal * sqrt(math_clip(I_C(1)**2-3.0_pReal*I_C(2),0.0_pReal))) &
-                    *cos((Phi-2.0_pReal * PI*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
+                    *cos((Phi-TAU*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
     lambda = sqrt(math_clip(lambda,0.0_pReal)/3.0_pReal)
   else
     lambda = sqrt(I_C(1)/3.0_pReal)
@@ -1154,8 +1155,8 @@ pure function math_eigvalsh33(m)
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
                                                             [cos( phi              /3.0_pReal), &
-                                                             cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                                                             cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                                             cos((phi+TAU)/3.0_pReal), &
+                                                             cos((phi+2.0_pReal*TAU)/3.0_pReal) &
                                                             ] &
                     + I(1)/3.0_pReal
   endif
@@ -1343,7 +1344,7 @@ subroutine selfTest
   if (any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66,1.0e-15_pReal))) &
     error stop 'math_sym3333to66/math_66toSym3333'
 
-  if (any(dNeq(math_3333toVoigt66(math_Voigt66to3333(t66)),t66,1.0e-15_pReal))) &
+  if (any(dNeq(math_3333toVoigt66_stiffness(math_Voigt66to3333_stiffness(t66)),t66,1.0e-15_pReal))) &
     error stop 'math_3333toVoigt66/math_Voigt66to3333'
 
   call random_number(v6)

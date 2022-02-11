@@ -40,8 +40,6 @@ submodule(phase) mechanical
   integer(kind(PLASTIC_undefined_ID)), dimension(:),   allocatable :: &
     phase_plasticity                                                                                !< plasticity of each phase
 
-  integer :: phase_plasticity_maxSizeDotState
-
   interface
 
     module subroutine eigen_init(phases)
@@ -81,16 +79,17 @@ submodule(phase) mechanical
         en
     end subroutine plastic_isotropic_LiAndItsTangent
 
-    module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
+    module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
       integer, intent(in) :: &
-        co, &                                                                                           !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el, &                                                                                           !< element
+        co, &                                                                                       !< constituent
+        ip, &                                                                                       !< integration point
+        el, &                                                                                       !< element
         ph, &
         en
       real(pReal),  intent(in) :: &
-        subdt                                                                                           !< timestep
-      logical :: broken
+        subdt                                                                                       !< timestep
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+        dotState
     end function plastic_dotState
 
     module function plastic_deltaState(ph, en) result(broken)
@@ -296,8 +295,6 @@ module subroutine mechanical_init(phases)
   do ph = 1,phases%length
     plasticState(ph)%state0 = plasticState(ph)%state
   enddo
-  phase_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
-
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
@@ -588,9 +585,9 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
   real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
-    el, &                                                                                            !< element index in element loop
-    ip, &                                                                                            !< integration point index in ip loop
-    co                                                                                               !< grain index in grain loop
+    el, &                                                                                           !< element index in element loop
+    ip, &                                                                                           !< integration point index in ip loop
+    co                                                                                              !< grain index in grain loop
   logical :: &
     broken
 
@@ -601,43 +598,43 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     sizeDotState
   real(pReal) :: &
     zeta
-  real(pReal), dimension(phase_plasticity_maxSizeDotState) :: &
-    r                                                                                               ! state residuum
-  real(pReal), dimension(phase_plasticity_maxSizeDotState,2) :: &
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+    r, &                                                                                            ! state residuum
     dotState
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState,2) :: &
+    dotState_last
 
 
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+  broken = .true.
 
-  broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
-  if(broken) return
+  dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+  if (any(IEEE_is_NaN(dotState))) return
 
   sizeDotState = plasticState(ph)%sizeDotState
-  plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + plasticState(ph)%dotState (1:sizeDotState,en) * Delta_t
+  plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState * Delta_t
 
   iteration: do NiterationState = 1, num%nState
 
-    dotState(1:sizeDotState,2) = merge(dotState(1:sizeDotState,1),0.0, nIterationState > 1)
-    dotState(1:sizeDotState,1) = plasticState(ph)%dotState(:,en)
+    dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0, nIterationState > 1)
+    dotState_last(1:sizeDotState,1) = dotState
 
     broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
     if(broken) exit iteration
 
-    broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
-    if(broken) exit iteration
+    dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+    if (any(IEEE_is_NaN(dotState))) exit iteration
 
-    zeta = damper(plasticState(ph)%dotState(:,en),dotState(1:sizeDotState,1),&
-                                                  dotState(1:sizeDotState,2))
-    plasticState(ph)%dotState(:,en) = plasticState(ph)%dotState(:,en) * zeta &
-                                    + dotState(1:sizeDotState,1) * (1.0_pReal - zeta)
-    r(1:sizeDotState) = plasticState(ph)%state(1:sizeDotState,en) &
-                      - subState0 &
-                      - plasticState(ph)%dotState(1:sizeDotState,en) * Delta_t
-    plasticState(ph)%state(1:sizeDotState,en) = plasticState(ph)%state(1:sizeDotState,en) &
-                                              - r(1:sizeDotState)
-    if (converged(r(1:sizeDotState),plasticState(ph)%state(1:sizeDotState,en),plasticState(ph)%atol(1:sizeDotState))) then
+    zeta = damper(dotState,dotState_last(1:sizeDotState,1),dotState_last(1:sizeDotState,2))
+    dotState = dotState * zeta &
+             + dotState_last(1:sizeDotState,1) * (1.0_pReal - zeta)
+    r = plasticState(ph)%state(1:sizeDotState,en) &
+      - subState0 &
+      - dotState * Delta_t
+    plasticState(ph)%state(1:sizeDotState,en) = plasticState(ph)%state(1:sizeDotState,en) - r
+
+    if (converged(r,plasticState(ph)%state(1:sizeDotState,en),plasticState(ph)%atol(1:sizeDotState))) then
       broken = plastic_deltaState(ph,en)
       exit iteration
     endif
@@ -652,19 +649,20 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
   !--------------------------------------------------------------------------------------------------
   real(pReal) pure function damper(omega_0,omega_1,omega_2)
 
-  real(pReal), dimension(:), intent(in) :: &
-    omega_0, omega_1, omega_2
+    real(pReal), dimension(:), intent(in) :: &
+      omega_0, omega_1, omega_2
 
-  real(pReal) :: dot_prod12, dot_prod22
+    real(pReal) :: dot_prod12, dot_prod22
 
-  dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
-  dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
 
-  if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
-    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
-  else
-    damper = 1.0_pReal
-  endif
+    dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
+    dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
+
+    if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
+      damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+    else
+      damper = 1.0_pReal
+    endif
 
   end function damper
 
@@ -686,6 +684,8 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) res
   logical :: &
     broken
 
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+    dotState
   integer :: &
     ph, &
     en, &
@@ -694,13 +694,14 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) res
 
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+  broken = .true.
 
-  broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
-  if(broken) return
+  dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+  if (any(IEEE_is_NaN(dotState))) return
 
   sizeDotState = plasticState(ph)%sizeDotState
   plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + plasticState(ph)%dotState(1:sizeDotState,en) * Delta_t
+                                            + dotState * Delta_t
 
   broken = plastic_deltaState(ph,en)
   if(broken) return
@@ -729,20 +730,23 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
     ph, &
     en, &
     sizeDotState
-  real(pReal), dimension(phase_plasticity_maxSizeDotState) :: residuum_plastic
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+    r, &
+    dotState
 
 
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+  broken = .true.
 
-  broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
-  if(broken) return
+  dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+  if (any(IEEE_is_NaN(dotState))) return
 
   sizeDotState = plasticState(ph)%sizeDotState
 
-  residuum_plastic(1:sizeDotState) = - plasticState(ph)%dotstate(1:sizeDotState,en) * 0.5_pReal * Delta_t
+  r = - dotState * 0.5_pReal * Delta_t
   plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + plasticState(ph)%dotstate(1:sizeDotState,en) * Delta_t
+                                            + dotState * Delta_t
 
   broken = plastic_deltaState(ph,en)
   if(broken) return
@@ -750,10 +754,10 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
   if(broken) return
 
-  broken = plastic_dotState(Delta_t, co,ip,el,ph,en)
-  if(broken) return
+  dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+  if (any(IEEE_is_NaN(dotState))) return
 
-  broken = .not. converged(residuum_plastic(1:sizeDotState) + 0.5_pReal * plasticState(ph)%dotState(:,en) * Delta_t, &
+  broken = .not. converged(r + 0.5_pReal * dotState * Delta_t, &
                            plasticState(ph)%state(1:sizeDotState,en), &
                            plasticState(ph)%atol(1:sizeDotState))
 
@@ -847,44 +851,48 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
     ph, &
     en, &
     sizeDotState
-  real(pReal), dimension(phase_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState) :: &
+    dotState
+  real(pReal), dimension(plasticState(material_phaseID(co,(el-1)*discretization_nIPs+ip))%sizeDotState,size(B)) :: &
+    plastic_RKdotState
 
 
   ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
   en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+  broken = .true.
 
-  broken = plastic_dotState(Delta_t,co,ip,el,ph,en)
-  if(broken) return
+  dotState = plastic_dotState(Delta_t, co,ip,el,ph,en)
+  if (any(IEEE_is_NaN(dotState))) return
 
   sizeDotState = plasticState(ph)%sizeDotState
 
   do stage = 1, size(A,1)
 
-    plastic_RKdotState(1:sizeDotState,stage) = plasticState(ph)%dotState(:,en)
-    plasticState(ph)%dotState(:,en) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
+    plastic_RKdotState(1:sizeDotState,stage) = dotState
+    dotState = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
 
     do n = 2, stage
-      plasticState(ph)%dotState(:,en) = plasticState(ph)%dotState(:,en) &
-                                      + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
+      dotState = dotState &
+               + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
     enddo
 
     plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                              + plasticState(ph)%dotState (1:sizeDotState,en) * Delta_t
+                                              + dotState * Delta_t
 
-    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),co,ip,el)
+    broken = integrateStress(F_0 + (F-F_0) * Delta_t*C(stage),subFp0,subFi0,Delta_t*C(stage),co,ip,el)
     if(broken) exit
 
-    broken = plastic_dotState(Delta_t*C(stage),co,ip,el,ph,en)
-    if(broken) exit
+    dotState = plastic_dotState(Delta_t*C(stage), co,ip,el,ph,en)
+    if (any(IEEE_is_NaN(dotState))) exit
 
   enddo
   if(broken) return
 
 
-  plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (ph)%dotState(:,en)
-  plasticState(ph)%dotState(:,en) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
+  plastic_RKdotState(1:sizeDotState,size(B)) = dotState
+  dotState = matmul(plastic_RKdotState,B)
   plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + plasticState(ph)%dotState (1:sizeDotState,en) * Delta_t
+                                            + dotState * Delta_t
 
   if(present(DB)) &
     broken = .not. converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
@@ -958,7 +966,7 @@ subroutine crystallite_results(group,ph)
 !--------------------------------------------------------------------------------------------------
   function to_quaternion(dataset)
 
-    type(rotation), dimension(:), intent(in) :: dataset
+    type(tRotation), dimension(:), intent(in) :: dataset
     real(pReal), dimension(4,size(dataset,1)) :: to_quaternion
 
     integer :: i
@@ -1248,7 +1256,7 @@ module subroutine mechanical_restartWrite(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  call HDF5_write(plasticState(ph)%state,groupHandle,'omega')
+  call HDF5_write(plasticState(ph)%state,groupHandle,'omega_plastic')
   call HDF5_write(phase_mechanical_Fi(ph)%data,groupHandle,'F_i')
   call HDF5_write(phase_mechanical_Li(ph)%data,groupHandle,'L_i')
   call HDF5_write(phase_mechanical_Lp(ph)%data,groupHandle,'L_p')
@@ -1265,7 +1273,7 @@ module subroutine mechanical_restartRead(groupHandle,ph)
   integer, intent(in) :: ph
 
 
-  call HDF5_read(plasticState(ph)%state0,groupHandle,'omega')
+  call HDF5_read(plasticState(ph)%state0,groupHandle,'omega_plastic')
   call HDF5_read(phase_mechanical_Fi0(ph)%data,groupHandle,'F_i')
   call HDF5_read(phase_mechanical_Li0(ph)%data,groupHandle,'L_i')
   call HDF5_read(phase_mechanical_Lp0(ph)%data,groupHandle,'L_p')

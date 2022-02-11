@@ -287,7 +287,7 @@ class TestOrientation:
     @pytest.mark.parametrize('family',crystal_families)
     @pytest.mark.parametrize('proper',[True,False])
     def test_in_SST(self,family,proper):
-          assert Orientation(family=family).in_SST(np.zeros(3),proper)
+        assert Orientation(family=family).in_SST(np.zeros(3),proper)
 
     @pytest.mark.parametrize('function',['in_SST','IPF_color'])
     def test_invalid_argument(self,function):

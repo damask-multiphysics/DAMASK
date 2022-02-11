@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence, Literal
+from typing import Union, Optional, TextIO, List, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +33,7 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 comments: Union[str, Sequence[str]] = []):
+                 comments: Union[str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
 
@@ -53,7 +53,7 @@ class Grid:
         self.material = material
         self.size = size                                                                            # type: ignore
         self.origin = origin                                                                        # type: ignore
-        self.comments = comments                                                                    # type: ignore
+        self.comments = [] if comments is None else comments                                        # type: ignore
 
 
     def __repr__(self) -> str:
@@ -62,8 +62,8 @@ class Grid:
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials
         return util.srepr([
-               f'cells : {util.srepr(self.cells, " x ")}',
-               f'size  : {util.srepr(self.size,  " x ")} / m³',
+               f'cells:  {util.srepr(self.cells, " × ")}',
+               f'size:   {util.srepr(self.size,  " × ")} / m³',
                f'origin: {util.srepr(self.origin,"   ")} / m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
                                           f' (min: {mat_min}, max: {mat_max})')
@@ -77,7 +77,8 @@ class Grid:
     copy = __copy__
 
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,
+               other: object) -> bool:
         """
         Test equality of other.
 
@@ -101,17 +102,18 @@ class Grid:
         return self._material
 
     @material.setter
-    def material(self, material: np.ndarray):
+    def material(self,
+                 material: np.ndarray):
         if len(material.shape) != 3:
             raise ValueError(f'invalid material shape {material.shape}')
-        elif material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
+        if material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
             raise TypeError(f'invalid material data type {material.dtype}')
-        else:
-            self._material = np.copy(material)
 
-            if self.material.dtype in np.sctypes['float'] and \
-               np.all(self.material == self.material.astype(int).astype(float)):
-                self._material = self.material.astype(int)
+        self._material = np.copy(material)
+
+        if self.material.dtype in np.sctypes['float'] and \
+           np.all(self.material == self.material.astype(int).astype(float)):
+            self._material = self.material.astype(int)
 
 
     @property
@@ -120,11 +122,12 @@ class Grid:
         return self._size
 
     @size.setter
-    def size(self, size: FloatSequence):
+    def size(self,
+             size: FloatSequence):
         if len(size) != 3 or any(np.array(size) < 0):
             raise ValueError(f'invalid size {size}')
-        else:
-            self._size = np.array(size)
+
+        self._size = np.array(size)
 
     @property
     def origin(self) -> np.ndarray:
@@ -132,11 +135,12 @@ class Grid:
         return self._origin
 
     @origin.setter
-    def origin(self, origin: FloatSequence):
+    def origin(self,
+               origin: FloatSequence):
         if len(origin) != 3:
             raise ValueError(f'invalid origin {origin}')
-        else:
-            self._origin = np.array(origin)
+
+        self._origin = np.array(origin)
 
     @property
     def comments(self) -> List[str]:
@@ -144,7 +148,8 @@ class Grid:
         return self._comments
 
     @comments.setter
-    def comments(self, comments: Union[str, Sequence[str]]):
+    def comments(self,
+                 comments: Union[str, Sequence[str]]):
         self._comments = [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
 
 
@@ -229,8 +234,7 @@ class Grid:
         content = f.readlines()
         for i,line in enumerate(content[:header_length]):
             items = line.split('#')[0].lower().strip().split()
-            key = items[0] if items else ''
-            if   key == 'grid':
+            if (key := items[0] if items else '') ==  'grid':
                 cells  = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
             elif key == 'size':
                 size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
@@ -242,8 +246,7 @@ class Grid:
         material = np.empty(int(cells.prod()))                                                      # initialize as flat array
         i = 0
         for line in content[header_length:]:
-            items = line.split('#')[0].split()
-            if len(items) == 3:
+            if len(items := line.split('#')[0].split()) == 3:
                 if items[1].lower() == 'of':
                     material_entry = np.ones(int(items[0]))*float(items[2])
                 elif items[1].lower() == 'to':
@@ -387,7 +390,9 @@ class Grid:
 
 
     @staticmethod
-    def _find_closest_seed(seeds: np.ndarray, weights: np.ndarray, point: np.ndarray) -> np.integer:
+    def _find_closest_seed(seeds: np.ndarray,
+                           weights: np.ndarray,
+                           point: np.ndarray) -> np.integer:
         return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
 
     @staticmethod
@@ -624,7 +629,9 @@ class Grid:
                    )
 
 
-    def save(self, fname: Union[str, Path], compress: bool = True):
+    def save(self,
+             fname: Union[str, Path],
+             compress: bool = True):
         """
         Save as VTK image data file.
 
@@ -643,7 +650,8 @@ class Grid:
         v.save(fname,parallel=False,compress=compress)
 
 
-    def save_ASCII(self, fname: Union[str, TextIO]):
+    def save_ASCII(self,
+                   fname: Union[str, TextIO]):
         """
         Save as geom file.
 
@@ -770,15 +778,16 @@ class Grid:
                    )
 
 
-    def mirror(self, directions: Sequence[str], reflect: bool = False) -> 'Grid':
+    def mirror(self,
+               directions: Sequence[str],
+               reflect: bool = False) -> 'Grid':
         """
         Mirror grid along given directions.
 
         Parameters
         ----------
-        directions : (sequence of) str
+        directions : (sequence of) {'x', 'y', 'z'}
             Direction(s) along which the grid is mirrored.
-            Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
             Reflect (include) outermost layers. Defaults to False.
 
@@ -801,8 +810,7 @@ class Grid:
         # materials: 1
 
         """
-        valid = ['x','y','z']
-        if not set(directions).issubset(valid):
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
@@ -822,15 +830,15 @@ class Grid:
                    )
 
 
-    def flip(self, directions: Union[Literal['x', 'y', 'z'], Sequence[Literal['x', 'y', 'z']]]) -> 'Grid':
+    def flip(self,
+             directions: Sequence[str]) -> 'Grid':
         """
         Flip grid along given directions.
 
         Parameters
         ----------
-        directions : (sequence of) str
+        directions : (sequence of) {'x', 'y', 'z'}
             Direction(s) along which the grid is flipped.
-            Valid entries are 'x', 'y', 'z'.
 
         Returns
         -------
@@ -838,8 +846,7 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        valid = ['x','y','z']
-        if not set(directions).issubset(valid):
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
 
@@ -852,7 +859,9 @@ class Grid:
                    )
 
 
-    def scale(self, cells: IntSequence, periodic: bool = True) -> 'Grid':
+    def scale(self,
+              cells: IntSequence,
+              periodic: bool = True) -> 'Grid':
         """
         Scale grid to new cells.
 
@@ -958,7 +967,9 @@ class Grid:
                    )
 
 
-    def rotate(self, R: Rotation, fill: int = None) -> 'Grid':
+    def rotate(self,
+               R: Rotation,
+               fill: int = None) -> 'Grid':
         """
         Rotate grid (pad if required).
 
@@ -1049,7 +1060,9 @@ class Grid:
                    )
 
 
-    def substitute(self, from_material: IntSequence, to_material: IntSequence) -> 'Grid':
+    def substitute(self,
+                   from_material: IntSequence,
+                   to_material: IntSequence) -> 'Grid':
         """
         Substitute material indices.
 
@@ -1150,7 +1163,9 @@ class Grid:
                    )
 
 
-    def get_grain_boundaries(self, periodic: bool = True, directions: Sequence[str] = 'xyz'):
+    def get_grain_boundaries(self,
+                             periodic: bool = True,
+                             directions: Sequence[str] = 'xyz') -> VTK:
         """
         Create VTK unstructured grid containing grain boundaries.
 
@@ -1158,9 +1173,9 @@ class Grid:
         ----------
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
-        directions : (sequence of) string, optional
+        directions : (sequence of) {'x', 'y', 'z'}, optional
             Direction(s) along which the boundaries are determined.
-            Valid entries are 'x', 'y', 'z'. Defaults to 'xyz'.
+            Defaults to 'xyz'.
 
         Returns
         -------
@@ -1168,8 +1183,7 @@ class Grid:
             VTK-based geometry of grain boundary network.
 
         """
-        valid = ['x','y','z']
-        if not set(directions).issubset(valid):
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
             raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         o = [[0, self.cells[0]+1,           np.prod(self.cells[:2]+1)+self.cells[0]+1, np.prod(self.cells[:2]+1)],

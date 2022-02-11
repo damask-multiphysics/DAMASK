@@ -79,6 +79,12 @@ module grid_mechanical_spectral_basic
     err_BC, &                                                                                       !< deviation from stress BC
     err_div                                                                                         !< RMS of div of P
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  type(MPI_Status) :: status
+#else
+  integer, dimension(MPI_STATUS_SIZE) :: status
+#endif
+
   integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 
@@ -96,7 +102,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mechanical_spectral_basic_init
 
-  real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -153,8 +159,8 @@ subroutine grid_mechanical_spectral_basic_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
-  allocate(F_lastInc(3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
-  allocate(Fdot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+  allocate(F_lastInc(3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
+  allocate(Fdot     (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -163,23 +169,23 @@ subroutine grid_mechanical_spectral_basic_init
   call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
-  localK(worldrank) = int(grid3,pPetscInt)
+  localK(worldrank) = int(cells3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
-         int(grid(1),pPetscInt),int(grid(2),pPetscInt),int(grid(3),pPetscInt), &                    ! global grid
+         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
          1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
          9_pPetscInt, 0_pPetscInt, &                                                                ! #dof (F, tensor), ghost boundary width (domain overlap)
-         [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
+         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
          da,err_PETSc)                                                                              ! handle, error
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(da,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMsetUp(da,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMcreateGlobalVector(da,solution_vec,err_PETSc)                                              ! global solution vector (grid x 9, i.e. every def grad tensor)
+  call DMcreateGlobalVector(da,solution_vec,err_PETSc)                                              ! global solution vector (cells x 9, i.e. every def grad tensor)
   CHKERRQ(err_PETSc)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,err_PETSc)            ! residual vector of same shape as solution vector
   CHKERRQ(err_PETSc)
@@ -217,11 +223,11 @@ subroutine grid_mechanical_spectral_basic_init
     call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
 
   elseif (interface_restartInc == 0) then restartRead
-    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
-    F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
+    F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
+    F = reshape(F_lastInc,[9,cells(1),cells(2),cells3])
   end if restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for homogenization_mechanical_response
+  homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -244,7 +250,7 @@ subroutine grid_mechanical_spectral_basic_init
     call MPI_File_open(MPI_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
                        MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_STATUS_IGNORE,err_MPI)
+    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,status,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call MPI_File_close(fileUnit,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
@@ -310,7 +316,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
   type(tBoundaryCondition), intent(in) :: &
     stress_BC, &
     deformation_BC
-  type(rotation),           intent(in) :: &
+  type(tRotation),           intent(in) :: &
     rotation_BC
   PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: F
@@ -343,11 +349,11 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
     end if
 
     Fdot = utilities_calculateRate(guess, &
-                                   F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),Delta_t_old, &
+                                   F_lastInc,reshape(F,[3,3,cells(1),cells(2),cells3]),Delta_t_old, &
                                    rotation_BC%rotate(F_aimDot,active=.true.))
-    F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
+    F_lastInc = reshape(F,[3,3,cells(1),cells(2),cells3])
 
-    homogenization_F0 = reshape(F,[3,3,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F,[3,3,product(cells(1:2))*cells3])
   end if
 
 !--------------------------------------------------------------------------------------------------
@@ -359,7 +365,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
                                        + merge(.0_pReal,stress_BC%values,stress_BC%mask)*Delta_t
 
   F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
-              rotation_BC%rotate(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
+              rotation_BC%rotate(F_aim,active=.true.)),[9,cells(1),cells(2),cells3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -530,7 +536,7 @@ subroutine formResidual(in, F, &
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
   tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = r                                         ! store fPK field for subsequent FFT forward transform
+  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r                                      ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
   err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
@@ -538,7 +544,7 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  r = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                         ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+  r = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)                                      ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
 
 end subroutine formResidual
 

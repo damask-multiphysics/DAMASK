@@ -14,6 +14,7 @@ module CPFEM
   use config
   use math
   use rotations
+  use polynomials
   use lattice
   use material
   use phase
@@ -83,12 +84,12 @@ subroutine CPFEM_initAll
   call config_init
   call math_init
   call rotations_init
+  call polynomials_init
   call lattice_init
   call discretization_marc_init
   call material_init(.false.)
   call phase_init
   call homogenization_init
-  call crystallite_init
   call CPFEM_init
   call config_deallocate
 

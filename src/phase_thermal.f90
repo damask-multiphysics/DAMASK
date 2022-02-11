@@ -254,6 +254,36 @@ function integrateThermalState(Delta_t, ph,en) result(broken)
 end function integrateThermalState
 
 
+module subroutine thermal_restartWrite(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+  integer :: so
+
+
+  do so = 1,thermal_Nsources(ph)
+    call HDF5_write(thermalState(ph)%p(so)%state,groupHandle,'omega_thermal')
+  enddo
+
+end subroutine thermal_restartWrite
+
+
+module subroutine thermal_restartRead(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+  integer :: so
+
+
+  do so = 1,thermal_Nsources(ph)
+    call HDF5_read(thermalState(ph)%p(so)%state0,groupHandle,'omega_thermal')
+  enddo
+
+end subroutine thermal_restartRead
+
+
 module subroutine thermal_forward()
 
   integer :: ph, so

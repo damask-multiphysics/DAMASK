@@ -16,6 +16,7 @@ module CPFEM2
   use config
   use math
   use rotations
+  use polynomials
   use lattice
   use material
   use phase
@@ -57,6 +58,7 @@ subroutine CPFEM_initAll
   call config_init
   call math_init
   call rotations_init
+  call polynomials_init
   call lattice_init
 #if   defined(MESH)
   call discretization_mesh_init(restart=interface_restartInc>0)
@@ -66,7 +68,6 @@ subroutine CPFEM_initAll
   call material_init(restart=interface_restartInc>0)
   call phase_init
   call homogenization_init
-  call crystallite_init
   call CPFEM_init
   call config_deallocate
 

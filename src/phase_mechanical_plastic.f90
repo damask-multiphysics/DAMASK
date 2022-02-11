@@ -110,29 +110,35 @@ submodule(phase:mechanical) plastic
     end subroutine nonlocal_LpAndItsTangent
 
 
-    module subroutine isotropic_dotState(Mp,ph,en)
+    module function isotropic_dotState(Mp,ph,en) result(dotState)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-    end subroutine isotropic_dotState
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+        dotState
+    end function isotropic_dotState
 
-    module subroutine phenopowerlaw_dotState(Mp,ph,en)
+    module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-    end subroutine phenopowerlaw_dotState
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+        dotState
+    end function phenopowerlaw_dotState
 
-    module subroutine plastic_kinehardening_dotState(Mp,ph,en)
+    module function plastic_kinehardening_dotState(Mp,ph,en) result(dotState)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         ph, &
         en
-    end subroutine plastic_kinehardening_dotState
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+        dotState
+    end function plastic_kinehardening_dotState
 
     module subroutine dislotwin_dotState(Mp,T,ph,en)
       real(pReal), dimension(3,3),  intent(in) :: &
@@ -144,21 +150,20 @@ submodule(phase:mechanical) plastic
         en
     end subroutine dislotwin_dotState
 
-    module subroutine dislotungsten_dotState(Mp,T,ph,en)
+    module function dislotungsten_dotState(Mp,ph,en) result(dotState)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
-      real(pReal),                  intent(in) :: &
-        T
       integer,                      intent(in) :: &
         ph, &
         en
-    end subroutine dislotungsten_dotState
+      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+        dotState
+    end function dislotungsten_dotState
 
-    module subroutine nonlocal_dotState(Mp,Temperature,timestep,ph,en,ip,el)
+    module subroutine nonlocal_dotState(Mp,timestep,ph,en,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
       real(pReal), intent(in) :: &
-        Temperature, &                                                                              !< temperature
         timestep                                                                                    !< substepped crystallite time increment
       integer, intent(in) :: &
         ph, &
@@ -283,7 +288,7 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     do i=1,3; do j=1,3
       dLp_dFi(i,j,1:3,1:3) = matmul(matmul(Fi,S),transpose(dLp_dMp(i,j,1:3,1:3))) + &
                              matmul(matmul(Fi,dLp_dMp(i,j,1:3,1:3)),S)
-      dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
+      dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                  ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
     end do; end do
 
   end if
@@ -294,7 +299,7 @@ end subroutine plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
+module function plastic_dotState(subdt,co,ip,el,ph,en) result(dotState)
 
   integer, intent(in) :: &
     co, &                                                                                           !< component-ID of integration point
@@ -306,7 +311,8 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
     subdt                                                                                           !< timestep
   real(pReal),              dimension(3,3) :: &
     Mp
-  logical :: broken
+  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+    dotState
 
 
   if (phase_plasticity(ph) /= PLASTIC_NONE_ID) then
@@ -316,26 +322,27 @@ module function plastic_dotState(subdt,co,ip,el,ph,en) result(broken)
     plasticType: select case (phase_plasticity(ph))
 
       case (PLASTIC_ISOTROPIC_ID) plasticType
-        call isotropic_dotState(Mp,ph,en)
+        dotState = isotropic_dotState(Mp,ph,en)
 
       case (PLASTIC_PHENOPOWERLAW_ID) plasticType
-        call phenopowerlaw_dotState(Mp,ph,en)
+        dotState = phenopowerlaw_dotState(Mp,ph,en)
 
       case (PLASTIC_KINEHARDENING_ID) plasticType
-        call plastic_kinehardening_dotState(Mp,ph,en)
+        dotState = plastic_kinehardening_dotState(Mp,ph,en)
 
       case (PLASTIC_DISLOTWIN_ID) plasticType
         call dislotwin_dotState(Mp,thermal_T(ph,en),ph,en)
+        dotState = plasticState(ph)%dotState(:,en)
 
       case (PLASTIC_DISLOTUNGSTEN_ID) plasticType
-        call dislotungsten_dotState(Mp,thermal_T(ph,en),ph,en)
+        dotState = dislotungsten_dotState(Mp,ph,en)
 
       case (PLASTIC_NONLOCAL_ID) plasticType
-        call nonlocal_dotState(Mp,thermal_T(ph,en),subdt,ph,en,ip,el)
+        call nonlocal_dotState(Mp,subdt,ph,en,ip,el)
+        dotState = plasticState(ph)%dotState(:,en)
+
     end select plasticType
   end if
-
-  broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,en)))
 
 end function plastic_dotState
 
@@ -391,6 +398,7 @@ module function plastic_deltaState(ph, en) result(broken)
     myOffset, &
     mySize
 
+
   broken = .false.
 
   select case (phase_plasticity(ph))
@@ -412,10 +420,9 @@ module function plastic_deltaState(ph, en) result(broken)
 
       broken = any(IEEE_is_NaN(plasticState(ph)%deltaState(:,en)))
       if (.not. broken) then
-        myOffset = plasticState(ph)%offsetDeltaState
-        mySize   = plasticState(ph)%sizeDeltaState
-        plasticState(ph)%state(myOffset + 1:myOffset + mySize,en) = &
-        plasticState(ph)%state(myOffset + 1:myOffset + mySize,en) + plasticState(ph)%deltaState(1:mySize,en)
+        mySize = plasticState(ph)%sizeDeltaState
+        plasticState(ph)%deltaState2(1:mySize,en) = plasticState(ph)%deltaState2(1:mySize,en) &
+                                                  + plasticState(ph)%deltaState(1:mySize,en)
       end if
 
   end select

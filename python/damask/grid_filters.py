@@ -20,7 +20,9 @@ import numpy as _np
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence
 
 
-def _ks(size: _FloatSequence, cells: _IntSequence, first_order: bool = False) -> _np.ndarray:
+def _ks(size: _FloatSequence,
+        cells: _IntSequence,
+        first_order: bool = False) -> _np.ndarray:
     """
     Get wave numbers operator.
 
@@ -47,7 +49,8 @@ def _ks(size: _FloatSequence, cells: _IntSequence, first_order: bool = False) ->
     return _np.stack(_np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij'), axis=-1)
 
 
-def curl(size: _FloatSequence, f: _np.ndarray) -> _np.ndarray:
+def curl(size: _FloatSequence,
+         f: _np.ndarray) -> _np.ndarray:
     u"""
     Calculate curl of a vector or tensor field in Fourier space.
 
@@ -78,7 +81,8 @@ def curl(size: _FloatSequence, f: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(curl_,axes=(0,1,2),s=f.shape[:3])
 
 
-def divergence(size: _FloatSequence, f: _np.ndarray) -> _np.ndarray:
+def divergence(size: _FloatSequence,
+               f: _np.ndarray) -> _np.ndarray:
     u"""
     Calculate divergence of a vector or tensor field in Fourier space.
 
@@ -105,7 +109,8 @@ def divergence(size: _FloatSequence, f: _np.ndarray) -> _np.ndarray:
     return _np.fft.irfftn(div_,axes=(0,1,2),s=f.shape[:3])
 
 
-def gradient(size: _FloatSequence, f: _np.ndarray) -> _np.ndarray:
+def gradient(size: _FloatSequence,
+             f: _np.ndarray) -> _np.ndarray:
     u"""
     Calculate gradient of a scalar or vector field in Fourier space.
 
@@ -163,7 +168,8 @@ def coordinates0_point(cells: _IntSequence,
                      axis = -1)
 
 
-def displacement_fluct_point(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
+def displacement_fluct_point(size: _FloatSequence,
+                             F: _np.ndarray) -> _np.ndarray:
     """
     Cell center displacement field from fluctuation part of the deformation gradient field.
 
@@ -195,7 +201,8 @@ def displacement_fluct_point(size: _FloatSequence, F: _np.ndarray) -> _np.ndarra
     return _np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
 
-def displacement_avg_point(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
+def displacement_avg_point(size: _FloatSequence,
+                           F: _np.ndarray) -> _np.ndarray:
     """
     Cell center displacement field from average part of the deformation gradient field.
 
@@ -216,7 +223,8 @@ def displacement_avg_point(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
     return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_point(F.shape[:3],size))
 
 
-def displacement_point(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
+def displacement_point(size: _FloatSequence,
+                       F: _np.ndarray) -> _np.ndarray:
     """
     Cell center displacement field from deformation gradient field.
 
@@ -236,7 +244,9 @@ def displacement_point(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
     return displacement_avg_point(size,F) + displacement_fluct_point(size,F)
 
 
-def coordinates_point(size: _FloatSequence, F: _np.ndarray, origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
+def coordinates_point(size: _FloatSequence,
+                      F: _np.ndarray,
+                      origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
     """
     Cell center positions.
 
@@ -335,7 +345,8 @@ def coordinates0_node(cells: _IntSequence,
                      axis = -1)
 
 
-def displacement_fluct_node(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
+def displacement_fluct_node(size: _FloatSequence,
+                            F: _np.ndarray) -> _np.ndarray:
     """
     Nodal displacement field from fluctuation part of the deformation gradient field.
 
@@ -355,7 +366,8 @@ def displacement_fluct_node(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray
     return point_to_node(displacement_fluct_point(size,F))
 
 
-def displacement_avg_node(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
+def displacement_avg_node(size: _FloatSequence,
+                          F: _np.ndarray) -> _np.ndarray:
     """
     Nodal displacement field from average part of the deformation gradient field.
 
@@ -376,7 +388,8 @@ def displacement_avg_node(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
     return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_node(F.shape[:3],size))
 
 
-def displacement_node(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
+def displacement_node(size: _FloatSequence,
+                      F: _np.ndarray) -> _np.ndarray:
     """
     Nodal displacement field from deformation gradient field.
 
@@ -396,7 +409,9 @@ def displacement_node(size: _FloatSequence, F: _np.ndarray) -> _np.ndarray:
     return displacement_avg_node(size,F) + displacement_fluct_node(size,F)
 
 
-def coordinates_node(size: _FloatSequence, F: _np.ndarray, origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
+def coordinates_node(size: _FloatSequence,
+                     F: _np.ndarray,
+                     origin: _FloatSequence = _np.zeros(3)) -> _np.ndarray:
     """
     Nodal positions.
 
@@ -526,7 +541,9 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
         return False
 
 
-def regrid(size: _FloatSequence, F: _np.ndarray, cells: _IntSequence) -> _np.ndarray:
+def regrid(size: _FloatSequence,
+           F: _np.ndarray,
+           cells: _IntSequence) -> _np.ndarray:
     """
     Return mapping from coordinates in deformed configuration to a regular grid.
 
