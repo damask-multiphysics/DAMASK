@@ -185,7 +185,7 @@ class Table:
 
         Returns
         -------
-        mask : numpy.ndarray bool
+        mask : numpy.ndarray of bool
             Mask indicating where corresponding table values are close.
 
         """

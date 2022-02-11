@@ -108,12 +108,12 @@ class Rotation:
     def __getitem__(self,
                     item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
         """Return slice according to item."""
-        return self.copy() \
-               if self.shape == () else \
+        return self.copy() if self.shape == () else \
                self.copy(rotation=self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
 
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self,
+               other: object) -> bool:
         """
         Equal to other.
 
@@ -123,9 +123,8 @@ class Rotation:
             Rotation to check for equality.
 
         """
-        if not isinstance(other, Rotation):
-            return NotImplemented
-        return np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
+        return NotImplemented if not isinstance(other, Rotation) else \
+               np.logical_or(np.all(self.quaternion ==      other.quaternion,axis=-1),
                              np.all(self.quaternion == -1.0*other.quaternion,axis=-1))
 
 
@@ -163,7 +162,7 @@ class Rotation:
 
         Returns
         -------
-        mask : numpy.ndarray bool
+        mask : numpy.ndarray of bool
             Mask indicating where corresponding rotations are close.
 
         """
@@ -228,13 +227,13 @@ class Rotation:
 
 
     def __pow__(self: MyType,
-                exp: int) -> MyType:
+                exp: Union[float, int]) -> MyType:
         """
         Perform the rotation 'exp' times.
 
         Parameters
         ----------
-        exp : float
+        exp : scalar
             Exponent.
 
         """
@@ -243,13 +242,13 @@ class Rotation:
         return self.copy(rotation=Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
     def __ipow__(self: MyType,
-                 exp: int) -> MyType:
+                 exp: Union[float, int]) -> MyType:
         """
         Perform the rotation 'exp' times (in-place).
 
         Parameters
         ----------
-        exp : float
+        exp : scalar
             Exponent.
 
         """
@@ -263,7 +262,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : Rotation of shape (self.shape)
+        other : Rotation, shape (self.shape)
             Rotation for composition.
 
         Returns
@@ -290,7 +289,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : Rotation of shape (self.shape)
+        other : Rotation, shape (self.shape)
             Rotation for composition.
 
         """
@@ -304,7 +303,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : damask.Rotation of shape (self.shape)
+        other : damask.Rotation, shape (self.shape)
             Rotation to invert for composition.
 
         Returns
@@ -325,7 +324,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : Rotation of shape (self.shape)
+        other : Rotation, shape (self.shape)
             Rotation to invert for composition.
 
         """
@@ -339,12 +338,12 @@ class Rotation:
 
         Parameters
         ----------
-        other : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+        other : numpy.ndarray, shape (...,3), (...,3,3), or (...,3,3,3,3)
             Vector or tensor on which to apply the rotation.
 
         Returns
         -------
-        rotated : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+        rotated : numpy.ndarray, shape (...,3), (...,3,3), or (...,3,3,3,3)
             Rotated vector or tensor, i.e. transformed to frame defined by rotation.
 
         """
@@ -401,6 +400,15 @@ class Rotation:
         """
         Flatten array.
 
+        Parameters
+        ----------
+        order : {'C', 'F', 'A'}, optional
+            'C' flattens in row-major (C-style) order.
+            'F' flattens in column-major (Fortran-style) order.
+            'A' flattens in column-major order if object is Fortran contiguous in memory,
+            row-major order otherwise.
+            Defaults to 'C'.
+
         Returns
         -------
         flattened : damask.Rotation
@@ -415,6 +423,18 @@ class Rotation:
                 order: Literal['C','F','A'] = 'C') -> MyType:
         """
         Reshape array.
+
+        Parameters
+        ----------
+        shape : int or tuple of ints
+            The new shape should be compatible with the original shape.
+            If an integer is supplied, then the result will be a 1-D array of that length.
+        order : {'C', 'F', 'A'}, optional
+            'C' flattens in row-major (C-style) order.
+            'F' flattens in column-major (Fortran-style) order.
+            'A' flattens in column-major order if object is Fortran contiguous in memory,
+            row-major order otherwise.
+            Defaults to 'C'.
 
         Returns
         -------
@@ -434,7 +454,7 @@ class Rotation:
 
         Parameters
         ----------
-        shape : int, tuple
+        shape : int or tuple of ints
             Shape of broadcasted array.
         mode : str, optional
             Where to preferentially locate missing dimensions.
@@ -458,7 +478,7 @@ class Rotation:
 
         Parameters
         ----------
-        weights : FloatSequence, optional
+        weights : numpy.ndarray, optional
             Relative weight of each rotation.
 
         Returns
@@ -518,7 +538,7 @@ class Rotation:
 
         Returns
         -------
-        q : numpy.ndarray of shape (...,4)
+        q : numpy.ndarray, shape (...,4)
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
 
         """
@@ -536,7 +556,7 @@ class Rotation:
 
         Returns
         -------
-        phi : numpy.ndarray of shape (...,3)
+        phi : numpy.ndarray, shape (...,3)
             Bunge Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
             or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
 
@@ -555,8 +575,7 @@ class Rotation:
 
         """
         eu = Rotation._qu2eu(self.quaternion)
-        if degrees: eu = np.degrees(eu)
-        return eu
+        return np.degrees(eu) if degrees else eu
 
     def as_axis_angle(self,
                       degrees: bool = False,
@@ -573,7 +592,7 @@ class Rotation:
 
         Returns
         -------
-        axis_angle : numpy.ndarray of shape (...,4) or tuple ((...,3), (...)) if pair == True
+        axis_angle : numpy.ndarray, shape (...,4) or tuple ((...,3), (...)) if pair == True
             Axis and angle [n_1, n_2, n_3, ω] with ǀnǀ = 1 and ω ∈ [0,π]
             or ω ∈ [0,180] if degrees == True.
 
@@ -597,7 +616,7 @@ class Rotation:
 
         Returns
         -------
-        R : numpy.ndarray of shape (...,3,3)
+        R : numpy.ndarray, shape (...,3,3)
             Rotation matrix R with det(R) = 1, R.T ∙ R = I.
 
         Examples
@@ -627,7 +646,7 @@ class Rotation:
 
         Returns
         -------
-        rho : numpy.ndarray of shape (...,4) or (...,3) if compact == True
+        rho : numpy.ndarray, shape (...,4) or (...,3) if compact == True
             Rodrigues–Frank vector [n_1, n_2, n_3, tan(ω/2)] with ǀnǀ = 1 and ω ∈ [0,π]
             or [n_1, n_2, n_3] with ǀnǀ = tan(ω/2) and ω ∈ [0,π] if compact == True.
 
@@ -654,7 +673,7 @@ class Rotation:
 
         Returns
         -------
-        h : numpy.ndarray of shape (...,3)
+        h : numpy.ndarray, shape (...,3)
             Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3/4*π)^(1/3).
 
         Examples
@@ -675,7 +694,7 @@ class Rotation:
 
         Returns
         -------
-        x : numpy.ndarray of shape (...,3)
+        x : numpy.ndarray, shape (...,3)
               Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
 
         Examples
@@ -702,7 +721,7 @@ class Rotation:
 
         Parameters
         ----------
-        q : numpy.ndarray of shape (...,4)
+        q : numpy.ndarray, shape (...,4)
             Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
         accept_homomorph : bool, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
@@ -736,7 +755,7 @@ class Rotation:
 
         Parameters
         ----------
-        phi : numpy.ndarray of shape (...,3)
+        phi : numpy.ndarray, shape (...,3)
             Euler angles (φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π])
             or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
         degrees : bool, optional
@@ -767,7 +786,7 @@ class Rotation:
 
         Parameters
         ----------
-        axis_angle : numpy.ndarray of shape (...,4)
+        axis_angle : numpy.ndarray, shape (...,4)
             Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
             or ω ∈ [0,180] if degrees == True.
         degrees : bool, optional
@@ -804,7 +823,7 @@ class Rotation:
 
         Parameters
         ----------
-        basis : numpy.ndarray of shape (...,3,3)
+        basis : numpy.ndarray, shape (...,3,3)
             Three three-dimensional lattice basis vectors.
         orthonormal : bool, optional
             Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
@@ -838,7 +857,7 @@ class Rotation:
 
         Parameters
         ----------
-        R : numpy.ndarray of shape (...,3,3)
+        R : numpy.ndarray, shape (...,3,3)
             Rotation matrix with det(R) = 1, R.T ∙ R = I.
 
         """
@@ -852,9 +871,9 @@ class Rotation:
 
         Parameters
         ----------
-        a : numpy.ndarray of shape (...,2,3)
+        a : numpy.ndarray, shape (...,2,3)
             Two three-dimensional lattice vectors of first orthogonal basis.
-        b : numpy.ndarray of shape (...,2,3)
+        b : numpy.ndarray, shape (...,2,3)
             Corresponding three-dimensional lattice vectors of second basis.
 
         """
@@ -882,7 +901,7 @@ class Rotation:
 
         Parameters
         ----------
-        rho : numpy.ndarray of shape (...,4)
+        rho : numpy.ndarray, shape (...,4)
             Rodrigues–Frank vector (n_1, n_2, n_3, tan(ω/2)) with ǀnǀ = 1  and ω ∈ [0,π].
         normalize : bool, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
@@ -913,7 +932,7 @@ class Rotation:
 
         Parameters
         ----------
-        h : numpy.ndarray of shape (...,3)
+        h : numpy.ndarray, shape (...,3)
             Homochoric vector (h_1, h_2, h_3) with ǀhǀ < (3/4*π)^(1/3).
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
@@ -940,7 +959,7 @@ class Rotation:
 
         Parameters
         ----------
-        x : numpy.ndarray of shape (...,3)
+        x : numpy.ndarray, shape (...,3)
             Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
@@ -1002,9 +1021,9 @@ class Rotation:
 
         Parameters
         ----------
-        weights : numpy.ndarray of shape (n)
+        weights : numpy.ndarray, shape (n)
             Texture intensity values (probability density or volume fraction) at Euler space grid points.
-        phi : numpy.ndarray of shape (n,3)
+        phi : numpy.ndarray, shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
         N : integer, optional
             Number of discrete orientations to be sampled from the given ODF.
@@ -1020,14 +1039,14 @@ class Rotation:
 
         Returns
         -------
-        samples : damask.Rotation of shape (N)
-            Array of sampled rotations closely representing the input ODF.
+        samples : damask.Rotation, shape (N)
+            Array of sampled rotations that approximate the input ODF.
 
         Notes
         -----
         Due to the distortion of Euler space in the vicinity of ϕ = 0, probability densities, p, defined on
         grid points with ϕ = 0 will never result in reconstructed orientations as their dV/V = p dγ = p × 0.
-        Hence, it is recommended to transform any such dataset to cell centers that avoid grid points at ϕ = 0.
+        Hence, it is recommended to transform any such dataset to a cell-centered version, which avoids grid points at ϕ = 0.
 
         References
         ----------
@@ -1095,9 +1114,9 @@ class Rotation:
 
         Parameters
         ----------
-        alpha : numpy.ndarray of shape (2)
+        alpha : numpy.ndarray, shape (2)
             Polar coordinates (phi from x, theta from z) of fiber direction in crystal frame.
-        beta : numpy.ndarray of shape (2)
+        beta : numpy.ndarray, shape (2)
             Polar coordinates (phi from x, theta from z) of fiber direction in sample frame.
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.

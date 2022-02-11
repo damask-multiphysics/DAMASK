@@ -189,7 +189,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        mask : numpy.ndarray bool
+        mask : numpy.ndarray of bool
             Mask indicating where corresponding orientations are close.
 
         """
@@ -372,10 +372,10 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        uvw : list, numpy.ndarray of shape (...,3)
-            lattice direction aligned with lab frame x-direction.
-        hkl : list, numpy.ndarray of shape (...,3)
-            lattice plane normal aligned with lab frame z-direction.
+        uvw : numpy.ndarray, shape (...,3)
+            Lattice direction aligned with lab frame x-direction.
+        hkl : numpy.ndarray, shape (...,3)
+            Lattice plane normal aligned with lab frame z-direction.
 
         """
         o = cls(**kwargs)
@@ -417,7 +417,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of bool, quaternion.shape
+        in : numpy.ndarray of bool, shape (self.shape)
             Whether Rodrigues-Frank vector falls into fundamental zone.
 
         Notes
@@ -461,7 +461,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        in : numpy.ndarray of bool, quaternion.shape
+        in : numpy.ndarray of bool, shape (self.shape)
             Whether Rodrigues-Frank vector falls into disorientation FZ.
 
         References
@@ -515,7 +515,7 @@ class Orientation(Rotation,Crystal):
         -------
         disorientation : Orientation
             Disorientation between self and other.
-        operators : numpy.ndarray int of shape (...,2), conditional
+        operators : numpy.ndarray of int, shape (...,2), conditional
             Index of symmetrically equivalent orientation that rotated vector to the SST.
 
         Notes
@@ -583,14 +583,14 @@ class Orientation(Rotation,Crystal):
 
 
     def average(self,
-                weights = None,
-                return_cloud = False):
+                weights: FloatSequence = None,
+                return_cloud: bool = False):
         """
         Return orientation average over last dimension.
 
         Parameters
         ----------
-        weights : numpy.ndarray, optional
+        weights : numpy.ndarray, shape (self.shape), optional
             Relative weights of orientations.
         return_cloud : bool, optional
             Return the set of symmetrically equivalent orientations that was used in averaging.
@@ -610,8 +610,8 @@ class Orientation(Rotation,Crystal):
 
         """
         eq = self.equivalent
-        m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))
-                                          .broadcast_to(eq.shape)).as_axis_angle()[...,3]
+        m  = eq.misorientation(self[...,0].reshape((1,)+self.shape[:-1]+(1,))             # type: ignore
+                                          .broadcast_to(eq.shape)).as_axis_angle()[...,3] # type: ignore
         r = Rotation(np.squeeze(np.take_along_axis(eq.quaternion,
                                                    np.argmin(m,axis=0)[np.newaxis,...,np.newaxis],
                                                    axis=0),
@@ -625,7 +625,7 @@ class Orientation(Rotation,Crystal):
 
 
     def to_SST(self,
-               vector: np.ndarray,
+               vector: FloatSequence,
                proper: bool = False,
                return_operators: bool = False) -> np.ndarray:
         """
@@ -633,10 +633,10 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        vector : numpy.ndarray of shape (...,3)
+        vector : numpy.ndarray, shape (...,3)
             Lab frame vector to align with crystal frame direction.
             Shape of vector blends with shape of own rotation array.
-            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
+            For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         proper : bool, optional
             Consider only vectors with z >= 0, hence combine two neighboring SSTs.
             Defaults to False.
@@ -646,15 +646,18 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        vector_SST : numpy.ndarray of shape (...,3)
+        vector_SST : numpy.ndarray, shape (...,3)
             Rotated vector falling into SST.
-        operators : numpy.ndarray int of shape (...), conditional
+        operators : numpy.ndarray of int, shape (...), conditional
             Index of symmetrically equivalent orientation that rotated vector to SST.
 
         """
+        vector_ = np.array(vector,float)
+        if vector_.shape[-1] != 3:
+            raise ValueError('input is not a field of three-dimensional vectors')
         eq  = self.equivalent
-        blend = util.shapeblender(eq.shape,np.array(vector).shape[:-1])
-        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(np.array(vector),blend+(3,)) #type: ignore
+        blend = util.shapeblender(eq.shape,vector_.shape[:-1])
+        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(vector_,blend+(3,)) #type: ignore
         ok    = self.in_SST(poles,proper=proper)
         ok   &= np.cumsum(ok,axis=0) == 1
         loc   = np.where(ok)
@@ -667,14 +670,14 @@ class Orientation(Rotation,Crystal):
 
 
     def in_SST(self,
-               vector: np.ndarray,
+               vector: FloatSequence,
                proper: bool = False) -> Union[np.bool_, np.ndarray]:
         """
         Check whether given crystal frame vector falls into standard stereographic triangle of own symmetry.
 
         Parameters
         ----------
-        vector : numpy.ndarray of shape (...,3)
+        vector : numpy.ndarray, shape (...,3)
             Vector to check.
         proper : bool, optional
             Consider only vectors with z >= 0, hence combine two neighboring SSTs.
@@ -686,31 +689,32 @@ class Orientation(Rotation,Crystal):
             Whether vector falls into SST.
 
         """
-        if not isinstance(vector,np.ndarray) or vector.shape[-1] != 3:
+        vector_ = np.array(vector,float)
+        if vector_.shape[-1] != 3:
             raise ValueError('input is not a field of three-dimensional vectors')
 
         if self.standard_triangle is None:                                                          # direct exit for no symmetry
-            return  np.ones_like(vector[...,0],bool)
+            return np.ones_like(vector_[...,0],bool)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.standard_triangle['proper'], vector.shape+(3,)),
-                                                      vector), 12)
+                                                      np.broadcast_to(self.standard_triangle['proper'],   vector_.shape+(3,)),
+                                                      vector_), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.standard_triangle['improper'], vector.shape+(3,)),
-                                                      vector), 12)
+                                                      np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
+                                                      vector_), 12)
             return   np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(self.standard_triangle['improper'], vector.shape+(3,)),
-                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
+                                             np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
+                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             return np.all(components >= 0.0,axis=-1)
 
 
     def IPF_color(self,
-                  vector: np.ndarray,
+                  vector: FloatSequence,
                   in_SST: bool = True,
                   proper: bool = False) -> np.ndarray:
         """
@@ -718,10 +722,10 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        vector : numpy.ndarray of shape (...,3)
+        vector : numpy.ndarray, shape (...,3)
             Vector to colorize.
             Shape of vector blends with shape of own rotation array.
-            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
+            For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         in_SST : bool, optional
             Consider symmetrically equivalent orientations such that poles are located in SST.
             Defaults to True.
@@ -731,7 +735,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        rgb : numpy.ndarray of shape (...,3)
+        rgb : numpy.ndarray, shape (...,3)
            RGB array of IPF colors.
 
         Examples
@@ -755,7 +759,7 @@ class Orientation(Rotation,Crystal):
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(self.standard_triangle['proper'], vector_.shape+(3,)),
+                                                      np.broadcast_to(self.standard_triangle['proper'],   vector_.shape+(3,)),
                                                       vector_), 12)
             components_improper = np.around(np.einsum('...ji,...i',
                                                       np.broadcast_to(self.standard_triangle['improper'], vector_.shape+(3,)),
@@ -862,16 +866,16 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        uvw|hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray, shape (...,3)
             Miller indices of crystallographic direction or plane normal.
             Shape of vector blends with shape of own rotation array.
-            For example, a rotation array of shape (3,2) and a (2,4) vector array result in (3,2,4) outputs.
+            For example, a rotation array, shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
 
         Returns
         -------
-        vector : numpy.ndarray of shape (...,3) or (...,N,3)
+        vector : numpy.ndarray, shape (...,3) or (...,N,3)
             Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
 
         """
@@ -894,13 +898,13 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        N_slip|N_twin : iterable of int
+        N_slip|N_twin : '*' or iterable of int
             Number of deformation systems per family of the deformation system.
             Use '*' to select all.
 
         Returns
         -------
-        P : numpy.ndarray of shape (N,...,3,3)
+        P : numpy.ndarray, shape (N,...,3,3)
             Schmid matrix for each of the N deformation systems.
 
         Examples

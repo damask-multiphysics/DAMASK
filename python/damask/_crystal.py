@@ -131,9 +131,8 @@ class Crystal():
             Crystal to check for equality.
 
         """
-        if not isinstance(other, Crystal):
-            return NotImplemented
-        return self.lattice == other.lattice and \
+        return NotImplemented if not isinstance(other, Crystal) else \
+               self.lattice == other.lattice and \
                self.parameters == other.parameters and \
                self.family == other.family
 
@@ -316,8 +315,8 @@ class Crystal():
                                               self.lattice[-1],None),dtype=float)
 
     def to_lattice(self, *,
-                   direction: np.ndarray = None,
-                   plane: np.ndarray = None) -> np.ndarray:
+                   direction: FloatSequence = None,
+                   plane: FloatSequence = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
