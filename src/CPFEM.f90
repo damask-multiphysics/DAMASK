@@ -90,7 +90,6 @@ subroutine CPFEM_initAll
   call material_init(.false.)
   call phase_init
   call homogenization_init
-  call crystallite_init
   call CPFEM_init
   call config_deallocate
 

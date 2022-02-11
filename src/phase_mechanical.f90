@@ -84,7 +84,7 @@ submodule(phase) mechanical
         ph, &
         en
       real(pReal),  intent(in) :: &
-        subdt                                                                                       !< timestep
+        subdt                                                                                           !< timestep
       real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function plastic_dotState
@@ -848,10 +848,10 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
     plasticState(ph)%state(1:sizeDotState,en) = subState0 &
                                               + dotState * Delta_t
 
-    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),ph,en)
+    broken = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),subFp0,subFi0,Delta_t*C(stage), ph,en)
     if(broken) exit
 
-    dotState = plastic_dotState(Delta_t,ph,en)
+    dotState = plastic_dotState(Delta_t*C(stage), ph,en)
     if (any(IEEE_is_NaN(dotState))) exit
 
   enddo

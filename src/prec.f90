@@ -45,6 +45,8 @@ module prec
       state, &                                                                                      !< state
       dotState, &                                                                                   !< rate of state change
       deltaState                                                                                    !< increment of state change
+    real(pReal), pointer,     dimension(:,:)  :: &
+      deltaState2
   end type
 
   type, extends(tState) :: tPlasticState
