@@ -27,10 +27,10 @@ module discretization_grid
   private
 
   integer,     dimension(3), public, protected :: &
-    grid                                                                                            !< (global) grid
+    cells                                                                                           !< (global) cells
   integer,                   public, protected :: &
-    grid3, &                                                                                        !< (local) grid in 3rd direction
-    grid3Offset                                                                                     !< (local) grid offset in 3rd direction
+    cells3, &                                                                                       !< (local) cells in 3rd direction
+    cells3Offset                                                                                    !< (local) cells offset in 3rd direction
   real(pReal), dimension(3), public, protected :: &
     geomSize                                                                                        !< (global) physical size
   real(pReal),               public, protected :: &
@@ -55,7 +55,7 @@ subroutine discretization_grid_init(restart)
     mySize, &                                                                                       !< domain size of this process
     origin                                                                                          !< (global) distance to origin
   integer,     dimension(3) :: &
-    myGrid                                                                                          !< domain grid of this process
+    myGrid                                                                                          !< domain cells of this process
 
   integer,     dimension(:),   allocatable :: &
     materialAt, materialAt_global
@@ -77,7 +77,7 @@ subroutine discretization_grid_init(restart)
 
   if (worldrank == 0) then
     fileContent = IO_read(interface_geomFile)
-    call readVTI(grid,geomSize,origin,materialAt_global,fileContent)
+    call readVTI(cells,geomSize,origin,materialAt_global,fileContent)
     fname = interface_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call results_openJobFile(parallel=.false.)
@@ -88,37 +88,37 @@ subroutine discretization_grid_init(restart)
   end if
 
 
-  call MPI_Bcast(grid,3_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(cells,3_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  if (grid(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
+  if (cells(1) < 2) call IO_error(844, ext_msg='cells(1) must be larger than 1')
   call MPI_Bcast(geomSize,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Bcast(origin,3_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  print'(/,1x,a,3(i12,1x))',    'cells  a b c: ', grid
-  print  '(1x,a,3(es12.5,1x))', 'size   x y z: ', geomSize
-  print  '(1x,a,3(es12.5,1x))', 'origin x y z: ', origin
+  print'(/,1x,a,i0,a,i0,a,i0)',            'cells:  ', cells(1),    ' × ', cells(2),    ' × ', cells(3)
+  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'size:   ', geomSize(1), ' × ', geomSize(2), ' × ', geomSize(3), ' / m³'
+  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'origin: ', origin(1),   ' ',   origin(2),   ' ',   origin(3), ' / m'
 
-  if (worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
+  if (worldsize>cells(3)) call IO_error(894, ext_msg='number of processes exceeds cells(3)')
 
   call fftw_mpi_init
-  devNull = fftw_mpi_local_size_3d(int(grid(3),C_INTPTR_T), &
-                                   int(grid(2),C_INTPTR_T), &
-                                   int(grid(1),C_INTPTR_T)/2+1, &
+  devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T), &
+                                   int(cells(2),C_INTPTR_T), &
+                                   int(cells(1),C_INTPTR_T)/2+1, &
                                    PETSC_COMM_WORLD, &
-                                   z, &                                                             ! domain grid size along z
-                                   z_offset)                                                        ! domain grid offset along z
+                                   z, &                                                             ! domain cells size along z
+                                   z_offset)                                                        ! domain cells offset along z
   if (z==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
 
-  grid3       = int(z)
-  grid3Offset = int(z_offset)
-  size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
-  size3Offset = geomSize(3)*real(grid3Offset,pReal)/real(grid(3),pReal)
-  myGrid = [grid(1:2),grid3]
+  cells3       = int(z)
+  cells3Offset = int(z_offset)
+  size3       = geomSize(3)*real(cells3,pReal)      /real(cells(3),pReal)
+  size3Offset = geomSize(3)*real(cells3Offset,pReal)/real(cells(3),pReal)
+  myGrid = [cells(1:2),cells3]
   mySize = [geomSize(1:2),size3]
 
-  call MPI_Gather(product(grid(1:2))*grid3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
+  call MPI_Gather(product(cells(1:2))*cells3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
                   1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Gather(product(myGrid),               1_MPI_INTEGER_KIND,MPI_INTEGER,sendcounts,&
@@ -131,10 +131,10 @@ subroutine discretization_grid_init(restart)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call discretization_init(materialAt, &
-                           IPcoordinates0(myGrid,mySize,grid3Offset), &
-                           Nodes0(myGrid,mySize,grid3Offset),&
-                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write top layer...
-                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! ...unless not last process
+                           IPcoordinates0(myGrid,mySize,cells3Offset), &
+                           Nodes0(myGrid,mySize,cells3Offset),&
+                           merge((cells(1)+1) * (cells(2)+1) * (cells3+1),&                         ! write top layer...
+                                 (cells(1)+1) * (cells(2)+1) *  cells3,&                            ! ...unless not last process
                                  worldrank+1==worldsize))
 
 !--------------------------------------------------------------------------------------------------
@@ -142,7 +142,7 @@ subroutine discretization_grid_init(restart)
   if (.not. restart) then
     call results_openJobFile
     call results_closeGroup(results_addGroup('geometry'))
-    call results_addAttribute('cells', grid,    '/geometry')
+    call results_addAttribute('cells', cells,   '/geometry')
     call results_addAttribute('size',  geomSize,'/geometry')
     call results_addAttribute('origin',origin,  '/geometry')
     call results_closeJobFile
@@ -170,13 +170,13 @@ end subroutine discretization_grid_init
 !> @brief Parse vtk image data (.vti)
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine readVTI(grid,geomSize,origin,material, &
+subroutine readVTI(cells,geomSize,origin,material, &
                    fileContent)
 
   integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid   (across all processes!)
+    cells                                                                                           ! cells (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size   (across all processes!)
+    geomSize, &                                                                                     ! size (across all processes!)
     origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     material
@@ -190,7 +190,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
     s
 
 
-  grid = -1
+  cells = -1
   geomSize = -1.0_pReal
 
   inFile         = .false.
@@ -215,7 +215,7 @@ subroutine readVTI(grid,geomSize,origin,material, &
       if (.not. inImage) then
         if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
           inImage = .true.
-          call cellsSizeOrigin(grid,geomSize,origin,fileContent(startPos:endPos))
+          call cellsSizeOrigin(cells,geomSize,origin,fileContent(startPos:endPos))
         end if
       else
         if (index(fileContent(startPos:endPos),'<CellData',kind=pI64) /= 0_pI64) then
@@ -246,10 +246,10 @@ subroutine readVTI(grid,geomSize,origin,material, &
 
   end do
 
-  if (.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
-  if (size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
-  if (any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
-  if (any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
+  if (.not. allocated(material))        call IO_error(error_ID = 844, ext_msg='material data not found')
+  if (size(material) /= product(cells)) call IO_error(error_ID = 844, ext_msg='size(material)')
+  if (any(geomSize<=0))                 call IO_error(error_ID = 844, ext_msg='size')
+  if (any(cells<1))                     call IO_error(error_ID = 844, ext_msg='cells')
   material = material + 1
   if (any(material<1))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
@@ -502,13 +502,13 @@ end subroutine readVTI
 !---------------------------------------------------------------------------------------------------
 !> @brief Calculate undeformed position of IPs/cell centers (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-function IPcoordinates0(grid,geomSize,grid3Offset)
+function IPcoordinates0(cells,geomSize,cells3Offset)
 
-  integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
+  integer,     dimension(3), intent(in) :: cells                                                    ! cells (for this process!)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
-  integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
+  integer,                   intent(in) :: cells3Offset                                             ! cells(3) offset
 
-  real(pReal), dimension(3,product(grid))  :: ipCoordinates0
+  real(pReal), dimension(3,product(cells))  :: ipCoordinates0
 
   integer :: &
     a,b,c, &
@@ -516,9 +516,9 @@ function IPcoordinates0(grid,geomSize,grid3Offset)
 
 
   i = 0
-  do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
+  do c = 1, cells(3); do b = 1, cells(2); do a = 1, cells(1)
     i = i + 1
-    IPcoordinates0(1:3,i) = geomSize/real(grid,pReal) * (real([a,b,grid3Offset+c],pReal) -0.5_pReal)
+    IPcoordinates0(1:3,i) = geomSize/real(cells,pReal) * (real([a,b,cells3Offset+c],pReal) -0.5_pReal)
   end do; end do; end do
 
 end function IPcoordinates0
@@ -527,22 +527,22 @@ end function IPcoordinates0
 !---------------------------------------------------------------------------------------------------
 !> @brief Calculate position of undeformed nodes (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
-pure function nodes0(grid,geomSize,grid3Offset)
+pure function nodes0(cells,geomSize,cells3Offset)
 
-  integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
+  integer,     dimension(3), intent(in) :: cells                                                    ! cells (for this process!)
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
-  integer,                   intent(in) :: grid3Offset                                              ! grid(3) offset
+  integer,                   intent(in) :: cells3Offset                                             ! cells(3) offset
 
-  real(pReal), dimension(3,product(grid+1)) :: nodes0
+  real(pReal), dimension(3,product(cells+1)) :: nodes0
 
   integer :: &
     a,b,c, &
     n
 
   n = 0
-  do c = 0, grid3; do b = 0, grid(2); do a = 0, grid(1)
+  do c = 0, cells3; do b = 0, cells(2); do a = 0, cells(1)
     n = n + 1
-    nodes0(1:3,n) = geomSize/real(grid,pReal) * real([a,b,grid3Offset+c],pReal)
+    nodes0(1:3,n) = geomSize/real(cells,pReal) * real([a,b,cells3Offset+c],pReal)
   end do; end do; end do
 
 end function nodes0
@@ -551,17 +551,17 @@ end function nodes0
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate IP interface areas
 !--------------------------------------------------------------------------------------------------
-pure function cellSurfaceArea(geomSize,grid)
+pure function cellSurfaceArea(geomSize,cells)
 
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
-  integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
+  integer,     dimension(3), intent(in) :: cells                                                    ! cells (for this process!)
 
-  real(pReal), dimension(6,1,product(grid)) :: cellSurfaceArea
+  real(pReal), dimension(6,1,product(cells)) :: cellSurfaceArea
 
 
-  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
-  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
-  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
+  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2)) * geomSize(3)/real(cells(3))
+  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3)) * geomSize(1)/real(cells(1))
+  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1)) * geomSize(2)/real(cells(2))
 
 end function cellSurfaceArea
 
@@ -588,42 +588,42 @@ end function cellSurfaceNormal
 !--------------------------------------------------------------------------------------------------
 !> @brief Build IP neighborhood relations
 !--------------------------------------------------------------------------------------------------
-pure function IPneighborhood(grid)
+pure function IPneighborhood(cells)
 
-  integer, dimension(3), intent(in) :: grid                                                         ! grid (for this process!)
+  integer, dimension(3), intent(in) :: cells                                                        ! cells (for this process!)
 
-  integer, dimension(3,6,1,product(grid)) :: IPneighborhood                                         !< 6 neighboring IPs as [element ID, IP ID, face ID]
+  integer, dimension(3,6,1,product(cells)) :: IPneighborhood                                        !< 6 neighboring IPs as [element ID, IP ID, face ID]
 
   integer :: &
    x,y,z, &
    e
 
   e = 0
-  do z = 0,grid(3)-1; do y = 0,grid(2)-1; do x = 0,grid(1)-1
+  do z = 0,cells(3)-1; do y = 0,cells(2)-1; do x = 0,cells(1)-1
     e = e + 1
     ! element ID
-    IPneighborhood(1,1,1,e) = z * grid(1) * grid(2) &
-                            + y * grid(1) &
-                            + modulo(x+1,grid(1)) &
+    IPneighborhood(1,1,1,e) = z * cells(1) * cells(2) &
+                            + y * cells(1) &
+                            + modulo(x+1,cells(1)) &
                             + 1
-    IPneighborhood(1,2,1,e) = z * grid(1) * grid(2) &
-                            + y * grid(1) &
-                            + modulo(x-1,grid(1)) &
+    IPneighborhood(1,2,1,e) = z * cells(1) * cells(2) &
+                            + y * cells(1) &
+                            + modulo(x-1,cells(1)) &
                             + 1
-    IPneighborhood(1,3,1,e) = z * grid(1) * grid(2) &
-                            + modulo(y+1,grid(2)) * grid(1) &
+    IPneighborhood(1,3,1,e) = z * cells(1) * cells(2) &
+                            + modulo(y+1,cells(2)) * cells(1) &
                             + x &
                             + 1
-    IPneighborhood(1,4,1,e) = z * grid(1) * grid(2) &
-                            + modulo(y-1,grid(2)) * grid(1) &
+    IPneighborhood(1,4,1,e) = z * cells(1) * cells(2) &
+                            + modulo(y-1,cells(2)) * cells(1) &
                             + x &
                             + 1
-    IPneighborhood(1,5,1,e) = modulo(z+1,grid(3)) * grid(1) * grid(2) &
-                            + y * grid(1) &
+    IPneighborhood(1,5,1,e) = modulo(z+1,cells(3)) * cells(1) * cells(2) &
+                            + y * cells(1) &
                             + x &
                             + 1
-    IPneighborhood(1,6,1,e) = modulo(z-1,grid(3)) * grid(1) * grid(2) &
-                            + y * grid(1) &
+    IPneighborhood(1,6,1,e) = modulo(z-1,cells(3)) * cells(1) * cells(2) &
+                            + y * cells(1) &
                             + x &
                             + 1
     ! IP ID

@@ -43,6 +43,13 @@ submodule(phase:plastic) dislotungsten
       systems_sl
   end type tParameters                                                                              !< container type for internal constitutive parameters
 
+  type :: tIndexDotState
+    integer, dimension(2) :: &
+      rho_mob, &
+      rho_dip, &
+      gamma_sl
+  end type tIndexDotState
+
   type :: tDislotungstenState
     real(pReal), dimension(:,:), pointer :: &
       rho_mob, &
@@ -58,10 +65,9 @@ submodule(phase:plastic) dislotungsten
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
-  type(tParameters),              allocatable, dimension(:) :: param
-  type(tDisloTungstenState),          allocatable, dimension(:) :: &
-    dotState, &
-    state
+  type(tParameters),                  allocatable, dimension(:) :: param
+  type(tIndexDotState),               allocatable, dimension(:) :: indexDotState
+  type(tDisloTungstenState),          allocatable, dimension(:) :: state
   type(tDisloTungstenDependentState), allocatable, dimension(:) :: dependentState
 
 contains
@@ -103,18 +109,17 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   print'(/,1x,a)', 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
-
   phases => config_material%get('phase')
   allocate(param(phases%length))
+  allocate(indexDotState(phases%length))
   allocate(state(phases%length))
-  allocate(dotState(phases%length))
   allocate(dependentState(phases%length))
-
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), dot => dotState(ph), stt => state(ph), dst => dependentState(ph))
+    associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
+              idx_dot => indexDotState(ph))
 
     phase => phases%get(ph)
     mech  => phase%get('mechanical')
@@ -214,28 +219,29 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     sizeState = sizeDotState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
+    deallocate(plasticState(ph)%dotState) ! ToDo: remove dotState completely
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
+    idx_dot%rho_mob = [startIndex,endIndex]
     stt%rho_mob => plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_mob =  spread(rho_mob_0,2,Nmembers)
-    dot%rho_mob => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
+    idx_dot%rho_dip = [startIndex,endIndex]
     stt%rho_dip => plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_dip =  spread(rho_dip_0,2,Nmembers)
-    dot%rho_dip => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
+    idx_dot%gamma_sl = [startIndex,endIndex]
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
-    dot%gamma_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
@@ -300,15 +306,15 @@ end subroutine dislotungsten_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine dislotungsten_dotState(Mp,T,ph,en)
+module function dislotungsten_dotState(Mp,ph,en) result(dotState)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
-  real(pReal),                  intent(in) :: &
-    T                                                                                               !< temperature
   integer,                      intent(in) :: &
     ph, &
     en
+  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+    dotState
 
   real(pReal), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_pos, dot_gamma_neg,&
@@ -319,17 +325,22 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
     dot_rho_dip_climb, &
     d_hat
   real(pReal) :: &
-    mu
+    mu, T
 
-  associate(prm => param(ph), stt => state(ph), dot => dotState(ph), dst => dependentState(ph))
+
+  associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
+            dot_rho_mob => dotState(indexDotState(ph)%rho_mob(1):indexDotState(ph)%rho_mob(2)), &
+            dot_rho_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
+            dot_gamma_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)))
 
     mu = elastic_mu(ph,en)
+    T = thermal_T(ph,en)
 
     call kinetics(Mp,T,ph,en,&
                   dot_gamma_pos,dot_gamma_neg, &
                   tau_pos_out = tau_pos,tau_neg_out = tau_neg)
 
-    dot%gamma_sl(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
+    dot_gamma_sl = abs(dot_gamma_pos+dot_gamma_neg)
 
     where(dEq0((tau_pos+tau_neg)*0.5_pReal))
       dot_rho_dip_formation = 0.0_pReal
@@ -338,24 +349,24 @@ module subroutine dislotungsten_dotState(Mp,T,ph,en)
       d_hat = math_clip(3.0_pReal*mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos+tau_neg)*0.5_pReal), &
                         prm%d_caron, &                                                              ! lower limit
                         dst%Lambda_sl(:,en))                                                        ! upper limit
-      dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot%gamma_sl(:,en)/prm%b_sl, &
+      dot_rho_dip_formation = merge(2.0_pReal*(d_hat-prm%d_caron)*stt%rho_mob(:,en)*dot_gamma_sl/prm%b_sl, &
                                     0.0_pReal, &
                                     prm%dipoleformation)
-      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(2.0_pReal*PI*K_B*T)) &
+      v_cl = (3.0_pReal*mu*prm%D_0*exp(-prm%Q_cl/(K_B*T))*prm%f_at/(TAU*K_B*T)) &
            * (1.0_pReal/(d_hat+prm%d_caron))
       dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,en))/(d_hat-prm%d_caron)                    ! ToDo: Discuss with Franz: Stress dependency?
     end where
 
-    dot%rho_mob(:,en) = dot%gamma_sl(:,en)/(prm%b_sl*dst%Lambda_sl(:,en)) &                         ! multiplication
+    dot_rho_mob = dot_gamma_sl/(prm%b_sl*dst%Lambda_sl(:,en)) &                                     ! multiplication
                       - dot_rho_dip_formation &
-                      - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*dot%gamma_sl(:,en)       ! Spontaneous annihilation of 2 edges
-    dot%rho_dip(:,en) = dot_rho_dip_formation &
-                      - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*dot%gamma_sl(:,en) &     ! Spontaneous annihilation of an edge with a dipole
+                - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_mob(:,en)*dot_gamma_sl                   ! Spontaneous annihilation of 2 edges
+    dot_rho_dip = dot_rho_dip_formation &
+                - (2.0_pReal*prm%d_caron)/prm%b_sl*stt%rho_dip(:,en)*dot_gamma_sl &                 ! Spontaneous annihilation of an edge with a dipole
                       - dot_rho_dip_climb
 
   end associate
 
-end subroutine dislotungsten_dotState
+end function dislotungsten_dotState
 
 
 !--------------------------------------------------------------------------------------------------

@@ -37,9 +37,7 @@ submodule(phase:plastic) isotropic
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
   type(tParameters),     allocatable, dimension(:) :: param
-  type(tIsotropicState), allocatable, dimension(:) :: &
-    dotState, &
-    state
+  type(tIsotropicState), allocatable, dimension(:) :: state
 
 contains
 
@@ -77,16 +75,15 @@ module function plastic_isotropic_init() result(myPlasticity)
   phases => config_material%get('phase')
   allocate(param(phases%length))
   allocate(state(phases%length))
-  allocate(dotState(phases%length))
 
   do ph = 1, phases%length
     if(.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
+    associate(prm => param(ph), stt => state(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    mech => phase%get('mechanical')
+    pl => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -125,12 +122,12 @@ module function plastic_isotropic_init() result(myPlasticity)
     sizeState = sizeDotState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
+    deallocate(plasticState(ph)%dotState) ! ToDo: remove dotState completely
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
-    stt%xi  => plasticState(ph)%state   (1,:)
-    stt%xi  =  xi_0
-    dot%xi  => plasticState(ph)%dotState(1,:)
+    stt%xi => plasticState(ph)%state(1,:)
+    stt%xi = xi_0
     plasticState(ph)%atol(1) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if (plasticState(ph)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
 
@@ -178,7 +175,7 @@ module subroutine isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     norm_Mp_dev = sqrt(squarenorm_Mp_dev)
 
     if (norm_Mp_dev > 0.0_pReal) then
-      dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(en))) **prm%n
+      dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp_dev/(prm%M*stt%xi(en)))**prm%n
 
       Lp = dot_gamma * Mp_dev/norm_Mp_dev
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -242,27 +239,26 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine isotropic_dotState(Mp,ph,en)
+module function isotropic_dotState(Mp,ph,en) result(dotState)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
+  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+    dotState
 
   real(pReal) :: &
     dot_gamma, &                                                                                    !< strainrate
     xi_inf_star, &                                                                                  !< saturation xi
     norm_Mp                                                                                         !< norm of the (deviatoric) Mandel stress
 
-  associate(prm => param(ph), stt => state(ph), &
-   dot => dotState(ph))
+  associate(prm => param(ph), stt => state(ph), dot_xi => dotState(1))
 
-  if (prm%dilatation) then
-    norm_Mp = sqrt(math_tensordot(Mp,Mp))
-  else
-    norm_Mp = sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp)))
-  end if
+    norm_Mp = merge(sqrt(math_tensordot(Mp,Mp)), &
+                    sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp))), &
+                    prm%dilatation)
 
   dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(en))) **prm%n
 
@@ -274,16 +270,16 @@ module subroutine isotropic_dotState(Mp,ph,en)
                   + asinh( (dot_gamma / prm%c_1)**(1.0_pReal / prm%c_2))**(1.0_pReal / prm%c_3) &
                   / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     end if
-    dot%xi(en) = dot_gamma &
-               * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
-               * sign(abs(1.0_pReal - stt%xi(en)/xi_inf_star)**prm%a *prm%h, 1.0_pReal-stt%xi(en)/xi_inf_star)
+    dot_xi = dot_gamma &
+           * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
+           * sign(abs(1.0_pReal - stt%xi(en)/xi_inf_star)**prm%a *prm%h, 1.0_pReal-stt%xi(en)/xi_inf_star)
   else
-    dot%xi(en) = 0.0_pReal
+    dot_xi = 0.0_pReal
   end if
 
   end associate
 
-end subroutine isotropic_dotState
+end function isotropic_dotState
 
 
 !--------------------------------------------------------------------------------------------------

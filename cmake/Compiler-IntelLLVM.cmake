@@ -9,7 +9,7 @@ if (OPENMP)
   set (OPENMP_FLAGS "-qopenmp")
 endif ()
 
-if (OPTIMIZATION STREQUAL "OFF")
+if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
   set (OPTIMIZATION_FLAGS    "-O0")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
@@ -108,6 +108,9 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
 # generate debug information for parameters
+
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug all")
+# generate complete debugging information
 
 # Additional options
 # -heap-arrays:            Should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits

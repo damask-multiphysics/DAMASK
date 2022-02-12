@@ -153,9 +153,9 @@ subroutine grid_mechanical_FEM_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
-  allocate(F (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
-  allocate(P_current (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
-  allocate(F_lastInc (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+  allocate(F (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
+  allocate(P_current (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
+  allocate(F_lastInc (3,3,cells(1),cells(2),cells3),source = 0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -164,16 +164,16 @@ subroutine grid_mechanical_FEM_init
   call SNESSetOptionsPrefix(SNES_mechanical,'mechanical_',err_PETSc)
   CHKERRQ(err_PETSc)
   localK            = 0_pPetscInt
-  localK(worldrank) = int(grid3,pPetscInt)
+  localK(worldrank) = int(cells3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
-         int(grid(1),pPetscInt),int(grid(2),pPetscInt),int(grid(3),pPetscInt), &                    ! global grid
+         int(cells(1),pPetscInt),int(cells(2),pPetscInt),int(cells(3),pPetscInt), &                 ! global cells
          1_pPetscInt, 1_pPetscInt, int(worldsize,pPetscInt), &
          3_pPetscInt, 1_pPetscInt, &                                                                ! #dof (u, vector), ghost boundary width (domain overlap)
-         [int(grid(1),pPetscInt)],[int(grid(2),pPetscInt)],localK, &                                ! local grid
+         [int(cells(1),pPetscInt)],[int(cells(2),pPetscInt)],localK, &                              ! local cells
          mechanical_grid,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMsetFromOptions(mechanical_grid,err_PETSc)
@@ -214,7 +214,7 @@ subroutine grid_mechanical_FEM_init
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  delta = geomSize/real(grid,pReal)                                                                 ! grid spacing
+  delta = geomSize/real(cells,pReal)                                                                ! grid spacing
   detJ = product(delta)                                                                             ! cell volume
 
   BMat = reshape(real([-1.0_pReal/delta(1),-1.0_pReal/delta(2),-1.0_pReal/delta(3), &
@@ -255,11 +255,11 @@ subroutine grid_mechanical_FEM_init
     call HDF5_read(u_lastInc,groupHandle,'u_lastInc')
 
   elseif (interface_restartInc == 0) then restartRead
-    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
-    F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
+    F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
+    F         = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)
   endif restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for homogenization_mechanical_response
+  homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
@@ -339,7 +339,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
   type(tBoundaryCondition), intent(in) :: &
     stress_BC, &
     deformation_BC
-  type(rotation),           intent(in) :: &
+  type(tRotation),          intent(in) :: &
     rotation_BC
   PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -386,7 +386,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 
     F_lastInc = F
 
-    homogenization_F0 = reshape(F, [3,3,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F, [3,3,product(cells(1:2))*cells3])
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -556,13 +556,13 @@ subroutine formResidual(da_local,x_local, &
 ! get deformation gradient
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
+  do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
-    F(1:3,1:3,i,j,k-grid3offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
+    F(1:3,1:3,i,j,k-cells3Offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
   enddo; enddo; enddo
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -589,14 +589,14 @@ subroutine formResidual(da_local,x_local, &
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ele = 0
-  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
+  do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
     enddo; enddo; enddo
     ele = ele + 1
-    f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-grid3offset)))*detJ + &
+    f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-cells3Offset)))*detJ + &
              matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
                                    homogenization_dPdF(2,2,2,2,ele) + &
                                    homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
@@ -615,17 +615,17 @@ subroutine formResidual(da_local,x_local, &
 ! applying boundary conditions
   call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (grid3offset == 0) then
-    r(0:2,0,      0,      0) = 0.0_pReal
-    r(0:2,grid(1),0,      0) = 0.0_pReal
-    r(0:2,0,      grid(2),0) = 0.0_pReal
-    r(0:2,grid(1),grid(2),0) = 0.0_pReal
+  if (cells3Offset == 0) then
+    r(0:2,0,       0,       0) = 0.0_pReal
+    r(0:2,cells(1),0,       0) = 0.0_pReal
+    r(0:2,0,       cells(2),0) = 0.0_pReal
+    r(0:2,cells(1),cells(2),0) = 0.0_pReal
   end if
-  if (grid3+grid3offset == grid(3)) then
-    r(0:2,0,      0,      grid(3)) = 0.0_pReal
-    r(0:2,grid(1),0,      grid(3)) = 0.0_pReal
-    r(0:2,0,      grid(2),grid(3)) = 0.0_pReal
-    r(0:2,grid(1),grid(2),grid(3)) = 0.0_pReal
+  if (cells3+cells3Offset == cells(3)) then
+    r(0:2,0,       0,       cells(3)) = 0.0_pReal
+    r(0:2,cells(1),0,       cells(3)) = 0.0_pReal
+    r(0:2,0,       cells(2),cells(3)) = 0.0_pReal
+    r(0:2,cells(1),cells(2),cells(3)) = 0.0_pReal
   end if
   call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -663,7 +663,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   call MatZeroEntries(Jac,err_PETSc)
   CHKERRQ(err_PETSc)
   ce = 0
-  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
+  do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
@@ -719,7 +719,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ce = 0
-  do k = grid3offset+1, grid3offset+grid3; do j = 1, grid(2); do i = 1, grid(1)
+  do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
     x_scal(0:2,i-1,j-1,k-1) = discretization_IPcoords(1:3,ce)
   enddo; enddo; enddo

@@ -32,7 +32,7 @@ program DAMASK_grid
   implicit none
 
   type :: tLoadCase
-    type(rotation)           :: rot                                                                 !< rotation of BC
+    type(tRotation)          :: rot                                                                !< rotation of BC
     type(tBoundaryCondition) :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
     real(pReal) ::              t, &                                                                !< length of increment
