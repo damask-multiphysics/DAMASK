@@ -1,0 +1,25 @@
+type: Hooke
+references:
+  - J.A. Rayne and B.S. Chandrasekhar,
+    Physical Review 120(5):1658-1663, 1960,
+    https://doi.org/10.1103/PhysRev.120.1658,
+    fitted from Fig. 2 and Tab. IV (C_13)
+C_11: 72.89e+9
+C_11,T: -4.479e+7
+C_11,T^2: -3.149e+4
+C_12: 59.27e+9
+C_12,T: 1.110e+7
+C_12,T^2: 1.300e+4
+C_13: 35.97e+9
+C_13,T: -2.638e+7
+C_13,T^2: -1.123e+5
+C_33: 88.77e+10
+C_33,T: -5.361e+7
+C_33,T^2: -2.770e+3
+C_44: 22.26e+9
+C_44,T: -1.994e+7
+C_44,T^2: -9.519e+3
+C_66: 24.17e+9
+C_66,T: -1.919e+7
+C_66,T^2: -1.161e+4
+T_ref: 293.15
