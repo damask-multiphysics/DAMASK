@@ -1,4 +1,5 @@
 type: Hooke
+
 references:
   - G.N. Kamm and G.A. Alers,
     Journal of Applied Physics 35:327-330, 1964,
@@ -6,8 +7,6 @@ references:
   - D. Gerlich and E.S. Fisher,
     Journal of Physics and Chemistry of Solids 30:1197-1205, 1969
     https://doi.org/10.1016/0022-3697(69)90377-1
-
-T_ref: 300
 
 C_11: 106.1e+9
 C_11,T: -359.3e+5
@@ -20,3 +19,5 @@ C_12,T^2: -551.3e+1
 C_44: 24.31e+9
 C_44,T: -142.9e+5
 C_44,T^2: -404.6e+1
+
+T_ref: 300

@@ -1,8 +1,10 @@
 type: Hooke
+
 references:
   - S.A. Kim and W.L. Johnson,
     Materials Science & Engineering A 452-453:633-639, 2007,
     https://doi.org/10.1016/j.msea.2006.11.147
+
 C_11: 268.1e+9
 C_12: 111.2e+9
 C_44: 79.06e+9

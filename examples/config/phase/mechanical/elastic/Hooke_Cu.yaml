@@ -1,7 +1,9 @@
 type: Hooke
+
 references:
   - https://www.mit.edu/~6.777/matprops/copper.htm,
     fixed typo
+
 C_11: 168.3e+9
 C_12: 122.1e+9
 C_44: 75.7e+9

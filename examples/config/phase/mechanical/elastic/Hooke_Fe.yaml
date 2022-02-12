@@ -1,10 +1,9 @@
 type: Hooke
+
 references:
   - D.J. Dever,
     Journal of Applied Physics 43(8):3293-3301, 1972,
     https://doi.org/10.1063/1.1661710
-
-T_ref: 300
 
 C_11: 231.7e+9
 C_11,T: -47.6e+6
@@ -17,3 +16,5 @@ C_12,T^2: -7.3e+3
 C_44: 116.8e+9
 C_44,T: -19.4e+6
 C_44,T^2: -2.5e+3
+
+T_ref: 300
