@@ -372,7 +372,7 @@ subroutine utilities_updateGamma(C)
   C_ref = C
 
   if (.not. num%memory_efficient) then
-    gamma_hat =  cmplx(0.0_pReal,0.0_pReal,pReal)                                                   ! for the singular point and any non invertible A
+    gamma_hat = cmplx(0.0_pReal,0.0_pReal,pReal)                                                    ! for the singular point and any non invertible A
     do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, grid1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         do concurrent (l = 1:3, m = 1:3)
@@ -387,8 +387,7 @@ subroutine utilities_updateGamma(C)
           call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            gamma_hat(l,m,n,o,i,j,k-cells3Offset) = temp33_complex(l,n)* &
-                                                    conjg(-xi1st(o,i,j,k-cells3Offset))*xi1st(m,i,j,k-cells3Offset)
+            gamma_hat(l,m,n,o,i,j,k-cells3Offset) = temp33_complex(l,n) * xiDyad_cmplx(o,m)
           end do
         end if
       end if
@@ -507,7 +506,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
           call math_invert(A_inv, err, A)
           temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            gamma_hat(l,m,n,o,1,1,1) =  temp33_complex(l,n)*conjg(-xi1st(o,i,j,k))*xi1st(m,i,j,k)
+            gamma_hat(l,m,n,o,1,1,1) = temp33_complex(l,n)*xiDyad_cmplx(o,m)
           end do
         else
           gamma_hat(1:3,1:3,1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -521,7 +520,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   else memoryEfficient
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,grid1Red
       do concurrent(l = 1:3, m = 1:3)
-        temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k) * tensorField_fourier(1:3,1:3,i,j,k))
+        temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k)*tensorField_fourier(1:3,1:3,i,j,k))
       end do
       tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
     end do; end do; end do
@@ -884,11 +883,10 @@ pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
   real(pReal),             dimension(3,3,cells(1),cells(2),cells3) :: &
     utilities_calculateRate
 
-  if (heterogeneous) then
-    utilities_calculateRate = (field-field0) / dt
-  else
-    utilities_calculateRate = spread(spread(spread(avRate,3,cells(1)),4,cells(2)),5,cells3)
-  endif
+
+  utilities_calculateRate = merge((field-field0) / dt, &
+                                  spread(spread(spread(avRate,3,cells(1)),4,cells(2)),5,cells3), &
+                                  heterogeneous)
 
 end function utilities_calculateRate
 
@@ -1041,7 +1039,7 @@ subroutine utilities_updateCoords(F)
   rank_b = modulo(worldrank-1_MPI_INTEGER_KIND,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
+  call MPI_Isend(IPfluct_padded(:,:,:,2),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Irecv(IPfluct_padded(:,:,:,cells3+2),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
@@ -1049,7 +1047,7 @@ subroutine utilities_updateCoords(F)
   ! send top layer to process above
   call MPI_Isend(IPfluct_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call MPI_Waitall(4,request,status,err_MPI)
