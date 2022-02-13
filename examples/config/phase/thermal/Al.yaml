@@ -5,9 +5,9 @@ references:
     fit to Tab. 3.4.1 (RRR=1000, T_min=200K, T_max=900K)
   - https://www.engineeringtoolbox.com/specific-heat-metals-d_152.html
 
-K_11: 2.380e+02
-K_11,T: 2.068e-03
-K_11,T^2: -7.765e-05
+K_11: 2.380e+2
+K_11,T: 2.068e-3
+K_11,T^2: -7.765e-5
 
 T_ref: 293.15
 

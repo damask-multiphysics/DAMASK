@@ -5,9 +5,9 @@ references:
     fit to Tab. 5.4.1 (RRR=300, T_min=200K, T_max=1000K)
   - https://www.mit.edu/~6.777/matprops/tungsten.htm
 
-K_11: 1.758e+02
-K_11,T: -1.605e-01
-K_11,T^2: 1.160e-04
+K_11: 1.758e+2
+K_11,T: -1.605e-1
+K_11,T^2: 1.160e-4
 
 T_ref: 293.15
 
