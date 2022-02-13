@@ -192,10 +192,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
     else validCalculation
       if (debugCPFEM%extensive)  print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
-      call homogenization_mechanical_response(dt,[ip,ip],[elCP,elCP])
+      call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip,(elCP-1)*discretization_nIPs + ip)
       if (.not. terminallyIll) &
         call homogenization_mechanical_response2(dt,[ip,ip],[elCP,elCP])
-
 
       terminalIllness: if (terminallyIll) then
 
