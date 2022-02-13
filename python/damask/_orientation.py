@@ -558,8 +558,8 @@ class Orientation(Rotation,Crystal):
         s = self.equivalent
         o = other.equivalent
 
-        s_ = s.reshape((s.shape[0],1)+ self.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right') #type: ignore
-        o_ = o.reshape((1,o.shape[0])+other.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right') #type: ignore
+        s_ = s.reshape((s.shape[0],1)+ self.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right')
+        o_ = o.reshape((1,o.shape[0])+other.shape).broadcast_to((s.shape[0],o.shape[0])+blend,mode='right')
         r_ = s_.misorientation(o_)
         _r = ~r_
 
@@ -654,7 +654,7 @@ class Orientation(Rotation,Crystal):
             raise ValueError('input is not a field of three-dimensional vectors')
         eq  = self.equivalent
         blend = util.shapeblender(eq.shape,vector_.shape[:-1])
-        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(vector_,blend+(3,)) #type: ignore
+        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(vector_,blend+(3,))
         ok    = self.in_SST(poles,proper=proper)
         ok   &= np.cumsum(ok,axis=0) == 1
         loc   = np.where(ok)
@@ -884,7 +884,7 @@ class Orientation(Rotation,Crystal):
             blend += sym_ops.shape
             v = sym_ops.broadcast_to(shape) \
               @ np.broadcast_to(v.reshape(util.shapeshifter(v.shape,shape+(3,))),shape+(3,))
-        return ~(self.broadcast_to(blend))@ np.broadcast_to(v,blend+(3,)) #type: ignore
+        return ~(self.broadcast_to(blend))@ np.broadcast_to(v,blend+(3,))
 
 
     def Schmid(self, *,
