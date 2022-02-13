@@ -1,13 +1,12 @@
 import copy
+from typing import Union, Sequence, Tuple, Literal, List, TypeVar
 
 import numpy as np
 
+from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 from . import tensor
 from . import util
 from . import grid_filters
-
-from typing import Union, Sequence, Tuple, Literal, List, TypeVar
-from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 
 _P = -1
 
@@ -109,7 +108,7 @@ class Rotation:
                     item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
         """Return slice according to item."""
         return self.copy() if self.shape == () else \
-               self.copy(rotation=self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
+               self.copy(self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
 
 
     def __eq__(self,
@@ -162,7 +161,7 @@ class Rotation:
 
         Returns
         -------
-        mask : numpy.ndarray of bool
+        mask : numpy.ndarray of bool, shape (self.shape)
             Mask indicating where corresponding rotations are close.
 
         """
@@ -233,13 +232,13 @@ class Rotation:
 
         Parameters
         ----------
-        exp : scalar
+        exp : float
             Exponent.
 
         """
         phi = np.arccos(self.quaternion[...,0:1])
         p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
-        return self.copy(rotation=Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
+        return self.copy(Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
     def __ipow__(self: MyType,
                  exp: Union[float, int]) -> MyType:
@@ -248,7 +247,7 @@ class Rotation:
 
         Parameters
         ----------
-        exp : scalar
+        exp : float
             Exponent.
 
         """
@@ -278,7 +277,7 @@ class Rotation:
             p_o = other.quaternion[...,1:]
             q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
-            return Rotation(np.block([q,p]))._standardize() #type: ignore
+            return self.copy(Rotation(np.block([q,p]))._standardize())
         else:
             raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
@@ -391,8 +390,8 @@ class Rotation:
         other : (list of) damask.Rotation
 
         """
-        return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
-                                                      [self]+other if isinstance(other,list) else [self,other]))))
+        return self.copy(np.vstack(tuple(map(lambda x:x.quaternion,
+                                             [self]+other if isinstance(other,list) else [self,other]))))
 
 
     def flatten(self: MyType,
@@ -415,7 +414,7 @@ class Rotation:
             Rotation flattened to single dimension.
 
         """
-        return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
+        return self.copy(self.quaternion.reshape((-1,4),order=order))
 
 
     def reshape(self: MyType,
@@ -443,7 +442,7 @@ class Rotation:
 
         """
         if isinstance(shape,(int,np.integer)): shape = (shape,)
-        return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
+        return self.copy(self.quaternion.reshape(tuple(shape)+(4,),order=order))
 
 
     def broadcast_to(self: MyType,
@@ -467,18 +466,18 @@ class Rotation:
 
         """
         if isinstance(shape,(int,np.integer)): shape = (shape,)
-        return self.copy(rotation=np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape,mode)+(4,)),
+        return self.copy(np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape,mode)+(4,)),
                                                   shape+(4,)))
 
 
-    def average(self,
-                weights: FloatSequence = None) -> 'Rotation':
+    def average(self: MyType,
+                weights: FloatSequence = None) -> MyType:
         """
         Average along last array dimension.
 
         Parameters
         ----------
-        weights : numpy.ndarray, optional
+        weights : numpy.ndarray, shape (self.shape), optional
             Relative weight of each rotation.
 
         Returns
@@ -501,13 +500,13 @@ class Rotation:
         eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights_[...,np.newaxis,np.newaxis],axis=-3) \
                                 /np.sum(                      weights_[...,np.newaxis,np.newaxis],axis=-3))
 
-        return Rotation.from_quaternion(np.real(
-                                        np.squeeze(
-                                        np.take_along_axis(vec,
-                                                           eig.argmax(axis=-1)[...,np.newaxis,np.newaxis],
-                                                           axis=-1),
-                                        axis=-1)),
-                                        accept_homomorph = True)
+        return self.copy(Rotation.from_quaternion(np.real(
+                                                  np.squeeze(
+                                                  np.take_along_axis(vec,
+                                                                     eig.argmax(axis=-1)[...,np.newaxis,np.newaxis],
+                                                                     axis=-1),
+                                                  axis=-1)),
+                                                  accept_homomorph = True))
 
 
     def misorientation(self: MyType,
@@ -730,7 +729,7 @@ class Rotation:
             Sign convention. Defaults to -1.
 
         """
-        qu: np.ndarray = np.array(q,dtype=float)
+        qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
         if abs(P) != 1:
@@ -996,7 +995,7 @@ class Rotation:
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         """
-        rng: np.random.Generator = np.random.default_rng(rng_seed)
+        rng = np.random.default_rng(rng_seed)
         r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3)) #type: ignore
 
         A = np.sqrt(r[...,2])
@@ -1131,8 +1130,8 @@ class Rotation:
 
         """
         rng = np.random.default_rng(rng_seed)
-        sigma_: np.ndarray; alpha_: np.ndarray; beta_: np.ndarray
-        sigma_,alpha_,beta_ = (np.radians(coordinate) for coordinate in (sigma,alpha,beta)) if degrees else (sigma,alpha,beta) #type: ignore
+        sigma_,alpha_,beta_ = (np.radians(coordinate) for coordinate in (sigma,alpha,beta)) if degrees else \
+                              map(np.array, (sigma,alpha,beta))
 
         d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
         d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])

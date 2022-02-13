@@ -31,7 +31,7 @@ lattice_symmetries: Dict[CrystalLattice, CrystalFamily] = {
 class Crystal():
     """Crystal lattice."""
 
-    def __init__(self,*,
+    def __init__(self, *,
                  family: CrystalFamily = None,
                  lattice: CrystalLattice = None,
                  a: float = None, b: float = None, c: float = None,

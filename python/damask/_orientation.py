@@ -1,6 +1,6 @@
 import inspect
 import copy
-from typing import Union, Callable, List, Dict, Any, Tuple
+from typing import Union, Callable, List, Dict, Any, Tuple, TypeVar
 
 import numpy as np
 
@@ -9,7 +9,6 @@ from . import Rotation
 from . import Crystal
 from . import util
 from . import tensor
-
 
 
 _parameter_doc = \
@@ -36,6 +35,7 @@ _parameter_doc = \
 
        """
 
+MyType = TypeVar('MyType', bound='Orientation')
 
 class Orientation(Rotation,Crystal):
     """
@@ -124,8 +124,8 @@ class Orientation(Rotation,Crystal):
         return '\n'.join([Crystal.__repr__(self),
                           Rotation.__repr__(self)])
 
-    def __copy__(self,
-                 rotation: Union[FloatSequence, Rotation] = None) -> 'Orientation':
+    def __copy__(self: MyType,
+                 rotation: Union[FloatSequence, Rotation] = None) -> MyType:
         """Create deep copy."""
         dup = copy.deepcopy(self)
         if rotation is not None:
@@ -189,7 +189,7 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        mask : numpy.ndarray of bool
+        mask : numpy.ndarray of bool, shape (self.shape)
             Mask indicating where corresponding orientations are close.
 
         """
@@ -230,8 +230,8 @@ class Orientation(Rotation,Crystal):
         return bool(np.all(self.isclose(other,rtol,atol,equal_nan)))
 
 
-    def __mul__(self,
-                other: Union[Rotation, 'Orientation']) -> 'Orientation':
+    def __mul__(self: MyType,
+                other: Union[Rotation, 'Orientation']) -> MyType:
         """
         Compose this orientation with other.
 
@@ -246,8 +246,8 @@ class Orientation(Rotation,Crystal):
             Compound rotation self*other, i.e. first other then self rotation.
 
         """
-        if isinstance(other,Orientation) or isinstance(other,Rotation):
-            return self.copy(rotation=Rotation.__mul__(self,Rotation(other.quaternion)))
+        if isinstance(other, (Orientation,Rotation)):
+            return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
         else:
             raise TypeError('use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
@@ -382,11 +382,11 @@ class Orientation(Rotation,Crystal):
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
-        return o.copy(rotation=Rotation.from_matrix(tensor.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
+        return o.copy(Rotation.from_matrix(tensor.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
 
 
     @property
-    def equivalent(self) -> 'Orientation':
+    def equivalent(self: MyType) -> MyType:
         """
         Orientations that are symmetrically equivalent.
 
@@ -396,11 +396,11 @@ class Orientation(Rotation,Crystal):
         """
         sym_ops = self.symmetry_operations
         o = sym_ops.broadcast_to(sym_ops.shape+self.shape,mode='right')
-        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
+        return self.copy(o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
 
     @property
-    def reduced(self) -> 'Orientation':
+    def reduced(self: MyType) -> MyType:
         """Select symmetrically equivalent orientation that falls into fundamental zone according to symmetry."""
         eq   = self.equivalent
         ok   = eq.in_FZ
@@ -616,11 +616,8 @@ class Orientation(Rotation,Crystal):
                                                    np.argmin(m,axis=0)[np.newaxis,...,np.newaxis],
                                                    axis=0),
                                 axis=0))
-        return (
-                (self.copy(rotation=Rotation(r).average(weights)),
-                 self.copy(rotation=Rotation(r)))
-                if return_cloud else
-                self.copy(rotation=Rotation(r).average(weights))
+        return ((self.copy(Rotation(r).average(weights)),self.copy(Rotation(r))) if return_cloud else
+                self.copy(Rotation(r).average(weights))
                )
 
 
@@ -930,7 +927,7 @@ class Orientation(Rotation,Crystal):
         if active == '*': active = [len(a) for a in kinematics['direction']]
 
         if not active:
-            raise RuntimeError # ToDo
+            raise ValueError('Schmid matrix not defined')
         d = self.to_frame(uvw=np.vstack([kinematics['direction'][i][:n] for i,n in enumerate(active)]))
         p = self.to_frame(hkl=np.vstack([kinematics['plane'][i][:n] for i,n in enumerate(active)]))
         P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=1,keepdims=True),
@@ -941,8 +938,8 @@ class Orientation(Rotation,Crystal):
                @ np.broadcast_to(P.reshape(util.shapeshifter(P.shape,shape)),shape)
 
 
-    def related(self,
-                model: str) -> 'Orientation':
+    def related(self: MyType,
+                model: str) -> MyType:
         """
         Orientations derived from the given relationship.
 
