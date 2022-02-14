@@ -408,14 +408,9 @@ class VTK:
             Comments.
 
         """
-        if isinstance(comments,list):
-            i = 0
-            while -i < len(comments) and len(comments[i-1]) == 1: i -= 1        # repack any trailing characters
-            comments = comments[:i] + [''.join(comments[i:])]                   # that resulted from autosplitting of str to list
-
         s = vtk.vtkStringArray()
         s.SetName('comments')
-        for c in [comments] if isinstance(comments,str) else comments:
+        for c in util.tail_repack(comments,self.comments):
             s.InsertNextValue(c)
         self.vtk_data.GetFieldData().AddArray(s)
 

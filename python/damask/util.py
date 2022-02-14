@@ -33,7 +33,8 @@ __all__=[
          'extend_docstring', 'extended_docstring',
          'Bravais_to_Miller', 'Miller_to_Bravais',
          'DREAM3D_base_group', 'DREAM3D_cell_data_group',
-         'dict_prune', 'dict_flatten'
+         'dict_prune', 'dict_flatten',
+         'tail_repack',
         ]
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
@@ -720,6 +721,36 @@ def dict_flatten(d: Dict) -> Dict:
 
     return new
 
+
+
+def tail_repack(extended: Union[str, Sequence[str]],
+                existing: List[str] = []) -> List[str]:
+    """
+    Repack tailing characters into single string if all are new.
+
+    Parameters
+    ----------
+    extended : str or list of str
+        Extended string list with potentially autosplitted tailing string relative to `existing`.
+    existing : list of str
+        Base string list.
+
+    Returns
+    -------
+    repacked : list of str
+        Repacked version of `extended`.
+
+    Examples
+    --------
+    >>> tail_repack(['a','new','e','n','t','r','y'],['a','new'])
+        ['a','new','entry']
+    >>> tail_repack(['a','new','shiny','e','n','t','r','y'],['a','new'])
+        ['a','new','shiny','e','n','t','r','y']
+
+    """
+    return [extended] if isinstance(extended,str) else existing + \
+         ([''.join(extended[len(existing):])] if np.prod([len(i) for i in extended[len(existing):]]) == 1 else
+          list(extended[len(existing):]))
 
 
 ####################################################################################################
