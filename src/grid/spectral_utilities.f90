@@ -362,7 +362,7 @@ end subroutine spectral_utilities_init
 subroutine utilities_updateGamma(C)
 
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
-  complex(pReal),              dimension(3,3) :: temp33_complex, xiDyad_cmplx
+  complex(pReal),              dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
   real(pReal),                 dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
@@ -373,25 +373,27 @@ subroutine utilities_updateGamma(C)
 
   if (.not. num%memory_efficient) then
     gamma_hat = cmplx(0.0_pReal,0.0_pReal,pReal)                                                    ! for the singular point and any non invertible A
+    !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err)
     do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, grid1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         do concurrent (l = 1:3, m = 1:3)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-cells3Offset))*xi1st(m,i,j,k-cells3Offset)
         end do
         do concurrent(l = 1:3, m = 1:3)
-          temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
         end do
-        A(1:3,1:3) = temp33_complex%re; A(4:6,4:6) =  temp33_complex%re
-        A(1:3,4:6) = temp33_complex%im; A(4:6,1:3) = -temp33_complex%im
+        A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
+        A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
-          temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+          temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            gamma_hat(l,m,n,o,i,j,k-cells3Offset) = temp33_complex(l,n) * xiDyad_cmplx(o,m)
+            gamma_hat(l,m,n,o,i,j,k-cells3Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
           end do
         end if
       end if
     end do; end do; end do
+    !$OMP END PARALLEL DO
   endif
 
 end subroutine utilities_updateGamma
@@ -477,7 +479,7 @@ end subroutine utilities_FFTvectorBackward
 subroutine utilities_fourierGammaConvolution(fieldAim)
 
   real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
-  complex(pReal),          dimension(3,3) :: temp33_complex, xiDyad_cmplx
+  complex(pReal),          dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
   real(pReal),             dimension(6,6) :: A, A_inv
 
   integer :: &
@@ -492,38 +494,42 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
   memoryEfficient: if (num%memory_efficient) then
+    !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
     do k = 1, cells3; do j = 1, cells(2); do i = 1, grid1Red
       if (any([i,j,k+cells3Offset] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
         do concurrent(l = 1:3, m = 1:3)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
         end do
         do concurrent(l = 1:3, m = 1:3)
-          temp33_complex(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
         end do
-        A(1:3,1:3) = temp33_complex%re; A(4:6,4:6) =  temp33_complex%re
-        A(1:3,4:6) = temp33_complex%im; A(4:6,1:3) = -temp33_complex%im
+        A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
+        A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
-          temp33_complex = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+          temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
-            gamma_hat(l,m,n,o,1,1,1) = temp33_complex(l,n)*xiDyad_cmplx(o,m)
+            gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
           end do
           do concurrent(l = 1:3, m = 1:3)
-            temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
+            temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
           end do
-          tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
+          tensorField_fourier(1:3,1:3,i,j,k) = temp33_cmplx
         else
           tensorField_fourier(1:3,1:3,i,j,k) = cmplx(0.0_pReal,0.0_pReal,pReal)
         end if
       end if
     end do; end do; end do
+    !$OMP END PARALLEL DO
   else memoryEfficient
+    !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx)
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,grid1Red
       do concurrent(l = 1:3, m = 1:3)
-        temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k)*tensorField_fourier(1:3,1:3,i,j,k))
+        temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k)*tensorField_fourier(1:3,1:3,i,j,k))
       end do
-      tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
+      tensorField_fourier(1:3,1:3,i,j,k) = temp33_cmplx
     end do; end do; end do
+    !$OMP END PARALLEL DO
   end if memoryEfficient
 
   if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
@@ -543,12 +549,14 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
+  !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do k = 1, cells3; do j = 1, cells(2) ;do i = 1, grid1Red
     GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
                 / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal) &
                    * sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))
     scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
   enddo; enddo; enddo
+  !$OMP END PARALLEL DO
 
 end subroutine utilities_fourierGreenConvolution
 
@@ -735,9 +743,10 @@ subroutine utilities_fourierScalarGradient()
 
   integer :: i, j, k
 
+
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,grid1Red
     vectorField_fourier(1:3,i,j,k) = scalarField_fourier(i,j,k)*xi1st(1:3,i,j,k)                    ! ToDo: no -conjg?
-  enddo; enddo; enddo
+  end do; end do; end do
 
 end subroutine utilities_fourierScalarGradient
 
@@ -747,11 +756,9 @@ end subroutine utilities_fourierScalarGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
 
-  integer :: i, j, k
 
-  do k = 1, cells3;  do j = 1, cells(2);  do i = 1,grid1Red
-    scalarField_fourier(i,j,k) = sum(vectorField_fourier(1:3,i,j,k)*conjg(-xi1st(1:3,i,j,k)))
-  enddo; enddo; enddo
+  scalarField_fourier(1:grid1Red,1:cells(2),1:cells3) = sum(vectorField_fourier(1:3,1:grid1Red,1:cells(2),1:cells3) &
+                                                            *conjg(-xi1st))
 
 end subroutine utilities_fourierVectorDivergence
 
@@ -763,11 +770,12 @@ subroutine utilities_fourierVectorGradient()
 
   integer :: i, j, k, m, n
 
+
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,grid1Red
     do m = 1, 3; do n = 1, 3
       tensorField_fourier(m,n,i,j,k) = vectorField_fourier(m,i,j,k)*xi1st(n,i,j,k)
-    enddo; enddo
-  enddo; enddo; enddo
+    end do; end do
+  end do; end do; end do
 
 end subroutine utilities_fourierVectorGradient
 
@@ -779,9 +787,10 @@ subroutine utilities_fourierTensorDivergence()
 
   integer :: i, j, k
 
+
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,grid1Red
     vectorField_fourier(:,i,j,k) = matmul(tensorField_fourier(:,:,i,j,k),conjg(-xi1st(:,i,j,k)))
-  enddo; enddo; enddo
+  end do; end do; end do
 
 end subroutine utilities_fourierTensorDivergence
 
@@ -978,6 +987,7 @@ end function utilities_getFreqDerivative
 subroutine utilities_updateCoords(F)
 
   real(pReal),   dimension(3,3,cells(1),cells(2),cells3), intent(in) :: F
+
   real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: IPcoords
   real(pReal),   dimension(3,  cells(1),cells(2),cells3+2)           :: IPfluct_padded              ! Fluctuations of cell center displacement (padded along z for MPI)
   real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: nodeCoords
@@ -1008,20 +1018,23 @@ subroutine utilities_updateCoords(F)
                         1, 1, 1, &
                         0, 1, 1  ], [3,8])
 
+
   step = geomSize/real(cells, pReal)
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space to get fluctuations of cell center discplacements
   tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = F
   call utilities_FFTtensorForward()
 
+  !$OMP PARALLEL DO
   do k = 1, cells3; do j = 1, cells(2); do i = 1, grid1Red
     if (any([i,j,k+cells3Offset] /= 1)) then
       vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
                                      / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * cmplx(wgt,0.0,pReal)
     else
       vectorField_fourier(1:3,i,j,k) = cmplx(0.0,0.0,pReal)
-    endif
-  enddo; enddo; enddo
+    end if
+  end do; end do; end do
+  !$OMP END PARALLEL DO
 
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
 
