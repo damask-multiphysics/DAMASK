@@ -1,22 +1,25 @@
 type: Hooke
+
 references:
   - G.N. Kamm and G.A. Alers,
     Journal of Applied Physics 35:327-330, 1964,
-    https://doi.org/10.1063/1.1713309
+    https://doi.org/10.1063/1.1713309,
+    fit to Tab. I (T_min=100K, T_max=300K)
   - D. Gerlich and E.S. Fisher,
     Journal of Physics and Chemistry of Solids 30:1197-1205, 1969
-    https://doi.org/10.1016/0022-3697(69)90377-1
+    https://doi.org/10.1016/0022-3697(69)90377-1,
+    fit to Tab. 2 (T_min=293K, T_max=900K)
 
-T_ref: 300
+C_11: 106.9e+9
+C_11,T: -3.685e+7
+C_11,T^2: -1.016e+4
 
-C_11: 106.1e+9
-C_11,T: -359.3e+5
-C_11,T^2: -152.7e+2
+C_12: 60.55e+9
+C_12,T: -8.307e+6
+C_12,T^2: -4.353e+3
 
-C_12: 57.83e+9
-C_12,T: -781.6e+4
-C_12,T^2: -551.3e+1
+C_44: 28.37e+9
+C_44,T: -1.418e+7
+C_44,T^2: -3.253e+3
 
-C_44: 24.31e+9
-C_44,T: -142.9e+5
-C_44,T^2: -404.6e+1
+T_ref: 293.15

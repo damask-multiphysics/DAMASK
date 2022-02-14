@@ -1,9 +1,12 @@
 type: isotropic
+
 references:
   - T. Maiti and P. Eisenlohr,
     Scripta Materialia 145:37-40, 2018,
     https://doi.org/10.1016/j.scriptamat.2017.09.047
+
 output: [xi]
+
 dot_gamma_0: 0.001
 n: 20.
 xi_0: 0.3e+6

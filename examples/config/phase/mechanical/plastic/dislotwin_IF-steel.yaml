@@ -1,4 +1,5 @@
 type: dislotwin
+
 references:
   - K. Sedighiani et al.,
     International Journal of Plasticity 134:102779, 2020,
@@ -6,8 +7,11 @@ references:
   - K. Sedighiani et al.,
     Mechanics of Materials, 164:104117, 2022,
     https://doi.org/10.1016/j.mechmat.2021.104117
+
 output: [rho_dip, rho_mob]
+
 N_sl: [12, 12]
+
 b_sl: [2.49e-10, 2.49e-10]
 rho_mob_0: [2.81e12, 2.8e+12]
 rho_dip_0: [1.0, 1.0] # not given

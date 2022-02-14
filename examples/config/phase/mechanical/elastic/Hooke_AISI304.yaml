@@ -1,8 +1,10 @@
 type: Hooke
+
 references:
-  - H.M. Ledbetter
-    physica status solidi (a) 85(1):89-96, 1984
+  - H.M. Ledbetter,
+    physica status solidi (a) 85(1):89-96, 1984,
     https://doi.org/10.1002/pssa.2210850111
+
 C_11: 204.6e+9
 C_12: 137.7e+9
 C_44: 126.2e+9
