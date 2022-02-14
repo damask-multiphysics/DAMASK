@@ -508,13 +508,13 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,1,1,1) = temp33_complex(l,n)*xiDyad_cmplx(o,m)
           end do
+          do concurrent(l = 1:3, m = 1:3)
+            temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
+          end do
+          tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
         else
-          gamma_hat(1:3,1:3,1:3,1:3,1,1,1) = cmplx(0.0_pReal,0.0_pReal,pReal)
+          tensorField_fourier(1:3,1:3,i,j,k) = cmplx(0.0_pReal,0.0_pReal,pReal)
         end if
-        do concurrent(l = 1:3, m = 1:3)
-          temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
-        end do
-        tensorField_fourier(1:3,1:3,i,j,k) = temp33_Complex
       end if
     end do; end do; end do
   else memoryEfficient
