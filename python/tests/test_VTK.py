@@ -162,10 +162,10 @@ class TestVTK:
 
 
     def test_comments(self,tmp_path,default):
-        default.add_comments(['this is a comment'])
+        default.comments += 'this is a comment'
         default.save(tmp_path/'with_comments',parallel=False)
         new = VTK.load(tmp_path/'with_comments.vti')
-        assert new.get_comments() == ['this is a comment']
+        assert new.comments == ['this is a comment']
 
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_polyData(self,update,ref_path,tmp_path):

@@ -2,7 +2,7 @@ import os
 import warnings
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Literal, List
+from typing import Union, Literal, List, Sequence
 
 import numpy as np
 import vtk
@@ -386,7 +386,8 @@ class VTK:
             raise ValueError(f'Array "{label}" not found.')
 
 
-    def get_comments(self) -> List[str]:
+    @property
+    def comments(self) -> List[str]:
         """Return the comments."""
         fielddata = self.vtk_data.GetFieldData()
         for a in range(fielddata.GetNumberOfArrays()):
@@ -395,9 +396,9 @@ class VTK:
                 return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
         return []
 
-
-    def set_comments(self,
-                     comments: Union[str, List[str]]):
+    @comments.setter
+    def comments(self,
+                 comments: Union[str, Sequence[str]]):
         """
         Set comments.
 
@@ -407,25 +408,16 @@ class VTK:
             Comments.
 
         """
+        if isinstance(comments,list):
+            i = 0
+            while -i < len(comments) and len(comments[i-1]) == 1: i -= 1        # repack any trailing characters
+            comments = comments[:i] + [''.join(comments[i:])]                   # that resulted from autosplitting of str to list
+
         s = vtk.vtkStringArray()
         s.SetName('comments')
         for c in [comments] if isinstance(comments,str) else comments:
             s.InsertNextValue(c)
         self.vtk_data.GetFieldData().AddArray(s)
-
-
-    def add_comments(self,
-                     comments: Union[str, List[str]]):
-        """
-        Add comments.
-
-        Parameters
-        ----------
-        comments : str or list of str
-            Comments to add.
-
-        """
-        self.set_comments(self.get_comments() + ([comments] if isinstance(comments,str) else comments))
 
 
     def __repr__(self) -> str:

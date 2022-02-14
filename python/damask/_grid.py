@@ -173,8 +173,8 @@ class Grid:
         Parameters
         ----------
         fname : str or pathlib.Path
-            Grid file to read. Valid extension is .vti, which will be appended
-            if not given.
+            Grid file to read.
+            Valid extension is .vti, which will be appended if not given.
 
         Returns
         -------
@@ -183,14 +183,14 @@ class Grid:
 
         """
         v = VTK.load(fname if str(fname).endswith(('.vti','.vtr')) else str(fname)+'.vti')          # compatibility hack
-        comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+        comments = v.comments
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
                     origin = bbox[0],
-                    comments=comments)
+                    comments = comments)
 
 
     @typing. no_type_check
@@ -645,7 +645,7 @@ class Grid:
         """
         v = VTK.from_image_data(self.cells,self.size,self.origin)
         v.add(self.material.flatten(order='F'),'material')
-        v.add_comments(self.comments)
+        v.comments += self.comments
 
         v.save(fname,parallel=False,compress=compress)
 

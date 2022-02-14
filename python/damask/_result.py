@@ -1623,7 +1623,7 @@ class Result:
         else:
             raise ValueError(f'invalid mode {mode}')
 
-        v.set_comments(util.execution_stamp('Result','export_VTK'))
+        v.comments = util.execution_stamp('Result','export_VTK')
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
 
@@ -1639,7 +1639,7 @@ class Result:
             if self.version_minor >= 13:
                 creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
                 created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
-                v.add_comments(f'{creator} ({created})')
+                v.comments += f'{creator} ({created})'
 
             for inc in util.show_progress(self.visible['increments']):
 
