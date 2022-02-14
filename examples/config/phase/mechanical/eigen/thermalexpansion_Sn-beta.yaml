@@ -1,0 +1,17 @@
+type: thermalexpansion
+
+references:
+  - V.T. Deshpande and D.B. Sirdeshmukh,
+    Acta Crystallographica 15:294-295, 1962,
+    https://doi.org/10.1107/S0365110X62000742,
+    fit to Tab. 2 (T_min=30ºC, T_max=210ºC)
+
+A_11: 1.639e-05
+A_11,T: 1.799e-08
+A_11,T^2: 1.734e-10
+
+A_33: 3.263e-05
+A_33,T: 1.387e-08
+A_33,T^2: 5.794e-10
+
+T_ref: 293.15

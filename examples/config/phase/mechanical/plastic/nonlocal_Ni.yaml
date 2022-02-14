@@ -1,10 +1,13 @@
 type: nonlocal
+
 references:
-  C. Kords,
-  On the role of dislocation transport in the constitutive description of crystal plasticity,
-  RWTH Aachen 2013,
-  http://publications.rwth-aachen.de/record/229993/files/4862.pdf
+  - C. Kords,
+    On the role of dislocation transport in the constitutive description of crystal plasticity,
+    RWTH Aachen 2013,
+    http://publications.rwth-aachen.de/record/229993/files/4862.pdf
+
 output: [rho_u_ed_pos, rho_b_ed_pos, rho_u_ed_neg, rho_b_ed_neg, rho_u_sc_pos, rho_b_sc_pos, rho_u_sc_neg, rho_b_sc_neg, rho_d_ed, rho_d_sc]
+
 N_sl: [12]
 
 b_sl: [2.48e-10]

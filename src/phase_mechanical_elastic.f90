@@ -48,7 +48,7 @@ module subroutine elastic_init(phases)
       prm%C_11 = polynomial(elastic%asDict(),'C_11','T')
       prm%C_12 = polynomial(elastic%asDict(),'C_12','T')
       prm%C_44 = polynomial(elastic%asDict(),'C_44','T')
- 
+
       if (any(phase_lattice(ph) == ['hP','tI'])) then
         prm%C_13 = polynomial(elastic%asDict(),'C_13','T')
         prm%C_33 = polynomial(elastic%asDict(),'C_33','T')

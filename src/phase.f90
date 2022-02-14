@@ -278,6 +278,7 @@ module phase
         en
     end subroutine plastic_dependentState
 
+
     module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
       integer, intent(in) :: ph, en
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -321,7 +322,6 @@ module phase
     phase_restore, &
     plastic_nonlocal_updateCompatibility, &
     converged, &
-    crystallite_init, &
     phase_mechanical_constitutive, &
     phase_thermal_constitutive, &
     phase_damage_constitutive, &
@@ -399,6 +399,8 @@ subroutine phase_init
   call damage_init
   call thermal_init(phases)
 
+  call crystallite_init()
+
 end subroutine phase_init
 
 
@@ -434,6 +436,8 @@ subroutine phase_allocateState(state, &
   allocate(state%dotState      (sizeDotState,NEntries), source=0.0_pReal)
 
   allocate(state%deltaState  (sizeDeltaState,NEntries), source=0.0_pReal)
+  state%deltaState2 => state%state(state%offsetDeltaState+1: &
+                                   state%offsetDeltaState+state%sizeDeltaState,:)
 
 end subroutine phase_allocateState
 
@@ -499,21 +503,11 @@ subroutine crystallite_init()
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
-    cMax, &                                                                                         !< maximum number of  integration point components
-    iMax, &                                                                                         !< maximum number of integration points
-    eMax, &                                                                                         !< maximum number of elements
     en, ph
-
   class(tNode), pointer :: &
     num_crystallite, &
     phases
 
-
-  print'(/,1x,a)', '<<<+-  crystallite init  -+>>>'
-
-  cMax = homogenization_maxNconstituents
-  iMax = discretization_nIPs
-  eMax = discretization_Nelems
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
@@ -548,15 +542,9 @@ subroutine crystallite_init()
 
   phases => config_material%get('phase')
 
-  print'(/,a42,1x,i10)', '    # of elements:                       ', eMax
-  print'(  a42,1x,i10)', '    # of integration points/element:     ', iMax
-  print'(  a42,1x,i10)', 'max # of constituents/integration point: ', cMax
-  flush(IO_STDOUT)
-
-
   !$OMP PARALLEL DO PRIVATE(ce,ph,en)
-  do el = 1, eMax
-    do ip = 1, iMax
+  do el = 1, discretization_Nelems
+    do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
       do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
         en = material_phaseEntry(co,ce)

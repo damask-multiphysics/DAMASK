@@ -1,9 +1,21 @@
 type: Hooke
+
 references:
-  - J.P. Hirth and J. Lothe,
-    Theory of Dislocations, 1982,
-    John Wiley & Sons,
-    page 837
-C_11: 246.5e+9
-C_12: 147.3e+9
-C_44: 124.7e+9
+  - G.A. Alers,
+    Journal of Physics and Chemistry of Solids 13(1-2):40-55, 1960,
+    https://doi.org/10.1016/0022-3697(60)90125-6,
+    fit to Tab. 2 (T_min=100K, T_max=700K)
+
+C_11: 251.0e+9
+C_11,T: -4.998e+7
+C_11,T^2: -2.952e+4
+
+C_12: 150.0e+9
+C_12,T: -4.269e+6
+C_12,T^2: -6.429e+3
+
+C_44: 123.7e+9
+C_44,T: -3.618e+7
+C_44,T^2: -7.024e+3
+
+T_ref: 293.15

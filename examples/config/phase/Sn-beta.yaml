@@ -1,0 +1,9 @@
+references:
+  - J.A. Rayne and B.S. Chandrasekhar,
+    Physical Review 120(5):1658-1663, 1960,
+    https://doi.org/10.1103/PhysRev.120.1658
+  - https://en.wikipedia.org/wiki/Tin
+
+lattice: tI
+c/a: 0.5458 # T=300K (c=31.83nm, a=5.832nm)
+rho: 7265.0

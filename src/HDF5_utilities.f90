@@ -10,7 +10,8 @@ module HDF5_utilities
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-  use MPI
+  use MPI_f08
+  use MPI, only: MPI_INFO_NULL_F90 => MPI_INFO_NULL
 #endif
 #endif
 
@@ -162,9 +163,9 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   character,        intent(in), optional :: mode
   logical,          intent(in), optional :: parallel
 
-  character                              :: m
-  integer(HID_T)                         :: plist_id
-  integer                 :: hdferr
+  character      :: m
+  integer(HID_T) :: plist_id
+  integer :: hdferr
 
 
   if (present(mode)) then
@@ -178,9 +179,15 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
 
 #ifdef PETSC
   if (present(parallel)) then
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+    if (parallel) call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
+  else
+    call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL_F90, hdferr)
+#else
     if (parallel) call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
   else
     call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
+#endif
   end if
   if(hdferr < 0) error stop 'HDF5 error'
 #endif
@@ -1860,7 +1867,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
     globalShape                                                                                     !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
 
-  integer, dimension(worldsize) :: &
+  integer(MPI_INTEGER_KIND), dimension(worldsize) :: &
     readSize                                                                                        !< contribution of all processes
   integer :: hdferr
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -1871,13 +1878,13 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
-  readSize = 0
-  readSize(worldrank+1) = int(localShape(ubound(localShape,1)))
+  readSize = 0_MPI_INTEGER_KIND
+  readSize(worldrank+1) = int(localShape(ubound(localShape,1)),MPI_INTEGER_KIND)
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
     if(hdferr < 0) error stop 'HDF5 error'
-    call MPI_allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,err_MPI) ! get total output size over each process
+    call MPI_Allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI) ! get total output size over each process
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
 #endif
@@ -1954,8 +1961,8 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
     totalShape                                                                                      !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
 
-  integer, dimension(worldsize) :: writeSize                                                        !< contribution of all processes
-  integer(HID_T) ::  dcpl
+  integer(MPI_INTEGER_KIND), dimension(worldsize) :: writeSize                                      !< contribution of all processes
+  integer(HID_T) :: dcpl
   integer :: hdferr
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer(HSIZE_T), parameter :: chunkSize = 1024_HSIZE_T**2/8_HSIZE_T
@@ -1974,11 +1981,11 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 
 !--------------------------------------------------------------------------------------------------
 ! determine the global data layout among all processes
-  writeSize              = 0
-  writeSize(worldrank+1) = int(myShape(ubound(myShape,1)))
+  writeSize              = 0_MPI_INTEGER_KIND
+  writeSize(worldrank+1) = int(myShape(ubound(myShape,1)),MPI_INTEGER_KIND)
 #ifdef PETSC
   if (parallel) then
-    call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,err_MPI) ! get total output size over each process
+    call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI) ! get total output size over each process
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
 #endif
@@ -2009,7 +2016,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
       if (hdferr < 0) error stop 'HDF5 error'
     end if
   end if
- 
+
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
   call H5Screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)

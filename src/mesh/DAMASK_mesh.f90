@@ -307,9 +307,11 @@ program DAMASK_mesh
           guess = .true.                                                                            ! start guessing after first converged (sub)inc
           timeIncOld = timeinc
         end if
-        if (.not. cutBack .and. worldrank == 0) &
+        if (.not. cutBack .and. worldrank == 0) then
           write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                             solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
+          flush(statUnit)
+        endif
       end do subStepLooping
 
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc

@@ -1,9 +1,11 @@
 type: Hooke
+
 references:
   - J.P. Hirth and J. Lothe,
     Theory of Dislocations, 1982,
     John Wiley & Sons,
     page 837
+
 C_11: 186.e+9
 C_12: 157.e+9
 C_44: 42.e+9

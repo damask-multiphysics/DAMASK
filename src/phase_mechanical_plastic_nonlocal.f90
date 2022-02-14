@@ -231,8 +231,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
               st0 => state0(ph), del => deltaState(ph), dst => dependentState(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    mech => phase%get('mechanical')
+    pl => mech%get('plastic')
 
     plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
 #if defined (__GFORTRAN__)

@@ -47,6 +47,14 @@ submodule(phase:plastic) phenopowerlaw
       systems_tw
   end type tParameters
 
+  type :: tIndexDotState
+    integer, dimension(2) :: &
+      xi_sl, &
+      xi_tw, &
+      gamma_sl, &
+      gamma_tw
+  end type tIndexDotState
+
   type :: tPhenopowerlawState
     real(pReal), pointer, dimension(:,:) :: &
       xi_sl, &
@@ -56,11 +64,10 @@ submodule(phase:plastic) phenopowerlaw
   end type tPhenopowerlawState
 
 !--------------------------------------------------------------------------------------------------
-! containers for parameters and state
+! containers for parameters, dot state index,  and state
   type(tParameters),         allocatable, dimension(:) :: param
-  type(tPhenopowerlawState), allocatable, dimension(:) :: &
-    dotState, &
-    state
+  type(tIndexDotState),      allocatable, dimension(:) :: indexDotState
+  type(tPhenopowerlawState), allocatable, dimension(:) :: state
 
 contains
 
@@ -101,17 +108,18 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
+  allocate(indexDotState(phases%length))
   allocate(state(phases%length))
-  allocate(dotState(phases%length))
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), dot => dotState(ph), stt => state(ph))
+    associate(prm => param(ph), stt => state(ph), &
+              idx_dot => indexDotState(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    mech => phase%get('mechanical')
+    pl => mech%get('plastic')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -224,37 +232,37 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
-
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,0)
+    deallocate(plasticState(ph)%dotState) ! ToDo: remove dotState completely
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%xi_sl => plasticState(ph)%state   (startIndex:endIndex,:)
+    idx_dot%xi_sl = [startIndex,endIndex]
+    stt%xi_sl => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi_sl =  spread(xi_0_sl, 2, Nmembers)
-    dot%xi_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
-    stt%xi_tw => plasticState(ph)%state   (startIndex:endIndex,:)
+    idx_dot%xi_tw = [startIndex,endIndex]
+    stt%xi_tw => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi_tw =  spread(xi_0_tw, 2, Nmembers)
-    dot%xi_tw => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%gamma_sl => plasticState(ph)%state   (startIndex:endIndex,:)
-    dot%gamma_sl => plasticState(ph)%dotState(startIndex:endIndex,:)
+    idx_dot%gamma_sl = [startIndex,endIndex]
+    stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
-    stt%gamma_tw => plasticState(ph)%state   (startIndex:endIndex,:)
-    dot%gamma_tw => plasticState(ph)%dotState(startIndex:endIndex,:)
+    idx_dot%gamma_tw = [startIndex,endIndex]
+    stt%gamma_tw => plasticState(ph)%state(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
 
     end associate
@@ -324,13 +332,15 @@ end subroutine phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine phenopowerlaw_dotState(Mp,ph,en)
+module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
+  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+    dotState
 
   real(pReal) :: &
     xi_sl_sat_offset,&
@@ -340,28 +350,32 @@ module subroutine phenopowerlaw_dotState(Mp,ph,en)
     right_SlipSlip
 
 
-  associate(prm => param(ph), stt => state(ph), dot => dotState(ph))
+  associate(prm => param(ph), stt => state(ph), &
+            dot_xi_sl => dotState(indexDotState(ph)%xi_sl(1):indexDotState(ph)%xi_sl(2)), &
+            dot_xi_tw => dotState(indexDotState(ph)%xi_tw(1):indexDotState(ph)%xi_tw(2)), &
+            dot_gamma_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)), &
+            dot_gamma_tw => dotState(indexDotState(ph)%gamma_tw(1):indexDotState(ph)%gamma_tw(2)))
 
     call kinetics_sl(Mp,ph,en,dot_gamma_sl_pos,dot_gamma_sl_neg)
-    dot%gamma_sl(:,en) = abs(dot_gamma_sl_pos+dot_gamma_sl_neg)
-    call kinetics_tw(Mp,ph,en,dot%gamma_tw(:,en))
+    dot_gamma_sl = abs(dot_gamma_sl_pos+dot_gamma_sl_neg)
+    call kinetics_tw(Mp,ph,en,dot_gamma_tw)
 
     sumF = sum(stt%gamma_tw(:,en)/prm%gamma_char)
     xi_sl_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
     right_SlipSlip = sign(abs(1.0_pReal-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))**prm%a_sl, &
                           1.0_pReal-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))
 
-    dot%xi_sl(:,en) = prm%h_0_sl_sl * (1.0_pReal + prm%c_1*sumF** prm%c_2) * (1.0_pReal + prm%h_int) &
-                      * matmul(prm%h_sl_sl,dot%gamma_sl(:,en)*right_SlipSlip) &
-                    + matmul(prm%h_sl_tw,dot%gamma_tw(:,en))
+    dot_xi_sl = prm%h_0_sl_sl * (1.0_pReal + prm%c_1*sumF** prm%c_2) * (1.0_pReal + prm%h_int) &
+                * matmul(prm%h_sl_sl,dot_gamma_sl*right_SlipSlip) &
+              + matmul(prm%h_sl_tw,dot_gamma_tw)
 
-    dot%xi_tw(:,en) = prm%h_0_tw_sl * sum(stt%gamma_sl(:,en))**prm%c_3 &
-                      * matmul(prm%h_tw_sl,dot%gamma_sl(:,en)) &
-                    + prm%h_0_tw_tw * sumF**prm%c_4 * matmul(prm%h_tw_tw,dot%gamma_tw(:,en))
+    dot_xi_tw = prm%h_0_tw_sl * sum(stt%gamma_sl(:,en))**prm%c_3 &
+                * matmul(prm%h_tw_sl,dot_gamma_sl) &
+              + prm%h_0_tw_tw * sumF**prm%c_4 * matmul(prm%h_tw_tw,dot_gamma_tw)
 
   end associate
 
-end subroutine phenopowerlaw_dotState
+end function phenopowerlaw_dotState
 
 
 !--------------------------------------------------------------------------------------------------

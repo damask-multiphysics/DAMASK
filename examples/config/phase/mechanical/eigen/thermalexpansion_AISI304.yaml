@@ -1,7 +1,13 @@
 type: thermalexpansion
+
 references:
-  - R.H. Bogaard et al.
-    Thermochimica Acta 218:373-393, 1993
-    https://doi.org/10.1016/0040-6031(93)80437-F
-A_11: 15.0e-6
-T_ref: 300.0
+  - R.H. Bogaard et al.,
+    Thermochimica Acta 218:373-393, 1993,
+    https://doi.org/10.1016/0040-6031(93)80437-F,
+    fit to Fig. 6 (T_min=100K, T_max=1400K)
+
+A_11: 2.068e-08
+A_11,T: 1.579e-09
+A_11,T^2: 3.449e-13
+
+T_ref: 293.15

@@ -1,7 +1,21 @@
 type: Hooke
+
 references:
-  - https://www.mit.edu/~6.777/matprops/copper.htm,
-    fixed typo
-C_11: 168.3e+9
-C_12: 122.1e+9
-C_44: 75.7e+9
+  - W.C. Overton, Jr. and J. Gaffney,
+    Physical Review 98(4):969-977, 1955,
+    https://doi.org/10.1103/PhysRev.98.969,
+    fit to Tab. I (T_min=100K, T_max=300K)
+
+C_11: 168.6e+9
+C_11,T: -3.779e+7
+C_11,T^2: -2.536e+4
+
+C_12: 121.5e+9
+C_12,T: -1.632e+7
+C_12,T^2: -1.116e+4
+
+C_44: 75.59e+9
+C_44,T: -2.912e+7
+C_44,T^2: -1.669e+4
+
+T_ref: 293.15

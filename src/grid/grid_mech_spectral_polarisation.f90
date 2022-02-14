@@ -90,6 +90,12 @@ module grid_mechanical_spectral_polarisation
     err_curl, &                                                                                     !< RMS of curl of F
     err_div                                                                                         !< RMS of div of P
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  type(MPI_Status) :: status
+#else
+  integer, dimension(MPI_STATUS_SIZE) :: status
+#endif
+
   integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 
@@ -270,7 +276,7 @@ subroutine grid_mechanical_spectral_polarisation_init
     call MPI_File_open(MPI_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
                        MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_STATUS_IGNORE,err_MPI)
+    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,status,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call MPI_File_close(fileUnit,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'

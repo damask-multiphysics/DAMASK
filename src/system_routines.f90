@@ -24,7 +24,7 @@ module system_routines
 
   function setCWD_C(cwd) bind(C)
     use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
-    
+
     integer(C_INT) :: setCWD_C
     character(kind=C_CHAR), dimension(*), intent(in) :: cwd
   end function setCWD_C
@@ -150,14 +150,14 @@ function getUserName()
     getUserName = c_f_string(getUserName_Cstring)
   else
     getUserName = 'n/a (Error!)'
-  endif
+  end if
 
 end function getUserName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert C string to Fortran string
-!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string
+!> @brief Convert C string to Fortran string.
+!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
 !--------------------------------------------------------------------------------------------------
 pure function c_f_string(c_string) result(f_string)
 
@@ -174,28 +174,23 @@ pure function c_f_string(c_string) result(f_string)
     else
       f_string = f_string(:i-1)
       exit
-    endif
-  enddo arrayToString
+    end if
+  end do arrayToString
 
 end function c_f_string
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert Fortran string to C string
-!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string
+!> @brief Convert Fortran string to C string.
+!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string.
 !--------------------------------------------------------------------------------------------------
 pure function f_c_string(f_string) result(c_string)
 
   character(len=*), intent(in)                            :: f_string
   character(kind=C_CHAR), dimension(len_trim(f_string)+1) :: c_string
 
-  integer :: i
 
-
-  do i=1,len_trim(f_string)
-    c_string(i)=f_string(i:i)
-  enddo
-  c_string(len_trim(f_string)+1) = C_NULL_CHAR
+  c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string))
 
 end function f_c_string
 

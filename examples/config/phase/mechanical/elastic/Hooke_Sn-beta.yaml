@@ -1,0 +1,32 @@
+type: Hooke
+
+references:
+  - J.A. Rayne and B.S. Chandrasekhar,
+    Physical Review 120(5):1658-1663, 1960,
+    https://doi.org/10.1103/PhysRev.120.1658,
+    fit to Fig. 2 (T_min=100K, T_max=300K) and Tab. IV (C_13, T_min=77K, T_max=300K)
+
+C_11: 72.90e+9
+C_11,T: -4.399e+7
+C_11,T^2: -2.645e+4
+
+C_12: 59.27e+9
+C_12,T: 1.058e+7
+C_12,T^2: 1.002e+4
+
+C_13: 35.80e+9
+C_13,T: -2.870e+6
+
+C_33: 88.78e+9
+C_33,T: -5.250e+7
+C_33,T^2: 3.546e+3
+
+C_44: 22.26e+9
+C_44,T: -1.982e+7
+C_44,T^2: -8.711e+3
+
+C_66: 24.18e+9
+C_66,T: -1.806e+7
+C_66,T^2: -4.112e+3
+
+T_ref: 293.15

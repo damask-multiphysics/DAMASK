@@ -1,4 +1,5 @@
 type: phenopowerlaw
+
 references:
   - W.F. Hosford et al.,
     Acta Metallurgica 8(3):187-199, 1960,
@@ -7,8 +8,11 @@ references:
   - U.F. Kocks,
     Metallurgical and Materials Transactions B 1:1121–1143, 1970,
     https://doi.org/10.1007/BF02900224
+
 output: [xi_sl, gamma_sl]
+
 N_sl: [12]
+
 n_sl: 20
 a_sl: 3.1
 h_0_sl-sl: 1.7e+8
