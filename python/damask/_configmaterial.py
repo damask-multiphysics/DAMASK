@@ -212,18 +212,18 @@ class ConfigMaterial(Config):
         homogenization: {}
         phase: {}
 
-        >>> cm.from_table(t,O='qu',phase='phase',homogenization='SX')
+        >>> cm.from_table(t,O='qu',phase='phase',homogenization='single_crystal')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
                 v: 1.0
                 phase: Aluminum
-            homogenization: SX
+            homogenization: single_crystal
           - constituents:
               - O: [0.8, 0.19, 0.24, -0.51]
                 v: 1.0
                 phase: Steel
-            homogenization: SX
+            homogenization: single_crystal
         homogenization: {}
         phase: {}
 
