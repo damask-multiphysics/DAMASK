@@ -379,10 +379,9 @@ module function plastic_deltaState(ph, en) result(broken)
     en
   logical :: broken
 
-  real(pReal),               dimension(3,3) :: &
+  real(pReal), dimension(3,3) :: &
     Mp
   integer :: &
-    myOffset, &
     mySize
 
 

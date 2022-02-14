@@ -376,20 +376,32 @@ subroutine utilities_updateGamma(C)
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err)
     do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells1Red
       if (any([i,j,k] /= 1)) then                                                                   ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-        do concurrent (l = 1:3, m = 1:3)
+#ifndef __INTEL_COMPILER
+        do concurrent(l = 1:3, m = 1:3)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-cells3Offset))*xi1st(m,i,j,k-cells3Offset)
         end do
         do concurrent(l = 1:3, m = 1:3)
           temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
         end do
+#else
+        forall(l = 1:3, m = 1:3) &
+          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-cells3Offset))*xi1st(m,i,j,k-cells3Offset)
+        forall(l = 1:3, m = 1:3) &
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+#endif
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+#ifndef __INTEL_COMPILER
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,i,j,k-cells3Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
           end do
+#else
+          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+            gamma_hat(l,m,n,o,i,j,k-cells3Offset) = temp33_cmplx(l,n) * xiDyad_cmplx(o,m)
+#endif
         end if
       end if
     end do; end do; end do
@@ -497,23 +509,37 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
     do k = 1, cells3; do j = 1, cells(2); do i = 1, cells1Red
       if (any([i,j,k+cells3Offset] /= 1)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+#ifndef __INTEL_COMPILER
         do concurrent(l = 1:3, m = 1:3)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
         end do
         do concurrent(l = 1:3, m = 1:3)
           temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
         end do
+#else
+        forall(l = 1:3, m = 1:3) &
+          xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
+        forall(l = 1:3, m = 1:3) &
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+#endif
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
         if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
           call math_invert(A_inv, err, A)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
+#ifndef __INTEL_COMPILER
           do concurrent(l=1:3, m=1:3, n=1:3, o=1:3)
             gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
           end do
           do concurrent(l = 1:3, m = 1:3)
             temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
           end do
+#else
+          forall(l=1:3, m=1:3, n=1:3, o=1:3) &
+            gamma_hat(l,m,n,o,1,1,1) = temp33_cmplx(l,n)*xiDyad_cmplx(o,m)
+          forall(l = 1:3, m = 1:3) &
+            temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,1,1,1)*tensorField_fourier(1:3,1:3,i,j,k))
+#endif
           tensorField_fourier(1:3,1:3,i,j,k) = temp33_cmplx
         else
           tensorField_fourier(1:3,1:3,i,j,k) = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -524,9 +550,14 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   else memoryEfficient
     !$OMP PARALLEL DO PRIVATE(l,m,temp33_cmplx)
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells1Red
+#ifndef __INTEL_COMPILER
       do concurrent(l = 1:3, m = 1:3)
         temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k)*tensorField_fourier(1:3,1:3,i,j,k))
       end do
+#else
+      forall(l = 1:3, m = 1:3) &
+        temp33_cmplx(l,m) = sum(gamma_hat(l,m,1:3,1:3,i,j,k)*tensorField_fourier(1:3,1:3,i,j,k))
+#endif
       tensorField_fourier(1:3,1:3,i,j,k) = temp33_cmplx
     end do; end do; end do
     !$OMP END PARALLEL DO
@@ -758,7 +789,7 @@ subroutine utilities_fourierVectorDivergence()
 
 
   scalarField_fourier(1:cells1Red,1:cells(2),1:cells3) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(2),1:cells3) &
-                                                             *conjg(-xi1st))
+                                                             *conjg(-xi1st),1)
 
 end subroutine utilities_fourierVectorDivergence
 
