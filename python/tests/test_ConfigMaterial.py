@@ -96,6 +96,18 @@ class TestConfigMaterial:
         for i,m in enumerate(c['material']):
             assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
 
+    def test_from_table_with_constant(self):
+        N = np.random.randint(3,10)
+        a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
+                       np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2),
+                       np.ones(N*2),
+                      )).T
+        t = Table(a,{'varying':1,'constant':4,'ones':1})
+        c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':1})
+        assert len(c['material']) == N
+        for i,m in enumerate(c['material']):
+            assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
+
     @pytest.mark.parametrize('N,n,kw',[
                                         (1,1,{'phase':'Gold',
                                               'O':[1,0,0,0],

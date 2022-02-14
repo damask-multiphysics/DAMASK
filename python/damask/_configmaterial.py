@@ -178,8 +178,9 @@ class ConfigMaterial(Config):
         table : damask.Table
             Table that contains material information.
         **kwargs
-            Keyword arguments where the key is the name and the value specifies
-            the label of the data column in the table.
+            Keyword arguments where the key is the property name and
+            the value specifies either the label of the data column in the table
+            or a constant value.
 
         Returns
         -------
@@ -211,8 +212,23 @@ class ConfigMaterial(Config):
         homogenization: {}
         phase: {}
 
+        >>> cm.from_table(t,O='qu',phase='phase',homogenization='single_crystal')
+        material:
+          - constituents:
+              - O: [0.19, 0.8, 0.24, -0.51]
+                v: 1.0
+                phase: Aluminum
+            homogenization: single_crystal
+          - constituents:
+              - O: [0.8, 0.19, 0.24, -0.51]
+                v: 1.0
+                phase: Steel
+            homogenization: single_crystal
+        homogenization: {}
+        phase: {}
+
         """
-        kwargs_ = {k:table.get(v) for k,v in kwargs.items()}
+        kwargs_ = {k:table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T for k,v in kwargs.items()}
 
         _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
