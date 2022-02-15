@@ -44,6 +44,13 @@ class Table:
         return '\n'.join(['# '+c for c in self.comments])+'\n'+data_repr
 
 
+    def __eq__(self,
+               other: object) -> bool:
+        """Compare to other Table."""
+        return NotImplemented if not isinstance(other,Table) else \
+               self.shapes == other.shapes and self.data.equals(other.data)
+
+
     def __getitem__(self,
                     item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
@@ -75,20 +82,22 @@ class Table:
            colB  colA
         0     1     0
         2     7     6
-        >>> tbl[1:2,'colB']
+        >>> tbl[[True,False,False,True],'colB']
            colB
-        1     4
-        2     7
+        0     1
+        3    10
 
         """
-        item = (item,slice(None,None,None)) if isinstance(item,slice) else \
-               item if isinstance(item[0],slice) else \
-               (slice(None,None,None),item)
-        sliced = self.data.loc[item]
-        cols = np.array(sliced.columns if isinstance(sliced,pd.core.frame.DataFrame) else [item[1]])
+        item_ = (item,slice(None,None,None)) if isinstance(item,(slice,np.ndarray)) else \
+                (np.array(item),slice(None,None,None)) if isinstance(item,list) and np.array(item).dtype == np.bool_ else \
+                (np.array(item[0]),item[1]) if isinstance(item[0],list) else \
+                item if isinstance(item[0],(slice,np.ndarray)) else \
+                (slice(None,None,None),item)
+        sliced = self.data.loc[item_]
+        cols = np.array(sliced.columns if isinstance(sliced,pd.core.frame.DataFrame) else [item_[1]])
         _,idx = np.unique(cols,return_index=True)
         return self.__class__(data=sliced,
-                              shapes = {k:self.shapes[k] for k in cols[np.sort(idx)]},
+                              shapes={k:self.shapes[k] for k in cols[np.sort(idx)]},
                               comments=self.comments)
 
 
