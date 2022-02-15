@@ -164,8 +164,7 @@ class TestVTK:
                         data = np.random.random(N*np.prod(s)).reshape((N,-1)))
         default.add(Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes))
         for k,s in shapes.items():
-            assert np.allclose(default.get(k).reshape((N,-1)),d[k]['data'],
-                               rtol=1e-7)
+            assert np.allclose(np.squeeze(d[k]['data']),default.get(k),rtol=1e-7)
 
 
     def test_add_masked(self,default):
