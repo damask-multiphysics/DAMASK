@@ -372,9 +372,9 @@ class Table:
         label : str
             Column label.
         data : numpy.ndarray
-            New data.
+            Replacement data.
         info : str, optional
-            Human-readable information about the new data.
+            Human-readable information about the modified data.
 
         Returns
         -------
@@ -407,9 +407,9 @@ class Table:
         label : str
             Column label.
         data : numpy.ndarray
-            Modified data.
+            New data.
         info : str, optional
-            Human-readable information about the modified data.
+            Human-readable information about the new data.
 
         Returns
         -------
@@ -485,7 +485,7 @@ class Table:
                 labels: Union[str, List[str]],
                 ascending: Union[bool, List[bool]] = True) -> 'Table':
         """
-        Sort table by values of given labels.
+        Sort table by data of given columns.
 
         Parameters
         ----------
