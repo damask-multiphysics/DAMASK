@@ -140,8 +140,8 @@ class Rotation:
         """
         return np.logical_not(self==other) if isinstance(other, Rotation) else NotImplemented
 
-    def isclose(self,
-                other: 'Rotation',
+    def isclose(self: MyType,
+                other: MyType,
                 rtol: float = 1e-5,
                 atol: float = 1e-8,
                 equal_nan: bool = True) -> bool:
@@ -171,8 +171,8 @@ class Rotation:
                              np.all(np.isclose(s,-1.0*o,rtol,atol,equal_nan),axis=-1))
 
 
-    def allclose(self,
-                 other: 'Rotation',
+    def allclose(self: MyType,
+                 other: MyType,
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
                  equal_nan: bool = True) -> Union[np.bool_, bool]:

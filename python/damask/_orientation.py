@@ -168,8 +168,8 @@ class Orientation(Rotation,Crystal):
         return np.logical_not(self==other) if isinstance(other, Orientation) else NotImplemented
 
 
-    def isclose(self,
-                other: object,
+    def isclose(self: MyType,
+                other: MyType,
                 rtol: float = 1e-5,
                 atol: float = 1e-8,
                 equal_nan: bool = True) -> bool:
@@ -193,8 +193,6 @@ class Orientation(Rotation,Crystal):
             Mask indicating where corresponding orientations are close.
 
         """
-        if not isinstance(other, Orientation):
-            raise TypeError
         matching_type = self.family == other.family and \
                         self.lattice == other.lattice and \
                         self.parameters == other.parameters
@@ -202,8 +200,8 @@ class Orientation(Rotation,Crystal):
 
 
 
-    def allclose(self,
-                 other: object,
+    def allclose(self: MyType,
+                 other: MyType,
                  rtol: float = 1e-5,
                  atol: float = 1e-8,
                  equal_nan: bool = True) -> bool:
