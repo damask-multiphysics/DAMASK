@@ -218,7 +218,7 @@ class VTK:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
             if dataset_type is None:
-                raise TypeError('Dataset type for *.vtk file not given.')
+                raise TypeError('Dataset type for *.vtk file not given')
             elif dataset_type.lower().endswith(('imagedata','image_data')):
                 reader.Update()
                 vtk_data = reader.GetStructuredPointsOutput()
@@ -232,7 +232,7 @@ class VTK:
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
             else:
-                raise TypeError(f'Unknown dataset type {dataset_type} for vtk file')
+                raise TypeError(f'Unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
                 reader = vtk.vtkXMLImageDataReader()
@@ -243,7 +243,7 @@ class VTK:
             elif ext == '.vtp':
                 reader = vtk.vtkXMLPolyDataReader()
             else:
-                raise TypeError(f'Unknown file extension {ext}')
+                raise TypeError(f'Unknown file extension "{ext}"')
 
             reader.SetFileName(str(fname))
             reader.Update()
