@@ -7,7 +7,6 @@ import numpy as np
 import numpy.ma as ma
 import vtk
 
-from collections import defaultdict
 from damask import VTK
 from damask import Table
 from damask import grid_filters
@@ -159,12 +158,11 @@ class TestVTK:
                                        {'tensor':(3,3),'scalar':(1,)}])
     def test_add_table(self,default,shapes):
         N = np.random.choice([default.N_points,default.N_cells])
-        d = defaultdict(dict)
+        d = dict()
         for k,s in shapes.items():
-            d[k]['shape'] = s
-            d[k]['data'] = np.random.random(N*np.prod(s)).reshape((N,-1))
-        t = Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes)
-        default.add(t)
+            d[k] = dict(shape = s,
+                        data = np.random.random(N*np.prod(s)).reshape((N,-1)))
+        default.add(Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes))
         for k,s in shapes.items():
             assert np.allclose(default.get(k).reshape((N,-1)),d[k]['data'],
                                rtol=1e-7)
