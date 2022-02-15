@@ -38,6 +38,18 @@ class VTK:
         self.vtk_data = vtk_data
 
 
+    @property
+    def N_points(self) -> int:
+        """Number of points in vtkdata."""
+        return self.vtk_data.GetNumberOfPoints()
+
+
+    @property
+    def N_cells(self) -> int:
+        """Number of cells in vtkdata."""
+        return self.vtk_data.GetNumberOfCells()
+
+
     @staticmethod
     def from_image_data(cells: IntSequence,
                         size: FloatSequence,
@@ -295,7 +307,7 @@ class VTK:
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     # Needs support for damask.Table
     def add(self,
-            data: Union[np.ndarray, np.ma.MaskedArray],
+            data: Union[np.ndarray, np.ma.MaskedArray, 'Table'],
             label: str = None):
         """
         Add data to either cells or points.
@@ -309,20 +321,17 @@ class VTK:
             Data label.
 
         """
-        N_points = self.vtk_data.GetNumberOfPoints()
-        N_cells  = self.vtk_data.GetNumberOfCells()
 
-        if isinstance(data,np.ndarray):
-            if label is None:
-                raise ValueError('No label defined for numpy.ndarray')
+        def _add_array(self,
+                       data: np.ndarray,
+                       label: str):
 
-            N_data = data.shape[0]
-            data_ = (data if not isinstance(data,np.ma.MaskedArray) else
-                     np.where(data.mask,data.fill_value,data)).reshape(N_data,-1)
+            N_data   = data.shape[0]
 
-            if data_.dtype in [np.double,np.longdouble]:
-                d = np_to_vtk(data_.astype(np.single),deep=True)                                    # avoid large files
-            elif data_.dtype.type is np.str_:
+            data_ = data.reshape(N_data,-1)\
+                        .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
+
+            if data.dtype.type is np.str_:
                 d = vtk.vtkStringArray()
                 for s in np.squeeze(data_):
                     d.InsertNextValue(s)
@@ -331,14 +340,24 @@ class VTK:
 
             d.SetName(label)
 
-            if   N_data == N_points:
+            if   N_data == self.N_points:
                 self.vtk_data.GetPointData().AddArray(d)
-            elif N_data == N_cells:
+            elif N_data == self.N_cells:
                 self.vtk_data.GetCellData().AddArray(d)
             else:
-                raise ValueError(f'Cell / point count ({N_cells} / {N_points}) differs from data ({N_data}).')
+                raise ValueError(f'Data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
+
+
+        if isinstance(data,np.ndarray):
+            if label is not None:
+                _add_array(self,
+                           np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data,
+                           label)
+            else:
+                raise ValueError('No label defined for numpy.ndarray')
         elif isinstance(data,Table):
-            raise NotImplementedError('damask.Table')
+            for l in data.labels:
+                _add_array(self,data.get(l),l)
         else:
             raise TypeError
 
@@ -383,7 +402,7 @@ class VTK:
             # string array
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
-            raise ValueError(f'Array "{label}" not found.')
+            raise ValueError(f'Array "{label}" not found')
 
 
     @property

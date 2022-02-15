@@ -7,7 +7,9 @@ import numpy as np
 import numpy.ma as ma
 import vtk
 
+from collections import defaultdict
 from damask import VTK
+from damask import Table
 from damask import grid_filters
 
 @pytest.fixture
@@ -150,6 +152,22 @@ class TestVTK:
         data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
         default.add(data,'data')
         assert (np.squeeze(data.reshape(N_values,-1)) == default.get('data')).all()
+
+
+    @pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
+                                       {'vector':(6,),'tensor':(3,3)},
+                                       {'tensor':(3,3),'scalar':(1,)}])
+    def test_add_table(self,default,shapes):
+        N = np.random.choice([default.N_points,default.N_cells])
+        d = defaultdict(dict)
+        for k,s in shapes.items():
+            d[k]['shape'] = s
+            d[k]['data'] = np.random.random(N*np.prod(s)).reshape((N,-1))
+        t = Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes)
+        default.add(t)
+        for k,s in shapes.items():
+            assert np.allclose(default.get(k).reshape((N,-1)),d[k]['data'],
+                               rtol=1e-7)
 
 
     def test_add_masked(self,default):

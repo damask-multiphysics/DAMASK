@@ -326,7 +326,7 @@ class Table:
 
 
     @property
-    def labels(self) -> List[Tuple[int, ...]]:
+    def labels(self) -> List[str]:
         return list(self.shapes)
 
 
