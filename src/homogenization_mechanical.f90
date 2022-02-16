@@ -131,19 +131,14 @@ module subroutine mechanical_homogenize(Delta_t,ce)
   integer :: co
 
 
-  homogenization_P(1:3,1:3,ce)            = phase_P(1,ce)
-  homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(Delta_t,1,ce)
+  homogenization_P(1:3,1:3,ce)            = phase_P(1,ce)*material_v(1,ce)
+  homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(Delta_t,1,ce)*material_v(1,ce)
   do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
     homogenization_P(1:3,1:3,ce)            = homogenization_P(1:3,1:3,ce) &
-                                            + phase_P(co,ce)
+                                            + phase_P(co,ce)*material_v(co,ce)
     homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = homogenization_dPdF(1:3,1:3,1:3,1:3,ce) &
-                                            + phase_mechanical_dPdF(Delta_t,co,ce)
+                                            + phase_mechanical_dPdF(Delta_t,co,ce)*material_v(co,ce)
   end do
-
-  homogenization_P(1:3,1:3,ce)            = homogenization_P(1:3,1:3,ce) &
-                                          / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
-  homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = homogenization_dPdF(1:3,1:3,1:3,1:3,ce) &
-                                          / real(homogenization_Nconstituents(material_homogenizationID(ce)),pReal)
 
 end subroutine mechanical_homogenize
 
