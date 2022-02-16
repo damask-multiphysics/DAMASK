@@ -1567,11 +1567,7 @@ class Rotation:
                          +0.000059719705868660826, -0.00001980756723965647,
                          +0.000003953714684212874, -0.00000036555001439719544])
         hmag_squared = np.sum(ho**2.,axis=-1,keepdims=True)
-        hm = hmag_squared.copy()
-        s = tfit[0] + tfit[1] * hmag_squared
-        for i in range(2,16):
-            hm *= hmag_squared
-            s  += tfit[i] * hm
+        s = sum([t*hmag_squared**i for i,t in enumerate(tfit)])                                     # np.sum fails due to higher precision
         with np.errstate(invalid='ignore'):
             ax = np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-8,ho.shape[:-1]+(4,)),
                           [ 0.0, 0.0, 1.0, 0.0 ],
