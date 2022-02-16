@@ -1,4 +1,5 @@
 type: Hooke
+
 references:
   - D. Music et al.,
     Applied Physics Letters 99(19):191904, 2007,
@@ -6,6 +7,7 @@ references:
   - S.L. Wong et al.,
     Acta Materialia 118:140-151, 2016,
     https://doi.org/10.1016/j.actamat.2016.07.032
+
 C_11: 175.0e+9
 C_12: 115.0e+9
 C_44: 135.0e+9

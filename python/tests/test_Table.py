@@ -59,10 +59,14 @@ class TestTable:
 
     @pytest.mark.parametrize('N',[1,3,4])
     def test_slice(self,default,N):
+        mask = np.random.choice([True,False],len(default))
         assert len(default[:N]) == 1+N
         assert len(default[:N,['F','s']]) == 1+N
+        assert len(default[mask,['F','s']]) == np.count_nonzero(mask)
+        assert default[mask,['F','s']] == default[mask][['F','s']] == default[['F','s']][mask]
+        assert default[np.logical_not(mask),['F','s']] != default[mask][['F','s']]
         assert default[N:].get('F').shape == (len(default)-N,3,3)
-        assert (default[:N,['v','s']].data == default['v','s'][:N].data).all().all()
+        assert default[:N,['v','s']].data.equals(default['v','s'][:N].data)
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmp_path,mode):

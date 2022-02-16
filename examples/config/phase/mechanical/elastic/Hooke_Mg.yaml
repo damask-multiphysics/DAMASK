@@ -1,10 +1,29 @@
 type: Hooke
+
 references:
-  - D. Tromans,
-    International Journal of Recent Research and Applied Studies 6(4):462-483, 2011,
-    https://www.arpapress.com/Volumes/Vol6Issue4/IJRRAS_6_4_14.pdf
-C_11: 59.3e+9
-C_33: 61.5e+9
-C_44: 16.4e+9
-C_12: 25.7e+9
-C_13: 21.4e+9
+  - L.J. Slutsky and C.W. Garland,
+    Physical Review 107(4):972-976, 1957,
+    https://doi.org/10.1103/PhysRev.107.972,
+    fit to Tab. I (T_min=100K, T_max=300K)
+
+C_11: 59.50e+9
+C_11,T: -1.930e+7
+C_11,T^2: -1.215e+4
+
+C_33: 61.72e+9
+C_33,T: -2.175e+7
+C_33,T^2: -5.624e+3
+
+C_44: 16.46e+9
+C_44,T: -1.006e+7
+C_44,T^2: -7.692e+3
+
+C_12: 25.62e+9
+C_12,T: -2.216e+6
+C_12,T^2: -4.138e+3
+
+C_13: 21.46e+9
+C_13,T: -1.921e+6
+C_13,T^2: -4.283e+3
+
+T_ref: 293.15

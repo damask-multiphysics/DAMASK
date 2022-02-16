@@ -222,14 +222,13 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving_execElem)
+subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
 
   real(pReal), intent(in) :: Delta_t                                                                !< time increment
-  integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
+  integer, intent(in) :: &
+    cell_start, cell_end
   integer :: &
     NiterationMPstate, &
-    ip, &                                                                                            !< integration point number
-    el, &                                                                                            !< element number
     co, ce, ho, en
   logical :: &
     converged
@@ -237,45 +236,42 @@ subroutine homogenization_mechanical_response(Delta_t,FEsolving_execIP,FEsolving
     doneAndHappy
 
 
-  !$OMP PARALLEL DO PRIVATE(ce,en,ho,NiterationMPstate,converged,doneAndHappy)
-  do el = FEsolving_execElem(1),FEsolving_execElem(2)
+  !$OMP PARALLEL DO PRIVATE(en,ho,co,NiterationMPstate,converged,doneAndHappy)
+  do ce = cell_start, cell_end
 
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      ce = (el-1)*discretization_nIPs + ip
-      en = material_homogenizationEntry(ce)
-      ho = material_homogenizationID(ce)
+    en = material_homogenizationEntry(ce)
+    ho = material_homogenizationID(ce)
 
-      call phase_restore(ce,.false.) ! wrong name (is more a forward function)
+    call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-      if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
-      if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
-      call damage_partition(ce)
+    if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
+    if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
+    call damage_partition(ce)
 
-      doneAndHappy = [.false.,.true.]
+    doneAndHappy = [.false.,.true.]
 
-      NiterationMPstate = 0
-      convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
-                                    .and. NiterationMPstate < num%nMPstate)
-        NiterationMPstate = NiterationMPstate + 1
+    NiterationMPstate = 0
+    convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
+                                  .and. NiterationMPstate < num%nMPstate)
+      NiterationMPstate = NiterationMPstate + 1
 
-        call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
-        converged = all([(phase_mechanical_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
-        if (converged) then
-          doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
-          converged = all(doneAndHappy)
-        else
-          doneAndHappy = [.true.,.false.]
-        endif
-      enddo convergenceLooping
+      call mechanical_partition(homogenization_F(1:3,1:3,ce),ce)
+      converged = all([(phase_mechanical_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
+      if (converged) then
+        doneAndHappy = mechanical_updateState(Delta_t,homogenization_F(1:3,1:3,ce),ce)
+        converged = all(doneAndHappy)
+      else
+        doneAndHappy = [.true.,.false.]
+      end if
+    end do convergenceLooping
 
-      converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ip,el),co=1,homogenization_Nconstituents(ho))])
+    converged = converged .and. all([(phase_damage_constitutive(Delta_t,co,ce),co=1,homogenization_Nconstituents(ho))])
 
-      if (.not. converged) then
-        if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
-        terminallyIll = .true.
-      endif
-    enddo
-  enddo
+    if (.not. converged) then
+      if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
+      terminallyIll = .true.
+    end if
+  end do
   !$OMP END PARALLEL DO
 
 end subroutine homogenization_mechanical_response
@@ -284,31 +280,27 @@ end subroutine homogenization_mechanical_response
 !--------------------------------------------------------------------------------------------------
 !> @brief
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_thermal_response(Delta_t,FEsolving_execIP,FEsolving_execElem)
+subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
 
   real(pReal), intent(in) :: Delta_t                                                                !< time increment
-  integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
+  integer, intent(in) :: &
+    cell_start, cell_end
   integer :: &
-    ip, &                                                                                           !< integration point number
-    el, &                                                                                           !< element number
     co, ce, ho
 
 
-  !$OMP PARALLEL DO PRIVATE(ho,ce)
-  do el = FEsolving_execElem(1),FEsolving_execElem(2)
+  !$OMP PARALLEL DO PRIVATE(ho)
+  do ce = cell_start, cell_end
     if (terminallyIll) continue
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      ce = (el-1)*discretization_nIPs + ip
-      ho = material_homogenizationID(ce)
-      call thermal_partition(ce)
-      do co = 1, homogenization_Nconstituents(ho)
-        if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
-          if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
-          terminallyIll = .true.
-        endif
-      enddo
-    enddo
-  enddo
+    ho = material_homogenizationID(ce)
+    call thermal_partition(ce)
+    do co = 1, homogenization_Nconstituents(ho)
+      if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
+        if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
+        terminallyIll = .true.
+      end if
+    end do
+  end do
   !$OMP END PARALLEL DO
 
 end subroutine homogenization_thermal_response
@@ -331,11 +323,11 @@ subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolvin
   elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
     IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
-      ho = material_homogenizationID(ce)
-      do co = 1, homogenization_Nconstituents(ho)
-        call crystallite_orientations(co,ip,el)
+    ho = material_homogenizationID(ce)
+    do co = 1, homogenization_Nconstituents(ho)
+      call crystallite_orientations(co,ip,el)
       enddo
-      call mechanical_homogenize(Delta_t,ce)
+    call mechanical_homogenize(Delta_t,ce)
     enddo IpLooping3
   enddo elementLooping3
   !$OMP END PARALLEL DO

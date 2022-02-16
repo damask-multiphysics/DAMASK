@@ -34,6 +34,13 @@ submodule(phase:plastic) kinehardening
       systems_sl
   end type tParameters
 
+  type :: tIndexDotState
+    integer, dimension(2) :: &
+      xi, &
+      chi, &
+      gamma
+  end type tIndexDotState
+
   type :: tKinehardeningState
     real(pReal), pointer, dimension(:,:) :: &
       xi, &                                                                                         !< resistance against plastic slip
@@ -47,10 +54,8 @@ submodule(phase:plastic) kinehardening
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
   type(tParameters),         allocatable, dimension(:) :: param
-  type(tKinehardeningState), allocatable, dimension(:) :: &
-    dotState, &
-    deltaState, &
-    state
+  type(tIndexDotState),      allocatable, dimension(:) :: indexDotState
+  type(tKinehardeningState), allocatable, dimension(:) :: state, deltaState
 
 contains
 
@@ -91,19 +96,20 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
+  allocate(indexDotState(phases%length))
   allocate(state(phases%length))
-  allocate(dotState(phases%length))
   allocate(deltaState(phases%length))
 
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), dot => dotState(ph), dlt => deltaState(ph), stt => state(ph))
+    associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph), &
+              idx_dot => indexDotState(ph))
 
     phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    mech => phase%get('mechanical')
+    pl => mech%get('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -173,27 +179,28 @@ module function plastic_kinehardening_init() result(myPlasticity)
     sizeState = sizeDotState + sizeDeltaState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState)
+    deallocate(plasticState(ph)%dotState) ! ToDo: remove dotState completely
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%xi => plasticState(ph)%state   (startIndex:endIndex,:)
+    idx_dot%xi = [startIndex,endIndex]
+    stt%xi => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi = spread(xi_0, 2, Nmembers)
-    dot%xi => plasticState(ph)%dotState(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%chi => plasticState(ph)%state   (startIndex:endIndex,:)
-    dot%chi => plasticState(ph)%dotState(startIndex:endIndex,:)
+    idx_dot%chi = [startIndex,endIndex]
+    stt%chi => plasticState(ph)%state(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%gamma => plasticState(ph)%state   (startIndex:endIndex,:)
-    dot%gamma => plasticState(ph)%dotState(startIndex:endIndex,:)
+    idx_dot%gamma = [startIndex,endIndex]
+    stt%gamma => plasticState(ph)%state(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
@@ -270,13 +277,15 @@ end subroutine kinehardening_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_kinehardening_dotState(Mp,ph,en)
+module function plastic_kinehardening_dotState(Mp,ph,en) result(dotState)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
+  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+    dotState
 
   real(pReal) :: &
     sumGamma
@@ -284,29 +293,32 @@ module subroutine plastic_kinehardening_dotState(Mp,ph,en)
     dot_gamma_pos,dot_gamma_neg
 
 
-  associate(prm => param(ph), stt => state(ph),dot => dotState(ph))
+  associate(prm => param(ph), stt => state(ph), &
+            dot_xi => dotState(IndexDotState(ph)%xi(1):IndexDotState(ph)%xi(2)),&
+            dot_chi => dotState(IndexDotState(ph)%chi(1):IndexDotState(ph)%chi(2)),&
+            dot_gamma => dotState(IndexDotState(ph)%gamma(1):IndexDotState(ph)%gamma(2)))
 
     call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
-    dot%gamma(:,en) = abs(dot_gamma_pos+dot_gamma_neg)
+    dot_gamma = abs(dot_gamma_pos+dot_gamma_neg)
     sumGamma = sum(stt%gamma(:,en))
 
 
-    dot%xi(:,en) = matmul(prm%h_sl_sl,dot%gamma(:,en)) &
+    dot_xi = matmul(prm%h_sl_sl,dot_gamma) &
                    * (  prm%h_inf_f &
                        + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
                        * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
                      )
 
-    dot%chi(:,en) = stt%sgn_gamma(:,en)*dot%gamma(:,en) * &
-             ( prm%h_inf_b + &
-               (prm%h_0_b - prm%h_inf_b &
+    dot_chi = stt%sgn_gamma(:,en)*dot_gamma &
+            * ( prm%h_inf_b &
+               + (prm%h_0_b - prm%h_inf_b &
                  + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi_0(:,en))*(stt%gamma(:,en)-stt%gamma_0(:,en))&
                ) *exp(-(stt%gamma(:,en)-stt%gamma_0(:,en)) *prm%h_0_b/(prm%xi_inf_b+stt%chi_0(:,en))) &
              )
 
   end associate
 
-end subroutine plastic_kinehardening_dotState
+end function plastic_kinehardening_dotState
 
 
 !--------------------------------------------------------------------------------------------------

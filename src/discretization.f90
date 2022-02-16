@@ -12,7 +12,8 @@ module discretization
 
   integer,     public, protected :: &
     discretization_nIPs, &
-    discretization_Nelems
+    discretization_Nelems, &
+    discretization_Ncells
 
   integer,     public, protected, dimension(:),   allocatable :: &
     discretization_materialAt                                                                       !ToDo: discretization_ID_material
@@ -53,6 +54,7 @@ subroutine discretization_init(materialAt,&
 
   discretization_Nelems = size(materialAt,1)
   discretization_nIPs   = size(IPcoords0,2)/discretization_Nelems
+  discretization_Ncells = discretization_Nelems*discretization_nIPs
 
   discretization_materialAt = materialAt
 

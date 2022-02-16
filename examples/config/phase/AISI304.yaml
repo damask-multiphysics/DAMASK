@@ -1,6 +1,7 @@
 references:
-  - H.M. Ledbetter
-    physica status solidi (a) 85(1):89-96, 1984
+  - H.M. Ledbetter,
+    physica status solidi (a) 85(1):89-96, 1984,
     https://doi.org/10.1002/pssa.2210850111
+
 lattice: cF
 rho: 7937.0

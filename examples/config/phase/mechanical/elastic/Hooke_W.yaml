@@ -1,8 +1,20 @@
 type: Hooke
+
 references:
-  - D. Cereceda et al.,
-    International Journal of Plasticity 78:242-265, 2016,
-    https://doi.org/10.1016/j.ijplas.2015.09.002
-C_11: 523.e+9
-C_12: 202.e+9
-C_44: 161.e+9
+  - F.H. Featherston and J.R. Nieghbours,
+    Physical Review 130(4):1324-1333,
+    https://doi.org/10.1103/PhysRev.130.1324,
+    fit to Tab. III (T_min=100K, T_max=300K)
+
+C_11: 523.6e+9
+C_11,T: -7.607e+7
+C_11,T^2: -1.551e+5
+
+C_12: 205.1e+9
+C_12,T: -2.843e+6
+
+C_44: 160.8e+9
+C_44,T: -1.057e+7
+C_44,T^2: 9.933e+3
+
+T_ref: 293.15
