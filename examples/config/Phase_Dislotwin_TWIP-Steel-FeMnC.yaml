@@ -1,31 +1,62 @@
 type: dislotwin
-output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, tau_hat_tw, f_tr]
-D: 2.0e-5
+output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, f_tr]
+
+# Slip
 N_sl: [12]
 b_sl: [2.56e-10]
+Q_sl: [3.5e-19]
+p_sl: [0.325]
+q_sl: [1.55]
+B: [0.001]
+i_sl: [30.0]
+
 rho_mob_0: [1.0e+12]
 rho_dip_0: [1.0]
+
 v_0: [1.0e+4]
-Q_sl: [3.7e-19]
-p_sl: [1.0]
-q_sl: [1.0]
-tau_0: [1.5e+8]
-i_sl: [10.0]                 # Adj. parameter controlling dislocation mean free path
-D_0: 4.0e-5                  # Vacancy diffusion prefactor  / m^2/s
+tau_0: [3.5e+8]
 D_a: 1.0                     # minimum dipole distance / b
 Q_cl: 4.5e-19                # Activation energy for climb / J
+
 h_sl-sl: [0.122, 0.122, 0.625, 0.07, 0.137, 0.137, 0.122]  # Interaction coefficients (Kubin et al. 2008)
-# twinning parameters
+h_tw-sl: [0.0] # ToDo: values not known
+
+# Twin
 N_tw: [12]
-b_tw: [1.47e-10]             # Burgers vector length of twin system / b
-t_tw: [5.0e-8]               # Twin stack mean thickness / m
-L_tw: 442.0                  # Length of twin nuclei / b
-x_c_tw: 1.0e-9               # critical distance for formation of twin nucleus / m
-V_cs:  1.67e-29              # cross slip volume / m^3
-p_tw: [10.0]                 # r-exponent in twin formation probability
-i_tw: 1.0                    # Adj. parameter controlling twin mean free path
-h_sl-tw: [0.0, 1.0, 1.0]     # dislocation-twin interaction coefficients
-h_tw-tw: [0.0, 1.0]          # twin-twin interaction coefficients
-T_ref: 0.0
-Gamma_sf: -0.0396            # stacking fault energy / J/m^2 at zero K; TWIP steel: -0.0526; Cu: -0.0396
-Gamma_sf,T: 0.0002         # temperature dependence / J/(m^2 K) of stacking fault energy
+b_tw: [1.40e-10]
+L_tw: 1.8e-7
+i_tw: 10.0
+t_tw: [5.0e-8]
+p_tw: [3.0] # A
+
+h_tw-tw: [0.0, 1.0] # ToDo: values not known
+h_sl-tw: [0.0, 1.0, 1.0] # ToDo: values not known
+
+# Transformation
+N_tr: [12]
+b_tr: [1.40e-10]
+L_tr: 1.8e-7
+i_tr: 3.0
+t_tr: [1.0e-7]
+p_tr: [3.0] # B
+V_mol: 7.09e-6
+Delta_G: 1.33343932e+02
+Delta_G,T: 2.56640412
+Delta_G,T^2: 1.49524179e-03
+
+h_tr-tr: [1.0, 1.0]          # guessing
+h_sl-tr: [0.0, 1.0, 1.0]     # guessing
+
+# Twin & Transformation
+T_ref: 298.15
+Gamma_sf: 2.89394017e-02
+Gamma_sf,T: 1.22823814e-04
+Gamma_sf,T^2: 1.47322968e-07
+x_c: 1.0e-9
+V_cs: 1.67e-29
+
+a_cF: 3.62e-10
+c/a_hP: 1.633
+
+# Slip & Twin & Transformation
+D: 2.0e-5
