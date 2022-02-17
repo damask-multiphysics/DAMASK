@@ -121,7 +121,7 @@ class VTK:
 
         Parameters
         ----------
-        nodes : numpy.ndarray of shape (:,3)
+        nodes : numpy.ndarray, shape (:,3)
             Spatial position of the nodes.
         connectivity : numpy.ndarray of np.dtype = int
             Cell connectivity (0-based), first dimension determines #Cells,
@@ -161,7 +161,7 @@ class VTK:
 
         Parameters
         ----------
-        points : numpy.ndarray of shape (:,3)
+        points : numpy.ndarray, shape (:,3)
             Spatial position of the points.
 
         Returns
@@ -308,10 +308,10 @@ class VTK:
 
         Parameters
         ----------
-        data : numpy.ndarray or numpy.ma.MaskedArray
+        data : numpy.ndarray, numpy.ma.MaskedArray, or damask.Table
             Data to add. First dimension needs to match either
             number of cells or number of points.
-        label : str
+        label : str, optional if data is damask.Table
             Data label.
 
         """
