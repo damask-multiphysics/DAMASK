@@ -9,7 +9,6 @@ import vtk
 
 from damask import VTK
 from damask import Table
-from damask import grid_filters
 
 @pytest.fixture
 def ref_path(ref_path_base):
