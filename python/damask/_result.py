@@ -168,17 +168,21 @@ class Result:
 
     def __repr__(self):
         """Show summary of file content."""
+        with h5py.File(self.fname,'r') as f:
+            header = [f'Created by {f.attrs["creator"]}',
+                      f'        on {f.attrs["created"]}',
+                      f' executing "{f.attrs["call"]}"']
         visible_increments = self.visible['increments']
 
         first = self.view(increments=visible_increments[0:1]).list_data()
 
-        last  = '' if len(visible_increments) < 2 else \
+        last  = [] if len(visible_increments) < 2 else \
                 self.view(increments=visible_increments[-1:]).list_data()
 
-        in_between = '' if len(visible_increments) < 3 else \
-                     ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-1]])
+        in_between = [] if len(visible_increments) < 3 else \
+                     [f'\n{inc}\n  ...' for inc in visible_increments[1:-1]]
 
-        return util.srepr(first + in_between + last)
+        return util.srepr([util.deemph(header)] + first + in_between + last)
 
 
     def _manage_view(self,action,what,datasets):
@@ -537,24 +541,32 @@ class Result:
 
 
     def list_data(self):
-        """Return information on all active datasets in the file."""
-        msg = ''
+        """
+        Collect information on all active datasets in the file.
+
+        Returns
+        -------
+        data : list of str
+            Line-formatted information about active datasets.
+
+        """
+        msg = []
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
-                msg = ''.join([msg,f'\n{inc} ({self.times[self.increments.index(inc)]}s)\n'])
+                msg += [f'\n{inc} ({self.times[self.increments.index(inc)]} s)']
                 for ty in ['phase','homogenization']:
-                    msg = '  '.join([msg,f'{ty}\n'])
+                    msg += [f'  {ty}']
                     for label in self.visible[ty+'s']:
-                        msg = '    '.join([msg,f'{label}\n'])
+                        msg += [f'    {label}']
                         for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
-                            msg = '      '.join([msg,f'{field}\n'])
+                            msg += [f'      {field}']
                             for d in f['/'.join([inc,ty,label,field])].keys():
                                 dataset = f['/'.join([inc,ty,label,field,d])]
-                                unit = f' / {dataset.attrs["unit"]}' if h5py3 else \
-                                       f' / {dataset.attrs["unit"].decode()}'
+                                unit = dataset.attrs["unit"] if h5py3 else \
+                                       dataset.attrs["unit"].decode()
                                 description = dataset.attrs['description'] if h5py3 else \
                                               dataset.attrs['description'].decode()
-                                msg = '        '.join([msg,f'{d}{unit}: {description}\n'])
+                                msg += [f'        {d} / {unit}: {description}']
 
         return msg
 

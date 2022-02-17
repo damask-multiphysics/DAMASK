@@ -63,8 +63,8 @@ class Grid:
         mat_N   = self.N_materials
         return util.srepr([
                f'cells:  {util.srepr(self.cells, " × ")}',
-               f'size:   {util.srepr(self.size,  " × ")} / m³',
-               f'origin: {util.srepr(self.origin,"   ")} / m',
+               f'size:   {util.srepr(self.size,  " × ")} m³',
+               f'origin: {util.srepr(self.origin,"   ")} m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
                                           f' (min: {mat_min}, max: {mat_max})')
               ])
@@ -182,7 +182,7 @@ class Grid:
             Grid-based geometry from file.
 
         """
-        v = VTK.load(fname if str(fname).endswith(('.vti','.vtr')) else str(fname)+'.vti')          # compatibility hack
+        v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
@@ -603,8 +603,8 @@ class Grid:
         >>> import damask
         >>> damask.Grid.from_minimal_surface([64]*3,np.ones(3)*1.e-4,'Gyroid')
         cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0001 x 0.0001 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 2
 
         Minimal surface of 'Neovius' type. non-default material IDs.
@@ -614,8 +614,8 @@ class Grid:
         >>> damask.Grid.from_minimal_surface([80]*3,np.ones(3)*5.e-4,
         ...                                  'Neovius',materials=(1,5))
         cells : 80 x 80 x 80
-        size  : 0.0005 x 0.0005 x 0.0005 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0005 x 0.0005 x 0.0005 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 2 (min: 1, max: 5)
 
         """
@@ -735,8 +735,8 @@ class Grid:
         >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3)*5e-5,np.ones(3)*5e-5,1)
         cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0001 x 0.0001 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 2
 
         Add a cube at the origin.
@@ -746,8 +746,8 @@ class Grid:
         >>> g = damask.Grid(np.zeros([64]*3,int), np.ones(3)*1e-4)
         >>> g.add_primitive(np.ones(3,int)*32,np.zeros(3),np.inf)
         cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0001 x 0.0001 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 2
 
         """
@@ -805,8 +805,8 @@ class Grid:
         >>> g = damask.Grid(np.zeros([32]*3,int), np.ones(3)*1e-4)
         >>> g.mirror('xy',True)
         cells : 64 x 64 x 32
-        size  : 0.0002 x 0.0002 x 0.0001 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0002 x 0.0002 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 1
 
         """
@@ -886,8 +886,8 @@ class Grid:
         >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
         >>> g.scale(g.cells*2)
         cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0001 x 0.0001 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 1
 
         """
@@ -1036,8 +1036,8 @@ class Grid:
         >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
         >>> g.canvas([32,32,16])
         cells : 33 x 32 x 16
-        size  : 0.0001 x 0.0001 x 5e-05 / m³
-        origin: 0.0   0.0   0.0 / m
+        size  : 0.0001 x 0.0001 x 5e-05 m³
+        origin: 0.0   0.0   0.0 m
         # materials: 1
 
         """

@@ -334,10 +334,10 @@ class Crystal():
         """
         if (direction is not None) ^ (plane is None):
             raise KeyError('specify either "direction" or "plane"')
-        axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
-                      if plane is None else \
-                      (np.array(plane),self.basis_real.T)
-        return np.einsum('il,...l',basis,axis)
+        basis,axis = (self.basis_reciprocal,np.array(direction)) \
+                     if plane is None else \
+                     (self.basis_real,np.array(plane))
+        return np.einsum('li,...l',basis,axis)
 
 
     def to_frame(self, *,
@@ -359,9 +359,9 @@ class Crystal():
         """
         if (uvw is not None) ^ (hkl is None):
             raise KeyError('specify either "uvw" or "hkl"')
-        axis,basis  = (np.array(uvw),self.basis_real) \
-                      if hkl is None else \
-                      (np.array(hkl),self.basis_reciprocal)
+        basis,axis = (self.basis_real,np.array(uvw)) \
+                     if hkl is None else \
+                     (self.basis_reciprocal,np.array(hkl))
         return np.einsum('il,...l',basis,axis)
 
 
