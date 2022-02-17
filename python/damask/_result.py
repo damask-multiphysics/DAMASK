@@ -168,6 +168,10 @@ class Result:
 
     def __repr__(self):
         """Show summary of file content."""
+        with h5py.File(self.fname,'r') as f:
+            header = [f'Created by {f.attrs["creator"]}',
+                      f'Created on {f.attrs["created"]}',
+                      f'With call {f.attrs["call"]}']
         visible_increments = self.visible['increments']
 
         first = self.view(increments=visible_increments[0:1]).list_data()
@@ -178,7 +182,7 @@ class Result:
         in_between = '' if len(visible_increments) < 3 else \
                      ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-1]])
 
-        return util.srepr(first + in_between + last)
+        return util.srepr(header) +'\n'+ util.srepr(first + in_between + last)
 
 
     def _manage_view(self,action,what,datasets):
