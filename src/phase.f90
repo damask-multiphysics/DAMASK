@@ -228,15 +228,15 @@ module phase
 
     end function phase_thermal_constitutive
 
-    module function phase_damage_constitutive(Delta_t,co,ip,el) result(converged_)
+    module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: co, ip, el
+      integer, intent(in) :: co, ce
       logical :: converged_
     end function phase_damage_constitutive
 
-    module function phase_mechanical_constitutive(Delta_t,co,ip,el) result(converged_)
+    module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: co, ip, el
+      integer, intent(in) :: co, ce
       logical :: converged_
     end function phase_mechanical_constitutive
 
@@ -264,19 +264,18 @@ module phase
       real(pReal) :: f
     end function phase_f_T
 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,i,e)
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
       integer, intent(in) :: &
         ph, &
-        i, &
-        e
+        ip, &
+        el
         type(tRotationContainer), dimension(:), intent(in) :: orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
-    module subroutine plastic_dependentState(co,ip,el)
+    module subroutine plastic_dependentState(ph,en)
       integer, intent(in) :: &
-        co, &                                                                                       !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
+        ph, &
+        en
     end subroutine plastic_dependentState
 
 
@@ -503,8 +502,8 @@ subroutine crystallite_init()
     ce, &
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
-    el                                                                                              !< counter in element loop
-
+    el, &                                                                                           !< counter in element loop
+    en, ph
   class(tNode), pointer :: &
     num_crystallite, &
     phases
@@ -543,13 +542,15 @@ subroutine crystallite_init()
 
   phases => config_material%get('phase')
 
-  !$OMP PARALLEL DO PRIVATE(ce)
+  !$OMP PARALLEL DO PRIVATE(ce,ph,en)
   do el = 1, discretization_Nelems
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
       do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+        en = material_phaseEntry(co,ce)
+        ph = material_phaseID(co,ce)
         call crystallite_orientations(co,ip,el)
-        call plastic_dependentState(co,ip,el)                                                       ! update dependent state variables to be consistent with basic states
+        call plastic_dependentState(ph,en)                                                          ! update dependent state variables to be consistent with basic states
      end do
     end do
   end do
@@ -577,8 +578,8 @@ subroutine crystallite_orientations(co,ip,el)
 
   call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
-  if (plasticState(material_phaseAt(1,el))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(phase_O,material_phaseAt(1,el),ip,el)
+  if (plasticState(material_phaseID(1,(el-1)*discretization_nIPs + ip))%nonlocal) &
+    call plastic_nonlocal_updateCompatibility(phase_O,material_phaseID(1,(el-1)*discretization_nIPs + ip),ip,el)
 
 
 end subroutine crystallite_orientations

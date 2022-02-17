@@ -262,9 +262,8 @@ pure function math_identity4th()
     math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
   enddo
 #else
-  do i=1,3; do j=1,3; do k=1,3; do l=1,3
+  forall(i=1:3, j=1:3, k=1:3, l=1:3) &
     math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
-  enddo; enddo; enddo; enddo
 #endif
 
 end function math_identity4th
@@ -338,9 +337,7 @@ pure function math_outer(A,B)
     math_outer(i,j) = A(i)*B(j)
   enddo
 #else
-  do i=1,size(A,1); do j=1,size(B,1)
-    math_outer(i,j) = A(i)*B(j)
-  enddo; enddo
+  forall(i=1:size(A,1), j=1:size(B,1)) math_outer(i,j) = A(i)*B(j)
 #endif
 
 end function math_outer
@@ -387,9 +384,7 @@ pure function math_mul3333xx33(A,B)
     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
   enddo
 #else
-  do i=1,3; do j=1,3
-    math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
-  enddo; enddo
+  forall (i=1:3, j=1:3) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
 #endif
 
 end function math_mul3333xx33
@@ -411,9 +406,7 @@ pure function math_mul3333xx3333(A,B)
     math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
   enddo
 #else
-  do i=1,3; do j=1,3; do k=1,3; do l=1,3
-    math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
-  enddo; enddo; enddo; enddo
+  forall(i=1:3, j=1:3, k=1:3, l=1:3) math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
 #endif
 
 end function math_mul3333xx3333
@@ -752,9 +745,7 @@ pure function math_3333to99(m3333)
     math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
   enddo
 #else
-  do i=1,9; do j=1,9
-    math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
-  enddo; enddo
+  forall(i=1:9, j=1:9) math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
 #endif
 
 end function math_3333to99
@@ -775,9 +766,7 @@ pure function math_99to3333(m99)
     math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
   enddo
 #else
-  do i=1,9; do j=1,9
-    math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
-  enddo; enddo
+  forall(i=1:9, j=1:9) math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
 #endif
 
 end function math_99to3333
@@ -810,9 +799,7 @@ pure function math_sym3333to66(m3333,weighted)
     math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
   enddo
 #else
-  do i=1,6; do j=1,6
-    math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
-  enddo; enddo
+  forall(i=1:6, j=1:6) math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
 #endif
 
 end function math_sym3333to66
@@ -950,9 +937,7 @@ pure function math_3333toVoigt66_stiffness(C) result(C_tilde)
     C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
   end do
 #else
-  do i=1,6; do j=1,6
-    C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
-  end do; end do
+  forall(i=1:6, j=1:6) C_tilde(i,j) = C(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j))
 #endif
 
 end function math_3333toVoigt66_stiffness

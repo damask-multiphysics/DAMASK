@@ -150,7 +150,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   print'(/,1x,a)', '... evaluating constitutive response ......................................'
 
-  call homogenization_mechanical_response(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])                ! calculate P field
+  call homogenization_mechanical_response(timeinc,1,mesh_maxNips*mesh_NcpElems)                     ! calculate P field
   if (.not. terminallyIll) &
     call homogenization_mechanical_response2(timeinc,[1,mesh_maxNips],[1,mesh_NcpElems])
   cutBack = .false.

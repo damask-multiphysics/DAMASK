@@ -1,4 +1,5 @@
 type: dislotungsten
+
 references:
   - D. Cereceda et al.,
     International Journal of Plasticity 78:242-265, 2016,
@@ -6,8 +7,11 @@ references:
   - R. Gröger et al.,
     Acta Materialia 56(19):5412-5425, 2008,
     https://doi.org/10.1016/j.actamat.2008.07.037
+
 output: [Lambda_sl]
+
 N_sl: [12]
+
 b_sl: [2.72e-10]
 rho_mob_0: [1.0e+9]  # estimated from section 3.2
 rho_dip_0: [1.0]     # not given

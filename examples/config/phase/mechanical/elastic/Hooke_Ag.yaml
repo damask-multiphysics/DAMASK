@@ -1,4 +1,5 @@
 type: Hooke
+
 references:
   - J.R. Neighbours and G.A. Alers,
     Physical Review 111:707-712, 1958,
@@ -6,8 +7,6 @@ references:
   - Y.A. Chang and L. Himmel,
     Journal of Applied Physics 37:3567-3572, 1966,
     https://doi.org/10.1063/1.1708903
-
-T_ref: 300
 
 C_11: 122.9e+9
 C_11,T: -313.5e+5
@@ -20,3 +19,5 @@ C_12,T^2: -681.6e+1
 C_44: 42.63e+9
 C_44,T: -180.5e+5
 C_44,T^2: -353.8e+1
+
+T_ref: 300
