@@ -83,20 +83,14 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: np.ndarray,
-                              size: FloatSequence,
-                              origin: FloatSequence = np.zeros(3)) -> 'VTK':
+    def from_rectilinear_grid(grid: FloatSequence) -> 'VTK':
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
         Parameters
         ----------
-        grid : iterable of int, len (3)
-            Number of cells along each dimension.
-        size : iterable of float, len (3)
-            Physical length along each dimension.
-        origin : iterable of float, len (3), optional
-            Coordinates of grid origin.
+        grid : iterables of floats, len (3)
+            Grid coordinates along x, y, and z directions.
 
         Returns
         -------
@@ -106,8 +100,8 @@ class VTK:
         """
         warnings.warn('Support for vtr files will be removed in DAMASK 3.1.0', DeprecationWarning,2)
         vtk_data = vtk.vtkRectilinearGrid()
-        vtk_data.SetDimensions(*(np.array(grid)+1))
-        coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
+        vtk_data.SetDimensions(*map(len,grid))
+        coord = [np_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
         [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
         vtk_data.SetXCoordinates(coord[0])
         vtk_data.SetYCoordinates(coord[1])

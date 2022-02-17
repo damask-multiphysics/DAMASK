@@ -34,10 +34,9 @@ class TestVTK:
         default.show()
 
     def test_rectilinearGrid(self,tmp_path):
-        cells  = np.random.randint(5,10,3)*2
-        size   = np.random.random(3) + 1.0
-        origin = np.random.random(3)
-        v = VTK.from_rectilinear_grid(cells,size,origin)
+        grid  = np.sort(np.random.random((3,10)))
+        print(grid)
+        v = VTK.from_rectilinear_grid(grid)
         string = v.__repr__()
         v.save(tmp_path/'rectilinearGrid',False)
         vtr = VTK.load(tmp_path/'rectilinearGrid.vtr')
@@ -196,11 +195,13 @@ class TestVTK:
 
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
-        cells = np.array([5,6,7],int)
-        size  = np.array([.6,1.,.5])
-        rectilinearGrid = VTK.from_rectilinear_grid(cells,size)
-        c = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
-        n = grid_filters.coordinates0_node(cells,size).reshape(-1,3,order='F')
+        grid = [np.arange(4)**2.,
+                np.arange(5)**2.,
+                np.arange(6)**2.]                                               # ParaView renders tetrahedral meshing unless using float coordinates!
+        rectilinearGrid = VTK.from_rectilinear_grid(grid)
+        coords = np.stack(np.meshgrid(*grid,indexing='ij'),axis=-1)
+        c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
+        n = coords[:,:,:,:].reshape(-1,3,order='F')
         rectilinearGrid.add(np.ascontiguousarray(c),'cell')
         rectilinearGrid.add(np.ascontiguousarray(n),'node')
         if update:
