@@ -1,5 +1,4 @@
 import os
-import warnings
 import multiprocessing as mp
 from pathlib import Path
 from typing import Union, Literal, List, Sequence
@@ -83,34 +82,6 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: FloatSequence) -> 'VTK':
-        """
-        Create VTK of type vtk.vtkRectilinearGrid.
-
-        Parameters
-        ----------
-        grid : iterables of floats, len (3)
-            Grid coordinates along x, y, and z directions.
-
-        Returns
-        -------
-        new : damask.VTK
-            VTK-based geometry without nodal or cell data.
-
-        """
-        warnings.warn('Support for vtr files will be removed in DAMASK 3.1.0', DeprecationWarning,2)
-        vtk_data = vtk.vtkRectilinearGrid()
-        vtk_data.SetDimensions(*map(len,grid))
-        coord = [np_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
-        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
-        vtk_data.SetXCoordinates(coord[0])
-        vtk_data.SetYCoordinates(coord[1])
-        vtk_data.SetZCoordinates(coord[2])
-
-        return VTK(vtk_data)
-
-
-    @staticmethod
     def from_unstructured_grid(nodes: np.ndarray,
                                connectivity: np.ndarray,
                                cell_type: str) -> 'VTK':
@@ -187,8 +158,35 @@ class VTK:
 
 
     @staticmethod
+    def from_rectilinear_grid(grid: FloatSequence) -> 'VTK':
+        """
+        Create VTK of type vtk.vtkRectilinearGrid.
+
+        Parameters
+        ----------
+        grid : iterables of floats, len (3)
+            Grid coordinates along x, y, and z directions.
+
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
+
+        """
+        vtk_data = vtk.vtkRectilinearGrid()
+        vtk_data.SetDimensions(*map(len,grid))
+        coord = [np_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
+        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
+        vtk_data.SetXCoordinates(coord[0])
+        vtk_data.SetYCoordinates(coord[1])
+        vtk_data.SetZCoordinates(coord[2])
+
+        return VTK(vtk_data)
+
+
+    @staticmethod
     def load(fname: Union[str, Path],
-             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData'] = None) -> 'VTK':
+             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
         """
         Load from VTK file.
 
@@ -196,8 +194,8 @@ class VTK:
         ----------
         fname : str or pathlib.Path
             Filename for reading.
-            Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
-        dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData'}, optional
+            Valid extensions are .vti, .vtu, .vtp, .vtr, and .vtk.
+        dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
 
         Returns
@@ -216,26 +214,26 @@ class VTK:
             elif dataset_type.lower().endswith(('imagedata','image_data')):
                 reader.Update()
                 vtk_data = reader.GetStructuredPointsOutput()
-            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
-                reader.Update()
-                vtk_data = reader.GetRectilinearGridOutput()
             elif dataset_type.lower().endswith(('unstructuredgrid','unstructured_grid')):
                 reader.Update()
                 vtk_data = reader.GetUnstructuredGridOutput()
             elif dataset_type.lower().endswith(('polydata','poly_data')):
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
+            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
+                reader.Update()
+                vtk_data = reader.GetRectilinearGridOutput()
             else:
                 raise TypeError(f'Unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
                 reader = vtk.vtkXMLImageDataReader()
-            elif ext == '.vtr':
-                reader = vtk.vtkXMLRectilinearGridReader()
             elif ext == '.vtu':
                 reader = vtk.vtkXMLUnstructuredGridReader()
             elif ext == '.vtp':
                 reader = vtk.vtkXMLPolyDataReader()
+            elif ext == '.vtr':
+                reader = vtk.vtkXMLRectilinearGridReader()
             else:
                 raise TypeError(f'Unknown file extension "{ext}"')
 
@@ -270,12 +268,12 @@ class VTK:
         """
         if   isinstance(self.vtk_data,vtk.vtkImageData):
             writer = vtk.vtkXMLImageDataWriter()
-        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
-            writer = vtk.vtkXMLRectilinearGridWriter()
         elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
             writer = vtk.vtkXMLUnstructuredGridWriter()
         elif isinstance(self.vtk_data,vtk.vtkPolyData):
             writer = vtk.vtkXMLPolyDataWriter()
+        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
+            writer = vtk.vtkXMLRectilinearGridWriter()
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
