@@ -313,13 +313,13 @@ def ho2ax(ho):
     if iszero(hmag_squared):
         ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
     else:
-        hm = hmag_squared
+        hm = np.ones_like(hmag_squared)
 
         # convert the magnitude to the rotation angle
-        s = tfit[0] + tfit[1] * hmag_squared
-        for i in range(2,16):
+        s = 0.0
+        for t in tfit:
+            s += t * hm
             hm *= hmag_squared
-            s  += tfit[i] * hm
         ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
     return ax
 

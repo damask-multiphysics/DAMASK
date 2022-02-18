@@ -528,22 +528,22 @@ end function lattice_C66_twin
 !> @brief Rotated elasticity matrices for transformation in 6x6-matrix notation
 !--------------------------------------------------------------------------------------------------
 function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
-                           cOverA_trans,a_bcc,a_fcc)
+                           cOverA_trans,a_fcc,a_bcc)
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
   character(len=2),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
   real(pReal), dimension(6,6),           intent(in) :: C_parent66
+  real(pReal),                 optional, intent(in) :: cOverA_trans, a_fcc, a_bcc
   real(pReal), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
 
   real(pReal), dimension(6,6)             :: C_bar66, C_target_unrotated66
   real(pReal), dimension(3,3,sum(Ntrans)) :: Q,S
   type(tRotation)                         :: R
-  real(pReal)                             :: a_bcc, a_fcc, cOverA_trans
   integer                                 :: i
 
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
-  if (lattice_target == 'hP') then
+  if (lattice_target == 'hP' .and. present(cOverA_trans)) then
     ! https://doi.org/10.1063/1.1663858 eq. (16), eq. (18), eq. (19)
     ! https://doi.org/10.1016/j.actamat.2016.07.032 eq. (47), eq. (48)
     if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
@@ -562,7 +562,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
     C_target_unrotated66 = lattice_symmetrize_C66(C_target_unrotated66,'hP')
-  elseif (lattice_target  == 'cI') then
+  elseif (lattice_target  == 'cI' .and. present(a_fcc) .and. present(a_bcc)) then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(lattice_target))
     C_target_unrotated66 = C_parent66
@@ -1484,26 +1484,27 @@ end function lattice_SchmidMatrix_twin
 !> @brief Schmid matrix for transformation
 !> details only active twin systems are considered
 !--------------------------------------------------------------------------------------------------
-function lattice_SchmidMatrix_trans(Ntrans,lattice_target,cOverA,a_bcc,a_fcc) result(SchmidMatrix)
+function lattice_SchmidMatrix_trans(Ntrans,lattice_target,cOverA,a_fcc,a_bcc) result(SchmidMatrix)
 
   integer,         dimension(:),             intent(in) :: Ntrans                                   !< number of active twin systems per family
   character(len=2),                          intent(in) :: lattice_target                           !< Bravais lattice (Pearson symbol)
-  real(pReal),                               intent(in) :: cOverA                                   !< c/a ratio
+  real(pReal),                     optional, intent(in) :: cOverA, a_bcc, a_fcc
   real(pReal),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
 
   real(pReal), dimension(3,3,sum(Ntrans)) :: devNull
-  real(pReal)                             :: a_bcc, a_fcc
 
-  if (lattice_target /= 'cI' .and. lattice_target /= 'hP') &
-    call IO_error(137,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
 
-  if (lattice_target == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+  if (lattice_target == 'hP' .and. present(cOverA)) then
+    if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
     call IO_error(131,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
-
-  if (lattice_target == 'cI' .and. (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal)) &
+    call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA=cOverA)
+  else if (lattice_target == 'cI' .and. present(a_fcc) .and. present(a_bcc)) then
+    if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
     call IO_error(134,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
-
-  call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA,a_fcc,a_bcc)
+    call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,a_fcc=a_fcc,a_bcc=a_bcc)
+  else
+    call IO_error(131,ext_msg='lattice_SchmidMatrix_trans: '//trim(lattice_target))
+  end if
 
 end function lattice_SchmidMatrix_trans
 
@@ -1971,7 +1972,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
   real(pReal),  dimension(3,3,sum(Ntrans)), intent(out) :: &
     Q, &                                                                                            !< Total rotation: Q = R*B
     S                                                                                               !< Eigendeformation tensor for phase transformation
-  real(pReal),                 intent(in) :: &
+  real(pReal), optional,                    intent(in) :: &
     cOverA, &                                                                                       !< c/a for target hex lattice
     a_bcc, &                                                                                        !< lattice parameter a for bcc target lattice
     a_fcc                                                                                           !< lattice parameter a for fcc parent lattice
@@ -2050,7 +2051,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       0.0, 0.0, 1.0,     45.0  &
       ],shape(FCCTOBCC_BAINROT))
 
-  if (a_bcc > 0.0_pReal .and. a_fcc > 0.0_pReal .and. dEq0(cOverA)) then                            ! fcc -> bcc
+  if (present(a_bcc) .and. present(a_fcc)) then
     do i = 1,sum(Ntrans)
       call R%fromAxisAngle(FCCTOBCC_SYSTEMTRANS(:,i),degrees=.true.,P=1)
       call B%fromAxisAngle(FCCTOBCC_BAINROT(:,i),    degrees=.true.,P=1)
@@ -2064,7 +2065,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       Q(1:3,1:3,i) = matmul(R%asMatrix(),B%asMatrix())
       S(1:3,1:3,i) = matmul(R%asMatrix(),U) - MATH_I3
     enddo
-  elseif (cOverA > 0.0_pReal .and. dEq0(a_bcc)) then                                                ! fcc -> hex
+  else if (present(cOverA)) then
     ss      = MATH_I3
     sd      = MATH_I3
     ss(1,3) = sqrt(2.0_pReal)/4.0_pReal
@@ -2078,10 +2079,10 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_fcc,a_bcc)
       Q(1:3,2,i) = y
       Q(1:3,3,i) = z
       S(1:3,1:3,i) = matmul(Q(1:3,1:3,i), matmul(matmul(sd,ss), transpose(Q(1:3,1:3,i)))) - MATH_I3 ! ToDo: This is of interest for the Schmid matrix only
-    enddo
+    end do
   else
     call IO_error(132,ext_msg='buildTransformationSystem')
-  endif
+  end if
 
 end subroutine buildTransformationSystem
 

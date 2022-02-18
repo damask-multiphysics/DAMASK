@@ -194,7 +194,7 @@ class Table:
 
         Returns
         -------
-        mask : numpy.ndarray bool
+        mask : numpy.ndarray of bool
             Mask indicating where corresponding table values are close.
 
         """
@@ -263,10 +263,8 @@ class Table:
         f.seek(0)
 
         comments = []
-        line = f.readline().strip()
-        while line.startswith('#'):
+        while (line := f.readline().strip()).startswith('#'):
             comments.append(line.lstrip('#').strip())
-            line = f.readline().strip()
         labels = line.split()
 
         shapes = {}

@@ -49,9 +49,6 @@ module discretization_mesh
     mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
     mesh_node0                                                                                      !< node x,y,z coordinates (initially!)
 
-  real(pReal), pointer, dimension(:) :: &
-    mesh_node0_temp
-
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
@@ -88,6 +85,8 @@ subroutine discretization_mesh_init(restart)
     num_mesh
   integer :: p_i, dim                                                                               !< integration order (quadrature rule)
   type(tvec) :: coords_node0
+  real(pReal), pointer, dimension(:) :: &
+    mesh_node0_temp
 
   print'(/,1x,a)',   '<<<+-  discretization_mesh init  -+>>>'
 
@@ -124,7 +123,7 @@ subroutine discretization_mesh_init(restart)
   dimPlex = int(dim,pPETSCINT)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  if (worldrank == 0) then
+  if (worldsize == 1) then
     call DMClone(globalMesh,geomMesh,err_PETSc)
   else
     call DMPlexDistribute(globalMesh,0_pPETSCINT,sf,geomMesh,err_PETSc)
@@ -155,7 +154,7 @@ subroutine discretization_mesh_init(restart)
   CHKERRQ(err_PETSc)
 
 ! Get initial nodal coordinates
-  call DMGetCoordinates(geomMesh,coords_node0,err_PETSc)
+  call DMGetCoordinatesLocal(geomMesh,coords_node0,err_PETSc)
   CHKERRQ(err_PETSc)
   call VecGetArrayF90(coords_node0, mesh_node0_temp,err_PETSc)
   CHKERRQ(err_PETSc)

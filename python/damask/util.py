@@ -9,7 +9,7 @@ import re
 import fractions
 from collections import abc
 from functools import reduce
-from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal, SupportsIndex, Sequence
+from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal
 from pathlib import Path
 
 import numpy as np
@@ -428,7 +428,7 @@ def hybrid_IA(dist: np.ndarray,
 def shapeshifter(fro: Tuple[int, ...],
                  to: Tuple[int, ...],
                  mode: Literal['left','right'] = 'left',
-                 keep_ones: bool = False) -> Sequence[SupportsIndex]:
+                 keep_ones: bool = False) -> Tuple[int, ...]:
     """
     Return dimensions that reshape 'fro' to become broadcastable to 'to'.
 
@@ -491,7 +491,7 @@ def shapeshifter(fro: Tuple[int, ...],
 
 
 def shapeblender(a: Tuple[int, ...],
-                 b: Tuple[int, ...]) -> Sequence[SupportsIndex]:
+                 b: Tuple[int, ...]) -> Tuple[int, ...]:
     """
     Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
 
@@ -794,7 +794,7 @@ class ProgressBar:
 
         fraction = (iteration+1) / self.total
 
-        if filled_length := int(self.bar_length * fraction) > int(self.bar_length * self.fraction_last) or \
+        if (filled_length := int(self.bar_length * fraction)) > int(self.bar_length * self.fraction_last) or \
             datetime.datetime.now() - self.time_last_update > datetime.timedelta(seconds=10):
             self.time_last_update = datetime.datetime.now()
             bar = '█' * filled_length + '░' * (self.bar_length - filled_length)

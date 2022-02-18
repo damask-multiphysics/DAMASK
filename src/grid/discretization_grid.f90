@@ -97,8 +97,8 @@ subroutine discretization_grid_init(restart)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   print'(/,1x,a,i0,a,i0,a,i0)',            'cells:  ', cells(1),    ' × ', cells(2),    ' × ', cells(3)
-  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'size:   ', geomSize(1), ' × ', geomSize(2), ' × ', geomSize(3), ' / m³'
-  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'origin: ', origin(1),   ' ',   origin(2),   ' ',   origin(3), ' / m'
+  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'size:   ', geomSize(1), ' × ', geomSize(2), ' × ', geomSize(3), ' m³'
+  print  '(1x,a,es8.2,a,es8.2,a,es8.2,a)', 'origin: ', origin(1),   ' ',   origin(2),   ' ',   origin(3), ' m'
 
   if (worldsize>cells(3)) call IO_error(894, ext_msg='number of processes exceeds cells(3)')
 

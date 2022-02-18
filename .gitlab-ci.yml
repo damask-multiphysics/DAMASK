@@ -96,14 +96,14 @@ mesh_GNU:
 grid_GNU-64bit:
   stage: compile
   script:
-    - module load Compiler/GNU/10 Libraries/PETSc/3.16.2/64bit
+    - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and grid' --basetemp ${TESTROOT}/compile_grid_GNU-64bit
 
 mesh_GNU-64bit:
   stage: compile
   script:
-    - module load Compiler/GNU/10 Libraries/PETSc/3.16.2/64bit
+    - module load Compiler/GNU/10 Libraries/PETSc/3.16.4/64bit
     - cd PRIVATE/testing/pytest
     - pytest -k 'compile and mesh' --basetemp ${TESTROOT}/compile_mesh_GNU-64bit
 
