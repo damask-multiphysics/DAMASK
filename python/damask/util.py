@@ -9,7 +9,7 @@ import re
 import fractions
 from collections import abc
 from functools import reduce
-from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal
+from typing import Callable, Union, Iterable, Sequence, Dict, List, Tuple, Literal, Any
 from pathlib import Path
 
 import numpy as np
