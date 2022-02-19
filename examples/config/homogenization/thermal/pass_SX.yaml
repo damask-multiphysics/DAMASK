@@ -1,0 +1,5 @@
+SX:
+  N_constituents: 1
+  thermal:
+    type: pass
+    output: ['T']

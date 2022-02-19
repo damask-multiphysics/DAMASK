@@ -1,3 +1,5 @@
 Taylor2:
   N_constituents: 2
-  mechanical: {type: isostrain}
+  mechanical:
+    type: isostrain
+    output: ['F','P']

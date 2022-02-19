@@ -1,0 +1,5 @@
+2constituents:
+  N_constituents: 2
+  thermal:
+    type: isotemperature
+    output: ['T']
