@@ -232,7 +232,9 @@ update_revision:
     - git pull
     - export VERSION=$(git describe ${CI_COMMIT_SHA})
     - echo ${VERSION} > python/damask/VERSION
-    - git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $VERSION"
+    - >
+       git diff-index --quiet HEAD ||
+       git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push origin HEAD:master HEAD:development; fi
   only:
     - development
