@@ -71,10 +71,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine RGC_init(num_homogMech)
-
-  class(tNode), pointer, intent(in) :: &
-    num_homogMech                                                                                   !< pointer to mechanical homogenization numerics data
+module subroutine RGC_init()
 
   integer :: &
     ho, &
@@ -82,6 +79,8 @@ module subroutine RGC_init(num_homogMech)
     sizeState, nIntFaceTot
 
   class (tNode), pointer :: &
+    num_homogenization, &
+    num_mechanical, &
     num_RGC, &                                                                                      ! pointer to RGC numerics data
     material_homogenization, &
     homog, &
@@ -105,7 +104,9 @@ module subroutine RGC_init(num_homogMech)
   allocate(state0(material_homogenization%length))
   allocate(dependentState(material_homogenization%length))
 
-  num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
+  num_homogenization => config_numerics%get('homogenization',defaultVal=emptyDict)
+  num_mechanical => num_homogenization%get('mechanical',defaultVal=emptyDict)
+  num_RGC => num_mechanical%get('RGC',defaultVal=emptyDict)
 
   num%atol         =  num_RGC%get_asFloat('atol',              defaultVal=1.0e+4_pReal)
   num%rtol         =  num_RGC%get_asFloat('rtol',              defaultVal=1.0e-3_pReal)
@@ -171,8 +172,8 @@ module subroutine RGC_init(num_homogMech)
     allocate(homogState(ho)%state0   (sizeState,Nmembers), source=0.0_pReal)
     allocate(homogState(ho)%state    (sizeState,Nmembers), source=0.0_pReal)
 
-    stt%relaxationVector   => homogState(ho)%state(1:nIntFaceTot,:)
-    st0%relaxationVector   => homogState(ho)%state0(1:nIntFaceTot,:)
+    stt%relaxationVector => homogState(ho)%state(1:nIntFaceTot,:)
+    st0%relaxationVector => homogState(ho)%state0(1:nIntFaceTot,:)
 
     allocate(dst%volumeDiscrepancy(   Nmembers), source=0.0_pReal)
     allocate(dst%relaxationRate_avg(  Nmembers), source=0.0_pReal)

@@ -7,15 +7,13 @@ submodule(homogenization) mechanical
 
   interface
 
-    module subroutine pass_init
+    module subroutine pass_init()
     end subroutine pass_init
 
-    module subroutine isostrain_init
+    module subroutine isostrain_init()
     end subroutine isostrain_init
 
-    module subroutine RGC_init(num_homogMech)
-      class(tNode), pointer, intent(in) :: &
-        num_homogMech                                                                               !< pointer to mechanical homogenization numerics data
+    module subroutine RGC_init()
     end subroutine RGC_init
 
 
@@ -60,27 +58,20 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate variables and set parameters.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_init(num_homog)
-
-  class(tNode), pointer, intent(in) :: &
-    num_homog
-
-  class(tNode), pointer :: &
-    num_homogMech
+module subroutine mechanical_init()
 
   print'(/,1x,a)', '<<<+-  homogenization:mechanical init  -+>>>'
 
-  call material_parseHomogenization2()
+  call parseMechanical()
 
-  allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
-  homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
-  homogenization_F = homogenization_F0                                                              ! initialize to identity
-  allocate(homogenization_P(3,3,discretization_nIPs*discretization_Nelems),        source=0.0_pReal)
+  allocate(homogenization_dPdF(3,3,3,3,discretization_Ncells), source=0.0_pReal)
+  homogenization_F0 = spread(math_I3,3,discretization_Ncells)
+  homogenization_F = homogenization_F0
+  allocate(homogenization_P(3,3,discretization_Ncells),source=0.0_pReal)
 
-  num_homogMech => num_homog%get('mech',defaultVal=emptyDict)
-  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call pass_init
-  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call isostrain_init
-  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call RGC_init(num_homogMech)
+  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call pass_init()
+  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call isostrain_init()
+  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call RGC_init()
 
 end subroutine mechanical_init
 
@@ -210,7 +201,7 @@ end subroutine mechanical_results
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseHomogenization2()
+subroutine parseMechanical()
 
   class(tNode), pointer :: &
     material_homogenization, &
@@ -238,7 +229,7 @@ subroutine material_parseHomogenization2()
     end select
   end do
 
-end subroutine material_parseHomogenization2
+end subroutine parseMechanical
 
 
 end submodule mechanical
