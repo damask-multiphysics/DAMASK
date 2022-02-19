@@ -331,7 +331,7 @@ module subroutine mechanical_results(group,ph)
   integer,          intent(in) :: ph
 
 
-  call crystallite_results(group,ph)
+  call results(group,ph)
 
   select case(phase_plasticity(ph))
 
@@ -882,7 +882,7 @@ end function integrateStateRK
 !--------------------------------------------------------------------------------------------------
 !> @brief writes crystallite results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_results(group,ph)
+subroutine results(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
@@ -926,7 +926,7 @@ subroutine crystallite_results(group,ph)
         if (any(phase_lattice(ph) == ['hP', 'tI'])) &
           call results_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/'//output_mechanical(ph)%label(ou))
     end select
-  enddo
+  end do
 
 
   contains
@@ -948,7 +948,7 @@ subroutine crystallite_results(group,ph)
 
  end function to_quaternion
 
-end subroutine crystallite_results
+end subroutine results
 
 
 !--------------------------------------------------------------------------------------------------

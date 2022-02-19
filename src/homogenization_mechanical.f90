@@ -182,7 +182,9 @@ module subroutine mechanical_results(group_base,ho)
   character(len=*), intent(in) :: group_base
   integer, intent(in)          :: ho
 
+  integer :: ou
   character(len=:), allocatable :: group
+
 
   group = trim(group_base)//'/mechanical'
   call results_closeGroup(results_addGroup(group))
@@ -194,12 +196,17 @@ module subroutine mechanical_results(group_base,ho)
 
   end select
 
-  !temp = reshape(homogenization_F,[3,3,discretization_nIPs*discretization_Nelems])
-  !call results_writeDataset(group,temp,'F',&
-  !                          'deformation gradient','1')
-  !temp = reshape(homogenization_P,[3,3,discretization_nIPs*discretization_Nelems])
-  !call results_writeDataset(group,temp,'P',&
-  !                          '1st Piola-Kirchhoff stress','Pa')
+  do ou = 1, size(output_mechanical(1)%label)
+
+    select case (output_mechanical(ho)%label(ou))
+      case('F')
+        call results_writeDataset(reshape(homogenization_F,[3,3,discretization_nCells]),group,'F', &
+                                  'deformation gradient','1')
+      case('P')
+        call results_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
+                                  'deformation gradient','1')
+    end select
+  end do
 
 end subroutine mechanical_results
 
