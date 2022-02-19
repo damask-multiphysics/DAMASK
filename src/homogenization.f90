@@ -32,7 +32,7 @@ module homogenization
     HOMOGENIZATION_RGC_ID
   end enum
 
-    type(tState),        allocatable, dimension(:), public :: &
+  type(tState),        allocatable, dimension(:), public :: &
     homogState, &
     damageState_h
 

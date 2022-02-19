@@ -50,6 +50,12 @@ submodule(homogenization) mechanical
 
   end interface
 
+  type :: tOutput                                                                                   !< requested output (per phase)
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      label
+  end type tOutput
+  type(tOutput), allocatable, dimension(:) :: output_mechanical
+
   integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
     homogenization_type                                                                             !< type of each homogenization
 
@@ -206,26 +212,33 @@ subroutine parseMechanical()
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
-    homogMech
+    mechanical
 
-  integer :: h
+  integer :: ho
+
 
   material_homogenization => config_material%get('homogenization')
 
   allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
+  allocate(output_mechanical(size(material_name_homogenization)))
 
-  do h=1, size(material_name_homogenization)
-    homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanical')
-    select case (homogMech%get_asString('type'))
+  do ho=1, size(material_name_homogenization)
+    homog => material_homogenization%get(ho)
+    mechanical => homog%get('mechanical')
+#if defined(__GFORTRAN__)
+    output_mechanical(ho)%label = output_as1dString(mechanical)
+#else
+    output_mechanical(ho)%label = mechanical%get_as1dString('output',defaultVal=emptyStringArray)
+#endif
+    select case (mechanical%get_asString('type'))
       case('pass')
-        homogenization_type(h) = HOMOGENIZATION_NONE_ID
+        homogenization_type(ho) = HOMOGENIZATION_NONE_ID
       case('isostrain')
-        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+        homogenization_type(ho) = HOMOGENIZATION_ISOSTRAIN_ID
       case('RGC')
-        homogenization_type(h) = HOMOGENIZATION_RGC_ID
+        homogenization_type(ho) = HOMOGENIZATION_RGC_ID
       case default
-        call IO_error(500,ext_msg=homogMech%get_asString('type'))
+        call IO_error(500,ext_msg=mechanical%get_asString('type'))
     end select
   end do
 
