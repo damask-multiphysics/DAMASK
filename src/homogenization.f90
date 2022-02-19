@@ -6,9 +6,10 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization
   use prec
+  use math
+  use constants
   use IO
   use config
-  use math
   use material
   use phase
   use discretization
