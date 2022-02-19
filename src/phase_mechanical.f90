@@ -880,7 +880,7 @@ end function integrateStateRK
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes crystallite results to HDF5 output file
+!> @brief Write mechanical results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
 subroutine results(group,ph)
 
@@ -1335,6 +1335,5 @@ module subroutine phase_set_F(F,co,ce)
   phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce)) = F
 
 end subroutine phase_set_F
-
 
 end submodule mechanical

@@ -466,7 +466,7 @@ subroutine parseHomogenization
     if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
         select case (homogThermal%get_asString('type'))
-          case('pass')
+          case('pass','isotemperature')
             thermal_type(h) = THERMAL_conduction_ID
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))
