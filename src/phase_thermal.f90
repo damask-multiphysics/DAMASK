@@ -96,7 +96,7 @@ module subroutine thermal_init(phases)
 
   do ph = 1, phases%length
     Nmembers = count(material_phaseID == ph)
-    allocate(current(ph)%T(Nmembers),source=T_ROOM)
+    allocate(current(ph)%T(Nmembers),source=300.0_pReal)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
     phase => phases%get(ph)
     thermal => phase%get('thermal',defaultVal=emptyDict)

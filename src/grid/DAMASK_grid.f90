@@ -304,8 +304,6 @@ program DAMASK_grid
   call spectral_Utilities_init
   do field = 1, nActiveFields
     select case (ID(field))
-      case(FIELD_MECH_ID)
-        call mechanical_init
 
       case(FIELD_THERMAL_ID)
         initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
@@ -318,6 +316,7 @@ program DAMASK_grid
     end select
   enddo
 
+  call mechanical_init
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
   if (worldrank == 0) then

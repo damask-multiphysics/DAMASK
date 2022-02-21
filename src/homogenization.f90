@@ -293,7 +293,6 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
   do ce = cell_start, cell_end
     if (terminallyIll) continue
     ho = material_homogenizationID(ce)
-    call thermal_partition(ce)
     do co = 1, homogenization_Nconstituents(ho)
       if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
         if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
