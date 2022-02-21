@@ -17,6 +17,7 @@ from . import util
 from . import grid_filters
 from . import Rotation
 from . import Table
+from . import Colormap
 from ._typehints import FloatSequence, IntSequence
 
 class Grid:
@@ -681,11 +682,20 @@ class Grid:
                    header='\n'.join(header), fmt=format_string, comments='')
 
 
-    def show(self) -> None:
-        """Show on screen."""
+    def show(self,
+             colormap: Colormap = Colormap.from_predefined('viridis')) -> None:
+        """
+        Show on screen.
+
+        Parameters
+        ----------
+        colormap : damask.Colormap
+            Colors used to map material IDs.
+
+        """
         v = VTK.from_image_data(self.cells,self.size,self.origin)
         v.add(self.material.flatten(),'material')
-        v.show('material')
+        v.show('material',colormap)
 
 
     def add_primitive(self,

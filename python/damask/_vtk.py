@@ -205,7 +205,7 @@ class VTK:
             VTK-based geometry from file.
 
         """
-        if not os.path.isfile(fname):                                                               # vtk has a strange error handling
+        if not os.path.isfile(os.path.expanduser(fname)):                                           # vtk has a strange error handling
             raise FileNotFoundError(f'No such file: {fname}')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
@@ -437,7 +437,9 @@ class VTK:
         return writer.GetOutputString()
 
 
-    def show(self,label=None,colormap=Colormap.from_predefined('strain')):
+    def show(self,
+             label: str = None,
+             colormap: Colormap = Colormap.from_predefined('viridis')):
         """
         Render.
 
@@ -476,7 +478,15 @@ class VTK:
 
         ren = vtk.vtkRenderer()
         ren.AddActor(actor)
-        ren.SetBackground(67/255,128/255,208/255)
+        if label is None:
+            ren.SetBackground(67/255,128/255,208/255)
+        else:
+            colormap = vtk.vtkScalarBarActor()
+            colormap.SetLookupTable(lut)
+            colormap.SetTitle(label)
+            colormap.SetMaximumWidthInPixels(width//100)
+            ren.AddActor2D(colormap)
+            ren.SetBackground(0.3,0.3,0.3)
 
         window = vtk.vtkRenderWindow()
         window.AddRenderer(ren)
