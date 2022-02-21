@@ -12,6 +12,7 @@ from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 from ._typehints import FloatSequence, IntSequence
 from . import util
 from . import Table
+from . import Colormap
 
 
 class VTK:
@@ -436,7 +437,7 @@ class VTK:
         return writer.GetOutputString()
 
 
-    def show(self):
+    def show(self,label=None,colormap=Colormap.from_predefined('strain')):
         """
         Render.
 
@@ -457,8 +458,17 @@ class VTK:
                 width  = 1024
                 height =  768
 
+        lut = vtk.vtkLookupTable()
+        lut.SetNumberOfTableValues(len(colormap.colors))
+        for i,c in enumerate(colormap.colors):
+            lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))
+        lut.Build()
+
+        self.vtk_data.GetCellData().SetActiveScalars(label)
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
+        mapper.SetLookupTable(lut)
+        mapper.SetScalarRange(self.vtk_data.GetScalarRange())
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
