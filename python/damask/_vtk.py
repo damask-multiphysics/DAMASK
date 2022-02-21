@@ -208,7 +208,7 @@ class VTK:
             raise FileNotFoundError(f'No such file: {fname}')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
-            reader.SetFileName(str(fname))
+            reader.SetFileName(str(Path(fname).expanduser()))
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given')
             elif dataset_type.lower().endswith(('imagedata','image_data')):
@@ -237,7 +237,7 @@ class VTK:
             else:
                 raise TypeError(f'Unknown file extension "{ext}"')
 
-            reader.SetFileName(str(fname))
+            reader.SetFileName(str(Path(fname).expanduser()))
             reader.Update()
             vtk_data = reader.GetOutput()
 
@@ -277,7 +277,7 @@ class VTK:
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
-        writer.SetFileName(str(fname)+(default_ext if default_ext != ext else ''))
+        writer.SetFileName(str(Path(fname).expanduser())+(default_ext if default_ext != ext else ''))
 
         if compress:
             writer.SetCompressorTypeToZLib()

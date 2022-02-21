@@ -154,7 +154,7 @@ class Result:
                         'fields':          self.fields,
                        }
 
-        self.fname = Path(fname).absolute()
+        self.fname = Path(fname).expanduser().absolute()
 
         self._protected = True
 
