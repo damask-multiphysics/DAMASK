@@ -42,11 +42,11 @@ class VTK:
         if   isinstance(self.vtk_data,vtk.vtkImageData):
             dup = vtk.vtkImageData()
         elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
-            dup = vtk.vtkUnstructuredGrid
+            dup = vtk.vtkUnstructuredGrid()
         elif isinstance(self.vtk_data,vtk.vtkPolyData):
-            dup = vtk.vtkPolyData
+            dup = vtk.vtkPolyData()
         elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
-            dup = vtk.vtkRectilinearGrid
+            dup = vtk.vtkRectilinearGrid()
         else:
             raise TypeError
 
@@ -222,7 +222,7 @@ class VTK:
             VTK-based geometry from file.
 
         """
-        if not os.path.isfile(os.path.expanduser(fname)):                                           # vtk has a strange error handling
+        if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'No such file: {fname}')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
@@ -315,7 +315,6 @@ class VTK:
 
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
-    # Needs support for damask.Table
     def add(self,
             data: Union[np.ndarray, np.ma.MaskedArray, 'Table'],
             label: str = None):
@@ -332,7 +331,7 @@ class VTK:
 
         """
 
-        def _add_array(self,
+        def _add_array(vtk_data,
                        data: np.ndarray,
                        label: str):
 
@@ -350,26 +349,28 @@ class VTK:
 
             d.SetName(label)
 
-            if   N_data == self.N_points:
-                self.vtk_data.GetPointData().AddArray(d)
-            elif N_data == self.N_cells:
-                self.vtk_data.GetCellData().AddArray(d)
+            if   N_data == vtk_data.GetNumberOfPoints():
+                vtk_data.GetPointData().AddArray(d)
+            elif N_data == vtk_data.GetNumberOfCells():
+                vtk_data.GetCellData().AddArray(d)
             else:
                 raise ValueError(f'Data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
 
-
+        dup = self.copy()
         if isinstance(data,np.ndarray):
             if label is not None:
-                _add_array(self,
+                _add_array(dup.vtk_data,
                            np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data,
                            label)
             else:
                 raise ValueError('No label defined for numpy.ndarray')
         elif isinstance(data,Table):
             for l in data.labels:
-                _add_array(self,data.get(l),l)
+                _add_array(dup.vtk_data,data.get(l),l)
         else:
             raise TypeError
+
+        return dup
 
 
     def get(self,

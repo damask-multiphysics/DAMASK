@@ -589,7 +589,7 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        f = open(fname,'w',newline='\n') if isinstance(fname, (str, Path)) else fname
+        f = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else fname
 
         f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
         self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)

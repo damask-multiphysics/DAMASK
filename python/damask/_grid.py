@@ -644,8 +644,8 @@ class Grid:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        v = VTK.from_image_data(self.cells,self.size,self.origin)
-        v.add(self.material.flatten(order='F'),'material')
+        v = VTK.from_image_data(self.cells,self.size,self.origin)\
+           .add(self.material.flatten(order='F'),'material')
         v.comments += self.comments
 
         v.save(fname,parallel=False,compress=compress)
@@ -693,8 +693,8 @@ class Grid:
             Colors used to map material IDs.
 
         """
-        v = VTK.from_image_data(self.cells,self.size,self.origin)
-        v.add(self.material.flatten(),'material')
+        v = VTK.from_image_data(self.cells,self.size,self.origin) \
+           .add(self.material.flatten(),'material')
         v.show('material',colormap)
 
 

@@ -147,8 +147,8 @@ class TestVTK:
     @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
     def test_add_get(self,default,data_type,shape,N_values):
         data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
-        default.add(data,'data')
-        assert (np.squeeze(data.reshape(N_values,-1)) == default.get('data')).all()
+        new = default.add(data,'data')
+        assert (np.squeeze(data.reshape(N_values,-1)) == new.get('data')).all()
 
 
     @pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
@@ -160,18 +160,17 @@ class TestVTK:
         for k,s in shapes.items():
             d[k] = dict(shape = s,
                         data = np.random.random(N*np.prod(s)).reshape((N,-1)))
-        default.add(Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes))
+        new = default.add(Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes))
         for k,s in shapes.items():
-            assert np.allclose(np.squeeze(d[k]['data']),default.get(k),rtol=1e-7)
+            assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 
 
     def test_add_masked(self,default):
         data = np.random.rand(5*6*7,3)
         masked = ma.MaskedArray(data,mask=data<.4,fill_value=42.)
-        default.add(masked,'D')
-        result_masked = str(default)
-        default.add(np.where(masked.mask,masked.fill_value,masked),'D')
-        assert result_masked == str(default)
+        mask_auto = default.add(masked,'D')
+        mask_manual = default.add(np.where(masked.mask,masked.fill_value,masked),'D')
+        assert str(mask_manual) == str(mask_auto)
 
 
     def test_comments(self,tmp_path,default):
@@ -183,8 +182,7 @@ class TestVTK:
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_polyData(self,update,ref_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
-        polyData = VTK.from_poly_data(points)
-        polyData.add(points,'coordinates')
+        polyData = VTK.from_poly_data(points).add(points,'coordinates')
         if update:
             polyData.save(ref_path/'polyData')
         else:
@@ -197,12 +195,12 @@ class TestVTK:
         grid = [np.arange(4)**2.,
                 np.arange(5)**2.,
                 np.arange(6)**2.]                                               # ParaView renders tetrahedral meshing unless using float coordinates!
-        rectilinearGrid = VTK.from_rectilinear_grid(grid)
         coords = np.stack(np.meshgrid(*grid,indexing='ij'),axis=-1)
         c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
         n = coords[:,:,:,:].reshape(-1,3,order='F')
-        rectilinearGrid.add(np.ascontiguousarray(c),'cell')
-        rectilinearGrid.add(np.ascontiguousarray(n),'node')
+        rectilinearGrid = VTK.from_rectilinear_grid(grid) \
+                        .add(np.ascontiguousarray(c),'cell') \
+                        .add(np.ascontiguousarray(n),'node')
         if update:
             rectilinearGrid.save(ref_path/'rectilinearGrid')
         else:
