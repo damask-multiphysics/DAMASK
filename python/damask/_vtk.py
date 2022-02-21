@@ -38,6 +38,23 @@ class VTK:
         self.vtk_data = vtk_data
 
 
+    def copy(self):
+        if   isinstance(self.vtk_data,vtk.vtkImageData):
+            dup = vtk.vtkImageData()
+        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
+            dup = vtk.vtkUnstructuredGrid
+        elif isinstance(self.vtk_data,vtk.vtkPolyData):
+            dup = vtk.vtkPolyData
+        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
+            dup = vtk.vtkRectilinearGrid
+        else:
+            raise TypeError
+
+        dup.DeepCopy(self.vtk_data)
+
+        return VTK(dup)
+
+
     @property
     def N_points(self) -> int:
         """Number of points in vtkdata."""
