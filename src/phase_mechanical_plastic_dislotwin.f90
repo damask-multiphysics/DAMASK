@@ -200,7 +200,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
       prm%n0_sl = lattice_slip_normal(N_sl,phase_lattice(ph),phase_cOverA(ph))
       prm%fccTwinTransNucleation = phase_lattice(ph) == 'cF' .and. (N_sl(1) == 12)
-      if (prm%fccTwinTransNucleation) prm%fcc_twinNucleationSlipPair = lattice_FCC_TWINNUCLEATIONSLIPPAIR
+      if (prm%fccTwinTransNucleation) prm%fcc_twinNucleationSlipPair = lattice_CF_TWINNUCLEATIONSLIPPAIR
 
       rho_mob_0                = pl%get_as1dFloat('rho_mob_0',   requiredSize=size(N_sl))
       rho_dip_0                = pl%get_as1dFloat('rho_dip_0',   requiredSize=size(N_sl))
