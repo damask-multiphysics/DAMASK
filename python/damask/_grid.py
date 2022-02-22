@@ -683,19 +683,19 @@ class Grid:
 
 
     def show(self,
-             colormap: Colormap = Colormap.from_predefined('viridis')) -> None:
+             colormap: Colormap = Colormap.from_predefined('cividis')) -> None:
         """
         Show on screen.
 
         Parameters
         ----------
-        colormap : damask.Colormap
-            Colors used to map material IDs.
+        colormap : damask.Colormap, optional
+            Colors used to map material IDs. Defaults to 'cividis'.
 
         """
-        v = VTK.from_image_data(self.cells,self.size,self.origin) \
-           .add(self.material.flatten(),'material')
-        v.show('material',colormap)
+        VTK.from_image_data(self.cells,self.size,self.origin) \
+           .add(self.material.flatten('F'),'material') \
+           .show('material',colormap)
 
 
     def add_primitive(self,

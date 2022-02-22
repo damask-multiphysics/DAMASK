@@ -470,7 +470,7 @@ class VTK:
 
     def show(self,
              label: str = None,
-             colormap: Colormap = Colormap.from_predefined('viridis')):
+             colormap: Colormap = Colormap.from_predefined('cividis')):
         """
         Render.
 
