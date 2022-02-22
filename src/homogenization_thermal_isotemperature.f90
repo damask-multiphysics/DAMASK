@@ -1,13 +1,14 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
-!> @brief Dummy homogenization scheme for 1 constituent per material point
+!> @brief Isotemperature homogenization
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization:thermal) isotemperature
 
 contains
 
-module subroutine isotemperature_init
+module subroutine isotemperature_init()
 
+  print'(/,1x,a)', '<<<+-  homogenization:thermal:isotemperature init  -+>>>'
 
 end subroutine isotemperature_init
 

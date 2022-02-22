@@ -6,9 +6,10 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization
   use prec
+  use math
+  use constants
   use IO
   use config
-  use math
   use material
   use phase
   use discretization
@@ -32,7 +33,7 @@ module homogenization
     HOMOGENIZATION_RGC_ID
   end enum
 
-    type(tState),        allocatable, dimension(:), public :: &
+  type(tState),        allocatable, dimension(:), public :: &
     homogState, &
     damageState_h
 
@@ -66,15 +67,13 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
   interface
 
-    module subroutine mechanical_init(num_homog)
-      class(tNode), pointer, intent(in) :: &
-        num_homog                                                                                   !< pointer to mechanical homogenization numerics data
+    module subroutine mechanical_init()
     end subroutine mechanical_init
 
-    module subroutine thermal_init
+    module subroutine thermal_init()
     end subroutine thermal_init
 
-    module subroutine damage_init
+    module subroutine damage_init()
     end subroutine damage_init
 
     module subroutine mechanical_partition(subF,ce)
@@ -204,15 +203,15 @@ subroutine homogenization_init()
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(damageState_h   (size(material_name_homogenization)))
-  call material_parseHomogenization()
+  call parseHomogenization()
 
   num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
-  num%nMPstate  = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
+  num%nMPstate = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
   if (num%nMPstate < 1) call IO_error(301,ext_msg='nMPstate')
 
-  call mechanical_init(num_homog)
+  call mechanical_init()
   call thermal_init()
   call damage_init()
 
@@ -323,13 +322,13 @@ subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolvin
   elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
     IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
-    ho = material_homogenizationID(ce)
-    do co = 1, homogenization_Nconstituents(ho)
-      call crystallite_orientations(co,ip,el)
-      enddo
-    call mechanical_homogenize(Delta_t,ce)
-    enddo IpLooping3
-  enddo elementLooping3
+      ho = material_homogenizationID(ce)
+      do co = 1, homogenization_Nconstituents(ho)
+        call crystallite_orientations(co,ip,el)
+      end do
+      call mechanical_homogenize(Delta_t,ce)
+    end do IpLooping3
+  end do elementLooping3
   !$OMP END PARALLEL DO
 
 
@@ -447,7 +446,7 @@ end subroutine homogenization_restartRead
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseHomogenization
+subroutine parseHomogenization
 
   class(tNode), pointer :: &
     material_homogenization, &
@@ -459,8 +458,8 @@ subroutine material_parseHomogenization
 
   material_homogenization => config_material%get('homogenization')
 
-  allocate(thermal_type(size(material_name_homogenization)),        source=THERMAL_isothermal_ID)
-  allocate(damage_type (size(material_name_homogenization)),        source=DAMAGE_none_ID)
+  allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_isothermal_ID)
+  allocate(damage_type (size(material_name_homogenization)),source=DAMAGE_none_ID)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
@@ -468,7 +467,7 @@ subroutine material_parseHomogenization
     if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
         select case (homogThermal%get_asString('type'))
-          case('pass')
+          case('pass','isotemperature')
             thermal_type(h) = THERMAL_conduction_ID
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))
@@ -486,7 +485,7 @@ subroutine material_parseHomogenization
     endif
   enddo
 
-end subroutine material_parseHomogenization
+end subroutine parseHomogenization
 
 
 end module homogenization
