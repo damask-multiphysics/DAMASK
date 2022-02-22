@@ -259,7 +259,7 @@ class Table:
             Table data from file.
 
         """
-        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f = open(Path(fname).expanduser()) if isinstance(fname, (str, Path)) else fname
         f.seek(0)
 
         comments = []

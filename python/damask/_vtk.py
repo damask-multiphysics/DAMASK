@@ -60,12 +60,25 @@ class VTK:
         """Number of points in vtkdata."""
         return self.vtk_data.GetNumberOfPoints()
 
-
     @property
     def N_cells(self) -> int:
         """Number of cells in vtkdata."""
         return self.vtk_data.GetNumberOfCells()
 
+    @property
+    def labels(self):
+        """Labels of datasets."""
+        labels = {}
+
+        cell_data = self.vtk_data.GetCellData()
+        if c := [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
+            labels['Cell Data'] = c
+
+        point_data = self.vtk_data.GetPointData()
+        if p := [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
+            labels['Point Data'] = p
+
+        return labels
 
     @staticmethod
     def from_image_data(cells: IntSequence,
