@@ -1,6 +1,7 @@
 import os
 import filecmp
 import time
+import string
 
 import pytest
 import numpy as np
@@ -171,6 +172,22 @@ class TestVTK:
         mask_auto = default.add(masked,'D')
         mask_manual = default.add(np.where(masked.mask,masked.fill_value,masked),'D')
         assert str(mask_manual) == str(mask_auto)
+
+
+    @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
+                                                (float,(3,3)),
+                                                (float,(1,)),
+                                                (int,(4,)),
+                                                (str,(1,))])
+    @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
+    def test_labels(self,default,data_type,shape,N_values):
+        data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
+        ALPHABET = np.array(list(string.ascii_lowercase + ' '))
+        label = ''.join(np.random.choice(ALPHABET, size=10))
+        new = default.add(data,label)
+        if N_values == default.N_points: assert label in new.labels['Point Data']
+        if N_values == default.N_cells:  assert label in new.labels['Cell Data']
+
 
 
     def test_comments(self,tmp_path,default):
