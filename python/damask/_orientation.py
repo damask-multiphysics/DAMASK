@@ -1,6 +1,6 @@
 import inspect
 import copy
-from typing import Union, Callable, List, Dict, Any, Tuple, TypeVar
+from typing import Union, Callable, Dict, Any, Tuple, TypeVar
 
 import numpy as np
 
@@ -777,76 +777,6 @@ class Orientation(Rotation,Crystal):
         rgb[np.broadcast_to(~in_SST_[...,np.newaxis],rgb.shape)] = 0.0
 
         return rgb
-
-
-    @property
-    def symmetry_operations(self) -> Rotation:
-        """Symmetry operations as Rotations."""
-        _symmetry_operations: Dict[CrystalFamily, List]  = {
-            'cubic':         [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
-                              [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                              [ 0.5,            0.5,            0.5,            0.5            ],
-                              [-0.5,            0.5,            0.5,            0.5            ],
-                              [-0.5,            0.5,            0.5,           -0.5            ],
-                              [-0.5,            0.5,           -0.5,            0.5            ],
-                              [-0.5,           -0.5,            0.5,            0.5            ],
-                              [-0.5,           -0.5,            0.5,           -0.5            ],
-                              [-0.5,           -0.5,           -0.5,            0.5            ],
-                              [-0.5,            0.5,           -0.5,           -0.5            ],
-                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
-                              [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
-                              [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
-                              [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
-                            ],
-            'hexagonal':    [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
-                              [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                              [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
-                              [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
-                              [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
-                            ],
-            'tetragonal':   [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                            ],
-            'orthorhombic': [
-                              [ 1.0,0.0,0.0,0.0 ],
-                              [ 0.0,1.0,0.0,0.0 ],
-                              [ 0.0,0.0,1.0,0.0 ],
-                              [ 0.0,0.0,0.0,1.0 ],
-                            ],
-            'monoclinic':   [
-                              [ 1.0,0.0,0.0,0.0 ],
-                              [ 0.0,0.0,1.0,0.0 ],
-                            ],
-            'triclinic':    [
-                              [ 1.0,0.0,0.0,0.0 ],
-                            ]}
-        return Rotation.from_quaternion(_symmetry_operations[self.family],accept_homomorph=True)
 
 
 ####################################################################################################
