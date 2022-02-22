@@ -5,6 +5,8 @@ references:
     fit to Tab. 2.4.1 (RRR=1000, T_min=200K, T_max=1000K)
   - https://www.mit.edu/~6.777/matprops/copper.htm
 
+output: [T]
+
 K_11: 4.039e+2
 K_11,T: -8.119e-2
 K_11,T^2: 1.454e-5
