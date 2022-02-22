@@ -30,7 +30,7 @@ lattice_symmetries: Dict[CrystalLattice, CrystalFamily] = {
 
 class Crystal():
     """
-    Representation of crystal in terms of crystal family or Bravais lattice.
+    Representation of a crystal as (general) crystal family or (more specific) as a scaled Bravais lattice.
 
     Examples
     --------
@@ -41,14 +41,14 @@ class Crystal():
     >>> cubic
     Crystal family: cubic
 
-    Body centered cubic Bravais lattice with parameters of iron:
+    Body-centered cubic Bravais lattice with parameters of iron:
 
     >>> import damask
-    >>> Fe = damask.Crystal(lattice='cI', a=0.287e-9)
+    >>> Fe = damask.Crystal(lattice='cI', a=287e-12)
     >>> Fe
     Crystal family: cubic
     Bravais lattice: cI
-    a=2.87e-10m, b=2.87e-10m, c=2.87e-10m
+    a=2.87e-10 m, b=2.87e-10 m, c=2.87e-10 m
     α=90°, β=90°, γ=90°
 
     """
@@ -136,10 +136,10 @@ class Crystal():
         """Represent."""
         family = f'Crystal family: {self.family}'
         return family if self.lattice is None else \
-               '\n'.join([family,
-                          f'Bravais lattice: {self.lattice}',
-                          'a={:.5g}m, b={:.5g}m, c={:.5g}m'.format(*self.parameters[:3]),
-                          'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
+               util.srepr([family,
+                           f'Bravais lattice: {self.lattice}',
+                           'a={:.5g} m, b={:.5g} m, c={:.5g} m'.format(*self.parameters[:3]),
+                           'α={:.5g}°, β={:.5g}°, γ={:.5g}°'.format(*np.degrees(self.parameters[3:]))])
 
 
     def __eq__(self,
@@ -345,7 +345,8 @@ class Crystal():
         Parameters
         ----------
         direction|plane : numpy.ndarray, shape (...,3)
-            Vector along direction or plane normal.
+            Real space vector along direction or
+            reciprocal space vector along plane normal.
 
         Returns
         -------
@@ -366,7 +367,7 @@ class Crystal():
                  uvw: FloatSequence = None,
                  hkl: FloatSequence = None) -> np.ndarray:
         """
-        Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
+        Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
 
         Parameters
         ----------
@@ -376,18 +377,19 @@ class Crystal():
         Returns
         -------
         vector : numpy.ndarray, shape (...,3)
-            Crystal frame vector along [uvw] direction or (hkl) plane normal.
+            Crystal frame vector in real space along [uvw] direction or
+            in reciprocal space along (hkl) plane normal.
 
         Examples
         --------
-        Crystal frame vector of Magnesium along [1,0,0] direction:
+        Crystal frame vector (real space) of Magnesium corresponding to [1,1,0] direction:
 
         >>> import damask
-        >>> Mg = damask.Crystal(lattice='hP', a=0.321e-9, c=0.521e-9)
-        >>> Mg.to_frame(uvw=[1, 0, 0])
-        array([3.21e-10, 0.00e+00, 0.00e+00])
+        >>> Mg = damask.Crystal(lattice='hP', a=321e-12, c=521e-12)
+        >>> Mg.to_frame(uvw=[1, 1, 0])
+        array([1.60500000e-10, 2.77994155e-10, 0.00000000e+00])
 
-        Crystal frame vector of Titanium along (1,0,0) direction:
+        Crystal frame vector (reciprocal space) of Titanium along (1,0,0) plane normal:
 
         >>> import damask
         >>> Ti = damask.Crystal(lattice='hP', a=0.295e-9, c=0.469e-9)
