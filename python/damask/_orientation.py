@@ -247,7 +247,7 @@ class Orientation(Rotation,Crystal):
         if isinstance(other, (Orientation,Rotation)):
             return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
         else:
-            raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
+            raise TypeError('use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
     @staticmethod
@@ -550,7 +550,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if self.family != other.family:
-            raise NotImplementedError('Disorientation between different crystal families')
+            raise NotImplementedError('disorientation between different crystal families')
 
         blend = util.shapeblender(self.shape,other.shape)
         s = self.equivalent
@@ -649,7 +649,7 @@ class Orientation(Rotation,Crystal):
         """
         vector_ = np.array(vector,float)
         if vector_.shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors')
+            raise ValueError('input is not a field of three-dimensional vectors')
         eq  = self.equivalent
         blend = util.shapeblender(eq.shape,vector_.shape[:-1])
         poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(vector_,blend+(3,))
@@ -686,7 +686,7 @@ class Orientation(Rotation,Crystal):
         """
         vector_ = np.array(vector,float)
         if vector_.shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors')
+            raise ValueError('input is not a field of three-dimensional vectors')
 
         if self.standard_triangle is None:                                                          # direct exit for no symmetry
             return np.ones_like(vector_[...,0],bool)
@@ -744,7 +744,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if np.array(vector).shape[-1] != 3:
-            raise ValueError('Input is not a field of three-dimensional vectors')
+            raise ValueError('input is not a field of three-dimensional vectors')
 
         vector_ = self.to_SST(vector,proper) if in_SST else \
                   self @ np.broadcast_to(vector,self.shape+(3,))
@@ -918,7 +918,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if (N_slip is not None) ^ (N_twin is None):
-            raise KeyError('Specify either "N_slip" or "N_twin"')
+            raise KeyError('specify either "N_slip" or "N_twin"')
 
         kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
                             (self.kinematics('twin'),N_twin)

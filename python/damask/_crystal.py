@@ -64,9 +64,9 @@ class Crystal():
 
         """
         if family is not None and family not in list(lattice_symmetries.values()):
-            raise KeyError(f'Invalid crystal family "{family}"')
+            raise KeyError(f'invalid crystal family "{family}"')
         if lattice is not None and family is not None and family != lattice_symmetries[lattice]:
-            raise KeyError(f'Incompatible family "{family}" for lattice "{lattice}"')
+            raise KeyError(f'incompatible family "{family}" for lattice "{lattice}"')
 
         self.family = lattice_symmetries[lattice] if family is None else family
         self.lattice = lattice
@@ -101,13 +101,13 @@ class Crystal():
              or (self.alpha is None or ('alpha' in self.immutable and self.alpha != self.immutable['alpha'])) \
              or (self.beta  is None or ('beta'  in self.immutable and self.beta  != self.immutable['beta'])) \
              or (self.gamma is None or ('gamma' in self.immutable and self.gamma != self.immutable['gamma'])):
-                raise ValueError (f'Incompatible parameters {self.parameters} for crystal family {self.family}')
+                raise ValueError (f'incompatible parameters {self.parameters} for crystal family {self.family}')
 
             if np.any(np.array([self.alpha,self.beta,self.gamma]) <= 0):
-                raise ValueError ('Lattice angles must be positive')
+                raise ValueError ('lattice angles must be positive')
             if np.any([np.roll([self.alpha,self.beta,self.gamma],r)[0]
               >= np.sum(np.roll([self.alpha,self.beta,self.gamma],r)[1:]) for r in range(3)]):
-                raise ValueError ('Each lattice angle must be less than sum of others')
+                raise ValueError ('each lattice angle must be less than sum of others')
 
 
     def __repr__(self):
@@ -269,7 +269,7 @@ class Crystal():
 
         """
         if self.parameters is None:
-            raise KeyError('Missing crystal lattice parameters')
+            raise KeyError('missing crystal lattice parameters')
         return np.array([
                           [1,0,0],
                           [np.cos(self.gamma),np.sin(self.gamma),0],
@@ -309,7 +309,7 @@ class Crystal():
                      ],
                 }
 
-        if self.lattice is None: raise KeyError('No lattice type specified')
+        if self.lattice is None: raise KeyError('no lattice type specified')
         return np.array([[0,0,0]]
                         + _lattice_points.get(self.lattice if self.lattice == 'hP' else \
                                               self.lattice[-1],None),dtype=float)
@@ -333,7 +333,7 @@ class Crystal():
 
         """
         if (direction is not None) ^ (plane is None):
-            raise KeyError('Specify either "direction" or "plane"')
+            raise KeyError('specify either "direction" or "plane"')
         basis,axis = (self.basis_reciprocal,np.array(direction)) \
                      if plane is None else \
                      (self.basis_real,np.array(plane))
@@ -358,7 +358,7 @@ class Crystal():
 
         """
         if (uvw is not None) ^ (hkl is None):
-            raise KeyError('Specify either "uvw" or "hkl"')
+            raise KeyError('specify either "uvw" or "hkl"')
         basis,axis = (self.basis_real,np.array(uvw)) \
                      if hkl is None else \
                      (self.basis_reciprocal,np.array(hkl))
@@ -930,7 +930,7 @@ class Crystal():
         }
         orientation_relationships = {k:v for k,v in _orientation_relationships.items() if self.lattice in v}
         if model not in orientation_relationships:
-            raise KeyError(f'Unknown orientation relationship "{model}"')
+            raise KeyError(f'unknown orientation relationship "{model}"')
         r = orientation_relationships[model]
 
         sl = self.lattice

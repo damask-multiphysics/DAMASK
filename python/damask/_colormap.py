@@ -141,7 +141,7 @@ class Colormap(mpl.colors.ListedColormap):
         )
 
         if model.lower() not in toMsh:
-            raise ValueError(f'Invalid color model "{model}"')
+            raise ValueError(f'invalid color model "{model}"')
 
         low_high = np.vstack((low,high)).astype(float)
         out_of_bounds = np.bool_(False)
