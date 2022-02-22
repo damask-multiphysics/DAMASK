@@ -29,7 +29,29 @@ lattice_symmetries: Dict[CrystalLattice, CrystalFamily] = {
 
 
 class Crystal():
-    """Crystal lattice."""
+    """
+    Representation of crystal in terms of crystal family or Bravais lattice.
+
+    Examples
+    --------
+    Cubic crystal family:
+
+    >>> import damask
+    >>> cubic = damask.Crystal(family='cubic')
+    >>> cubic
+    Crystal family: cubic
+
+    Body centered cubic Bravais lattice with parameters of iron:
+
+    >>> import damask
+    >>> Fe = damask.Crystal(lattice='cI', a=0.287e-9)
+    >>> Fe
+    Crystal family: cubic
+    Bravais lattice: cI
+    a=2.87e-10m, b=2.87e-10m, c=2.87e-10m
+    α=90°, β=90°, γ=90°
+
+    """
 
     def __init__(self, *,
                  family: CrystalFamily = None,
@@ -38,7 +60,7 @@ class Crystal():
                  alpha: float = None, beta: float = None, gamma: float = None,
                  degrees: bool = False):
         """
-        Representation of crystal in terms of crystal family or Bravais lattice.
+        New representation of a crystal.
 
         Parameters
         ----------
@@ -355,6 +377,22 @@ class Crystal():
         -------
         vector : numpy.ndarray, shape (...,3)
             Crystal frame vector along [uvw] direction or (hkl) plane normal.
+
+        Examples
+        --------
+        Crystal frame vector of Magnesium along [1,0,0] direction:
+
+        >>> import damask
+        >>> Mg = damask.Crystal(lattice='hP', a=0.321e-9, c=0.521e-9)
+        >>> Mg.to_frame(uvw=[1, 0, 0])
+        array([3.21e-10, 0.00e+00, 0.00e+00])
+
+        Crystal frame vector of Titanium along (1,0,0) direction:
+
+        >>> import damask
+        >>> Ti = damask.Crystal(lattice='hP', a=0.295e-9, c=0.469e-9)
+        >>> Ti.to_frame(hkl=(1, 0, 0))
+        array([ 3.38983051e+09,  1.95711956e+09, -4.15134508e-07])
 
         """
         if (uvw is not None) ^ (hkl is None):
