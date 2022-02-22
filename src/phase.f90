@@ -91,6 +91,11 @@ module phase
       integer,          intent(in) :: ph
     end subroutine damage_results
 
+    module subroutine thermal_results(group,ph)
+      character(len=*), intent(in) :: group
+      integer,          intent(in) :: ph
+    end subroutine thermal_results
+
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
 
@@ -487,6 +492,7 @@ subroutine phase_results()
 
     call mechanical_results(group,ph)
     call damage_results(group,ph)
+    call thermal_results(group,ph)
 
   end do
 

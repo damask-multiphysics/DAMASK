@@ -180,11 +180,12 @@ submodule(phase) mechanical
     end function elastic_nu
 
   end interface
-  type :: tOutput                                                                                   !< new requested output (per phase)
+
+  type :: tOutput                                                                                   !< requested output (per phase)
     character(len=pStringLen), allocatable, dimension(:) :: &
       label
   end type tOutput
-  type(tOutput), allocatable, dimension(:) :: output_constituent
+  type(tOutput), allocatable, dimension(:) :: output_mechanical
 
   procedure(integrateStateFPI), pointer :: integrateState
 
@@ -216,7 +217,7 @@ module subroutine mechanical_init(phases)
   print'(/,1x,a)', '<<<+-  phase:mechanical init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
-  allocate(output_constituent(phases%length))
+  allocate(output_mechanical(phases%length))
 
   allocate(phase_mechanical_Fe(phases%length))
   allocate(phase_mechanical_Fi(phases%length))
@@ -251,12 +252,12 @@ module subroutine mechanical_init(phases)
     allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
 
-    phase   => phases%get(ph)
-    mech    => phase%get('mechanical')
+    phase => phases%get(ph)
+    mech  => phase%get('mechanical')
 #if defined(__GFORTRAN__)
-    output_constituent(ph)%label = output_as1dString(mech)
+    output_mechanical(ph)%label = output_as1dString(mech)
 #else
-    output_constituent(ph)%label = mech%get_as1dString('output',defaultVal=emptyStringArray)
+    output_mechanical(ph)%label = mech%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
@@ -330,7 +331,7 @@ module subroutine mechanical_results(group,ph)
   integer,          intent(in) :: ph
 
 
-  call crystallite_results(group,ph)
+  call results(group,ph)
 
   select case(phase_plasticity(ph))
 
@@ -879,9 +880,9 @@ end function integrateStateRK
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes crystallite results to HDF5 output file
+!> @brief Write mechanical results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_results(group,ph)
+subroutine results(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
@@ -891,9 +892,9 @@ subroutine crystallite_results(group,ph)
 
   call results_closeGroup(results_addGroup(group//'/mechanical'))
 
-  do ou = 1, size(output_constituent(ph)%label)
+  do ou = 1, size(output_mechanical(ph)%label)
 
-    select case (output_constituent(ph)%label(ou))
+    select case (output_mechanical(ph)%label(ou))
       case('F')
         call results_writeDataset(phase_mechanical_F(ph)%data,group//'/mechanical/','F',&
                                  'deformation gradient','1')
@@ -919,13 +920,13 @@ subroutine crystallite_results(group,ph)
         call results_writeDataset(phase_mechanical_S(ph)%data,group//'/mechanical/','S', &
                                  'second Piola-Kirchhoff stress','Pa')
       case('O')
-        call results_writeDataset(to_quaternion(phase_O(ph)%data),group//'/mechanical',output_constituent(ph)%label(ou),&
+        call results_writeDataset(to_quaternion(phase_O(ph)%data),group//'/mechanical',output_mechanical(ph)%label(ou),&
                                  'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
-        call results_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/'//output_constituent(ph)%label(ou))
+        call results_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/'//output_mechanical(ph)%label(ou))
         if (any(phase_lattice(ph) == ['hP', 'tI'])) &
-          call results_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/'//output_constituent(ph)%label(ou))
+          call results_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/'//output_mechanical(ph)%label(ou))
     end select
-  enddo
+  end do
 
 
   contains
@@ -947,7 +948,7 @@ subroutine crystallite_results(group,ph)
 
  end function to_quaternion
 
-end subroutine crystallite_results
+end subroutine results
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1334,6 +1335,5 @@ module subroutine phase_set_F(F,co,ce)
   phase_mechanical_F(material_phaseID(co,ce))%data(1:3,1:3,material_phaseEntry(co,ce)) = F
 
 end subroutine phase_set_F
-
 
 end submodule mechanical
