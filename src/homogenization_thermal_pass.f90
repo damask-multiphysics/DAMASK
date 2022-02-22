@@ -11,7 +11,7 @@ module subroutine pass_init()
   print'(/,1x,a)', '<<<+-  homogenization:thermal:pass init  -+>>>'
 
   if (homogenization_Nconstituents(1) /= 1) &
-    call IO_error(211,ext_msg='N_constituents (pass)')
+    call IO_error(211,ext_msg='(pass) with N_constituents !=1')
 
 end subroutine pass_init
 

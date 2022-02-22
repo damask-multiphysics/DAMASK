@@ -388,7 +388,7 @@ end function thermal_active
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief writes damage sources results to HDF5 output file
+!< @brief writes thermal sources results to HDF5 output file
 !----------------------------------------------------------------------------------------------
 module subroutine thermal_results(group,ph)
 
@@ -398,18 +398,16 @@ module subroutine thermal_results(group,ph)
 
   integer :: ou
 
-  if (allocated(param(ph)%output)) then
-    call results_closeGroup(results_addGroup(group//'thermal'))
-  else
-    return
-  endif
+  if (.not. allocated(param(ph)%output)) return
+
+  call results_closeGroup(results_addGroup(group//'thermal'))
 
   do ou = 1, size(param(ph)%output)
 
     select case(trim(param(ph)%output(ou)))
 
       case ('T')
-        call results_writeDataset(current(ph)%T,group//'thermal','T', 'temperature','T')
+        call results_writeDataset(current(ph)%T,group//'thermal','T', 'temperature','K')
 
     end select
 

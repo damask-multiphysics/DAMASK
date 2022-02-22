@@ -204,7 +204,7 @@ module subroutine mechanical_results(group_base,ho)
                                   'deformation gradient','1')
       case('P')
         call results_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
-                                  'deformation gradient','1')
+                                  'first Piola-Kirchhoff stress','Pa')
     end select
   end do
 
