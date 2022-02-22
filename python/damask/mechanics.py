@@ -273,7 +273,7 @@ def _polar_decomposition(T: _np.ndarray,
         output+=[_np.einsum('...ji,...jk',R,T)]
 
     if len(output) == 0:
-        raise ValueError('output needs to be out of V, R, U')
+        raise ValueError('Output not in {V, R, U}')
 
     return tuple(output)
 

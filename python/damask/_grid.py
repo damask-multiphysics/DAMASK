@@ -105,9 +105,9 @@ class Grid:
     def material(self,
                  material: np.ndarray):
         if len(material.shape) != 3:
-            raise ValueError(f'invalid material shape {material.shape}')
+            raise ValueError(f'Invalid material shape {material.shape}')
         if material.dtype not in np.sctypes['float'] and material.dtype not in np.sctypes['int']:
-            raise TypeError(f'invalid material data type {material.dtype}')
+            raise TypeError(f'Invalid material data type {material.dtype}')
 
         self._material = np.copy(material)
 
@@ -125,7 +125,7 @@ class Grid:
     def size(self,
              size: FloatSequence):
         if len(size) != 3 or any(np.array(size) < 0):
-            raise ValueError(f'invalid size {size}')
+            raise ValueError(f'Invalid size {size}')
 
         self._size = np.array(size)
 
@@ -138,7 +138,7 @@ class Grid:
     def origin(self,
                origin: FloatSequence):
         if len(origin) != 3:
-            raise ValueError(f'invalid origin {origin}')
+            raise ValueError(f'Invalid origin {origin}')
 
         self._origin = np.array(origin)
 
@@ -228,7 +228,7 @@ class Grid:
         except ValueError:
             header_length,keyword = (-1, 'invalid')
         if not keyword.startswith('head') or header_length < 3:
-            raise TypeError('header length information missing or invalid')
+            raise TypeError('Header length information missing or invalid')
 
         comments = []
         content = f.readlines()
@@ -258,7 +258,7 @@ class Grid:
             i += len(items)
 
         if i != cells.prod():
-            raise TypeError(f'invalid file: expected {cells.prod()} entries, found {i}')
+            raise TypeError(f'Invalid file: expected {cells.prod()} entries, found {i}')
 
         if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
             material = material.astype('int') - (1 if material.min() > 0 else 0)
@@ -811,7 +811,7 @@ class Grid:
 
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
-            raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
+            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified')
 
         limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
         mat = self.material.copy()
@@ -847,7 +847,7 @@ class Grid:
 
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
-            raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
+            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified')
 
 
         mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
@@ -1184,7 +1184,7 @@ class Grid:
 
         """
         if not set(directions).issubset(valid := ['x', 'y', 'z']):
-            raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
+            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified')
 
         o = [[0, self.cells[0]+1,           np.prod(self.cells[:2]+1)+self.cells[0]+1, np.prod(self.cells[:2]+1)],
              [0, np.prod(self.cells[:2]+1), np.prod(self.cells[:2]+1)+1,               1],

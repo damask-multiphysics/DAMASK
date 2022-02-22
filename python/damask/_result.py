@@ -132,7 +132,7 @@ class Result:
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
             self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
             if len(self.increments) == 0:
-                raise ValueError('incomplete DADF5 file')
+                raise ValueError('Incomplete DADF5 file')
 
             self.N_materialpoints, self.N_constituents = np.shape(f['cell_to/phase'])
 
@@ -939,7 +939,7 @@ class Result:
             elif T_sym['meta']['unit'] == 'Pa':
                 k = 'stress'
         if k not in ['stress', 'strain']:
-            raise ValueError(f'invalid von Mises kind {kind}')
+            raise ValueError(f'Invalid von Mises kind {kind}')
 
         return {
                 'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
@@ -993,7 +993,7 @@ class Result:
             t = 'tensor'
             if o is None: o = 'fro'
         else:
-            raise ValueError(f'invalid shape of {x["label"]}')
+            raise ValueError(f'Invalid shape of {x["label"]}')
 
         return {
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
@@ -1633,7 +1633,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
         else:
-            raise ValueError(f'invalid mode {mode}')
+            raise ValueError(f'Invalid mode {mode}')
 
         v.set_comments(util.execution_stamp('Result','export_VTK'))
 

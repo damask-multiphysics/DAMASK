@@ -206,7 +206,7 @@ class VTK:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
             if dataset_type is None:
-                raise TypeError('Dataset type for *.vtk file not given.')
+                raise TypeError('Dataset type for *.vtk file not given')
             elif dataset_type.lower().endswith(('imagedata','image_data')):
                 reader.Update()
                 vtk_data = reader.GetStructuredPointsOutput()
@@ -220,7 +220,7 @@ class VTK:
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
             else:
-                raise TypeError(f'Unknown dataset type {dataset_type} for vtk file')
+                raise TypeError(f'Unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
                 reader = vtk.vtkXMLImageDataReader()
@@ -231,7 +231,7 @@ class VTK:
             elif ext == '.vtp':
                 reader = vtk.vtkXMLPolyDataReader()
             else:
-                raise TypeError(f'Unknown file extension {ext}')
+                raise TypeError(f'Unknown file extension "{ext}"')
 
             reader.SetFileName(str(fname))
             reader.Update()
@@ -336,7 +336,7 @@ class VTK:
             elif N_data == N_cells:
                 self.vtk_data.GetCellData().AddArray(d)
             else:
-                raise ValueError(f'Cell / point count ({N_cells} / {N_points}) differs from data ({N_data}).')
+                raise ValueError(f'Cell / point count ({N_cells} / {N_points}) differs from data ({N_data})')
         elif isinstance(data,Table):
             raise NotImplementedError('damask.Table')
         else:
@@ -383,7 +383,7 @@ class VTK:
             # string array
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
-            raise ValueError(f'Array "{label}" not found.')
+            raise ValueError(f'Array "{label}" not found')
 
 
     def get_comments(self) -> List[str]:

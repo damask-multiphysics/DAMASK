@@ -575,7 +575,7 @@ def DREAM3D_base_group(fname: Union[str, Path]) -> str:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
 
     if base_group is None:
-        raise ValueError(f'Could not determine base group in file {fname}.')
+        raise ValueError(f'Could not determine base group in file {fname}')
 
     return base_group
 
@@ -606,7 +606,7 @@ def DREAM3D_cell_data_group(fname: Union[str, Path]) -> str:
                                                    else None)
 
     if cell_data_group is None:
-        raise ValueError(f'Could not determine cell data group in file {fname}/{base_group}.')
+        raise ValueError(f'Could not determine cell data group in file {fname}/{base_group}')
 
     return cell_data_group
 
