@@ -35,7 +35,6 @@ class TestVTK:
 
     def test_rectilinearGrid(self,tmp_path):
         grid  = np.sort(np.random.random((3,10)))
-        print(grid)
         v = VTK.from_rectilinear_grid(grid)
         string = v.__repr__()
         v.save(tmp_path/'rectilinearGrid',False)

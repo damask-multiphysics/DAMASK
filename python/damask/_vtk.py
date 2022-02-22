@@ -236,12 +236,12 @@ class VTK:
 
         """
         if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
-            raise FileNotFoundError(f'No such file: {fname}')
+            raise FileNotFoundError(f'file "{fname}" not found')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(Path(fname).expanduser()))
             if dataset_type is None:
-                raise TypeError('Dataset type for *.vtk file not given')
+                raise TypeError('dataset type for *.vtk file not given')
             elif dataset_type.lower().endswith(('imagedata','image_data')):
                 reader.Update()
                 vtk_data = reader.GetStructuredPointsOutput()
@@ -255,7 +255,7 @@ class VTK:
                 reader.Update()
                 vtk_data = reader.GetRectilinearGridOutput()
             else:
-                raise TypeError(f'Unknown dataset type "{dataset_type}" for vtk file')
+                raise TypeError(f'unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
                 reader = vtk.vtkXMLImageDataReader()
@@ -266,7 +266,7 @@ class VTK:
             elif ext == '.vtr':
                 reader = vtk.vtkXMLRectilinearGridReader()
             else:
-                raise TypeError(f'Unknown file extension "{ext}"')
+                raise TypeError(f'unknown file extension "{ext}"')
 
             reader.SetFileName(str(Path(fname).expanduser()))
             reader.Update()
@@ -367,7 +367,7 @@ class VTK:
             elif N_data == vtk_data.GetNumberOfCells():
                 vtk_data.GetCellData().AddArray(d)
             else:
-                raise ValueError(f'Data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
+                raise ValueError(f'data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
 
         dup = self.copy()
         if isinstance(data,np.ndarray):
@@ -376,7 +376,7 @@ class VTK:
                            np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data,
                            label)
             else:
-                raise ValueError('No label defined for numpy.ndarray')
+                raise ValueError('no label defined for numpy.ndarray')
         elif isinstance(data,Table):
             for l in data.labels:
                 _add_array(dup.vtk_data,data.get(l),l)
@@ -426,7 +426,7 @@ class VTK:
             # string array
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
-            raise ValueError(f'Array "{label}" not found')
+            raise ValueError(f'array "{label}" not found')
 
 
     @property
