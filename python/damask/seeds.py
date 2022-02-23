@@ -99,8 +99,8 @@ def from_Poisson_disc(size: _FloatSequence,
             s += 1
             progress.update(s)
 
-        if i == 100:
-            raise ValueError('Seeding not possible')
+        if i >= 100:
+            raise ValueError('seeding not possible')
 
     return coords
 

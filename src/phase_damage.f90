@@ -336,7 +336,7 @@ end subroutine damage_results
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!> @brief Constitutive equation for calculating the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
 function phase_damage_collectDotState(ph,en) result(broken)
 

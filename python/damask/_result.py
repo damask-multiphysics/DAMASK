@@ -32,10 +32,10 @@ def _view_transition(what,datasets,increments,times,phases,homogenizations,field
     if (datasets is not None and what is None) or (what is not None and datasets is None):
         raise ValueError('"what" and "datasets" need to be used as a pair')
     if datasets is not None or what is not None:
-        warnings.warn('Arguments "what" and "datasets" will be removed in DAMASK v3.0.0-alpha7', DeprecationWarning,2)
+        warnings.warn('arguments "what" and "datasets" will be removed in DAMASK v3.0.0-alpha7', DeprecationWarning,2)
         return what,datasets
     if sum(1 for _ in filter(None.__ne__, [increments,times,phases,homogenizations,fields])) > 1:
-        raise ValueError('Only one out of "increments", "times", "phases", "homogenizations", and "fields" can be used')
+        raise ValueError('only one out of "increments", "times", "phases", "homogenizations", and "fields" can be used')
     else:
         if increments is not None: return "increments", increments
         if times is not None: return "times", times
@@ -115,7 +115,7 @@ class Result:
             self.version_minor = f.attrs['DADF5_version_minor']
 
             if self.version_major != 0 or not 12 <= self.version_minor <= 14:
-                raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
+                raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
             if self.version_major == 0 and self.version_minor < 14:
                 self.export_setup = None
 
@@ -490,7 +490,7 @@ class Result:
 
         """
         if self._protected:
-            raise PermissionError('Renaming datasets not permitted')
+            raise PermissionError('rename datasets')
 
         with h5py.File(self.fname,'a') as f:
             for inc in self.visible['increments']:
@@ -529,7 +529,7 @@ class Result:
 
         """
         if self._protected:
-            raise PermissionError('Removing datasets not permitted')
+            raise PermissionError('delete datasets')
 
         with h5py.File(self.fname,'a') as f:
             for inc in self.visible['increments']:
@@ -639,7 +639,7 @@ class Result:
         data = eval(formula)
 
         if not hasattr(data,'shape') or data.shape[0] != kwargs[d]['data'].shape[0]:
-            raise ValueError("'{}' results in invalid shape".format(kwargs['formula']))
+            raise ValueError('"{}" results in invalid shape'.format(kwargs['formula']))
 
         return {
                 'data':  data,
@@ -939,7 +939,7 @@ class Result:
             elif T_sym['meta']['unit'] == 'Pa':
                 k = 'stress'
         if k not in ['stress', 'strain']:
-            raise ValueError(f'invalid von Mises kind {kind}')
+            raise ValueError(f'invalid von Mises kind "{kind}"')
 
         return {
                 'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
@@ -1633,7 +1633,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.coordinates0_point)
         else:
-            raise ValueError(f'invalid mode {mode}')
+            raise ValueError(f'invalid mode "{mode}"')
 
         v.comments = util.execution_stamp('Result','export_VTK')
 

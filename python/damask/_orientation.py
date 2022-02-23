@@ -1,6 +1,6 @@
 import inspect
 import copy
-from typing import Union, Callable, List, Dict, Any, Tuple, TypeVar
+from typing import Union, Callable, Dict, Any, Tuple, TypeVar
 
 import numpy as np
 
@@ -780,76 +780,6 @@ class Orientation(Rotation,Crystal):
         return rgb
 
 
-    @property
-    def symmetry_operations(self) -> Rotation:
-        """Symmetry operations as Rotations."""
-        _symmetry_operations: Dict[CrystalFamily, List]  = {
-            'cubic':         [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
-                              [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
-                              [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                              [ 0.5,            0.5,            0.5,            0.5            ],
-                              [-0.5,            0.5,            0.5,            0.5            ],
-                              [-0.5,            0.5,            0.5,           -0.5            ],
-                              [-0.5,            0.5,           -0.5,            0.5            ],
-                              [-0.5,           -0.5,            0.5,            0.5            ],
-                              [-0.5,           -0.5,            0.5,           -0.5            ],
-                              [-0.5,           -0.5,           -0.5,            0.5            ],
-                              [-0.5,            0.5,           -0.5,           -0.5            ],
-                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
-                              [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
-                              [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
-                              [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
-                            ],
-            'hexagonal':    [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
-                              [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                              [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
-                              [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
-                              [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
-                            ],
-            'tetragonal':   [
-                              [ 1.0,            0.0,            0.0,            0.0            ],
-                              [ 0.0,            1.0,            0.0,            0.0            ],
-                              [ 0.0,            0.0,            1.0,            0.0            ],
-                              [ 0.0,            0.0,            0.0,            1.0            ],
-                              [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                              [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                              [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                              [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                            ],
-            'orthorhombic': [
-                              [ 1.0,0.0,0.0,0.0 ],
-                              [ 0.0,1.0,0.0,0.0 ],
-                              [ 0.0,0.0,1.0,0.0 ],
-                              [ 0.0,0.0,0.0,1.0 ],
-                            ],
-            'monoclinic':   [
-                              [ 1.0,0.0,0.0,0.0 ],
-                              [ 0.0,0.0,1.0,0.0 ],
-                            ],
-            'triclinic':    [
-                              [ 1.0,0.0,0.0,0.0 ],
-                            ]}
-        return Rotation.from_quaternion(_symmetry_operations[self.family],accept_homomorph=True)
-
-
 ####################################################################################################
     # functions that require lattice, not just family
 
@@ -919,7 +849,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if (N_slip is not None) ^ (N_twin is None):
-            raise KeyError('Specify either "N_slip" or "N_twin"')
+            raise KeyError('specify either "N_slip" or "N_twin"')
 
         kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
                             (self.kinematics('twin'),N_twin)

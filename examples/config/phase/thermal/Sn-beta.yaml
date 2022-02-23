@@ -5,6 +5,8 @@ references:
     fit to Tab. 61R (T_min=100K, T_max=400K)
   - https://www.engineeringtoolbox.com/specific-heat-metals-d_152.html
 
+output: [T]
+
 K_11: 7.414e+1
 K_11,T: -6.465e-2
 K_11,T^2: 2.066e-4

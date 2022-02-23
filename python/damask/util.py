@@ -285,7 +285,7 @@ def scale_to_coprime(v: FloatSequence) -> np.ndarray:
 
     with np.errstate(invalid='ignore'):
         if not np.allclose(np.ma.masked_invalid(v_/m),v_[np.argmax(abs(v_))]/m[np.argmax(abs(v_))]):
-            raise ValueError(f'Invalid result {m} for input {v_}. Insufficient precision?')
+            raise ValueError(f'invalid result "{m}" for input "{v_}"')
 
     return m
 
@@ -483,7 +483,7 @@ def shapeshifter(fro: Tuple[int, ...],
         assert match
         grp = match.groups()
     except AssertionError:
-        raise ValueError(f'Shapes can not be shifted {fro} --> {to}')
+        raise ValueError(f'shapes cannot be shifted {fro} --> {to}')
     fill: Any = ()
     for g,d in zip(grp,fro+(None,)):
         fill += (1,)*g.count(',')+(d,)
@@ -576,7 +576,7 @@ def DREAM3D_base_group(fname: Union[str, Path]) -> str:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
 
     if base_group is None:
-        raise ValueError(f'Could not determine base group in file {fname}.')
+        raise ValueError(f'could not determine base group in file "{fname}"')
 
     return base_group
 
@@ -607,7 +607,7 @@ def DREAM3D_cell_data_group(fname: Union[str, Path]) -> str:
                                                    else None)
 
     if cell_data_group is None:
-        raise ValueError(f'Could not determine cell data group in file {fname}/{base_group}.')
+        raise ValueError(f'could not determine cell-data group in file "{fname}/{base_group}"')
 
     return cell_data_group
 
@@ -630,7 +630,7 @@ def Bravais_to_Miller(*,
 
     """
     if (uvtw is not None) ^ (hkil is None):
-        raise KeyError('Specify either "uvtw" or "hkil"')
+        raise KeyError('specify either "uvtw" or "hkil"')
     axis,basis  = (np.array(uvtw),np.array([[1,0,-1,0],
                                             [0,1,-1,0],
                                             [0,0, 0,1]])) \
@@ -659,7 +659,7 @@ def Miller_to_Bravais(*,
 
     """
     if (uvw is not None) ^ (hkl is None):
-        raise KeyError('Specify either "uvw" or "hkl"')
+        raise KeyError('specify either "uvw" or "hkl"')
     axis,basis  = (np.array(uvw),np.array([[ 2,-1, 0],
                                            [-1, 2, 0],
                                            [-1,-1, 0],

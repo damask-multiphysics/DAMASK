@@ -7,15 +7,13 @@ submodule(homogenization) mechanical
 
   interface
 
-    module subroutine pass_init
+    module subroutine pass_init()
     end subroutine pass_init
 
-    module subroutine isostrain_init
+    module subroutine isostrain_init()
     end subroutine isostrain_init
 
-    module subroutine RGC_init(num_homogMech)
-      class(tNode), pointer, intent(in) :: &
-        num_homogMech                                                                               !< pointer to mechanical homogenization numerics data
+    module subroutine RGC_init()
     end subroutine RGC_init
 
 
@@ -52,6 +50,12 @@ submodule(homogenization) mechanical
 
   end interface
 
+  type :: tOutput                                                                                   !< requested output (per phase)
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      label
+  end type tOutput
+  type(tOutput), allocatable, dimension(:) :: output_mechanical
+
   integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
     homogenization_type                                                                             !< type of each homogenization
 
@@ -60,27 +64,20 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Allocate variables and set parameters.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_init(num_homog)
-
-  class(tNode), pointer, intent(in) :: &
-    num_homog
-
-  class(tNode), pointer :: &
-    num_homogMech
+module subroutine mechanical_init()
 
   print'(/,1x,a)', '<<<+-  homogenization:mechanical init  -+>>>'
 
-  call material_parseHomogenization2()
+  call parseMechanical()
 
-  allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
-  homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
-  homogenization_F = homogenization_F0                                                              ! initialize to identity
-  allocate(homogenization_P(3,3,discretization_nIPs*discretization_Nelems),        source=0.0_pReal)
+  allocate(homogenization_dPdF(3,3,3,3,discretization_Ncells), source=0.0_pReal)
+  homogenization_F0 = spread(math_I3,3,discretization_Ncells)
+  homogenization_F = homogenization_F0
+  allocate(homogenization_P(3,3,discretization_Ncells),source=0.0_pReal)
 
-  num_homogMech => num_homog%get('mech',defaultVal=emptyDict)
-  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call pass_init
-  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call isostrain_init
-  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call RGC_init(num_homogMech)
+  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call pass_init()
+  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call isostrain_init()
+  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call RGC_init()
 
 end subroutine mechanical_init
 
@@ -185,7 +182,9 @@ module subroutine mechanical_results(group_base,ho)
   character(len=*), intent(in) :: group_base
   integer, intent(in)          :: ho
 
+  integer :: ou
   character(len=:), allocatable :: group
+
 
   group = trim(group_base)//'/mechanical'
   call results_closeGroup(results_addGroup(group))
@@ -197,12 +196,17 @@ module subroutine mechanical_results(group_base,ho)
 
   end select
 
-  !temp = reshape(homogenization_F,[3,3,discretization_nIPs*discretization_Nelems])
-  !call results_writeDataset(group,temp,'F',&
-  !                          'deformation gradient','1')
-  !temp = reshape(homogenization_P,[3,3,discretization_nIPs*discretization_Nelems])
-  !call results_writeDataset(group,temp,'P',&
-  !                          '1st Piola-Kirchhoff stress','Pa')
+  do ou = 1, size(output_mechanical(1)%label)
+
+    select case (output_mechanical(ho)%label(ou))
+      case('F')
+        call results_writeDataset(reshape(homogenization_F,[3,3,discretization_nCells]),group,'F', &
+                                  'deformation gradient','1')
+      case('P')
+        call results_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
+                                  'deformation gradient','1')
+    end select
+  end do
 
 end subroutine mechanical_results
 
@@ -210,35 +214,42 @@ end subroutine mechanical_results
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseHomogenization2()
+subroutine parseMechanical()
 
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
-    homogMech
+    mechanical
 
-  integer :: h
+  integer :: ho
+
 
   material_homogenization => config_material%get('homogenization')
 
   allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
+  allocate(output_mechanical(size(material_name_homogenization)))
 
-  do h=1, size(material_name_homogenization)
-    homog => material_homogenization%get(h)
-    homogMech => homog%get('mechanical')
-    select case (homogMech%get_asString('type'))
+  do ho=1, size(material_name_homogenization)
+    homog => material_homogenization%get(ho)
+    mechanical => homog%get('mechanical')
+#if defined(__GFORTRAN__)
+    output_mechanical(ho)%label = output_as1dString(mechanical)
+#else
+    output_mechanical(ho)%label = mechanical%get_as1dString('output',defaultVal=emptyStringArray)
+#endif
+    select case (mechanical%get_asString('type'))
       case('pass')
-        homogenization_type(h) = HOMOGENIZATION_NONE_ID
+        homogenization_type(ho) = HOMOGENIZATION_NONE_ID
       case('isostrain')
-        homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
+        homogenization_type(ho) = HOMOGENIZATION_ISOSTRAIN_ID
       case('RGC')
-        homogenization_type(h) = HOMOGENIZATION_RGC_ID
+        homogenization_type(ho) = HOMOGENIZATION_RGC_ID
       case default
-        call IO_error(500,ext_msg=homogMech%get_asString('type'))
+        call IO_error(500,ext_msg=mechanical%get_asString('type'))
     end select
   end do
 
-end subroutine material_parseHomogenization2
+end subroutine parseMechanical
 
 
 end submodule mechanical

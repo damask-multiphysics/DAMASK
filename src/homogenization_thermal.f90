@@ -52,10 +52,11 @@ module subroutine thermal_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    allocate(current(ho)%T(count(material_homogenizationID==ho)), source=300.0_pReal)
+    allocate(current(ho)%T(count(material_homogenizationID==ho)), source=T_ROOM)
     allocate(current(ho)%dot_T(count(material_homogenizationID==ho)), source=0.0_pReal)
     configHomogenization => configHomogenizations%get(ho)
     associate(prm => param(ho))
+
       if (configHomogenization%contains('thermal')) then
         configHomogenizationThermal => configHomogenization%get('thermal')
 #if defined (__GFORTRAN__)
@@ -63,13 +64,22 @@ module subroutine thermal_init()
 #else
         prm%output = configHomogenizationThermal%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+        select case (configHomogenizationThermal%get_asString('type'))
+
+          case ('pass')
+            call pass_init()
+
+          case ('isothermal')
+            call isotemperature_init()
+
+        end select
       else
         prm%output = emptyStringArray
       end if
+
     end associate
   end do
 
-  call pass_init()
 
 end subroutine thermal_init
 

@@ -5,6 +5,8 @@ references:
     fit to Tab. 35R (T_min=150K, T_max=500K)
   - https://www.engineeringtoolbox.com/specific-heat-metals-d_152.html
 
+output: [T]
+
 K_11: 9.132e+1
 K_11,T: -1.525e-1
 K_11,T^2: 3.053e-4

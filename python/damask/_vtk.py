@@ -421,8 +421,7 @@ class VTK:
                        data: np.ndarray,
                        label: str):
 
-            N_data   = data.shape[0]
-
+            N_data = data.shape[0]
             data_ = data.reshape(N_data,-1) \
                         .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
 
