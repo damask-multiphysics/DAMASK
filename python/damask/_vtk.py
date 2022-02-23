@@ -59,10 +59,13 @@ class VTK:
         Parameters
         ----------
         other : damask.VTK
-            VTK to compare self against.
+            VTK to check for equality.
 
         """
-        return self.as_ASCII() == other.as_ASCII() if isinstance(other, VTK) else NotImplemented
+        if not isinstance(other, VTK):
+            return NotImplemented
+        return self.as_ASCII() == other.as_ASCII()
+
 
 
     def copy(self):
