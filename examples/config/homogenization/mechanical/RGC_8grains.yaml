@@ -1,4 +1,4 @@
-# For Relaxed Grain Cluster homogenization, requires N_constituents = prod(cluster_size)
+# For Relaxed Grain Cluster homogenization, requires N_constituents = 8
 type: RGC
 D_alpha: [4.0e-06, 4.0e-06, 2.0e-06]
 a_g: [0.0, 0.0, 0.0]
