@@ -167,7 +167,7 @@ class Result:
 
 
     def __repr__(self):
-        """Show summary of file content."""
+        """Give short human-readable summary."""
         with h5py.File(self.fname,'r') as f:
             header = [f'Created by {f.attrs["creator"]}',
                       f'        on {f.attrs["created"]}',

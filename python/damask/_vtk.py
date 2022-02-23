@@ -459,6 +459,7 @@ class VTK:
 
 
     def __repr__(self) -> str:
+        """Give short human-readable summary."""
         info = []
         if   isinstance(self.vtk_data,vtk.vtkImageData):
             info.append('vtkImageData')

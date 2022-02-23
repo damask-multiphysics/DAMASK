@@ -120,7 +120,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __repr__(self) -> str:
-        """Represent."""
+        """Give short human readable summary."""
         return '\n'.join([Crystal.__repr__(self),
                           Rotation.__repr__(self)])
 

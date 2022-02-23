@@ -58,7 +58,7 @@ class Grid:
 
 
     def __repr__(self) -> str:
-        """Basic information on grid definition."""
+        """Give short human-readable summary."""
         mat_min = np.nanmin(self.material)
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials

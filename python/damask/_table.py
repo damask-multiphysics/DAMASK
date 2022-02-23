@@ -37,7 +37,7 @@ class Table:
 
 
     def __repr__(self) -> str:
-        """Brief overview."""
+        """Give short human-readable summary."""
         self._relabel('shapes')
         data_repr = self.data.__repr__()
         self._relabel('uniform')
