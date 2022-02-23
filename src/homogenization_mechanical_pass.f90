@@ -11,7 +11,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine pass_init
+module subroutine pass_init()
 
   integer :: &
     ho, &
@@ -26,7 +26,7 @@ module subroutine pass_init
     if (homogenization_type(ho) /= HOMOGENIZATION_NONE_ID) cycle
 
     if (homogenization_Nconstituents(ho) /= 1) &
-      call IO_error(211,ext_msg='N_constituents (pass)')
+      call IO_error(211,ext_msg='(pass) with N_constituents !=1')
 
     Nmembers = count(material_homogenizationID == ho)
     homogState(ho)%sizeState = 0
