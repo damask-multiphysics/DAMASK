@@ -38,6 +38,33 @@ class VTK:
         self.vtk_data = vtk_data
 
 
+    def __repr__(self) -> str:
+        """Give short human-readable summary."""
+        info = [self.vtk_data.__vtkname__]
+
+        for data in ['Cell Data', 'Point Data']:
+            if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
+            if data == 'Point Data': info.append(f'\n# points: {self.N_points}')
+            if data in self.labels:
+                info += [f'  - {l}' for l in self.labels[data]]
+
+        return util.srepr(info)
+
+
+    def __eq__(self,
+               other: object) -> bool:
+        """
+        Equal to other.
+
+        Parameters
+        ----------
+        other : damask.VTK
+            VTK to compare self against.
+
+        """
+        return self.as_ASCII() == other.as_ASCII() if isinstance(other, VTK) else NotImplemented
+
+
     def copy(self):
         if   isinstance(self.vtk_data,vtk.vtkImageData):
             dup = vtk.vtkImageData()
@@ -56,14 +83,45 @@ class VTK:
 
 
     @property
+    def comments(self) -> List[str]:
+        """Return the comments."""
+        fielddata = self.vtk_data.GetFieldData()
+        for a in range(fielddata.GetNumberOfArrays()):
+            if fielddata.GetArrayName(a) == 'comments':
+                comments = fielddata.GetAbstractArray(a)
+                return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
+        return []
+
+    @comments.setter
+    def comments(self,
+                 comments: Union[str, Sequence[str]]):
+        """
+        Set comments.
+
+        Parameters
+        ----------
+        comments : str or list of str
+            Comments.
+
+        """
+        s = vtk.vtkStringArray()
+        s.SetName('comments')
+        for c in util.tail_repack(comments,self.comments):
+            s.InsertNextValue(c)
+        self.vtk_data.GetFieldData().AddArray(s)
+
+
+    @property
     def N_points(self) -> int:
         """Number of points in vtkdata."""
         return self.vtk_data.GetNumberOfPoints()
+
 
     @property
     def N_cells(self) -> int:
         """Number of cells in vtkdata."""
         return self.vtk_data.GetNumberOfCells()
+
 
     @property
     def labels(self):
@@ -79,6 +137,7 @@ class VTK:
             labels['Point Data'] = p
 
         return labels
+
 
     @staticmethod
     def from_image_data(cells: IntSequence,
@@ -280,6 +339,17 @@ class VTK:
         """Wrapper for parallel writing."""
         writer.Write()
 
+
+    def as_ASCII(self) -> str:
+        """ASCII representation of the VTK data."""
+        writer = vtk.vtkDataSetWriter()
+        writer.SetHeader(f'# {util.execution_stamp("VTK")}')
+        writer.WriteToOutputStringOn()
+        writer.SetInputData(self.vtk_data)
+        writer.Write()
+        return writer.GetOutputString()
+
+
     def save(self,
              fname: Union[str, Path],
              parallel: bool = True,
@@ -350,7 +420,7 @@ class VTK:
 
             N_data   = data.shape[0]
 
-            data_ = data.reshape(N_data,-1)\
+            data_ = data.reshape(N_data,-1) \
                         .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
 
             if data.dtype.type is np.str_:
@@ -427,83 +497,6 @@ class VTK:
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
             raise ValueError(f'array "{label}" not found')
-
-
-    @property
-    def comments(self) -> List[str]:
-        """Return the comments."""
-        fielddata = self.vtk_data.GetFieldData()
-        for a in range(fielddata.GetNumberOfArrays()):
-            if fielddata.GetArrayName(a) == 'comments':
-                comments = fielddata.GetAbstractArray(a)
-                return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
-        return []
-
-    @comments.setter
-    def comments(self,
-                 comments: Union[str, Sequence[str]]):
-        """
-        Set comments.
-
-        Parameters
-        ----------
-        comments : str or list of str
-            Comments.
-
-        """
-        s = vtk.vtkStringArray()
-        s.SetName('comments')
-        for c in util.tail_repack(comments,self.comments):
-            s.InsertNextValue(c)
-        self.vtk_data.GetFieldData().AddArray(s)
-
-
-    def __repr__(self) -> str:
-        """Give short human-readable summary."""
-        info = []
-        if   isinstance(self.vtk_data,vtk.vtkImageData):
-            info.append('vtkImageData')
-        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
-            info.append('vtkUnstructuredGrid')
-        elif isinstance(self.vtk_data,vtk.vtkPolyData):
-            info.append('vtkPolyData')
-        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
-            info.append('vtkRectilinearGrid')
-
-        for data in ['Cell Data', 'Point Data']:
-            if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
-            if data == 'Point Data': info.append(f'\n# points: {self.N_points}')
-            if data in self.labels:
-                info.append(f'with {data}:')
-                info += self.labels[data]
-
-        return util.srepr(info)
-
-
-    def __eq__(self,
-               other: object) -> bool:
-        """
-        Test equality of other.
-
-        Parameters
-        ----------
-        other : damask.VTK
-            VTK to compare self against.
-
-        """
-        if not isinstance(other, VTK):
-            return NotImplemented
-        return self.as_ASCII() == other.as_ASCII()
-
-
-    def as_ASCII(self) -> str:
-        """ASCII representation of the VTK data."""
-        writer = vtk.vtkDataSetWriter()
-        writer.SetHeader(f'# {util.execution_stamp("VTK")}')
-        writer.WriteToOutputStringOn()
-        writer.SetInputData(self.vtk_data)
-        writer.Write()
-        return writer.GetOutputString()
 
 
     def show(self,

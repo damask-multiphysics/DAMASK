@@ -88,7 +88,7 @@ class Rotation:
 
 
     def __repr__(self) -> str:
-        """Give short human readable summary."""
+        """Give short human-readable summary."""
         return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
