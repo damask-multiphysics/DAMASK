@@ -69,7 +69,7 @@ module subroutine thermal_init()
           case ('pass')
             call pass_init()
 
-          case ('isothermal')
+          case ('isotemperature')
             call isotemperature_init()
 
         end select
