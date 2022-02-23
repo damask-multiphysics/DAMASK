@@ -258,7 +258,7 @@ def _polar_decomposition(T: _np.ndarray,
         Tensor of which the singular values are computed.
     requested : sequence of {'R', 'U', 'V'}
         Requested outputs: ‘R’ for the rotation tensor,
-        ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+        ‘V’ for left stretch tensor, and ‘U’ for right stretch tensor.
 
     """
     u, _, vh = _np.linalg.svd(T)
@@ -273,7 +273,7 @@ def _polar_decomposition(T: _np.ndarray,
         output+=[_np.einsum('...ji,...jk',R,T)]
 
     if len(output) == 0:
-        raise ValueError('output needs to be out of V, R, U')
+        raise ValueError('output not in {V, R, U}')
 
     return tuple(output)
 

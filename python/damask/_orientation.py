@@ -848,7 +848,7 @@ class Orientation(Rotation,Crystal):
 
         """
         if (N_slip is not None) ^ (N_twin is None):
-            raise KeyError('Specify either "N_slip" or "N_twin"')
+            raise KeyError('specify either "N_slip" or "N_twin"')
 
         kinematics,active = (self.kinematics('slip'),N_slip) if N_twin is None else \
                             (self.kinematics('twin'),N_twin)

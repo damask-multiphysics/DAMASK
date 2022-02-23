@@ -532,7 +532,7 @@ class Table:
 
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
-            raise KeyError('Labels or shapes or order do not match')
+            raise KeyError('mismatch of shapes or labels or their order')
 
         dup = self.copy()
         dup.data = dup.data.append(other.data,ignore_index=True)
@@ -558,7 +558,7 @@ class Table:
 
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
-            raise KeyError('Duplicated keys or row count mismatch')
+            raise KeyError('duplicated keys or row count mismatch')
 
         dup = self.copy()
         dup.data = dup.data.join(other.data)

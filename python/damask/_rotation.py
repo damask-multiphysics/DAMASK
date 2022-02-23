@@ -279,7 +279,7 @@ class Rotation:
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
             return self.copy(Rotation(np.block([q,p]))._standardize())
         else:
-            raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+            raise TypeError('use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
     def __imul__(self: MyType,
                  other: MyType) -> MyType:
@@ -314,7 +314,7 @@ class Rotation:
         if isinstance(other,Rotation):
             return self*~other
         else:
-            raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+            raise TypeError('use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
     def __itruediv__(self: MyType,
                      other: MyType) -> MyType:
@@ -365,11 +365,11 @@ class Rotation:
                 R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
-                raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
+                raise ValueError('can only rotate vectors, 2nd order tensors, and 4th order tensors')
         elif isinstance(other, Rotation):
-            raise TypeError('Use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
+            raise TypeError('use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
-            raise TypeError(f'Cannot rotate {type(other)}')
+            raise TypeError(f'cannot rotate "{type(other)}"')
 
     apply = __matmul__
 
@@ -731,7 +731,7 @@ class Rotation:
         """
         qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
@@ -740,9 +740,9 @@ class Rotation:
             qu[qu[...,0] < 0.0] *= -1
         else:
             if np.any(qu[...,0] < 0.0):
-                raise ValueError('Quaternion with negative first (real) component.')
+                raise ValueError('quaternion with negative first (real) component')
         if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0)):
-            raise ValueError('Quaternion is not of unit length.')
+            raise ValueError('quaternion is not of unit length')
 
         return Rotation(qu)
 
@@ -767,11 +767,11 @@ class Rotation:
         """
         eu = np.array(phi,dtype=float)
         if eu.shape[:-2:-1] != (3,):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
 
         eu = np.radians(eu) if degrees else eu
         if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or np.any(eu[...,1] > np.pi):                 # ToDo: No separate check for PHI
-            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].')
+            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π]')
 
         return Rotation(Rotation._eu2qu(eu))
 
@@ -798,7 +798,7 @@ class Rotation:
         """
         ax = np.array(axis_angle,dtype=float)
         if ax.shape[:-2:-1] != (4,):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
@@ -806,10 +806,10 @@ class Rotation:
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
         if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
-            raise ValueError('Axis–angle rotation angle outside of [0..π].')
+            raise ValueError('axis–angle rotation angle outside of [0..π]')
         if not np.all(np.isclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0)):
             print(np.linalg.norm(ax[...,0:3],axis=-1))
-            raise ValueError('Axis–angle rotation axis is not of unit length.')
+            raise ValueError('axis–angle rotation axis is not of unit length')
 
         return Rotation(Rotation._ax2qu(ax))
 
@@ -832,7 +832,7 @@ class Rotation:
         """
         om = np.array(basis,dtype=float)
         if om.shape[-2:] != (3,3):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
 
         if reciprocal:
             om = np.linalg.inv(tensor.transpose(om)/np.pi)                                          # transform reciprocal basis set
@@ -841,11 +841,11 @@ class Rotation:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
             om = np.einsum('...ij,...jl',U,Vh)
         if not np.all(np.isclose(np.linalg.det(om),1.0)):
-            raise ValueError('Orientation matrix has determinant ≠ 1.')
+            raise ValueError('orientation matrix has determinant ≠ 1')
         if    not np.all(np.isclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0)) \
            or not np.all(np.isclose(np.einsum('...i,...i',om[...,1],om[...,2]), 0.0)) \
            or not np.all(np.isclose(np.einsum('...i,...i',om[...,2],om[...,0]), 0.0)):
-            raise ValueError('Orientation matrix is not orthogonal.')
+            raise ValueError('orientation matrix is not orthogonal')
 
         return Rotation(Rotation._om2qu(om))
 
@@ -879,7 +879,7 @@ class Rotation:
         a_ = np.array(a)
         b_ = np.array(b)
         if a_.shape[-2:] != (2,3) or b_.shape[-2:] != (2,3) or a_.shape != b_.shape:
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
         am = np.stack([          a_[...,0,:],
                                              a_[...,1,:],
                         np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-2)
@@ -910,16 +910,16 @@ class Rotation:
         """
         ro = np.array(rho,dtype=float)
         if ro.shape[:-2:-1] != (4,):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
         ro[...,0:3] *= -P
         if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
         if np.any(ro[...,3] < 0.0):
-            raise ValueError('Rodrigues vector rotation angle is negative.')
+            raise ValueError('Rodrigues vector rotation angle is negative')
         if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
-            raise ValueError('Rodrigues vector rotation axis is not of unit length.')
+            raise ValueError('Rodrigues vector rotation axis is not of unit length')
 
         return Rotation(Rotation._ro2qu(ro))
 
@@ -939,14 +939,14 @@ class Rotation:
         """
         ho = np.array(h,dtype=float)
         if ho.shape[:-2:-1] != (3,):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
         ho *= -P
 
         if np.any(np.linalg.norm(ho,axis=-1) >_R1+1e-9):
-            raise ValueError('Homochoric coordinate outside of the sphere.')
+            raise ValueError('homochoric coordinate outside of the sphere')
 
         return Rotation(Rotation._ho2qu(ho))
 
@@ -966,12 +966,12 @@ class Rotation:
         """
         cu = np.array(x,dtype=float)
         if cu.shape[:-2:-1] != (3,):
-            raise ValueError('Invalid shape.')
+            raise ValueError('invalid shape')
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
         if np.abs(np.max(cu)) > np.pi**(2./3.) * 0.5+1e-9:
-            raise ValueError('Cubochoric coordinate outside of the cube.')
+            raise ValueError('cubochoric coordinate outside of the cube')
 
         ho = -P * Rotation._cu2ho(cu)
 

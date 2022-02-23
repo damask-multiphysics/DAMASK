@@ -300,7 +300,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     origin[_np.where(cells==1)] = 0.0
 
     if cells.prod() != len(coordinates0):
-        raise ValueError(f'Data count {len(coordinates0)} does not match cells {cells}.')
+        raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')
 
     start = origin + delta*.5
     end   = origin - delta*.5 + size
@@ -309,11 +309,11 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],cells[0]),atol=atol) and \
             _np.allclose(coords[1],_np.linspace(start[1],end[1],cells[1]),atol=atol) and \
             _np.allclose(coords[2],_np.linspace(start[2],end[2],cells[2]),atol=atol)):
-        raise ValueError('Regular cell spacing violated.')
+        raise ValueError('non-uniform cell spacing')
 
     if ordered and not _np.allclose(coordinates0.reshape(tuple(cells)+(3,),order='F'),
                                     coordinates0_point(list(cells),size,origin),atol=atol):
-        raise ValueError('Input data is not ordered (x fast, z slow).')
+        raise ValueError('input data is not ordered (x fast, z slow)')
 
     return (cells,size,origin)
 
@@ -460,17 +460,17 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     origin    = mincorner
 
     if (cells+1).prod() != len(coordinates0):
-        raise ValueError(f'Data count {len(coordinates0)} does not match cells {cells}.')
+        raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')
 
     atol = _np.max(size)*5e-2
     if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],cells[0]+1),atol=atol) and \
             _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],cells[1]+1),atol=atol) and \
             _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],cells[2]+1),atol=atol)):
-        raise ValueError('Regular cell spacing violated.')
+        raise ValueError('non-uniform cell spacing')
 
     if ordered and not _np.allclose(coordinates0.reshape(tuple(cells+1)+(3,),order='F'),
                                     coordinates0_node(list(cells),size,origin),atol=atol):
-        raise ValueError('Input data is not ordered (x fast, z slow).')
+        raise ValueError('input data is not ordered (x fast, z slow)')
 
     return (cells,size,origin)
 
