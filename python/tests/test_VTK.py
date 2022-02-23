@@ -33,27 +33,44 @@ class TestVTK:
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show()
 
+
+    def test_imageData(self,tmp_path):
+        cells = np.random.randint(5,10,3)
+        size = np.random.random(3) + 0.1
+        origin = np.random.random(3) - 0.5
+        v = VTK.from_image_data(cells,size,origin)
+        string = v.as_ASCII()
+        v.save(tmp_path/'imageData',False)
+        vtr = VTK.load(tmp_path/'imageData.vti')
+        with open(tmp_path/'imageData.vtk','w') as f:
+            f.write(string)
+        vtk = VTK.load(tmp_path/'imageData.vtk','VTK_imageData')
+        print(vtk)
+        assert (string == vtr.as_ASCII() == vtk.as_ASCII())
+
     def test_rectilinearGrid(self,tmp_path):
         grid  = np.sort(np.random.random((3,10)))
         v = VTK.from_rectilinear_grid(grid)
-        string = v.__repr__()
+        string = v.as_ASCII()
         v.save(tmp_path/'rectilinearGrid',False)
         vtr = VTK.load(tmp_path/'rectilinearGrid.vtr')
         with open(tmp_path/'rectilinearGrid.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
-        assert(string == vtr.__repr__() == vtk.__repr__())
+        print(vtk)
+        assert (string == vtr.as_ASCII() == vtk.as_ASCII())
 
     def test_polyData(self,tmp_path):
         points = np.random.rand(100,3)
         v = VTK.from_poly_data(points)
-        string = v.__repr__()
+        string = v.as_ASCII()
         v.save(tmp_path/'polyData',False)
         vtp = VTK.load(tmp_path/'polyData.vtp')
         with open(tmp_path/'polyData.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
-        assert(string == vtp.__repr__() == vtk.__repr__())
+        print(vtk)
+        assert(string == vtp.as_ASCII() == vtk.as_ASCII())
 
     @pytest.mark.parametrize('cell_type,n',[
                                             ('VTK_hexahedron',8),
@@ -66,13 +83,14 @@ class TestVTK:
         nodes = np.random.rand(n,3)
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
-        string = v.__repr__()
+        string = v.as_ASCII()
         v.save(tmp_path/'unstructuredGrid',False)
         vtu = VTK.load(tmp_path/'unstructuredGrid.vtu')
         with open(tmp_path/'unstructuredGrid.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
-        assert(string == vtu.__repr__() == vtk.__repr__())
+        print(vtk)
+        assert(string == vtu.as_ASCII() == vtk.as_ASCII())
 
 
     def test_parallel_out(self,tmp_path):
@@ -96,7 +114,7 @@ class TestVTK:
         fname_p = tmp_path/'plain.vtp'
         v.save(fname_c,parallel=False,compress=False)
         v.save(fname_p,parallel=False,compress=True)
-        assert(VTK.load(fname_c).__repr__() == VTK.load(fname_p).__repr__())
+        assert(VTK.load(fname_c).as_ASCII() == VTK.load(fname_p).as_ASCII())
 
 
     @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
@@ -170,7 +188,7 @@ class TestVTK:
         masked = ma.MaskedArray(data,mask=data<.4,fill_value=42.)
         mask_auto = default.add(masked,'D')
         mask_manual = default.add(np.where(masked.mask,masked.fill_value,masked),'D')
-        assert str(mask_manual) == str(mask_auto)
+        assert mask_manual == mask_auto
 
 
     @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
@@ -203,7 +221,7 @@ class TestVTK:
             polyData.save(ref_path/'polyData')
         else:
             reference = VTK.load(ref_path/'polyData.vtp')
-            assert polyData.__repr__() == reference.__repr__() and \
+            assert polyData.as_ASCII() == reference.as_ASCII() and \
                    np.allclose(polyData.get('coordinates'),points)
 
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
@@ -221,5 +239,5 @@ class TestVTK:
             rectilinearGrid.save(ref_path/'rectilinearGrid')
         else:
             reference = VTK.load(ref_path/'rectilinearGrid.vtr')
-            assert rectilinearGrid.__repr__() == reference.__repr__() and \
+            assert rectilinearGrid.as_ASCII() == reference.as_ASCII() and \
                    np.allclose(rectilinearGrid.get('cell'),c)

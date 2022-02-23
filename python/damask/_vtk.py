@@ -459,6 +459,43 @@ class VTK:
 
 
     def __repr__(self) -> str:
+        info = []
+        if   isinstance(self.vtk_data,vtk.vtkImageData):
+            info.append('vtkImageData')
+        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
+            info.append('vtkUnstructuredGrid')
+        elif isinstance(self.vtk_data,vtk.vtkPolyData):
+            info.append('vtkPolyData')
+        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
+            info.append('vtkRectilinearGrid')
+
+        for data in ['Cell Data', 'Point Data']:
+            if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
+            if data == 'Point Data': info.append(f'\n# points: {self.N_points}')
+            if data in self.labels:
+                info.append(f'with {data}:')
+                info += self.labels[data]
+
+        return util.srepr(info)
+
+
+    def __eq__(self,
+               other: object) -> bool:
+        """
+        Test equality of other.
+
+        Parameters
+        ----------
+        other : damask.VTK
+            VTK to compare self against.
+
+        """
+        if not isinstance(other, VTK):
+            return NotImplemented
+        return self.as_ASCII() == other.as_ASCII()
+
+
+    def as_ASCII(self) -> str:
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
         writer.SetHeader(f'# {util.execution_stamp("VTK")}')
