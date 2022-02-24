@@ -455,7 +455,7 @@ subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit
 
 
   if (present(systems)) then
-    if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
+    if (size(systems) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
   end if
 
   groupHandle = results_openGroup(group)
