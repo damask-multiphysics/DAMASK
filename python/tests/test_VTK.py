@@ -45,7 +45,6 @@ class TestVTK:
         with open(tmp_path/'imageData.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'imageData.vtk','VTK_imageData')
-        print(vtk)
         assert (string == vtr.as_ASCII() == vtk.as_ASCII())
 
     def test_rectilinearGrid(self,tmp_path):
@@ -57,7 +56,6 @@ class TestVTK:
         with open(tmp_path/'rectilinearGrid.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
-        print(vtk)
         assert (string == vtr.as_ASCII() == vtk.as_ASCII())
 
     def test_polyData(self,tmp_path):
@@ -69,7 +67,6 @@ class TestVTK:
         with open(tmp_path/'polyData.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
-        print(vtk)
         assert(string == vtp.as_ASCII() == vtk.as_ASCII())
 
     @pytest.mark.parametrize('cell_type,n',[
@@ -89,7 +86,6 @@ class TestVTK:
         with open(tmp_path/'unstructuredGrid.vtk','w') as f:
             f.write(string)
         vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
-        print(vtk)
         assert(string == vtu.as_ASCII() == vtk.as_ASCII())
 
 
