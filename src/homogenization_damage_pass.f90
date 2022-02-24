@@ -8,10 +8,18 @@ contains
 
 module subroutine pass_init()
 
+  integer :: &
+    ho
+
   print'(/,1x,a)', '<<<+-  homogenization:damage:pass init  -+>>>'
+
+  do ho = 1, size(damage_active)
+
+    if (.not. damage_active(ho)) cycle
 
   if (homogenization_Nconstituents(1) /= 1) & !ToDo: needs extension to multiple homogenizations
     call IO_error(211,ext_msg='(pass) with N_constituents !=1')
+  end do
 
 end subroutine pass_init
 

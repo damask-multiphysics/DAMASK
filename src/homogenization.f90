@@ -21,13 +21,13 @@ module homogenization
   implicit none
   private
 
-
   enum, bind(c); enumerator :: &
-    HOMOGENIZATION_UNDEFINED_ID, &
-    HOMOGENIZATION_NONE_ID, &
-    HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_RGC_ID
+    THERMAL_UNDEFINED_ID, &
+    THERMAL_PASS_ID, &
+    THERMAL_ISOTEMPERATURE_ID
   end enum
+  integer(kind(THERMAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
+    thermal_type                                                                                    !< type of each homogenization
 
   type(tState),        allocatable, dimension(:), public :: &
     homogState, &
@@ -448,6 +448,7 @@ subroutine parseHomogenization
 
   material_homogenization => config_material%get('homogenization')
 
+  allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_UNDEFINED_ID)
   allocate(thermal_active(size(material_name_homogenization)),source=.false.)
   allocate(damage_active(size(material_name_homogenization)),source=.false.)
 
@@ -457,7 +458,11 @@ subroutine parseHomogenization
     if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
         select case (homogThermal%get_asString('type'))
-          case('pass','isotemperature')
+          case('pass')
+            thermal_type(h) = THERMAL_PASS_ID
+            thermal_active(h) = .true.
+          case('isotemperature')
+            thermal_type(h) = THERMAL_ISOTEMPERATURE_ID
             thermal_active(h) = .true.
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))
