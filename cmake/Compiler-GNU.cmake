@@ -1,7 +1,7 @@
 ###################################################################################################
 # GNU Compiler
 ###################################################################################################
-if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 8.0)
+if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 9.0)
   message (FATAL_ERROR "GCC Compiler version: ${CMAKE_Fortran_COMPILER_VERSION} not supported")
 endif ()
 
