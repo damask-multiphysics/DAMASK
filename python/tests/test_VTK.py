@@ -39,6 +39,7 @@ class TestVTK:
         size = np.random.random(3) + 0.1
         origin = np.random.random(3) - 0.5
         v = VTK.from_image_data(cells,size,origin)
+        string = str(v)
         string = v.as_ASCII()
         v.save(tmp_path/'imageData',False)
         vtr = VTK.load(tmp_path/'imageData.vti')
@@ -50,6 +51,7 @@ class TestVTK:
     def test_rectilinearGrid(self,tmp_path):
         grid  = np.sort(np.random.random((3,10)))
         v = VTK.from_rectilinear_grid(grid)
+        string = str(v)
         string = v.as_ASCII()
         v.save(tmp_path/'rectilinearGrid',False)
         vtr = VTK.load(tmp_path/'rectilinearGrid.vtr')
@@ -61,6 +63,7 @@ class TestVTK:
     def test_polyData(self,tmp_path):
         points = np.random.rand(100,3)
         v = VTK.from_poly_data(points)
+        string = str(v)
         string = v.as_ASCII()
         v.save(tmp_path/'polyData',False)
         vtp = VTK.load(tmp_path/'polyData.vtp')
@@ -80,6 +83,7 @@ class TestVTK:
         nodes = np.random.rand(n,3)
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
+        string = str(v)
         string = v.as_ASCII()
         v.save(tmp_path/'unstructuredGrid',False)
         vtu = VTK.load(tmp_path/'unstructuredGrid.vtu')
