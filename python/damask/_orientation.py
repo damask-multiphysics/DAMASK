@@ -823,7 +823,7 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        N_slip|N_twin : '*' or iterable of int
+        N_slip|N_twin : '*' or sequence of int
             Number of deformation systems per family of the deformation system.
             Use '*' to select all.
 
@@ -871,8 +871,34 @@ class Orientation(Rotation,Crystal):
         """
         Orientations derived from the given relationship.
 
-        One dimension (length according to number of related orientations)
-        is added to the left of the Rotation array.
+        Parameters
+        ----------
+        model : str
+            Model for orientation relationship.
+            Must be out of self.orientation_relationships.
+
+        Returns
+        -------
+        Orientations with crystal structure according to
+        the selected model for the orienation relationship.
+
+        Examples
+        --------
+        Rotations of the Bain orientation relationship (cI -> cF)
+        of a crystal in "Cube" orientation.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
+        >>> damask.Orientation(lattice='cI').related('Bain')
+        Crystal family: cubic
+        Bravais lattice: cF
+        a=1 m, b=1 m, c=1 m
+        α=90°, β=90°, γ=90°
+        Quaternions of shape (3,)
+        [[0.924 0.383 0.000 0.000]
+         [0.924 0.000 0.383 0.000]
+         [0.924 0.000 0.000 0.383]]
 
         """
         lattice,o = self.relation_operations(model)
