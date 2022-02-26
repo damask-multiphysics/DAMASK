@@ -907,17 +907,17 @@ class Grid:
 
     def clean(self,
               stencil: int = 3,
-              selection: IntSequence = None,
+              mutable: IntSequence = None,
               periodic: bool = True) -> 'Grid':
         """
-        Smooth grid by selecting most frequent material index within given stencil at each location.
+        Smooth grid by selecting most frequent material ID within given stencil at each location.
 
         Parameters
         ----------
         stencil : int, optional
-            Size of smoothing stencil.
-        selection : sequence of int, optional
-            Field values that can be altered. Defaults to all.
+            Size of smoothing stencil. Defaults to 3.
+        mutable : sequence of int, optional
+            Material ID that can be altered. Defaults to all.
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
@@ -927,9 +927,9 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def mostFrequent(arr: np.ndarray, selection = None):
+        def mostFrequent(arr: np.ndarray, mutable = None):
             me = arr[arr.size//2]
-            if selection is None or me in selection:
+            if selection is None or me in mutable:
                 unique, inverse = np.unique(arr, return_inverse=True)
                 return unique[np.argmax(np.bincount(inverse))]
             else:
@@ -938,9 +938,9 @@ class Grid:
         return Grid(material = ndimage.filters.generic_filter(
                                                                self.material,
                                                                mostFrequent,
-                                                               size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                               size=(stencil if mutable is None else stencil//2*2+1,)*3,
                                                                mode=('wrap' if periodic else 'nearest'),
-                                                               extra_keywords=dict(selection=selection),
+                                                               extra_keywords=dict(mutable=mutable),
                                                               ).astype(self.material.dtype),
                     size     = self.size,
                     origin   = self.origin,
@@ -978,7 +978,7 @@ class Grid:
         R : damask.Rotation
             Rotation to apply to the grid.
         fill : int, optional
-            Material index to fill the corners. Defaults to material.max() + 1.
+            Material ID to fill the corners. Defaults to material.max() + 1.
 
         Returns
         -------
@@ -1020,7 +1020,7 @@ class Grid:
         offset : sequence of int, len (3), optional
             Offset (measured in cells) from old to new grid [0,0,0].
         fill : int, optional
-            Material index to fill the background. Defaults to material.max() + 1.
+            Material ID to fill the background. Defaults to material.max() + 1.
 
         Returns
         -------
@@ -1118,7 +1118,7 @@ class Grid:
                         trigger: IntSequence = [],
                         periodic: bool = True) -> 'Grid':
         """
-        Offset material index of points in the vicinity of xxx.
+        Offset material ID of points in the vicinity of xxx.
 
         Different from themselves (or listed as triggers) within a given (cubic) vicinity,
         i.e. within the region close to a grain/phase boundary.
