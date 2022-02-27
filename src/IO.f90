@@ -440,7 +440,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (155)
       msg = 'material index out of bounds'
     case (180)
-      msg = 'missing/invalid material definition via State Variable 2'
+      msg = 'missing/invalid material definition'
     case (190)
       msg = 'unknown element type:'
     case (191)

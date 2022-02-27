@@ -11,24 +11,117 @@ module VTK
   implicit none
   private
 
-  public :: VTK_readVTI
+  public :: &
+    VTK_readVTIdataset_int, &
+    VTK_readVTI_cellsSizeOrigin
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse vtk image data (.vti)
+!> @brief Read integer dataset from a VTK image data (*.vti) file.
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine VTK_readVTI(cells,geomSize,origin,material, &
-                       fileContent)
+function VTK_readVTIdataset_int(fileContent,label) result(dataset)
+
+  character(len=*),          intent(in) :: &
+    label, &
+    fileContent
+  integer,     dimension(:), allocatable :: &
+    dataset
+
+  character(len=:), allocatable :: dataType, headerType, base64_str
+  logical :: compressed
+
+
+  call VTK_readVTIdataset_raw(base64_str,dataType,headerType,compressed, &
+                              fileContent,label)
+  dataset = as_Int(base64_str,headerType,compressed,dataType)
+
+  if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
+
+end function VTK_readVTIdataset_int
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read dataset as raw data (base64 string) from a VTK image data (*.vti) file.
+!> @details https://vtk.org/Wiki/VTK_XML_Formats
+!--------------------------------------------------------------------------------------------------
+subroutine VTK_readVTIdataset_raw(base64_str,dataType,headerType,compressed, &
+                                  fileContent,label)
+
+  character(len=*), intent(in) :: &
+    label, &
+    fileContent
+  character(len=:), allocatable, intent(out) :: dataType, headerType, base64_str
+  logical, intent(out) :: compressed
+
+  logical :: inFile,inImage,gotCellData
+  integer(pI64) :: &
+    startPos, endPos, &
+    s
+
+
+  inFile = .false.
+  inImage = .false.
+  startPos = 1_pI64
+  outer: do while (startPos < len(fileContent,kind=pI64))
+    endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+    if (endPos < startPos) endPos = len(fileContent,kind=pI64)                                      ! end of file without new line
+
+    if (.not. inFile) then
+      if (index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
+        inFile = .true.
+        if (.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
+        compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
+      end if
+    else
+      if (.not. inImage) then
+        if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
+          inImage = .true.
+        end if
+      else
+        if (index(fileContent(startPos:endPos),'<CellData',kind=pI64) /= 0_pI64) then
+          do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
+            if (index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
+                 getXMLValue(fileContent(startPos:endPos),'Name') == label ) then
+
+              if (getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
+                call IO_error(error_ID = 844, ext_msg='format ('//label//')')
+              dataType = getXMLValue(fileContent(startPos:endPos),'type')
+
+              startPos = endPos + 2_pI64
+              endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+              s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
+              base64_str = fileContent(s:endPos)
+              exit outer
+            end if
+            startPos = endPos + 2_pI64
+            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+          end do
+        end if
+      end if
+    end if
+
+    startPos = endPos + 2_pI64
+
+  end do outer
+
+end subroutine VTK_readVTIdataset_raw
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read cells, size, and origin of an VTK image data (*.vti) file.
+!> @details https://vtk.org/Wiki/VTK_XML_Formats
+!--------------------------------------------------------------------------------------------------
+subroutine VTK_readVTI_cellsSizeOrigin(cells,geomSize,origin, &
+                                       fileContent)
 
   integer,     dimension(3), intent(out) :: &
     cells                                                                                           ! # of cells (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! physical size (across all processes!)
+    geomSize, &                                                                                     ! size (across all processes!)
     origin                                                                                          ! origin (across all processes!)
-  integer,     dimension(:), intent(out), allocatable :: &
-    material
   character(len=*),          intent(in) :: &
     fileContent
 
@@ -42,14 +135,10 @@ subroutine VTK_readVTI(cells,geomSize,origin,material, &
   cells = -1
   geomSize = -1.0_pReal
 
-  inFile         = .false.
-  inImage        = .false.
-  gotCelldata    = .false.
-
-!--------------------------------------------------------------------------------------------------
-! parse XML file
+  inFile = .false.
+  inImage = .false.
   startPos = 1_pI64
-  do while (startPos < len(fileContent,kind=pI64))
+  outer: do while (startPos < len(fileContent,kind=pI64))
     endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
     if (endPos < startPos) endPos = len(fileContent,kind=pI64)                                      ! end of file without new line
 
@@ -65,49 +154,24 @@ subroutine VTK_readVTI(cells,geomSize,origin,material, &
         if (index(fileContent(startPos:endPos),'<ImageData',kind=pI64) /= 0_pI64) then
           inImage = .true.
           call cellsSizeOrigin(cells,geomSize,origin,fileContent(startPos:endPos))
-        end if
-      else
-        if (index(fileContent(startPos:endPos),'<CellData',kind=pI64) /= 0_pI64) then
-          gotCellData = .true.
-          do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
-            if (index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
-                 getXMLValue(fileContent(startPos:endPos),'Name') == 'material' ) then
-
-              if (getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
-                call IO_error(error_ID = 844, ext_msg='format (material)')
-              dataType = getXMLValue(fileContent(startPos:endPos),'type')
-
-              startPos = endPos + 2_pI64
-              endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
-              s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
-              material = as_Int(fileContent(s:endPos),headerType,compressed,dataType)
-              exit
-            end if
-            startPos = endPos + 2_pI64
-            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
-          end do
+          exit outer
         end if
       end if
     end if
 
-    if (gotCellData) exit
     startPos = endPos + 2_pI64
 
-  end do
+  end do outer
 
-  if (.not. allocated(material))        call IO_error(error_ID = 844, ext_msg='material data not found')
-  if (size(material) /= product(cells)) call IO_error(error_ID = 844, ext_msg='size(material)')
   if (any(geomSize<=0))                 call IO_error(error_ID = 844, ext_msg='size')
   if (any(cells<1))                     call IO_error(error_ID = 844, ext_msg='cells')
-  material = material + 1
-  if (any(material<1))                  call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
-end subroutine VTK_readVTI
+end subroutine VTK_readVTI_cellsSizeOrigin
 
 
-!------------------------------------------------------------------------------------------------
-!> @brief determine size and origin from coordinates
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief Determine size and origin from coordinates.
+!--------------------------------------------------------------------------------------------------
 subroutine cellsSizeOrigin(c,s,o,header)
 
   integer, dimension(3),     intent(out) :: c
@@ -120,7 +184,7 @@ subroutine cellsSizeOrigin(c,s,o,header)
 
 
   temp = getXMLValue(header,'Direction')
-  if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                             ! https://discourse.vtk.org/t/vti-specification/6526
+  if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                               ! https://discourse.vtk.org/t/vti-specification/6526
     call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
   temp = getXMLValue(header,'WholeExtent')
@@ -138,15 +202,15 @@ subroutine cellsSizeOrigin(c,s,o,header)
 end subroutine
 
 
-!------------------------------------------------------------------------------------------------
-!> @brief Interpret Base64 string in vtk XML file as integer of default kind
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief Interpret Base64 string in vtk XML file as integer of default kind.
+!--------------------------------------------------------------------------------------------------
 function as_Int(base64_str,headerType,compressed,dataType)
 
-  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                  headerType, &                                                   ! header type (UInt32 or Uint64)
-                                  dataType                                                        ! data type (Int32, Int64, Float32, Float64)
-  logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+                                  headerType, &                                                     ! header type (UInt32 or Uint64)
+                                  dataType                                                          ! data type (Int32, Int64, Float32, Float64)
+  logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
 
   integer, dimension(:), allocatable :: as_Int
 
@@ -167,15 +231,15 @@ function as_Int(base64_str,headerType,compressed,dataType)
 end function as_Int
 
 
-!------------------------------------------------------------------------------------------------
-!> @brief Interpret Base64 string in vtk XML file as integer of pReal kind
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief Interpret Base64 string in vtk XML file as real of kind pReal.
+!--------------------------------------------------------------------------------------------------
 function as_pReal(base64_str,headerType,compressed,dataType)
 
-  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                  headerType, &                                                   ! header type (UInt32 or Uint64)
-                                  dataType                                                        ! data type (Int32, Int64, Float32, Float64)
-  logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+                                  headerType, &                                                     ! header type (UInt32 or Uint64)
+                                  dataType                                                          ! data type (Int32, Int64, Float32, Float64)
+  logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
 
   real(pReal), dimension(:), allocatable :: as_pReal
 
@@ -196,14 +260,14 @@ function as_pReal(base64_str,headerType,compressed,dataType)
 end function as_pReal
 
 
-!------------------------------------------------------------------------------------------------
-!> @brief Interpret Base64 string in vtk XML file as bytes
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief Interpret Base64 string in vtk XML file as bytes.
+!--------------------------------------------------------------------------------------------------
 function asBytes(base64_str,headerType,compressed) result(bytes)
 
-  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                  headerType                                                      ! header type (UInt32 or Uint64)
-  logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+                                  headerType                                                        ! header type (UInt32 or Uint64)
+  logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
 
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
@@ -217,19 +281,19 @@ function asBytes(base64_str,headerType,compressed) result(bytes)
 end function asBytes
 
 
-!------------------------------------------------------------------------------------------------
-!> @brief Interpret compressed Base64 string in vtk XML file as bytes
+!--------------------------------------------------------------------------------------------------
+!> @brief Interpret compressed Base64 string in vtk XML file as bytes.
 !> @details A compressed Base64 string consists of a header block and a data block
 ! [#blocks/#u-size/#p-size/#c-size-1/#c-size-2/.../#c-size-#blocks][DATA-1/DATA-2...]
 ! #blocks = Number of blocks
 ! #u-size = Block size before compression
 ! #p-size = Size of last partial block (zero if it not needed)
 ! #c-size-i = Size in bytes of block i after compression
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 function asBytes_compressed(base64_str,headerType) result(bytes)
 
-  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                  headerType                                                      ! header type (UInt32 or Uint64)
+  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+                                  headerType                                                        ! header type (UInt32 or Uint64)
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes_inflated
@@ -265,15 +329,15 @@ function asBytes_compressed(base64_str,headerType) result(bytes)
 end function asBytes_compressed
 
 
-!------------------------------------------------------------------------------------------------
-!> @brief Interprete uncompressed Base64 string in vtk XML file as bytes
+!--------------------------------------------------------------------------------------------------
+!> @brief Interprete uncompressed Base64 string in vtk XML file as bytes.
 !> @details An uncompressed Base64 string consists of N headers blocks and a N data blocks
 ![#bytes-1/DATA-1][#bytes-2/DATA-2]...
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 function asBytes_uncompressed(base64_str,headerType) result(bytes)
 
-  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                  headerType                                                      ! header type (UInt32 or Uint64)
+  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+                                  headerType                                                        ! header type (UInt32 or Uint64)
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
   integer(pI64) :: s
@@ -300,9 +364,9 @@ function asBytes_uncompressed(base64_str,headerType) result(bytes)
 end function asBytes_uncompressed
 
 
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief Get XML string value for given key.
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function getXMLValue(line,key)
 
   character(len=*), intent(in)  :: line, key
@@ -337,9 +401,9 @@ pure function getXMLValue(line,key)
 end function
 
 
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief Check for supported file format variants.
-!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function fileFormatOk(line)
 
   character(len=*),intent(in) :: line

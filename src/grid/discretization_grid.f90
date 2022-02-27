@@ -76,7 +76,12 @@ subroutine discretization_grid_init(restart)
 
   if (worldrank == 0) then
     fileContent = IO_read(interface_geomFile)
-    call VTK_readVTI(cells,geomSize,origin,materialAt_global,fileContent)
+    call VTK_readVTI_cellsSizeOrigin(cells,geomSize,origin,fileContent)
+    materialAt_global = VTK_readVTIdataset_int(fileContent,'material') + 1
+    if (any(materialAt_global < 1)) &
+      call IO_error(180,ext_msg='material ID < 1')
+    if (size(materialAt_global) /= product(cells)) &
+      call IO_error(180,ext_msg='mismatch of material IDs and # cells')
     fname = interface_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call results_openJobFile(parallel=.false.)
