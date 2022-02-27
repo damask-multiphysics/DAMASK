@@ -155,7 +155,7 @@ class TestGrid:
     @pytest.mark.parametrize('selection',[None,[1],[1,2,3]])
     @pytest.mark.parametrize('periodic',[True,False])
     def test_clean(self,default,update,ref_path,stencil,selection,periodic):
-        current = default.clean(stencil,selection,periodic)
+        current = default.clean(stencil,selection,periodic=periodic)
         reference = ref_path/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}.vti'
         if update and stencil > 1:
             current.save(reference)
@@ -296,8 +296,8 @@ class TestGrid:
         assert grid_equal(G_1,G_2)
 
 
-    @pytest.mark.parametrize('trigger',[[1],[]])
-    def test_vicinity_offset(self,trigger):
+    @pytest.mark.parametrize('selection',[[1],[]])
+    def test_vicinity_offset(self,selection):
         offset = np.random.randint(2,4)
         vicinity = np.random.randint(2,4)
 
@@ -309,17 +309,17 @@ class TestGrid:
         for i in [0,1,2]:
             m2[(np.roll(m,+vicinity,i)-m)!=0] += offset
             m2[(np.roll(m,-vicinity,i)-m)!=0] += offset
-        if len(trigger) > 0:
+        if len(selection) > 0:
             m2[m==1] = 1
 
-        grid = Grid(m,np.random.rand(3)).vicinity_offset(vicinity,offset,trigger=trigger)
+        grid = Grid(m,np.random.rand(3)).vicinity_offset(vicinity,offset,selection=selection)
 
         assert np.all(m2==grid.material)
 
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
-        offset = default.vicinity_offset(trigger=[default.material.max()+1,
+        offset = default.vicinity_offset(selection=[default.material.max()+1,
                                                   default.material.min()-1])
         assert np.all(offset.material==default.material)
 

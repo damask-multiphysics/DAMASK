@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence
+from typing import Union, Optional, TextIO, List, Sequence, Collection
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +17,7 @@ from . import util
 from . import grid_filters
 from . import Rotation
 from . import Table
-from ._typehints import FloatSequence, IntSequence
+from ._typehints import FloatSequence, IntSequence, IntCollection
 
 class Grid:
     """
@@ -907,7 +907,8 @@ class Grid:
 
     def clean(self,
               stencil: int = 3,
-              mutable: IntSequence = None,
+              selection: IntCollection = None,
+              invert_selection: bool = False,
               periodic: bool = True) -> 'Grid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
@@ -916,8 +917,10 @@ class Grid:
         ----------
         stencil : int, optional
             Size of smoothing stencil. Defaults to 3.
-        mutable : sequence of int, optional
-            Material ID that can be altered. Defaults to all.
+        selection : int or collection of int, optional
+            Material IDs to consider.
+        invert_selection : bool, optional
+            Consider all material IDs except those in selection. Defaults to False.
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
@@ -927,21 +930,23 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def mostFrequent(arr: np.ndarray, mutable = None):
+        def mostFrequent(arr: np.ndarray, selection: List, invert: bool):
             me = arr[arr.size//2]
-            if selection is None or me in mutable:
-                unique, inverse = np.unique(arr, return_inverse=True)
+            if len(selection) == 0 or np.isin(me,selection,invert=invert):
+                unique, inverse = np.unique(arr,return_inverse=True)
                 return unique[np.argmax(np.bincount(inverse))]
             else:
                 return me
 
-        return Grid(material = ndimage.filters.generic_filter(
-                                                               self.material,
-                                                               mostFrequent,
-                                                               size=(stencil if mutable is None else stencil//2*2+1,)*3,
-                                                               mode=('wrap' if periodic else 'nearest'),
-                                                               extra_keywords=dict(mutable=mutable),
-                                                              ).astype(self.material.dtype),
+        extra_keywords = dict(selection=util.tbd(selection),invert=invert_selection)
+        material = ndimage.filters.generic_filter(
+                                                  self.material,
+                                                  mostFrequent,
+                                                  size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                  mode=('wrap' if periodic else 'nearest'),
+                                                  extra_keywords=extra_keywords,
+                                                 ).astype(self.material.dtype)
+        return Grid(material = material,
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Grid','clean')],
@@ -1061,16 +1066,16 @@ class Grid:
 
 
     def substitute(self,
-                   from_material: IntSequence,
-                   to_material: IntSequence) -> 'Grid':
+                   from_material: Union[int,IntSequence],
+                   to_material: Union[int,IntSequence]) -> 'Grid':
         """
         Substitute material indices.
 
         Parameters
         ----------
-        from_material : sequence of int
+        from_material : int or sequence of int
             Material indices to be substituted.
-        to_material : sequence of int
+        to_material : int or sequence of int
             New material indices.
 
         Returns
@@ -1080,7 +1085,8 @@ class Grid:
 
         """
         material = self.material.copy()
-        for f,t in zip(from_material,to_material):        # ToDo Python 3.10 has strict mode for zip
+        for f,t in zip(from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material],
+                       to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]): # ToDo Python 3.10 has strict mode for zip
             material[self.material==f] = t
 
         return Grid(material = material,
@@ -1115,14 +1121,14 @@ class Grid:
     def vicinity_offset(self,
                         vicinity: int = 1,
                         offset: int = None,
-                        trigger: IntSequence = [],
+                        selection: IntCollection = None,
+                        invert_selection: bool = False,
                         periodic: bool = True) -> 'Grid':
         """
         Offset material ID of points in the vicinity of xxx.
 
         Different from themselves (or listed as triggers) within a given (cubic) vicinity,
         i.e. within the region close to a grain/phase boundary.
-        ToDo: use include/exclude as in seeds.from_grid
 
         Parameters
         ----------
@@ -1132,9 +1138,10 @@ class Grid:
         offset : int, optional
             Offset (positive or negative) to tag material indices,
             defaults to material.max()+1.
-        trigger : sequence of int, optional
-            List of material indices that trigger a change.
-            Defaults to [], meaning that any different neighbor triggers a change.
+        selection : int or collection of int, optional
+            Material IDs to that triger xxx.
+        invert_selection : bool, optional
+            Consider all material IDs except those in selection. Defaults to False.
         periodic : bool, optional
             Assume grid to be periodic. Defaults to True.
 
@@ -1144,17 +1151,19 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def tainted_neighborhood(stencil: np.ndarray, trigger):
+        def tainted_neighborhood(stencil: np.ndarray, selection):
             me = stencil[stencil.shape[0]//2]
-            return np.any(stencil != me if len(trigger) == 0 else
-                          np.in1d(stencil,np.array(list(set(trigger) - {me}))))
+            return np.any(stencil != me if len(selection) == 0 else
+                          np.in1d(stencil,np.array(list(set(selection) - {me}))))
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
+        selection_ = util.tbd(selection) if not invert_selection else \
+                     list(set(self.material) - set(util.tbd(selection)))
         mask = ndimage.filters.generic_filter(self.material,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,
                                               mode='wrap' if periodic else 'nearest',
-                                              extra_keywords={'trigger':trigger})
+                                              extra_keywords=dict(selection=selection_))
 
         return Grid(material = np.where(mask, self.material + offset_,self.material),
                     size     = self.size,

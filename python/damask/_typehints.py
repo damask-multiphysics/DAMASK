@@ -1,6 +1,6 @@
 """Functionality for typehints."""
 
-from typing import Sequence, Union, Literal, TextIO
+from typing import Sequence, Union, Literal, TextIO, Collection
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +8,7 @@ import numpy as np
 
 FloatSequence = Union[np.ndarray,Sequence[float]]
 IntSequence = Union[np.ndarray,Sequence[int]]
+IntCollection = Union[np.ndarray,Collection[int]]
 FileHandle = Union[TextIO, str, Path]
 CrystalFamily = Union[None,Literal['triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic']]
 CrystalLattice = Union[None,Literal['aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF']]

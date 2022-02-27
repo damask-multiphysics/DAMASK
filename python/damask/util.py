@@ -9,7 +9,7 @@ import re
 import fractions
 from collections import abc
 from functools import reduce
-from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal
+from typing import Union, Tuple, Iterable, Callable, Dict, List, Any, Literal, Collection
 from pathlib import Path
 
 import numpy as np
@@ -720,7 +720,13 @@ def dict_flatten(d: Dict) -> Dict:
 
     return new
 
-
+def tbd(arg) -> List:
+    if arg is None:
+        return []
+    elif isinstance(arg,(np.ndarray,Collection)):
+        return list(arg)
+    else:
+        return [arg]
 
 ####################################################################################################
 # Classes
