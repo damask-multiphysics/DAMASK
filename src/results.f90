@@ -388,14 +388,11 @@ subroutine results_writeVectorDataset_real(dataset,group,label,description,SIuni
   integer(HID_T) :: groupHandle
 
 
-  if (present(systems)) then
-    if (size(systems)*size(dataset,2) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
-  end if
-
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
-  if (present(systems)) call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
+  if (present(systems) .and. HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
@@ -454,14 +451,11 @@ subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit
   integer(HID_T) :: groupHandle
 
 
-  if (present(systems)) then
-    if (size(systems) == 0 ) return !ToDo: maybe also implement for other results_write (not sure about scalar)
-  end if
-
   groupHandle = results_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
-  if (present(systems)) call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
+  if (present(systems) .and. HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
