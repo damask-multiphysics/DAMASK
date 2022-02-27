@@ -17,7 +17,7 @@ module subroutine pass_init()
 
     if (thermal_type(ho) /= THERMAL_PASS_ID) cycle
 
-    if (homogenization_Nconstituents(1) /= 1) & !ToDo: needs extension to multiple homogenizations
+    if (homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='(pass) with N_constituents !=1')
 
   end do
