@@ -102,249 +102,255 @@ subroutine VTK_readVTI(cells,geomSize,origin,material, &
   material = material + 1
   if (any(material<1))                  call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
-  contains
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief determine size and origin from coordinates
-  !------------------------------------------------------------------------------------------------
-  subroutine cellsSizeOrigin(c,s,o,header)
-
-    integer, dimension(3),     intent(out) :: c
-    real(pReal), dimension(3), intent(out) :: s,o
-    character(len=*),          intent(in) :: header
-
-    character(len=:), allocatable :: temp
-    real(pReal), dimension(3) :: delta
-    integer :: i
+end subroutine VTK_readVTI
 
 
-    temp = getXMLValue(header,'Direction')
-    if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                             ! https://discourse.vtk.org/t/vti-specification/6526
-      call IO_error(error_ID = 844, ext_msg = 'coordinate order')
+!------------------------------------------------------------------------------------------------
+!> @brief determine size and origin from coordinates
+!------------------------------------------------------------------------------------------------
+subroutine cellsSizeOrigin(c,s,o,header)
 
-    temp = getXMLValue(header,'WholeExtent')
-    if (any([(IO_intValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
-      call IO_error(error_ID = 844, ext_msg = 'coordinate start')
-    c = [(IO_intValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+  integer, dimension(3),     intent(out) :: c
+  real(pReal), dimension(3), intent(out) :: s,o
+  character(len=*),          intent(in) :: header
 
-    temp = getXMLValue(header,'Spacing')
-    delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
-    s = delta * real(c,pReal)
-
-    temp = getXMLValue(header,'Origin')
-    o = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
-
-  end subroutine
+  character(len=:), allocatable :: temp
+  real(pReal), dimension(3) :: delta
+  integer :: i
 
 
-  !------------------------------------------------------------------------------------------------
-  !> @brief Interpret Base64 string in vtk XML file as integer of default kind
-  !------------------------------------------------------------------------------------------------
-  function as_Int(base64_str,headerType,compressed,dataType)
+  temp = getXMLValue(header,'Direction')
+  if (temp /= '1 0 0 0 1 0 0 0 1' .and. temp /= '') &                                             ! https://discourse.vtk.org/t/vti-specification/6526
+    call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
-    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    headerType, &                                                   ! header type (UInt32 or Uint64)
-                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
-    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+  temp = getXMLValue(header,'WholeExtent')
+  if (any([(IO_intValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
+    call IO_error(error_ID = 844, ext_msg = 'coordinate start')
+  c = [(IO_intValue(temp,IO_stringPos(temp),i),i=2,6,2)]
 
-    integer, dimension(:), allocatable :: as_Int
+  temp = getXMLValue(header,'Spacing')
+  delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+  s = delta * real(c,pReal)
 
-    select case(dataType)
-      case('Int32')
-        as_Int = int(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)))
-      case('Int64')
-        as_Int = int(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)))
-      case('Float32')
-        as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)))
-      case('Float64')
-        as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
-      case default
-        call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
-    end select
+  temp = getXMLValue(header,'Origin')
+  o = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
 
-  end function as_Int
+end subroutine
 
 
-  !------------------------------------------------------------------------------------------------
-  !> @brief Interpret Base64 string in vtk XML file as integer of pReal kind
-  !------------------------------------------------------------------------------------------------
-  function as_pReal(base64_str,headerType,compressed,dataType)
+!------------------------------------------------------------------------------------------------
+!> @brief Interpret Base64 string in vtk XML file as integer of default kind
+!------------------------------------------------------------------------------------------------
+function as_Int(base64_str,headerType,compressed,dataType)
 
-    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    headerType, &                                                   ! header type (UInt32 or Uint64)
-                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
-    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                  headerType, &                                                   ! header type (UInt32 or Uint64)
+                                  dataType                                                        ! data type (Int32, Int64, Float32, Float64)
+  logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
 
-    real(pReal), dimension(:), allocatable :: as_pReal
-
-    select case(dataType)
-      case('Int32')
-        as_pReal = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
-      case('Int64')
-        as_pReal = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
-      case('Float32')
-        as_pReal = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
-      case('Float64')
-        as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
-      case default
-        call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
-    end select
-
-  end function as_pReal
+  integer, dimension(:), allocatable :: as_Int
 
 
-  !------------------------------------------------------------------------------------------------
-  !> @brief Interpret Base64 string in vtk XML file as bytes
-  !------------------------------------------------------------------------------------------------
-  function asBytes(base64_str,headerType,compressed) result(bytes)
+  select case(dataType)
+    case('Int32')
+      as_Int = int(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)))
+    case('Int64')
+      as_Int = int(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)))
+    case('Float32')
+      as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)))
+    case('Float64')
+      as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
+    case default
+      call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
+  end select
 
-    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    headerType                                                      ! header type (UInt32 or Uint64)
-    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
-
-    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
-
-    if (compressed) then
-      bytes = asBytes_compressed(base64_str,headerType)
-    else
-      bytes = asBytes_uncompressed(base64_str,headerType)
-    end if
-
-  end function asBytes
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief Interpret compressed Base64 string in vtk XML file as bytes
-  !> @details A compressed Base64 string consists of a header block and a data block
-  ! [#blocks/#u-size/#p-size/#c-size-1/#c-size-2/.../#c-size-#blocks][DATA-1/DATA-2...]
-  ! #blocks = Number of blocks
-  ! #u-size = Block size before compression
-  ! #p-size = Size of last partial block (zero if it not needed)
-  ! #c-size-i = Size in bytes of block i after compression
-  !------------------------------------------------------------------------------------------------
-  function asBytes_compressed(base64_str,headerType) result(bytes)
-
-    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    headerType                                                      ! header type (UInt32 or Uint64)
-
-    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes, bytes_inflated
-
-    integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
-    integer(pI64) :: headerLen, nBlock, b,s,e
+end function as_Int
 
 
-    if      (headerType == 'UInt32') then
-      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
-      nBlock = int(temp(1),pI64)
-      headerLen = 4_pI64 * (3_pI64 + nBlock)
-      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
-    else if (headerType == 'UInt64') then
-      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
-      nBlock = int(temp(1),pI64)
-      headerLen = 8_pI64 * (3_pI64 + nBlock)
-      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
-    end if
+!------------------------------------------------------------------------------------------------
+!> @brief Interpret Base64 string in vtk XML file as integer of pReal kind
+!------------------------------------------------------------------------------------------------
+function as_pReal(base64_str,headerType,compressed,dataType)
 
-    allocate(size_inflated(nBlock),source=temp(2))
-    size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
-    size_deflated = temp(4:)
-    bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
+  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                  headerType, &                                                   ! header type (UInt32 or Uint64)
+                                  dataType                                                        ! data type (Int32, Int64, Float32, Float64)
+  logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
 
-    allocate(bytes(sum(size_inflated)))
-    e = 0_pI64
-    do b = 1, nBlock
-      s = e + 1_pI64
-      e = s + size_deflated(b) - 1_pI64
-      bytes(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_inflated(s:e),size_inflated(b))
+  real(pReal), dimension(:), allocatable :: as_pReal
+
+
+  select case(dataType)
+    case('Int32')
+      as_pReal = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
+    case('Int64')
+      as_pReal = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
+    case('Float32')
+      as_pReal = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
+    case('Float64')
+      as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
+    case default
+      call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
+  end select
+
+end function as_pReal
+
+
+!------------------------------------------------------------------------------------------------
+!> @brief Interpret Base64 string in vtk XML file as bytes
+!------------------------------------------------------------------------------------------------
+function asBytes(base64_str,headerType,compressed) result(bytes)
+
+  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                  headerType                                                      ! header type (UInt32 or Uint64)
+  logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+
+
+  if (compressed) then
+    bytes = asBytes_compressed(base64_str,headerType)
+  else
+    bytes = asBytes_uncompressed(base64_str,headerType)
+  end if
+
+end function asBytes
+
+
+!------------------------------------------------------------------------------------------------
+!> @brief Interpret compressed Base64 string in vtk XML file as bytes
+!> @details A compressed Base64 string consists of a header block and a data block
+! [#blocks/#u-size/#p-size/#c-size-1/#c-size-2/.../#c-size-#blocks][DATA-1/DATA-2...]
+! #blocks = Number of blocks
+! #u-size = Block size before compression
+! #p-size = Size of last partial block (zero if it not needed)
+! #c-size-i = Size in bytes of block i after compression
+!------------------------------------------------------------------------------------------------
+function asBytes_compressed(base64_str,headerType) result(bytes)
+
+  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                  headerType                                                      ! header type (UInt32 or Uint64)
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes_inflated
+  integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
+  integer(pI64) :: headerLen, nBlock, b,s,e
+
+
+  if      (headerType == 'UInt32') then
+    temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
+    nBlock = int(temp(1),pI64)
+    headerLen = 4_pI64 * (3_pI64 + nBlock)
+    temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+  else if (headerType == 'UInt64') then
+    temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
+    nBlock = int(temp(1),pI64)
+    headerLen = 8_pI64 * (3_pI64 + nBlock)
+    temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+  end if
+
+  allocate(size_inflated(nBlock),source=temp(2))
+  size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
+  size_deflated = temp(4:)
+  bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
+
+  allocate(bytes(sum(size_inflated)))
+  e = 0_pI64
+  do b = 1, nBlock
+    s = e + 1_pI64
+    e = s + size_deflated(b) - 1_pI64
+    bytes(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_inflated(s:e),size_inflated(b))
+  end do
+
+end function asBytes_compressed
+
+
+!------------------------------------------------------------------------------------------------
+!> @brief Interprete uncompressed Base64 string in vtk XML file as bytes
+!> @details An uncompressed Base64 string consists of N headers blocks and a N data blocks
+![#bytes-1/DATA-1][#bytes-2/DATA-2]...
+!------------------------------------------------------------------------------------------------
+function asBytes_uncompressed(base64_str,headerType) result(bytes)
+
+  character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                  headerType                                                      ! header type (UInt32 or Uint64)
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+
+  integer(pI64) :: s
+  integer(pI64), dimension(1) :: nByte
+
+
+  allocate(bytes(0))
+
+  s=0_pI64
+  if      (headerType == 'UInt32') then
+    do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
+      nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
+      bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
+      s = s + base64_nChar(4_pI64+nByte(1))
     end do
+  else if (headerType == 'UInt64') then
+    do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
+      nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
+      bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
+      s = s + base64_nChar(8_pI64+nByte(1))
+    end do
+  end if
 
-  end function asBytes_compressed
+end function asBytes_uncompressed
 
 
-  !------------------------------------------------------------------------------------------------
-  !> @brief Interprete uncompressed Base64 string in vtk XML file as bytes
-  !> @details An uncompressed Base64 string consists of N headers blocks and a N data blocks
-  ![#bytes-1/DATA-1][#bytes-2/DATA-2]...
-  !------------------------------------------------------------------------------------------------
-  function asBytes_uncompressed(base64_str,headerType) result(bytes)
+!------------------------------------------------------------------------------------------------
+!> @brief Get XML string value for given key.
+!------------------------------------------------------------------------------------------------
+pure function getXMLValue(line,key)
 
-    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    headerType                                                      ! header type (UInt32 or Uint64)
+  character(len=*), intent(in)  :: line, key
+  character(len=:), allocatable :: getXMLValue
 
-    integer(pI64) :: s
-    integer(pI64), dimension(1) :: nByte
-
-    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
-    allocate(bytes(0))
-
-    s=0_pI64
-    if      (headerType == 'UInt32') then
-      do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
-        nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
-        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
-        s = s + base64_nChar(4_pI64+nByte(1))
-      end do
-    else if (headerType == 'UInt64') then
-      do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
-        nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
-        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
-        s = s + base64_nChar(8_pI64+nByte(1))
-      end do
-    end if
-
-  end function asBytes_uncompressed
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief Get XML string value for given key
-  !------------------------------------------------------------------------------------------------
-  pure function getXMLValue(line,key)
-
-    character(len=*), intent(in)  :: line, key
-
-    character(len=:), allocatable :: getXMLValue
-
-    integer :: s,e
+  integer :: s,e
 #ifdef __INTEL_COMPILER
-    character :: q
+  character :: q
 #endif
 
-    s = index(line," "//key,back=.true.)
-    if (s==0) then
+
+  s = index(line," "//key,back=.true.)
+  if (s==0) then
+    getXMLValue = ''
+  else
+    e = s + 1 + scan(line(s+1:),"'"//'"')
+    if (scan(line(s:e-2),'=') == 0) then
       getXMLValue = ''
     else
-      e = s + 1 + scan(line(s+1:),"'"//'"')
-      if (scan(line(s:e-2),'=') == 0) then
-        getXMLValue = ''
-      else
-        s = e
-! https://community.intel.com/t5/Intel-Fortran-Compiler/ICE-for-merge-with-strings/m-p/1207204#M151657
+      s = e
+!https://community.intel.com/t5/Intel-Fortran-Compiler/ICE-for-merge-with-strings/m-p/1207204#M151657
 #ifdef __INTEL_COMPILER
-        q = line(s-1:s-1)
-        e = s + index(line(s:),q) - 1
+      q = line(s-1:s-1)
+      e = s + index(line(s:),q) - 1
 #else
-        e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
+      e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
 #endif
-        getXMLValue = line(s:e-1)
-      end if
+      getXMLValue = line(s:e-1)
     end if
+  end if
 
-  end function
+end function
 
 
-  !------------------------------------------------------------------------------------------------
-  !> @brief check for supported file format
-  !------------------------------------------------------------------------------------------------
-  pure function fileFormatOk(line)
+!------------------------------------------------------------------------------------------------
+!> @brief Check for supported file format variants.
+!------------------------------------------------------------------------------------------------
+pure function fileFormatOk(line)
 
-    character(len=*),intent(in) :: line
-    logical :: fileFormatOk
+  character(len=*),intent(in) :: line
+  logical :: fileFormatOk
 
-    fileFormatOk = getXMLValue(line,'type')       == 'ImageData' .and. &
-                   getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
-                   getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
-                   getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
 
-  end function fileFormatOk
+  fileFormatOk = getXMLValue(line,'type')       == 'ImageData' .and. &
+                 getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
+                 getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
+                 getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
 
-end subroutine VTK_readVTI
+end function fileFormatOk
 
 end module VTK
