@@ -21,26 +21,21 @@ module homogenization
   implicit none
   private
 
-
   enum, bind(c); enumerator :: &
-    THERMAL_ISOTHERMAL_ID, &
-    THERMAL_CONDUCTION_ID, &
-    DAMAGE_NONE_ID, &
-    DAMAGE_NONLOCAL_ID, &
-    HOMOGENIZATION_UNDEFINED_ID, &
-    HOMOGENIZATION_NONE_ID, &
-    HOMOGENIZATION_ISOSTRAIN_ID, &
-    HOMOGENIZATION_RGC_ID
+    THERMAL_UNDEFINED_ID, &
+    THERMAL_PASS_ID, &
+    THERMAL_ISOTEMPERATURE_ID
   end enum
+  integer(kind(THERMAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
+    thermal_type                                                                                    !< type of each homogenization
 
   type(tState),        allocatable, dimension(:), public :: &
     homogState, &
     damageState_h
 
-  integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable :: &
-    thermal_type                                                                                    !< thermal transport model
-  integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable :: &
-    damage_type                                                                                     !< nonlocal damage model
+  logical,             allocatable, dimension(:) :: &
+    thermal_active, &
+    damage_active
 
   logical, public :: &
     terminallyIll = .false.                                                                         !< at least one material point is terminally ill
@@ -182,9 +177,7 @@ module homogenization
     homogenization_forward, &
     homogenization_results, &
     homogenization_restartRead, &
-    homogenization_restartWrite, &
-    THERMAL_CONDUCTION_ID, &
-    DAMAGE_NONLOCAL_ID
+    homogenization_restartWrite
 
 contains
 
@@ -292,7 +285,6 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
   do ce = cell_start, cell_end
     if (terminallyIll) continue
     ho = material_homogenizationID(ce)
-    call thermal_partition(ce)
     do co = 1, homogenization_Nconstituents(ho)
       if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
         if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
@@ -352,19 +344,17 @@ subroutine homogenization_results
 
     call mechanical_results(group_base,ho)
 
-    select case(damage_type(ho))
-      case(DAMAGE_NONLOCAL_ID)
-        group = trim(group_base)//'/damage'
-        call results_closeGroup(results_addGroup(group))
-        call damage_results(ho,group)
-    end select
+    if (damage_active(ho)) then
+      group = trim(group_base)//'/damage'
+      call results_closeGroup(results_addGroup(group))
+      call damage_results(ho,group)
+    end if
 
-    select case(thermal_type(ho))
-      case(THERMAL_CONDUCTION_ID)
-        group = trim(group_base)//'/thermal'
-        call results_closeGroup(results_addGroup(group))
-        call thermal_results(ho,group)
-    end select
+    if (thermal_active(ho)) then
+      group = trim(group_base)//'/thermal'
+      call results_closeGroup(results_addGroup(group))
+      call thermal_results(ho,group)
+    end if
 
  enddo
 
@@ -458,8 +448,9 @@ subroutine parseHomogenization
 
   material_homogenization => config_material%get('homogenization')
 
-  allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_isothermal_ID)
-  allocate(damage_type (size(material_name_homogenization)),source=DAMAGE_none_ID)
+  allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_UNDEFINED_ID)
+  allocate(thermal_active(size(material_name_homogenization)),source=.false.)
+  allocate(damage_active(size(material_name_homogenization)),source=.false.)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
@@ -467,8 +458,12 @@ subroutine parseHomogenization
     if (homog%contains('thermal')) then
       homogThermal => homog%get('thermal')
         select case (homogThermal%get_asString('type'))
-          case('pass','isotemperature')
-            thermal_type(h) = THERMAL_conduction_ID
+          case('pass')
+            thermal_type(h) = THERMAL_PASS_ID
+            thermal_active(h) = .true.
+          case('isotemperature')
+            thermal_type(h) = THERMAL_ISOTEMPERATURE_ID
+            thermal_active(h) = .true.
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))
         end select
@@ -478,7 +473,7 @@ subroutine parseHomogenization
       homogDamage => homog%get('damage')
         select case (homogDamage%get_asString('type'))
           case('pass')
-            damage_type(h) = DAMAGE_nonlocal_ID
+            damage_active(h) = .true.
           case default
             call IO_error(500,ext_msg=homogDamage%get_asString('type'))
         end select

@@ -11,7 +11,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine pass_init
+module subroutine pass_init()
 
   integer :: &
     ho, &
@@ -19,14 +19,14 @@ module subroutine pass_init
 
   print'(/,1x,a)', '<<<+-  homogenization:mechanical:pass init  -+>>>'
 
-  print'(/,a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_NONE_ID)
+  print'(/,a,i0)', ' # homogenizations: ',count(mechanical_type == MECHANICAL_PASS_ID)
   flush(IO_STDOUT)
 
-  do ho = 1, size(homogenization_type)
-    if (homogenization_type(ho) /= HOMOGENIZATION_NONE_ID) cycle
+  do ho = 1, size(mechanical_type)
+    if (mechanical_type(ho) /= MECHANICAL_PASS_ID) cycle
 
     if (homogenization_Nconstituents(ho) /= 1) &
-      call IO_error(211,ext_msg='N_constituents (pass)')
+      call IO_error(211,ext_msg='(pass) with N_constituents !=1')
 
     Nmembers = count(material_homogenizationID == ho)
     homogState(ho)%sizeState = 0

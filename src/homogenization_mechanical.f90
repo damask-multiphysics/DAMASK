@@ -56,8 +56,14 @@ submodule(homogenization) mechanical
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_mechanical
 
-  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable :: &
-    homogenization_type                                                                             !< type of each homogenization
+  enum, bind(c); enumerator :: &
+    MECHANICAL_UNDEFINED_ID, &
+    MECHANICAL_PASS_ID, &
+    MECHANICAL_ISOSTRAIN_ID, &
+    MECHANICAL_RGC_ID
+  end enum
+  integer(kind(MECHANICAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
+    mechanical_type                                                                             !< type of each homogenization
 
 contains
 
@@ -75,9 +81,9 @@ module subroutine mechanical_init()
   homogenization_F = homogenization_F0
   allocate(homogenization_P(3,3,discretization_Ncells),source=0.0_pReal)
 
-  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call pass_init()
-  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call isostrain_init()
-  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call RGC_init()
+  if (any(mechanical_type == MECHANICAL_PASS_ID))      call pass_init()
+  if (any(mechanical_type == MECHANICAL_ISOSTRAIN_ID)) call isostrain_init()
+  if (any(mechanical_type == MECHANICAL_RGC_ID))       call RGC_init()
 
 end subroutine mechanical_init
 
@@ -96,15 +102,15 @@ module subroutine mechanical_partition(subF,ce)
   real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationID(ce))) :: Fs
 
 
-  chosenHomogenization: select case(homogenization_type(material_homogenizationID(ce)))
+  chosenHomogenization: select case(mechanical_type(material_homogenizationID(ce)))
 
-    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+    case (MECHANICAL_PASS_ID) chosenHomogenization
       Fs(1:3,1:3,1) = subF
 
-    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+    case (MECHANICAL_ISOSTRAIN_ID) chosenHomogenization
       call isostrain_partitionDeformation(Fs,subF)
 
-    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+    case (MECHANICAL_RGC_ID) chosenHomogenization
       call RGC_partitionDeformation(Fs,subF,ce)
 
   end select chosenHomogenization
@@ -160,7 +166,7 @@ module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
   real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
 
 
-  if (homogenization_type(material_homogenizationID(ce)) == HOMOGENIZATION_RGC_ID) then
+  if (mechanical_type(material_homogenizationID(ce)) == MECHANICAL_RGC_ID) then
       do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ce)
         Fs(:,:,co)        = phase_F(co,ce)
@@ -189,9 +195,9 @@ module subroutine mechanical_results(group_base,ho)
   group = trim(group_base)//'/mechanical'
   call results_closeGroup(results_addGroup(group))
 
-  select case(homogenization_type(ho))
+  select case(mechanical_type(ho))
 
-    case(HOMOGENIZATION_rgc_ID)
+    case(MECHANICAL_RGC_ID)
       call RGC_results(ho,group)
 
   end select
@@ -204,7 +210,7 @@ module subroutine mechanical_results(group_base,ho)
                                   'deformation gradient','1')
       case('P')
         call results_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
-                                  'deformation gradient','1')
+                                  'first Piola-Kirchhoff stress','Pa')
     end select
   end do
 
@@ -226,7 +232,7 @@ subroutine parseMechanical()
 
   material_homogenization => config_material%get('homogenization')
 
-  allocate(homogenization_type(size(material_name_homogenization)), source=HOMOGENIZATION_undefined_ID)
+  allocate(mechanical_type(size(material_name_homogenization)), source=MECHANICAL_UNDEFINED_ID)
   allocate(output_mechanical(size(material_name_homogenization)))
 
   do ho=1, size(material_name_homogenization)
@@ -239,11 +245,11 @@ subroutine parseMechanical()
 #endif
     select case (mechanical%get_asString('type'))
       case('pass')
-        homogenization_type(ho) = HOMOGENIZATION_NONE_ID
+        mechanical_type(ho) = MECHANICAL_PASS_ID
       case('isostrain')
-        homogenization_type(ho) = HOMOGENIZATION_ISOSTRAIN_ID
+        mechanical_type(ho) = MECHANICAL_ISOSTRAIN_ID
       case('RGC')
-        homogenization_type(ho) = HOMOGENIZATION_RGC_ID
+        mechanical_type(ho) = MECHANICAL_RGC_ID
       case default
         call IO_error(500,ext_msg=mechanical%get_asString('type'))
     end select
