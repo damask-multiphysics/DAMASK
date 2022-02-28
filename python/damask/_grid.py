@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence, Collection
+from typing import Union, Optional, TextIO, List, Sequence
 from pathlib import Path
 
 import numpy as np
