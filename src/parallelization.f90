@@ -4,7 +4,8 @@
 !--------------------------------------------------------------------------------------------------
 module parallelization
   use, intrinsic :: ISO_fortran_env, only: &
-    OUTPUT_UNIT
+    OUTPUT_UNIT, &
+    ERROR_UNIT
 
 #ifdef PETSC
 #include <petsc/finclude/petscsys.h>
@@ -88,7 +89,8 @@ subroutine parallelization_init
 
 #ifdef LOGFILE
   write(rank_str,'(i4.4)') worldrank
-  open(OUTPUT_UNIT,file='log.'//rank_str,status='replace',encoding='UTF-8')
+  open(OUTPUT_UNIT,file='out.'//rank_str,status='replace',encoding='UTF-8')
+  open(ERROR_UNIT,file='error.'//rank_str,status='replace',encoding='UTF-8')
 #else
   if (worldrank /= 0) then
     close(OUTPUT_UNIT)                                                                              ! disable output
