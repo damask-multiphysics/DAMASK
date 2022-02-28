@@ -86,17 +86,27 @@ subroutine parallelization_init
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine worldrank'
 
-  if (worldrank == 0) then
-    print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
-
-    call MPI_Get_library_version(MPI_library_version,devNull,err_MPI)
-    print'(/,1x,a)', trim(MPI_library_version)
-    call MPI_Get_version(version,subversion,err_MPI)
-    print'(1x,a,i0,a,i0)', 'MPI standard: ',version,'.',subversion
-#ifdef _OPENMP
-    print'(1x,a,i0)',      'OpenMP version: ',openmp_version
+#ifdef LOGFILE
+  write(rank_str,'(i4.4)') worldrank
+  open(OUTPUT_UNIT,file='log.'//rank_str,status='replace',encoding='UTF-8')
+#else
+  if (worldrank /= 0) then
+    close(OUTPUT_UNIT)                                                                              ! disable output
+    open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
+  else
+    open(OUTPUT_UNIT,encoding='UTF-8')                                                              ! for special characters in output
+  endif
 #endif
-  end if
+
+  print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
+
+  call MPI_Get_library_version(MPI_library_version,devNull,err_MPI)
+  print'(/,1x,a)', trim(MPI_library_version)
+  call MPI_Get_version(version,subversion,err_MPI)
+  print'(1x,a,i0,a,i0)', 'MPI standard: ',version,'.',subversion
+#ifdef _OPENMP
+  print'(1x,a,i0)',      'OpenMP version: ',openmp_version
+#endif
 
   call MPI_Comm_size(MPI_COMM_WORLD,worldsize,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
@@ -120,12 +130,6 @@ subroutine parallelization_init
     error stop 'Could not determine size of MPI_DOUBLE'
   if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pReal),MPI_INTEGER_KIND)) &
     error stop 'Mismatch between MPI_DOUBLE and DAMASK pReal'
-
-  if (worldrank /= 0) then
-    close(OUTPUT_UNIT)                                                                              ! disable output
-    write(rank_str,'(i4.4)') worldrank                                                              ! use for MPI debug filenames
-    open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
-  endif
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if(got_env /= 0) then
