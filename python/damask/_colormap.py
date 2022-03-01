@@ -328,7 +328,7 @@ class Colormap(mpl.colors.ListedColormap):
         if fname is None:
             return open(self.name.replace(' ','_')+suffix, 'w', newline='\n')
         elif isinstance(fname, (str, Path)):
-            return open(fname, 'w', newline='\n')
+            return open(Path(fname).expanduser(), 'w', newline='\n')
         else:
             return fname
 

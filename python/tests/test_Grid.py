@@ -42,6 +42,10 @@ class TestGrid:
         print('patched datetime.datetime.now')
 
 
+    def test_show(sef,default,monkeypatch):
+        monkeypatch.delenv('DISPLAY',raising=False)
+        default.show()
+
     def test_equal(self,default):
         assert default == default
         assert not default == 42

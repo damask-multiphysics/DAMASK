@@ -120,9 +120,10 @@ class Orientation(Rotation,Crystal):
 
 
     def __repr__(self) -> str:
-        """Represent."""
-        return '\n'.join([Crystal.__repr__(self),
-                          Rotation.__repr__(self)])
+        """Give short human-readable summary."""
+        return util.srepr([Crystal.__repr__(self),
+                           Rotation.__repr__(self)])
+
 
     def __copy__(self: MyType,
                  rotation: Union[FloatSequence, Rotation] = None) -> MyType:

@@ -17,6 +17,7 @@ from . import util
 from . import grid_filters
 from . import Rotation
 from . import Table
+from . import Colormap
 from ._typehints import FloatSequence, IntSequence
 
 class Grid:
@@ -57,7 +58,7 @@ class Grid:
 
 
     def __repr__(self) -> str:
-        """Basic information on grid definition."""
+        """Give short human-readable summary."""
         mat_min = np.nanmin(self.material)
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials
@@ -173,8 +174,8 @@ class Grid:
         Parameters
         ----------
         fname : str or pathlib.Path
-            Grid file to read. Valid extension is .vti, which will be appended
-            if not given.
+            Grid file to read.
+            Valid extension is .vti, which will be appended if not given.
 
         Returns
         -------
@@ -183,14 +184,14 @@ class Grid:
 
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
-        comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+        comments = v.comments
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
                     origin = bbox[0],
-                    comments=comments)
+                    comments = comments)
 
 
     @typing. no_type_check
@@ -643,9 +644,9 @@ class Grid:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        v = VTK.from_image_data(self.cells,self.size,self.origin)
-        v.add(self.material.flatten(order='F'),'material')
-        v.add_comments(self.comments)
+        v = VTK.from_image_data(self.cells,self.size,self.origin)\
+           .add(self.material.flatten(order='F'),'material')
+        v.comments += self.comments
 
         v.save(fname,parallel=False,compress=compress)
 
@@ -681,9 +682,20 @@ class Grid:
                    header='\n'.join(header), fmt=format_string, comments='')
 
 
-    def show(self) -> None:
-        """Show on screen."""
-        VTK.from_image_data(self.cells,self.size,self.origin).show()
+    def show(self,
+             colormap: Colormap = Colormap.from_predefined('cividis')) -> None:
+        """
+        Show on screen.
+
+        Parameters
+        ----------
+        colormap : damask.Colormap, optional
+            Colors used to map material IDs. Defaults to 'cividis'.
+
+        """
+        VTK.from_image_data(self.cells,self.size,self.origin) \
+           .add(self.material.flatten('F'),'material') \
+           .show('material',colormap)
 
 
     def add_primitive(self,
