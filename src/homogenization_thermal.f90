@@ -69,7 +69,7 @@ module subroutine thermal_init()
           case ('pass')
             call pass_init()
 
-          case ('isothermal')
+          case ('isotemperature')
             call isotemperature_init()
 
         end select
@@ -172,7 +172,7 @@ module subroutine homogenization_thermal_setField(T,dot_T, ce)
 
   current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce)) = T
   current(material_homogenizationID(ce))%dot_T(material_homogenizationEntry(ce)) = dot_T
-
+  call thermal_partition(ce)
 
 end subroutine homogenization_thermal_setField
 

@@ -88,7 +88,7 @@ module subroutine RGC_init()
 
   print'(/,1x,a)', '<<<+-  homogenization:mechanical:RGC init  -+>>>'
 
-  print'(/,a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_RGC_ID)
+  print'(/,a,i0)', ' # homogenizations: ',count(mechanical_type == MECHANICAL_RGC_ID)
   flush(IO_STDOUT)
 
   print'(/,1x,a)', 'D.D. Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
@@ -137,8 +137,8 @@ module subroutine RGC_init()
   if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
 
-  do ho = 1, size(homogenization_type)
-    if (homogenization_type(ho) /= HOMOGENIZATION_RGC_ID) cycle
+  do ho = 1, size(mechanical_type)
+    if (mechanical_type(ho) /= MECHANICAL_RGC_ID) cycle
     homog => material_homogenization%get(ho)
     homogMech => homog%get('mechanical')
     associate(prm => param(ho), &

@@ -385,7 +385,7 @@ class TestResult:
         result.export_VTK(output,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
         v = VTK.load(tmp_path/fname)
-        v.set_comments('n/a')
+        v.comments = 'n/a'
         v.save(tmp_path/fname,parallel=False)
         with open(fname) as f:
             cur = hashlib.md5(f.read().encode()).hexdigest()
