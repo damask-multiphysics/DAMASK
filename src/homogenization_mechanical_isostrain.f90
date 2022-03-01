@@ -19,11 +19,11 @@ module subroutine isostrain_init
 
   print'(/,1x,a)', '<<<+-  homogenization:mechanical:isostrain init  -+>>>'
 
-  print'(/,a,i0)', ' # homogenizations: ',count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
+  print'(/,a,i0)', ' # homogenizations: ',count(mechanical_type == MECHANICAL_ISOSTRAIN_ID)
   flush(IO_STDOUT)
 
-  do ho = 1, size(homogenization_type)
-    if (homogenization_type(ho) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
+  do ho = 1, size(mechanical_type)
+    if (mechanical_type(ho) /= MECHANICAL_ISOSTRAIN_ID) cycle
 
     Nmembers = count(material_homogenizationID == ho)
     homogState(ho)%sizeState = 0

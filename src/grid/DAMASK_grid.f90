@@ -299,21 +299,21 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call spectral_Utilities_init
-  do field = 1, nActiveFields
+  do field = 2, nActiveFields
     select case (ID(field))
-      case(FIELD_MECH_ID)
-        call mechanical_init
 
-      case(FIELD_THERMAL_ID)
+      case (FIELD_THERMAL_ID)
         initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
         thermal            => initial_conditions%get('thermal',defaultVal=emptyDict)
         call grid_thermal_spectral_init(thermal%get_asFloat('T'))
 
-      case(FIELD_DAMAGE_ID)
-        call grid_damage_spectral_init
+      case (FIELD_DAMAGE_ID)
+        call grid_damage_spectral_init()
 
     end select
-  enddo
+  end do
+
+  call mechanical_init()
 
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
