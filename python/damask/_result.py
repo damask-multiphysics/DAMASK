@@ -154,7 +154,7 @@ class Result:
                         'fields':          self.fields,
                        }
 
-        self.fname = Path(fname).absolute()
+        self.fname = Path(fname).expanduser().absolute()
 
         self._protected = True
 
@@ -167,7 +167,7 @@ class Result:
 
 
     def __repr__(self):
-        """Show summary of file content."""
+        """Give short human-readable summary."""
         with h5py.File(self.fname,'r') as f:
             header = [f'Created by {f.attrs["creator"]}',
                       f'        on {f.attrs["created"]}',
@@ -1635,7 +1635,7 @@ class Result:
         else:
             raise ValueError(f'invalid mode "{mode}"')
 
-        v.set_comments(util.execution_stamp('Result','export_VTK'))
+        v.comments = util.execution_stamp('Result','export_VTK')
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
 
@@ -1651,12 +1651,12 @@ class Result:
             if self.version_minor >= 13:
                 creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
                 created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
-                v.add_comments(f'{creator} ({created})')
+                v.comments += f'{creator} ({created})'
 
             for inc in util.show_progress(self.visible['increments']):
 
                 u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
-                v.add(u,'u')
+                v = v.add(u,'u')
 
                 for ty in ['phase','homogenization']:
                     for field in self.visible['fields']:
@@ -1683,7 +1683,7 @@ class Result:
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
                         for label,dataset in outs.items():
-                            v.add(dataset,' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]))
+                            v = v.add(dataset,' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]))
 
                 v.save(f'{self.fname.stem}_inc{inc[10:].zfill(N_digits)}',parallel=parallel)
 

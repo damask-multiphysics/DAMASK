@@ -17,6 +17,7 @@ from . import util
 from . import grid_filters
 from . import Rotation
 from . import Table
+from . import Colormap
 from ._typehints import FloatSequence, IntSequence, IntCollection
 
 class Grid:
@@ -173,8 +174,8 @@ class Grid:
         Parameters
         ----------
         fname : str or pathlib.Path
-            Grid file to read. Valid extension is .vti, which will be appended
-            if not given.
+            Grid file to read.
+            Valid extension is .vti, which will be appended if not given.
 
         Returns
         -------
@@ -183,9 +184,9 @@ class Grid:
 
         """
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
-        comments = v.get_comments()
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+        comments = v.comments
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
@@ -643,9 +644,9 @@ class Grid:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        v = VTK.from_image_data(self.cells,self.size,self.origin)
-        v.add(self.material.flatten(order='F'),'material')
-        v.add_comments(self.comments)
+        v = VTK.from_image_data(self.cells,self.size,self.origin)\
+           .add(self.material.flatten(order='F'),'material')
+        v.comments += self.comments
 
         v.save(fname,parallel=False,compress=compress)
 
@@ -681,9 +682,20 @@ class Grid:
                    header='\n'.join(header), fmt=format_string, comments='')
 
 
-    def show(self) -> None:
-        """Show on screen."""
-        VTK.from_image_data(self.cells,self.size,self.origin).show()
+    def show(self,
+             colormap: Colormap = Colormap.from_predefined('cividis')) -> None:
+        """
+        Show on screen.
+
+        Parameters
+        ----------
+        colormap : damask.Colormap, optional
+            Colors used to map material IDs. Defaults to 'cividis'.
+
+        """
+        VTK.from_image_data(self.cells,self.size,self.origin) \
+           .add(self.material.flatten('F'),'material') \
+           .show('material',colormap)
 
 
     def add_primitive(self,
@@ -933,17 +945,17 @@ class Grid:
         def mostFrequent(arr: np.ndarray, selection: List, invert: bool):
             me = arr[arr.size//2]
             if len(selection) == 0 or np.isin(me,selection,invert=invert):
-                unique, inverse = np.unique(arr,return_inverse=True)
+                unique, inverse = np.unique(arr, return_inverse=True)
                 return unique[np.argmax(np.bincount(inverse))]
             else:
                 return me
 
         extra_keywords = dict(selection=util.tbd(selection),invert=invert_selection)
         material = ndimage.filters.generic_filter(
-                                                  self.material,
-                                                  mostFrequent,
-                                                  size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                  mode=('wrap' if periodic else 'nearest'),
+                                                               self.material,
+                                                               mostFrequent,
+                                                               size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                               mode=('wrap' if periodic else 'nearest'),
                                                   extra_keywords=extra_keywords,
                                                  ).astype(self.material.dtype)
         return Grid(material = material,

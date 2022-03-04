@@ -403,7 +403,7 @@ class Crystal():
 
 
     def __repr__(self):
-        """Represent."""
+        """Give short human-readable summary."""
         family = f'Crystal family: {self.family}'
         return family if self.lattice is None else \
                util.srepr([family,

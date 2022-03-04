@@ -37,7 +37,7 @@ class Table:
 
 
     def __repr__(self) -> str:
-        """Brief overview."""
+        """Give short human-readable summary."""
         self._relabel('shapes')
         data_repr = self.data.__repr__()
         self._relabel('uniform')
@@ -259,7 +259,7 @@ class Table:
             Table data from file.
 
         """
-        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f = open(Path(fname).expanduser()) if isinstance(fname, (str, Path)) else fname
         f.seek(0)
 
         comments = []
@@ -333,7 +333,7 @@ class Table:
 
 
     @property
-    def labels(self) -> List[Tuple[int, ...]]:
+    def labels(self) -> List[str]:
         return list(self.shapes)
 
 
@@ -589,7 +589,7 @@ class Table:
                 labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
-        f = open(fname,'w',newline='\n') if isinstance(fname, (str, Path)) else fname
+        f = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else fname
 
         f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
         self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)

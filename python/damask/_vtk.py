@@ -1,8 +1,7 @@
 import os
-import warnings
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Literal, List
+from typing import Union, Literal, List, Sequence
 
 import numpy as np
 import vtk
@@ -13,6 +12,7 @@ from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 from ._typehints import FloatSequence, IntSequence
 from . import util
 from . import Table
+from . import Colormap
 
 
 class VTK:
@@ -36,6 +36,110 @@ class VTK:
 
         """
         self.vtk_data = vtk_data
+
+
+    def __repr__(self) -> str:
+        """Give short human-readable summary."""
+        info = [self.vtk_data.__vtkname__]
+
+        for data in ['Cell Data', 'Point Data']:
+            if data == 'Cell Data':  info.append(f'\n# cells: {self.N_cells}')
+            if data == 'Point Data': info.append(f'\n# points: {self.N_points}')
+            if data in self.labels:
+                info += [f'  - {l}' for l in self.labels[data]]
+
+        return util.srepr(info)
+
+
+    def __eq__(self,
+               other: object) -> bool:
+        """
+        Equal to other.
+
+        Parameters
+        ----------
+        other : damask.VTK
+            VTK to check for equality.
+
+        """
+        if not isinstance(other, VTK):
+            return NotImplemented
+        return self.as_ASCII() == other.as_ASCII()
+
+
+
+    def copy(self):
+        if   isinstance(self.vtk_data,vtk.vtkImageData):
+            dup = vtk.vtkImageData()
+        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
+            dup = vtk.vtkUnstructuredGrid()
+        elif isinstance(self.vtk_data,vtk.vtkPolyData):
+            dup = vtk.vtkPolyData()
+        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
+            dup = vtk.vtkRectilinearGrid()
+        else:
+            raise TypeError
+
+        dup.DeepCopy(self.vtk_data)
+
+        return VTK(dup)
+
+
+    @property
+    def comments(self) -> List[str]:
+        """Return the comments."""
+        fielddata = self.vtk_data.GetFieldData()
+        for a in range(fielddata.GetNumberOfArrays()):
+            if fielddata.GetArrayName(a) == 'comments':
+                comments = fielddata.GetAbstractArray(a)
+                return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
+        return []
+
+    @comments.setter
+    def comments(self,
+                 comments: Union[str, Sequence[str]]):
+        """
+        Set comments.
+
+        Parameters
+        ----------
+        comments : str or list of str
+            Comments.
+
+        """
+        s = vtk.vtkStringArray()
+        s.SetName('comments')
+        for c in util.tail_repack(comments,self.comments):
+            s.InsertNextValue(c)
+        self.vtk_data.GetFieldData().AddArray(s)
+
+
+    @property
+    def N_points(self) -> int:
+        """Number of points in vtkdata."""
+        return self.vtk_data.GetNumberOfPoints()
+
+
+    @property
+    def N_cells(self) -> int:
+        """Number of cells in vtkdata."""
+        return self.vtk_data.GetNumberOfCells()
+
+
+    @property
+    def labels(self):
+        """Labels of datasets."""
+        labels = {}
+
+        cell_data = self.vtk_data.GetCellData()
+        if c := [cell_data.GetArrayName(a) for a in range(cell_data.GetNumberOfArrays())]:
+            labels['Cell Data'] = c
+
+        point_data = self.vtk_data.GetPointData()
+        if p := [point_data.GetArrayName(a) for a in range(point_data.GetNumberOfArrays())]:
+            labels['Point Data'] = p
+
+        return labels
 
 
     @staticmethod
@@ -71,40 +175,6 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinear_grid(grid: np.ndarray,
-                              size: FloatSequence,
-                              origin: FloatSequence = np.zeros(3)) -> 'VTK':
-        """
-        Create VTK of type vtk.vtkRectilinearGrid.
-
-        Parameters
-        ----------
-        grid : iterable of int, len (3)
-            Number of cells along each dimension.
-        size : iterable of float, len (3)
-            Physical length along each dimension.
-        origin : iterable of float, len (3), optional
-            Coordinates of grid origin.
-
-        Returns
-        -------
-        new : damask.VTK
-            VTK-based geometry without nodal or cell data.
-
-        """
-        warnings.warn('Support for vtr files will be removed in DAMASK 3.1.0', DeprecationWarning,2)
-        vtk_data = vtk.vtkRectilinearGrid()
-        vtk_data.SetDimensions(*(np.array(grid)+1))
-        coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
-        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
-        vtk_data.SetXCoordinates(coord[0])
-        vtk_data.SetYCoordinates(coord[1])
-        vtk_data.SetZCoordinates(coord[2])
-
-        return VTK(vtk_data)
-
-
-    @staticmethod
     def from_unstructured_grid(nodes: np.ndarray,
                                connectivity: np.ndarray,
                                cell_type: str) -> 'VTK':
@@ -115,7 +185,7 @@ class VTK:
 
         Parameters
         ----------
-        nodes : numpy.ndarray of shape (:,3)
+        nodes : numpy.ndarray, shape (:,3)
             Spatial position of the nodes.
         connectivity : numpy.ndarray of np.dtype = int
             Cell connectivity (0-based), first dimension determines #Cells,
@@ -155,7 +225,7 @@ class VTK:
 
         Parameters
         ----------
-        points : numpy.ndarray of shape (:,3)
+        points : numpy.ndarray, shape (:,3)
             Spatial position of the points.
 
         Returns
@@ -181,8 +251,35 @@ class VTK:
 
 
     @staticmethod
+    def from_rectilinear_grid(grid: FloatSequence) -> 'VTK':
+        """
+        Create VTK of type vtk.vtkRectilinearGrid.
+
+        Parameters
+        ----------
+        grid : iterables of floats, len (3)
+            Grid coordinates along x, y, and z directions.
+
+        Returns
+        -------
+        new : damask.VTK
+            VTK-based geometry without nodal or cell data.
+
+        """
+        vtk_data = vtk.vtkRectilinearGrid()
+        vtk_data.SetDimensions(*map(len,grid))
+        coord = [np_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
+        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
+        vtk_data.SetXCoordinates(coord[0])
+        vtk_data.SetYCoordinates(coord[1])
+        vtk_data.SetZCoordinates(coord[2])
+
+        return VTK(vtk_data)
+
+
+    @staticmethod
     def load(fname: Union[str, Path],
-             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData'] = None) -> 'VTK':
+             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
         """
         Load from VTK file.
 
@@ -190,8 +287,8 @@ class VTK:
         ----------
         fname : str or pathlib.Path
             Filename for reading.
-            Valid extensions are .vti, .vtr, .vtu, .vtp, and .vtk.
-        dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData'}, optional
+            Valid extensions are .vti, .vtu, .vtp, .vtr, and .vtk.
+        dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
 
         Returns
@@ -200,40 +297,40 @@ class VTK:
             VTK-based geometry from file.
 
         """
-        if not os.path.isfile(fname):                                                               # vtk has a strange error handling
+        if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'file "{fname}" not found')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
-            reader.SetFileName(str(fname))
+            reader.SetFileName(str(Path(fname).expanduser()))
             if dataset_type is None:
                 raise TypeError('dataset type for *.vtk file not given')
             elif dataset_type.lower().endswith(('imagedata','image_data')):
                 reader.Update()
                 vtk_data = reader.GetStructuredPointsOutput()
-            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
-                reader.Update()
-                vtk_data = reader.GetRectilinearGridOutput()
             elif dataset_type.lower().endswith(('unstructuredgrid','unstructured_grid')):
                 reader.Update()
                 vtk_data = reader.GetUnstructuredGridOutput()
             elif dataset_type.lower().endswith(('polydata','poly_data')):
                 reader.Update()
                 vtk_data = reader.GetPolyDataOutput()
+            elif dataset_type.lower().endswith(('rectilineargrid','rectilinear_grid')):
+                reader.Update()
+                vtk_data = reader.GetRectilinearGridOutput()
             else:
                 raise TypeError(f'unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
                 reader = vtk.vtkXMLImageDataReader()
-            elif ext == '.vtr':
-                reader = vtk.vtkXMLRectilinearGridReader()
             elif ext == '.vtu':
                 reader = vtk.vtkXMLUnstructuredGridReader()
             elif ext == '.vtp':
                 reader = vtk.vtkXMLPolyDataReader()
+            elif ext == '.vtr':
+                reader = vtk.vtkXMLRectilinearGridReader()
             else:
                 raise TypeError(f'unknown file extension "{ext}"')
 
-            reader.SetFileName(str(fname))
+            reader.SetFileName(str(Path(fname).expanduser()))
             reader.Update()
             vtk_data = reader.GetOutput()
 
@@ -244,6 +341,17 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
+
+
+    def as_ASCII(self) -> str:
+        """ASCII representation of the VTK data."""
+        writer = vtk.vtkDataSetWriter()
+        writer.SetHeader(f'# {util.execution_stamp("VTK")}')
+        writer.WriteToOutputStringOn()
+        writer.SetInputData(self.vtk_data)
+        writer.Write()
+        return writer.GetOutputString()
+
 
     def save(self,
              fname: Union[str, Path],
@@ -264,16 +372,16 @@ class VTK:
         """
         if   isinstance(self.vtk_data,vtk.vtkImageData):
             writer = vtk.vtkXMLImageDataWriter()
-        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
-            writer = vtk.vtkXMLRectilinearGridWriter()
         elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
             writer = vtk.vtkXMLUnstructuredGridWriter()
         elif isinstance(self.vtk_data,vtk.vtkPolyData):
             writer = vtk.vtkXMLPolyDataWriter()
+        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
+            writer = vtk.vtkXMLRectilinearGridWriter()
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
-        writer.SetFileName(str(fname)+(default_ext if default_ext != ext else ''))
+        writer.SetFileName(str(Path(fname).expanduser())+(default_ext if default_ext != ext else ''))
 
         if compress:
             writer.SetCompressorTypeToZLib()
@@ -293,36 +401,31 @@ class VTK:
 
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
-    # Needs support for damask.Table
     def add(self,
-            data: Union[np.ndarray, np.ma.MaskedArray],
+            data: Union[np.ndarray, np.ma.MaskedArray, 'Table'],
             label: str = None):
         """
         Add data to either cells or points.
 
         Parameters
         ----------
-        data : numpy.ndarray or numpy.ma.MaskedArray
+        data : numpy.ndarray, numpy.ma.MaskedArray, or damask.Table
             Data to add. First dimension needs to match either
             number of cells or number of points.
-        label : str
+        label : str, optional if data is damask.Table
             Data label.
 
         """
-        N_points = self.vtk_data.GetNumberOfPoints()
-        N_cells  = self.vtk_data.GetNumberOfCells()
 
-        if isinstance(data,np.ndarray):
-            if label is None:
-                raise ValueError('no label defined for numpy.ndarray')
+        def _add_array(vtk_data,
+                       data: np.ndarray,
+                       label: str):
 
             N_data = data.shape[0]
-            data_ = (data if not isinstance(data,np.ma.MaskedArray) else
-                     np.where(data.mask,data.fill_value,data)).reshape(N_data,-1)
+            data_ = data.reshape(N_data,-1) \
+                        .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
 
-            if data_.dtype in [np.double,np.longdouble]:
-                d = np_to_vtk(data_.astype(np.single),deep=True)                                    # avoid large files
-            elif data_.dtype.type is np.str_:
+            if data.dtype.type is np.str_:
                 d = vtk.vtkStringArray()
                 for s in np.squeeze(data_):
                     d.InsertNextValue(s)
@@ -331,16 +434,28 @@ class VTK:
 
             d.SetName(label)
 
-            if   N_data == N_points:
-                self.vtk_data.GetPointData().AddArray(d)
-            elif N_data == N_cells:
-                self.vtk_data.GetCellData().AddArray(d)
+            if   N_data == vtk_data.GetNumberOfPoints():
+                vtk_data.GetPointData().AddArray(d)
+            elif N_data == vtk_data.GetNumberOfCells():
+                vtk_data.GetCellData().AddArray(d)
             else:
-                raise ValueError(f'cell / point count ({N_cells} / {N_points}) differs from data ({N_data})')
+                raise ValueError(f'data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
+
+        dup = self.copy()
+        if isinstance(data,np.ndarray):
+            if label is not None:
+                _add_array(dup.vtk_data,
+                           np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data,
+                           label)
+            else:
+                raise ValueError('no label defined for numpy.ndarray')
         elif isinstance(data,Table):
-            raise NotImplementedError('damask.Table')
+            for l in data.labels:
+                _add_array(dup.vtk_data,data.get(l),l)
         else:
             raise TypeError
+
+        return dup
 
 
     def get(self,
@@ -386,59 +501,9 @@ class VTK:
             raise ValueError(f'array "{label}" not found')
 
 
-    def get_comments(self) -> List[str]:
-        """Return the comments."""
-        fielddata = self.vtk_data.GetFieldData()
-        for a in range(fielddata.GetNumberOfArrays()):
-            if fielddata.GetArrayName(a) == 'comments':
-                comments = fielddata.GetAbstractArray(a)
-                return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
-        return []
-
-
-    def set_comments(self,
-                     comments: Union[str, List[str]]):
-        """
-        Set comments.
-
-        Parameters
-        ----------
-        comments : str or list of str
-            Comments.
-
-        """
-        s = vtk.vtkStringArray()
-        s.SetName('comments')
-        for c in [comments] if isinstance(comments,str) else comments:
-            s.InsertNextValue(c)
-        self.vtk_data.GetFieldData().AddArray(s)
-
-
-    def add_comments(self,
-                     comments: Union[str, List[str]]):
-        """
-        Add comments.
-
-        Parameters
-        ----------
-        comments : str or list of str
-            Comments to add.
-
-        """
-        self.set_comments(self.get_comments() + ([comments] if isinstance(comments,str) else comments))
-
-
-    def __repr__(self) -> str:
-        """ASCII representation of the VTK data."""
-        writer = vtk.vtkDataSetWriter()
-        writer.SetHeader(f'# {util.execution_stamp("VTK")}')
-        writer.WriteToOutputStringOn()
-        writer.SetInputData(self.vtk_data)
-        writer.Write()
-        return writer.GetOutputString()
-
-
-    def show(self):
+    def show(self,
+             label: str = None,
+             colormap: Colormap = Colormap.from_predefined('cividis')):
         """
         Render.
 
@@ -459,8 +524,17 @@ class VTK:
                 width  = 1024
                 height =  768
 
+        lut = vtk.vtkLookupTable()
+        lut.SetNumberOfTableValues(len(colormap.colors))
+        for i,c in enumerate(colormap.colors):
+            lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))
+        lut.Build()
+
+        self.vtk_data.GetCellData().SetActiveScalars(label)
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
+        mapper.SetLookupTable(lut)
+        mapper.SetScalarRange(self.vtk_data.GetScalarRange())
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
@@ -468,7 +542,15 @@ class VTK:
 
         ren = vtk.vtkRenderer()
         ren.AddActor(actor)
-        ren.SetBackground(67/255,128/255,208/255)
+        if label is None:
+            ren.SetBackground(67/255,128/255,208/255)
+        else:
+            colormap = vtk.vtkScalarBarActor()
+            colormap.SetLookupTable(lut)
+            colormap.SetTitle(label)
+            colormap.SetMaximumWidthInPixels(width//100)
+            ren.AddActor2D(colormap)
+            ren.SetBackground(0.3,0.3,0.3)
 
         window = vtk.vtkRenderWindow()
         window.AddRenderer(ren)
