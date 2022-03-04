@@ -4,7 +4,6 @@ import fnmatch
 import os
 import copy
 import datetime
-import warnings
 import xml.etree.ElementTree as ET                                                                  # noqa
 import xml.dom.minidom
 from pathlib import Path
@@ -28,12 +27,7 @@ h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
-def _view_transition(what,datasets,increments,times,phases,homogenizations,fields):
-    if (datasets is not None and what is None) or (what is not None and datasets is None):
-        raise ValueError('"what" and "datasets" need to be used as a pair')
-    if datasets is not None or what is not None:
-        warnings.warn('arguments "what" and "datasets" will be removed in DAMASK v3.0.0-alpha7', DeprecationWarning,2)
-        return what,datasets
+def _view_transition(increments,times,phases,homogenizations,fields):
     if sum(1 for _ in filter(None.__ne__, [increments,times,phases,homogenizations,fields])) > 1:
         raise ValueError('only one out of "increments", "times", "phases", "homogenizations", and "fields" can be used')
     else:
@@ -213,14 +207,12 @@ class Result:
         choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
                 [datasets]
 
-        what_ = what if what.endswith('s') else what+'s'
-
-        if   what_ == 'increments':
+        if   what == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('increment_') else
                       self.increments[c] if isinstance(c,int) and c<0 else
                       f'increment_{c}' for c in choice]
-        elif what_ == 'times':
-            what_ = 'increments'
+        elif what == 'times':
+            what = 'increments'
             if choice == ['*']:
                 choice = self.increments
             else:
@@ -234,18 +226,18 @@ class Result:
                     elif np.isclose(c,self.times[idx+1]):
                         choice.append(self.increments[idx+1])
 
-        valid = _match(choice,getattr(self,what_))
-        existing = set(self.visible[what_])
+        valid = _match(choice,getattr(self,what))
+        existing = set(self.visible[what])
 
         dup = self.copy()
         if   action == 'set':
-            dup.visible[what_] = sorted(set(valid), key=util.natural_sort)
+            dup.visible[what] = sorted(set(valid), key=util.natural_sort)
         elif action == 'add':
             add = existing.union(valid)
-            dup.visible[what_] = sorted(add, key=util.natural_sort)
+            dup.visible[what] = sorted(add, key=util.natural_sort)
         elif action == 'del':
             diff = existing.difference(valid)
-            dup.visible[what_] = sorted(diff, key=util.natural_sort)
+            dup.visible[what] = sorted(diff, key=util.natural_sort)
 
         return dup
 
@@ -298,7 +290,7 @@ class Result:
         return selected
 
 
-    def view(self,what=None,datasets=None,*,
+    def view(self,*,
                   increments=None,
                   times=None,
                   phases=None,
@@ -313,11 +305,6 @@ class Result:
 
         Parameters
         ----------
-        what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
-            Attribute to change. DEPRECATED.
-        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards. DEPRECATED.
-            True is equivalent to '*', False is equivalent to [].
         increments: (list of) int, (list of) str, or bool, optional.
             Number(s) of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
@@ -351,24 +338,24 @@ class Result:
         >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
 
         """
-        v = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
+        v = _view_transition(increments,times,phases,homogenizations,fields)
         if protected is not None:
             if v is None:
                 dup = self.copy()
             else:
-                what_,datasets_ = v
-                dup = self._manage_view('set',what_,datasets_)
+                what,datasets = v
+                dup = self._manage_view('set',what,datasets)
             if not protected:
                 print(util.warn('Warning: Modification of existing datasets allowed!'))
             dup._protected = protected
         else:
-            what_,datasets_ = v
-            dup = self._manage_view('set',what_,datasets_)
+            what,datasets = v
+            dup = self._manage_view('set',what,datasets)
 
         return dup
 
 
-    def view_more(self,what=None,datasets=None,*,
+    def view_more(self,*,
                   increments=None,
                   times=None,
                   phases=None,
@@ -382,11 +369,6 @@ class Result:
 
         Parameters
         ----------
-        what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
-            Attribute to change. DEPRECATED.
-        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards. DEPRECATED.
-            True is equivalent to '*', False is equivalent to [].
         increments: (list of) int, (list of) str, or bool, optional.
             Number(s) of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
@@ -413,11 +395,11 @@ class Result:
         >>> r_first_and_last = r.first.view_more(increments=-1)
 
         """
-        what_, datasets_ = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
-        return self._manage_view('add',what_,datasets_)
+        what, datasets = _view_transition(increments,times,phases,homogenizations,fields)
+        return self._manage_view('add',what,datasets)
 
 
-    def view_less(self,what=None,datasets=None,*,
+    def view_less(self,*,
                   increments=None,
                   times=None,
                   phases=None,
@@ -431,11 +413,6 @@ class Result:
 
         Parameters
         ----------
-        what : {'increments', 'times', 'phases', 'homogenizations', 'fields'}
-            Attribute to change. DEPRECATED.
-        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards. DEPRECATED.
-            True is equivalent to '*', False is equivalent to [].
         increments: (list of) int, (list of) str, or bool, optional.
             Number(s) of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
@@ -461,8 +438,8 @@ class Result:
         >>> r_deformed = r_all.view_less(increments=0)
 
         """
-        what_, datasets_ = _view_transition(what,datasets,increments,times,phases,homogenizations,fields)
-        return self._manage_view('del',what_,datasets_)
+        what, datasets = _view_transition(increments,times,phases,homogenizations,fields)
+        return self._manage_view('del',what,datasets)
 
 
     def rename(self,name_src,name_dst):
