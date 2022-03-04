@@ -1170,7 +1170,7 @@ class Grid:
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
         selection_ = util.tbd(selection) if not invert_selection else \
-                     list(set(self.material) - set(util.tbd(selection)))
+                     list(set(self.material.flatten()) - set(util.tbd(selection)))
         mask = ndimage.filters.generic_filter(self.material,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,
