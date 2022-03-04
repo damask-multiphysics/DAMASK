@@ -14,7 +14,7 @@ module discretization_grid
   use prec
   use parallelization
   use system_routines
-  use VTK
+  use VTI
   use DAMASK_interface
   use IO
   use config
@@ -76,8 +76,8 @@ subroutine discretization_grid_init(restart)
 
   if (worldrank == 0) then
     fileContent = IO_read(interface_geomFile)
-    call VTK_readVTI_cellsSizeOrigin(cells,geomSize,origin,fileContent)
-    materialAt_global = VTK_readVTIdataset_int(fileContent,'material') + 1
+    call VTI_readCellsSizeOrigin(cells,geomSize,origin,fileContent)
+    materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
     if (any(materialAt_global < 1)) &
       call IO_error(180,ext_msg='material ID < 1')
     if (size(materialAt_global) /= product(cells)) &

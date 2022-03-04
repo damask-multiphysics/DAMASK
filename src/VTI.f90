@@ -1,8 +1,8 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
-!> @brief Read file data from the Visualization toolkit
+!> @brief Read data from image files of the visualization toolkit.
 !--------------------------------------------------------------------------------------------------
-module VTK
+module VTI
   use prec
   use zlib
   use base64
@@ -12,8 +12,8 @@ module VTK
   private
 
   public :: &
-    VTK_readVTIdataset_int, &
-    VTK_readVTI_cellsSizeOrigin
+    VTI_readDataset_int, &
+    VTI_readCellsSizeOrigin
 
 contains
 
@@ -21,7 +21,7 @@ contains
 !> @brief Read integer dataset from a VTK image data (*.vti) file.
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-function VTK_readVTIdataset_int(fileContent,label) result(dataset)
+function VTI_readDataset_int(fileContent,label) result(dataset)
 
   character(len=*),          intent(in) :: &
     label, &
@@ -33,20 +33,20 @@ function VTK_readVTIdataset_int(fileContent,label) result(dataset)
   logical :: compressed
 
 
-  call VTK_readVTIdataset_raw(base64_str,dataType,headerType,compressed, &
-                              fileContent,label)
+  call VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
+                           fileContent,label)
   dataset = as_Int(base64_str,headerType,compressed,dataType)
 
   if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
 
-end function VTK_readVTIdataset_int
+end function VTI_readDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read dataset as raw data (base64 string) from a VTK image data (*.vti) file.
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine VTK_readVTIdataset_raw(base64_str,dataType,headerType,compressed, &
+subroutine VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
                                   fileContent,label)
 
   character(len=*), intent(in) :: &
@@ -107,15 +107,15 @@ subroutine VTK_readVTIdataset_raw(base64_str,dataType,headerType,compressed, &
 
   end do outer
 
-end subroutine VTK_readVTIdataset_raw
+end subroutine VTI_readDataset_raw
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read cells, size, and origin of an VTK image data (*.vti) file.
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine VTK_readVTI_cellsSizeOrigin(cells,geomSize,origin, &
-                                       fileContent)
+subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
+                                   fileContent)
 
   integer,     dimension(3), intent(out) :: &
     cells                                                                                           ! # of cells (across all processes!)
@@ -166,7 +166,7 @@ subroutine VTK_readVTI_cellsSizeOrigin(cells,geomSize,origin, &
   if (any(geomSize<=0))                 call IO_error(error_ID = 844, ext_msg='size')
   if (any(cells<1))                     call IO_error(error_ID = 844, ext_msg='cells')
 
-end subroutine VTK_readVTI_cellsSizeOrigin
+end subroutine VTI_readCellsSizeOrigin
 
 
 !--------------------------------------------------------------------------------------------------
@@ -417,4 +417,4 @@ pure function fileFormatOk(line)
 
 end function fileFormatOk
 
-end module VTK
+end module VTI
