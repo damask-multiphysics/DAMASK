@@ -282,6 +282,20 @@ class Grid:
         loaded : damask.Grid
             Grid-based geometry from file.
 
+        Examples
+        --------
+        Read a periodic polycrystal generated with Neper.
+
+        >>> import damask
+        >>> N_grains = 20
+        >>> cells = (32,32,32)
+        >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity "all" -format "vtk"')
+        >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk')
+        cells:  32 × 32 × 32
+        size:   1.0 × 1.0 × 1.0 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 20
+
         """
         v = VTK.load(fname,'ImageData')
         cells = np.array(v.vtk_data.GetDimensions())-1
@@ -952,10 +966,10 @@ class Grid:
 
         extra_keywords = dict(selection=util.tbd(selection),invert=invert_selection)
         material = ndimage.filters.generic_filter(
-                                                               self.material,
-                                                               mostFrequent,
-                                                               size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                               mode=('wrap' if periodic else 'nearest'),
+                                                  self.material,
+                                                  mostFrequent,
+                                                  size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                  mode=('wrap' if periodic else 'nearest'),
                                                   extra_keywords=extra_keywords,
                                                  ).astype(self.material.dtype)
         return Grid(material = material,
