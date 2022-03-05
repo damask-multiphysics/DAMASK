@@ -754,7 +754,7 @@ def tail_repack(extended: Union[str, Sequence[str]],
 
 def tbd(arg) -> List:
     if arg is None:
-        return []
+        return None
     elif isinstance(arg,(np.ndarray,Collection)):
         return list(arg)
     else:

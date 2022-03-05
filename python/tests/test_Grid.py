@@ -182,6 +182,11 @@ class TestGrid:
         assert random.clean(selection=selection,invert_selection=invert) == \
                random.clean(selection=selection_inverse,invert_selection=not invert)
 
+    def test_clean_selection_empty(self,random):
+        assert random.clean(selection=[],invert_selection=False) == random and \
+               random.clean(selection=[],invert_selection=True) == random.clean()
+
+
     @pytest.mark.parametrize('cells',[
                                      (10,11,10),
                                      [10,13,10],
@@ -319,7 +324,7 @@ class TestGrid:
         assert grid_equal(G_1,G_2)
 
 
-    @pytest.mark.parametrize('selection',[1,[]])
+    @pytest.mark.parametrize('selection',[1,None])
     def test_vicinity_offset(self,selection):
         offset = np.random.randint(2,4)
         vicinity = np.random.randint(2,4)
@@ -345,6 +350,10 @@ class TestGrid:
         selection_inverse = set(random.material.flatten()) - set(selection)
         assert random.vicinity_offset(selection=selection,invert_selection=invert) == \
                random.vicinity_offset(selection=selection_inverse,invert_selection=not invert)
+
+    def test_vicinity_offset_selection_empty(self,random):
+        assert random.vicinity_offset(selection=[],invert_selection=False) == random and \
+               random.vicinity_offset(selection=[],invert_selection=True) == random.vicinity_offset()
 
 
     @pytest.mark.parametrize('periodic',[True,False])

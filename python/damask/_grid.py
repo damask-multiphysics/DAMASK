@@ -958,7 +958,7 @@ class Grid:
         """
         def mostFrequent(arr: np.ndarray, selection: List, invert: bool):
             me = arr[arr.size//2]
-            if len(selection) == 0 or np.isin(me,selection,invert=invert):
+            if selection is None or np.isin(me,selection,invert=invert):
                 unique, inverse = np.unique(arr, return_inverse=True)
                 return unique[np.argmax(np.bincount(inverse))]
             else:
@@ -1179,7 +1179,7 @@ class Grid:
         """
         def tainted_neighborhood(stencil: np.ndarray, selection):
             me = stencil[stencil.shape[0]//2]
-            return np.any(stencil != me if len(selection) == 0 else
+            return np.any(stencil != me if selection is None else
                           np.in1d(stencil,np.array(list(set(selection) - {me}))))
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
