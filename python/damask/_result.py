@@ -27,16 +27,6 @@ h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
 
-def _view_transition(increments,times,phases,homogenizations,fields):
-    if sum(1 for _ in filter(None.__ne__, [increments,times,phases,homogenizations,fields])) > 1:
-        raise ValueError('only one out of "increments", "times", "phases", "homogenizations", and "fields" can be used')
-    else:
-        if increments is not None: return "increments", increments
-        if times is not None: return "times", times
-        if phases is not None: return "phases", phases
-        if homogenizations is not None: return "homogenizations", homogenizations
-        if fields is not None: return "fields", fields
-
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
     metadata = {k:(v.decode() if not h5py3 and type(v) is bytes else v) for k,v in dataset.attrs.items()}
@@ -179,7 +169,13 @@ class Result:
         return util.srepr([util.deemph(header)] + first + in_between + last)
 
 
-    def _manage_view(self,action,what,datasets):
+    def _manage_view(self,
+                     action,
+                     increments=None,
+                     times=None,
+                     phases=None,
+                     homogenizations=None,
+                     fields=None):
         """
         Manages the visibility of the groups.
 
@@ -187,11 +183,6 @@ class Result:
         ----------
         action : str
             Select from 'set', 'add', and 'del'.
-        what : str
-            Attribute to change (must be from self.visible).
-        datasets : (list of) int (for increments), (list of) float (for times), (list of) str, or bool
-            Name of datasets; supports '?' and '*' wildcards.
-            True is equivalent to '*', False is equivalent to [].
 
         Returns
         -------
@@ -199,45 +190,52 @@ class Result:
             Modified or new view on the DADF5 file.
 
         """
-        # allow True/False and string arguments
-        if  datasets is True:
-            datasets = '*'
-        elif datasets is False or datasets is None:
-            datasets = []
-        choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
-                [datasets]
-
-        if   what == 'increments':
-            choice = [c if isinstance(c,str) and c.startswith('increment_') else
-                      self.increments[c] if isinstance(c,int) and c<0 else
-                      f'increment_{c}' for c in choice]
-        elif what == 'times':
-            what = 'increments'
-            if choice == ['*']:
-                choice = self.increments
-            else:
-                iterator = map(float,choice)
-                choice = []
-                for c in iterator:
-                    idx = np.searchsorted(self.times,c)
-                    if idx >= len(self.times): continue
-                    if   np.isclose(c,self.times[idx]):
-                        choice.append(self.increments[idx])
-                    elif np.isclose(c,self.times[idx+1]):
-                        choice.append(self.increments[idx+1])
-
-        valid = _match(choice,getattr(self,what))
-        existing = set(self.visible[what])
+        if increments is not None and times is not None:
+            raise ValueError('cannot use "increments" and "times" at the same time to change view')
 
         dup = self.copy()
-        if   action == 'set':
-            dup.visible[what] = sorted(set(valid), key=util.natural_sort)
-        elif action == 'add':
-            add = existing.union(valid)
-            dup.visible[what] = sorted(add, key=util.natural_sort)
-        elif action == 'del':
-            diff = existing.difference(valid)
-            dup.visible[what] = sorted(diff, key=util.natural_sort)
+        for what,datasets in zip(['increments','times','phases','homogenizations','fields'],
+                                 [ increments,  times,  phases,  homogenizations,  fields ]):
+            if  datasets is None:
+                continue
+            # allow True/False and string arguments
+            elif datasets is True:
+                datasets = '*'
+            elif datasets is False:
+                datasets = []
+            choice = list(datasets).copy() if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
+                    [datasets]
+
+            if   what == 'increments':
+                choice = [c if isinstance(c,str) and c.startswith('increment_') else
+                          self.increments[c] if isinstance(c,int) and c<0 else
+                          f'increment_{c}' for c in choice]
+            elif what == 'times':
+                what = 'increments'
+                if choice == ['*']:
+                    choice = self.increments
+                else:
+                    iterator = map(float,choice)
+                    choice = []
+                    for c in iterator:
+                        idx = np.searchsorted(self.times,c)
+                        if idx >= len(self.times): continue
+                        if   np.isclose(c,self.times[idx]):
+                            choice.append(self.increments[idx])
+                        elif np.isclose(c,self.times[idx+1]):
+                            choice.append(self.increments[idx+1])
+
+            valid = _match(choice,getattr(self,what))
+            existing = set(self.visible[what])
+
+            if   action == 'set':
+                dup.visible[what] = sorted(set(valid), key=util.natural_sort)
+            elif action == 'add':
+                add = existing.union(valid)
+                dup.visible[what] = sorted(add, key=util.natural_sort)
+            elif action == 'del':
+                diff = existing.difference(valid)
+                dup.visible[what] = sorted(diff, key=util.natural_sort)
 
         return dup
 
@@ -291,12 +289,12 @@ class Result:
 
 
     def view(self,*,
-                  increments=None,
-                  times=None,
-                  phases=None,
-                  homogenizations=None,
-                  fields=None,
-                  protected=None):
+             increments=None,
+             times=None,
+             phases=None,
+             homogenizations=None,
+             fields=None,
+             protected=None):
         """
         Set view.
 
@@ -338,19 +336,11 @@ class Result:
         >>> r_t10to40 = r.view(times=r.times_in_range(10.0,40.0))
 
         """
-        v = _view_transition(increments,times,phases,homogenizations,fields)
+        dup = self._manage_view('set',increments,times,phases,homogenizations,fields)
         if protected is not None:
-            if v is None:
-                dup = self.copy()
-            else:
-                what,datasets = v
-                dup = self._manage_view('set',what,datasets)
             if not protected:
                 print(util.warn('Warning: Modification of existing datasets allowed!'))
             dup._protected = protected
-        else:
-            what,datasets = v
-            dup = self._manage_view('set',what,datasets)
 
         return dup
 
@@ -395,8 +385,7 @@ class Result:
         >>> r_first_and_last = r.first.view_more(increments=-1)
 
         """
-        what, datasets = _view_transition(increments,times,phases,homogenizations,fields)
-        return self._manage_view('add',what,datasets)
+        return self._manage_view('add',increments,times,phases,homogenizations,fields)
 
 
     def view_less(self,*,
@@ -438,8 +427,7 @@ class Result:
         >>> r_deformed = r_all.view_less(increments=0)
 
         """
-        what, datasets = _view_transition(increments,times,phases,homogenizations,fields)
-        return self._manage_view('del',what,datasets)
+        return self._manage_view('del',increments,times,phases,homogenizations,fields)
 
 
     def rename(self,name_src,name_dst):
@@ -1816,9 +1804,9 @@ class Result:
                 d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
                 if not Path(name).exists() or overwrite:
                     with open(name,'w') as f_out: f_out.write(obj[0].decode())
-                    print(f"Exported {d} to '{name}'.")
+                    print(f'Exported {d} to "{name}".')
                 else:
-                    print(f"'{name}' exists, {d} not exported.")
+                    print(f'"{name}" exists, {d} not exported.')
             elif type(obj) == h5py.Group:
                 os.makedirs(name, exist_ok=True)
 
