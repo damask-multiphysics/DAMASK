@@ -13,6 +13,7 @@ module VTI
 
   public :: &
     VTI_readDataset_int, &
+    VTI_readDataset_real, &
     VTI_readCellsSizeOrigin
 
 contains
@@ -23,10 +24,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 function VTI_readDataset_int(fileContent,label) result(dataset)
 
-  character(len=*),          intent(in) :: &
+  character(len=*), intent(in) :: &
     label, &
     fileContent
-  integer,     dimension(:), allocatable :: &
+  integer, dimension(:), allocatable :: &
     dataset
 
   character(len=:), allocatable :: dataType, headerType, base64_str
@@ -40,6 +41,31 @@ function VTI_readDataset_int(fileContent,label) result(dataset)
   if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
 
 end function VTI_readDataset_int
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read real dataset from a VTK image data (*.vti) file.
+!> @details https://vtk.org/Wiki/VTK_XML_Formats
+!--------------------------------------------------------------------------------------------------
+function VTI_readDataset_real(fileContent,label) result(dataset)
+
+  character(len=*), intent(in) :: &
+    label, &
+    fileContent
+  real(pReal),  dimension(:), allocatable :: &
+    dataset
+
+  character(len=:), allocatable :: dataType, headerType, base64_str
+  logical :: compressed
+
+
+  call VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
+                           fileContent,label)
+  dataset = as_real(base64_str,headerType,compressed,dataType)
+
+  if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
+
+end function VTI_readDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
@@ -234,30 +260,30 @@ end function as_Int
 !--------------------------------------------------------------------------------------------------
 !> @brief Interpret Base64 string in vtk XML file as real of kind pReal.
 !--------------------------------------------------------------------------------------------------
-function as_pReal(base64_str,headerType,compressed,dataType)
+function as_real(base64_str,headerType,compressed,dataType)
 
   character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
                                   headerType, &                                                     ! header type (UInt32 or Uint64)
                                   dataType                                                          ! data type (Int32, Int64, Float32, Float64)
   logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
 
-  real(pReal), dimension(:), allocatable :: as_pReal
+  real(pReal), dimension(:), allocatable :: as_real
 
 
   select case(dataType)
     case('Int32')
-      as_pReal = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
     case('Int64')
-      as_pReal = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
     case('Float32')
-      as_pReal = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
     case('Float64')
-      as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
     case default
       call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
   end select
 
-end function as_pReal
+end function as_real
 
 
 !--------------------------------------------------------------------------------------------------
