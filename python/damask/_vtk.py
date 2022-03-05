@@ -503,11 +503,21 @@ class VTK:
 
     def show(self,
              label: str = None,
-             colormap: Colormap = Colormap.from_predefined('cividis')):
+             colormap: Colormap = None):
         """
         Render.
 
-        See http://compilatrix.com/article/vtk-1 for further ideas.
+        Parameters
+        ----------
+        label : str, optional
+            Label of the dataset to show.
+        colormap : damask.Colormap, optional
+            Colormap for visualization of dataset.
+
+        Notes
+        -----
+           See http://compilatrix.com/article/vtk-1 for further ideas.
+
         """
         try:
             import wx
@@ -525,8 +535,9 @@ class VTK:
                 height =  768
 
         lut = vtk.vtkLookupTable()
-        lut.SetNumberOfTableValues(len(colormap.colors))
-        for i,c in enumerate(colormap.colors):
+        colormap_ = Colormap.from_predefined('cividis') if colormap is None else colormap
+        lut.SetNumberOfTableValues(len(colormap_.colors))
+        for i,c in enumerate(colormap_.colors):
             lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))
         lut.Build()
 
@@ -545,11 +556,11 @@ class VTK:
         if label is None:
             ren.SetBackground(67/255,128/255,208/255)
         else:
-            colormap = vtk.vtkScalarBarActor()
-            colormap.SetLookupTable(lut)
-            colormap.SetTitle(label)
-            colormap.SetMaximumWidthInPixels(width//100)
-            ren.AddActor2D(colormap)
+            colormap_vtk = vtk.vtkScalarBarActor()
+            colormap_vtk.SetLookupTable(lut)
+            colormap_vtk.SetTitle(label)
+            colormap_vtk.SetMaximumWidthInPixels(width//100)
+            ren.AddActor2D(colormap_vtk)
             ren.SetBackground(0.3,0.3,0.3)
 
         window = vtk.vtkRenderWindow()
