@@ -16,7 +16,7 @@ import numpy as np
 import h5py
 
 from . import version
-from ._typehints import FloatSequence, NumpyRngSeed
+from ._typehints import FloatSequence, NumpyRngSeed, IntCollection
 
 # limit visibility
 __all__=[
@@ -752,7 +752,7 @@ def tail_repack(extended: Union[str, Sequence[str]],
           list(extended[len(existing):]))
 
 
-def tbd(arg) -> List:
+def tbd(arg: Union[IntCollection,int,None]) -> Union[List,None]:
     if arg is None:
         return None
     elif isinstance(arg,(np.ndarray,Collection)):

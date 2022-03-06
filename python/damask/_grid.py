@@ -1183,8 +1183,9 @@ class Grid:
                           np.in1d(stencil,np.array(list(set(selection) - {me}))))
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
-        selection_ = util.tbd(selection) if not invert_selection else \
-                     list(set(self.material.flatten()) - set(util.tbd(selection)))
+        selection_ = util.tbd(selection)
+        if selection_ is not None and invert_selection:
+            selection_ = list(set(self.material.flatten()) - set(selection_))
         mask = ndimage.filters.generic_filter(self.material,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,
