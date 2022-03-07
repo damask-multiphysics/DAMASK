@@ -88,10 +88,10 @@ class VTK:
     @property
     def comments(self) -> List[str]:
         """Return the comments."""
-        fielddata = self.vtk_data.GetFieldData()
-        for a in range(fielddata.GetNumberOfArrays()):
-            if fielddata.GetArrayName(a) == 'comments':
-                comments = fielddata.GetAbstractArray(a)
+        field_data = self.vtk_data.GetFieldData()
+        for a in range(field_data.GetNumberOfArrays()):
+            if field_data.GetArrayName(a) == 'comments':
+                comments = field_data.GetAbstractArray(a)
                 return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
         return []
 

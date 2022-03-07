@@ -649,8 +649,8 @@ class Grid:
         """
         v = VTK.from_image_data(self.cells,self.size,self.origin)\
            .add(self.material.flatten(order='F'),'material')
-        for label,field in self.fields.items():
-            v = v.add(field.flatten(order='F'),label)
+        for label,data in self.ic.items():
+            v = v.add(data.flatten(order='F'),label)
         v.comments = self.comments
 
         v.save(fname,parallel=False,compress=compress)
