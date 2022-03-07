@@ -141,7 +141,7 @@ class TestVTK:
 
 
     def test_invalid_get(self,default):
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             default.get('does_not_exist')
 
     def test_invalid_add_shape(self,default):

@@ -498,7 +498,7 @@ class VTK:
             # string array
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
-            raise ValueError(f'array "{label}" not found')
+            raise KeyError(f'array "{label}" not found')
 
 
     def show(self,

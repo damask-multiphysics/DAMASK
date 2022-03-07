@@ -61,7 +61,7 @@ class TestGrid:
     def test_invalid_no_material(self,tmp_path):
         v = VTK.from_image_data(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
         v.save(tmp_path/'no_materialpoint.vti',parallel=False)
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             Grid.load(tmp_path/'no_materialpoint.vti')
 
     def test_invalid_material_type(self):
