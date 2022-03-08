@@ -688,7 +688,7 @@ class Grid:
 
 
     def show(self,
-             colormap: Union[Colormap, str] = None) -> None:
+             colormap: Union[Colormap, str] = 'cividis') -> None:
         """
         Show on screen.
 

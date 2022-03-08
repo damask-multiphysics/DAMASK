@@ -43,7 +43,7 @@ class TestGrid:
         print('patched datetime.datetime.now')
 
 
-    @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'cividis',None])
+    @pytest.mark.parametrize('cmap',[Colormap.from_predefined('stress'),'viridis'])
     def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show(cmap)

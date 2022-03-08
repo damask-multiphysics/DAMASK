@@ -503,7 +503,7 @@ class VTK:
 
     def show(self,
              label: str = None,
-             colormap: Union[Colormap, str] = None):
+             colormap: Union[Colormap, str] = 'cividis'):
         """
         Render.
 
@@ -516,7 +516,7 @@ class VTK:
 
         Notes
         -----
-           See http://compilatrix.com/article/vtk-1 for further ideas.
+            See http://compilatrix.com/article/vtk-1 for further ideas.
 
         """
         try:
@@ -535,9 +535,8 @@ class VTK:
                 height =  768
 
         lut = vtk.vtkLookupTable()
-        colormap_ = Colormap.from_predefined('cividis') if colormap is None \
-               else Colormap.from_predefined(colormap) if isinstance(colormap,str) \
-               else colormap
+        colormap_ = Colormap.from_predefined(colormap) if isinstance(colormap,str) else \
+                    colormap
         lut.SetNumberOfTableValues(len(colormap_.colors))
         for i,c in enumerate(colormap_.colors):
             lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))

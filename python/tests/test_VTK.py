@@ -30,7 +30,7 @@ class TestVTK:
     def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
-    @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'cividis',None])
+    @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'strain'])
     def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show(colormap=cmap)
