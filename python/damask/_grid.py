@@ -688,14 +688,14 @@ class Grid:
 
 
     def show(self,
-             colormap: Colormap = None) -> None:
+             colormap: Union[Colormap, str] = None) -> None:
         """
         Show on screen.
 
         Parameters
         ----------
-        colormap : damask.Colormap, optional
-            Colors used to map material IDs. Defaults to 'cividis'.
+        colormap : damask.Colormap or str, optional
+            Colormap for visualization of material IDs. Defaults to 'cividis'.
 
         """
         VTK.from_image_data(self.cells,self.size,self.origin) \

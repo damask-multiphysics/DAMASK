@@ -503,7 +503,7 @@ class VTK:
 
     def show(self,
              label: str = None,
-             colormap: Colormap = None):
+             colormap: Union[Colormap, str] = None):
         """
         Render.
 
@@ -511,8 +511,8 @@ class VTK:
         ----------
         label : str, optional
             Label of the dataset to show.
-        colormap : damask.Colormap, optional
-            Colormap for visualization of dataset.
+        colormap : damask.Colormap or str, optional
+            Colormap for visualization of dataset. Defaults to 'cividis'.
 
         Notes
         -----
@@ -535,7 +535,9 @@ class VTK:
                 height =  768
 
         lut = vtk.vtkLookupTable()
-        colormap_ = Colormap.from_predefined('cividis') if colormap is None else colormap
+        colormap_ = Colormap.from_predefined('cividis') if colormap is None \
+               else Colormap.from_predefined(colormap) if isinstance(colormap,str) \
+               else colormap
         lut.SetNumberOfTableValues(len(colormap_.colors))
         for i,c in enumerate(colormap_.colors):
             lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))

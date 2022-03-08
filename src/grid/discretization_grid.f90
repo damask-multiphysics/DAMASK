@@ -81,7 +81,7 @@ subroutine discretization_grid_init(restart)
     if (any(materialAt_global < 1)) &
       call IO_error(180,ext_msg='material ID < 1')
     if (size(materialAt_global) /= product(cells)) &
-      call IO_error(180,ext_msg='mismatch of material IDs and # cells')
+      call IO_error(180,ext_msg='mismatch in # of material IDs and cells')
     fname = interface_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call results_openJobFile(parallel=.false.)

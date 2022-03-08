@@ -10,6 +10,7 @@ import vtk
 
 from damask import VTK
 from damask import Table
+from damask import Colormap
 
 @pytest.fixture
 def ref_path(ref_path_base):
@@ -29,10 +30,10 @@ class TestVTK:
     def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
-    def test_show(sef,default,monkeypatch):
+    @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'cividis',None])
+    def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
-        default.show()
-
+        default.show(colormap=cmap)
 
     def test_imageData(self,tmp_path):
         cells = np.random.randint(5,10,3)

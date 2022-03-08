@@ -6,6 +6,7 @@ from damask import VTK
 from damask import Grid
 from damask import Table
 from damask import Rotation
+from damask import Colormap
 from damask import util
 from damask import seeds
 from damask import grid_filters
@@ -42,9 +43,10 @@ class TestGrid:
         print('patched datetime.datetime.now')
 
 
-    def test_show(sef,default,monkeypatch):
+    @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'cividis',None])
+    def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
-        default.show()
+        default.show(cmap)
 
     def test_equal(self,default):
         assert default == default
