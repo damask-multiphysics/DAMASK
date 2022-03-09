@@ -665,7 +665,7 @@ class Grid:
            .add(self.material.flatten(order='F'),'material')
         for label,data in self.ic.items():
             v = v.add(data.flatten(order='F'),label)
-        v.comments += self.comments
+        v.comments = self.comments
 
         v.save(fname,parallel=False,compress=compress)
 
@@ -969,7 +969,7 @@ class Grid:
             else:
                 return me
 
-        extra_keywords = dict(selection=util.tbd(selection),invert=invert_selection)
+        extra_keywords = dict(selection=util.ensure_integer_list(selection),invert=invert_selection)
         material = ndimage.filters.generic_filter(
                                                                self.material,
                                                                mostFrequent,
@@ -1156,10 +1156,10 @@ class Grid:
                         invert_selection: bool = False,
                         periodic: bool = True) -> 'Grid':
         """
-        Offset material ID of points in the vicinity of xxx.
+        Offset material ID of points in the vicinity of a trigger point.
 
-        Different from themselves (or listed as triggers) within a given (cubic) vicinity,
-        i.e. within the region close to a grain/phase boundary.
+        Trigger points are variations in material ID, i.e. grain/phase
+        boundaries or explicitly given material IDs.
 
         Parameters
         ----------
@@ -1170,7 +1170,7 @@ class Grid:
             Offset (positive or negative) to tag material indices,
             defaults to material.max()+1.
         selection : int or collection of int, optional
-            Material IDs to that triger xxx.
+            Material IDs that triger the offset.
         invert_selection : bool, optional
             Consider all material IDs except those in selection. Defaults to False.
         periodic : bool, optional
@@ -1188,7 +1188,7 @@ class Grid:
                           np.in1d(stencil,np.array(list(set(selection) - {me}))))
 
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
-        selection_ = util.tbd(selection)
+        selection_ = util.ensure_integer_list(selection)
         if selection_ is not None and invert_selection:
             selection_ = list(set(self.material.flatten()) - set(selection_))
         mask = ndimage.filters.generic_filter(self.material,

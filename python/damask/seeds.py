@@ -134,7 +134,7 @@ def from_grid(grid,
 
     """
     material = grid.material.reshape((-1,1),order='F')
-    selection_ = _util.tbd(selection)
+    selection_ = _util.ensure_integer_list(selection)
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection_ is None else \
            _np.isin(material,selection_,invert=invert_selection).flatten()
     coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')

@@ -767,7 +767,8 @@ def tail_repack(extended: Union[str, Sequence[str]],
           list(extended[len(existing):]))
 
 
-def tbd(arg: Union[IntCollection,int,None]) -> Union[List,None]:
+def ensure_integer_list(arg: Union[IntCollection,int,None]) -> Union[List,None]:
+    """Convert to list of Integers."""
     if arg is None:
         return None
     elif isinstance(arg,(np.ndarray,Collection)):
