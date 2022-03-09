@@ -308,7 +308,7 @@ program DAMASK_grid
       case (FIELD_THERMAL_ID)
         initial_conditions => config_load%get('initial_conditions',defaultVal=emptyDict)
         thermal            => initial_conditions%get('thermal',defaultVal=emptyDict)
-        call grid_thermal_spectral_init(thermal%get_asFloat('T'))
+        call grid_thermal_spectral_init()
 
       case (FIELD_DAMAGE_ID)
         call grid_damage_spectral_init()

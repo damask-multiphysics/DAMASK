@@ -65,9 +65,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
 !--------------------------------------------------------------------------------------------------
-subroutine grid_thermal_spectral_init(T_0)
-
-  real(pReal), intent(in) :: T_0
+subroutine grid_thermal_spectral_init()
 
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
@@ -105,9 +103,9 @@ subroutine grid_thermal_spectral_init(T_0)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  allocate(T_current(cells(1),cells(2),cells3), source=T_0)
-  allocate(T_lastInc(cells(1),cells(2),cells3), source=T_0)
-  allocate(T_stagInc(cells(1),cells(2),cells3), source=T_0)
+  T_current = discretization_grid_getInitialCondition('T')
+  T_lastInc = T_current
+  T_stagInc = T_current
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc

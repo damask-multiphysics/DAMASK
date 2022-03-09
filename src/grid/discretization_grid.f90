@@ -37,7 +37,8 @@ module discretization_grid
     size3offset                                                                                     !< (local) size offset in 3rd direction
 
   public :: &
-    discretization_grid_init
+    discretization_grid_init, &
+    discretization_grid_getInitialCondition
 
 contains
 
@@ -316,10 +317,10 @@ end function IPneighborhood
 !--------------------------------------------------------------------------------------------------
 !> @brief Read initial condition from VTI file.
 !--------------------------------------------------------------------------------------------------
-function getInitialCondition(label)
+function discretization_grid_getInitialCondition(label) result(ic)
 
   character(len=*), intent(in) :: label
-  real(pReal), dimension(cells(1),cells(2),cells3) :: getInitialCondition
+  real(pReal), dimension(cells(1),cells(2),cells3) :: ic
 
   real(pReal), dimension(:), allocatable :: ic_global, ic_local
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -328,7 +329,7 @@ function getInitialCondition(label)
     displs, sendcounts
 
   if (worldrank == 0) then
-    ic_global = VTI_read_Real(IO_read(interface_geomFile),label)
+    ic_global = VTI_readDataset_real(IO_read(interface_geomFile),label)
   else
     allocate(ic_global(0))                                                                          ! needed for IntelMPI
   endif
@@ -345,8 +346,8 @@ function getInitialCondition(label)
                     MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  getInitialCondition = reshape(ic_local,[cells(1),cells(2),cells3])
+  ic = reshape(ic_local,[cells(1),cells(2),cells3])
 
-end function getInitialCondition
+end function discretization_grid_getInitialCondition
 
 end module discretization_grid
