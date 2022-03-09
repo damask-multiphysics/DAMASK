@@ -971,10 +971,10 @@ class Grid:
 
         extra_keywords = dict(selection=util.ensure_integer_list(selection),invert=invert_selection)
         material = ndimage.filters.generic_filter(
-                                                               self.material,
-                                                               mostFrequent,
-                                                               size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                               mode=('wrap' if periodic else 'nearest'),
+                                                  self.material,
+                                                  mostFrequent,
+                                                  size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                  mode=('wrap' if periodic else 'nearest'),
                                                   extra_keywords=extra_keywords,
                                                  ).astype(self.material.dtype)
         return Grid(material = material,
