@@ -34,7 +34,8 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 comments: Union[str, Sequence[str]] = None):
+                 comments: Union[str, Sequence[str]] = None,
+                 initial_conditions = None):
         """
         New geometry definition for grid solvers.
 
@@ -55,10 +56,10 @@ class Grid:
         self.size = size                                                                            # type: ignore
         self.origin = origin                                                                        # type: ignore
         self.comments = [] if comments is None else comments                                        # type: ignore
-
+        self.ic = initial_conditions if initial_conditions is not None else {}
 
     def __repr__(self) -> str:
-        """Basic information on grid definition."""
+        """Give short human-readable summary."""
         mat_min = np.nanmin(self.material)
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials
@@ -68,7 +69,7 @@ class Grid:
                f'origin: {util.srepr(self.origin,"   ")} m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
                                           f' (min: {mat_min}, max: {mat_max})')
-              ])
+               ]+(['initial_conditions:']+[f'  - {f}' for f in self.ic.keys()] if self.ic else []))
 
 
     def __copy__(self) -> 'Grid':
@@ -187,11 +188,13 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
         comments = v.comments
+        ic = {label:v.get(label).reshape(cells,order='F') for label in set(v.labels['Cell Data']) - {'material'}}
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
                     origin = bbox[0],
-                    comments=comments)
+                    comments = comments,
+                    initial_conditions = ic)
 
 
     @typing. no_type_check
@@ -660,6 +663,8 @@ class Grid:
         """
         v = VTK.from_image_data(self.cells,self.size,self.origin)\
            .add(self.material.flatten(order='F'),'material')
+        for label,data in self.ic.items():
+            v = v.add(data.flatten(order='F'),label)
         v.comments += self.comments
 
         v.save(fname,parallel=False,compress=compress)
@@ -697,14 +702,14 @@ class Grid:
 
 
     def show(self,
-             colormap: Colormap = Colormap.from_predefined('cividis')) -> None:
+             colormap: Union[Colormap, str] = 'cividis') -> None:
         """
         Show on screen.
 
         Parameters
         ----------
-        colormap : damask.Colormap, optional
-            Colors used to map material IDs. Defaults to 'cividis'.
+        colormap : damask.Colormap or str, optional
+            Colormap for visualization of material IDs. Defaults to 'cividis'.
 
         """
         VTK.from_image_data(self.cells,self.size,self.origin) \
@@ -966,10 +971,10 @@ class Grid:
 
         extra_keywords = dict(selection=util.tbd(selection),invert=invert_selection)
         material = ndimage.filters.generic_filter(
-                                                  self.material,
-                                                  mostFrequent,
-                                                  size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                  mode=('wrap' if periodic else 'nearest'),
+                                                               self.material,
+                                                               mostFrequent,
+                                                               size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                               mode=('wrap' if periodic else 'nearest'),
                                                   extra_keywords=extra_keywords,
                                                  ).astype(self.material.dtype)
         return Grid(material = material,
