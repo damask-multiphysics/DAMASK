@@ -473,10 +473,7 @@ class Crystal():
     @property
     def orientation_relationships(self):
         """Return labels of orientation relationships."""
-        labels = []
-        for k,v in orientation_relationships.items():
-            if list(v.items())[1][0] == self.lattice: labels.append(k)
-        return labels
+        return [k for k,v in orientation_relationships.items() if self.lattice in v]
 
 
     @property
@@ -1006,12 +1003,10 @@ class Crystal():
                 }
         }
         master = _kinematics[self.lattice][mode]
-        if self.lattice == 'hP':
-            return {'direction':[util.Bravais_to_Miller(uvtw=m[:,0:4]) for m in master],
-                    'plane':    [util.Bravais_to_Miller(hkil=m[:,4:8]) for m in master]}
-        else:
-            return {'direction':[m[:,0:3] for m in master],
-                    'plane':    [m[:,3:6] for m in master]}
+        return {'direction':[util.Bravais_to_Miller(uvtw=m[:,0:4]) if self.lattice == 'hP'
+                                                    else m[:,0:3] for m in master],
+                'plane':    [util.Bravais_to_Miller(hkil=m[:,4:8]) if self.lattice == 'hP'
+                                                    else m[:,3:6] for m in master]}
 
 
     def relation_operations(self,
