@@ -191,7 +191,7 @@ class Result:
 
         """
         if increments is not None and times is not None:
-            raise ValueError('cannot use "increments" and "times" at the same time to change view')
+            raise ValueError('"increments" and "times" are mutually exclusive')
 
         dup = self.copy()
         for what,datasets in zip(['increments','times','phases','homogenizations','fields'],
