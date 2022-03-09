@@ -870,23 +870,23 @@ class Orientation(Rotation,Crystal):
     def related(self: MyType,
                 model: str) -> MyType:
         """
-        Orientations derived from the given relationship.
+        All orientations related to self by given relationship model.
 
         Parameters
         ----------
         model : str
-            Model for orientation relationship.
-            Must be out of self.orientation_relationships.
+            Orientation relationship model selected from self.orientation_relationships.
 
         Returns
         -------
-        Orientations with crystal structure according to
-        the selected model for the orienation relationship.
+        Orientations related to self following the selected
+        model for the orientation relationship.
 
         Examples
         --------
-        Rotations of the Bain orientation relationship (cI -> cF)
-        of a crystal in "Cube" orientation.
+        Face-centered cubic orientations following from a
+        body-centered cubic crystal in "Cube" orientation according
+        to the Bain orientation relationship (cI -> cF).
 
         >>> import numpy as np
         >>> import damask

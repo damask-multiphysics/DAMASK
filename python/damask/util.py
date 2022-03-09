@@ -767,14 +767,23 @@ def tail_repack(extended: Union[str, Sequence[str]],
           list(extended[len(existing):]))
 
 
-def ensure_integer_list(arg: Union[IntCollection,int,None]) -> Union[List,None]:
-    """Convert to list of Integers."""
-    if arg is None:
-        return None
-    elif isinstance(arg,(np.ndarray,Collection)):
-        return list(arg)
-    else:
-        return [arg]
+def aslist(arg: Union[IntCollection,int,None]) -> List:
+    """
+    Transform argument to list.
+
+    Parameters
+    ----------
+    arg : int or collection of int or None
+        Entity to transform into list.
+
+    Returns
+    -------
+    transformed : list
+        Entity transformed into list.
+
+    """
+    return [] if arg is None else list(arg) if isinstance(arg,(np.ndarray,Collection)) else [arg]
+
 
 ####################################################################################################
 # Classes
