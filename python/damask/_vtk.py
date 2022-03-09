@@ -88,10 +88,10 @@ class VTK:
     @property
     def comments(self) -> List[str]:
         """Return the comments."""
-        fielddata = self.vtk_data.GetFieldData()
-        for a in range(fielddata.GetNumberOfArrays()):
-            if fielddata.GetArrayName(a) == 'comments':
-                comments = fielddata.GetAbstractArray(a)
+        field_data = self.vtk_data.GetFieldData()
+        for a in range(field_data.GetNumberOfArrays()):
+            if field_data.GetArrayName(a) == 'comments':
+                comments = field_data.GetAbstractArray(a)
                 return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
         return []
 
@@ -498,16 +498,26 @@ class VTK:
             # string array
             return np.array([vtk_array.GetValue(i) for i in range(vtk_array.GetNumberOfValues())]).astype(str)
         except UnboundLocalError:
-            raise ValueError(f'array "{label}" not found')
+            raise KeyError(f'array "{label}" not found')
 
 
     def show(self,
              label: str = None,
-             colormap: Colormap = Colormap.from_predefined('cividis')):
+             colormap: Union[Colormap, str] = 'cividis'):
         """
         Render.
 
-        See http://compilatrix.com/article/vtk-1 for further ideas.
+        Parameters
+        ----------
+        label : str, optional
+            Label of the dataset to show.
+        colormap : damask.Colormap or str, optional
+            Colormap for visualization of dataset. Defaults to 'cividis'.
+
+        Notes
+        -----
+            See http://compilatrix.com/article/vtk-1 for further ideas.
+
         """
         try:
             import wx
@@ -525,8 +535,10 @@ class VTK:
                 height =  768
 
         lut = vtk.vtkLookupTable()
-        lut.SetNumberOfTableValues(len(colormap.colors))
-        for i,c in enumerate(colormap.colors):
+        colormap_ = Colormap.from_predefined(colormap) if isinstance(colormap,str) else \
+                    colormap
+        lut.SetNumberOfTableValues(len(colormap_.colors))
+        for i,c in enumerate(colormap_.colors):
             lut.SetTableValue(i,c if len(c)==4 else np.append(c,1.0))
         lut.Build()
 
@@ -545,11 +557,11 @@ class VTK:
         if label is None:
             ren.SetBackground(67/255,128/255,208/255)
         else:
-            colormap = vtk.vtkScalarBarActor()
-            colormap.SetLookupTable(lut)
-            colormap.SetTitle(label)
-            colormap.SetMaximumWidthInPixels(width//100)
-            ren.AddActor2D(colormap)
+            colormap_vtk = vtk.vtkScalarBarActor()
+            colormap_vtk.SetLookupTable(lut)
+            colormap_vtk.SetTitle(label)
+            colormap_vtk.SetMaximumWidthInPixels(width//100)
+            ren.AddActor2D(colormap_vtk)
             ren.SetBackground(0.3,0.3,0.3)
 
         window = vtk.vtkRenderWindow()
