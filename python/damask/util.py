@@ -6,17 +6,18 @@ import os
 import subprocess
 import shlex
 import re
+import signal
 import fractions
 from collections import abc
-from functools import reduce
-from typing import Callable, Union, Iterable, Sequence, Dict, List, Tuple, Literal, Any
+from functools import reduce, partial
+from typing import Callable, Union, Iterable, Sequence, Dict, List, Tuple, Literal, Any, Collection
 from pathlib import Path
 
 import numpy as np
 import h5py
 
 from . import version
-from ._typehints import FloatSequence, NumpyRngSeed
+from ._typehints import FloatSequence, NumpyRngSeed, IntCollection
 
 # limit visibility
 __all__=[
@@ -174,21 +175,35 @@ def run(cmd: str,
         Output of the executed command.
 
     """
+    def pass_signal(sig,_,proc,default):
+        proc.send_signal(sig)
+        signal.signal(sig,default)
+        signal.raise_signal(sig)
+
+    signals = [signal.SIGINT,signal.SIGTERM]
+
     print(f"running '{cmd}' in '{wd}'")
-    process = subprocess.run(shlex.split(cmd),
+    process = subprocess.Popen(shlex.split(cmd),
                              stdout = subprocess.PIPE,
                              stderr = subprocess.PIPE,
                              env = os.environ if env is None else env,
                              cwd = wd,
-                             encoding = 'utf-8',
-                             timeout = timeout)
+                             encoding = 'utf-8')
+    # ensure that process is terminated (https://stackoverflow.com/questions/22916783)
+    sig_states = [signal.signal(sig,partial(pass_signal,proc=process,default=signal.getsignal(sig))) for sig in signals]
+
+    try:
+        stdout,stderr = process.communicate(timeout=timeout)
+    finally:
+        for sig,state in zip(signals,sig_states):
+            signal.signal(sig,state)
 
     if process.returncode != 0:
-        print(process.stdout)
-        print(process.stderr)
+        print(stdout)
+        print(stderr)
         raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
 
-    return process.stdout, process.stderr
+    return stdout, stderr
 
 
 execute = run
@@ -722,7 +737,6 @@ def dict_flatten(d: Dict) -> Dict:
     return new
 
 
-
 def tail_repack(extended: Union[str, Sequence[str]],
                 existing: List[str] = []) -> List[str]:
     """
@@ -751,6 +765,24 @@ def tail_repack(extended: Union[str, Sequence[str]],
     return [extended] if isinstance(extended,str) else existing + \
          ([''.join(extended[len(existing):])] if np.prod([len(i) for i in extended[len(existing):]]) == 1 else
           list(extended[len(existing):]))
+
+
+def aslist(arg: Union[IntCollection,int,None]) -> List:
+    """
+    Transform argument to list.
+
+    Parameters
+    ----------
+    arg : int or collection of int or None
+        Entity to transform into list.
+
+    Returns
+    -------
+    transformed : list
+        Entity transformed into list.
+
+    """
+    return [] if arg is None else list(arg) if isinstance(arg,(np.ndarray,Collection)) else [arg]
 
 
 ####################################################################################################

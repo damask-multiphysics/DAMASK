@@ -102,3 +102,11 @@ class TestCrystal:
         assert [len(s) for s in crystal.kinematics('twin')['direction']] == length
         assert [len(s) for s in crystal.kinematics('twin')['plane']] == length
 
+    @pytest.mark.parametrize('crystal', [Crystal(lattice='cF'),
+                                         Crystal(lattice='cI'),
+                                         Crystal(lattice='hP'),
+                                         Crystal(lattice='tI',c=1.2)])
+    def test_related(self,crystal):
+        for r in crystal.orientation_relationships:
+            crystal.relation_operations(r)
+

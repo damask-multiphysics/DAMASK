@@ -117,6 +117,10 @@ class TestUtil:
     def test_decorate(self,style):
         assert 'DAMASK' in style('DAMASK')
 
+    @pytest.mark.parametrize('lst',[1,[1,2],set([1,2,3]),np.arange(4)])
+    def test_aslist(self,lst):
+        assert len(util.aslist(lst)) > 0
+
     @pytest.mark.parametrize('complete',[True,False])
     def test_D3D_base_group(self,tmp_path,complete):
         base_group = ''.join(random.choices('DAMASK', k=10))

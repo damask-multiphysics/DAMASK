@@ -56,9 +56,6 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
-  real(pReal), dimension(3,3), parameter :: &
-    ones  = 1.0_pReal, &
-    zeros = 0.0_pReal
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pReal) :: &

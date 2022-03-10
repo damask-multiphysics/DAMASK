@@ -70,9 +70,8 @@ subroutine DAMASK_interface_init
   external :: &
     quit
 
-  print'(/,1x,a)', '<<<+-  DAMASK_interface init  -+>>>'
 
-  if(worldrank == 0) open(OUTPUT_UNIT, encoding='UTF-8')                                            ! for special characters in output
+  print'(/,1x,a)', '<<<+-  DAMASK_interface init  -+>>>'
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
