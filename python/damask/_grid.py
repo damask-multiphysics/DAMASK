@@ -972,7 +972,7 @@ class Grid:
         """
         def most_frequent(stencil: np.ndarray,
                          selection: set,
-                         rng: NumpyRngSeed):
+                         rng):
             me = stencil[stencil.size//2]
             if not selection or me in selection:
                 unique, counts = np.unique(stencil,return_counts=True)

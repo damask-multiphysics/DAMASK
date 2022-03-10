@@ -352,8 +352,8 @@ class TestGrid:
                random.vicinity_offset(selection=selection_inverse,invert_selection=not invert)
 
     def test_vicinity_offset_selection_empty(self,random):
-        assert random.vicinity_offset(selection=[],invert_selection=False) == random and \
-               random.vicinity_offset(selection=[],invert_selection=True) == random.vicinity_offset()
+        assert random.vicinity_offset(selection=None,invert_selection=False) == random.vicinity_offset() and \
+               random.vicinity_offset(selection=None,invert_selection=True ) == random.vicinity_offset()
 
 
     @pytest.mark.parametrize('periodic',[True,False])
