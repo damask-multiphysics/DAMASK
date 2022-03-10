@@ -348,8 +348,9 @@ class TestGrid:
     @pytest.mark.parametrize('invert',[True,False])
     def test_vicinit_offset_invert(self,random,selection,invert):
         selection_inverse = set(random.material.flatten()) - set(selection)
-        assert random.vicinity_offset(selection=selection,invert_selection=invert) == \
-               random.vicinity_offset(selection=selection_inverse,invert_selection=not invert)
+        assert selection_inverse == set() or \
+               (random.vicinity_offset(selection=selection,invert_selection=invert) ==
+                random.vicinity_offset(selection=selection_inverse,invert_selection=not invert))
 
     def test_vicinity_offset_selection_empty(self,random):
         assert random.vicinity_offset(selection=None,invert_selection=False) == random.vicinity_offset() and \
