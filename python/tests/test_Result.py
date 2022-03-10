@@ -69,8 +69,8 @@ class TestResult:
 
     @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_none(self,default,what):
-        n0 = default.view(what,False)
-        n1 = default.view(what,[])
+        n0 = default.view(**{what:False})
+        n1 = default.view(**{what:[]})
 
         label = 'increments' if what == 'times' else what
 
@@ -79,28 +79,24 @@ class TestResult:
 
     @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_more(self,default,what):
-        empty = default.view(what,False)
+        empty = default.view(**{what:False})
 
-        a = empty.view_more(what,'*').get('F')
-        b = empty.view_more(what,True).get('F')
+        a = empty.view_more(**{what:'*'}).get('F')
+        b = empty.view_more(**{what:True}).get('F')
 
         assert dict_equal(a,b)
 
     @pytest.mark.parametrize('what',['increments','times','phases','fields'])                       # ToDo: discuss homogenizations
     def test_view_less(self,default,what):
-        full = default.view(what,True)
+        full = default.view(**{what:True})
 
-        n0 = full.view_less(what,'*')
-        n1 = full.view_less(what,True)
+        n0 = full.view_less(**{what:'*'})
+        n1 = full.view_less(**{what:True})
 
         label = 'increments' if what == 'times' else what
 
         assert n0.get('F') is n1.get('F') is None and \
                len(n0.visible[label]) == len(n1.visible[label]) == 0
-
-    def test_view_invalid(self,default):
-        with pytest.raises(AttributeError):
-            default.view('invalid',True)
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
@@ -469,7 +465,7 @@ class TestResult:
     def test_get(self,update,request,ref_path,view,output,flatten,prune):
         result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
-            result = result.view(key,value)
+            result = result.view(**{key:value})
 
         fname = request.node.name
         cur = result.get(output,flatten,prune)
@@ -494,7 +490,7 @@ class TestResult:
     def test_place(self,update,request,ref_path,view,output,flatten,prune,constituents):
         result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
-            result = result.view(key,value)
+            result = result.view(**{key:value})
 
         fname = request.node.name
         cur = result.place(output,flatten,prune,constituents)

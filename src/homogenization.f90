@@ -21,6 +21,15 @@ module homogenization
   implicit none
   private
 
+  type :: tState
+    integer :: &
+      sizeState        = 0                                                                          !< size of state
+    ! http://stackoverflow.com/questions/3948210
+    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       !< is basically an allocatable+target, but in a type needs to be pointer
+      state0, &
+      state
+  end type
+
   enum, bind(c); enumerator :: &
     THERMAL_UNDEFINED_ID, &
     THERMAL_PASS_ID, &

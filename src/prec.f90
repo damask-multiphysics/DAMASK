@@ -31,31 +31,6 @@ module prec
 
   real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
 
-  type :: tState
-    integer :: &
-      sizeState        = 0, &                                                                       !< size of state
-      sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
-      offsetDeltaState = 0, &                                                                       !< index offset of delta state
-      sizeDeltaState   = 0                                                                          !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
-    real(pReal), allocatable, dimension(:) :: &
-      atol
-    ! http://stackoverflow.com/questions/3948210
-    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       !< is basically an allocatable+target, but in a type needs to be pointer
-      state0, &
-      state, &                                                                                      !< state
-      dotState, &                                                                                   !< rate of state change
-      deltaState                                                                                    !< increment of state change
-    real(pReal), pointer,     dimension(:,:)  :: &
-      deltaState2
-  end type
-
-  type, extends(tState) :: tPlasticState
-    logical :: nonlocal = .false.
-  end type
-
-  type :: tSourceState
-    type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
-  end type
 
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number

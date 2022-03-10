@@ -5,7 +5,6 @@ stages:
   - compile
   - fortran
   - performance
-  - deploy
   - finalize
 
 
@@ -210,14 +209,6 @@ grid_runtime:
         --output_dir ./
         --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
-
-
-###################################################################################################
-source_distribution:
-  stage: deploy
-  script:
-    - cd $(mktemp -d)
-    - ${CI_PROJECT_DIR}/PRIVATE/releasing/tar.xz/create.sh ${CI_PROJECT_DIR} ${CI_COMMIT_SHA}
 
 
 ###################################################################################################

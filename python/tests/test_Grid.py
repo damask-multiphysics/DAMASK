@@ -27,6 +27,14 @@ def default():
     return Grid(x,[8e-6,5e-6,4e-6])
 
 @pytest.fixture
+def random():
+    """Simple geometry."""
+    size = (1+np.random.rand(3))*1e-5
+    cells = np.random.randint(10,20,3)
+    s = seeds.from_random(size,np.random.randint(5,25),cells)
+    return Grid.from_Voronoi_tessellation(cells,size,s)
+
+@pytest.fixture
 def ref_path(ref_path_base):
     """Directory containing reference results."""
     return ref_path_base/'Grid'
@@ -157,17 +165,26 @@ class TestGrid:
             default.flip(directions)
 
 
-    @pytest.mark.parametrize('stencil',[1,2,3,4])
-    @pytest.mark.parametrize('selection',[None,[1],[1,2,3]])
+    @pytest.mark.parametrize('distance',[1.,np.sqrt(3)])
+    @pytest.mark.parametrize('selection',[None,1,[1],[1,2,3]])
     @pytest.mark.parametrize('periodic',[True,False])
-    def test_clean(self,default,update,ref_path,stencil,selection,periodic):
-        current = default.clean(stencil,selection,periodic)
-        reference = ref_path/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}.vti'
-        if update and stencil > 1:
+    def test_clean_reference(self,default,update,ref_path,distance,selection,periodic):
+        current = default.clean(distance,selection,periodic=periodic,rng_seed=0)
+        reference = ref_path/f'clean_{distance}_{"+".join(map(str,util.aslist(selection)))}_{periodic}.vti'
+        if update:
             current.save(reference)
-        assert grid_equal(Grid.load(reference) if stencil > 1 else default,
-                          current
-                         )
+        assert grid_equal(Grid.load(reference),current)
+
+    @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),set(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
+    @pytest.mark.parametrize('invert',[True,False])
+    def test_clean_invert(self,default,selection,invert):
+        selection_inverse = set(default.material.flatten()) - set(selection)
+        assert default.clean(selection=selection,invert_selection=invert,rng_seed=0) == \
+               default.clean(selection=selection_inverse,invert_selection=not invert,rng_seed=0)
+
+    def test_clean_selection_empty(self,random):
+        assert random.clean(selection=None,invert_selection=True,rng_seed=0) == random.clean(rng_seed=0) and \
+               random.clean(selection=None,invert_selection=False,rng_seed=0) == random.clean(rng_seed=0)
 
 
     @pytest.mark.parametrize('cells',[
@@ -210,6 +227,11 @@ class TestGrid:
         assert grid_equal(default,
                           modified.substitute(np.arange(default.material.max())+1+offset,
                                               np.arange(default.material.max())+1))
+
+    def test_substitute_integer_list(self,random):
+        f = np.random.randint(30)
+        t = np.random.randint(30)
+        assert random.substitute(f,t) == random.substitute([f],[t])
 
     def test_substitute_invariant(self,default):
         f = np.unique(default.material.flatten())[:np.random.randint(1,default.material.max())]
@@ -302,31 +324,43 @@ class TestGrid:
         assert grid_equal(G_1,G_2)
 
 
-    @pytest.mark.parametrize('trigger',[[1],[]])
-    def test_vicinity_offset(self,trigger):
+    @pytest.mark.parametrize('selection',[1,None])
+    def test_vicinity_offset(self,selection):
         offset = np.random.randint(2,4)
-        vicinity = np.random.randint(2,4)
+        distance = np.random.randint(2,4)
 
         g = np.random.randint(28,40,(3))
         m = np.ones(g,'i')
-        x = (g*np.random.permutation(np.array([.5,1,1]))).astype('i')
+        x = (g*np.random.permutation(np.array([.5,1,1]))).astype(int)
         m[slice(0,x[0]),slice(0,x[1]),slice(0,x[2])] = 2
         m2 = m.copy()
         for i in [0,1,2]:
-            m2[(np.roll(m,+vicinity,i)-m)!=0] += offset
-            m2[(np.roll(m,-vicinity,i)-m)!=0] += offset
-        if len(trigger) > 0:
+            m2[(np.roll(m,+distance,i)-m)!=0] += offset
+            m2[(np.roll(m,-distance,i)-m)!=0] += offset
+        if selection == 1:
             m2[m==1] = 1
 
-        grid = Grid(m,np.random.rand(3)).vicinity_offset(vicinity,offset,trigger=trigger)
+        grid = Grid(m,np.random.rand(3)).vicinity_offset(distance,offset,selection=selection)
 
         assert np.all(m2==grid.material)
+
+    @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),set(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
+    @pytest.mark.parametrize('invert',[True,False])
+    def test_vicinit_offset_invert(self,random,selection,invert):
+        selection_inverse = set(random.material.flatten()) - set(selection)
+        assert selection_inverse == set() or \
+               (random.vicinity_offset(selection=selection,invert_selection=invert) ==
+                random.vicinity_offset(selection=selection_inverse,invert_selection=not invert))
+
+    def test_vicinity_offset_selection_empty(self,random):
+        assert random.vicinity_offset(selection=None,invert_selection=False) == random.vicinity_offset() and \
+               random.vicinity_offset(selection=None,invert_selection=True ) == random.vicinity_offset()
 
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
-        offset = default.vicinity_offset(trigger=[default.material.max()+1,
-                                                  default.material.min()-1])
+        offset = default.vicinity_offset(selection=[default.material.max()+1,
+                                                    default.material.min()-1])
         assert np.all(offset.material==default.material)
 
 
