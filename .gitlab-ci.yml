@@ -4,7 +4,7 @@ stages:
   - python
   - compile
   - fortran
-  - performance
+  - statistics
   - finalize
 
 
@@ -190,7 +190,7 @@ Marc:
 
 ###################################################################################################
 grid_runtime:
-  stage: performance
+  stage: statistics
   before_script:
     - ${LOCAL_HOME}/bin/queue ${CI_JOB_ID} --blocking
     - source env/DAMASK.sh
@@ -209,6 +209,18 @@ grid_runtime:
         --output_dir ./
         --tag ${CI_COMMIT_SHA}
     - if [ ${CI_COMMIT_BRANCH} == development ]; then git commit -am ${CI_PIPELINE_ID}_${CI_COMMIT_SHA}; git push; fi
+
+commit_history:
+  stage: statistics
+  script:
+    - cd $(mktemp -d)
+    - ${CI_PROJECT_DIR}/PRIVATE/testing/plot_commithistory.py --color green -n 5 -N 100
+    - ${CI_PROJECT_DIR}/PRIVATE/testing/plot_commithistory.py --color green -n 5 -N 1000
+    - ${CI_PROJECT_DIR}/PRIVATE/testing/plot_commithistory.py --color green -n 5 -N 10000
+    - scp -r ./commits_*.html damask3.mpie.de:~/
+    - ssh damask3.mpie.de "./update_statistics.sh"
+  only:
+    - development
 
 
 ###################################################################################################
