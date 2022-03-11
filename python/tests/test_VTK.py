@@ -179,7 +179,7 @@ class TestVTK:
         for k,s in shapes.items():
             d[k] = dict(shape = s,
                         data = np.random.random(N*np.prod(s)).reshape((N,-1)))
-        new = default.add(Table(np.column_stack([d[k]['data'] for k in shapes.keys()]),shapes))
+        new = default.add(Table(shapes,np.column_stack([d[k]['data'] for k in shapes.keys()])))
         for k,s in shapes.items():
             assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 

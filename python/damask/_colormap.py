@@ -373,7 +373,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         """
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
-        t = Table(self.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
+        t = Table(labels,self.colors,f'Creator: {util.execution_stamp("Colormap")}')
         t.save(self._get_file_handle(fname,'.txt'))
 
 

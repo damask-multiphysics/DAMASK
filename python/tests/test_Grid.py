@@ -435,9 +435,9 @@ class TestGrid:
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
-        z=np.ones(cells.prod())
-        z[cells[:2].prod()*int(cells[2]/2):]=0
-        t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
+        z = np.ones(cells.prod())
+        z[cells[:2].prod()*int(cells[2]/2):] = 0
+        t = Table({'coords':3,'z':1},np.column_stack((coords,z)))
         t = t.add('indicator',t.get('coords')[:,0])
         g = Grid.from_table(t,'coords',['indicator','z'])
         assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
@@ -449,7 +449,7 @@ class TestGrid:
         s = seeds.from_random(size,np.random.randint(60,100))
         grid = Grid.from_Voronoi_tessellation(cells,size,s)
         coords = grid_filters.coordinates0_point(cells,size)
-        t = Table(np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))),{'c':3,'m':1})
+        t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))))
         assert grid.sort().renumber() == Grid.from_table(t,'c',['m'])
 
 

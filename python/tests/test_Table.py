@@ -8,7 +8,9 @@ from damask import Table
 def default():
     """Simple Table."""
     x = np.ones((5,13),dtype=float)
-    return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains five rows of only ones'])
+    return Table({'F':(3,3),'v':(3,),'s':(1,)},
+                 x,
+                 ['test data','contains five rows of only ones'])
 
 @pytest.fixture
 def ref_path(ref_path_base):
@@ -22,7 +24,7 @@ class TestTable:
 
     @pytest.mark.parametrize('N',[10,40])
     def test_len(self,N):
-        assert len(Table(np.random.rand(N,3),{'X':3})) == N
+        assert len(Table({'X':3},np.random.rand(N,3))) == N
 
     def test_get_scalar(self,default):
         d = default.get('s')
@@ -110,7 +112,7 @@ class TestTable:
 
     def test_rename_equivalent(self):
         x = np.random.random((5,13))
-        t = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        t = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         s = t.get('s')
         u = t.rename('s','u').get('u')
         assert np.all(s == u)
@@ -129,35 +131,35 @@ class TestTable:
 
     def test_join(self):
         x = np.random.random((5,13))
-        a = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         y = np.random.random((5,3))
-        b = Table(y,{'u':(3,)},['random test data'])
+        b = Table({'u':(3,)},y,['random test data'])
         c = a.join(b)
         assert np.array_equal(c.get('u'), b.get('u'))
 
     def test_join_invalid(self):
         x = np.random.random((5,13))
-        a = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         with pytest.raises(KeyError):
             a.join(a)
 
     def test_append(self):
         x = np.random.random((5,13))
-        a = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         b = a.append(a)
         assert np.array_equal(b.data[:5].to_numpy(),b.data[5:].to_numpy())
 
     def test_append_invalid(self):
         x = np.random.random((5,13))
-        a = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
-        b = Table(x,{'F':(3,3),'u':(3,),'s':(1,)},['random test data'])
+        a = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
+        b = Table({'F':(3,3),'u':(3,),'s':(1,)},x,['random test data'])
         with pytest.raises(KeyError):
             a.append(b)
 
     def test_invalid_initialization(self):
         x = np.random.random((5,10))
         with pytest.raises(ValueError):
-            Table(x,{'F':(3,3)})
+            Table({'F':(3,3)},x)
 
     def test_invalid_set(self,default):
         x = default.get('v')
@@ -170,27 +172,27 @@ class TestTable:
 
     def test_sort_scalar(self):
         x = np.random.random((5,13))
-        t = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
+        t = Table({'F':(3,3),'v':(3,),'s':(1,)},x,['random test data'])
         unsort = t.get('s')
         sort   = t.sort_by('s').get('s')
         assert np.all(np.sort(unsort,0)==sort)
 
     def test_sort_component(self):
         x = np.random.random((5,12))
-        t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
+        t = Table({'F':(3,3),'v':(3,)},x,['random test data'])
         unsort = t.get('F')[:,1,0]
         sort   = t.sort_by('F[1,0]').get('F')[:,1,0]
         assert np.all(np.sort(unsort,0)==sort)
 
     def test_sort_revert(self):
         x = np.random.random((5,12))
-        t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
+        t = Table({'F':(3,3),'v':(3,)},x,['random test data'])
         sort = t.sort_by('F[1,0]',ascending=False).get('F')[:,1,0]
         assert np.all(np.sort(sort,0)==sort[::-1])
 
     def test_sort(self):
-        t = Table(np.array([[0,1,],[2,1,]]),
-                  {'v':(2,)},
+        t = Table({'v':(2,)},
+                  np.array([[0,1,],[2,1,]]),
                   ['test data'])\
             .add('s',np.array(['b','a']))\
             .sort_by('s')
