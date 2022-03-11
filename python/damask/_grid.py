@@ -717,6 +717,368 @@ class Grid:
            .show('material',colormap)
 
 
+    def canvas(self,
+               cells: IntSequence = None,
+               offset: IntSequence = None,
+               fill: int = None) -> 'Grid':
+        """
+        Crop or enlarge/pad grid.
+
+        Parameters
+        ----------
+        cells : sequence of int, len (3), optional
+            Number of cells  x,y,z direction.
+        offset : sequence of int, len (3), optional
+            Offset (measured in cells) from old to new grid.
+            Defaults to [0,0,0].
+        fill : int, optional
+            Material ID to fill the background.
+            Defaults to material.max() + 1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        Examples
+        --------
+        Remove lower 1/2 of the microstructure in z-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.canvas([32,32,16],[0,0,16])
+        cells : 33 x 32 x 16
+        size  : 0.0001 x 0.0001 x 5e-05 m³
+        origin: 0.0   0.0   5e-05 m
+        # materials: 1
+
+        """
+        offset_ = np.array(offset,int) if offset is not None else np.zeros(3,int)
+        cells_ = np.array(cells,int) if cells is not None else self.cells
+
+        canvas = np.full(cells_,np.nanmax(self.material) + 1 if fill is None else fill,self.material.dtype)
+
+        LL = np.clip( offset_,           0,np.minimum(self.cells,     cells_+offset_))
+        UR = np.clip( offset_+cells_,    0,np.minimum(self.cells,     cells_+offset_))
+        ll = np.clip(-offset_,           0,np.minimum(     cells_,self.cells-offset_))
+        ur = np.clip(-offset_+self.cells,0,np.minimum(     cells_,self.cells-offset_))
+
+        canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.material[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
+
+        return Grid(material = canvas,
+                    size     = self.size/self.cells*np.asarray(canvas.shape),
+                    origin   = self.origin+offset_*self.size/self.cells,
+                    comments = self.comments+[util.execution_stamp('Grid','canvas')],
+                   )
+
+
+    def mirror(self,
+               directions: Sequence[str],
+               reflect: bool = False) -> 'Grid':
+        """
+        Mirror grid along given directions.
+
+        Parameters
+        ----------
+        directions : (sequence of) {'x', 'y', 'z'}
+            Direction(s) along which the grid is mirrored.
+        reflect : bool, optional
+            Reflect (include) outermost layers. Defaults to False.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        Examples
+        --------
+        Mirror along x- and y-direction.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int), np.ones(3)*1e-4)
+        >>> g.mirror('xy',True)
+        cells : 64 x 64 x 32
+        size  : 0.0002 x 0.0002 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 1
+
+        """
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
+            raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
+
+        limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
+        mat = self.material.copy()
+
+        if 'x' in directions:
+            mat = np.concatenate([mat,mat[limits[0]:limits[1]:-1,:,:]],0)
+        if 'y' in directions:
+            mat = np.concatenate([mat,mat[:,limits[0]:limits[1]:-1,:]],1)
+        if 'z' in directions:
+            mat = np.concatenate([mat,mat[:,:,limits[0]:limits[1]:-1]],2)
+
+        return Grid(material = mat,
+                    size     = self.size/self.cells*np.asarray(mat.shape),
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','mirror')],
+                   )
+
+
+    def flip(self,
+             directions: Sequence[str]) -> 'Grid':
+        """
+        Flip grid along given directions.
+
+        Parameters
+        ----------
+        directions : (sequence of) {'x', 'y', 'z'}
+            Direction(s) along which the grid is flipped.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
+        if not set(directions).issubset(valid := ['x', 'y', 'z']):
+            raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
+
+
+        mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
+
+        return Grid(material = mat,
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','flip')],
+                   )
+
+
+    def rotate(self,
+               R: Rotation,
+               fill: int = None) -> 'Grid':
+        """
+        Rotate grid (and pad if required).
+
+        Parameters
+        ----------
+        R : damask.Rotation
+            Rotation to apply to the grid.
+        fill : int, optional
+            Material ID to fill enlarged bounding box.
+            Defaults to material.max() + 1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
+        material = self.material
+        # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
+        # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
+        for angle,axes in zip(R.as_Euler_angles(degrees=True)[::-1], [(0,1),(1,2),(0,1)]):
+            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,
+                                           output=self.material.dtype,
+                                           cval=np.nanmax(self.material) + 1 if fill is None else fill)
+            # avoid scipy interpolation errors for rotations close to multiples of 90°
+            material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
+                       np.rot90(material,k=np.rint(angle/90.).astype(int),axes=axes)
+
+        origin = self.origin-(np.asarray(material.shape)-self.cells)*.5 * self.size/self.cells
+
+        return Grid(material = material,
+                    size     = self.size/self.cells*np.asarray(material.shape),
+                    origin   = origin,
+                    comments = self.comments+[util.execution_stamp('Grid','rotate')],
+                   )
+
+
+    def scale(self,
+              cells: IntSequence,
+              periodic: bool = True) -> 'Grid':
+        """
+        Scale grid to new cells.
+
+        Parameters
+        ----------
+        cells : sequence of int, len (3)
+            Number of cells in x,y,z direction.
+        periodic : bool, optional
+            Assume grid to be periodic. Defaults to True.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        Examples
+        --------
+        Double resolution.
+
+        >>> import numpy as np
+        >>> import damask
+        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> g.scale(g.cells*2)
+        cells : 64 x 64 x 64
+        size  : 0.0001 x 0.0001 x 0.0001 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 1
+
+        """
+        return Grid(material = ndimage.interpolation.zoom(
+                                                           self.material,
+                                                           cells/self.cells,
+                                                           output=self.material.dtype,
+                                                           order=0,
+                                                           mode='wrap' if periodic else 'nearest',
+                                                           prefilter=False
+                                                          ),
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','scale')],
+                   )
+
+
+    def renumber(self) -> 'Grid':
+        """
+        Renumber sorted material indices as 0,...,N-1.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
+        _,renumbered = np.unique(self.material,return_inverse=True)
+
+        return Grid(material = renumbered.reshape(self.cells),
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','renumber')],
+                   )
+
+
+    def substitute(self,
+                   from_material: Union[int,IntSequence],
+                   to_material: Union[int,IntSequence]) -> 'Grid':
+        """
+        Substitute material indices.
+
+        Parameters
+        ----------
+        from_material : int or sequence of int
+            Material indices to be substituted.
+        to_material : int or sequence of int
+            New material indices.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
+        material = self.material.copy()
+        for f,t in zip(from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material],
+                       to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]): # ToDo Python 3.10 has strict mode for zip
+            material[self.material==f] = t
+
+        return Grid(material = material,
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','substitute')],
+                   )
+
+
+    def sort(self) -> 'Grid':
+        """
+        Sort material indices such that min(material) is located at (0,0,0).
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        """
+        a = self.material.flatten(order='F')
+        from_ma = pd.unique(a)
+        sort_idx = np.argsort(from_ma)
+        ma = np.unique(a)[sort_idx][np.searchsorted(from_ma,a,sorter = sort_idx)]
+
+        return Grid(material = ma.reshape(self.cells,order='F'),
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','sort')],
+                   )
+
+
+    def clean(self,
+              distance: float = np.sqrt(3),
+              selection: IntCollection = None,
+              invert_selection: bool = False,
+              periodic: bool = True,
+              rng_seed: NumpyRngSeed = None) -> 'Grid':
+        """
+        Smooth grid by selecting most frequent material ID within given stencil at each location.
+
+        Parameters
+        ----------
+        distance : float, optional
+            Voxel distance checked for presence of other materials.
+            Defaults to sqrt(3).
+        selection : int or collection of int, optional
+            Material IDs to consider. Defaults to all.
+        invert_selection : bool, optional
+            Consider all material IDs except those in selection. Defaults to False.
+        periodic : bool, optional
+            Assume grid to be periodic. Defaults to True.
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None.
+            If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+
+        Notes
+        -----
+        If multiple material IDs are most frequent within a stencil, a random choice is taken.
+
+        """
+        def most_frequent(stencil: np.ndarray,
+                         selection: Union[None,set],
+                         rng):
+            me = stencil[stencil.size//2]
+            if selection is None or me in selection:
+                unique, counts = np.unique(stencil,return_counts=True)
+                return rng.choice(unique[counts==np.max(counts)])
+            else:
+                return me
+
+        rng = np.random.default_rng(rng_seed)
+
+        d = np.floor(distance).astype(int)
+        ext = np.linspace(-d,d,1+2*d,dtype=float),
+        xx,yy,zz = np.meshgrid(ext,ext,ext)
+        footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
+        selection_ = None if selection is None else \
+                     set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
+                     set(self.material.flatten()) & set(util.aslist(selection))
+        material = ndimage.filters.generic_filter(
+                                                  self.material,
+                                                  most_frequent,
+                                                  footprint=footprint,
+                                                  mode='wrap' if periodic else 'nearest',
+                                                  extra_keywords=dict(selection=selection_,rng=rng),
+                                                 ).astype(self.material.dtype)
+        return Grid(material = material,
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Grid','clean')],
+                   )
+
+
     def add_primitive(self,
                       dimension: Union[FloatSequence, IntSequence],
                       center: Union[FloatSequence, IntSequence],
@@ -809,366 +1171,6 @@ class Grid:
                    )
 
 
-    def mirror(self,
-               directions: Sequence[str],
-               reflect: bool = False) -> 'Grid':
-        """
-        Mirror grid along given directions.
-
-        Parameters
-        ----------
-        directions : (sequence of) {'x', 'y', 'z'}
-            Direction(s) along which the grid is mirrored.
-        reflect : bool, optional
-            Reflect (include) outermost layers. Defaults to False.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        Examples
-        --------
-        Mirror along x- and y-direction.
-
-        >>> import numpy as np
-        >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int), np.ones(3)*1e-4)
-        >>> g.mirror('xy',True)
-        cells : 64 x 64 x 32
-        size  : 0.0002 x 0.0002 x 0.0001 m³
-        origin: 0.0   0.0   0.0 m
-        # materials: 1
-
-        """
-        if not set(directions).issubset(valid := ['x', 'y', 'z']):
-            raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
-
-        limits: Sequence[Optional[int]] = [None,None] if reflect else [-2,0]
-        mat = self.material.copy()
-
-        if 'x' in directions:
-            mat = np.concatenate([mat,mat[limits[0]:limits[1]:-1,:,:]],0)
-        if 'y' in directions:
-            mat = np.concatenate([mat,mat[:,limits[0]:limits[1]:-1,:]],1)
-        if 'z' in directions:
-            mat = np.concatenate([mat,mat[:,:,limits[0]:limits[1]:-1]],2)
-
-        return Grid(material = mat,
-                    size     = self.size/self.cells*np.asarray(mat.shape),
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','mirror')],
-                   )
-
-
-    def flip(self,
-             directions: Sequence[str]) -> 'Grid':
-        """
-        Flip grid along given directions.
-
-        Parameters
-        ----------
-        directions : (sequence of) {'x', 'y', 'z'}
-            Direction(s) along which the grid is flipped.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        """
-        if not set(directions).issubset(valid := ['x', 'y', 'z']):
-            raise ValueError(f'invalid direction "{set(directions).difference(valid)}" specified')
-
-
-        mat = np.flip(self.material, [valid.index(d) for d in directions if d in valid])
-
-        return Grid(material = mat,
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','flip')],
-                   )
-
-
-    def scale(self,
-              cells: IntSequence,
-              periodic: bool = True) -> 'Grid':
-        """
-        Scale grid to new cells.
-
-        Parameters
-        ----------
-        cells : sequence of int, len (3)
-            Number of cells in x,y,z direction.
-        periodic : bool, optional
-            Assume grid to be periodic. Defaults to True.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        Examples
-        --------
-        Double resolution.
-
-        >>> import numpy as np
-        >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
-        >>> g.scale(g.cells*2)
-        cells : 64 x 64 x 64
-        size  : 0.0001 x 0.0001 x 0.0001 m³
-        origin: 0.0   0.0   0.0 m
-        # materials: 1
-
-        """
-        return Grid(material = ndimage.interpolation.zoom(
-                                                           self.material,
-                                                           cells/self.cells,
-                                                           output=self.material.dtype,
-                                                           order=0,
-                                                           mode='wrap' if periodic else 'nearest',
-                                                           prefilter=False
-                                                          ),
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','scale')],
-                   )
-
-
-    def clean(self,
-              distance: float = np.sqrt(3),
-              selection: IntCollection = None,
-              invert_selection: bool = False,
-              periodic: bool = True,
-              rng_seed: NumpyRngSeed = None) -> 'Grid':
-        """
-        Smooth grid by selecting most frequent material ID within given stencil at each location.
-
-        Parameters
-        ----------
-        distance : float, optional
-            Voxel distance checked for presence of other materials.
-            Defaults to sqrt(3).
-        selection : int or collection of int, optional
-            Material IDs to consider.
-        invert_selection : bool, optional
-            Consider all material IDs except those in selection. Defaults to False.
-        periodic : bool, optional
-            Assume grid to be periodic. Defaults to True.
-        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None.
-            If None, then fresh, unpredictable entropy will be pulled from the OS.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        Notes
-        -----
-        If multiple material IDs are most frequent within a stencil, a random choice is taken.
-
-        """
-        def most_frequent(stencil: np.ndarray,
-                         selection: set,
-                         rng):
-            me = stencil[stencil.size//2]
-            if not selection or me in selection:
-                unique, counts = np.unique(stencil,return_counts=True)
-                return rng.choice(unique[counts==np.max(counts)])
-            else:
-                return me
-
-        rng = np.random.default_rng(rng_seed)
-        d = np.floor(distance).astype(int)
-        ext = np.linspace(-d,d,1+2*d,dtype=float),
-        xx,yy,zz = np.meshgrid(ext,ext,ext)
-        footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
-        selection_ = set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
-                     set(util.aslist(selection))
-        material = ndimage.filters.generic_filter(
-                                                  self.material,
-                                                  most_frequent,
-                                                  footprint=footprint,
-                                                  mode='wrap' if periodic else 'nearest',
-                                                  extra_keywords=dict(selection=selection_,rng=rng),
-                                                 ).astype(self.material.dtype)
-        return Grid(material = material,
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','clean')],
-                   )
-
-
-    def renumber(self) -> 'Grid':
-        """
-        Renumber sorted material indices as 0,...,N-1.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        """
-        _,renumbered = np.unique(self.material,return_inverse=True)
-
-        return Grid(material = renumbered.reshape(self.cells),
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','renumber')],
-                   )
-
-
-    def rotate(self,
-               R: Rotation,
-               fill: int = None) -> 'Grid':
-        """
-        Rotate grid (and pad if required).
-
-        Parameters
-        ----------
-        R : damask.Rotation
-            Rotation to apply to the grid.
-        fill : int, optional
-            Material ID to fill enlarged bounding box.
-            Defaults to material.max() + 1.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        """
-        material = self.material
-        # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
-        # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-        for angle,axes in zip(R.as_Euler_angles(degrees=True)[::-1], [(0,1),(1,2),(0,1)]):
-            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,
-                                           output=self.material.dtype,
-                                           cval=np.nanmax(self.material) + 1 if fill is None else fill)
-            # avoid scipy interpolation errors for rotations close to multiples of 90°
-            material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
-                       np.rot90(material,k=np.rint(angle/90.).astype(int),axes=axes)
-
-        origin = self.origin-(np.asarray(material.shape)-self.cells)*.5 * self.size/self.cells
-
-        return Grid(material = material,
-                    size     = self.size/self.cells*np.asarray(material.shape),
-                    origin   = origin,
-                    comments = self.comments+[util.execution_stamp('Grid','rotate')],
-                   )
-
-
-    def canvas(self,
-               cells: IntSequence = None,
-               offset: IntSequence = None,
-               fill: int = None) -> 'Grid':
-        """
-        Crop or enlarge/pad grid.
-
-        Parameters
-        ----------
-        cells : sequence of int, len (3), optional
-            Number of cells  x,y,z direction.
-        offset : sequence of int, len (3), optional
-            Offset (measured in cells) from old to new grid.
-            Defaults to [0,0,0].
-        fill : int, optional
-            Material ID to fill the background.
-            Defaults to material.max() + 1.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        Examples
-        --------
-        Remove lower 1/2 of the microstructure in z-direction.
-
-        >>> import numpy as np
-        >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
-        >>> g.canvas([32,32,16],[0,0,16])
-        cells : 33 x 32 x 16
-        size  : 0.0001 x 0.0001 x 5e-05 m³
-        origin: 0.0   0.0   5e-05 m
-        # materials: 1
-
-        """
-        offset_ = np.array(offset,int) if offset is not None else np.zeros(3,int)
-        cells_ = np.array(cells,int) if cells is not None else self.cells
-
-        canvas = np.full(cells_,np.nanmax(self.material) + 1 if fill is None else fill,self.material.dtype)
-
-        LL = np.clip( offset_,           0,np.minimum(self.cells,     cells_+offset_))
-        UR = np.clip( offset_+cells_,    0,np.minimum(self.cells,     cells_+offset_))
-        ll = np.clip(-offset_,           0,np.minimum(     cells_,self.cells-offset_))
-        ur = np.clip(-offset_+self.cells,0,np.minimum(     cells_,self.cells-offset_))
-
-        canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.material[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
-
-        return Grid(material = canvas,
-                    size     = self.size/self.cells*np.asarray(canvas.shape),
-                    origin   = self.origin+offset_*self.size/self.cells,
-                    comments = self.comments+[util.execution_stamp('Grid','canvas')],
-                   )
-
-
-    def substitute(self,
-                   from_material: Union[int,IntSequence],
-                   to_material: Union[int,IntSequence]) -> 'Grid':
-        """
-        Substitute material indices.
-
-        Parameters
-        ----------
-        from_material : int or sequence of int
-            Material indices to be substituted.
-        to_material : int or sequence of int
-            New material indices.
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        """
-        material = self.material.copy()
-        for f,t in zip(from_material if isinstance(from_material,(Sequence,np.ndarray)) else [from_material],
-                       to_material if isinstance(to_material,(Sequence,np.ndarray)) else [to_material]): # ToDo Python 3.10 has strict mode for zip
-            material[self.material==f] = t
-
-        return Grid(material = material,
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','substitute')],
-                   )
-
-
-    def sort(self) -> 'Grid':
-        """
-        Sort material indices such that min(material) is located at (0,0,0).
-
-        Returns
-        -------
-        updated : damask.Grid
-            Updated grid-based geometry.
-
-        """
-        a = self.material.flatten(order='F')
-        from_ma = pd.unique(a)
-        sort_idx = np.argsort(from_ma)
-        ma = np.unique(a)[sort_idx][np.searchsorted(from_ma,a,sorter = sort_idx)]
-
-        return Grid(material = ma.reshape(self.cells,order='F'),
-                    size     = self.size,
-                    origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Grid','sort')],
-                   )
-
-
     def vicinity_offset(self,
                         distance: float = np.sqrt(3),
                         offset: int = None,
@@ -1204,9 +1206,9 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def tainted_neighborhood(stencil: np.ndarray, selection: set):
+        def tainted_neighborhood(stencil: np.ndarray, selection: Union[None,set]):
             me = stencil[stencil.size//2]
-            return np.any(stencil != me if not selection else
+            return np.any(stencil != me if selection is None else
                           np.in1d(stencil,np.array(list(selection - {me}))))
 
         d = np.floor(distance).astype(int)
@@ -1214,8 +1216,9 @@ class Grid:
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
-        selection_ = set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
-                     set(util.aslist(selection))
+        selection_ = None if selection is None else \
+                     set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
+                     set(self.material.flatten()) & set(util.aslist(selection))
         mask = ndimage.filters.generic_filter(self.material,
                                               tainted_neighborhood,
                                               footprint=footprint,

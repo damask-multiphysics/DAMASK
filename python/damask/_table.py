@@ -535,7 +535,7 @@ class Table:
             raise KeyError('mismatch of shapes or labels or their order')
 
         dup = self.copy()
-        dup.data = dup.data.append(other.data,ignore_index=True)
+        dup.data = pd.concat([dup.data,other.data],ignore_index=True)
         return dup
 
 
