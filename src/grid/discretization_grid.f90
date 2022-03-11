@@ -37,13 +37,14 @@ module discretization_grid
     size3offset                                                                                     !< (local) size offset in 3rd direction
 
   public :: &
-    discretization_grid_init
+    discretization_grid_init, &
+    discretization_grid_getInitialCondition
 
 contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads the geometry file to obtain information on discretization
+!> @brief Read the geometry file to obtain information on discretization.
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_grid_init(restart)
 
@@ -171,7 +172,7 @@ end subroutine discretization_grid_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate undeformed position of IPs/cell centers (pretend to be an element)
+!> @brief Calculate undeformed position of IPs/cell centers (pretend to be an element).
 !---------------------------------------------------------------------------------------------------
 function IPcoordinates0(cells,geomSize,cells3Offset)
 
@@ -196,7 +197,7 @@ end function IPcoordinates0
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate position of undeformed nodes (pretend to be an element)
+!> @brief Calculate position of undeformed nodes (pretend to be an element).
 !---------------------------------------------------------------------------------------------------
 pure function nodes0(cells,geomSize,cells3Offset)
 
@@ -220,7 +221,7 @@ end function nodes0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate IP interface areas
+!> @brief Calculate IP interface areas.
 !--------------------------------------------------------------------------------------------------
 pure function cellSurfaceArea(geomSize,cells)
 
@@ -238,7 +239,7 @@ end function cellSurfaceArea
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate IP interface areas normals
+!> @brief Calculate IP interface areas normals.
 !--------------------------------------------------------------------------------------------------
 pure function cellSurfaceNormal(nElems)
 
@@ -257,7 +258,7 @@ end function cellSurfaceNormal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Build IP neighborhood relations
+!> @brief Build IP neighborhood relations.
 !--------------------------------------------------------------------------------------------------
 pure function IPneighborhood(cells)
 
@@ -312,5 +313,41 @@ pure function IPneighborhood(cells)
 
 end function IPneighborhood
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read initial condition from VTI file.
+!--------------------------------------------------------------------------------------------------
+function discretization_grid_getInitialCondition(label) result(ic)
+
+  character(len=*), intent(in) :: label
+  real(pReal), dimension(cells(1),cells(2),cells3) :: ic
+
+  real(pReal), dimension(:), allocatable :: ic_global, ic_local
+  integer(MPI_INTEGER_KIND) :: err_MPI
+
+  integer, dimension(worldsize) :: &
+    displs, sendcounts
+
+  if (worldrank == 0) then
+    ic_global = VTI_readDataset_real(IO_read(interface_geomFile),label)
+  else
+    allocate(ic_global(0))                                                                          ! needed for IntelMPI
+  endif
+
+  call MPI_Gather(product(cells(1:2))*cells3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
+                  1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call MPI_Gather(product(cells(1:2))*cells3,      1_MPI_INTEGER_KIND,MPI_INTEGER,sendcounts,&
+                  1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+
+  allocate(ic_local(product(cells(1:2))*cells3))
+  call MPI_Scatterv(ic_global,sendcounts,displs,MPI_DOUBLE,ic_local,size(ic_local),&
+                    MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+
+  ic = reshape(ic_local,[cells(1),cells(2),cells3])
+
+end function discretization_grid_getInitialCondition
 
 end module discretization_grid
