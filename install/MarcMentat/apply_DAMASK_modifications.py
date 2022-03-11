@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import glob
 import argparse
 import shutil
@@ -49,6 +50,13 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
                            ['kill1','kill?']],
            'Mentat_menus':[['job_run.ms','job_run.ms']]}
 
+for cmd in ['patch','xvfb-run']:
+    try:
+        damask.util.run(f'{cmd} --help')
+    except FileNotFoundError:
+        print(f'"{cmd}" not found, please install')
+        sys.exit()
+
 
 print('patching files...')
 
@@ -63,7 +71,7 @@ print('compiling Mentat menu binaries...')
 
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
-os.system(f'xvfb-run -a {executable} -compile {menu_file}')
+damask.util.run(f'xvfb-run -a {executable} -compile {menu_file}')
 
 print('setting file access rights...')
 
