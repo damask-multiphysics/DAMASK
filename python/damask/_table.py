@@ -13,26 +13,27 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 data: np.ndarray,
                  shapes: dict,
+                 data: np.ndarray,
                  comments: Union[str, list] = None):
         """
         New spreadsheet.
 
         Parameters
         ----------
-        data : numpy.ndarray or pandas.DataFrame
-            Data. Column labels from a pandas.DataFrame will be replaced.
         shapes : dict with str:tuple pairs
-            Shapes of the columns. Example 'F':(3,3) for a deformation gradient.
+            Shapes of the data columns.
+            For instance, 'F':(3,3) for a deformation gradient, or 'r':(1,) for a scalar.
+        data : numpy.ndarray or pandas.DataFrame
+            Data. Existing column labels of a pandas.DataFrame will be replaced.
         comments : str or iterable of str, optional
             Additional, human-readable information.
 
         """
         comments_ = [comments] if isinstance(comments,str) else comments
         self.comments = [] if comments_ is None else [c for c in comments_]
-        self.data = pd.DataFrame(data=data)
         self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
+        self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
 
 
@@ -70,8 +71,8 @@ class Table:
         --------
         >>> import damask
         >>> import numpy as np
-        >>> tbl = damask.Table(data=np.arange(12).reshape((4,3)),
-        ...                    shapes=dict(colA=(1,),colB=(1,),colC=(1,)))
+        >>> tbl = damask.Table(shapes=dict(colA=(1,),colB=(1,),colC=(1,)),
+        ...                    data=np.arange(12).reshape((4,3)))
         >>> tbl['colA','colB']
            colA  colB
         0     0     1
@@ -282,7 +283,7 @@ class Table:
 
         data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
-        return Table(data,shapes,comments)
+        return Table(shapes,data,comments)
 
 
     @staticmethod
@@ -329,7 +330,7 @@ class Table:
         if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 
-        return Table(data,shapes,comments)
+        return Table(shapes,data,comments)
 
 
     @property
@@ -535,7 +536,7 @@ class Table:
             raise KeyError('mismatch of shapes or labels or their order')
 
         dup = self.copy()
-        dup.data = dup.data.append(other.data,ignore_index=True)
+        dup.data = pd.concat([dup.data,other.data],ignore_index=True)
         return dup
 
 

@@ -90,7 +90,7 @@ class TestConfigMaterial:
                        np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2),
                        np.ones(N*2),
                       )).T
-        t = Table(a,{'varying':1,'constant':4,'ones':1})
+        t = Table({'varying':1,'constant':4,'ones':1},a)
         c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'ones'})
         assert len(c['material']) == N
         for i,m in enumerate(c['material']):
@@ -102,7 +102,7 @@ class TestConfigMaterial:
                        np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2),
                        np.ones(N*2),
                       )).T
-        t = Table(a,{'varying':1,'constant':4,'ones':1})
+        t = Table({'varying':1,'constant':4,'ones':1},a)
         c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':1})
         assert len(c['material']) == N
         for i,m in enumerate(c['material']):

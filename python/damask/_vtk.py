@@ -402,24 +402,32 @@ class VTK:
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     def add(self,
-            data: Union[np.ndarray, np.ma.MaskedArray, 'Table'],
-            label: str = None):
+            label: str = None,
+            data: Union[np.ndarray, np.ma.MaskedArray] = None,
+            *,
+            table: 'Table' = None):
         """
         Add data to either cells or points.
 
+        Data can either be a numpy.array, which requires a corresponding label,
+        or a damask.Table.
+
         Parameters
         ----------
-        data : numpy.ndarray, numpy.ma.MaskedArray, or damask.Table
+        label : str, optional
+            Label of data array.
+        data : numpy.ndarray or numpy.ma.MaskedArray, optional
             Data to add. First dimension needs to match either
             number of cells or number of points.
-        label : str, optional if data is damask.Table
-            Data label.
+        table: damask.Table, optional
+            Data to add. Number of rows needs to match either
+            number of cells or number of points.
 
         """
 
         def _add_array(vtk_data,
-                       data: np.ndarray,
-                       label: str):
+                       label: str,
+                       data: np.ndarray):
 
             N_data = data.shape[0]
             data_ = data.reshape(N_data,-1) \
@@ -441,17 +449,22 @@ class VTK:
             else:
                 raise ValueError(f'data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
 
+        if data is None and table is None:
+            raise KeyError('no data given')
+        if data is not None and table is not None:
+            raise KeyError('cannot use both, data and table')
+
         dup = self.copy()
         if isinstance(data,np.ndarray):
             if label is not None:
                 _add_array(dup.vtk_data,
-                           np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data,
-                           label)
+                           label,
+                           np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data)
             else:
-                raise ValueError('no label defined for numpy.ndarray')
-        elif isinstance(data,Table):
-            for l in data.labels:
-                _add_array(dup.vtk_data,data.get(l),l)
+                raise ValueError('no label defined for data')
+        elif isinstance(table,Table):
+            for l in table.labels:
+                _add_array(dup.vtk_data,l,table.get(l))
         else:
             raise TypeError
 
