@@ -1621,7 +1621,7 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
 
                 u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
-                v = v.add(u,'u')
+                v = v.add('u',u)
 
                 for ty in ['phase','homogenization']:
                     for field in self.visible['fields']:
@@ -1648,7 +1648,7 @@ class Result:
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
                         for label,dataset in outs.items():
-                            v = v.add(dataset,' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]))
+                            v = v.add(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
 
                 v.save(f'{self.fname.stem}_inc{inc[10:].zfill(N_digits)}',parallel=parallel)
 
