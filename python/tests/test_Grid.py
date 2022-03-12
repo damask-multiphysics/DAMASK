@@ -58,7 +58,7 @@ class TestGrid:
     def test_repr(self,default):
         print(default)
 
-    def test_read_write_vtr(self,default,tmp_path):
+    def test_read_write_vti(self,default,tmp_path):
         default.save(tmp_path/'default')
         new = Grid.load(tmp_path/'default.vti')
         assert new == default
