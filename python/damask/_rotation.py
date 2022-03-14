@@ -1091,6 +1091,11 @@ class Rotation:
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
+        Returns
+        -------
+        samples : damask.Rotation
+            Array of rotations sampled from the spherical component.
+
         """
         rng = np.random.default_rng(rng_seed)
         sigma = np.radians(sigma) if degrees else sigma
@@ -1131,6 +1136,11 @@ class Rotation:
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+
+        Returns
+        -------
+        samples : damask.Rotation
+            Array of rotations sampled from the fiber component.
 
         """
         rng = np.random.default_rng(rng_seed)
