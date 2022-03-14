@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
-                    help='Name of the editor for Marc Mentat (executable)')
+                    help='Name of the editor (executable) used by Marc Mentat')
 parser.add_argument('--marc-root', dest='marc_root', metavar='string',
                     default=damask.solver._marc._marc_root,
                     help='Marc root directory')
