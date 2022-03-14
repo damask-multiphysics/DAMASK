@@ -1011,7 +1011,7 @@ class Rotation:
     @staticmethod
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
-                 N: int = 500,
+                 shape: Tuple[int, ...] = None,
                  degrees: bool = True,
                  fractions: bool = True,
                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
@@ -1024,9 +1024,9 @@ class Rotation:
             Texture intensity values (probability density or volume fraction) at Euler space grid points.
         phi : numpy.ndarray, shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
-        N : integer, optional
-            Number of discrete orientations to be sampled from the given ODF.
-            Defaults to 500.
+        shape : tuple of ints, optional
+            Shape of the array of discrete rotations sampled from the given ODF.
+            Defaults to None, which gives a single rotation.
         degrees : bool, optional
             Euler space grid coordinates are in degrees. Defaults to True.
         fractions : bool, optional
@@ -1038,7 +1038,7 @@ class Rotation:
 
         Returns
         -------
-        samples : damask.Rotation, shape (N)
+        samples : damask.Rotation
             Array of sampled rotations that approximate the input ODF.
 
         Notes
@@ -1063,13 +1063,14 @@ class Rotation:
         dg = 1.0 if fractions else _dg(phi,degrees)
         dV_V = dg * np.maximum(0.0,weights.squeeze())
 
-        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees)
+        N = 1 if shape is None else np.prod(shape)
+        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees).reshape((-1,) if shape is None else shape)
 
 
     @staticmethod
     def from_spherical_component(center: 'Rotation',
                                  sigma: float,
-                                 N: int = 500,
+                                 shape: Tuple[int, ...] = None,
                                  degrees: bool = True,
                                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
@@ -1081,8 +1082,9 @@ class Rotation:
             Central Rotation.
         sigma : float
             Standard deviation of (Gaussian) misorientation distribution.
-        N : int, optional
-            Number of samples. Defaults to 500.
+        shape : tuple of ints, optional
+            Shape of the array of sampled rotations.
+            Defaults to None, which gives a single rotation.
         degrees : bool, optional
             sigma is given in degrees. Defaults to True.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -1092,20 +1094,21 @@ class Rotation:
         """
         rng = np.random.default_rng(rng_seed)
         sigma = np.radians(sigma) if degrees else sigma
+        N = 1 if shape is None else np.prod(shape)
         u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
         omega = abs(rng.normal(scale=sigma,size=N))
         p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
 
-        return  Rotation.from_axis_angle(p) * center
+        return  Rotation.from_axis_angle(p).reshape((-1,) if shape is None else shape) * center
 
 
     @staticmethod
     def from_fiber_component(alpha: IntSequence,
                              beta: IntSequence,
                              sigma: float = 0.0,
-                             N: int = 500,
+                             shape: Tuple[int, ...] = None,
                              degrees: bool = True,
                              rng_seed: NumpyRngSeed = None):
         """
@@ -1120,8 +1123,9 @@ class Rotation:
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
-        N : int, optional
-            Number of samples. Defaults to 500.
+        shape : tuple of ints, optional
+            Shape of the array of sampled rotations.
+            Defaults to None, which gives a single rotation.
         degrees : bool, optional
             sigma, alpha, and beta are given in degrees.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -1139,6 +1143,7 @@ class Rotation:
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
 
+        N = 1 if shape is None else np.prod(shape)
         u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
         omega  = abs(rng.normal(scale=sigma_,size=N))
         p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
@@ -1148,9 +1153,9 @@ class Rotation:
         f = np.column_stack((np.broadcast_to(d_lab,(N,3)),rng.random(N)*np.pi))
         f[::2,:3] *= -1                                                                             # flip half the rotation axes to negative sense
 
-        return R_align.broadcast_to(N) \
-             * Rotation.from_axis_angle(p,normalize=True) \
-             * Rotation.from_axis_angle(f)
+        return (R_align.broadcast_to(N)
+              * Rotation.from_axis_angle(p,normalize=True)
+              * Rotation.from_axis_angle(f)).reshape((-1,) if shape is None else shape)
 
 
 ####################################################################################################

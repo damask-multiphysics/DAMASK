@@ -146,14 +146,14 @@ class TestOrientation:
 
     def test_from_spherical_component(self):
         assert np.all(Orientation.from_spherical_component(center=Rotation(),
-                                                           sigma=0.0,N=1,family='triclinic').as_matrix()
+                                                           sigma=0.0,shape=1,family='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_fiber_component(self):
         r = Rotation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
-                                          sigma=0.0,N=1,rng_seed=0)
+                                          sigma=0.0,shape=1,rng_seed=0)
         assert np.all(Orientation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
-                                                       sigma=0.0,N=1,rng_seed=0,family='triclinic').quaternion
+                                                       sigma=0.0,shape=None,rng_seed=0,family='triclinic').quaternion
                    == r.quaternion)
 
     @pytest.mark.parametrize('kwargs',[
