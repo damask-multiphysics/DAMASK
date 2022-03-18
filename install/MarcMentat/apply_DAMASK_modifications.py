@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import glob
 import argparse
 import shutil
@@ -13,7 +14,7 @@ def copy_and_patch(patch,orig,editor):
         shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
         pass
-    damask.util.run(f'patch {orig.parent/patch.stem} {patch} -b')
+    damask.util.run(f'patch {orig.parent/patch.stem} {patch} --backup --forward')
     with open(orig.parent/patch.stem) as f_in:
         content = f_in.read()
     with open(orig.parent/patch.stem,'w') as f_out:
@@ -25,7 +26,7 @@ parser = argparse.ArgumentParser(
                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
-                    help='Name of the editor for Marc Mentat (executable)')
+                    help='Name of the editor (executable) used by Marc Mentat')
 parser.add_argument('--marc-root', dest='marc_root', metavar='string',
                     default=damask.solver._marc._marc_root,
                     help='Marc root directory')
@@ -49,6 +50,13 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
                            ['kill1','kill?']],
            'Mentat_menus':[['job_run.ms','job_run.ms']]}
 
+for cmd in ['patch','xvfb-run']:
+    try:
+        damask.util.run(f'{cmd} --help')
+    except FileNotFoundError:
+        print(f'"{cmd}" not found, please install')
+        sys.exit()
+
 
 print('patching files...')
 
@@ -63,7 +71,7 @@ print('compiling Mentat menu binaries...')
 
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
-os.system(f'xvfb-run -a {executable} -compile {menu_file}')
+damask.util.run(f'xvfb-run -a {executable} -compile {menu_file}')
 
 print('setting file access rights...')
 
