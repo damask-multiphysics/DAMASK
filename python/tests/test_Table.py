@@ -77,14 +77,14 @@ class TestTable:
             new = Table.load(tmp_path/'default.txt')
         elif mode == 'str':
             new = Table.load(str(tmp_path/'default.txt'))
-        assert all(default.data==new.data) and default.shapes == new.shapes
+        assert all(default.data == new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmp_path):
         with open(tmp_path/'default.txt','w') as f:
             default.save(f)
         with open(tmp_path/'default.txt') as f:
             new = Table.load(f)
-        assert all(default.data==new.data) and default.shapes == new.shapes
+        assert all(default.data == new.data) and default.shapes == new.shapes
 
     def test_write_invalid_format(self,default,tmp_path):
         with pytest.raises(TypeError):
@@ -104,6 +104,12 @@ class TestTable:
         new = Table.load_ang(f)
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
+
+    def test_save_ang(self,ref_path,tmp_path):
+        orig = Table.load_ang(ref_path/'simple.ang')
+        orig.save(tmp_path/'simple.ang',with_labels=False)
+        saved = Table.load_ang(tmp_path/'simple.ang')
+        assert saved == orig
 
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,ref_path,fname):
