@@ -1064,7 +1064,7 @@ class Rotation:
         dV_V = dg * np.maximum(0.0,weights.squeeze())
 
         N = 1 if shape is None else np.prod(shape)
-        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees).reshape((-1,) if shape is None else shape)
+        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees).reshape(() if shape is None else shape)
 
 
     @staticmethod
@@ -1106,7 +1106,7 @@ class Rotation:
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
 
-        return  Rotation.from_axis_angle(p).reshape((-1,) if shape is None else shape) * center
+        return Rotation.from_axis_angle(p).reshape(() if shape is None else shape) * center
 
 
     @staticmethod
@@ -1165,7 +1165,7 @@ class Rotation:
 
         return (R_align.broadcast_to(N)
               * Rotation.from_axis_angle(p,normalize=True)
-              * Rotation.from_axis_angle(f)).reshape((-1,) if shape is None else shape)
+              * Rotation.from_axis_angle(f)).reshape(() if shape is None else shape)
 
 
 ####################################################################################################
