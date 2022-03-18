@@ -569,7 +569,8 @@ class Table:
 
 
     def save(self,
-             fname: FileHandle):
+             fname: FileHandle,
+             with_labels: bool = True):
         """
         Save as plain text file.
 
@@ -577,20 +578,23 @@ class Table:
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for writing.
+        with_labels : bool, optional
+            Write column labels. Defaults to True.
 
         """
         labels = []
-        for l in list(dict.fromkeys(self.data.columns)):
-            if self.shapes[l] == (1,):
-                labels.append(f'{l}')
-            elif len(self.shapes[l]) == 1:
-                labels += [f'{i+1}_{l}' \
-                          for i in range(self.shapes[l][0])]
-            else:
-                labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
-                          for i in range(np.prod(self.shapes[l]))]
+        if with_labels:
+            for l in list(dict.fromkeys(self.data.columns)):
+                if self.shapes[l] == (1,):
+                    labels.append(f'{l}')
+                elif len(self.shapes[l]) == 1:
+                    labels += [f'{i+1}_{l}' \
+                              for i in range(self.shapes[l][0])]
+                else:
+                    labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
+                              for i in range(np.prod(self.shapes[l]))]
 
         f = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else fname
 
-        f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+'\n')
+        f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
         self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
