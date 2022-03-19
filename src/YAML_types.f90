@@ -1218,6 +1218,7 @@ function tList_as1dFloat(self)
   item => self%first
   do i = 1, self%length
     scalar => item%node%asScalar()
+    if (.not. associated(scalar)) call IO_error(711,ext_msg='float scalar')
     tList_as1dFloat(i) = scalar%asFloat()
     item => item%next
   end do
@@ -1245,6 +1246,7 @@ function tList_as2dFloat(self)
   do i=1,self%length
     row => self%get(i)
     row_data => row%asList()
+    if (.not. associated(row_data)) call IO_error(711,ext_msg='list of floats')
     if (row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='Varying number of columns')
     tList_as2dFloat(i,:) = self%get_as1dFloat(i)
   end do
@@ -1269,6 +1271,7 @@ function tList_as1dInt(self)
   item => self%first
   do i = 1, self%length
     scalar => item%node%asScalar()
+    if (.not. associated(scalar)) call IO_error(711,ext_msg='int scalar')
     tList_as1dInt(i) = scalar%asInt()
     item => item%next
   end do
@@ -1293,6 +1296,7 @@ function tList_as1dBool(self)
   item => self%first
   do i = 1, self%length
     scalar => item%node%asScalar()
+    if (.not. associated(scalar)) call IO_error(711,ext_msg='bool scalar')
     tList_as1dBool(i) = scalar%asBool()
     item => item%next
   end do
@@ -1317,6 +1321,7 @@ function tList_as1dString(self)
   item => self%first
   do i = 1, self%length
     scalar => item%node%asScalar()
+    if (.not. associated(scalar)) call IO_error(711,ext_msg='string scalar')
     len_max = max(len_max, len_trim(scalar%asString()))
     item => item%next
   end do
