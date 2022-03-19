@@ -587,7 +587,7 @@ def DREAM3D_base_group(fname: Union[str, Path]) -> str:
         Path to the base group.
 
     """
-    with h5py.File(fname,'r') as f:
+    with h5py.File(Path(fname).expanduser(),'r') as f:
         base_group = f.visit(lambda path: path.rsplit('/',2)[0] if '_SIMPL_GEOMETRY/SPACING' in path else None)
 
     if base_group is None:
@@ -615,7 +615,7 @@ def DREAM3D_cell_data_group(fname: Union[str, Path]) -> str:
 
     """
     base_group = DREAM3D_base_group(fname)
-    with h5py.File(fname,'r') as f:
+    with h5py.File(Path(fname).expanduser(),'r') as f:
         cells = tuple(f['/'.join([base_group,'_SIMPL_GEOMETRY','DIMENSIONS'])][()][::-1])
         cell_data_group = f[base_group].visititems(lambda path,obj: path.split('/')[0] \
                                                    if isinstance(obj,h5py._hl.dataset.Dataset) and np.shape(obj)[:-1] == cells \
