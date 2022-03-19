@@ -34,8 +34,8 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 comments: Union[str, Sequence[str]] = None,
-                 initial_conditions = None):
+                 initial_conditions = None,
+                 comments: Union[str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
 
@@ -48,6 +48,8 @@ class Grid:
             Physical size of grid in meter.
         origin : sequence of float, len (3), optional
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
+        initial_conditions : dictionary, optional
+            Labels and values of the inital conditions at each material point.
         comments : (list of) str, optional
             Comments, e.g. history of operations.
 
@@ -55,8 +57,8 @@ class Grid:
         self.material = material
         self.size = size                                                                            # type: ignore
         self.origin = origin                                                                        # type: ignore
-        self.comments = [] if comments is None else comments                                        # type: ignore
         self.ic = initial_conditions if initial_conditions is not None else {}
+        self.comments = [] if comments is None else comments                                        # type: ignore
 
     def __repr__(self) -> str:
         """Give short human-readable summary."""
