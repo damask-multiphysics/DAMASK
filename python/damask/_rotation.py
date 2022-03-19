@@ -418,15 +418,15 @@ class Rotation:
 
 
     def reshape(self: MyType,
-                shape: Union[int, Tuple[int, ...]],
+                shape: Union[int, IntSequence],
                 order: Literal['C','F','A'] = 'C') -> MyType:
         """
         Reshape array.
 
         Parameters
         ----------
-        shape : int or tuple of ints
-            The new shape should be compatible with the original shape.
+        shape : int or sequence of ints
+            New shape, number of elements needs to match the original shape.
             If an integer is supplied, then the result will be a 1-D array of that length.
         order : {'C', 'F', 'A'}, optional
             'C' flattens in row-major (C-style) order.
@@ -446,15 +446,15 @@ class Rotation:
 
 
     def broadcast_to(self: MyType,
-                     shape: Union[int, Tuple[int, ...]],
+                     shape: Union[int, IntSequence],
                      mode: Literal['left', 'right'] = 'right') -> MyType:
         """
         Broadcast array.
 
         Parameters
         ----------
-        shape : int or tuple of ints
-            Shape of broadcasted array.
+        shape : int or sequence of ints
+            Shape of broadcasted array, needs to be compatible with the original shape.
         mode : str, optional
             Where to preferentially locate missing dimensions.
             Either 'left' or 'right' (default).
@@ -465,9 +465,9 @@ class Rotation:
             Rotation broadcasted to given shape.
 
         """
-        if isinstance(shape,(int,np.integer)): shape = (shape,)
-        return self.copy(np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape,mode)+(4,)),
-                                                  shape+(4,)))
+        shape_ = (shape,) if isinstance(shape,(int,np.integer)) else tuple(shape)
+        return self.copy(np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape_,mode)+(4,)),
+                                                  shape_+(4,)))
 
 
     def average(self: MyType,
@@ -979,17 +979,15 @@ class Rotation:
 
 
     @staticmethod
-    def from_random(shape: Tuple[int, ...] = None,
+    def from_random(shape: Union[int, IntSequence] = None,
                     rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
-        Initialize with random rotation.
-
-        Rotations are uniformly distributed.
+        Initialize with samples from a uniform distribution.
 
         Parameters
         ----------
-        shape : tuple of ints, optional
-            Shape of the sample. Defaults to None, which gives a single rotation.
+        shape : int or sequence of ints, optional
+            Shape of the returned array. Defaults to None, which gives a scalar.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
@@ -1011,12 +1009,12 @@ class Rotation:
     @staticmethod
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
-                 shape: Tuple[int, ...] = None,
+                 shape: Union[int, IntSequence] = None,
                  degrees: bool = True,
                  fractions: bool = True,
                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
-        Sample discrete values from a binned orientation distribution function (ODF).
+        Initialize with samples from a binned orientation distribution function (ODF).
 
         Parameters
         ----------
@@ -1024,9 +1022,8 @@ class Rotation:
             Texture intensity values (probability density or volume fraction) at Euler space grid points.
         phi : numpy.ndarray, shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
-        shape : tuple of ints, optional
-            Shape of the array of discrete rotations sampled from the given ODF.
-            Defaults to None, which gives a single rotation.
+        shape : int or sequence of ints, optional
+            Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
             Euler space grid coordinates are in degrees. Defaults to True.
         fractions : bool, optional
@@ -1035,11 +1032,6 @@ class Rotation:
         rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
-
-        Returns
-        -------
-        samples : damask.Rotation
-            Array of sampled rotations that approximate the input ODF.
 
         Notes
         -----
@@ -1070,31 +1062,25 @@ class Rotation:
     @staticmethod
     def from_spherical_component(center: 'Rotation',
                                  sigma: float,
-                                 shape: Tuple[int, ...] = None,
+                                 shape: Union[int, IntSequence] = None,
                                  degrees: bool = True,
                                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
-        Calculate set of rotations with Gaussian distribution around center.
+        Initialize with samples from a Gaussian distribution around a given center.
 
         Parameters
         ----------
-        center : Rotation
-            Central Rotation.
+        center : Rotation or Orientation
+            Central rotation.
         sigma : float
             Standard deviation of (Gaussian) misorientation distribution.
-        shape : tuple of ints, optional
-            Shape of the array of sampled rotations.
-            Defaults to None, which gives a single rotation.
+        shape : int or sequence of ints, optional
+            Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
             sigma is given in degrees. Defaults to True.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
-
-        Returns
-        -------
-        samples : damask.Rotation
-            Array of rotations sampled from the spherical component.
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -1113,11 +1099,11 @@ class Rotation:
     def from_fiber_component(alpha: IntSequence,
                              beta: IntSequence,
                              sigma: float = 0.0,
-                             shape: Tuple[int, ...] = None,
+                             shape: Union[int, IntSequence] = None,
                              degrees: bool = True,
                              rng_seed: NumpyRngSeed = None):
         """
-        Calculate set of rotations with Gaussian distribution around direction.
+        Initialize with samples from a Gaussian distribution around a given direction.
 
         Parameters
         ----------
@@ -1128,19 +1114,13 @@ class Rotation:
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
-        shape : tuple of ints, optional
-            Shape of the array of sampled rotations.
-            Defaults to None, which gives a single rotation.
+        shape : int or sequence of ints, optional
+            Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
             sigma, alpha, and beta are given in degrees.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
-
-        Returns
-        -------
-        samples : damask.Rotation
-            Array of rotations sampled from the fiber component.
 
         """
         rng = np.random.default_rng(rng_seed)
