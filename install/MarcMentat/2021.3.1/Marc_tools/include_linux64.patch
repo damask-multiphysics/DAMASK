@@ -7,7 +7,7 @@
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
 +H5FC="$(h5fc -shlib -show)"
 +HDF5_LIB=${H5FC//ifort/}
-+FCOMP="$H5FC -DDAMASK_HDF5"
++FCOMP="$H5FC"
 +
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
