@@ -498,6 +498,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Length mismatch'
     case (710)
       msg = 'Closing quotation mark missing in string'
+    case (711)
+      msg = 'Incorrect type'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the mesh solver
