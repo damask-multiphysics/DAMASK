@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence
+from typing import Union, Optional, TextIO, List, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
@@ -34,7 +34,7 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions = None,
+                 initial_conditions: Dict[str,np.ndarray] = None,
                  comments: Union[str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
@@ -55,10 +55,10 @@ class Grid:
 
         """
         self.material = material
-        self.size = size                                                                            # type: ignore
-        self.origin = origin                                                                        # type: ignore
-        self.ic = initial_conditions if initial_conditions is not None else {}
-        self.comments = [] if comments is None else comments                                        # type: ignore
+        self.size = size                                                        # type: ignore
+        self.origin = origin                                                    # type: ignore
+        self.initial_conditions = {} if initial_conditions is None else initial_conditions
+        self.comments = [] if comments is None else comments                    # type: ignore
 
     def __repr__(self) -> str:
         """Give short human-readable summary."""
@@ -71,7 +71,7 @@ class Grid:
                f'origin: {util.srepr(self.origin,"   ")} m',
                f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
                                           f' (min: {mat_min}, max: {mat_max})')
-               ]+(['initial_conditions:']+[f'  - {f}' for f in self.ic.keys()] if self.ic else []))
+               ]+(['initial_conditions:']+[f'  - {f}' for f in self.initial_conditions] if self.initial_conditions else []))
 
 
     def __copy__(self) -> 'Grid':
@@ -147,6 +147,19 @@ class Grid:
         self._origin = np.array(origin)
 
     @property
+    def initial_conditions(self) -> Dict[str,np.ndarray]:
+        """Fields of initial conditions."""
+        return self._ic
+
+    @initial_conditions.setter
+    def initial_conditions(self,
+                           ic: Dict[str,np.ndarray]):
+        if not isinstance(ic,dict):
+            raise TypeError('initial conditions is not a dictionary')
+
+        self._ic = ic
+
+    @property
     def comments(self) -> List[str]:
         """Comments, e.g. history of operations."""
         return self._comments
@@ -195,11 +208,12 @@ class Grid:
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size     = bbox[1] - bbox[0],
                     origin   = bbox[0],
+                    initial_conditions = ic,
                     comments = comments,
-                    initial_conditions = ic)
+                   )
 
 
-    @typing. no_type_check
+    @typing.no_type_check
     @staticmethod
     def load_ASCII(fname)-> 'Grid':
         """
@@ -269,7 +283,10 @@ class Grid:
         if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
             material = material.astype(int) - (1 if material.min() > 0 else 0)
 
-        return Grid(material.reshape(cells,order='F'),size,origin,comments)
+        return Grid(material = material.reshape(cells,order='F'),
+                    size     = size,
+                    origin   = origin,
+                    comments = comments)
 
 
     @staticmethod
@@ -306,9 +323,11 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return Grid(v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe') - 1,
-                    bbox[1] - bbox[0], bbox[0],
-                    util.execution_stamp('Grid','load_Neper'))
+        return Grid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe') - 1,
+                    size     = bbox[1] - bbox[0],
+                    origin   = bbox[0],
+                    comments = util.execution_stamp('Grid','load_Neper'),
+                   )
 
 
     @staticmethod
@@ -371,7 +390,11 @@ class Grid:
         else:
             ma = f['/'.join([b,c,feature_IDs])][()].flatten()
 
-        return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
+        return Grid(material = ma.reshape(cells,order='F'),
+                    size     = size,
+                    origin   = origin,
+                    comments = util.execution_stamp('Grid','load_DREAM3D'),
+                   )
 
 
     @staticmethod
@@ -406,7 +429,11 @@ class Grid:
         ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
              np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
 
-        return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','from_table'))
+        return Grid(material = ma.reshape(cells,order='F'),
+                    size     = size,
+                    origin   = origin,
+                    comments = util.execution_stamp('Grid','from_table'),
+                   )
 
 
     @staticmethod
@@ -665,7 +692,7 @@ class Grid:
         """
         v = VTK.from_image_data(self.cells,self.size,self.origin)\
                .add('material',self.material.flatten(order='F'))
-        for label,data in self.ic.items():
+        for label,data in self.initial_conditions.items():
             v = v.add(label,data.flatten(order='F'))
         v.comments = self.comments
 
@@ -929,13 +956,13 @@ class Grid:
 
         """
         return Grid(material = ndimage.interpolation.zoom(
-                                                           self.material,
-                                                           cells/self.cells,
-                                                           output=self.material.dtype,
-                                                           order=0,
-                                                           mode='wrap' if periodic else 'nearest',
-                                                           prefilter=False
-                                                          ),
+                                                          self.material,
+                                                          cells/self.cells,
+                                                          output=self.material.dtype,
+                                                          order=0,
+                                                          mode='wrap' if periodic else 'nearest',
+                                                          prefilter=False
+                                                         ),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Grid','scale')],
