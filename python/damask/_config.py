@@ -144,7 +144,7 @@ class Config(dict):
             Configuration from file.
 
         """
-        fhandle = open(fname) if isinstance(fname, (str, Path)) else \
+        fhandle = open(Path(fname).expanduser()) if isinstance(fname, (str, Path)) else \
                   fname
 
         return cls(yaml.safe_load(fhandle))
@@ -163,7 +163,7 @@ class Config(dict):
             Keyword arguments parsed to yaml.dump.
 
         """
-        fhandle = open(fname,'w',newline='\n') if isinstance(fname, (str, Path)) else \
+        fhandle = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else \
                   fname
 
         if 'width' not in kwargs:
