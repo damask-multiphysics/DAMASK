@@ -1803,7 +1803,7 @@ class Result:
             if type(obj) == h5py.Dataset and  _match(output,[name]):
                 d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
                 if not Path(name).exists() or overwrite:
-                    with open(name,'w') as f_out: f_out.write(obj[0].decode())
+                    with open(name,'w',newline='\n') as f_out: f_out.write(obj[0].decode())
                     print(f'Exported {d} to "{name}".')
                 else:
                     print(f'"{name}" exists, {d} not exported.')

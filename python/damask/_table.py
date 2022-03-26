@@ -260,7 +260,7 @@ class Table:
             Table data from file.
 
         """
-        f = open(Path(fname).expanduser()) if isinstance(fname, (str, Path)) else fname
+        f = open(Path(fname).expanduser(),newline='\n') if isinstance(fname, (str, Path)) else fname
         f.seek(0)
 
         comments = []
@@ -281,7 +281,7 @@ class Table:
                 else:
                     shapes[label] = (1,)
 
-        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
+        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+',lineterminator='\n')
 
         return Table(shapes,data,comments)
 
@@ -312,7 +312,7 @@ class Table:
             Table data from file.
 
         """
-        f = open(fname) if isinstance(fname, (str, Path)) else fname
+        f = open(Path(fname).expanduser(),newline='\n') if isinstance(fname, (str, Path)) else fname
         f.seek(0)
 
         content = f.readlines()
@@ -597,4 +597,4 @@ class Table:
         f = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else fname
 
         f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
+        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')

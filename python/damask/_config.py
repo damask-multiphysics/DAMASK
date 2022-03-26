@@ -144,7 +144,7 @@ class Config(dict):
             Configuration from file.
 
         """
-        fhandle = open(Path(fname).expanduser()) if isinstance(fname, (str, Path)) else \
+        fhandle = open(Path(fname).expanduser(),newline='\n') if isinstance(fname, (str, Path)) else \
                   fname
 
         return cls(yaml.safe_load(fhandle))
