@@ -1,5 +1,5 @@
+import sys
 import random
-import os
 
 import pytest
 import numpy as np
@@ -11,14 +11,17 @@ from damask import util
 
 class TestUtil:
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='echo is not a Windows command')
     def test_execute_direct(self):
         out,err = util.execute('echo test')
         assert out=='test\n' and err==''
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='echo is not a Windows command')
     def test_execute_env(self):
         out,err = util.execute('sh -c "echo $test_for_execute"',env={'test_for_execute':'test'})
         assert out=='test\n' and err==''
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='false is not a Windows command')
     def test_execute_runtime_error(self):
         with pytest.raises(RuntimeError):
             util.execute('false')
