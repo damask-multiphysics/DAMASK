@@ -159,8 +159,8 @@ def coordinates0_point(cells: _IntSequence,
 
     """
     size_ = _np.array(size,float)
-    start = origin         + size_/_np.array(cells,int)*.5
-    end   = origin + size_ - size_/_np.array(cells,int)*.5
+    start = origin         + size_/_np.array(cells,_np.int64)*.5
+    end   = origin + size_ - size_/_np.array(cells,_np.int64)*.5
 
     return _np.stack(_np.meshgrid(_np.linspace(start[0],end[0],cells[0]),
                                   _np.linspace(start[1],end[1],cells[1]),
@@ -290,7 +290,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
-    cells     = _np.array(list(map(len,coords)),int)
+    cells     = _np.array(list(map(len,coords)),_np.int64)
     size      = cells/_np.maximum(cells-1,1) * (maxcorner-mincorner)
     delta     = size/cells
     origin    = mincorner - delta*.5
@@ -455,7 +455,7 @@ def cellsSizeOrigin_coordinates0_node(coordinates0: _np.ndarray,
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
-    cells     = _np.array(list(map(len,coords)),int) - 1
+    cells     = _np.array(list(map(len,coords)),_np.int64) - 1
     size      = maxcorner-mincorner
     origin    = mincorner
 

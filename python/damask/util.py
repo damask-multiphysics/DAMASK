@@ -431,7 +431,7 @@ def hybrid_IA(dist: np.ndarray,
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
     while (not np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
-        repeats = np.rint(scale*dist).astype(int)
+        repeats = np.rint(scale*dist).astype(np.int64)
         N_inv_samples = np.sum(repeats)
         scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
                                    if N_inv_samples < N_opt_samples else \
