@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import numpy as np
 import vtk
@@ -47,6 +49,7 @@ class TestGrid:
 
 
     @pytest.mark.parametrize('cmap',[Colormap.from_predefined('stress'),'viridis'])
+    @pytest.mark.skipif(sys.platform == 'win32', reason='DISPLAY has no effect on windows')
     def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show(cmap)
