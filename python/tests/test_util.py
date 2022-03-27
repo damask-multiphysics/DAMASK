@@ -1,5 +1,5 @@
+import sys
 import random
-import os
 
 import pytest
 import numpy as np
@@ -11,14 +11,17 @@ from damask import util
 
 class TestUtil:
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='echo is not a Windows command')
     def test_execute_direct(self):
         out,err = util.execute('echo test')
         assert out=='test\n' and err==''
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='echo is not a Windows command')
     def test_execute_env(self):
         out,err = util.execute('sh -c "echo $test_for_execute"',env={'test_for_execute':'test'})
         assert out=='test\n' and err==''
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='false is not a Windows command')
     def test_execute_runtime_error(self):
         with pytest.raises(RuntimeError):
             util.execute('false')
@@ -125,9 +128,9 @@ class TestUtil:
     def test_D3D_base_group(self,tmp_path,complete):
         base_group = ''.join(random.choices('DAMASK', k=10))
         with h5py.File(tmp_path/'base_group.dream3d','w') as f:
-            f.create_group(os.path.join(base_group,'_SIMPL_GEOMETRY'))
+            f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
             if complete:
-                f[os.path.join(base_group,'_SIMPL_GEOMETRY')].create_dataset('SPACING',data=np.ones(3))
+                f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
 
         if complete:
             assert base_group == util.DREAM3D_base_group(tmp_path/'base_group.dream3d')
@@ -141,12 +144,12 @@ class TestUtil:
         cell_data_group = ''.join(random.choices('KULeuven', k=10))
         cells = np.random.randint(1,50,3)
         with h5py.File(tmp_path/'cell_data_group.dream3d','w') as f:
-            f.create_group(os.path.join(base_group,'_SIMPL_GEOMETRY'))
-            f[os.path.join(base_group,'_SIMPL_GEOMETRY')].create_dataset('SPACING',data=np.ones(3))
-            f[os.path.join(base_group,'_SIMPL_GEOMETRY')].create_dataset('DIMENSIONS',data=cells[::-1])
+            f.create_group('/'.join((base_group,'_SIMPL_GEOMETRY')))
+            f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('SPACING',data=np.ones(3))
+            f['/'.join((base_group,'_SIMPL_GEOMETRY'))].create_dataset('DIMENSIONS',data=cells[::-1])
             f[base_group].create_group(cell_data_group)
             if complete:
-                f[os.path.join(base_group,cell_data_group)].create_dataset('data',shape=np.append(cells,1))
+                f['/'.join((base_group,cell_data_group))].create_dataset('data',shape=np.append(cells,1))
 
         if complete:
             assert cell_data_group == util.DREAM3D_cell_data_group(tmp_path/'cell_data_group.dream3d')

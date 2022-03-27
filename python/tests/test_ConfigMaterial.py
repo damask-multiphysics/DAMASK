@@ -1,3 +1,4 @@
+import sys
 import os
 import pytest
 import numpy as np
@@ -41,6 +42,7 @@ class TestConfigMaterial:
         material_config['material'][0]['constituents'][0]['O']=[0,0,0,0]
         assert not material_config.is_valid
 
+    @pytest.mark.xfail(sys.platform == 'win32', reason='utf8 "not equal" might cause trouble')
     def test_invalid_fraction(self,ref_path):
         material_config = ConfigMaterial.load(ref_path/'material.yaml')
         material_config['material'][0]['constituents'][0]['v']=.9

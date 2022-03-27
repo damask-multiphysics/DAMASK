@@ -108,7 +108,7 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('mode',
-        ['direct',pytest.param('function',marks=pytest.mark.xfail(sys.platform=='darwin',reason='n/a'))])
+        ['direct',pytest.param('function',marks=pytest.mark.xfail(sys.platform in ['darwin','win32'], reason='n/a'))])
     def test_add_calculation(self,default,tmp_path,mode):
 
         if mode == 'direct':
