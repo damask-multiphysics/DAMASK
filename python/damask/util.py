@@ -224,7 +224,8 @@ def open_text(fname: FileHandle,
     f : file handle
 
     """
-    return open(Path(fname).expanduser(),mode,newline='\n') if isinstance(fname, (str, Path)) else fname
+    return fname if not isinstance(fname, (str,Path)) else \
+           open(Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
 
 
 def natural_sort(key: str) -> List[Union[int, str]]:

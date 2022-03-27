@@ -280,7 +280,7 @@ class Table:
                 else:
                     shapes[label] = (1,)
 
-        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+',lineterminator='\n')
+        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
         return Table(shapes,data,comments)
 
