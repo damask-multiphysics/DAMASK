@@ -1,6 +1,5 @@
 import re
 import copy
-from pathlib import Path
 from typing import Union, Tuple, List
 
 import pandas as pd
@@ -260,7 +259,7 @@ class Table:
             Table data from file.
 
         """
-        f = open(Path(fname).expanduser(),newline='\n') if isinstance(fname, (str, Path)) else fname
+        f = util.open_text(fname)
         f.seek(0)
 
         comments = []
@@ -312,7 +311,7 @@ class Table:
             Table data from file.
 
         """
-        f = open(Path(fname).expanduser(),newline='\n') if isinstance(fname, (str, Path)) else fname
+        f = util.open_text(fname)
         f.seek(0)
 
         content = f.readlines()
@@ -594,7 +593,7 @@ class Table:
                     labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                               for i in range(np.prod(self.shapes[l]))]
 
-        f = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else fname
+        f = util.open_text(fname,'w')
 
         f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
         self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
