@@ -2,7 +2,6 @@ import os
 import json
 import functools
 import colorsys
-from pathlib import Path
 from typing import Union, TextIO
 
 import numpy as np
@@ -325,12 +324,7 @@ class Colormap(mpl.colors.ListedColormap):
             File handle with write access.
 
         """
-        if fname is None:
-            return open(self.name.replace(' ','_')+suffix, 'w', newline='\n')
-        elif isinstance(fname, (str, Path)):
-            return open(Path(fname).expanduser(), 'w', newline='\n')
-        else:
-            return fname
+        return util.open_text(self.name.replace(' ','_')+suffix if fname is None else fname, 'w')
 
 
     def save_paraview(self,

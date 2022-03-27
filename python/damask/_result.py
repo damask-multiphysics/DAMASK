@@ -1538,7 +1538,7 @@ class Result:
                                                                                                         np.prod(shape))}
                                 data_items[-1].text = f'{os.path.split(self.fname)[1]}:{name}'
 
-        with open(self.fname.with_suffix('.xdmf').name,'w',newline='\n') as f:
+        with util.open_text(self.fname.with_suffix('.xdmf').name,'w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
@@ -1803,7 +1803,7 @@ class Result:
             if type(obj) == h5py.Dataset and  _match(output,[name]):
                 d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
                 if not Path(name).exists() or overwrite:
-                    with open(name,'w',newline='\n') as f_out: f_out.write(obj[0].decode())
+                    with util.open_text(name,'w') as f_out: f_out.write(obj[0].decode())
                     print(f'Exported {d} to "{name}".')
                 else:
                     print(f'"{name}" exists, {d} not exported.')

@@ -2,7 +2,6 @@ import copy
 from io import StringIO
 from collections.abc import Iterable
 import abc
-from pathlib import Path
 from typing import Union, Dict, Any, Type, TypeVar
 
 import numpy as np
@@ -10,6 +9,7 @@ import yaml
 
 from ._typehints import FileHandle
 from . import Rotation
+from . import util
 
 MyType = TypeVar('MyType', bound='Config')
 
@@ -144,10 +144,7 @@ class Config(dict):
             Configuration from file.
 
         """
-        fhandle = open(Path(fname).expanduser(),newline='\n') if isinstance(fname, (str, Path)) else \
-                  fname
-
-        return cls(yaml.safe_load(fhandle))
+        return cls(yaml.safe_load(util.open_text(fname)))
 
     def save(self,
              fname: FileHandle,
@@ -163,9 +160,6 @@ class Config(dict):
             Keyword arguments parsed to yaml.dump.
 
         """
-        fhandle = open(Path(fname).expanduser(),'w',newline='\n') if isinstance(fname, (str, Path)) else \
-                  fname
-
         if 'width' not in kwargs:
             kwargs['width'] = 256
         if 'default_flow_style' not in kwargs:
@@ -173,6 +167,7 @@ class Config(dict):
         if 'sort_keys' not in kwargs:
             kwargs['sort_keys'] = False
 
+        fhandle = util.open_text(fname,'w')
         try:
             fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
         except TypeError:                                                                           # compatibility with old pyyaml
