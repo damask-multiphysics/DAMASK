@@ -105,9 +105,7 @@ module subroutine damage_init
       damage_active = .true.
       source => sources%get(1)
       param(ph)%mu     = source%get_asFloat('mu')
-      param(ph)%D(1,1) = source%get_asFloat('D_11')
-      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%D(3,3) = source%get_asFloat('D_33')
-      param(ph)%D = lattice_symmetrize_33(param(ph)%D,phase_lattice(ph))
+      param(ph)%D  = math_I3 * source%get_asFloat('l_c')**2
     end if
 
   end do

@@ -63,7 +63,7 @@ module function isobrittle_init() result(mySources)
       associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
         src => sources%get(1)
 
-        prm%W_crit = src%get_asFloat('W_crit')
+        prm%W_crit = src%get_asFloat('G')/src%get_asFloat('l_c')
 
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(src)
