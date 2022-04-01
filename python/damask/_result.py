@@ -112,10 +112,10 @@ class Result:
             else:
                 self.add_curl = self.add_divergence = self.add_gradient = None
 
-            r=re.compile('increment_[0-9]+')
-            self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
-            if len(self.increments) == 0:
+            r = re.compile(r'increment_([0-9]+)')
+            self.incs  = sorted([int(m.group(1)) for i in f.keys() for m in (r.match(i),) if m])
+            self.times = [round(f[i].attrs['t/s'],12) for i in self.increments]
+            if len(self.incs) == 0:
                 raise ValueError('incomplete DADF5 file')
 
             self.N_materialpoints, self.N_constituents = np.shape(f['cell_to/phase'])
@@ -240,16 +240,16 @@ class Result:
         return dup
 
 
-    def increments_in_range(self,start,end):
+    def increments_in_range(self,start=None,end=None):
         """
         Get all increments within a given range.
 
         Parameters
         ----------
-        start : int or str
-            Start increment.
-        end : int or str
-            End increment.
+        start : int or str, optional
+            Start increment. Defaults to first.
+        end : int or str, optional
+            End increment. Defaults to last.
 
         Returns
         -------
@@ -257,12 +257,10 @@ class Result:
             Increment number of all increments within the given bounds.
 
         """
-        selected = []
-        for i,inc in enumerate([int(i[10:]) for i in self.increments]):
-            s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
-            if s <= inc <= e:
-                selected.append(self.increments[i])
-        return selected
+        s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith('increment_') else x),
+                  (self.incs[ 0] if start is None else start,
+                   self.incs[-1] if  end  is None else  end))
+        return [i for i in self.incs if s <= i <= e]
 
     def times_in_range(self,start,end):
         """
@@ -539,6 +537,11 @@ class Result:
     def enable_user_function(self,func):
         globals()[func.__name__]=func
         print(f'Function {func.__name__} enabled in add_calculation.')
+
+
+    @property
+    def increments(self):
+        return list(map(lambda i:f'increment_{i}',self.incs))
 
 
     @property
@@ -1602,7 +1605,7 @@ class Result:
 
         v.comments = util.execution_stamp('Result','export_VTK')
 
-        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
+        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
         constituents_ = constituents if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])
