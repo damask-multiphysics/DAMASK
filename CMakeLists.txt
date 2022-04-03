@@ -10,7 +10,9 @@ endif()
 # Dummy project to determine compiler names and version
 project(Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig")
-pkg_check_modules(PETSC REQUIRED PETSc>=3.12.0 PETSc<3.17.0)
+pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.12.0 QUIET) #CMake does not support version range
+pkg_check_modules(PETSC REQUIRED PETSc<3.18.0)
+
 pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)
 
@@ -32,6 +34,9 @@ message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 add_definitions(-DPETSC)
 add_definitions(-DDAMASKVERSION="${DAMASK_VERSION}")
 add_definitions(-DCMAKE_SYSTEM="${CMAKE_SYSTEM}")
+if(PETSC_VERSION VERSION_GREATER_EQUAL 3.17.0)
+   add_definitions("-DCHKERRQ=PetscCall")
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "RELEASE")
