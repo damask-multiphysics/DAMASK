@@ -9,7 +9,7 @@ endif()
 
 # Dummy project to determine compiler names and version
 project(Prerequisites LANGUAGES)
-set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig")
+set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.12.0 QUIET) #CMake does not support version range
 pkg_check_modules(PETSC REQUIRED PETSc<3.18.0)
 
@@ -26,6 +26,12 @@ else()
     message(FATAL_ERROR "Invalid solver: DAMASK_SOLVER=${DAMASK_SOLVER}")
 endif()
 add_definitions("-D${DAMASK_SOLVER}")
+
+# EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
+set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
+message($ENV{PKG_CONFIG_PATH})
+pkg_check_modules(HDF5 hdf5)
+pkg_check_modules(FFTW3 fftw3)
 
 file(STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
