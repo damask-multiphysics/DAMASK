@@ -29,9 +29,9 @@ add_definitions("-D${DAMASK_SOLVER}")
 
 # EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
-message($ENV{PKG_CONFIG_PATH})
 pkg_check_modules(HDF5 hdf5)
 pkg_check_modules(FFTW3 fftw3)
+pkg_check_modules(fYAML libfyaml)
 
 file(STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
