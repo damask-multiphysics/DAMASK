@@ -7,7 +7,7 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "zlib.h"
+#include <zlib.h>
 
 #ifdef FYAML
 #include <libfyaml.h>
