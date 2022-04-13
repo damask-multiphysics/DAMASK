@@ -145,7 +145,7 @@ module YAML_types
   end type tDict
 
 
-  type :: tItem
+  type, public :: tItem
     character(len=:), allocatable :: key
     class(tNode),     pointer     :: node => NULL()
     class(tItem),     pointer     :: next => NULL()

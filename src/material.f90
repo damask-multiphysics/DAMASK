@@ -91,6 +91,7 @@ subroutine parse()
                            homogenizations, &
                            homogenization
 
+  class(tItem), pointer :: item
   integer, dimension(:), allocatable :: &
     counterPhase, &
     counterHomogenization
@@ -101,6 +102,7 @@ subroutine parse()
     ho, ph, &
     co, ce, &
     ma
+
 
   materials       => config_material%get('material')
   phases          => config_material%get('phase')
@@ -169,17 +171,23 @@ subroutine parse()
   allocate(material_O_0(materials%length))
   allocate(material_F_i_0(materials%length))
 
-  do ma = 1, materials%length
-    material     => materials%get(ma)
-    constituents => material%get('constituents')
-    allocate(material_O_0(ma)%data(constituents%length))
-    allocate(material_F_i_0(ma)%data(1:3,1:3,constituents%length))
-    do co = 1, constituents%length
-      constituent => constituents%get(co)
-      call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-      material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
-    enddo
- enddo
+  ! manual iteration for performance
+  select type(materials)
+    class is(tList)
+      item => materials%first
+      do ma = 1, materials%length
+        material => item%node
+        constituents => material%get('constituents')
+        allocate(material_O_0(ma)%data(constituents%length))
+        allocate(material_F_i_0(ma)%data(1:3,1:3,constituents%length))
+        do co = 1, constituents%length
+          constituent => constituents%get(co)
+          call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+          material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
+        end do
+        item => item%next
+      end do
+  end select
 
 end subroutine parse
 
@@ -195,17 +203,25 @@ subroutine sanityCheck(materials,homogenizations)
   class(tNode), pointer :: material, &
                            homogenization, &
                            constituents
+  class(tItem), pointer :: item
   integer :: m
+
 
   if (maxval(discretization_materialAt) > materials%length) &
     call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
-  do m = 1, materials%length
-    material => materials%get(m)
-    constituents   => material%get('constituents')
-    homogenization => homogenizations%get(material%get_asString('homogenization'))
-    if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
-  end do
+  ! manual iteration for performance
+  select type(materials)
+    class is(tList)
+      item => materials%first
+      do m = 1, materials%length
+        material => materials%get(m)
+        constituents   => material%get('constituents')
+        homogenization => homogenizations%get(material%get_asString('homogenization'))
+        if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+        item => item%next
+      end do
+  end select
 
 end subroutine sanityCheck
 
