@@ -1348,8 +1348,8 @@ subroutine tList_append(self,node)
   type(tItem), pointer :: item
 
   if (.not. associated(self%first)) then
-    allocate(self%first)
-    item => self%first
+    allocate(item)
+    self%first => item
   else
     item => self%first
     do while (associated(item%next))
