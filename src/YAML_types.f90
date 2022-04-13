@@ -119,7 +119,8 @@ module YAML_types
 
   type, extends(tNode), public :: tList
 
-    class(tItem), pointer  :: first => NULL()
+    class(tItem), pointer :: first => NULL(), &
+                             last => NULL()
 
     contains
     procedure :: asFormattedString => tList_asFormattedString
@@ -1350,13 +1351,11 @@ subroutine tList_append(self,node)
   if (.not. associated(self%first)) then
     allocate(item)
     self%first => item
+    self%last => item
   else
-    item => self%first
-    do while (associated(item%next))
-      item => item%next
-    enddo
-    allocate(item%next)
-    item => item%next
+    allocate(self%last%next)
+    item => self%last%next
+    self%last => item
   end if
 
   item%node => node
