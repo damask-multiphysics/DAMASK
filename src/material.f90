@@ -94,7 +94,10 @@ subroutine parse()
   class(tItem), pointer :: item
   integer, dimension(:), allocatable :: &
     counterPhase, &
-    counterHomogenization
+    counterHomogenization, &
+    temp_ho
+  integer, dimension(:,:), allocatable :: temp_ph
+  real(pReal), dimension(:,:), allocatable :: temp_v
 
   real(pReal) :: v
   integer :: &
@@ -107,8 +110,6 @@ subroutine parse()
   materials       => config_material%get('material')
   phases          => config_material%get('phase')
   homogenizations => config_material%get('homogenization')
-
-  call sanityCheck(materials, homogenizations)
 
 #if defined (__GFORTRAN__)
   material_name_phase          = getKeys(phases)
@@ -136,10 +137,56 @@ subroutine parse()
 
   allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pReal)
 
-  do el = 1, discretization_Nelems
-    material => materials%get(discretization_materialAt(el))
+  allocate(material_O_0(materials%length))
+  allocate(material_F_i_0(materials%length))
 
-    ho = homogenizations%getIndex(material%get_asString('homogenization'))
+  select type(materials)
+
+    class is(tList)
+
+      if (maxval(discretization_materialAt) > materials%length) &
+        call IO_error(155,ext_msg='More materials requested than found in material.yaml')
+
+      allocate(temp_ho(materials%length))
+      allocate(temp_ph(materials%length,homogenization_maxNconstituents),source=-1)
+      allocate(temp_v(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
+
+      item => materials%first
+      do ma = 1, materials%length
+        material => item%node
+        temp_ho(ma) = homogenizations%getIndex(material%get_asString('homogenization'))
+        constituents => material%get('constituents')
+
+        homogenization => homogenizations%get(temp_ho(ma))
+        if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+
+        allocate(material_O_0(ma)%data(constituents%length))
+        allocate(material_F_i_0(ma)%data(1:3,1:3,constituents%length))
+
+        do co = 1, constituents%length
+          constituent => constituents%get(co)
+          temp_v(ma,co) = constituent%get_asFloat('v')
+          temp_ph(ma,co) = phases%getIndex(constituent%get_asString('phase'))
+
+          call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+          material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
+
+        end do
+        if (dNeq(sum(temp_v(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
+
+        item => item%next
+
+      end do
+
+  end select
+
+
+  ! build mappings
+  do el = 1, discretization_Nelems
+
+    ma = discretization_materialAt(el)
+    ho = temp_ho(ma)
+
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
       material_homogenizationID(ce) = ho
@@ -147,13 +194,11 @@ subroutine parse()
       material_homogenizationEntry(ce) = counterHomogenization(ho)
     end do
 
-    constituents => material%get('constituents')
-    do co = 1, constituents%length
-      constituent => constituents%get(co)
+    do co = 1, size(temp_ph(ma,:)>0)
 
-      v = constituent%get_asFloat('v')
+      v = temp_v(ma,co)
+      ph = temp_ph(ma,co)
 
-      ph = phases%getIndex(constituent%get_asString('phase'))
       do ip = 1, discretization_nIPs
         ce = (el-1)*discretization_nIPs + ip
         material_phaseID(co,ce) = ph
@@ -163,67 +208,9 @@ subroutine parse()
       end do
 
     end do
-    if (dNeq(sum(material_v(1:constituents%length,ce)),1.0_pReal,1.e-9_pReal)) &
-      call IO_error(153,ext_msg='constituent')
-
   end do
 
-  allocate(material_O_0(materials%length))
-  allocate(material_F_i_0(materials%length))
-
-  ! manual iteration for performance
-  select type(materials)
-    class is(tList)
-      item => materials%first
-      do ma = 1, materials%length
-        material => item%node
-        constituents => material%get('constituents')
-        allocate(material_O_0(ma)%data(constituents%length))
-        allocate(material_F_i_0(ma)%data(1:3,1:3,constituents%length))
-        do co = 1, constituents%length
-          constituent => constituents%get(co)
-          call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-          material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
-        end do
-        item => item%next
-      end do
-  end select
-
 end subroutine parse
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Check if material.yaml is consistent and contains sufficient # of materials
-!--------------------------------------------------------------------------------------------------
-subroutine sanityCheck(materials,homogenizations)
-
-  class(tNode), intent(in) :: materials, &
-                              homogenizations
-
-  class(tNode), pointer :: material, &
-                           homogenization, &
-                           constituents
-  class(tItem), pointer :: item
-  integer :: m
-
-
-  if (maxval(discretization_materialAt) > materials%length) &
-    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
-
-  ! manual iteration for performance
-  select type(materials)
-    class is(tList)
-      item => materials%first
-      do m = 1, materials%length
-        material => materials%get(m)
-        constituents   => material%get('constituents')
-        homogenization => homogenizations%get(material%get_asString('homogenization'))
-        if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
-        item => item%next
-      end do
-  end select
-
-end subroutine sanityCheck
 
 #if defined (__GFORTRAN__)
 !--------------------------------------------------------------------------------------------------
