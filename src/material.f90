@@ -111,6 +111,10 @@ subroutine parse()
   phases          => config_material%get('phase')
   homogenizations => config_material%get('homogenization')
 
+
+  if (maxval(discretization_materialAt) > materials%length) &
+    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
+
 #if defined (__GFORTRAN__)
   material_name_phase          = getKeys(phases)
   material_name_homogenization = getKeys(homogenizations)
@@ -126,30 +130,19 @@ subroutine parse()
   end do
   homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
 
-  allocate(counterPhase(phases%length),source=0)
-  allocate(counterHomogenization(homogenizations%length),source=0)
-
-  allocate(material_homogenizationID(discretization_Ncells),source=0)
-  allocate(material_homogenizationEntry(discretization_Ncells),source=0)
-
-  allocate(material_phaseID(homogenization_maxNconstituents,discretization_Ncells),source=0)
-  allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_Ncells),source=0)
-
   allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pReal)
 
   allocate(material_O_0(materials%length))
   allocate(material_F_i_0(materials%length))
 
+  allocate(temp_ho(materials%length))
+  allocate(temp_ph(materials%length,homogenization_maxNconstituents),source=-1)
+  allocate(temp_v(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
+
+  ! parse YAML structure
   select type(materials)
 
     class is(tList)
-
-      if (maxval(discretization_materialAt) > materials%length) &
-        call IO_error(155,ext_msg='More materials requested than found in material.yaml')
-
-      allocate(temp_ho(materials%length))
-      allocate(temp_ph(materials%length,homogenization_maxNconstituents),source=-1)
-      allocate(temp_v(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
 
       item => materials%first
       do ma = 1, materials%length
@@ -175,10 +168,19 @@ subroutine parse()
         if (dNeq(sum(temp_v(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
 
         item => item%next
-
       end do
 
   end select
+
+
+  allocate(counterPhase(phases%length),source=0)
+  allocate(counterHomogenization(homogenizations%length),source=0)
+
+  allocate(material_homogenizationID(discretization_Ncells),source=0)
+  allocate(material_homogenizationEntry(discretization_Ncells),source=0)
+
+  allocate(material_phaseID(homogenization_maxNconstituents,discretization_Ncells),source=0)
+  allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_Ncells),source=0)
 
 
   ! build mappings
@@ -211,6 +213,7 @@ subroutine parse()
   end do
 
 end subroutine parse
+
 
 #if defined (__GFORTRAN__)
 !--------------------------------------------------------------------------------------------------
