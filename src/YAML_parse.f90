@@ -168,7 +168,10 @@ logical function quotedString(line)
 
   character(len=*), intent(in) :: line
 
+
   quotedString = .false.
+
+  if (len(line) == 0) return
 
   if (scan(line(:1),IO_QUOTES) == 1) then
     quotedString = .true.
