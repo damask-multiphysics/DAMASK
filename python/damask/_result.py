@@ -1151,14 +1151,14 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.strain(t='U',m=0.5)
+        >>> r.add_strain(t='U',m=0.5)
 
         Add the plastic Euler-Almansi strain based on the
         plastic deformation gradient 'F_p':
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.strain('F_p','V',-1)
+        >>> r.add_strain('F_p','V',-1)
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})

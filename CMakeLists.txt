@@ -9,8 +9,10 @@ endif()
 
 # Dummy project to determine compiler names and version
 project(Prerequisites LANGUAGES)
-set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig")
-pkg_check_modules(PETSC REQUIRED PETSc>=3.12.0 PETSc<3.17.0)
+set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.12.0 QUIET) #CMake does not support version range
+pkg_check_modules(PETSC REQUIRED PETSc<3.18.0)
+
 pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)
 
@@ -25,6 +27,13 @@ else()
 endif()
 add_definitions("-D${DAMASK_SOLVER}")
 
+# EXPERIMENTAL: This might help to detect HDF5 and FFTW3 in the future if PETSc is not aware of them
+set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/externalpackages:$ENV{PKG_CONFIG_PATH}")
+pkg_check_modules(HDF5 hdf5)
+pkg_check_modules(FFTW3 fftw3)
+pkg_check_modules(fYAML libfyaml)
+pkg_check_modules(zlib zlib)
+
 file(STRINGS ${PROJECT_SOURCE_DIR}/VERSION DAMASK_VERSION)
 
 message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
@@ -32,6 +41,9 @@ message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 add_definitions(-DPETSC)
 add_definitions(-DDAMASKVERSION="${DAMASK_VERSION}")
 add_definitions(-DCMAKE_SYSTEM="${CMAKE_SYSTEM}")
+if(PETSC_VERSION VERSION_GREATER_EQUAL 3.17.0)
+   add_definitions("-DCHKERRQ=PetscCall")
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "RELEASE")
@@ -104,8 +116,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
     set(CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif()
 
-set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}   "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
-set(CMAKE_Fortran_LINK_EXECUTABLE             "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB} -lz ${BUILDCMD_POST}")
+set(CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
+
+set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L${PETSC_LIBRARY_DIRS} -lpetsc ${PETSC_EXTERNAL_LIB} -lz")
+
+if(fYAML_FOUND STREQUAL "1")
+    set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} -L${fYAML_LIBRARY_DIRS} -l${fYAML_LIBRARIES}")
+    add_definitions(-DFYAML)
+    pkg_get_variable(fYAML_INCLUDE_DIR libfyaml includedir) # fYAML_INCLUDE_DIRS and fYAML_CFLAGS are not working
+    set(CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}} -I${fYAML_INCLUDE_DIR}")
+endif()
+
+set(CMAKE_Fortran_LINK_EXECUTABLE "${CMAKE_Fortran_LINK_EXECUTABLE} ${BUILDCMD_POST}")
 
 message("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}}\n")
 message("C Compiler Flags:\n${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}\n")
