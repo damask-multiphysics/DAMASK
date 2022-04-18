@@ -48,6 +48,7 @@ module HDF5_utilities
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_write
+#if defined(__GFORTRAN__) && __GNUC__<11
     module procedure HDF5_write_real1
     module procedure HDF5_write_real2
     module procedure HDF5_write_real3
@@ -55,7 +56,6 @@ module HDF5_utilities
     module procedure HDF5_write_real5
     module procedure HDF5_write_real6
     module procedure HDF5_write_real7
-
     module procedure HDF5_write_int1
     module procedure HDF5_write_int2
     module procedure HDF5_write_int3
@@ -63,6 +63,10 @@ module HDF5_utilities
     module procedure HDF5_write_int5
     module procedure HDF5_write_int6
     module procedure HDF5_write_int7
+#else
+    module procedure HDF5_write_real
+    module procedure HDF5_write_int
+#endif
   end interface HDF5_write
 
 !--------------------------------------------------------------------------------------------------
@@ -1210,6 +1214,7 @@ subroutine HDF5_read_int7(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_read_int7
 
+#if defined(__GFORTRAN__) && __GNUC__<11
 
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 1 dimension
@@ -1499,6 +1504,71 @@ subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_write_real7
 
+#else
+
+!--------------------------------------------------------------------------------------------------
+!> @brief write dataset of type real with 1-7 dimension
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
+
+  real(pReal),      intent(in), dimension(..) :: dataset                                            !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
+
+  integer :: hdferr
+  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
+  integer(HSIZE_T), dimension(rank(dataset)) :: &
+    myStart, &
+    myShape, &                                                                                      !< shape of the dataset (this process)
+    totalShape                                                                                      !< shape of the dataset (all processes)
+
+!---------------------------------------------------------------------------------------------------
+! determine shape of dataset
+  myShape = int(shape(dataset),HSIZE_T)
+  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
+
+  if (present(parallel)) then
+    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
+                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
+  else
+    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
+                          myStart, totalShape,loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel_default)
+  end if
+
+  if (product(totalShape) /= 0) then
+    select rank(dataset)
+      rank (1)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank (2)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank (3)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank (4)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank (5)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank (6)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank (7)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
+                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+    end select
+    if(hdferr < 0) error stop 'HDF5 error'
+  end if
+
+  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
+
+end subroutine HDF5_write_real
+#endif
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write dataset of type string (scalar).
@@ -1561,6 +1631,7 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
 
 end subroutine HDF5_write_str
 
+#if defined(__GFORTRAN__) && __GNUC__<11
 
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 1 dimension
@@ -1849,6 +1920,70 @@ subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_write_int7
 
+#else
+
+!--------------------------------------------------------------------------------------------------
+!> @brief write dataset of type integer with 1-7 dimension
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
+
+  integer,          intent(in), dimension(..) :: dataset                                            !< data written to file
+  integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
+  character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
+
+  integer :: hdferr
+  integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id
+  integer(HSIZE_T), dimension(rank(dataset)) :: &
+    myStart, &
+    myShape, &                                                                                      !< shape of the dataset (this process)
+    totalShape                                                                                      !< shape of the dataset (all processes)
+
+!---------------------------------------------------------------------------------------------------
+! determine shape of dataset
+  myShape = int(shape(dataset),HSIZE_T)
+  if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
+
+  if (present(parallel)) then
+    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel)
+  else
+    call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
+                          myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_INTEGER,parallel_default)
+  end if
+
+  if (product(totalShape) /= 0) then
+    select rank(dataset)
+      rank(1)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank(2)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank(3)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank(4)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank(5)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank(6)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+      rank(7)
+        call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
+                       file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
+    end select
+    if(hdferr < 0) error stop 'HDF5 error'
+  end if
+
+  call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
+
+end subroutine HDF5_write_int
+#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief initialize HDF5 handles, determines global shape and start for parallel read
