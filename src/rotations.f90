@@ -658,11 +658,7 @@ function om2ax(om) result(ax)
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
     if (ierr /= 0) error stop 'LAPACK error'
-#if defined(__GFORTRAN__) &&  __GNUC__<9
-    i = maxloc(merge(1,0,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1)
-#else
     i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
-#endif
     if (i == 0) error stop 'om2ax conversion failed'
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
@@ -1426,10 +1422,6 @@ subroutine selfTest()
 
 
   do i = 1, 20
-
-#if defined(__GFORTRAN__) && __GNUC__<9
-    if(i<7) cycle
-#endif
 
     if(i==1) then
       qu = om2qu(math_I3)
