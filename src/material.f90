@@ -95,9 +95,9 @@ subroutine parse()
   integer, dimension(:), allocatable :: &
     counterPhase, &
     counterHomogenization, &
-    temp_ho
-  integer, dimension(:,:), allocatable :: temp_ph
-  real(pReal), dimension(:,:), allocatable :: temp_v
+    ho_of
+  integer, dimension(:,:), allocatable :: ph_of
+  real(pReal), dimension(:,:), allocatable :: v_of
 
   real(pReal) :: v
   integer :: &
@@ -135,9 +135,9 @@ subroutine parse()
   allocate(material_O_0(materials%length))
   allocate(material_F_i_0(materials%length))
 
-  allocate(temp_ho(materials%length))
-  allocate(temp_ph(materials%length,homogenization_maxNconstituents),source=-1)
-  allocate(temp_v(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
+  allocate(ho_of(materials%length))
+  allocate(ph_of(materials%length,homogenization_maxNconstituents),source=-1)
+  allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
 
   ! parse YAML structure
   select type(materials)
@@ -147,10 +147,10 @@ subroutine parse()
       item => materials%first
       do ma = 1, materials%length
         material => item%node
-        temp_ho(ma) = homogenizations%getIndex(material%get_asString('homogenization'))
+        ho_of(ma) = homogenizations%getIndex(material%get_asString('homogenization'))
         constituents => material%get('constituents')
 
-        homogenization => homogenizations%get(temp_ho(ma))
+        homogenization => homogenizations%get(ho_of(ma))
         if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
 
         allocate(material_O_0(ma)%data(constituents%length))
@@ -158,14 +158,14 @@ subroutine parse()
 
         do co = 1, constituents%length
           constituent => constituents%get(co)
-          temp_v(ma,co) = constituent%get_asFloat('v')
-          temp_ph(ma,co) = phases%getIndex(constituent%get_asString('phase'))
+           v_of(ma,co) = constituent%get_asFloat('v')
+          ph_of(ma,co) = phases%getIndex(constituent%get_asString('phase'))
 
           call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
           material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
 
         end do
-        if (dNeq(sum(temp_v(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
+        if (dNeq(sum(v_of(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
 
         item => item%next
       end do
@@ -187,7 +187,7 @@ subroutine parse()
   do el = 1, discretization_Nelems
 
     ma = discretization_materialAt(el)
-    ho = temp_ho(ma)
+    ho = ho_of(ma)
 
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
@@ -196,10 +196,10 @@ subroutine parse()
       material_homogenizationEntry(ce) = counterHomogenization(ho)
     end do
 
-    do co = 1, size(temp_ph(ma,:)>0)
+    do co = 1, size(ph_of(ma,:)>0)
 
-      v = temp_v(ma,co)
-      ph = temp_ph(ma,co)
+      v  =  v_of(ma,co)
+      ph = ph_of(ma,co)
 
       do ip = 1, discretization_nIPs
         ce = (el-1)*discretization_nIPs + ip
