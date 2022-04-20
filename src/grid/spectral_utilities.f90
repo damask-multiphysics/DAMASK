@@ -142,7 +142,7 @@ contains
 !> level chosen.
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
-subroutine spectral_utilities_init
+subroutine spectral_utilities_init()
 
   PetscErrorCode :: err_PETSc
   integer        :: i, j, k, &
@@ -1145,5 +1145,42 @@ subroutine utilities_saveReferenceStiffness
   endif
 
 end subroutine utilities_saveReferenceStiffness
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of forward-backward transform.
+!--------------------------------------------------------------------------------------------------
+subroutine selfTest()
+
+  real(pReal), allocatable, dimension(:,:,:,:,:) :: tensorField_real_
+  real(pReal), allocatable, dimension(:,:,:,:) :: vectorField_real_
+  real(pReal), allocatable, dimension(:,:,:) :: scalarField_real_
+
+
+  call random_number(tensorField_real)
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  tensorField_real_ = tensorField_real
+  call utilities_FFTtensorForward()
+  call utilities_FFTtensorBackward()
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  if (maxval(abs(tensorField_real_ - tensorField_real))>1.0e-15_pReal) error stop 'tensorField'
+
+  call random_number(vectorField_real)
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  vectorField_real_ = vectorField_real
+  call utilities_FFTvectorForward()
+  call utilities_FFTvectorBackward()
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  if (maxval(abs(vectorField_real_ - vectorField_real))>1.0e-15_pReal) error stop 'vectorField'
+
+  call random_number(scalarField_real)
+  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  scalarField_real_ = scalarField_real
+  call utilities_FFTscalarForward()
+  call utilities_FFTscalarBackward()
+  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  if (maxval(abs(scalarField_real_ - scalarField_real))>1.0e-15_pReal) error stop 'scalarField'
+
+end subroutine selfTest
 
 end module spectral_utilities
