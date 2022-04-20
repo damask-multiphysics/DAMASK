@@ -119,7 +119,8 @@ module YAML_types
 
   type, extends(tNode), public :: tList
 
-    class(tItem), pointer  :: first => NULL()
+    class(tItem), pointer :: first => NULL(), &
+                             last => NULL()
 
     contains
     procedure :: asFormattedString => tList_asFormattedString
@@ -144,7 +145,7 @@ module YAML_types
   end type tDict
 
 
-  type :: tItem
+  type, public :: tItem
     character(len=:), allocatable :: key
     class(tNode),     pointer     :: node => NULL()
     class(tItem),     pointer     :: next => NULL()
@@ -1348,15 +1349,13 @@ subroutine tList_append(self,node)
   type(tItem), pointer :: item
 
   if (.not. associated(self%first)) then
-    allocate(self%first)
-    item => self%first
+    allocate(item)
+    self%first => item
+    self%last => item
   else
-    item => self%first
-    do while (associated(item%next))
-      item => item%next
-    enddo
-    allocate(item%next)
-    item => item%next
+    allocate(self%last%next)
+    item => self%last%next
+    self%last => item
   end if
 
   item%node => node
