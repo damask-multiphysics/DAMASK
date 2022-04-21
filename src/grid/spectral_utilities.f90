@@ -350,6 +350,8 @@ subroutine spectral_utilities_init()
     allocate (gamma_hat(3,3,3,3,cells1Red,cells(2),cells3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
   endif
 
+  call selfTest()
+
 end subroutine spectral_utilities_init
 
 
