@@ -26,6 +26,7 @@ from . import util
 h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
+prefix_inc = 'increment_'
 
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -112,7 +113,7 @@ class Result:
             else:
                 self.add_curl = self.add_divergence = self.add_gradient = None
 
-            r = re.compile(r'increment_([0-9]+)')
+            r = re.compile(rf'{prefix_inc}([0-9]+)')
             self.incs  = sorted([int(m.group(1)) for i in f.keys() for m in (r.match(i),) if m])
             self.times = [round(f[i].attrs['t/s'],12) for i in self.increments]
             if len(self.incs) == 0:
@@ -207,9 +208,9 @@ class Result:
                     [datasets]
 
             if   what == 'increments':
-                choice = [c if isinstance(c,str) and c.startswith('increment_') else
+                choice = [c if isinstance(c,str) and c.startswith(prefix_inc) else
                           self.increments[c] if isinstance(c,int) and c<0 else
-                          f'increment_{c}' for c in choice]
+                          f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
                 what = 'increments'
                 if choice == ['*']:
@@ -257,7 +258,7 @@ class Result:
             Increment number of all increments within the given bounds.
 
         """
-        s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith('increment_') else x),
+        s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith(prefix_inc) else x),
                   (self.incs[ 0] if start is None else start,
                    self.incs[-1] if  end  is None else  end))
         return [i for i in self.incs if s <= i <= e]
@@ -541,7 +542,7 @@ class Result:
 
     @property
     def increments(self):
-        return list(map(lambda i:f'increment_{i}',self.incs))
+        return [f'{prefix_inc}{i}' for i in self.incs]
 
 
     @property
