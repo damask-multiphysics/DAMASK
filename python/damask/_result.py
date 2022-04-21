@@ -263,28 +263,26 @@ class Result:
                    self.incs[-1] if  end  is None else  end))
         return [i for i in self.incs if s <= i <= e]
 
-    def times_in_range(self,start,end):
+    def times_in_range(self,start=None,end=None):
         """
         Get all increments within a given time range.
 
         Parameters
         ----------
-        start : float
-            Time of start increment.
-        end : float
-            Time of end increment.
+        start : float, optional
+            Time of start increment. Defaults to first.
+        end : float, optional
+            Time of end increment. Defaults to last.
 
         Returns
         -------
         times : list of float
-            Simulation time of all increments within the given bounds.
+            Time of each increment within the given bounds.
 
         """
-        selected = []
-        for i,time in enumerate(self.times):
-            if start <= time <= end:
-                selected.append(self.times[i])
-        return selected
+        s,e = (self.times[ 0] if start is None else start,
+               self.times[-1] if  end  is None else  end)
+        return [t for t in self.times if s <= t <= e]
 
 
     def view(self,*,
