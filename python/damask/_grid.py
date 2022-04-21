@@ -654,7 +654,7 @@ class Grid:
         origin: 0.0   0.0   0.0 m
         # materials: 2
 
-        Minimal surface of 'Neovius' type. non-default material IDs.
+        Minimal surface of 'Neovius' type with non-default material IDs.
 
         >>> import numpy as np
         >>> import damask
@@ -984,6 +984,7 @@ class Grid:
         return Grid(material = renumbered.reshape(self.cells),
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = self.initial_conditions,
                     comments = self.comments+[util.execution_stamp('Grid','renumber')],
                    )
 
@@ -1015,6 +1016,7 @@ class Grid:
         return Grid(material = material,
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = self.initial_conditions,
                     comments = self.comments+[util.execution_stamp('Grid','substitute')],
                    )
 
@@ -1037,6 +1039,7 @@ class Grid:
         return Grid(material = ma.reshape(self.cells,order='F'),
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = self.initial_conditions,
                     comments = self.comments+[util.execution_stamp('Grid','sort')],
                    )
 
@@ -1104,6 +1107,7 @@ class Grid:
         return Grid(material = material,
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = self.initial_conditions,
                     comments = self.comments+[util.execution_stamp('Grid','clean')],
                    )
 
@@ -1196,6 +1200,7 @@ class Grid:
                                         np.nanmax(self.material)+1 if fill is None else fill),
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = self.initial_conditions,
                     comments = self.comments+[util.execution_stamp('Grid','add_primitive')],
                    )
 
@@ -1258,6 +1263,7 @@ class Grid:
         return Grid(material = np.where(mask, self.material + offset_,self.material),
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = self.initial_conditions,
                     comments = self.comments+[util.execution_stamp('Grid','vicinity_offset')],
                    )
 
