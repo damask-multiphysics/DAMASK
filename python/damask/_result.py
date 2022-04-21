@@ -114,7 +114,8 @@ class Result:
                 self.add_curl = self.add_divergence = self.add_gradient = None
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
-            self.incs  = sorted([int(m.group(1)) for i in f.keys() for m in (r.match(i),) if m])
+            self.increments = [f'{prefix_inc}{i}'
+                               for i in sorted([int(m.group(1)) for i in f.keys() for m in (r.match(i),) if m])]
             self.times = [round(f[i].attrs['t/s'],12) for i in self.increments]
             if len(self.incs) == 0:
                 raise ValueError('incomplete DADF5 file')
@@ -539,8 +540,8 @@ class Result:
 
 
     @property
-    def increments(self):
-        return [f'{prefix_inc}{i}' for i in self.incs]
+    def incs(self):
+        return [int(i.split(prefix_inc)[-1]) for i in self.increments]
 
 
     @property
