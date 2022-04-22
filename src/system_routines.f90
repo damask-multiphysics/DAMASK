@@ -17,59 +17,67 @@ module system_routines
     getUserName, &
     signalterm_C, &
     signalusr1_C, &
-    signalusr2_C
+    signalusr2_C, &
+    f_c_string, &
+    free_C
 
 
   interface
 
-  function setCWD_C(cwd) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+    function setCWD_C(cwd) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
 
-    integer(C_INT) :: setCWD_C
-    character(kind=C_CHAR), dimension(*), intent(in) :: cwd
-  end function setCWD_C
+      integer(C_INT) :: setCWD_C
+      character(kind=C_CHAR), dimension(*), intent(in) :: cwd
+    end function setCWD_C
 
-  subroutine getCWD_C(cwd, stat) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
-    use prec
+    subroutine getCWD_C(cwd, stat) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+      use prec
 
-    character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                               ! NULL-terminated array
-    integer(C_INT),                                intent(out) :: stat
-  end subroutine getCWD_C
+      character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                             ! NULL-terminated array
+      integer(C_INT),                                intent(out) :: stat
+    end subroutine getCWD_C
 
-  subroutine getHostName_C(hostname, stat) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
-    use prec
+    subroutine getHostName_C(hostname, stat) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+      use prec
 
-    character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: hostname                        ! NULL-terminated array
-    integer(C_INT),                                  intent(out) :: stat
-  end subroutine getHostName_C
+      character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: hostname                        ! NULL-terminated array
+      integer(C_INT),                                  intent(out) :: stat
+    end subroutine getHostName_C
 
-  subroutine getUserName_C(username, stat) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
-    use prec
+    subroutine getUserName_C(username, stat) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+      use prec
 
-    character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: username                        ! NULL-terminated array
-    integer(C_INT),                                  intent(out) :: stat
-  end subroutine getUserName_C
+      character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: username                        ! NULL-terminated array
+      integer(C_INT),                                  intent(out) :: stat
+    end subroutine getUserName_C
 
-  subroutine signalterm_C(handler) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
+    subroutine signalterm_C(handler) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
-    type(C_FUNPTR), intent(in), value :: handler
-  end subroutine signalterm_C
+      type(C_FUNPTR), intent(in), value :: handler
+    end subroutine signalterm_C
 
-  subroutine signalusr1_C(handler) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
+    subroutine signalusr1_C(handler) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
-    type(C_FUNPTR), intent(in), value :: handler
-  end subroutine signalusr1_C
+      type(C_FUNPTR), intent(in), value :: handler
+    end subroutine signalusr1_C
 
-  subroutine signalusr2_C(handler) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
+    subroutine signalusr2_C(handler) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
-    type(C_FUNPTR), intent(in), value :: handler
-  end subroutine signalusr2_C
+      type(C_FUNPTR), intent(in), value :: handler
+    end subroutine signalusr2_C
+
+    subroutine free_C(ptr) bind(C,name='free')
+      import c_ptr
+      type(c_ptr), value :: ptr
+    end subroutine free_C
+
 
   end interface
 

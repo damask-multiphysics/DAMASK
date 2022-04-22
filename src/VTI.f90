@@ -81,7 +81,7 @@ subroutine VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
   character(len=:), allocatable, intent(out) :: dataType, headerType, base64_str
   logical, intent(out) :: compressed
 
-  logical :: inFile,inImage,gotCellData
+  logical :: inFile, inImage
   integer(pI64) :: &
     startPos, endPos, &
     s
@@ -152,10 +152,9 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
     fileContent
 
   character(len=:), allocatable :: dataType, headerType
-  logical :: inFile,inImage,gotCellData,compressed
+  logical :: inFile, inImage, compressed
   integer(pI64) :: &
-    startPos, endPos, &
-    s
+    startPos, endPos
 
 
   cells = -1

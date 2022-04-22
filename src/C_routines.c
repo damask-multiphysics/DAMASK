@@ -7,7 +7,11 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "zlib.h"
+#include <zlib.h>
+
+#ifdef FYAML
+#include <libfyaml.h>
+#endif
 
 #define PATHLEN 4096
 #define STRLEN   256
@@ -80,3 +84,26 @@ void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte defl
     }
   }
 }
+
+#ifdef FYAML
+void to_flow_c(char **flow, int* length_flow, const char *mixed){
+  struct fy_document *fyd = NULL;
+  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS |FYECF_STRIP_DOC;
+
+  fyd = fy_document_build_from_string(NULL, mixed, -1);
+  if (!fyd) {
+    *length_flow = -1;
+    return;
+  }
+  int err = fy_document_resolve(fyd);
+  if (err) {
+    *length_flow = -1;
+    return;
+  }
+
+  *flow = fy_emit_document_to_string(fyd,emit_flags);
+  *length_flow = strlen(*flow);
+
+  fy_document_destroy(fyd);
+}
+#endif

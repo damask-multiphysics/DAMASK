@@ -292,7 +292,7 @@ class Grid:
         >>> import damask
         >>> N_grains = 20
         >>> cells = (32,32,32)
-        >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity "all" -format "vtk"')
+        >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
         >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk')
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³

@@ -483,7 +483,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (701)
       msg = 'Incorrect indent/Null value not allowed'
     case (702)
-      msg = 'Invalid use of flow yaml'
+      msg = 'Invalid use of flow YAML'
+    case (703)
+      msg = 'Invalid YAML'
     case (704)
       msg = 'Space expected after a colon for <key>: <value> pair'
     case (705)
