@@ -1165,7 +1165,7 @@ subroutine selfTest()
   call utilities_FFTtensorForward()
   call utilities_FFTtensorBackward()
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(tensorField_real_ - tensorField_real))>1.0e-15_pReal) error stop 'tensorField'
+  if (maxval(abs(tensorField_real_ - tensorField_real))>5.0e-15_pReal) error stop 'tensorField'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
@@ -1173,7 +1173,7 @@ subroutine selfTest()
   call utilities_FFTvectorForward()
   call utilities_FFTvectorBackward()
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(vectorField_real_ - vectorField_real))>1.0e-15_pReal) error stop 'vectorField'
+  if (maxval(abs(vectorField_real_ - vectorField_real))>5.0e-15_pReal) error stop 'vectorField'
 
   call random_number(scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
@@ -1181,7 +1181,7 @@ subroutine selfTest()
   call utilities_FFTscalarForward()
   call utilities_FFTscalarBackward()
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(scalarField_real_ - scalarField_real))>1.0e-15_pReal) error stop 'scalarField'
+  if (maxval(abs(scalarField_real_ - scalarField_real))>5.0e-15_pReal) error stop 'scalarField'
 
 end subroutine selfTest
 
