@@ -8,6 +8,9 @@ module YAML_parse
   use prec
   use IO
   use YAML_types
+#ifdef FYAML
+  use system_routines
+#endif
 
   implicit none
   private
@@ -16,14 +19,34 @@ module YAML_parse
     YAML_parse_init, &
     YAML_parse_str
 
+#ifdef FYAML
+  interface
+
+    subroutine to_flow_C(flow,length_flow,mixed) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR, C_PTR
+
+      type(C_PTR), intent(out) :: flow
+      integer(C_INT), intent(out) :: length_flow
+      character(kind=C_CHAR), dimension(*), intent(in) :: mixed
+    end subroutine to_flow_C
+
+  end interface
+#endif
+
+
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_parse_init
+subroutine YAML_parse_init()
 
-  call selfTest
+  print'(/,1x,a)', '<<<+-  YAML_parse init  -+>>>'
+#ifdef FYAML
+  print'(/,1x,a)', 'libfyaml powered'
+#else
+  call selfTest()
+#endif
 
 end subroutine YAML_parse_init
 
@@ -60,7 +83,7 @@ recursive function parse_flow(YAML_flow) result(node)
     s, &                                                                                            ! start position of dictionary or list
     d                                                                                               ! position of key: value separator (':')
 
-  flow_string = trim(adjustl(YAML_flow(:)))
+  flow_string = trim(adjustl(YAML_flow))
   if (len_trim(flow_string) == 0) then
     node => emptyDict
     return
@@ -145,7 +168,10 @@ logical function quotedString(line)
 
   character(len=*), intent(in) :: line
 
+
   quotedString = .false.
+
+  if (len(line) == 0) return
 
   if (scan(line(:1),IO_QUOTES) == 1) then
     quotedString = .true.
@@ -155,8 +181,37 @@ logical function quotedString(line)
 end function quotedString
 
 
+#ifdef FYAML
 !--------------------------------------------------------------------------------------------------
-! @brief Returns Indentation.
+! @brief Convert all block style YAML parts to flow style.
+!--------------------------------------------------------------------------------------------------
+function to_flow(mixed) result(flow)
+
+  character(len=*), intent(in) :: mixed
+  character(:,C_CHAR), allocatable :: flow
+
+  type(C_PTR) :: str_ptr
+  integer(C_INT) :: strlen
+
+
+  call to_flow_C(str_ptr,strlen,f_c_string(mixed))
+  if (strlen < 1) call IO_error(703,ext_msg='libyfaml')
+  allocate(character(len=strlen,kind=c_char) :: flow)
+
+  block
+    character(len=strlen,kind=c_char), pointer :: s
+    call c_f_pointer(str_ptr,s)
+    flow = s(:len(s)-1)
+  end block
+
+  call free_C(str_ptr)
+
+end function to_flow
+
+
+#else
+!--------------------------------------------------------------------------------------------------
+! @brief Determine Indentation.
 ! @details It determines the indentation level for a given block/line.
 ! In cases for nested lists, an offset is added to determine the indent of the item block (skip
 ! leading dashes)
@@ -280,7 +335,7 @@ subroutine skip_empty_lines(blck,s_blck)
   enddo
 
 end subroutine skip_empty_lines
- 
+
 
 !--------------------------------------------------------------------------------------------------
 ! @brief skip file header
@@ -303,7 +358,7 @@ subroutine skip_file_header(blck,s_blck)
       call IO_error(708,ext_msg = line)
     end if
   end if
- 
+
 end subroutine skip_file_header
 
 
@@ -371,7 +426,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
 
   character(len=:), allocatable :: line
   integer :: indent,indent_next
- 
+
   indent = indentDepth(blck(s_blck:),offset)
   line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   inline = line(indent-offset+3:)
@@ -385,7 +440,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
     indent_next = indentDepth(blck(s_blck:))
   enddo
 
-  if(scan(inline,",") > 0) inline = '"'//inline//'"' 
+  if(scan(inline,",") > 0) inline = '"'//inline//'"'
 
 end subroutine list_item_inline
 
@@ -737,7 +792,7 @@ end subroutine
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief convert all block style YAML parts to flow style
+! @brief Convert all block style YAML parts to flow style.
 !--------------------------------------------------------------------------------------------------
 function to_flow(blck)
 
@@ -749,7 +804,7 @@ function to_flow(blck)
                                    s_flow, &                                                        !< start position in flow
                                    offset, &                                                        !< counts leading '- ' in nested lists
                                    end_line
- 
+
   allocate(character(len=len(blck)*2)::to_flow)
   s_flow = 1
   s_blck = 1
@@ -876,7 +931,7 @@ subroutine selfTest
 
   character(len=*), parameter :: flow = &
     '{a: ["b", {c: "d"}, "e"]}'
-  
+
   if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
   end block multi_line_flow1
 
@@ -889,7 +944,7 @@ subroutine selfTest
     "[c,"//IO_EOL//&
     "d"//IO_EOL//&
     "e, f]}"//IO_EOL
- 
+
   character(len=*), parameter :: flow = &
     "[{a: {b: [c, d e, f]}}]"
 
@@ -921,5 +976,6 @@ subroutine selfTest
   end block basic_mixed
 
 end subroutine selfTest
+#endif
 
 end module YAML_parse

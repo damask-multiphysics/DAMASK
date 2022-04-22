@@ -10,20 +10,21 @@ import signal
 import fractions
 from collections import abc
 from functools import reduce, partial
-from typing import Callable, Union, Iterable, Sequence, Dict, List, Tuple, Literal, Any, Collection
+from typing import Callable, Union, Iterable, Sequence, Dict, List, Tuple, Literal, Any, Collection, TextIO
 from pathlib import Path
 
 import numpy as np
 import h5py
 
 from . import version
-from ._typehints import FloatSequence, NumpyRngSeed, IntCollection
+from ._typehints import FloatSequence, NumpyRngSeed, IntCollection, FileHandle
 
 # limit visibility
 __all__=[
          'srepr',
          'emph', 'deemph', 'warn', 'strikeout',
          'run',
+         'open_text',
          'natural_sort',
          'show_progress',
          'scale_to_coprime',
@@ -206,7 +207,25 @@ def run(cmd: str,
     return stdout, stderr
 
 
-execute = run
+def open_text(fname: FileHandle,
+              mode: Literal['r','w'] = 'r') -> TextIO:
+    """
+    Open a text file.
+
+    Parameters
+    ----------
+    fname : file, str, or pathlib.Path
+        Name or handle of file.
+    mode: {'r','w'}, optional
+        Access mode: 'r'ead or 'w'rite, defaults to 'r'.
+
+    Returns
+    -------
+    f : file handle
+
+    """
+    return fname if not isinstance(fname, (str,Path)) else \
+           open(Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
 
 
 def natural_sort(key: str) -> List[Union[int, str]]:
@@ -431,7 +450,7 @@ def hybrid_IA(dist: np.ndarray,
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
     while (not np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
-        repeats = np.rint(scale*dist).astype(int)
+        repeats = np.rint(scale*dist).astype(np.int64)
         N_inv_samples = np.sum(repeats)
         scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
                                    if N_inv_samples < N_opt_samples else \
