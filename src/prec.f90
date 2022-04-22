@@ -48,7 +48,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Report precision and do self test.
 !--------------------------------------------------------------------------------------------------
-subroutine prec_init
+subroutine prec_init()
 
   print'(/,1x,a)', '<<<+-  prec init  -+>>>'
 
@@ -60,7 +60,7 @@ subroutine prec_init
   print'(  a,e10.3)', '   epsilon value:      ',PREAL_EPSILON
   print'(  a,i3)',    '   decimal precision:  ',precision(0.0_pReal)
 
-  call selfTest
+  call selfTest()
 
 end subroutine prec_init
 
@@ -245,7 +245,7 @@ end function prec_bytesToC_INT64_T
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some prec functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
   real(pReal),   dimension(1) :: f
