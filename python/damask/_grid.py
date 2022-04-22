@@ -3,6 +3,7 @@ import copy
 import warnings
 import multiprocessing as mp
 from functools import partial
+import collections
 import typing
 from typing import Union, Optional, TextIO, List, Sequence, Dict
 from pathlib import Path
@@ -149,11 +150,15 @@ class Grid:
     @property
     def initial_conditions(self) -> Dict[str,np.ndarray]:
         """Fields of initial conditions."""
+        self._ic = dict(zip(self._ic.keys(),
+                        [v if isinstance(v, collections.Sequence) else
+                         np.broadcast_to(v,self.cells) for v in self._ic.values()]))
         return self._ic
 
     @initial_conditions.setter
     def initial_conditions(self,
                            ic: Dict[str,np.ndarray]):
+
         if not isinstance(ic,dict):
             raise TypeError('initial conditions is not a dictionary')
 
