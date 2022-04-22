@@ -114,10 +114,9 @@ class Result:
                 self.add_curl = self.add_divergence = self.add_gradient = None
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
-            self.increments = [f'{prefix_inc}{i}'
-                               for i in sorted([int(m.group(1)) for i in f.keys() for m in (r.match(i),) if m])]
+            self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
             self.times = [round(f[i].attrs['t/s'],12) for i in self.increments]
-            if len(self.incs) == 0:
+            if len(self.increments) == 0:
                 raise ValueError('incomplete DADF5 file')
 
             self.N_materialpoints, self.N_constituents = np.shape(f['cell_to/phase'])
