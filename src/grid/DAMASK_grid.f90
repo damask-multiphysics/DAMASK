@@ -134,8 +134,8 @@ program DAMASK_grid
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
 
   if (worldrank == 0) then
-    fileContent = IO_read(interface_loadFile)
-    fname = interface_loadFile
+    fileContent = IO_read(CLI_loadFile)
+    fname = CLI_loadFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call results_openJobFile(parallel=.false.)
     call results_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
@@ -315,7 +315,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
   if (worldrank == 0) then
-    writeHeader: if (interface_restartInc < 1) then
+    writeHeader: if (CLI_restartInc < 1) then
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
     else writeHeader
@@ -324,7 +324,7 @@ program DAMASK_grid
     endif writeHeader
   endif
 
-  writeUndeformed: if (interface_restartInc < 1) then
+  writeUndeformed: if (CLI_restartInc < 1) then
     print'(/,1x,a)', '... writing initial configuration to file .................................'
     flush(IO_STDOUT)
     call CPFEM_results(0,0.0_pReal)
@@ -348,7 +348,7 @@ program DAMASK_grid
       endif
       Delta_t = Delta_t * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
 
-      skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
+      skipping: if (totalIncsCounter <= CLI_restartInc) then                                  ! not yet at restart inc?
         t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
         guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
       else skipping

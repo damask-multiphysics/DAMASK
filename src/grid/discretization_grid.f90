@@ -76,14 +76,14 @@ subroutine discretization_grid_init(restart)
 
 
   if (worldrank == 0) then
-    fileContent = IO_read(interface_geomFile)
+    fileContent = IO_read(CLI_geomFile)
     call VTI_readCellsSizeOrigin(cells,geomSize,origin,fileContent)
     materialAt_global = VTI_readDataset_int(fileContent,'material') + 1
     if (any(materialAt_global < 1)) &
       call IO_error(180,ext_msg='material ID < 1')
     if (size(materialAt_global) /= product(cells)) &
       call IO_error(180,ext_msg='mismatch in # of material IDs and cells')
-    fname = interface_geomFile
+    fname = CLI_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call results_openJobFile(parallel=.false.)
     call results_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
@@ -329,7 +329,7 @@ function discretization_grid_getInitialCondition(label) result(ic)
     displs, sendcounts
 
   if (worldrank == 0) then
-    ic_global = VTI_readDataset_real(IO_read(interface_geomFile),label)
+    ic_global = VTI_readDataset_real(IO_read(CLI_geomFile),label)
   else
     allocate(ic_global(0))                                                                          ! needed for IntelMPI
   endif

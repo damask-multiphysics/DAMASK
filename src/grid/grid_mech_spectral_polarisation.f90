@@ -223,8 +223,8 @@ subroutine grid_mechanical_spectral_polarisation_init
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
-  restartRead: if (interface_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
+  restartRead: if (CLI_restartInc > 0) then
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -246,7 +246,7 @@ subroutine grid_mechanical_spectral_polarisation_init
     call HDF5_read(F_tau,groupHandle,'F_tau')
     call HDF5_read(F_tau_lastInc,groupHandle,'F_tau_lastInc')
 
-  elseif (interface_restartInc == 0) then restartRead
+  elseif (CLI_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
     F = reshape(F_lastInc,[9,cells(1),cells(2),cells3])
     F_tau = 2.0_pReal*F
@@ -261,8 +261,8 @@ subroutine grid_mechanical_spectral_polarisation_init
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)                                  ! deassociate pointer
   CHKERRQ(err_PETSc)
 
-  restartRead2: if (interface_restartInc > 0) then
-    print'(1x,a,i0,a)', 'reading more restart data of increment ', interface_restartInc, ' from file'
+  restartRead2: if (CLI_restartInc > 0) then
+    print'(1x,a,i0,a)', 'reading more restart data of increment ', CLI_restartInc, ' from file'
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'

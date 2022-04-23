@@ -140,8 +140,8 @@ subroutine grid_thermal_spectral_init()
   CHKERRQ(err_PETSc)
 
 
-  restartRead: if (interface_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', interface_restartInc, ' from file'
+  restartRead: if (CLI_restartInc > 0) then
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')

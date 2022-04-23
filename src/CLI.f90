@@ -1,13 +1,9 @@
 !--------------------------------------------------------------------------------------------------
-!> @author   Jaeyong Jung, Max-Planck-Institut für Eisenforschung GmbH
-!> @author   Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
-!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief    Interfacing between the PETSc-based solvers and the material subroutines provided
-!!           by DAMASK
-!> @details  Interfacing between the PETSc-based solvers and the material subroutines provided
-!>           by DAMASK. Interpreting the command line arguments to get load case, geometry file,
-!>           and working directory.
+!> @author Jaeyong Jung, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
@@ -25,14 +21,14 @@ module DAMASK_interface
   implicit none
   private
   integer,                       public, protected :: &
-    interface_restartInc = 0                                                                        !< Increment at which calculation starts
+    CLI_restartInc = 0                                                                              !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
-    interface_geomFile, &                                                                           !< parameter given for geometry file
-    interface_loadFile                                                                              !< parameter given for load case file
+    CLI_geomFile, &                                                                                 !< parameter given for geometry file
+    CLI_loadFile                                                                                    !< parameter given for load case file
 
   public :: &
     getSolverJobName, &
-    DAMASK_interface_init
+    CLI_init
 
 contains
 
@@ -40,7 +36,7 @@ contains
 !> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
-subroutine DAMASK_interface_init
+subroutine CLI_init
 #include <petsc/finclude/petscsys.h>
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
@@ -156,8 +152,8 @@ subroutine DAMASK_interface_init
         call get_command_argument(i+1,workingDirArg,status=err)
       case ('-r', '--rs', '--restart')
         call get_command_argument(i+1,arg,status=err)
-        read(arg,*,iostat=stat) interface_restartInc
-        if (interface_restartInc < 0 .or. stat /=0) then
+        read(arg,*,iostat=stat) CLI_restartInc
+        if (CLI_restartInc < 0 .or. stat /=0) then
           print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         endif
@@ -171,8 +167,8 @@ subroutine DAMASK_interface_init
   endif
 
   if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
-  interface_geomFile = getGeometryFile(geometryArg)
-  interface_loadFile = getLoadCaseFile(loadCaseArg)
+  CLI_geomFile = getGeometryFile(geometryArg)
+  CLI_loadFile = getLoadCaseFile(loadCaseArg)
 
   call get_command(commandLine)
   print'(/,a)',      ' Host name: '//getHostName()
@@ -184,13 +180,13 @@ subroutine DAMASK_interface_init
   print'(a)',        ' Geometry argument:      '//trim(geometryArg)
   print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
   print'(/,a)',      ' Working directory:      '//getCWD()
-  print'(a)',        ' Geometry file:          '//interface_geomFile
-  print'(a)',        ' Load case file:         '//interface_loadFile
+  print'(a)',        ' Geometry file:          '//CLI_geomFile
+  print'(a)',        ' Load case file:         '//CLI_loadFile
   print'(a)',        ' Solver job name:        '//getSolverJobName()
-  if (interface_restartInc > 0) &
-    print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
+  if (CLI_restartInc > 0) &
+    print'(a,i6.6)', ' Restart from increment: ', CLI_restartInc
 
-end subroutine DAMASK_interface_init
+end subroutine CLI_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -229,15 +225,15 @@ function getSolverJobName()
   character(len=:), allocatable :: getSolverJobName
   integer :: posExt,posSep
 
-  posExt = scan(interface_geomFile,'.',back=.true.)
-  posSep = scan(interface_geomFile,'/',back=.true.)
+  posExt = scan(CLI_geomFile,'.',back=.true.)
+  posSep = scan(CLI_geomFile,'/',back=.true.)
 
-  getSolverJobName = interface_geomFile(posSep+1:posExt-1)
+  getSolverJobName = CLI_geomFile(posSep+1:posExt-1)
 
-  posExt = scan(interface_loadFile,'.',back=.true.)
-  posSep = scan(interface_loadFile,'/',back=.true.)
+  posExt = scan(CLI_loadFile,'.',back=.true.)
+  posSep = scan(CLI_loadFile,'/',back=.true.)
 
-  getSolverJobName = getSolverJobName//'_'//interface_loadFile(posSep+1:posExt-1)
+  getSolverJobName = getSolverJobName//'_'//CLI_loadFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
