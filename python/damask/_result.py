@@ -26,6 +26,7 @@ from . import util
 h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
+prefix_inc = 'increment_'
 
 def _read(dataset):
     """Read a dataset and its metadata into a numpy.ndarray."""
@@ -112,9 +113,9 @@ class Result:
             else:
                 self.add_curl = self.add_divergence = self.add_gradient = None
 
-            r=re.compile('increment_[0-9]+')
+            r = re.compile(rf'{prefix_inc}([0-9]+)')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self.times      = [round(f[i].attrs['t/s'],12) for i in self.increments]
+            self.times = [round(f[i].attrs['t/s'],12) for i in self.increments]
             if len(self.increments) == 0:
                 raise ValueError('incomplete DADF5 file')
 
@@ -207,9 +208,9 @@ class Result:
                     [datasets]
 
             if   what == 'increments':
-                choice = [c if isinstance(c,str) and c.startswith('increment_') else
+                choice = [c if isinstance(c,str) and c.startswith(prefix_inc) else
                           self.increments[c] if isinstance(c,int) and c<0 else
-                          f'increment_{c}' for c in choice]
+                          f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
                 what = 'increments'
                 if choice == ['*']:
@@ -240,16 +241,16 @@ class Result:
         return dup
 
 
-    def increments_in_range(self,start,end):
+    def increments_in_range(self,start=None,end=None):
         """
         Get all increments within a given range.
 
         Parameters
         ----------
-        start : int or str
-            Start increment.
-        end : int or str
-            End increment.
+        start : int or str, optional
+            Start increment. Defaults to first.
+        end : int or str, optional
+            End increment. Defaults to last.
 
         Returns
         -------
@@ -257,35 +258,31 @@ class Result:
             Increment number of all increments within the given bounds.
 
         """
-        selected = []
-        for i,inc in enumerate([int(i[10:]) for i in self.increments]):
-            s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
-            if s <= inc <= e:
-                selected.append(self.increments[i])
-        return selected
+        s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith(prefix_inc) else x),
+                  (self.incs[ 0] if start is None else start,
+                   self.incs[-1] if  end  is None else  end))
+        return [i for i in self.incs if s <= i <= e]
 
-    def times_in_range(self,start,end):
+    def times_in_range(self,start=None,end=None):
         """
         Get all increments within a given time range.
 
         Parameters
         ----------
-        start : float
-            Time of start increment.
-        end : float
-            Time of end increment.
+        start : float, optional
+            Time of start increment. Defaults to first.
+        end : float, optional
+            Time of end increment. Defaults to last.
 
         Returns
         -------
         times : list of float
-            Simulation time of all increments within the given bounds.
+            Time of each increment within the given bounds.
 
         """
-        selected = []
-        for i,time in enumerate(self.times):
-            if start <= time <= end:
-                selected.append(self.times[i])
-        return selected
+        s,e = (self.times[ 0] if start is None else start,
+               self.times[-1] if  end  is None else  end)
+        return [t for t in self.times if s <= t <= e]
 
 
     def view(self,*,
@@ -539,6 +536,11 @@ class Result:
     def enable_user_function(self,func):
         globals()[func.__name__]=func
         print(f'Function {func.__name__} enabled in add_calculation.')
+
+
+    @property
+    def incs(self):
+        return [int(i.split(prefix_inc)[-1]) for i in self.increments]
 
 
     @property
@@ -1602,7 +1604,7 @@ class Result:
 
         v.comments = util.execution_stamp('Result','export_VTK')
 
-        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][10:])))))+1
+        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
         constituents_ = constituents if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])
