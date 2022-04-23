@@ -24,10 +24,6 @@ module DAMASK_interface
 
   implicit none
   private
-  logical,          volatile,    public, protected :: &
-    interface_SIGTERM, &                                                                            !< termination signal
-    interface_SIGUSR1, &                                                                            !< 1. user-defined signal
-    interface_SIGUSR2                                                                               !< 2. user-defined signal
   integer,                       public, protected :: &
     interface_restartInc = 0                                                                        !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
@@ -36,10 +32,7 @@ module DAMASK_interface
 
   public :: &
     getSolverJobName, &
-    DAMASK_interface_init, &
-    interface_setSIGTERM, &
-    interface_setSIGUSR1, &
-    interface_setSIGUSR2
+    DAMASK_interface_init
 
 contains
 
@@ -196,13 +189,6 @@ subroutine DAMASK_interface_init
   print'(a)',        ' Solver job name:        '//getSolverJobName()
   if (interface_restartInc > 0) &
     print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
-
-  call signalterm_c(c_funloc(catchSIGTERM))
-  call signalusr1_c(c_funloc(catchSIGUSR1))
-  call signalusr2_c(c_funloc(catchSIGUSR2))
-  call interface_setSIGTERM(.false.)
-  call interface_setSIGUSR1(.false.)
-  call interface_setSIGUSR2(.false.)
 
 end subroutine DAMASK_interface_init
 
@@ -376,92 +362,4 @@ function makeRelativePath(a,b)
 
 end function makeRelativePath
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGTERM to .true.
-!> @details This function can be registered to catch signals send to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGTERM(signal) bind(C)
-
-  integer(C_INT), value :: signal
-
-
-  print'(a,i0)', ' received signal ',signal
-  call interface_setSIGTERM(.true.)
-
-end subroutine catchSIGTERM
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR1 to .true.
-!> @details This function can be registered to catch signals send to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR1(signal) bind(C)
-
-  integer(C_INT), value :: signal
-
-
-  print'(a,i0)', ' received signal ',signal
-  call interface_setSIGUSR1(.true.)
-
-end subroutine catchSIGUSR1
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR2 to .true.
-!> @details This function can be registered to catch signals send to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR2(signal) bind(C)
-
-  integer(C_INT), value :: signal
-
-
-  print'(a,i0,a)', ' received signal ',signal
-  call interface_setSIGUSR2(.true.)
-
-end subroutine catchSIGUSR2
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGTERM.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGTERM(state)
-
-  logical, intent(in) :: state
-
-
-  interface_SIGTERM = state
-  print*, 'set SIGTERM to',state
-
-end subroutine interface_setSIGTERM
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGUSR1(state)
-
-  logical, intent(in) :: state
-
-
-  interface_SIGUSR1 = state
-  print*, 'set SIGUSR1 to',state
-
-end subroutine interface_setSIGUSR1
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR2.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGUSR2(state)
-
-  logical, intent(in) :: state
-
-
-  interface_SIGUSR2 = state
-  print*, 'set SIGUSR2 to',state
-
-end subroutine interface_setSIGUSR2
-
-
-end module
+end module DAMASK_interface

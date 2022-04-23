@@ -5,6 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM2
   use parallelization
+  use signals
   use DAMASK_interface
   use prec
   use IO
@@ -21,7 +22,6 @@ module CPFEM2
   use material
   use phase
   use homogenization
-
   use discretization
 #if   defined(MESH)
   use FEM_quadrature
@@ -44,6 +44,7 @@ subroutine CPFEM_initAll
 
   call parallelization_init
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
+  call signals_init
   call prec_init
   call IO_init
 #if   defined(MESH)

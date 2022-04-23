@@ -15,6 +15,7 @@ program DAMASK_grid
 
   use prec
   use parallelization
+  use signals
   use DAMASK_interface
   use IO
   use config
@@ -448,15 +449,15 @@ program DAMASK_grid
           print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
         endif; flush(IO_STDOUT)
 
-        call MPI_Allreduce(interface_SIGUSR1,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        call MPI_Allreduce(signals_SIGUSR1,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
           print'(/,1x,a)', '... writing results to file ...............................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,t)
         endif
-        if (signal) call interface_setSIGUSR1(.false.)
-        call MPI_Allreduce(interface_SIGUSR2,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (signal) call signals_setSIGUSR1(.false.)
+        call MPI_Allreduce(signals_SIGUSR2,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
           do field = 1, nActiveFields
@@ -469,8 +470,8 @@ program DAMASK_grid
           end do
           call CPFEM_restartWrite
         endif
-        if (signal) call interface_setSIGUSR2(.false.)
-        call MPI_Allreduce(interface_SIGTERM,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (signal) call signals_setSIGUSR2(.false.)
+        call MPI_Allreduce(signals_SIGTERM,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
         if (signal) exit loadCaseLooping
       endif skipping
