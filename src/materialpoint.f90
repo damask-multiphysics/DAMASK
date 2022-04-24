@@ -131,7 +131,7 @@ end subroutine materialpoint_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief perform initialization at first call, update variables and call the actual material model
+!> @brief Update variables and call the material model.
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
 
