@@ -15,7 +15,7 @@ module discretization_grid
   use parallelization
   use system_routines
   use VTI
-  use DAMASK_interface
+  use CLI
   use IO
   use config
   use results

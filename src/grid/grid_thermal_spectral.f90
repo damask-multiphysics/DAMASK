@@ -16,7 +16,7 @@ module grid_thermal_spectral
   use prec
   use parallelization
   use IO
-  use DAMASK_interface
+  use CLI
   use HDF5_utilities
   use HDF5
   use spectral_utilities

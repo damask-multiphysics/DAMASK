@@ -15,7 +15,7 @@ module grid_mechanical_spectral_polarisation
 
   use prec
   use parallelization
-  use DAMASK_interface
+  use CLI
   use IO
   use HDF5
   use HDF5_utilities

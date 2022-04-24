@@ -6,7 +6,7 @@
 module CPFEM2
   use parallelization
   use signals
-  use DAMASK_interface
+  use CLI
   use prec
   use IO
   use YAML_types

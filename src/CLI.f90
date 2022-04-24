@@ -9,7 +9,7 @@
 #define PETSC_MINOR_MIN 12
 #define PETSC_MINOR_MAX 17
 
-module DAMASK_interface
+module CLI
   use, intrinsic :: ISO_fortran_env
 
   use PETScSys
@@ -60,7 +60,7 @@ subroutine CLI_init
     quit
 
 
-  print'(/,1x,a)', '<<<+-  DAMASK_interface init  -+>>>'
+  print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
@@ -358,4 +358,4 @@ function makeRelativePath(a,b)
 
 end function makeRelativePath
 
-end module DAMASK_interface
+end module CLI

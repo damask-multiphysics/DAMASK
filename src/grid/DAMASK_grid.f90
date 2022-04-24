@@ -16,7 +16,7 @@ program DAMASK_grid
   use prec
   use parallelization
   use signals
-  use DAMASK_interface
+  use CLI
   use IO
   use config
   use math
