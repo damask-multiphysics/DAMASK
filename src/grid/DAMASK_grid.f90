@@ -19,7 +19,7 @@ program DAMASK_grid
   use IO
   use config
   use math
-  use CPFEM2
+  use materialpoint2
   use material
   use spectral_utilities
   use grid_mechanical_spectral_basic
@@ -116,7 +116,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
 
-  call CPFEM_initAll
+  call materialpoint_initAll()
   print'(/,1x,a)', '<<<+-  DAMASK_grid init  -+>>>'; flush(IO_STDOUT)
 
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
@@ -326,7 +326,7 @@ program DAMASK_grid
   writeUndeformed: if (interface_restartInc < 1) then
     print'(/,1x,a)', '... writing initial configuration to file .................................'
     flush(IO_STDOUT)
-    call CPFEM_results(0,0.0_pReal)
+    call materialpoint_results(0,0.0_pReal)
   endif writeUndeformed
 
   loadCaseLooping: do l = 1, size(loadCases)
@@ -386,7 +386,7 @@ program DAMASK_grid
               case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
             end select
           enddo
-          if (.not. cutBack) call CPFEM_forward
+          if (.not. cutBack) call materialpoint_forward
 
 !--------------------------------------------------------------------------------------------------
 ! solve fields
@@ -453,7 +453,7 @@ program DAMASK_grid
         if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
           print'(/,1x,a)', '... writing results to file ...............................................'
           flush(IO_STDOUT)
-          call CPFEM_results(totalIncsCounter,t)
+          call materialpoint_results(totalIncsCounter,t)
         endif
         if (signal) call interface_setSIGUSR1(.false.)
         call MPI_Allreduce(interface_SIGUSR2,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
@@ -467,7 +467,7 @@ program DAMASK_grid
                 call grid_thermal_spectral_restartWrite
             end select
           end do
-          call CPFEM_restartWrite
+          call materialpoint_restartWrite
         endif
         if (signal) call interface_setSIGUSR2(.false.)
         call MPI_Allreduce(interface_SIGTERM,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)

@@ -51,4 +51,4 @@
 #include "homogenization_thermal_isotemperature.f90"
 #include "homogenization_damage.f90"
 #include "homogenization_damage_pass.f90"
-#include "CPFEM.f90"
+#include "materialpoint.f90"

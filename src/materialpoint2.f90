@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief needs a good name and description
 !--------------------------------------------------------------------------------------------------
-module CPFEM2
+module materialpoint2
   use parallelization
   use DAMASK_interface
   use prec
@@ -40,7 +40,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize all modules.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_initAll
+subroutine materialpoint_initAll
 
   call parallelization_init
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
@@ -68,21 +68,21 @@ subroutine CPFEM_initAll
   call material_init(restart=interface_restartInc>0)
   call phase_init
   call homogenization_init
-  call CPFEM_init
+  call materialpoint_init
   call config_deallocate
 
-end subroutine CPFEM_initAll
+end subroutine materialpoint_initAll
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read restart information if needed.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_init
+subroutine materialpoint_init
 
   integer(HID_T) :: fileHandle
 
 
-  print'(/,1x,a)', '<<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
 
   if (interface_restartInc > 0) then
@@ -96,13 +96,13 @@ subroutine CPFEM_init
     call HDF5_closeFile(fileHandle)
   endif
 
-end subroutine CPFEM_init
+end subroutine materialpoint_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write restart information.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_restartWrite
+subroutine materialpoint_restartWrite
 
   integer(HID_T) :: fileHandle
 
@@ -116,24 +116,24 @@ subroutine CPFEM_restartWrite
 
   call HDF5_closeFile(fileHandle)
 
-end subroutine CPFEM_restartWrite
+end subroutine materialpoint_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data for new time increment.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_forward
+subroutine materialpoint_forward
 
   call homogenization_forward
   call phase_forward
 
-end subroutine CPFEM_forward
+end subroutine materialpoint_forward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_results(inc,time)
+subroutine materialpoint_results(inc,time)
 
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
@@ -146,6 +146,6 @@ subroutine CPFEM_results(inc,time)
   call results_finalizeIncrement
   call results_closeJobFile
 
-end subroutine CPFEM_results
+end subroutine materialpoint_results
 
-end module CPFEM2
+end module materialpoint2

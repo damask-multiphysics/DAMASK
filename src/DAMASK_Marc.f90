@@ -160,7 +160,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use YAML_types
   use discretization_marc
   use homogenization
-  use CPFEM
+  use materialpoint
 
   implicit none
   include "omp_lib.h"                                                                               ! the openMP function library
@@ -232,7 +232,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   logical, save :: &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
-    CPFEM_init_done   = .false., &                                                                  !< remember whether init has been done already
+    materialpoint_init_done   = .false., &                                                          !< remember whether init has been done already
     debug_basic       = .true.
   class(tNode), pointer :: &
     debug_Marc                                                                                      ! pointer to Marc debug options
@@ -255,9 +255,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1_pI32)                                                                  ! no openMP
 
-  if (.not. CPFEM_init_done) then
-    CPFEM_init_done = .true.
-    call CPFEM_initAll
+  if (.not. materialpoint_init_done) then
+    materialpoint_init_done = .true.
+    call materialpoint_initAll
     debug_Marc => config_debug%get('Marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
   endif
@@ -265,9 +265,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
   if (lovl == 4 ) then                                                                              ! jacobian requested by marc
     if (timinc < theDelta .and. theInc == inc .and. lastLovl /= lovl) &                             ! first after cutback
-      computationMode = CPFEM_RESTOREJACOBIAN
+      computationMode = materialpoint_RESTOREJACOBIAN
   elseif (lovl == 6) then                                                                           ! stress requested by marc
-    computationMode = CPFEM_CALCRESULTS
+    computationMode = materialpoint_CALCRESULTS
     if (cptim > theTime .or. inc /= theInc) then                                                    ! reached "convergence"
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
@@ -300,11 +300,11 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
       !call mesh_build_ipCoordinates()                                                              ! update ip coordinates
     endif
     if (outdatedByNewInc) then
-      computationMode = ior(computationMode,CPFEM_AGERESULTS)
+      computationMode = ior(computationMode,materialpoint_AGERESULTS)
       outdatedByNewInc = .false.
     endif
     if (lastIncConverged) then
-      computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)
+      computationMode = ior(computationMode,materialpoint_BACKUPJACOBIAN)
       lastIncConverged = .false.
     endif
 
@@ -315,7 +315,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   endif
   lastLovl = lovl
 
-  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
+  call materialpoint_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
 
   d = ddsdde(1:ngens,1:ngens)
   s = stress(1:ndi+nshear)
@@ -359,7 +359,7 @@ subroutine flux(f,ts,n,time)
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
-  use CPFEM
+  use materialpoint
   use discretization_marc
 
   implicit none
@@ -380,7 +380,7 @@ subroutine uedinc(inc,incsub)
     enddo
 
     call discretization_marc_UpdateNodeAndIpCoords(d_n)
-    call CPFEM_results(inc,cptim)
+    call materialpoint_results(inc,cptim)
 
     inc_written = inc
   endif
