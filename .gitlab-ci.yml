@@ -164,8 +164,8 @@ setup_Marc:
     - cd $(mktemp -d)
     - cp ${CI_PROJECT_DIR}/examples/Marc/* .
     - python3 -c "import damask;damask.solver.Marc().submit_job('r-value','texture',True,'h')"
-    - mkdir ${TESTROOT}/src
-    - mv ${CI_PROJECT_DIR}/src/DAMASK_Marc.marc ${TESTROOT}/src
+    - mkdir -p ${TESTROOT}/src/Marc
+    - mv ${CI_PROJECT_DIR}/src/Marc/DAMASK_Marc.marc ${TESTROOT}/src/Marc
 
 
 ###################################################################################################
