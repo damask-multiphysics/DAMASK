@@ -234,7 +234,7 @@ update_revision:
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git pull
     - VERSION=$(git describe ${CI_COMMIT_SHA})
-    - export VERSION="${VERSION:1:-1}"
+    - export VERSION="${VERSION:1}"
     - echo ${VERSION} > python/damask/VERSION
     - >
        git diff-index --quiet HEAD ||
