@@ -1,19 +1,15 @@
 !--------------------------------------------------------------------------------------------------
-!> @author   Jaeyong Jung, Max-Planck-Institut für Eisenforschung GmbH
-!> @author   Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
-!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief    Interfacing between the PETSc-based solvers and the material subroutines provided
-!!           by DAMASK
-!> @details  Interfacing between the PETSc-based solvers and the material subroutines provided
-!>           by DAMASK. Interpreting the command line arguments to get load case, geometry file,
-!>           and working directory.
+!> @author Jaeyong Jung, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
 #define PETSC_MINOR_MAX 17
 
-module DAMASK_interface
+module CLI
   use, intrinsic :: ISO_fortran_env
 
   use PETScSys
@@ -24,22 +20,15 @@ module DAMASK_interface
 
   implicit none
   private
-  logical,          volatile,    public, protected :: &
-    interface_SIGTERM, &                                                                            !< termination signal
-    interface_SIGUSR1, &                                                                            !< 1. user-defined signal
-    interface_SIGUSR2                                                                               !< 2. user-defined signal
   integer,                       public, protected :: &
-    interface_restartInc = 0                                                                        !< Increment at which calculation starts
+    CLI_restartInc = 0                                                                              !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
-    interface_geomFile, &                                                                           !< parameter given for geometry file
-    interface_loadFile                                                                              !< parameter given for load case file
+    CLI_geomFile, &                                                                                 !< parameter given for geometry file
+    CLI_loadFile                                                                                    !< parameter given for load case file
 
   public :: &
     getSolverJobName, &
-    DAMASK_interface_init, &
-    interface_setSIGTERM, &
-    interface_setSIGUSR1, &
-    interface_setSIGUSR2
+    CLI_init
 
 contains
 
@@ -47,7 +36,7 @@ contains
 !> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
-subroutine DAMASK_interface_init
+subroutine CLI_init
 #include <petsc/finclude/petscsys.h>
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
@@ -71,7 +60,7 @@ subroutine DAMASK_interface_init
     quit
 
 
-  print'(/,1x,a)', '<<<+-  DAMASK_interface init  -+>>>'
+  print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
@@ -163,8 +152,8 @@ subroutine DAMASK_interface_init
         call get_command_argument(i+1,workingDirArg,status=err)
       case ('-r', '--rs', '--restart')
         call get_command_argument(i+1,arg,status=err)
-        read(arg,*,iostat=stat) interface_restartInc
-        if (interface_restartInc < 0 .or. stat /=0) then
+        read(arg,*,iostat=stat) CLI_restartInc
+        if (CLI_restartInc < 0 .or. stat /=0) then
           print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         endif
@@ -178,8 +167,8 @@ subroutine DAMASK_interface_init
   endif
 
   if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
-  interface_geomFile = getGeometryFile(geometryArg)
-  interface_loadFile = getLoadCaseFile(loadCaseArg)
+  CLI_geomFile = getGeometryFile(geometryArg)
+  CLI_loadFile = getLoadCaseFile(loadCaseArg)
 
   call get_command(commandLine)
   print'(/,a)',      ' Host name: '//getHostName()
@@ -191,20 +180,13 @@ subroutine DAMASK_interface_init
   print'(a)',        ' Geometry argument:      '//trim(geometryArg)
   print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
   print'(/,a)',      ' Working directory:      '//getCWD()
-  print'(a)',        ' Geometry file:          '//interface_geomFile
-  print'(a)',        ' Load case file:         '//interface_loadFile
+  print'(a)',        ' Geometry file:          '//CLI_geomFile
+  print'(a)',        ' Load case file:         '//CLI_loadFile
   print'(a)',        ' Solver job name:        '//getSolverJobName()
-  if (interface_restartInc > 0) &
-    print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
+  if (CLI_restartInc > 0) &
+    print'(a,i6.6)', ' Restart from increment: ', CLI_restartInc
 
-  call signalterm_c(c_funloc(catchSIGTERM))
-  call signalusr1_c(c_funloc(catchSIGUSR1))
-  call signalusr2_c(c_funloc(catchSIGUSR2))
-  call interface_setSIGTERM(.false.)
-  call interface_setSIGUSR1(.false.)
-  call interface_setSIGUSR2(.false.)
-
-end subroutine DAMASK_interface_init
+end subroutine CLI_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -243,15 +225,15 @@ function getSolverJobName()
   character(len=:), allocatable :: getSolverJobName
   integer :: posExt,posSep
 
-  posExt = scan(interface_geomFile,'.',back=.true.)
-  posSep = scan(interface_geomFile,'/',back=.true.)
+  posExt = scan(CLI_geomFile,'.',back=.true.)
+  posSep = scan(CLI_geomFile,'/',back=.true.)
 
-  getSolverJobName = interface_geomFile(posSep+1:posExt-1)
+  getSolverJobName = CLI_geomFile(posSep+1:posExt-1)
 
-  posExt = scan(interface_loadFile,'.',back=.true.)
-  posSep = scan(interface_loadFile,'/',back=.true.)
+  posExt = scan(CLI_loadFile,'.',back=.true.)
+  posSep = scan(CLI_loadFile,'/',back=.true.)
 
-  getSolverJobName = getSolverJobName//'_'//interface_loadFile(posSep+1:posExt-1)
+  getSolverJobName = getSolverJobName//'_'//CLI_loadFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
@@ -376,92 +358,4 @@ function makeRelativePath(a,b)
 
 end function makeRelativePath
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGTERM to .true.
-!> @details This function can be registered to catch signals send to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGTERM(signal) bind(C)
-
-  integer(C_INT), value :: signal
-
-
-  print'(a,i0)', ' received signal ',signal
-  call interface_setSIGTERM(.true.)
-
-end subroutine catchSIGTERM
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR1 to .true.
-!> @details This function can be registered to catch signals send to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR1(signal) bind(C)
-
-  integer(C_INT), value :: signal
-
-
-  print'(a,i0)', ' received signal ',signal
-  call interface_setSIGUSR1(.true.)
-
-end subroutine catchSIGUSR1
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR2 to .true.
-!> @details This function can be registered to catch signals send to the executable.
-!--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR2(signal) bind(C)
-
-  integer(C_INT), value :: signal
-
-
-  print'(a,i0,a)', ' received signal ',signal
-  call interface_setSIGUSR2(.true.)
-
-end subroutine catchSIGUSR2
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGTERM.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGTERM(state)
-
-  logical, intent(in) :: state
-
-
-  interface_SIGTERM = state
-  print*, 'set SIGTERM to',state
-
-end subroutine interface_setSIGTERM
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGUSR1(state)
-
-  logical, intent(in) :: state
-
-
-  interface_SIGUSR1 = state
-  print*, 'set SIGUSR1 to',state
-
-end subroutine interface_setSIGUSR1
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR2.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGUSR2(state)
-
-  logical, intent(in) :: state
-
-
-  interface_SIGUSR2 = state
-  print*, 'set SIGUSR2 to',state
-
-end subroutine interface_setSIGUSR2
-
-
-end module
+end module CLI

@@ -13,7 +13,7 @@ module spectral_utilities
 #endif
 
   use prec
-  use DAMASK_interface
+  use CLI
   use parallelization
   use math
   use rotations

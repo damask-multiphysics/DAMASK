@@ -1,8 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Reads in the material, numerics & debug configuration from their respective file
-!> @details Reads the material configuration file, where solverJobName.yaml takes
-!! precedence over material.yaml.
+!> @brief Read in the configuration of material, numerics, and debug from their respective file
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
@@ -28,19 +26,19 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Real *.yaml configuration files.
 !--------------------------------------------------------------------------------------------------
-subroutine config_init
+subroutine config_init()
 
   print'(/,1x,a)', '<<<+-  config init  -+>>>'; flush(IO_STDOUT)
 
-  call parse_material
-  call parse_numerics
-  call parse_debug
+  call parse_material()
+  call parse_numerics()
+  call parse_debug()
 
 end subroutine config_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read material.yaml or <jobname>.yaml.
+!> @brief Read material.yaml.
 !--------------------------------------------------------------------------------------------------
 subroutine parse_material()
 
