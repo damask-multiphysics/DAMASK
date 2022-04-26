@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Read in the material, numerics & debug configuration from their respective file
+!> @brief Read in the configuration of material, numerics, and debug from their respective file
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
