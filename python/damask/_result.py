@@ -1402,7 +1402,7 @@ class Result:
 
     def _job_pointwise(self,
                        group: str,
-                       func: Callable,
+                       provided_func: Callable,
                        datasets: Dict[str, str],
                        args: Dict[str, str],
                        lock: LockBase) -> List[Union[None, Any]]:
@@ -1418,7 +1418,7 @@ class Result:
                                       'meta': {k:(v.decode() if not h5py3 and type(v) is bytes else v) \
                                                for k,v in loc.attrs.items()}}
             lock.release()
-            r = func(**datasets_in,**args)
+            r = provided_func(**datasets_in,**args)
             return [group,r]
         except Exception as err:
             print(f'Error during calculation: {err}.')
@@ -1459,7 +1459,7 @@ class Result:
             print('No matching dataset found, no data was added.')
             return
 
-        default_arg = partial(self._job_pointwise,func=func,datasets=datasets,args=args,lock=lock)
+        default_arg = partial(self._job_pointwise,provided_func=func,datasets=datasets,args=args,lock=lock)
 
         for group,result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)): #type: ignore
             if not result:
