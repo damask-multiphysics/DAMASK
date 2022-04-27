@@ -233,12 +233,11 @@ update_revision:
     - cd $(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git pull
-    - VERSION=$(git describe ${CI_COMMIT_SHA})
-    - export VERSION="${VERSION:1}"
-    - echo ${VERSION} > python/damask/VERSION
+    - exportVERSION=$(git describe ${CI_COMMIT_SHA})
+    - echo ${VERSION:1} > VERSION
     - >
        git diff-index --quiet HEAD ||
-       git commit python/damask/VERSION -m "[skip ci] updated version information after successful test of $VERSION"
+       git commit VERSION -m "[skip ci] updated version information after successful test of $VERSION"
     - if [ ${CI_COMMIT_SHA} == $(git rev-parse HEAD^) ]; then git push origin HEAD:master HEAD:development; fi
   only:
     - development
