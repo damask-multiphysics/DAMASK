@@ -150,10 +150,12 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_fiber_component(self):
-        r = Rotation.from_fiber_component(crystal=np.zeros(2),sample=np.zeros(2),
+        crystal = np.random.rand(2) * [180,360]
+        sample = np.random.rand(2) * [180,360]
+        r = Rotation.from_fiber_component(crystal=crystal,sample=sample,
                                           sigma=0.0,shape=1,rng_seed=0)
-        assert np.all(Orientation.from_fiber_component(crystal=np.zeros(2),sample=np.zeros(2),
-                                                       sigma=0.0,shape=None,rng_seed=0,family='triclinic').quaternion
+        assert np.all(Orientation.from_fiber_component(crystal=crystal,sample=sample,
+                                                       sigma=0.0,shape=None,rng_seed=0,lattice='cI').quaternion
                    == r.quaternion)
 
     @pytest.mark.parametrize('kwargs',[

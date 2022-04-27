@@ -551,7 +551,7 @@ class Rotation:
         Parameters
         ----------
         degrees : bool, optional
-            Return angles in degrees.
+            Return angles in degrees. Defaults to False.
 
         Returns
         -------
