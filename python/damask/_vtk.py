@@ -1,7 +1,7 @@
 import os
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Literal, List, Sequence
+from typing import Union, Literal
 
 import numpy as np
 import vtk
@@ -86,7 +86,7 @@ class VTK:
 
 
     @property
-    def comments(self) -> List[str]:
+    def comments(self):
         """Return the comments."""
         field_data = self.vtk_data.GetFieldData()
         for a in range(field_data.GetNumberOfArrays()):
@@ -97,7 +97,7 @@ class VTK:
 
     @comments.setter
     def comments(self,
-                 comments: Union[str, Sequence[str]]):
+                 comments):
         """
         Set comments.
 
