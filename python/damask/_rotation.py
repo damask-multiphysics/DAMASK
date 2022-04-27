@@ -1108,9 +1108,11 @@ class Rotation:
         Parameters
         ----------
         crystal : numpy.ndarray, shape (2)
-            Polar coordinates (phi from x, theta from z) of fiber direction in crystal frame.
+            Polar coordinates (polar angle θ from [0 0 1], azimuthal angle φ from [1 0 0])
+            of fiber direction in crystal frame.
         sample : numpy.ndarray, shape (2)
-            Polar coordinates (phi from x, theta from z) of fiber direction in sample frame.
+            Polar coordinates (polar angle θ from z, azimuthal angle φ from x)
+            of fiber direction in sample frame.
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
@@ -1122,13 +1124,23 @@ class Rotation:
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
+        Notes
+        -----
+        Polar coordinates follow the conventions typically used in physics,
+        see https://en.wikipedia.org/wiki/Spherical_coordinate_system.
+
+        The common ranges are 0≤θ≤π and 0≤φ≤2π for a unique set of coordinates.
+
+        Examples
+        --------
+
         """
         rng = np.random.default_rng(rng_seed)
-        sigma_,alpha_,beta_ = (np.radians(coordinate) for coordinate in (sigma,crystal,sample)) if degrees else \
-                              map(np.array, (sigma,crystal,sample))
+        sigma_,alpha,beta = (np.radians(coordinate) for coordinate in (sigma,crystal,sample)) if degrees else \
+                             map(np.array, (sigma,crystal,sample))
 
-        d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
-        d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
+        d_cr  = np.array([np.sin(alpha[1])*np.cos(alpha[0]), np.sin(alpha[1])*np.sin(alpha[0]), np.cos(alpha[1])])
+        d_lab = np.array([np.sin( beta[1])*np.cos( beta[0]), np.sin( beta[1])*np.sin( beta[0]), np.cos( beta[1])])
         ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
