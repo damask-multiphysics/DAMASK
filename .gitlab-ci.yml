@@ -233,7 +233,7 @@ update_revision:
     - cd $(mktemp -d)
     - git clone -q git@git.damask.mpie.de:damask/DAMASK.git .
     - git pull
-    - exportVERSION=$(git describe ${CI_COMMIT_SHA})
+    - export VERSION=$(git describe ${CI_COMMIT_SHA})
     - echo ${VERSION:1} > VERSION
     - >
        git diff-index --quiet HEAD ||
