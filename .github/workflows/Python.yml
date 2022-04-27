@@ -26,6 +26,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pandas scipy h5py vtk matplotlib pyyaml
 
+      - name: Strip git hash (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          export VERSION=$(cat VERSION)
+          echo ${VERSION%-*} > VERSION
+
       - name: Install and run unit tests (Unix)
         if: runner.os != 'Windows'
         run: |
