@@ -1096,8 +1096,8 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha: IntSequence,
-                             beta: IntSequence,
+    def from_fiber_component(crystal: IntSequence,
+                             sample: IntSequence,
                              sigma: float = 0.0,
                              shape: Union[int, IntSequence] = None,
                              degrees: bool = True,
@@ -1107,9 +1107,9 @@ class Rotation:
 
         Parameters
         ----------
-        alpha : numpy.ndarray, shape (2)
+        crystal : numpy.ndarray, shape (2)
             Polar coordinates (phi from x, theta from z) of fiber direction in crystal frame.
-        beta : numpy.ndarray, shape (2)
+        sample : numpy.ndarray, shape (2)
             Polar coordinates (phi from x, theta from z) of fiber direction in sample frame.
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
@@ -1117,15 +1117,15 @@ class Rotation:
         shape : int or sequence of ints, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            sigma, alpha, and beta are given in degrees.
+            sigma and polar coordinates are given in degrees.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
         """
         rng = np.random.default_rng(rng_seed)
-        sigma_,alpha_,beta_ = (np.radians(coordinate) for coordinate in (sigma,alpha,beta)) if degrees else \
-                              map(np.array, (sigma,alpha,beta))
+        sigma_,alpha_,beta_ = (np.radians(coordinate) for coordinate in (sigma,crystal,sample)) if degrees else \
+                              map(np.array, (sigma,crystal,sample))
 
         d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
         d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])

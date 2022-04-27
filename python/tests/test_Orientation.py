@@ -150,9 +150,9 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_fiber_component(self):
-        r = Rotation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
+        r = Rotation.from_fiber_component(crystal=np.zeros(2),sample=np.zeros(2),
                                           sigma=0.0,shape=1,rng_seed=0)
-        assert np.all(Orientation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
+        assert np.all(Orientation.from_fiber_component(crystal=np.zeros(2),sample=np.zeros(2),
                                                        sigma=0.0,shape=None,rng_seed=0,family='triclinic').quaternion
                    == r.quaternion)
 
