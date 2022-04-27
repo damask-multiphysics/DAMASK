@@ -5,7 +5,8 @@
 !--------------------------------------------------------------------------------------------------
 module materialpoint2
   use parallelization
-  use DAMASK_interface
+  use signals
+  use CLI
   use prec
   use IO
   use YAML_types
@@ -21,7 +22,6 @@ module materialpoint2
   use material
   use phase
   use homogenization
-
   use discretization
 #if   defined(MESH)
   use FEM_quadrature
@@ -43,7 +43,8 @@ contains
 subroutine materialpoint_initAll
 
   call parallelization_init
-  call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
+  call CLI_init                                                                        ! Spectral and FEM interface to commandline
+  call signals_init
   call prec_init
   call IO_init
 #if   defined(MESH)
@@ -54,18 +55,18 @@ subroutine materialpoint_initAll
   call YAML_types_init
   call YAML_parse_init
   call HDF5_utilities_init
-  call results_init(restart=interface_restartInc>0)
+  call results_init(restart=CLI_restartInc>0)
   call config_init
   call math_init
   call rotations_init
   call polynomials_init
   call lattice_init
 #if   defined(MESH)
-  call discretization_mesh_init(restart=interface_restartInc>0)
+  call discretization_mesh_init(restart=CLI_restartInc>0)
 #elif defined(GRID)
-  call discretization_grid_init(restart=interface_restartInc>0)
+  call discretization_grid_init(restart=CLI_restartInc>0)
 #endif
-  call material_init(restart=interface_restartInc>0)
+  call material_init(restart=CLI_restartInc>0)
   call phase_init
   call homogenization_init
   call materialpoint_init
@@ -85,7 +86,7 @@ subroutine materialpoint_init
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
 
-  if (interface_restartInc > 0) then
+  if (CLI_restartInc > 0) then
     print'(/,a,i0,a)', ' reading restart information of increment from file'; flush(IO_STDOUT)
 
     fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')

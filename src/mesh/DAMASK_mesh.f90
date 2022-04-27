@@ -10,7 +10,7 @@ program DAMASK_mesh
 #include <petsc/finclude/petscsys.h>
   use PetscDM
   use prec
-  use DAMASK_interface
+  use CLI
   use parallelization
   use IO
   use math
@@ -104,7 +104,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
-  fileContent = IO_readlines(trim(interface_loadFile))
+  fileContent = IO_readlines(trim(CLI_loadFile))
   do l = 1, size(fileContent)
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
