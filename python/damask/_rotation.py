@@ -1137,14 +1137,15 @@ class Rotation:
 
         Examples
         --------
+        tbd
 
         """
         rng = np.random.default_rng(rng_seed)
         sigma_,alpha,beta = (np.radians(coordinate) for coordinate in (sigma,crystal,sample)) if degrees else \
                              map(np.array, (sigma,crystal,sample))
 
-        d_cr  = np.array([np.sin(alpha[1])*np.cos(alpha[0]), np.sin(alpha[1])*np.sin(alpha[0]), np.cos(alpha[1])])
-        d_lab = np.array([np.sin( beta[1])*np.cos( beta[0]), np.sin( beta[1])*np.sin( beta[0]), np.cos( beta[1])])
+        d_cr  = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
+        d_lab = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
         ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
