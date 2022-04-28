@@ -1061,7 +1061,7 @@ class TestRotation:
         p = []
         for run in range(5):
             c = Rotation.from_random()
-            o = Rotation.from_spherical_component(c,sigma,shape)
+            o = Rotation.from_spherical_component(c,sigma,shape,degrees=True)
             _, angles = c.misorientation(o).as_axis_angle(pair=True,degrees=True)
             angles[::2] *= -1                                                                       # flip angle for every second to symmetrize distribution
 

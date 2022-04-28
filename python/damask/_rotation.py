@@ -1010,7 +1010,7 @@ class Rotation:
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
                  shape: Union[int, IntSequence] = None,
-                 degrees: bool = True,
+                 degrees: bool = False,
                  fractions: bool = True,
                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
@@ -1063,7 +1063,7 @@ class Rotation:
     def from_spherical_component(center: 'Rotation',
                                  sigma: float,
                                  shape: Union[int, IntSequence] = None,
-                                 degrees: bool = True,
+                                 degrees: bool = False,
                                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given center.
@@ -1100,7 +1100,7 @@ class Rotation:
                              sample: IntSequence,
                              sigma: float = 0.0,
                              shape: Union[int, IntSequence] = None,
-                             degrees: bool = True,
+                             degrees: bool = False,
                              rng_seed: NumpyRngSeed = None):
         """
         Initialize with samples from a Gaussian distribution around a given direction.
@@ -1126,10 +1126,14 @@ class Rotation:
 
         Notes
         -----
-        Polar coordinates follow the conventions typically used in physics,
-        see https://en.wikipedia.org/wiki/Spherical_coordinate_system.
+        The default crystal direction (θ=0,φ=0) direction is [0 0 1],
+        the default sample direction (θ=0,φ=0) is z.
 
-        The common ranges are 0≤θ≤π and 0≤φ≤2π for a unique set of coordinates.
+        Polar coordinates follow the ISO 80000-2:2019 convention
+        typically used in physics.
+        See https://en.wikipedia.org/wiki/Spherical_coordinate_system.
+
+        Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
 
         Examples
         --------
