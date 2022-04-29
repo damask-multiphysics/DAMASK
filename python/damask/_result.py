@@ -10,6 +10,8 @@ from pathlib import Path
 from functools import partial
 from collections import defaultdict
 from collections.abc import Iterable
+from typing import Union, Optional, Callable, Any, Sequence, Literal, Dict, List, Tuple
+from multiprocessing.synchronize import Lock as LockBase
 
 import h5py
 import numpy as np
@@ -22,9 +24,6 @@ from . import grid_filters
 from . import mechanics
 from . import tensor
 from . import util
-
-from typing import Union, Optional, Callable, Any, Sequence, Literal, Dict, List, Tuple
-from multiprocessing.synchronize import Lock as LockBase
 
 h5py3 = h5py.__version__[0] == '3'
 
