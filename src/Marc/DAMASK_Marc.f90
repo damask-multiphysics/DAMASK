@@ -187,7 +187,7 @@ end module DAMASK_interface
 #include "../homogenization_thermal_isotemperature.f90"
 #include "../homogenization_damage.f90"
 #include "../homogenization_damage_pass.f90"
-#include "../materialpoint.f90"
+#include "materialpoint_Marc.f90"
 
 !--------------------------------------------------------------------------------------------------
 !> @brief This is the MSC.Marc user subroutine for defining material behavior
