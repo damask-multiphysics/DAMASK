@@ -6,6 +6,10 @@ from typing import Union, Dict, Any, Type, TypeVar
 
 import numpy as np
 import yaml
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader
 
 from ._typehints import FileHandle
 from . import Rotation
@@ -53,7 +57,7 @@ class Config(dict):
                  **kwargs):
         """Initialize from YAML, dict, or key=value pairs."""
         if isinstance(yml,str):
-            kwargs.update(yaml.safe_load(yml))
+            kwargs.update(yaml.load(yml, Loader=SafeLoader))
         elif isinstance(yml,dict):
             kwargs.update(yml)
 
@@ -144,7 +148,7 @@ class Config(dict):
             Configuration from file.
 
         """
-        return cls(yaml.safe_load(util.open_text(fname)))
+        return cls(yaml.load(util.open_text(fname), Loader=SafeLoader))
 
     def save(self,
              fname: FileHandle,
