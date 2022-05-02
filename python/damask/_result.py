@@ -790,7 +790,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         else:
-            raise TypeError("invalid eigenvalue passed to function: {}".format(eigenvalue))
+            raise TypeError(f'invalid eigenvalue passed to function: {eigenvalue}')
 
         return {
                 'data': tensor.eigenvalues(T_sym['data'])[:,p],
