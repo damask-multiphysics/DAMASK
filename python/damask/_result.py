@@ -25,6 +25,8 @@ from . import mechanics
 from . import tensor
 from . import util
 
+from ._typehints import FloatSequence
+
 h5py3 = h5py.__version__[0] == '3'
 
 chunk_size = 1024**2//8                                                                             # for compression in HDF5
@@ -588,7 +590,7 @@ class Result:
 
 
     @staticmethod
-    def _add_absolute(x: Dict[str, Any]) -> Dict[str, Union[Dict[str, Union[str, int, slice]], str, np.ndarray]]:
+    def _add_absolute(x: Dict[str, Any]) -> Dict[str, Any]:
         return {
                 'data':  np.abs(x['data']),
                 'label': f'|{x["label"]}|',
@@ -612,7 +614,7 @@ class Result:
 
 
     @staticmethod
-    def _add_calculation(**kwargs) -> Dict[str, Union[Dict[str, str], str]]:
+    def _add_calculation(**kwargs):
         formula = kwargs['formula']
         for d in re.findall(r'#(.*?)#',formula):
             formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
@@ -678,7 +680,7 @@ class Result:
         ...                   'Mises equivalent of the Cauchy stress')
 
         """
-        dataset_mapping: Dict[str, str]  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
+        dataset_mapping = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':name,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
 
@@ -788,7 +790,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         else:
-            raise TypeError
+            raise TypeError("invalid eigenvalue passed to function: {}".format(eigenvalue))
 
         return {
                 'data': tensor.eigenvalues(T_sym['data'])[:,p],
@@ -862,7 +864,7 @@ class Result:
 
 
     @staticmethod
-    def _add_IPF_color(l: Sequence[float],
+    def _add_IPF_color(l: FloatSequence,
                        q: Dict[str, Any]) -> Dict[str, Any]:
         m = util.scale_to_coprime(np.array(l))
         lattice =  q['meta']['lattice']
@@ -905,7 +907,7 @@ class Result:
 
 
     @staticmethod
-    def _add_maximum_shear(T_sym: dict) -> dict:
+    def _add_maximum_shear(T_sym: Dict[str, Any]) -> Dict[str, Any]:
         return {
                 'data':  mechanics.maximum_shear(T_sym['data']),
                 'label': f"max_shear({T_sym['label']})",
@@ -1064,8 +1066,8 @@ class Result:
 
     @staticmethod
     def _add_pole(q: Dict[str, Any],
-                  uvw: np.ndarray,
-                  hkl: np.ndarray,
+                  uvw: FloatSequence,
+                  hkl: FloatSequence,
                   with_symmetry: bool) -> Dict[str, Any]:
         c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
         pole = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c).to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
@@ -1344,7 +1346,7 @@ class Result:
                           func: Callable,
                           datasets: Dict[str, str],
                           args: Dict[str, str] = {},
-                          constituents=None):
+                          constituents = None):
         """
         General function to add data on a regular grid.
 
