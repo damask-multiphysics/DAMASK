@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief materialpoint engine
 !--------------------------------------------------------------------------------------------------
-module materialpoint
+module materialpoint_Marc
   use DAMASK_interface
   use prec
   use IO
@@ -277,4 +277,4 @@ subroutine materialpoint_results(inc,time)
 
 end subroutine materialpoint_results
 
-end module materialpoint
+end module materialpoint_Marc

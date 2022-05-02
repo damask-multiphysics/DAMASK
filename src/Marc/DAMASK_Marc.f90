@@ -205,9 +205,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use DAMASK_interface
   use config
   use YAML_types
-  use discretization_marc
+  use discretization_Marc
   use homogenization
-  use materialpoint
+  use materialpoint_Marc
 
   implicit none
   include "omp_lib.h"                                                                               ! the openMP function library
@@ -406,8 +406,8 @@ subroutine flux(f,ts,n,time)
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
-  use materialpoint
-  use discretization_marc
+  use materialpoint_Marc
+  use discretization_Marc
 
   implicit none
   integer, intent(in) :: inc, incsub

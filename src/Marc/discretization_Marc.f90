@@ -1212,5 +1212,4 @@ logical function containsRange(str,chunkPos)
 
 end function containsRange
 
-
 end module discretization_Marc
