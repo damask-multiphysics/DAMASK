@@ -20,7 +20,7 @@ program DAMASK_grid
   use IO
   use config
   use math
-  use materialpoint2
+  use materialpoint
   use material
   use spectral_utilities
   use grid_mechanical_spectral_basic

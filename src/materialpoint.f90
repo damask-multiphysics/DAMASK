@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief needs a good name and description
 !--------------------------------------------------------------------------------------------------
-module materialpoint2
+module materialpoint
   use parallelization
   use signals
   use CLI
@@ -149,4 +149,4 @@ subroutine materialpoint_results(inc,time)
 
 end subroutine materialpoint_results
 
-end module materialpoint2
+end module materialpoint

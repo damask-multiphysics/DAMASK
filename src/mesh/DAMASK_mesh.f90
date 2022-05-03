@@ -14,7 +14,7 @@ program DAMASK_mesh
   use parallelization
   use IO
   use math
-  use materialpoint2
+  use materialpoint
   use config
   use discretization_mesh
   use FEM_Utilities
