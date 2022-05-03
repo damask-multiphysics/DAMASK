@@ -136,7 +136,7 @@ end subroutine discretization_Marc_updateNodeAndIpCoords
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate and set current nodal and IP positions (including cell nodes)
 !--------------------------------------------------------------------------------------------------
-function discretization_marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
+function discretization_Marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
 
   integer, intent(in) :: IP_FEM, elem_FEM
   integer :: cell
@@ -147,7 +147,7 @@ function discretization_marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
   cell = (discretization_Marc_FEM2DAMASK_elem(elem_FEM)-1)*discretization_nIPs + IP_FEM
 
 
-end function discretization_marc_FEM2DAMASK_cell
+end function discretization_Marc_FEM2DAMASK_cell
 
 
 !--------------------------------------------------------------------------------------------------

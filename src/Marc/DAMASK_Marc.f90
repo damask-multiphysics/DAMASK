@@ -46,7 +46,7 @@ subroutine DAMASK_interface_init
   integer                 :: ierr
   character(len=pPathLen) :: wd
 
-  print'(/,1x,a)', '<<<+-  DAMASK_marc init -+>>>'
+  print'(/,1x,a)', '<<<+-  DAMASK_Marc init -+>>>'
 
   print*, 'Roters et al., Computational Materials Science 158:420–478, 2019'
   print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
@@ -380,7 +380,7 @@ end subroutine hypela2
 subroutine flux(f,ts,n,time)
   use prec
   use homogenization
-  use discretization_marc
+  use discretization_Marc
 
   implicit none
   real(pReal), dimension(6),           intent(in) :: &
@@ -426,7 +426,7 @@ subroutine uedinc(inc,incsub)
       endif
     enddo
 
-    call discretization_marc_UpdateNodeAndIpCoords(d_n)
+    call discretization_Marc_UpdateNodeAndIpCoords(d_n)
     call materialpoint_results(inc,cptim)
 
     inc_written = inc

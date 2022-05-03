@@ -21,7 +21,7 @@ module materialpoint_Marc
   use homogenization
 
   use discretization
-  use discretization_marc
+  use discretization_Marc
 
   implicit none
   private
@@ -86,7 +86,7 @@ subroutine materialpoint_initAll
   call rotations_init
   call polynomials_init
   call lattice_init
-  call discretization_marc_init
+  call discretization_Marc_init
   call material_init(.false.)
   call phase_init
   call homogenization_init
