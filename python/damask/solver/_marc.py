@@ -64,7 +64,7 @@ class Marc:
             Defaults to ''.
 
         """
-        usersub = (self.damask_root/'src/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
+        usersub = (self.damask_root/'src/Marc/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
         if not usersub.is_file():
             raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
 
