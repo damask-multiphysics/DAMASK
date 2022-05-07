@@ -46,14 +46,14 @@ end subroutine polynomials_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize a Polynomial from Coefficients.
 !--------------------------------------------------------------------------------------------------
-function polynomial_from_coef(coef,x_ref) result(p)
+pure function polynomial_from_coef(coef,x_ref) result(p)
 
-  real(pReal), dimension(:), intent(in) :: coef
+  real(pReal), dimension(0:), intent(in) :: coef
   real(pReal), intent(in) :: x_ref
   type(tPolynomial) :: p
 
 
-  allocate(p%coef(0:size(coef)-1),source=coef)                                                      ! should be zero based
+  p%coef = coef
   p%x_ref = x_ref
 
 end function polynomial_from_coef
@@ -77,9 +77,7 @@ function polynomial_from_dict(dict,y,x) result(p)
   if (dict%contains(y//','//x)) then
     x_ref = dict%get_asFloat(x//'_ref')
     coef = [coef,dict%get_asFloat(y//','//x)]
-    if (dict%contains(y//','//x//'^2')) then
-      coef = [coef,dict%get_asFloat(y//','//x//'^2')]
-    end if
+    if (dict%contains(y//','//x//'^2')) coef = [coef,dict%get_asFloat(y//','//x//'^2')]
   else
     x_ref = huge(0.0_pReal)                                                                         ! Simplify debugging
   end if
@@ -172,7 +170,6 @@ subroutine selfTest
   p1 = polynomial(coef*[0.0_pReal,0.0_pReal,1.0_pReal],x_ref)
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1e-10_pReal))            error stop 'polynomials: eval(even)'
   if (dNeq(p1%der1_at(x_ref+x),-p1%der1_at(x_ref-x),1e-10_pReal)) error stop 'polynomials: eval_der(even)'
-
 
 end subroutine selfTest
 
