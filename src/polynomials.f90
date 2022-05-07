@@ -13,7 +13,7 @@ module polynomials
 
   type, public :: tPolynomial
     real(pReal), dimension(:), allocatable :: coef
-    real(pReal) :: x_ref
+    real(pReal) :: x_ref = huge(0.0_pReal)
     contains
     procedure, public :: at => eval
     procedure, public :: der1_at => eval_der1
@@ -70,6 +70,7 @@ function polynomial_from_dict(dict,y,x) result(p)
 
   real(pReal), dimension(:), allocatable :: coef
   real(pReal) :: x_ref
+  integer :: i
 
 
   allocate(coef(1),source=dict%get_asFloat(y))
@@ -77,9 +78,10 @@ function polynomial_from_dict(dict,y,x) result(p)
   if (dict%contains(y//','//x)) then
     x_ref = dict%get_asFloat(x//'_ref')
     coef = [coef,dict%get_asFloat(y//','//x)]
-    if (dict%contains(y//','//x//'^2')) coef = [coef,dict%get_asFloat(y//','//x//'^2')]
-  else
-    x_ref = huge(0.0_pReal)                                                                         ! Simplify debugging
+  end if
+  if (dict%contains(y//','//x//'^2')) then
+    x_ref = dict%get_asFloat(x//'_ref')
+    coef = [coef,[(0.0_pReal,i=size(coef),2-1)],dict%get_asFloat(y//','//x//'^2')]
   end if
 
   p = Polynomial(coef,x_ref)
@@ -130,14 +132,16 @@ end function eval_der1
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of polynomical functionality.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   type(tPolynomial) :: p1, p2
   real(pReal), dimension(3) :: coef
+  integer :: i
   real(pReal) :: x_ref, x
   class(tNode), pointer :: dict
-  character(len=pStringLen), dimension(3) :: coef_s
+  character(len=pStringLen), dimension(size(coef)) :: coef_s
   character(len=pStringLen) :: x_ref_s, x_s, YAML_s
+
 
   call random_number(coef)
   call random_number(x_ref)
@@ -150,9 +154,9 @@ subroutine selfTest
   p1 = polynomial(coef,x_ref)
   if (dNeq(p1%at(x_ref),coef(1)))  error stop 'polynomial: @ref'
 
-  write(coef_s(1),*) coef(1)
-  write(coef_s(2),*) coef(2)
-  write(coef_s(3),*) coef(3)
+  do i = 1, size(coef_s)
+    write(coef_s(i),*) coef(i)
+  end do
   write(x_ref_s,*) x_ref
   write(x_s,*) x
   YAML_s = 'C: '//trim(adjustl(coef_s(1)))//IO_EOL//&
@@ -163,11 +167,19 @@ subroutine selfTest
   p2 = polynomial(dict%asDict(),'C','T')
   if (dNeq(p1%at(x),p2%at(x),1.0e-10_pReal))                      error stop 'polynomials: init'
 
-  p1 = polynomial(coef*[0.0_pReal,1.0_pReal,0.0_pReal],x_ref)
+  YAML_s = 'C: 0.0'//IO_EOL//&
+           'C,T: '//trim(adjustl(coef_s(2)))//IO_EOL//&
+           'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
+  Dict => YAML_parse_str(trim(YAML_s))
+  p1 = polynomial(dict%asDict(),'C','T')
   if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-10_pReal))         error stop 'polynomials: eval(odd)'
   if (dNeq(p1%der1_at(x),p1%der1_at(5.0_pReal*x),1.0e-10_pReal))  error stop 'polynomials: eval_der(odd)'
 
-  p1 = polynomial(coef*[0.0_pReal,0.0_pReal,1.0_pReal],x_ref)
+  YAML_s = 'C: 0.0'//IO_EOL//&
+           'C,T^2: '//trim(adjustl(coef_s(3)))//IO_EOL//&
+           'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
+  Dict => YAML_parse_str(trim(YAML_s))
+  p1 = polynomial(dict%asDict(),'C','T')
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1e-10_pReal))            error stop 'polynomials: eval(even)'
   if (dNeq(p1%der1_at(x_ref+x),-p1%der1_at(x_ref-x),1e-10_pReal)) error stop 'polynomials: eval_der(even)'
 
