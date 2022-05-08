@@ -1966,8 +1966,8 @@ end function buildCoordinateSystem
 !--------------------------------------------------------------------------------------------------
 !> @brief Helper function to define transformation systems
 ! Needed to calculate Schmid matrix and rotated stiffness matrices.
-! @details: use c/a for cF -> cI transformation
-!           use a_cX for cF -> hP transformation
+! @details: use c/a for cF -> hP transformation
+!           use a_cX for cF -> cI transformation
 !--------------------------------------------------------------------------------------------------
 subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
 
