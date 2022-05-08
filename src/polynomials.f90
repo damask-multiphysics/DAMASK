@@ -106,8 +106,12 @@ pure function eval(self,x) result(y)
 
 
   y = 0.0_pReal
-  do i = ubound(self%coef,1), 0 , -1
-    y = y*(x-self%x_ref) + self%coef(i)
+  do i = ubound(self%coef,1), 0, -1
+#ifndef __INTEL_COMPILER
+    y = y*(x-self%x_ref) +self%coef(i)
+#else
+    y = IEEE_FMA(y,x-self%x_ref,self%coef(i))
+#endif
   enddo
 
 end function eval

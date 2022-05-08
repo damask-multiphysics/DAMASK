@@ -82,7 +82,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief initialization of random seed generator and internal checks
 !--------------------------------------------------------------------------------------------------
-subroutine math_init
+subroutine math_init()
 
   real(pReal), dimension(4) :: randTest
   integer :: randSize
@@ -1045,24 +1045,34 @@ pure subroutine math_eigh33(w,v,m)
 
   w = math_eigvalsh33(m)
 
-  v(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
-               m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
-               m(1, 2)**2]
+  v(1:3,2) = [ m(1,2) * m(2,3) - m(1,3) * m(2,2), &
+               m(1,3) * m(1,2) - m(2,3) * m(1,1), &
+               m(1,2)**2]
 
   T = maxval(abs(w))
   U = max(T, T**2)
   threshold = sqrt(5.68e-14_pReal * U**2)
 
-  v(1:3,1) = [ v(1,2) + m(1, 3) * w(1), &
-               v(2,2) + m(2, 3) * w(1), &
+#ifndef __INTEL_COMPILER
+  v(1:3,1) = [m(1,3)*w(1) + v(1,2), &
+              m(2,3)*w(1) + v(2,2), &
+#else
+  v(1:3,1) = [IEEE_FMA(m(1,3),w(1),v(1,2)), &
+              IEEE_FMA(m(2,3),w(1),v(2,2)), &
+#endif
               (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
   norm = norm2(v(1:3, 1))
   fallback1: if (norm < threshold) then
     call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
-    v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
-                 v(2,2) + m(2, 3) * w(2), &
+#ifndef __INTEL_COMPILER
+    v(1:3,2) = [m(1,3)*w(2) + v(1,2), &
+                m(2,3)*w(2) + v(2,2), &
+#else
+    v(1:3,2) = [IEEE_FMA(m(1,3),w(2),v(1,2)), &
+                IEEE_FMA(m(2,3),w(2),v(2,2)), &
+#endif
                 (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
     norm = norm2(v(1:3, 2))
     fallback2: if (norm < threshold) then
@@ -1300,7 +1310,7 @@ end function math_clip
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some math functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   integer, dimension(2,4) :: &
     sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])
