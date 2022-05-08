@@ -105,8 +105,8 @@ pure function eval(self,x) result(y)
   integer :: i
 
 
-  y = 0.0_pReal
-  do i = ubound(self%coef,1), 0, -1
+  y = self%coef(ubound(self%coef,1))
+  do i = ubound(self%coef,1)-1, 0, -1
 #ifndef __INTEL_COMPILER
     y = y*(x-self%x_ref) +self%coef(i)
 #else
