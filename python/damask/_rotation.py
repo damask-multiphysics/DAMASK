@@ -1126,8 +1126,8 @@ class Rotation:
 
         Notes
         -----
-        The default crystal direction (θ=0,φ=0) direction is [0 0 1],
-        the default sample direction (θ=0,φ=0) is z.
+        The crystal direction for (θ=0,φ=0) is [0 0 1],
+        the sample direction for (θ=0,φ=0) is z.
 
         Polar coordinates follow the ISO 80000-2:2019 convention
         typically used in physics.
@@ -1137,7 +1137,18 @@ class Rotation:
 
         Examples
         --------
-        tbd
+        Create an ideal α-fiber texture (<1 1 0> ǀǀ RD=x) consisting of
+        200 orientations:
+
+        >>> import damask
+        >>> import numpy as np
+        >>> alpha = damask.Rotation.from_fiber_component([np.pi/4.,0.],[np.pi/2.,0.],shape=200)
+
+        Create an ideal γ-fiber texture (<1 1 1> ǀǀ ND=z) consisting of
+        100 orientations:
+
+        >>> import damask
+        >>> gamma = damask.Rotation.from_fiber_component([54.7,45.0],[0.,0.],shape=100,degrees=True)
 
         """
         rng = np.random.default_rng(rng_seed)

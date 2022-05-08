@@ -158,6 +158,13 @@ class TestOrientation:
                                                        sigma=0.0,shape=None,rng_seed=0,lattice='cI').quaternion
                    == r.quaternion)
 
+    @pytest.mark.parametrize('crystal,sample,direction,color',[([np.pi/4,0],[np.pi/2,0],[1,0,0],[0,1,0]),
+                                                               ([np.arccos(3**(-.5)),np.pi/4,0],[0,0],[0,0,1],[0,0,1])])
+    def test_fiber_IPF(self,crystal,sample,direction,color):
+        fiber = Orientation.from_fiber_component(crystal=crystal,sample=sample,family='cubic',shape=200)
+        print(np.allclose(fiber.IPF_color(direction),color))
+
+
     @pytest.mark.parametrize('kwargs',[
                                         dict(lattice='aP',a=1.0,b=1.1,c=1.2,alpha=np.pi/4.5,beta=np.pi/3.5,gamma=np.pi/2.5),
                                         dict(lattice='mP',a=1.0,b=1.1,c=1.2,                beta=np.pi/3.5),
