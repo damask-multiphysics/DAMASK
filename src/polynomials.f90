@@ -190,19 +190,18 @@ subroutine selfTest()
   if (dNeq(p1%der1_at(x_ref+x),-p1%der1_at(x_ref-x),1e-10_pReal)) error stop 'polynomials: eval_der(quadratic)'
 
   YAML_s = 'Y: 0.0'//IO_EOL//&
-           'Y,X^3: '//trim(adjustl(coef_s(2)))//IO_EOL//&
+           'Y,X^3: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
   Dict => YAML_parse_str(trim(YAML_s))
   p1 = polynomial(dict%asDict(),'Y','X')
-  if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-10_pReal))         error stop 'polynomials: eval(cubic)'
+  if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-8_pReal))          error stop 'polynomials: eval(cubic)'
 
   YAML_s = 'Y: 0.0'//IO_EOL//&
-           'Y,X^4: '//trim(adjustl(coef_s(2)))//IO_EOL//&
+           'Y,X^4: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
   Dict => YAML_parse_str(trim(YAML_s))
   p1 = polynomial(dict%asDict(),'Y','X')
-  if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1.0e-10_pReal))          error stop 'polynomials: eval(quartic)'
-
+  if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1.0e-6_pReal))           error stop 'polynomials: eval(quartic)'
 
 
 end subroutine selfTest
