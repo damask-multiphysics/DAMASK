@@ -105,9 +105,9 @@ pure function eval(self,x) result(y)
   integer :: i
 
 
-  y = self%coef(0)
-  do i = 1, ubound(self%coef,1)
-    y = y + self%coef(i) * (x-self%x_ref)**i
+  y = 0.0_pReal
+  do i = ubound(self%coef,1), 0 , -1
+    y = y*(x-self%x_ref) + self%coef(i)
   enddo
 
 end function eval
