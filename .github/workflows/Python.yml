@@ -32,6 +32,13 @@ jobs:
           export VERSION=$(cat VERSION)
           echo ${VERSION%-*} > VERSION
 
+      - name: Strip git hash (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $VERSION = Get-Content VERSION -first 1
+          $VERSION,$_ = $VERSION -Split '-g',2,"simplematch"
+          $VERSION | Out-File VERSION
+
       - name: Install and run unit tests (Unix)
         if: runner.os != 'Windows'
         run: |
