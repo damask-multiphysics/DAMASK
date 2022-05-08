@@ -178,9 +178,9 @@ subroutine selfTest()
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
   Dict => YAML_parse_str(trim(YAML_s))
   p2 = polynomial(dict%asDict(),'C','T')
-  if (dNeq(p1%at(x),p2%at(x),1.0e-10_pReal))                      error stop 'polynomials: init'
+  if (dNeq(p1%at(x),p2%at(x),1.0e-6_pReal))                      error stop 'polynomials: init'
   y = coef(1)+coef(2)*(x-x_ref)+coef(3)*(x-x_ref)**2+coef(4)*(x-x_ref)**3+coef(5)*(x-x_ref)**4
-  if (dNeq(p1%at(x),y,1.0e-7_pReal))                             error stop 'polynomials: eval(full)'
+  if (dNeq(p1%at(x),y,1.0e-6_pReal))                             error stop 'polynomials: eval(full)'
 
   YAML_s = 'C: 0.0'//IO_EOL//&
            'C,T: '//trim(adjustl(coef_s(2)))//IO_EOL//&
@@ -203,7 +203,7 @@ subroutine selfTest()
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
   Dict => YAML_parse_str(trim(YAML_s))
   p1 = polynomial(dict%asDict(),'Y','X')
-  if (dNeq(p1%at(x_ref+x)-coef(1),-(p1%at(x_ref-x)-coef(1)),1.0e-8_pReal))          error stop 'polynomials: eval(cubic)'
+  if (dNeq(p1%at(x_ref+x)-coef(1),-(p1%at(x_ref-x)-coef(1)),1.0e-8_pReal)) error stop 'polynomials: eval(cubic)'
 
   YAML_s = 'Y: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'Y,X^4: '//trim(adjustl(coef_s(2)))//IO_EOL//&
