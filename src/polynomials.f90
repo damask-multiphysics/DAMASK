@@ -16,7 +16,6 @@ module polynomials
     real(pReal) :: x_ref = huge(0.0_pReal)
     contains
     procedure, public :: at => eval
-    procedure, public :: der1_at => eval_der1
   end type tPolynomial
 
   interface polynomial
@@ -118,26 +117,6 @@ end function eval
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Evaluate a first derivative of Polynomial.
-!--------------------------------------------------------------------------------------------------
-pure function eval_der1(self,x) result(y)
-
-  class(tPolynomial), intent(in) :: self
-  real(pReal), intent(in) :: x
-  real(pReal) :: y
-
-  integer :: i
-
-
-  y = 0.0_pReal
-  do i = 1, ubound(self%coef,1)
-    y = y + real(i,pReal)*self%coef(i) * (x-self%x_ref)**(i-1)
-  enddo
-
-end function eval_der1
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of polynomical functionality.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest()
@@ -188,7 +167,6 @@ subroutine selfTest()
   Dict => YAML_parse_str(trim(YAML_s))
   p1 = polynomial(dict%asDict(),'C','T')
   if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-10_pReal))         error stop 'polynomials: eval(linear)'
-  if (dNeq(p1%der1_at(x),p1%der1_at(5.0_pReal*x),1.0e-10_pReal))  error stop 'polynomials: eval_der(linear)'
 
   YAML_s = 'C: 0.0'//IO_EOL//&
            'C,T^2: '//trim(adjustl(coef_s(3)))//IO_EOL//&
@@ -196,7 +174,6 @@ subroutine selfTest()
   Dict => YAML_parse_str(trim(YAML_s))
   p1 = polynomial(dict%asDict(),'C','T')
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1e-10_pReal))            error stop 'polynomials: eval(quadratic)'
-  if (dNeq(p1%der1_at(x_ref+x),-p1%der1_at(x_ref-x),1e-10_pReal)) error stop 'polynomials: eval_der(quadratic)'
 
   YAML_s = 'Y: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'Y,X^3: '//trim(adjustl(coef_s(2)))//IO_EOL//&
