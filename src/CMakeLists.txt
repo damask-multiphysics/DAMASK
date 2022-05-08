@@ -6,12 +6,6 @@ endif()
 
 file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c)
 
-# probably we should have a subfolder for MSC.Marc
-list(FILTER damask-sources EXCLUDE REGEX ".*CPFEM.f90")
-list(FILTER damask-sources EXCLUDE REGEX ".*DAMASK_Marc.*.f90")
-list(FILTER damask-sources EXCLUDE REGEX ".*commercialFEM_fileList.*.f90")
-
-
 if(PROJECT_NAME STREQUAL "damask-grid")
     set(executable-name "DAMASK_grid")
     file(GLOB solver-sources CONFIGURE_DEPENDS grid/*.f90)

@@ -1,5 +1,5 @@
 phase: [basic, extensive, selective]
-CPFEM: [basic, extensive, selective]
+materialpoint: [basic, extensive, selective]
 
 # options for selective debugging
 element: 1
