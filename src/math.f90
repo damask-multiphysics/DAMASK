@@ -1053,7 +1053,7 @@ pure subroutine math_eigh33(w,v,m)
   U = max(T, T**2)
   threshold = sqrt(5.68e-14_pReal * U**2)
 
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
   v(1:3,1) = [m(1,3)*w(1) + v(1,2), &
               m(2,3)*w(1) + v(2,2), &
 #else
@@ -1066,7 +1066,7 @@ pure subroutine math_eigh33(w,v,m)
     call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
     v(1:3,2) = [m(1,3)*w(2) + v(1,2), &
                 m(2,3)*w(2) + v(2,2), &
 #else

@@ -680,7 +680,7 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result
   if (any(IEEE_is_NaN(dotState))) return
 
   sizeDotState = plasticState(ph)%sizeDotState
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
   plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
 #else
   plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
@@ -723,7 +723,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
   sizeDotState = plasticState(ph)%sizeDotState
 
   r = - dotState * 0.5_pReal * Delta_t
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
   plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
 #else
   plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
@@ -848,14 +848,14 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
     dotState = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
 
     do n = 2, stage
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
       dotState = dotState + A(n,stage)*plastic_RKdotState(1:sizeDotState,n)
 #else
       dotState = IEEE_FMA(A(n,stage),plastic_RKdotState(1:sizeDotState,n),dotState)
 #endif
     enddo
 
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
     plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
 #else
     plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
@@ -873,7 +873,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
 
   plastic_RKdotState(1:sizeDotState,size(B)) = dotState
   dotState = matmul(plastic_RKdotState,B)
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
   plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
 #else
   plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
@@ -1161,7 +1161,7 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
   else
     lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
     do o=1,3; do p=1,3
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
       lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
                             + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * Delta_t
       lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
@@ -1201,7 +1201,7 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
     temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                            + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
   enddo; enddo
-#ifndef __INTEL_COMPILER
+#ifndef __INTEL_LLVM_COMPILER
   lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * Delta_t &
            + math_mul3333xx3333(dSdFi,dFidS)
 #else
