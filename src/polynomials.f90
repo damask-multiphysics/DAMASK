@@ -94,6 +94,7 @@ end function polynomial_from_dict
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Evaluate a Polynomial.
+!> @details https://nvlpubs.nist.gov/nistpubs/jres/71b/jresv71bn1p11_a1b.pdf (eq. 1.2)
 !--------------------------------------------------------------------------------------------------
 pure function eval(self,x) result(y)
 
@@ -101,15 +102,15 @@ pure function eval(self,x) result(y)
   real(pReal), intent(in) :: x
   real(pReal) :: y
 
-  integer :: i
+  integer :: o
 
 
   y = self%coef(ubound(self%coef,1))
-  do i = ubound(self%coef,1)-1, 0, -1
+  do o = ubound(self%coef,1)-1, 0, -1
 #ifndef __INTEL_LLVM_COMPILER
-    y = y*(x-self%x_ref) +self%coef(i)
+    y = y*(x-self%x_ref) +self%coef(o)
 #else
-    y = IEEE_FMA(y,x-self%x_ref,self%coef(i))
+    y = IEEE_FMA(y,x-self%x_ref,self%coef(o))
 #endif
   enddo
 
