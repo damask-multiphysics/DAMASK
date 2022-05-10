@@ -721,7 +721,7 @@ class Rotation:
         Parameters
         ----------
         q : numpy.ndarray, shape (...,4)
-            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
         accept_homomorph : bool, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
@@ -777,11 +777,11 @@ class Rotation:
 
     @staticmethod
     def from_axis_angle(axis_angle: np.ndarray,
-                        degrees:bool = False,
+                        degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
-        Initialize from Axis angle pair.
+        Initialize from axis–angle pair.
 
         Parameters
         ----------
@@ -818,12 +818,12 @@ class Rotation:
                    orthonormal: bool = True,
                    reciprocal: bool = False) -> 'Rotation':
         """
-        Initialize from lattice basis vectors.
+        Initialize from basis vector triplet.
 
         Parameters
         ----------
         basis : numpy.ndarray, shape (...,3,3)
-            Three three-dimensional lattice basis vectors.
+            Three three-dimensional basis vectors.
         orthonormal : bool, optional
             Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
         reciprocal : bool, optional
@@ -857,7 +857,7 @@ class Rotation:
         Parameters
         ----------
         R : numpy.ndarray, shape (...,3,3)
-            Rotation matrix with det(R) = 1, R.T ∙ R = I.
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
 
         """
         return Rotation.from_basis(R)
@@ -866,14 +866,14 @@ class Rotation:
     def from_parallel(a: np.ndarray,
                       b: np.ndarray ) -> 'Rotation':
         """
-        Initialize from pairs of two orthogonal lattice basis vectors.
+        Initialize from pairs of two orthogonal basis vectors.
 
         Parameters
         ----------
         a : numpy.ndarray, shape (...,2,3)
-            Two three-dimensional lattice vectors of first orthogonal basis.
+            Two three-dimensional vectors of first orthogonal basis.
         b : numpy.ndarray, shape (...,2,3)
-            Corresponding three-dimensional lattice vectors of second basis.
+            Corresponding three-dimensional vectors of second basis.
 
         """
         a_ = np.array(a)
@@ -896,7 +896,7 @@ class Rotation:
                               normalize: bool = False,
                               P: Literal[1, -1] = -1) -> 'Rotation':
         """
-        Initialize from Rodrigues–Frank vector (angle separated from axis).
+        Initialize from Rodrigues–Frank vector (with angle separated from axis).
 
         Parameters
         ----------
