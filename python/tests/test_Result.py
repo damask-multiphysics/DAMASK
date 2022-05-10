@@ -24,8 +24,7 @@ def default(tmp_path,ref_path):
     """Small Result file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(ref_path/fname,tmp_path)
-    f = Result(tmp_path/fname)
-    return f.view(times=20.0)
+    return Result(tmp_path/fname).view(times=20.0)
 
 @pytest.fixture
 def single_phase(tmp_path,ref_path):
@@ -226,15 +225,19 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('options',[{'uvw':[1,0,0],'with_symmetry':False},
-                                        {'hkl':[0,1,1],'with_symmetry':True}])
+                                        {'uvw':[1,1,0],'with_symmetry':True},
+                                        {'hkl':[0,1,1],'with_symmetry':True},
+                                        {'hkl':[1,1,1],'with_symmetry':False},
+                                        ])
     def test_add_pole(self,default,options):
         default.add_pole(**options)
         rot = default.place('O')
         in_memory = Orientation(rot,lattice=rot.dtype.metadata['lattice']).to_pole(**options)
-        brackets = ['[[]','[]]'] if 'uvw' in options.keys() else ['(',')']                          # escape fnmatch
-        label = '{}{} {} {}{}'.format(brackets[0],*(list(options.values())[0]),brackets[1])
-        in_file = default.place(f'p^{label}')
-        print(in_file - in_memory)
+        brackets = [['[[]','[]]'],'()','〈〉','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]   # escape fnmatch
+        label = 'p^{}{} {} {}{}'.format(brackets[0],
+                                        *(list(options.values())[0]),
+                                        brackets[-1])
+        in_file = default.place(label)
         assert np.allclose(in_memory,in_file)
 
     def test_add_rotation(self,default):
