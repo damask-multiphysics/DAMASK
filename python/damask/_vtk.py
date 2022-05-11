@@ -401,13 +401,13 @@ class VTK:
 
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
-    def add(self,
+    def set(self,
             label: str = None,
             data: Union[np.ndarray, np.ma.MaskedArray] = None,
             *,
             table: 'Table' = None):
         """
-        Add data to either cells or points.
+        Add (or replace existing) point or cell data.
 
         Data can either be a numpy.array, which requires a corresponding label,
         or a damask.Table.
@@ -417,11 +417,15 @@ class VTK:
         label : str, optional
             Label of data array.
         data : numpy.ndarray or numpy.ma.MaskedArray, optional
-            Data to add. First dimension needs to match either
+            Data to add or replace. First array dimension needs to match either
             number of cells or number of points.
         table: damask.Table, optional
-            Data to add. Number of rows needs to match either
-            number of cells or number of points.
+            Data to add or replace. Each table label is individually considered.
+            Number of rows needs to match either number of cells or number of points.
+
+        Notes
+        -----
+        If the number of cells equals the number of points, the data is added to both.
 
         """
 
@@ -429,7 +433,10 @@ class VTK:
                        label: str,
                        data: np.ndarray):
 
-            N_data = data.shape[0]
+            N_p,N_c = vtk_data.GetNumberOfPoints(),vtk_data.GetNumberOfCells()
+            if (N_data := data.shape[0]) not in [N_p,N_c]:
+                raise ValueError(f'data count mismatch ({N_data} ≠ {N_p} & {N_c})')
+
             data_ = data.reshape(N_data,-1) \
                         .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
 
@@ -442,12 +449,10 @@ class VTK:
 
             d.SetName(label)
 
-            if   N_data == vtk_data.GetNumberOfPoints():
+            if N_data == N_p:
                 vtk_data.GetPointData().AddArray(d)
-            elif N_data == vtk_data.GetNumberOfCells():
+            if N_data == N_c:
                 vtk_data.GetCellData().AddArray(d)
-            else:
-                raise ValueError(f'data count mismatch ({N_data} ≠ {self.N_points} & {self.N_cells})')
 
         if data is None and table is None:
             raise KeyError('no data given')
