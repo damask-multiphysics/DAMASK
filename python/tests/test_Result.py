@@ -233,7 +233,7 @@ class TestResult:
         default.add_pole(**options)
         rot = default.place('O')
         in_memory = Orientation(rot,lattice=rot.dtype.metadata['lattice']).to_pole(**options)
-        brackets = [['[[]','[]]'],'()','〈〉','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]   # escape fnmatch
+        brackets = [['[[]','[]]'],'()','⟨⟩','{}'][('hkl' in options)*1+(options['with_symmetry'])*2]   # escape fnmatch
         label = 'p^{}{} {} {}{}'.format(brackets[0],
                                         *(list(options.values())[0]),
                                         brackets[-1])

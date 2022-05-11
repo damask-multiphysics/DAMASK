@@ -1025,7 +1025,7 @@ class Result:
     @staticmethod
     def _add_pole(q,uvw,hkl,with_symmetry):
         c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
-        brackets = ['[]','()','〈〉','{}'][(uvw is None)*1+with_symmetry*2]
+        brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
         label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                               *(uvw if uvw else hkl),
                                               brackets[-1],)
