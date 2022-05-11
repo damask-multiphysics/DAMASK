@@ -786,7 +786,8 @@ class Orientation(Rotation,Crystal):
     def to_pole(self, *,
                 uvw: FloatSequence = None,
                 hkl: FloatSequence = None,
-                with_symmetry: bool = False) -> np.ndarray:
+                with_symmetry: bool = False,
+                normalize: bool = True) -> np.ndarray:
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -795,9 +796,13 @@ class Orientation(Rotation,Crystal):
         uvw|hkl : numpy.ndarray, shape (...,3)
             Miller indices of crystallographic direction or plane normal.
             Shape of vector blends with shape of own rotation array.
-            For example, a rotation array, shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
+            For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
+            Defaults to False.
+        normalize : bool, optional
+            Normalize output vector.
+            Defaults to True.
 
         Returns
         -------
@@ -807,6 +812,8 @@ class Orientation(Rotation,Crystal):
         """
         v = self.to_frame(uvw=uvw,hkl=hkl)
         blend = util.shapeblender(self.shape,v.shape[:-1])
+        if normalize:
+            v /= np.linalg.norm(v,axis=-1,keepdims=len(v.shape)>1)
         if with_symmetry:
             sym_ops = self.symmetry_operations
             shape = v.shape[:-1]+sym_ops.shape
