@@ -1025,17 +1025,21 @@ class Result:
     @staticmethod
     def _add_pole(q,uvw,hkl,with_symmetry):
         c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
+        brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
+        label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
+                                              *(uvw if uvw else hkl),
+                                              brackets[-1],)
         pole = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c).to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
 
         return {
                 'data': pole,
-                'label': 'p^[{} {} {}]'.format(*uvw) if uvw else 'p^({} {} {})'.format(*hkl),
+                'label': label,
                 'meta' : {
-                           'unit':        '1',
-                           'description': 'lab frame vector along lattice ' \
-                                          + ('direction' if uvw else 'plane') \
-                                          + ('s' if with_symmetry else ''),
-                           'creator':     'add_pole'
+                          'unit':        '1',
+                          'description': 'lab frame vector along lattice ' \
+                                         + ('direction' if uvw else 'plane') \
+                                         + ('s' if with_symmetry else ''),
+                          'creator':     'add_pole'
                           }
                 }
     def add_pole(self,q='O',*,uvw=None,hkl=None,with_symmetry=False):
@@ -1047,7 +1051,7 @@ class Result:
         q : str
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
-        uvw|hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray of shape (3)
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
