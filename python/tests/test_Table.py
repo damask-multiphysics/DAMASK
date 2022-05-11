@@ -51,7 +51,7 @@ class TestTable:
 
     def test_add(self,default):
         d = np.random.random((5,9))
-        assert np.allclose(d,default.add('nine',d,'random data').get('nine'))
+        assert np.allclose(d,default.set('nine',d,'random data').get('nine'))
 
     def test_isclose(self,default):
         assert default.isclose(default).all()
@@ -200,6 +200,6 @@ class TestTable:
         t = Table({'v':(2,)},
                   np.array([[0,1,],[2,1,]]),
                   ['test data'])\
-            .add('s',np.array(['b','a']))\
+            .set('s',np.array(['b','a']))\
             .sort_by('s')
         assert np.all(t.get('v')[:,0] == np.array([2,0]))

@@ -176,7 +176,7 @@ class TestOrientation:
     def test_from_directions(self,kwargs):
         for a,b in np.random.random((10,2,3)):
             c = np.cross(b,a)
-            if np.all(np.isclose(c,0)): continue
+            if np.allclose(c,0): continue
             o = Orientation.from_directions(uvw=a,hkl=c,**kwargs)
             x = o.to_pole(uvw=a)
             z = o.to_pole(hkl=c)
