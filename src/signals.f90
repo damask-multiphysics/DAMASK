@@ -10,13 +10,13 @@ module signals
   private
 
   logical, volatile, public, protected :: &
-    signals_SIGTERM = .false., &                                                                    !< termination signal
+    signals_SIGINT = .false., &                                                                     !< interrupt signal
     signals_SIGUSR1 = .false., &                                                                    !< 1. user-defined signal
     signals_SIGUSR2 = .false.                                                                       !< 2. user-defined signal
 
   public :: &
     signals_init, &
-    signals_setSIGTERM, &
+    signals_setSIGINT, &
     signals_setSIGUSR1, &
     signals_setSIGUSR2
 
@@ -28,7 +28,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine signals_init()
 
-  call signalterm_c(c_funloc(catchSIGTERM))
+  call signalint_c(c_funloc(catchSIGINT))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
 
@@ -36,18 +36,18 @@ end subroutine signals_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGTERM to .true.
+!> @brief Set global variable signals_SIGINT to .true.
 !> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
-subroutine catchSIGTERM(signal) bind(C)
+subroutine catchSIGINT(signal) bind(C)
 
   integer(C_INT), value :: signal
 
 
   print'(a,i0)', ' received signal ',signal
-  call signals_setSIGTERM(.true.)
+  call signals_setSIGINT(.true.)
 
-end subroutine catchSIGTERM
+end subroutine catchSIGINT
 
 
 !--------------------------------------------------------------------------------------------------
@@ -81,17 +81,17 @@ end subroutine catchSIGUSR2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGTERM.
+!> @brief Set global variable signals_SIGINT.
 !--------------------------------------------------------------------------------------------------
-subroutine signals_setSIGTERM(state)
+subroutine signals_setSIGINT(state)
 
   logical, intent(in) :: state
 
 
-  signals_SIGTERM = state
-  print*, 'set SIGTERM to',state
+  signals_SIGINT = state
+  print*, 'set SIGINT to',state
 
-end subroutine signals_setSIGTERM
+end subroutine signals_setSIGINT
 
 
 !--------------------------------------------------------------------------------------------------
