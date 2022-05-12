@@ -10,9 +10,9 @@ module signals
   private
 
   logical, volatile, public, protected :: &
-    signals_SIGTERM, &                                                                            !< termination signal
-    signals_SIGUSR1, &                                                                            !< 1. user-defined signal
-    signals_SIGUSR2                                                                               !< 2. user-defined signal
+    signals_SIGTERM = .false., &                                                                    !< termination signal
+    signals_SIGUSR1 = .false., &                                                                    !< 1. user-defined signal
+    signals_SIGUSR2 = .false.                                                                       !< 2. user-defined signal
 
   public :: &
     signals_init, &
@@ -31,9 +31,6 @@ subroutine signals_init()
   call signalterm_c(c_funloc(catchSIGTERM))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
-  call signals_setSIGTERM(.false.)
-  call signals_setSIGUSR1(.false.)
-  call signals_setSIGUSR2(.false.)
 
 end subroutine signals_init
 
