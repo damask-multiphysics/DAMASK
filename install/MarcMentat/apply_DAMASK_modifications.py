@@ -76,6 +76,7 @@ damask.util.run(f'xvfb-run -a {executable} -compile {menu_file}')
 print('setting file access rights...')
 
 for file in (glob.glob(str(marc_root/f'marc{marc_version}/tools/*_damask*')) +
+             glob.glob(str(marc_root/f'mentat{marc_version}/bin/edit_window')) +
              glob.glob(str(marc_root/f'mentat{marc_version}/bin/kill[4-6]')) +
              glob.glob(str(marc_root/f'mentat{marc_version}/bin/submit[4-6]'))):
     os.chmod(file , 0o755)
