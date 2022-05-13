@@ -152,22 +152,14 @@ module element
     reshape([&
       -2,-3,-1  &
 ! Note: This fix is for gfortran 9 only. gfortran 8 supports neither, gfortran > 9 both variants
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR1))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(1)),NIP(1)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(2)),NIP(2)),   parameter :: IPNEIGHBOR2 = &
     reshape([&
        2,-3, 3,-1, &
       -2, 1, 3,-1, &
        2,-3,-2, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR2))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(2)),NIP(2)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(3)),NIP(3)),   parameter :: IPNEIGHBOR3 = &
     reshape([&
@@ -175,11 +167,7 @@ module element
       -2, 1, 4,-1, &
        4,-4,-3, 1, &
       -2, 3,-3, 2  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR3))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(3)),NIP(3)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(4)),NIP(4)),   parameter :: IPNEIGHBOR4 = &
     reshape([&
@@ -192,20 +180,12 @@ module element
        8,-4,-3, 4, &
        9, 7,-3, 5, &
       -2, 8,-3, 6  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR4))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(4)),NIP(4)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(5)),NIP(5)),   parameter :: IPNEIGHBOR5 = &
     reshape([&
       -1,-2,-3,-4 &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR5))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(5)),NIP(5)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(6)),NIP(6)),   parameter :: IPNEIGHBOR6 = &
     reshape([&
@@ -213,11 +193,7 @@ module element
       -2, 1, 3,-2, 4,-1, &
        2,-4,-3, 1, 4,-1, &
        2,-4, 3,-2,-3, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR6))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(6)),NIP(6)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(7)),NIP(7)),   parameter :: IPNEIGHBOR7 = &
     reshape([&
@@ -227,20 +203,12 @@ module element
        5,-4, 6,-2,-5, 1, &
       -3, 4, 6,-2,-5, 2, &
        5,-4,-3, 4,-5, 3  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR7))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(7)),NIP(7)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(8)),NIP(8)),   parameter :: IPNEIGHBOR8 = &
     reshape([&
       -3,-5,-4,-2,-6,-1  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR8))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(8)),NIP(8)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(9)),NIP(9)),   parameter :: IPNEIGHBOR9 = &
     reshape([&
@@ -252,11 +220,7 @@ module element
       -3, 5, 8,-2,-6, 2, &
        8,-5,-4, 5,-6, 3, &
       -3, 7,-4, 6,-6, 4  &
-#if !defined(__GFORTRAN__)
-    ],shape(IPNEIGHBOR9))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(9)),NIP(9)])
-#endif
 
   integer, dimension(NIPNEIGHBOR(CELLTYPE(10)),NIP(10)), parameter :: IPNEIGHBOR10 = &
     reshape([&
@@ -287,11 +251,7 @@ module element
       26,-5,-4,22,-6,16, &
       27,25,-4,23,-6,17, &
       -3,26,-4,24,-6,18  &
-#if !defined(__GFORTRAN__)
-     ],shape(IPNEIGHBOR10))
-#else
     ],[NIPNEIGHBOR(CELLTYPE(10)),NIP(10)])
-#endif
 
 
   integer, dimension(NNODE(1),NCELLNODE(GEOMTYPE(1))),   parameter :: CELLNODEPARENTNODEWEIGHTS1 = &
@@ -299,11 +259,7 @@ module element
       1, 0, 0, &
       0, 1, 0, &
       0, 0, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS1))                                                            !< 2D 3node 1ip
-#else
     ],[NNODE(1),NCELLNODE(GEOMTYPE(1))])
-#endif
 
   integer, dimension(NNODE(2),NCELLNODE(GEOMTYPE(2))),   parameter :: CELLNODEPARENTNODEWEIGHTS2 = &
     reshape([&
@@ -314,11 +270,7 @@ module element
       0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 1, &
       1, 1, 1, 2, 2, 2  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS2))                                                            !< 2D 6node 3ip
-#else
     ],[NNODE(2),NCELLNODE(GEOMTYPE(2))])
-#endif
 
   integer, dimension(NNODE(3),NCELLNODE(GEOMTYPE(3))),   parameter :: CELLNODEPARENTNODEWEIGHTS3 = &
     reshape([&
@@ -331,11 +283,7 @@ module element
       0, 0, 1, 1, &
       1, 0, 0, 1, &
       1, 1, 1, 1  &
-#if !defined(__GFORTRAN__)
-     ],shape(CELLNODEPARENTNODEWEIGHTS3))                                                            !< 2D 6node 3ip
-#else
     ],[NNODE(3),NCELLNODE(GEOMTYPE(3))])
-#endif
 
   integer, dimension(NNODE(4),NCELLNODE(GEOMTYPE(4))),   parameter :: CELLNODEPARENTNODEWEIGHTS4 = &
     reshape([&
@@ -355,11 +303,7 @@ module element
       1, 4, 1, 1, 8, 8, 2, 2, &
       1, 1, 4, 1, 2, 8, 8, 2, &
       1, 1, 1, 4, 2, 2, 8, 8  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS4))                                                            !< 2D 8node 9ip
-#else
     ],[NNODE(4),NCELLNODE(GEOMTYPE(4))])
-#endif
 
   integer, dimension(NNODE(5),NCELLNODE(GEOMTYPE(5))),   parameter :: CELLNODEPARENTNODEWEIGHTS5 = &
     reshape([&
@@ -372,11 +316,7 @@ module element
       0, 0, 0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 0, 0, 1, &
       1, 1, 1, 1, 2, 2, 2, 2  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS5))                                                            !< 2D 8node 4ip
-#else
     ],[NNODE(5),NCELLNODE(GEOMTYPE(5))])
-#endif
 
   integer, dimension(NNODE(6),NcellNode(GEOMTYPE(6))),   parameter :: CELLNODEPARENTNODEWEIGHTS6 = &
     reshape([&
@@ -384,11 +324,7 @@ module element
       0, 1, 0, 0, &
       0, 0, 1, 0, &
       0, 0, 0, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS6))                                                            !< 3D 4node 1ip
-#else
     ],[NNODE(6),NcellNode(GEOMTYPE(6))])
-#endif
 
   integer, dimension(NNODE(7),NCELLNODE(GEOMTYPE(7))),   parameter :: CELLNODEPARENTNODEWEIGHTS7 = &
     reshape([&
@@ -407,11 +343,7 @@ module element
       0, 1, 1, 1, 0, &
       1, 0, 1, 1, 0, &
       0, 0, 0, 0, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS7))                                                            !< 3D 5node 4ip
-#else
     ],[NNODE(7),NCELLNODE(GEOMTYPE(7))])
-#endif
 
   integer, dimension(NNODE(8),NCELLNODE(GEOMTYPE(8))),   parameter :: CELLNODEPARENTNODEWEIGHTS8 = &
     reshape([&
@@ -430,11 +362,7 @@ module element
       0, 1, 1, 1, 0, 2, 0, 0, 2, 2, &
       1, 0, 1, 1, 0, 0, 2, 2, 0, 2, &
       3, 3, 3, 3, 4, 4, 4, 4, 4, 4  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS8))                                                            !< 3D 10node 4ip
-#else
     ],[NNODE(8),NCELLNODE(GEOMTYPE(8))])
-#endif
 
   integer, dimension(NNODE(9),NCELLNODE(GEOMTYPE(9))),   parameter :: CELLNODEPARENTNODEWEIGHTS9 = &
     reshape([&
@@ -459,11 +387,7 @@ module element
       1, 0, 1, 1, 0, 1, &
       0, 0, 0, 1, 1, 1, &
       1, 1, 1, 1, 1, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS9))                                                            !< 3D 6node 6ip
-#else
     ],[NNODE(9),NCELLNODE(GEOMTYPE(9))])
-#endif
 
   integer, dimension(NNODE(10),NCELLNODE(GEOMTYPE(10))), parameter :: CELLNODEPARENTNODEWEIGHTS10 = &
     reshape([&
@@ -475,11 +399,7 @@ module element
       0, 0, 0, 0, 0, 1, 0, 0, &
       0, 0, 0, 0, 0, 0, 1, 0, &
       0, 0, 0, 0, 0, 0, 0, 1  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS10))                                                           !< 3D 8node 1ip
-#else
     ],[NNODE(10),NCELLNODE(GEOMTYPE(10))])
-#endif
 
   integer, dimension(NNODE(11),NCELLNODE(GEOMTYPE(11))), parameter :: CELLNODEPARENTNODEWEIGHTS11 = &
     reshape([&
@@ -510,11 +430,7 @@ module element
       1, 0, 0, 1,  1, 0, 0, 1, &   ! 25
       0, 0, 0, 0,  1, 1, 1, 1, &   !
       1, 1, 1, 1,  1, 1, 1, 1  &   !
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS11))                                                           !< 3D 8node 8ip
-#else
     ],[NNODE(11),NCELLNODE(GEOMTYPE(11))])
-#endif
 
   integer, dimension(NNODE(12),NCELLNODE(GEOMTYPE(12))), parameter :: CELLNODEPARENTNODEWEIGHTS12 = &
     reshape([&
@@ -545,11 +461,7 @@ module element
       1, 0, 0, 1,  1, 0, 0, 1,  0, 0, 0, 2,  0, 0, 0, 2,  2, 0, 0, 2, &   ! 25
       0, 0, 0, 0,  1, 1, 1, 1,  0, 0, 0, 0,  2, 2, 2, 2,  0, 0, 0, 0, &   !
       3, 3, 3, 3,  3, 3, 3, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4  &   !
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS12))                                                           !< 3D 20node 8ip
-#else
     ],[NNODE(12),NCELLNODE(GEOMTYPE(12))])
-#endif
 
   integer, dimension(NNODE(13),NCELLNODE(GEOMTYPE(13))), parameter :: CELLNODEPARENTNODEWEIGHTS13 = &
     reshape([&
@@ -617,32 +529,20 @@ module element
        4, 8, 4, 3,  8,24, 8, 4, 12,12, 4, 4, 32,32,12,12, 12,32,12, 4, &   !
        3, 4, 8, 4,  4, 8,24, 8,  4,12,12, 4, 12,32,32,12,  4,12,32,12, &   !
        4, 3, 4, 8,  8, 4, 8,24,  4, 4,12,12, 12,12,32,32, 12, 4,12,32  &   !
-#if !defined(__GFORTRAN__)
-    ],shape(CELLNODEPARENTNODEWEIGHTS13))                                                           !< 3D 20node 27ip
-#else
     ],[NNODE(13),NCELLNODE(GEOMTYPE(13))])
-#endif
 
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)),   parameter :: CELL1 = &
     reshape([&
       1,2,3 &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL1))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)),   parameter :: CELL2 = &
     reshape([&
       1, 4, 7, 6, &
       2, 5, 7, 4, &
       3, 6, 7, 5  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL2))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)),   parameter :: CELL3 = &
     reshape([&
@@ -650,11 +550,7 @@ module element
       5, 2, 6, 9, &
       8, 9, 7, 4, &
       9, 6, 3, 7  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL3))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)),   parameter :: CELL4 = &
     reshape([&
@@ -667,20 +563,12 @@ module element
       11,16,10, 4, &
       16,15, 9,10, &
       15, 8, 3, 9  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL4))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)),   parameter :: CELL5 = &
     reshape([&
       1, 2, 3, 4 &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL5))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)),   parameter :: CELL6 = &
     reshape([&
@@ -688,11 +576,7 @@ module element
       5, 2, 6,11,12, 9,13,15, &
       7,11, 6, 3,14,15,13,10, &
       8,12,15,14, 4, 9,13,10  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL6))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)),   parameter :: CELL7 = &
     reshape([&
@@ -702,20 +586,12 @@ module element
      10,17,21,19, 4,13,20,15, &
      17,11,18,21,13, 5,14,20, &
      19,21,18,12,15,20,14, 6  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL7))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)),   parameter :: CELL8 = &
     reshape([&
       1, 2, 3, 4, 5, 6, 7, 8 &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL8))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)),   parameter :: CELL9 = &
     reshape([&
@@ -727,11 +603,7 @@ module element
       22,18,23,27,13, 6,14,26, &
       25,27,24,20,16,26,15, 8, &
       27,23,19,24,26,14, 7,15  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL9))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)])
-#endif
 
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)), parameter :: CELL10 = &
     reshape([&
@@ -762,11 +634,7 @@ module element
       51,64,50,24,31,56,30, 8, &
       64,63,49,50,56,55,29,30, &
       63,48,23,49,55,28, 7,29  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELL10))
-#else
     ],[NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)])
-#endif
 
 
   integer, dimension(NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)), parameter :: CELLFACE1 = &
@@ -774,11 +642,7 @@ module element
       2,3, &
       3,1, &
       1,2  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLFACE1))                                                                             !< 2D 3node, VTK_TRIANGLE (5)
-#else
     ],[NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)])
-#endif
 
   integer, dimension(NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)), parameter :: CELLFACE2 = &
     reshape([&
@@ -786,11 +650,7 @@ module element
       4,1, &
       3,4, &
       1,2  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLFACE2))                                                                             !< 2D 4node, VTK_QUAD (9)
-#else
     ],[NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)])
-#endif
 
   integer, dimension(NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)), parameter :: CELLFACE3 = &
     reshape([&
@@ -798,11 +658,7 @@ module element
       1,2,4, &
       2,3,4, &
       1,4,3  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLFACE3))                                                                             !< 3D 4node, VTK_TETRA (10)
-#else
     ],[NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)])
-#endif
 
   integer, dimension(NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)), parameter :: CELLFACE4 = &
     reshape([&
@@ -812,12 +668,7 @@ module element
       1,2,6,5, &
       5,6,7,8, &
       1,4,3,2  &
-#if !defined(__GFORTRAN__)
-    ],shape(CELLFACE4))                                                                             !< 3D 8node, VTK_HEXAHEDRON (12)
-#else
     ],[NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)])
-#endif
-
 
 contains
 
