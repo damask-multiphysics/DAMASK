@@ -796,7 +796,8 @@ class Orientation(Rotation,Crystal):
         uvw|hkl : numpy.ndarray, shape (...,3)
             Miller indices of crystallographic direction or plane normal.
             Shape of vector blends with shape of own rotation array.
-            For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
+            For example, a rotation array of shape (3,2) and a vector
+            array of shape (2,4) result in (3,2,4) outputs.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
             Defaults to False.
@@ -807,7 +808,8 @@ class Orientation(Rotation,Crystal):
         Returns
         -------
         vector : numpy.ndarray, shape (...,3) or (...,N,3)
-            Lab frame vector (or vectors if with_symmetry) along [uvw] direction or (hkl) plane normal.
+            Lab frame vector (or vectors if with_symmetry) along
+            [uvw] direction or (hkl) plane normal.
 
         """
         v = self.to_frame(uvw=uvw,hkl=hkl)
