@@ -694,9 +694,9 @@ class Grid:
 
         """
         v = VTK.from_image_data(self.cells,self.size,self.origin)\
-               .add('material',self.material.flatten(order='F'))
+               .set('material',self.material.flatten(order='F'))
         for label,data in self.initial_conditions.items():
-            v = v.add(label,data.flatten(order='F'))
+            v = v.set(label,data.flatten(order='F'))
         v.comments = self.comments
 
         v.save(fname,parallel=False,compress=compress)
@@ -745,7 +745,7 @@ class Grid:
 
         """
         VTK.from_image_data(self.cells,self.size,self.origin) \
-           .add('material',self.material.flatten('F'),) \
+           .set('material',self.material.flatten('F'),) \
            .show('material',colormap)
 
 
