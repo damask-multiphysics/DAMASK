@@ -370,9 +370,9 @@ class Table:
         label : str
             Column label.
         data : numpy.ndarray
-            Column data.
+            Column data. First dimension needs to match number of rows.
         info : str, optional
-            Human-readable information about the modified data.
+            Human-readable information about the data.
 
         Returns
         -------
