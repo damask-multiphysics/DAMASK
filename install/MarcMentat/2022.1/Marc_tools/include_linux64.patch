@@ -1,7 +1,7 @@
 ---
 +++
-@@ -119,6 +119,11 @@ if test "$MSCCOSIM_VERSION" = ""; then
-   MSCCOSIM_VERSION="2020"
+@@ -166,6 +166,11 @@ if test -n "$MSCCOSIM_HOME"; then
+  MARC_COSIM_LIB="$MSCCOSIM_HOME/Cosim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi
  
 +# DAMASK uses the HDF5 compiler wrapper around the Intel compiler
@@ -12,7 +12,7 @@
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -439,7 +444,7 @@ if test "$MARC_INTEGER_SIZE" = "i4" ; then
+@@ -477,8 +482,8 @@ if test "$MARC_INTEGER_SIZE" = "i4" ; then
    I8DEFINES=
    I8CDEFINES=
  else
@@ -22,7 +22,7 @@
    I8CDEFINES="-U_DOUBLE -D_SINGLE"
  fi
  
-@@ -556,7 +561,7 @@ then
+@@ -594,7 +599,7 @@ then
  PROFILE=" $PROFILE -pg"
  fi
  
@@ -31,7 +31,7 @@
  if test "$MTHREAD" = "OPENMP"
  then
    FORT_OPT=" $FORT_OPT -qopenmp"
-@@ -569,7 +574,7 @@ else
+@@ -607,7 +612,7 @@ else
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
@@ -40,7 +40,7 @@
  fi
  
  FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -583,6 +588,30 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+@@ -621,6 +626,29 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
  
@@ -53,25 +53,24 @@
 +  DAMASKVERSION="'N/A'"
 +fi
 +
-+
 +# DAMASK compiler calls
 +DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2022.1 -DDAMASKVERSION=$DAMASKVERSION \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2022.1 -DDAMASKVERSION=$DAMASKVERSION \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f18 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
-+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2021.3.1 -DDAMASKVERSION=$DAMASKVERSION \
++ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMARC4DAMASK=2022.1 -DDAMASKVERSION=$DAMASKVERSION \
 + -qopenmp -qopenmp-threadprivate=compat\
 +  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD -I$MARC_MOD"
 +
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -739,7 +768,7 @@ SECLIBS="-L$MARC_LIB -llapi"
+@@ -778,7 +806,7 @@ SECLIBS="-L$MARC_LIB -llapi"
  
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \
@@ -80,21 +79,21 @@
  
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1
-@@ -762,7 +791,7 @@ then
+@@ -802,7 +830,7 @@ then
   OPENSSL=NONE
  fi
  
--SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib"
-+SYSLIBS=" $OPENMP -lpthread -cxxlib"
+-SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib $MARC_RPC_LIB"
++SYSLIBS=" $OPENMP -lpthread -cxxlib $MARC_RPC_LIB"
  
  # Uncomment the following lines to turn on the trace and comment out the next 4 lines
  # if test $MPITYPE = intelmpi
-@@ -772,7 +801,7 @@ SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib"
+@@ -812,7 +840,7 @@ SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib $MARC_RPC_LIB"
  # fi
  if test $MPITYPE = intelmpi
  then
-- SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -shared-intel -cxxlib"
-+ SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -cxxlib"
+- SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -shared-intel -cxxlib $MARC_RPC_LIB"
++ SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -cxxlib $MARC_RPC_LIB"
  fi
  
  if test "$ZLIB" = "ZLIB"; then

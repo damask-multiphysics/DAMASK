@@ -147,24 +147,24 @@ class TestVTK:
         with pytest.raises(KeyError):
             default.get('does_not_exist')
 
-    def test_invalid_add_shape(self,default):
+    def test_invalid_set_shape(self,default):
         with pytest.raises(ValueError):
-            default.add('valid',np.ones(3))
+            default.set('valid',np.ones(3))
 
-    def test_invalid_add_missing_label(self,default):
+    def test_invalid_set_missing_label(self,default):
         data = np.random.randint(9,size=np.prod(np.array(default.vtk_data.GetDimensions())-1))
         with pytest.raises(ValueError):
-            default.add(data=data)
+            default.set(data=data)
 
-    def test_invalid_add_type(self,default):
+    def test_invalid_set_type(self,default):
         with pytest.raises(TypeError):
-            default.add(label='valid',data='invalid_type')
+            default.set(label='valid',data='invalid_type')
         with pytest.raises(TypeError):
-            default.add(label='valid',table='invalid_type')
+            default.set(label='valid',table='invalid_type')
 
-    def test_invalid_add_dual(self,default):
+    def test_invalid_set_dual(self,default):
         with pytest.raises(KeyError):
-            default.add(label='valid',data=0,table=0)
+            default.set(label='valid',data=0,table=0)
 
     @pytest.mark.parametrize('data_type,shape',[(float,(3,)),
                                                 (float,(3,3)),
@@ -172,31 +172,31 @@ class TestVTK:
                                                 (int,(4,)),
                                                 (str,(1,))])
     @pytest.mark.parametrize('N_values',[5*6*7,6*7*8])
-    def test_add_get(self,default,data_type,shape,N_values):
+    def test_set_get(self,default,data_type,shape,N_values):
         data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
-        new = default.add('data',data)
+        new = default.set('data',data)
         assert (np.squeeze(data.reshape(N_values,-1)) == new.get('data')).all()
 
 
     @pytest.mark.parametrize('shapes',[{'scalar':(1,),'vector':(3,),'tensor':(3,3)},
                                        {'vector':(6,),'tensor':(3,3)},
                                        {'tensor':(3,3),'scalar':(1,)}])
-    def test_add_table(self,default,shapes):
+    def test_set_table(self,default,shapes):
         N = np.random.choice([default.N_points,default.N_cells])
         d = dict()
         for k,s in shapes.items():
             d[k] = dict(shape = s,
                         data = np.random.random(N*np.prod(s)).reshape((N,-1)))
-        new = default.add(table=Table(shapes,np.column_stack([d[k]['data'] for k in shapes.keys()])))
+        new = default.set(table=Table(shapes,np.column_stack([d[k]['data'] for k in shapes.keys()])))
         for k,s in shapes.items():
             assert np.allclose(np.squeeze(d[k]['data']),new.get(k),rtol=1e-7)
 
 
-    def test_add_masked(self,default):
+    def test_set_masked(self,default):
         data = np.random.rand(5*6*7,3)
         masked = ma.MaskedArray(data,mask=data<.4,fill_value=42.)
-        mask_auto = default.add('D',masked)
-        mask_manual = default.add('D',np.where(masked.mask,masked.fill_value,masked))
+        mask_auto = default.set('D',masked)
+        mask_manual = default.set('D',np.where(masked.mask,masked.fill_value,masked))
         assert mask_manual == mask_auto
 
 
@@ -210,7 +210,7 @@ class TestVTK:
         data = np.squeeze(np.random.randint(0,100,(N_values,)+shape)).astype(data_type)
         ALPHABET = np.array(list(string.ascii_lowercase + ' '))
         label = ''.join(np.random.choice(ALPHABET, size=10))
-        new = default.add(label,data)
+        new = default.set(label,data)
         if N_values == default.N_points: assert label in new.labels['Point Data']
         if N_values == default.N_cells:  assert label in new.labels['Cell Data']
 
@@ -225,7 +225,7 @@ class TestVTK:
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
     def test_compare_reference_polyData(self,update,ref_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
-        polyData = VTK.from_poly_data(points).add('coordinates',points)
+        polyData = VTK.from_poly_data(points).set('coordinates',points)
         if update:
             polyData.save(ref_path/'polyData')
         else:
@@ -242,8 +242,8 @@ class TestVTK:
         c = coords[:-1,:-1,:-1,:].reshape(-1,3,order='F')
         n = coords[:,:,:,:].reshape(-1,3,order='F')
         rectilinearGrid = VTK.from_rectilinear_grid(grid) \
-                        .add('cell',np.ascontiguousarray(c)) \
-                        .add('node',np.ascontiguousarray(n))
+                        .set('cell',np.ascontiguousarray(c)) \
+                        .set('node',np.ascontiguousarray(n))
         if update:
             rectilinearGrid.save(ref_path/'rectilinearGrid')
         else:

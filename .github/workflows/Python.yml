@@ -42,13 +42,13 @@ jobs:
       - name: Install and run unit tests (Unix)
         if: runner.os != 'Windows'
         run: |
-          python -m pip install ./python --no-deps -vv --use-feature=in-tree-build
+          python -m pip install ./python --no-deps -vv
           COLUMNS=256 pytest python
 
       - name: Install and run unit tests (Windows)
         if: runner.os == 'Windows'
         run: |
-          python -m pip install ./python --no-deps -vv --use-feature=in-tree-build
+          python -m pip install ./python --no-deps -vv
           pytest python -k 'not XDMF'
 
   apt:
