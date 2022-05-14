@@ -471,7 +471,7 @@ program DAMASK_grid
           call materialpoint_restartWrite
         endif
         if (signal) call signals_setSIGUSR2(.false.)
-        call MPI_Allreduce(signals_SIGTERM,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        call MPI_Allreduce(signals_SIGINT,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
         if (signal) exit loadCaseLooping
       endif skipping
