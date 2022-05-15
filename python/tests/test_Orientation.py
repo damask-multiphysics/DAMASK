@@ -180,8 +180,8 @@ class TestOrientation:
             o = Orientation.from_directions(uvw=a,hkl=c,**kwargs)
             x = o.to_pole(uvw=a)
             z = o.to_pole(hkl=c)
-            assert np.isclose(np.dot(x/np.linalg.norm(x),np.array([1,0,0])),1) \
-               and np.isclose(np.dot(z/np.linalg.norm(z),np.array([0,0,1])),1)
+            assert np.isclose(np.dot(x,np.array([1,0,0])),1) \
+               and np.isclose(np.dot(z,np.array([0,0,1])),1)
 
     @pytest.mark.parametrize('function',[Orientation.from_random,
                                          Orientation.from_quaternion,

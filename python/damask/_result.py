@@ -1023,26 +1023,26 @@ class Result:
 
 
     @staticmethod
-    def _add_pole(q,uvw,hkl,with_symmetry):
+    def _add_pole(q,uvw,hkl,with_symmetry,normalize):
         c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
         brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
         label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
                                               *(uvw if uvw else hkl),
                                               brackets[-1],)
-        pole = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c).to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
+        ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
 
         return {
-                'data': pole,
+                'data': ori.to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry,normalize=normalize),
                 'label': label,
                 'meta' : {
                           'unit':        '1',
-                          'description': 'lab frame vector along lattice ' \
-                                         + ('direction' if uvw else 'plane') \
+                          'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
+                                         + ('direction' if uvw is not None else 'plane') \
                                          + ('s' if with_symmetry else ''),
                           'creator':     'add_pole'
                           }
                 }
-    def add_pole(self,q='O',*,uvw=None,hkl=None,with_symmetry=False):
+    def add_pole(self,q='O',*,uvw=None,hkl=None,with_symmetry=False,normalize=True):
         """
         Add lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -1055,9 +1055,15 @@ class Result:
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
+            Defaults to True.
+        normalize : bool, optional
+            Normalize output vector.
+            Defaults to True.
 
         """
-        self._add_generic_pointwise(self._add_pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry})
+        self._add_generic_pointwise(self._add_pole,
+                                    {'q':q},
+                                    {'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
 
 
     @staticmethod
