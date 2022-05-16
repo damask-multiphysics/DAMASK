@@ -58,8 +58,8 @@ void getusername_c(char username[], int *stat){
 }
 
 
-void signalterm_c(void (*handler)(int)){
-  signal(SIGTERM, handler);
+void signalint_c(void (*handler)(int)){
+  signal(SIGINT, handler);
 }
 
 void signalusr1_c(void (*handler)(int)){
