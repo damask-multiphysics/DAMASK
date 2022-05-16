@@ -1,9 +1,13 @@
 type: phenopowerlaw
+
 references:
-- K.M. Jackson and C. Lang,
-  Platinum Metals Review 50:15-19, 2006,
-  https://doi.org/10.1595/147106705X93359,
-  fitted from Fig. 5 (Pt-5% Cu recrystallised)
+  - K.M. Jackson and C. Lang,
+    Platinum Metals Review 50:15-19, 2006,
+    https://doi.org/10.1595/147106705X93359,
+    fitted from Fig. 5 (Pt-5% Cu recrystallised)
+  - U.F. Kocks,
+    Metallurgical and Materials Transactions B 1:1121–1143, 1970,
+    https://doi.org/10.1007/BF02900224
 
 N_sl: [12]
 
