@@ -1,0 +1,21 @@
+type: Hooke
+
+references:
+  - Wang et al.,
+    Materials Science and Engineering:A 674:406-412, 2016,
+    https://doi.org/10.1016/j.msea.2016.08.010,
+    fitted to Tab. 2 (last 3 rows)
+
+C_11: 243.3e+9
+C_11,T: -6.380e+5
+C_11,T^2: -8.362e+4
+
+C_12: 156.7e+9
+C_12,T: 2.091e+7
+C_12,T^2: -4.675e+4
+
+C_44: 117.8e+9
+C_44,T: -3.800e+7
+C_44,T^2: 1.587e+4
+
+T_ref: 293.15
