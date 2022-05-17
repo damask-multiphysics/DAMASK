@@ -482,7 +482,7 @@ class ConfigMaterial(Config):
         """
         N,n,shaped = 1,1,{}
 
-        map_dim = {'O':-1,'F_i':-2}
+        map_dim = {'O':-1,'V_e':-2}
         for k,v in kwargs.items():
             shaped[k] = np.array(v)
             s = shaped[k].shape[:map_dim.get(k,None)]
@@ -494,12 +494,12 @@ class ConfigMaterial(Config):
         if 'v' not in kwargs:
             shaped['v'] = np.broadcast_to(1/n,(N,n))
 
-        map_shape = {'O':(N,n,4),'F_i':(N,n,3,3)}
+        map_shape = {'O':(N,n,4),'V_e':(N,n,3,3)}
         for k,v in shaped.items():
             target = map_shape.get(k,(N,n))
             obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape, target, mode = 'right')), target)
             for i in range(N):
-                if k in ['phase','O','v','F_i']:
+                if k in ['phase','O','v','V_e']:
                     for j in range(n):
                         mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
                 else:

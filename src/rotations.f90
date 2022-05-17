@@ -323,17 +323,16 @@ pure function rotTensor2(self,T,active) result(tRot)
 
   logical           :: passive
 
+
   if (present(active)) then
     passive = .not. active
   else
     passive = .true.
   endif
 
-  if (passive) then
-    tRot = matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix()))
-  else
-    tRot = matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix())
-  endif
+  tRot = merge(matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
+               matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
+               passive)
 
 end function rotTensor2
 
