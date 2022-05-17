@@ -468,13 +468,13 @@ class VTK:
                 _add_array(dup.vtk_data,
                            label,
                            np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data)
-                if info is not None: dup.comments = f'{label}: {info}'
+                if info is not None: dup.comments += f'{label}: {info}'
             else:
                 raise ValueError('no label defined for data')
         elif isinstance(table,Table):
             for l in table.labels:
                 _add_array(dup.vtk_data,l,table.get(l))
-                if info is not None: dup.comments = f'{l}: {info}'
+                if info is not None: dup.comments += f'{l}: {info}'
         else:
             raise TypeError
 
