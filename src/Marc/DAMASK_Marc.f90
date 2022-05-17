@@ -208,9 +208,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use discretization_Marc
   use homogenization
   use materialpoint_Marc
+  use OMP_LIB
 
   implicit none
-  include "omp_lib.h"                                                                               ! the openMP function library
   integer,                               intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     ngens, &                                                                                        !< size of stress-strain law
     nn, &                                                                                           !< integration point number
