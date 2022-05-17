@@ -152,7 +152,7 @@ end module DAMASK_interface
 #include "../rotations.f90"
 #include "../polynomials.f90"
 #include "../lattice.f90"
-#include "../element.f90"
+#include "element.f90"
 #include "../geometry_plastic_nonlocal.f90"
 #include "../discretization.f90"
 #include "discretization_Marc.f90"
