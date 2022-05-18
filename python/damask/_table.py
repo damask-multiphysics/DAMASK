@@ -12,8 +12,8 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: dict,
-                 data: np.ndarray,
+                 shapes: dict = {},
+                 data: np.ndarray = None,
                  comments: Union[str, list] = None):
         """
         New spreadsheet.
@@ -405,7 +405,7 @@ class Table:
             new = pd.DataFrame(data=data.reshape(-1,size),
                                columns=[label]*size,
                               )
-            new.index = dup.data.index
+            new.index = new.index if dup.data.index.empty else dup.data.index
             dup.data = pd.concat([dup.data,new],axis=1)
 
         return dup
