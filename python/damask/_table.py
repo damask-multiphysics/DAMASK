@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Iterable
 
 import pandas as pd
 import numpy as np
@@ -14,7 +14,7 @@ class Table:
     def __init__(self,
                  shapes: dict,
                  data: np.ndarray,
-                 comments: Union[str, list] = None):
+                 comments: Union[str, Iterable] = None):
         """
         New spreadsheet.
 
@@ -434,8 +434,8 @@ class Table:
 
 
     def rename(self,
-               old: Union[str, List[str]],
-               new: Union[str, List[str]],
+               old: Union[str, Iterable[str]],
+               new: Union[str, Iterable[str]],
                info: str = None) -> 'Table':
         """
         Rename column data.
