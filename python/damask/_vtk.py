@@ -257,7 +257,7 @@ class VTK:
 
         Parameters
         ----------
-        grid : sequence of floats, len (3)
+        grid : sequence of sequences of floats, len (3)
             Grid coordinates along x, y, and z directions.
 
         Returns
