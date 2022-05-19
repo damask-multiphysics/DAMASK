@@ -50,15 +50,16 @@ class Grid:
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
         initial_conditions : dictionary, optional
             Labels and values of the inital conditions at each material point.
-        comments : (list of) str, optional
-            Comments, e.g. history of operations.
+        comments : str or iterable of str, optional
+            Additional, human-readable information, e.g. history of operations.
 
         """
         self.material = material
         self.size = size                                                        # type: ignore
         self.origin = origin                                                    # type: ignore
         self.initial_conditions = {} if initial_conditions is None else initial_conditions
-        self.comments = [] if comments is None else comments                    # type: ignore
+        comments_ = [comments] if isinstance(comments,str) else comments
+        self.comments = [] if comments_ is None else [str(c) for c in comments_]
 
     def __repr__(self) -> str:
         """Give short human-readable summary."""

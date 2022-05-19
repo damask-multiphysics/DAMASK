@@ -14,7 +14,7 @@ class Table:
     def __init__(self,
                  shapes: dict,
                  data: np.ndarray,
-                 comments: Union[str, Iterable] = None):
+                 comments: Union[str, Iterable[str]] = None):
         """
         New spreadsheet.
 
@@ -30,7 +30,7 @@ class Table:
 
         """
         comments_ = [comments] if isinstance(comments,str) else comments
-        self.comments = [] if comments_ is None else [c for c in comments_]
+        self.comments = [] if comments_ is None else [str(c) for c in comments_]
         self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
         self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
