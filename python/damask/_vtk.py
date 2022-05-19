@@ -404,10 +404,11 @@ class VTK:
     def set(self,
             label: str = None,
             data: Union[np.ndarray, np.ma.MaskedArray] = None,
+            info: str = None,
             *,
             table: 'Table' = None):
         """
-        Add (or replace existing) point or cell data.
+        Add new or replace existing point or cell data.
 
         Data can either be a numpy.array, which requires a corresponding label,
         or a damask.Table.
@@ -419,6 +420,8 @@ class VTK:
         data : numpy.ndarray or numpy.ma.MaskedArray, optional
             Data to add or replace. First array dimension needs to match either
             number of cells or number of points.
+        info : str, optional
+            Human-readable information about the data.
         table: damask.Table, optional
             Data to add or replace. Each table label is individually considered.
             Number of rows needs to match either number of cells or number of points.
@@ -465,13 +468,16 @@ class VTK:
                 _add_array(dup.vtk_data,
                            label,
                            np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data)
+                if info is not None: dup.comments += f'{label}: {info}'
             else:
                 raise ValueError('no label defined for data')
         elif isinstance(table,Table):
             for l in table.labels:
                 _add_array(dup.vtk_data,l,table.get(l))
+                if info is not None: dup.comments += f'{l}: {info}'
         else:
             raise TypeError
+
 
         return dup
 
