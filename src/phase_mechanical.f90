@@ -264,8 +264,6 @@ module subroutine mechanical_init(phases)
       en = material_phaseEntry(co,ce)
       phase_mechanical_F(ph)%data(1:3,1:3,en)  = math_I3
       phase_mechanical_Fp(ph)%data(1:3,1:3,en) = material_O_0(ma)%data(co)%asMatrix()              ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
-      phase_mechanical_Fp(ph)%data(1:3,1:3,en) = phase_mechanical_Fp(ph)%data(1:3,1:3,en) &
-                                               / math_det33(phase_mechanical_Fp(ph)%data(1:3,1:3,en))**(1.0_pReal/3.0_pReal)
       phase_mechanical_Fe(ph)%data(1:3,1:3,en) = matmul(material_V_e_0(ma)%data(1:3,1:3,co), &
                                                         transpose(phase_mechanical_Fp(ph)%data(1:3,1:3,en)))
       phase_mechanical_Fi(ph)%data(1:3,1:3,en) = material_O_0(ma)%data(co)%rotate(math_inv33(material_V_e_0(ma)%data(1:3,1:3,co)))

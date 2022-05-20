@@ -449,6 +449,7 @@ pure function qu2om(qu) result(om)
   om(1,3) = 2.0_pReal*(qu(2)*qu(4)+qu(1)*qu(3))
 
   if (sign(1.0_pReal,P) < 0.0_pReal) om = transpose(om)
+  om = om/math_det33(om)**(1.0_pReal/3.0_pReal)
 
 end function qu2om
 
@@ -602,6 +603,7 @@ pure function om2qu(om) result(qu)
   endif
   if(sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
   qu(2:4) = merge(qu(2:4),qu(2:4)*P,dEq0(qu(2:4)))
+  qu = qu/norm2(qu)
 
 end function om2qu
 
