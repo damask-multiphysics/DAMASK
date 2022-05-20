@@ -1820,7 +1820,7 @@ class Result:
         r: Dict[str, Dict[str, Dict[str, Dict[str, Union[np.ma.MaskedArray]]]]] = {}
 
         constituents_ = list(map(int,constituents)) if isinstance(constituents,Iterable) else \
-                      (range(self.N_constituents) if constituents is None else [constituents])
+                      (range(self.N_constituents) if constituents is None else [constituents]) #type: ignore
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
