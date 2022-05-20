@@ -574,7 +574,7 @@ end function qu2cu
 
 !---------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief convert rotation matrix to cubochoric
+!> @brief convert rotation matrix to unit quaternion
 !> @details the original formulation (direct conversion) had (numerical?) issues
 !---------------------------------------------------------------------------------------------------
 pure function om2qu(om) result(qu)
@@ -601,14 +601,14 @@ pure function om2qu(om) result(qu)
       endif
   endif
   if(sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
-  qu = qu*[1.0_pReal,P,P,P]
+  qu(2:4) = merge(qu(2:4),qu(2:4)*P,dEq0(qu(2:4)))
 
 end function om2qu
 
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief orientation matrix to Euler angles
+!> @brief convert orientation matrix to Euler angles
 !> @details Two step check for special cases to avoid invalid operations (not needed for python)
 !---------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
@@ -1333,8 +1333,8 @@ pure function cu2ho(cu) result(ho)
       ! transform to sphere grid (inverse Lambert)
       ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
       c = sum(T**2)
-      s = PI * c/(24.0*XYZ(3)**2)
-      c = sqrt(PI) * c / sqrt(24.0_pReal) / XYZ(3)
+      s = c * PI/(24.0*XYZ(3)**2)
+      c = c * sqrt(PI/24.0_pReal) / XYZ(3)
       q = sqrt( 1.0 - s )
       LamXYZ = [ T(order(2)) * q, T(order(1)) * q, PREF * XYZ(3) - c ]
     end if special
