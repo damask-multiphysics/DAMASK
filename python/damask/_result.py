@@ -612,7 +612,7 @@ class Result:
 
 
     @staticmethod
-    def _add_calculation(**kwargs):
+    def _add_calculation(**kwargs) -> Dict[str, Any]:
         formula = kwargs['formula']
         for d in re.findall(r'#(.*?)#',formula):
             formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
@@ -786,7 +786,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         else:
-            raise ValueError(f'invalid value for "eigenvalue": {eigenvalue}')
+            raise ValueError(f'invalid eigenvalue: {eigenvalue}')
 
         return {
                 'data': tensor.eigenvalues(T_sym['data'])[:,p],
@@ -831,7 +831,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         else:
-            raise ValueError(f'invalid value for "eigenvalue": {eigenvalue}')
+            raise ValueError(f'invalid eigenvalue: {eigenvalue}')
 
         return {
                 'data': tensor.eigenvectors(T_sym['data'])[:,p],
@@ -981,7 +981,7 @@ class Result:
 
 
     @staticmethod
-    def _add_norm(x: Dict[str, Any], ord: Union[int, Literal['fro', 'nuc']]) ->  Dict[str, Any]:
+    def _add_norm(x: Dict[str, Any], ord: Union[int, float, Literal['fro', 'nuc']]) ->  Dict[str, Any]:
         o = ord
         if len(x['data'].shape) == 2:
             axis: Union[int, Tuple[int, int]] = 1
@@ -1005,7 +1005,7 @@ class Result:
                  }
     def add_norm(self,
                  x: str,
-                 ord: Union[int, Literal['fro', 'nuc']] = None):
+                 ord: Union[int, float, Literal['fro', 'nuc']] = None):
         """
         Add the norm of vector or tensor.
 
@@ -1062,19 +1062,24 @@ class Result:
     def _add_pole(q: Dict[str, Any],
                   uvw: FloatSequence,
                   hkl: FloatSequence,
-                  with_symmetry: bool) -> Dict[str, Any]:
+                  with_symmetry: bool,
+                  normalize: bool) -> Dict[str, Any]:
         c = q['meta']['c/a'] if 'c/a' in q['meta'] else 1
-        pole = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c).to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry)
+        brackets = ['[]','()','⟨⟩','{}'][(uvw is None)*1+with_symmetry*2]
+        label = 'p^' + '{}{} {} {}{}'.format(brackets[0],
+                                              *(uvw if uvw else hkl),
+                                              brackets[-1],)
+        ori = Orientation(q['data'],lattice=q['meta']['lattice'],a=1,c=c)
 
         return {
-                'data': pole,
-                'label': 'p^[{} {} {}]'.format(*uvw) if uvw else 'p^({} {} {})'.format(*hkl),
+                'data': ori.to_pole(uvw=uvw,hkl=hkl,with_symmetry=with_symmetry,normalize=normalize),
+                'label': label,
                 'meta' : {
-                           'unit':        '1',
-                           'description': 'lab frame vector along lattice ' \
-                                          + ('direction' if uvw else 'plane') \
-                                          + ('s' if with_symmetry else ''),
-                           'creator':     'add_pole'
+                          'unit':        '1',
+                          'description': f'{"normalized " if normalize else ""}lab frame vector along lattice ' \
+                                         + ('direction' if uvw is not None else 'plane') \
+                                         + ('s' if with_symmetry else ''),
+                          'creator':     'add_pole'
                           }
                 }
     def add_pole(self,
@@ -1082,7 +1087,8 @@ class Result:
                  *,
                  uvw: FloatSequence = None,
                  hkl: FloatSequence = None,
-                 with_symmetry: bool = False):
+                 with_symmetry: bool = False,
+                 normalize: bool = True):
         """
         Add lab frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -1095,9 +1101,15 @@ class Result:
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
+            Defaults to True.
+        normalize : bool, optional
+            Normalize output vector.
+            Defaults to True.
 
         """
-        self._add_generic_pointwise(self._add_pole,{'q':q},{'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry})
+        self._add_generic_pointwise(self._add_pole,
+                                    {'q':q},
+                                    {'uvw':uvw,'hkl':hkl,'with_symmetry':with_symmetry,'normalize':normalize})
 
 
     @staticmethod
@@ -1376,18 +1388,18 @@ class Result:
                                 result1 = result[at_cell_ho[x]]
 
                             path = '/'.join(['/',increment[0],ty[0],x,field[0]])
-                            h5_dataset : h5py._hl.dataset.Dataset = f[path].create_dataset(r['label'],data=result1)
+                            h5_dataset = f[path].create_dataset(r['label'],data=result1)
 
                             now = datetime.datetime.now().astimezone()
                             h5_dataset.attrs['created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
-                                                       now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+                                                          now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                             for l,v in r['meta'].items():
                                 h5_dataset.attrs[l.lower()]=v if h5py3 else v.encode()
                             creator = h5_dataset.attrs['creator'] if h5py3 else \
                                       h5_dataset.attrs['creator'].decode()
                             h5_dataset.attrs['creator'] = f'damask.Result.{creator} v{damask.version}' if h5py3 else \
-                                                       f'damask.Result.{creator} v{damask.version}'.encode()
+                                                          f'damask.Result.{creator} v{damask.version}'.encode()
 
 
     def _job_pointwise(self,
@@ -1413,6 +1425,7 @@ class Result:
         except Exception as err:
             print(f'Error during calculation: {err}.')
             return [None,None]
+
 
     def _add_generic_pointwise(self,
                                func: Callable,
@@ -1465,13 +1478,14 @@ class Result:
                         shape = result['data'].shape
                         if result['data'].size >= chunk_size*2:
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
-                            compression: Tuple[Optional[str], Optional[int]] = ('gzip',6)
+                            compress = True
                         else:
                             chunks = shape
-                            compression = (None,None)
+                            compress = False
                         dataset = f[group].create_dataset(result['label'],data=result['data'],
                                                           maxshape=shape, chunks=chunks,
-                                                          compression=compression[0], compression_opts=compression[1],
+                                                          compression = 'gzip' if compress else None,
+                                                          compression_opts = 6 if compress else None,
                                                           shuffle=True,fletcher32=True)
 
                     now = datetime.datetime.now().astimezone()
@@ -1693,7 +1707,7 @@ class Result:
             for inc in util.show_progress(self.visible['increments']):
 
                 u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
-                v = v.add('u',u)
+                v = v.set('u',u)
 
                 for ty in ['phase','homogenization']:
                     for field in self.visible['fields']:
@@ -1720,7 +1734,7 @@ class Result:
                                     outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
 
                         for label,dataset in outs.items():
-                            v = v.add(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
+                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
 
                 v.save(f'{self.fname.stem}_inc{inc[10:].zfill(N_digits)}',parallel=parallel)
 

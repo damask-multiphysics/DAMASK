@@ -15,7 +15,7 @@ module system_routines
     getCWD, &
     getHostName, &
     getUserName, &
-    signalterm_C, &
+    signalint_C, &
     signalusr1_C, &
     signalusr2_C, &
     f_c_string, &
@@ -55,11 +55,11 @@ module system_routines
       integer(C_INT),                                  intent(out) :: stat
     end subroutine getUserName_C
 
-    subroutine signalterm_C(handler) bind(C)
+    subroutine signalint_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
       type(C_FUNPTR), intent(in), value :: handler
-    end subroutine signalterm_C
+    end subroutine signalint_C
 
     subroutine signalusr1_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR

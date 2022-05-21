@@ -48,7 +48,7 @@ module HDF5_utilities
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_write
-#if defined(__GFORTRAN__) && __GNUC__<11
+#if defined(__GFORTRAN__)
     module procedure HDF5_write_real1
     module procedure HDF5_write_real2
     module procedure HDF5_write_real3
@@ -1214,7 +1214,7 @@ subroutine HDF5_read_int7(dataset,loc_id,datasetName,parallel)
 
 end subroutine HDF5_read_int7
 
-#if defined(__GFORTRAN__) && __GNUC__<11
+#if defined(__GFORTRAN__)
 
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type real with 1 dimension
@@ -1631,7 +1631,7 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
 
 end subroutine HDF5_write_str
 
-#if defined(__GFORTRAN__) && __GNUC__<11
+#if defined(__GFORTRAN__)
 
 !--------------------------------------------------------------------------------------------------
 !> @brief write dataset of type integer with 1 dimension

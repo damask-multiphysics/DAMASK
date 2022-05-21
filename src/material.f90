@@ -27,7 +27,7 @@ module material
 
 
   type(tRotationContainer), dimension(:), allocatable, public, protected :: material_O_0
-  type(tTensorContainer),   dimension(:), allocatable, public, protected :: material_F_i_0
+  type(tTensorContainer),   dimension(:), allocatable, public, protected :: material_V_e_0
 
   integer, dimension(:), allocatable, public, protected :: &
     homogenization_Nconstituents                                                                    !< number of grains in each homogenization
@@ -133,7 +133,7 @@ subroutine parse()
   allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pReal)
 
   allocate(material_O_0(materials%length))
-  allocate(material_F_i_0(materials%length))
+  allocate(material_V_e_0(materials%length))
 
   allocate(ho_of(materials%length))
   allocate(ph_of(materials%length,homogenization_maxNconstituents),source=-1)
@@ -154,7 +154,7 @@ subroutine parse()
         if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
 
         allocate(material_O_0(ma)%data(constituents%length))
-        allocate(material_F_i_0(ma)%data(1:3,1:3,constituents%length))
+        allocate(material_V_e_0(ma)%data(1:3,1:3,constituents%length))
 
         do co = 1, constituents%length
           constituent => constituents%get(co)
@@ -162,7 +162,9 @@ subroutine parse()
           ph_of(ma,co) = phases%getIndex(constituent%get_asString('phase'))
 
           call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-          material_F_i_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('F_i',defaultVal=math_I3,requiredShape=[3,3])
+          material_V_e_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('V_e',defaultVal=math_I3,requiredShape=[3,3])
+          if (any(dNeq(material_V_e_0(ma)%data(1:3,1:3,co),transpose(material_V_e_0(ma)%data(1:3,1:3,co))))) &
+            call IO_error(147)
 
         end do
         if (dNeq(sum(v_of(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')

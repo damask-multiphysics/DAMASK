@@ -210,7 +210,6 @@ module subroutine mechanical_init(phases)
     Nmembers
   class(tNode), pointer :: &
     num_crystallite, &
-
     phase, &
     mech
 
@@ -239,11 +238,8 @@ module subroutine mechanical_init(phases)
 
     allocate(phase_mechanical_Fe(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Fi0(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fp(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Fp0(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_F(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_F0(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers),source=0.0_pReal)
@@ -265,23 +261,19 @@ module subroutine mechanical_init(phases)
     ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
     do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
       ph = material_phaseID(co,ce)
-      phase_mechanical_Fi0(ph)%data(1:3,1:3,material_phaseEntry(co,ce)) = material_F_i_0(ma)%data(1:3,1:3,co)
+      en = material_phaseEntry(co,ce)
+      phase_mechanical_F(ph)%data(1:3,1:3,en)  = math_I3
+      phase_mechanical_Fp(ph)%data(1:3,1:3,en) = material_O_0(ma)%data(co)%asMatrix()              ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      phase_mechanical_Fe(ph)%data(1:3,1:3,en) = matmul(material_V_e_0(ma)%data(1:3,1:3,co), &
+                                                        transpose(phase_mechanical_Fp(ph)%data(1:3,1:3,en)))
+      phase_mechanical_Fi(ph)%data(1:3,1:3,en) = material_O_0(ma)%data(co)%rotate(math_inv33(material_V_e_0(ma)%data(1:3,1:3,co)))
     enddo
   enddo
 
   do ph = 1, phases%length
-    do en = 1, count(material_phaseID == ph)
-
-      phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_O_0(ph)%data(en)%asMatrix()                 ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
-      phase_mechanical_Fp0(ph)%data(1:3,1:3,en) = phase_mechanical_Fp0(ph)%data(1:3,1:3,en) &
-                                                / math_det33(phase_mechanical_Fp0(ph)%data(1:3,1:3,en))**(1.0_pReal/3.0_pReal)
-      phase_mechanical_F0(ph)%data(1:3,1:3,en) = math_I3
-      phase_mechanical_Fe(ph)%data(1:3,1:3,en) = math_inv33(matmul(phase_mechanical_Fi0(ph)%data(1:3,1:3,en), &
-                                                                   phase_mechanical_Fp0(ph)%data(1:3,1:3,en)))  ! assuming that euler angles are given in internal strain free configuration
-    enddo
-    phase_mechanical_Fp(ph)%data = phase_mechanical_Fp0(ph)%data
-    phase_mechanical_Fi(ph)%data = phase_mechanical_Fi0(ph)%data
-    phase_mechanical_F(ph)%data  = phase_mechanical_F0(ph)%data
+    phase_mechanical_F0(ph)%data  = phase_mechanical_F(ph)%data
+    phase_mechanical_Fp0(ph)%data = phase_mechanical_Fp(ph)%data
+    phase_mechanical_Fi0(ph)%data = phase_mechanical_Fi(ph)%data
   enddo
 
 
@@ -317,7 +309,6 @@ module subroutine mechanical_init(phases)
      call IO_error(301,ext_msg='integrator')
 
   end select
-
 
   call eigen_init(phases)
 
@@ -680,8 +671,11 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result
   if (any(IEEE_is_NaN(dotState))) return
 
   sizeDotState = plasticState(ph)%sizeDotState
-  plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + dotState * Delta_t
+#ifndef __INTEL_LLVM_COMPILER
+  plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
+#else
+  plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
+#endif
 
   broken = plastic_deltaState(ph,en)
   if(broken) return
@@ -720,8 +714,11 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
   sizeDotState = plasticState(ph)%sizeDotState
 
   r = - dotState * 0.5_pReal * Delta_t
-  plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + dotState * Delta_t
+#ifndef __INTEL_LLVM_COMPILER
+  plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
+#else
+  plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
+#endif
 
   broken = plastic_deltaState(ph,en)
   if(broken) return
@@ -842,12 +839,18 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
     dotState = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
 
     do n = 2, stage
-      dotState = dotState &
-               + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
+#ifndef __INTEL_LLVM_COMPILER
+      dotState = dotState + A(n,stage)*plastic_RKdotState(1:sizeDotState,n)
+#else
+      dotState = IEEE_FMA(A(n,stage),plastic_RKdotState(1:sizeDotState,n),dotState)
+#endif
     enddo
 
-    plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                              + dotState * Delta_t
+#ifndef __INTEL_LLVM_COMPILER
+    plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
+#else
+    plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
+#endif
 
     broken = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),subFp0,subFi0,Delta_t*C(stage), ph,en)
     if(broken) exit
@@ -861,8 +864,11 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
 
   plastic_RKdotState(1:sizeDotState,size(B)) = dotState
   dotState = matmul(plastic_RKdotState,B)
-  plasticState(ph)%state(1:sizeDotState,en) = subState0 &
-                                            + dotState * Delta_t
+#ifndef __INTEL_LLVM_COMPILER
+  plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
+#else
+  plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
+#endif
 
   if(present(DB)) &
     broken = .not. converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
@@ -1146,12 +1152,18 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
   else
     lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
     do o=1,3; do p=1,3
+#ifndef __INTEL_LLVM_COMPILER
       lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
                             + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * Delta_t
       lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
                             + invFi*invFi(p,o)
       rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
                             - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * Delta_t
+#else
+      lhs_3333(1:3,1:3,o,p) = IEEE_FMA(matmul(invSubFi0,dLidFi(1:3,1:3,o,p)),Delta_t,lhs_3333(1:3,1:3,o,p))
+      lhs_3333(1:3,o,1:3,p) = IEEE_FMA(invFi,invFi(p,o),lhs_3333(1:3,o,1:3,p))
+      rhs_3333(1:3,1:3,o,p) = IEEE_FMA(matmul(invSubFi0,dLidS(1:3,1:3,o,p)),-Delta_t,rhs_3333(1:3,1:3,o,p))
+#endif
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
@@ -1180,8 +1192,12 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
     temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                            + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
   enddo; enddo
+#ifndef __INTEL_LLVM_COMPILER
   lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * Delta_t &
            + math_mul3333xx3333(dSdFi,dFidS)
+#else
+  lhs_3333 = IEEE_FMA(math_mul3333xx3333(dSdFe,temp_3333),Delta_t,math_mul3333xx3333(dSdFi,dFidS))
+#endif
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
   if (error) then
@@ -1219,6 +1235,9 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
 end function phase_mechanical_dPdF
 
 
+!--------------------------------------------------------------------------------------------------
+!< @brief Write restart information to file.
+!--------------------------------------------------------------------------------------------------
 module subroutine mechanical_restartWrite(groupHandle,ph)
 
   integer(HID_T), intent(in) :: groupHandle
@@ -1226,36 +1245,41 @@ module subroutine mechanical_restartWrite(groupHandle,ph)
 
 
   call HDF5_write(plasticState(ph)%state,groupHandle,'omega_plastic')
-  call HDF5_write(phase_mechanical_Fi(ph)%data,groupHandle,'F_i')
-  call HDF5_write(phase_mechanical_Li(ph)%data,groupHandle,'L_i')
-  call HDF5_write(phase_mechanical_Lp(ph)%data,groupHandle,'L_p')
-  call HDF5_write(phase_mechanical_Fp(ph)%data,groupHandle,'F_p')
   call HDF5_write(phase_mechanical_S(ph)%data,groupHandle,'S')
   call HDF5_write(phase_mechanical_F(ph)%data,groupHandle,'F')
+  call HDF5_write(phase_mechanical_Fp(ph)%data,groupHandle,'F_p')
+  call HDF5_write(phase_mechanical_Fi(ph)%data,groupHandle,'F_i')
+  call HDF5_write(phase_mechanical_Lp(ph)%data,groupHandle,'L_p')
+  call HDF5_write(phase_mechanical_Li(ph)%data,groupHandle,'L_i')
 
 end subroutine mechanical_restartWrite
 
 
+!--------------------------------------------------------------------------------------------------
+!< @brief Read restart information from file.
+!--------------------------------------------------------------------------------------------------
 module subroutine mechanical_restartRead(groupHandle,ph)
 
   integer(HID_T), intent(in) :: groupHandle
   integer, intent(in) :: ph
 
+  integer :: en
+
 
   call HDF5_read(plasticState(ph)%state0,groupHandle,'omega_plastic')
-  call HDF5_read(phase_mechanical_Fi0(ph)%data,groupHandle,'F_i')
-  call HDF5_read(phase_mechanical_Li0(ph)%data,groupHandle,'L_i')
-  call HDF5_read(phase_mechanical_Lp0(ph)%data,groupHandle,'L_p')
-  call HDF5_read(phase_mechanical_Fp0(ph)%data,groupHandle,'F_p')
   call HDF5_read(phase_mechanical_S0(ph)%data,groupHandle,'S')
   call HDF5_read(phase_mechanical_F0(ph)%data,groupHandle,'F')
+  call HDF5_read(phase_mechanical_Fp0(ph)%data,groupHandle,'F_p')
+  call HDF5_read(phase_mechanical_Fi0(ph)%data,groupHandle,'F_i')
+  call HDF5_read(phase_mechanical_Lp0(ph)%data,groupHandle,'L_p')
+  call HDF5_read(phase_mechanical_Li0(ph)%data,groupHandle,'L_i')
 
 end subroutine mechanical_restartRead
 
 
-!----------------------------------------------------------------------------------------------
-!< @brief Get first Piola-Kichhoff stress (for use by non-mech physics)
-!----------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!< @brief Get first Piola-Kichhoff stress (for use by non-mech physics).
+!--------------------------------------------------------------------------------------------------
 module function mechanical_S(ph,en) result(S)
 
   integer, intent(in) :: ph,en
@@ -1267,9 +1291,9 @@ module function mechanical_S(ph,en) result(S)
 end function mechanical_S
 
 
-!----------------------------------------------------------------------------------------------
-!< @brief Get plastic velocity gradient (for use by non-mech physics)
-!----------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!< @brief Get plastic velocity gradient (for use by non-mech physics).
+!--------------------------------------------------------------------------------------------------
 module function mechanical_L_p(ph,en) result(L_p)
 
   integer, intent(in) :: ph,en
@@ -1281,9 +1305,9 @@ module function mechanical_L_p(ph,en) result(L_p)
 end function mechanical_L_p
 
 
-!----------------------------------------------------------------------------------------------
-!< @brief Get elastic deformation gradient (for use by non-mech physics)
-!----------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!< @brief Get elastic deformation gradient (for use by non-mech physics).
+!--------------------------------------------------------------------------------------------------
 module function mechanical_F_e(ph,en) result(F_e)
 
   integer, intent(in) :: ph,en
@@ -1295,9 +1319,9 @@ module function mechanical_F_e(ph,en) result(F_e)
 end function mechanical_F_e
 
 
-!----------------------------------------------------------------------------------------------
-!< @brief Get second Piola-Kichhoff stress (for use by homogenization)
-!----------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!< @brief Get second Piola-Kichhoff stress (for use by homogenization).
+!--------------------------------------------------------------------------------------------------
 module function phase_P(co,ce) result(P)
 
   integer, intent(in) :: co, ce
@@ -1309,9 +1333,9 @@ module function phase_P(co,ce) result(P)
 end function phase_P
 
 
-!----------------------------------------------------------------------------------------------
-!< @brief Get deformation gradient (for use by homogenization)
-!----------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!< @brief Get deformation gradient (for use by homogenization).
+!--------------------------------------------------------------------------------------------------
 module function phase_F(co,ce) result(F)
 
   integer, intent(in) :: co, ce
@@ -1323,9 +1347,9 @@ module function phase_F(co,ce) result(F)
 end function phase_F
 
 
-!----------------------------------------------------------------------------------------------
-!< @brief Set deformation gradient (for use by homogenization)
-!----------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!< @brief Set deformation gradient (for use by homogenization).
+!--------------------------------------------------------------------------------------------------
 module subroutine phase_set_F(F,co,ce)
 
   real(pReal), dimension(3,3), intent(in) :: F

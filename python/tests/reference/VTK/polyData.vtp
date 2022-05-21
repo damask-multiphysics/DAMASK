@@ -16,6 +16,17 @@
         </DataArray>
       </PointData>
       <CellData>
+        <DataArray type="Float32" Name="coordinates" NumberOfComponents="3" format="binary" RangeMin="0.7453560147132696" RangeMax="2.449489742783178">
+          AQAAAACAAAB4AAAAVgAAAA==eF5jYICBhv2WfY9tLfuS7Ypk3PeDaCDf7okF3/7Vq1bZrV6lZQ+k94HEgHL2QHovUM7+iUUfiG0LlQdhkH77Ipnj9iB5qFp7kBjQDiBmcADRANsaLXM=
+          <InformationKey name="L2_NORM_RANGE" location="vtkDataArray" length="2">
+            <Value index="0">
+              0.74535601471
+            </Value>
+            <Value index="1">
+              2.4494897428
+            </Value>
+          </InformationKey>
+        </DataArray>
       </CellData>
       <Points>
         <DataArray type="Float64" Name="Points" NumberOfComponents="3" format="binary" RangeMin="0.7453559924999299" RangeMax="2.449489742783178">
