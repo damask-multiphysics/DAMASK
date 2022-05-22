@@ -1686,7 +1686,7 @@ class Result:
         else:
             raise ValueError(f'invalid mode "{mode}"')
 
-        v.comments = util.execution_stamp('Result','export_VTK')
+        v.comments = [util.execution_stamp('Result','export_VTK')]
 
         N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
 
