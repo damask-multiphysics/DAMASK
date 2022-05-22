@@ -15,7 +15,7 @@
 #define MARC4DAMASK Marc4DAMASK
 #endif
 
-#include "prec.f90"
+#include "../prec.f90"
 
 module DAMASK_interface
   use prec
@@ -46,7 +46,7 @@ subroutine DAMASK_interface_init
   integer                 :: ierr
   character(len=pPathLen) :: wd
 
-  print'(/,1x,a)', '<<<+-  DAMASK_marc init -+>>>'
+  print'(/,1x,a)', '<<<+-  DAMASK_Marc init -+>>>'
 
   print*, 'Roters et al., Computational Materials Science 158:420–478, 2019'
   print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
@@ -139,8 +139,55 @@ end function solverIsSymmetric
 
 end module DAMASK_interface
 
-
-#include "commercialFEM_fileList.f90"
+#include "../parallelization.f90"
+#include "../constants.f90"
+#include "../IO.f90"
+#include "../YAML_types.f90"
+#include "../YAML_parse.f90"
+#include "../HDF5_utilities.f90"
+#include "../results.f90"
+#include "../config.f90"
+#include "../LAPACK_interface.f90"
+#include "../math.f90"
+#include "../rotations.f90"
+#include "../polynomials.f90"
+#include "../lattice.f90"
+#include "element.f90"
+#include "../geometry_plastic_nonlocal.f90"
+#include "../discretization.f90"
+#include "discretization_Marc.f90"
+#include "../material.f90"
+#include "../phase.f90"
+#include "../phase_mechanical.f90"
+#include "../phase_mechanical_elastic.f90"
+#include "../phase_mechanical_plastic.f90"
+#include "../phase_mechanical_plastic_none.f90"
+#include "../phase_mechanical_plastic_isotropic.f90"
+#include "../phase_mechanical_plastic_phenopowerlaw.f90"
+#include "../phase_mechanical_plastic_kinehardening.f90"
+#include "../phase_mechanical_plastic_dislotwin.f90"
+#include "../phase_mechanical_plastic_dislotungsten.f90"
+#include "../phase_mechanical_plastic_nonlocal.f90"
+#include "../phase_mechanical_eigen.f90"
+#include "../phase_mechanical_eigen_cleavageopening.f90"
+#include "../phase_mechanical_eigen_thermalexpansion.f90"
+#include "../phase_thermal.f90"
+#include "../phase_thermal_dissipation.f90"
+#include "../phase_thermal_externalheat.f90"
+#include "../phase_damage.f90"
+#include "../phase_damage_isobrittle.f90"
+#include "../phase_damage_anisobrittle.f90"
+#include "../homogenization.f90"
+#include "../homogenization_mechanical.f90"
+#include "../homogenization_mechanical_pass.f90"
+#include "../homogenization_mechanical_isostrain.f90"
+#include "../homogenization_mechanical_RGC.f90"
+#include "../homogenization_thermal.f90"
+#include "../homogenization_thermal_pass.f90"
+#include "../homogenization_thermal_isotemperature.f90"
+#include "../homogenization_damage.f90"
+#include "../homogenization_damage_pass.f90"
+#include "materialpoint_Marc.f90"
 
 !--------------------------------------------------------------------------------------------------
 !> @brief This is the MSC.Marc user subroutine for defining material behavior
@@ -158,12 +205,12 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use DAMASK_interface
   use config
   use YAML_types
-  use discretization_marc
+  use discretization_Marc
   use homogenization
-  use CPFEM
+  use materialpoint_Marc
+  use OMP_LIB
 
   implicit none
-  include "omp_lib.h"                                                                               ! the openMP function library
   integer,                               intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     ngens, &                                                                                        !< size of stress-strain law
     nn, &                                                                                           !< integration point number
@@ -214,8 +261,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
 
-#include QUOTE(PASTE(./Marc/include/concom,MARC4DAMASK))                                            ! concom is needed for inc, lovl
-#include QUOTE(PASTE(./Marc/include/creeps,MARC4DAMASK))                                            ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(include/concom,MARC4DAMASK))                                                   ! concom is needed for inc, lovl
+#include QUOTE(PASTE(include/creeps,MARC4DAMASK))                                                   ! creeps is needed for timinc (time increment)
 
   logical :: cutBack
   real(pReal), dimension(6) ::   stress
@@ -232,7 +279,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   logical, save :: &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
-    CPFEM_init_done   = .false., &                                                                  !< remember whether init has been done already
+    materialpoint_init_done   = .false., &                                                          !< remember whether init has been done already
     debug_basic       = .true.
   class(tNode), pointer :: &
     debug_Marc                                                                                      ! pointer to Marc debug options
@@ -255,9 +302,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1_pI32)                                                                  ! no openMP
 
-  if (.not. CPFEM_init_done) then
-    CPFEM_init_done = .true.
-    call CPFEM_initAll
+  if (.not. materialpoint_init_done) then
+    materialpoint_init_done = .true.
+    call materialpoint_initAll
     debug_Marc => config_debug%get('Marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
   endif
@@ -265,9 +312,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
   if (lovl == 4 ) then                                                                              ! jacobian requested by marc
     if (timinc < theDelta .and. theInc == inc .and. lastLovl /= lovl) &                             ! first after cutback
-      computationMode = CPFEM_RESTOREJACOBIAN
+      computationMode = materialpoint_RESTOREJACOBIAN
   elseif (lovl == 6) then                                                                           ! stress requested by marc
-    computationMode = CPFEM_CALCRESULTS
+    computationMode = materialpoint_CALCRESULTS
     if (cptim > theTime .or. inc /= theInc) then                                                    ! reached "convergence"
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
@@ -300,11 +347,11 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
       !call mesh_build_ipCoordinates()                                                              ! update ip coordinates
     endif
     if (outdatedByNewInc) then
-      computationMode = ior(computationMode,CPFEM_AGERESULTS)
+      computationMode = ior(computationMode,materialpoint_AGERESULTS)
       outdatedByNewInc = .false.
     endif
     if (lastIncConverged) then
-      computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)
+      computationMode = ior(computationMode,materialpoint_BACKUPJACOBIAN)
       lastIncConverged = .false.
     endif
 
@@ -315,7 +362,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   endif
   lastLovl = lovl
 
-  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
+  call materialpoint_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
 
   d = ddsdde(1:ngens,1:ngens)
   s = stress(1:ndi+nshear)
@@ -333,7 +380,7 @@ end subroutine hypela2
 subroutine flux(f,ts,n,time)
   use prec
   use homogenization
-  use discretization_marc
+  use discretization_Marc
 
   implicit none
   real(pReal), dimension(6),           intent(in) :: &
@@ -359,15 +406,15 @@ subroutine flux(f,ts,n,time)
 !--------------------------------------------------------------------------------------------------
 subroutine uedinc(inc,incsub)
   use prec
-  use CPFEM
-  use discretization_marc
+  use materialpoint_Marc
+  use discretization_Marc
 
   implicit none
   integer, intent(in) :: inc, incsub
   integer :: n, nqncomp, nqdatatype
   integer, save :: inc_written
   real(pReal), allocatable, dimension(:,:) :: d_n
-#include QUOTE(PASTE(./Marc/include/creeps,MARC4DAMASK))                                            ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(include/creeps,MARC4DAMASK))                                                   ! creeps is needed for timinc (time increment)
 
 
   if (inc > inc_written) then
@@ -379,8 +426,8 @@ subroutine uedinc(inc,incsub)
       endif
     enddo
 
-    call discretization_marc_UpdateNodeAndIpCoords(d_n)
-    call CPFEM_results(inc,cptim)
+    call discretization_Marc_UpdateNodeAndIpCoords(d_n)
+    call materialpoint_results(inc,cptim)
 
     inc_written = inc
   endif

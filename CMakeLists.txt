@@ -41,7 +41,7 @@ message("\nBuilding ${CMAKE_PROJECT_NAME} ${DAMASK_VERSION}\n")
 add_definitions(-DPETSC)
 add_definitions(-DDAMASKVERSION="${DAMASK_VERSION}")
 add_definitions(-DCMAKE_SYSTEM="${CMAKE_SYSTEM}")
-if(PETSC_VERSION VERSION_GREATER_EQUAL 3.17.0)
+if(PETSC_VERSION VERSION_EQUAL 3.17.0)
    add_definitions("-DCHKERRQ=PetscCall")
 endif()
 

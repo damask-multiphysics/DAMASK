@@ -58,8 +58,8 @@ void getusername_c(char username[], int *stat){
 }
 
 
-void signalterm_c(void (*handler)(int)){
-  signal(SIGTERM, handler);
+void signalint_c(void (*handler)(int)){
+  signal(SIGINT, handler);
 }
 
 void signalusr1_c(void (*handler)(int)){
@@ -88,7 +88,7 @@ void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte defl
 #ifdef FYAML
 void to_flow_c(char **flow, int* length_flow, const char *mixed){
   struct fy_document *fyd = NULL;
-  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_DOC;
+  enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS |FYECF_STRIP_DOC;
 
   fyd = fy_document_build_from_string(NULL, mixed, -1);
   if (!fyd) {

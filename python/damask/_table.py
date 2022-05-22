@@ -363,16 +363,16 @@ class Table:
             data: np.ndarray,
             info: str = None) -> 'Table':
         """
-        Set column data.
+        Add new or replace existing column data.
 
         Parameters
         ----------
         label : str
             Column label.
         data : numpy.ndarray
-            Replacement data.
+            Column data. First dimension needs to match number of rows.
         info : str, optional
-            Human-readable information about the modified data.
+            Human-readable information about the data.
 
         Returns
         -------
@@ -382,49 +382,32 @@ class Table:
         """
         dup = self.copy()
         dup._add_comment(label, data.shape[1:], info)
+
         if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label):
             key = m.group(1)
-            idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
-                                       self.shapes[key])
-            iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx
-            dup.data.iloc[:,iloc] = data
         else:
-            dup.data[label]       = data.reshape(dup.data[label].shape)
-        return dup
+            key = label
 
+        if key in dup.shapes:
 
-    def add(self,
-            label: str,
-            data: np.ndarray,
-            info: str = None) -> 'Table':
-        """
-        Add column data.
+            if m:
+                idx = np.ravel_multi_index(tuple(map(int,m.group(2).split(","))),
+                                           self.shapes[key])
+                iloc = dup.data.columns.get_loc(key).tolist().index(True) + idx
+                dup.data.iloc[:,iloc] = data
+            else:
+                dup.data[label]       = data.reshape(dup.data[label].shape)
 
-        Parameters
-        ----------
-        label : str
-            Column label.
-        data : numpy.ndarray
-            New data.
-        info : str, optional
-            Human-readable information about the new data.
+        else:
 
-        Returns
-        -------
-        updated : damask.Table
-            Updated table.
+            dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
+            size = np.prod(data.shape[1:],dtype=int)
+            new = pd.DataFrame(data=data.reshape(-1,size),
+                               columns=[label]*size,
+                              )
+            new.index = dup.data.index
+            dup.data = pd.concat([dup.data,new],axis=1)
 
-        """
-        dup = self.copy()
-        dup._add_comment(label,data.shape[1:],info)
-
-        dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
-        size = np.prod(data.shape[1:],dtype=int)
-        new = pd.DataFrame(data=data.reshape(-1,size),
-                           columns=[label]*size,
-                          )
-        new.index = dup.data.index
-        dup.data = pd.concat([dup.data,new],axis=1)
         return dup
 
 

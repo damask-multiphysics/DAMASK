@@ -150,11 +150,20 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_fiber_component(self):
-        r = Rotation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
+        crystal = np.random.rand(2) * [180,360]
+        sample = np.random.rand(2) * [180,360]
+        r = Rotation.from_fiber_component(crystal=crystal,sample=sample,
                                           sigma=0.0,shape=1,rng_seed=0)
-        assert np.all(Orientation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
-                                                       sigma=0.0,shape=None,rng_seed=0,family='triclinic').quaternion
+        assert np.all(Orientation.from_fiber_component(crystal=crystal,sample=sample,
+                                                       sigma=0.0,shape=None,rng_seed=0,lattice='cI').quaternion
                    == r.quaternion)
+
+    @pytest.mark.parametrize('crystal,sample,direction,color',[([np.pi/4,0],[np.pi/2,0],[1,0,0],[0,1,0]),
+                                                               ([np.arccos(3**(-.5)),np.pi/4,0],[0,0],[0,0,1],[0,0,1])])
+    def test_fiber_IPF(self,crystal,sample,direction,color):
+        fiber = Orientation.from_fiber_component(crystal=crystal,sample=sample,family='cubic',shape=200)
+        print(np.allclose(fiber.IPF_color(direction),color))
+
 
     @pytest.mark.parametrize('kwargs',[
                                         dict(lattice='aP',a=1.0,b=1.1,c=1.2,alpha=np.pi/4.5,beta=np.pi/3.5,gamma=np.pi/2.5),
@@ -167,12 +176,12 @@ class TestOrientation:
     def test_from_directions(self,kwargs):
         for a,b in np.random.random((10,2,3)):
             c = np.cross(b,a)
-            if np.all(np.isclose(c,0)): continue
+            if np.allclose(c,0): continue
             o = Orientation.from_directions(uvw=a,hkl=c,**kwargs)
             x = o.to_pole(uvw=a)
             z = o.to_pole(hkl=c)
-            assert np.isclose(np.dot(x/np.linalg.norm(x),np.array([1,0,0])),1) \
-               and np.isclose(np.dot(z/np.linalg.norm(z),np.array([0,0,1])),1)
+            assert np.isclose(np.dot(x,np.array([1,0,0])),1) \
+               and np.isclose(np.dot(z,np.array([0,0,1])),1)
 
     @pytest.mark.parametrize('function',[Orientation.from_random,
                                          Orientation.from_quaternion,

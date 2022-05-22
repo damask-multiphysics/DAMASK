@@ -1061,7 +1061,7 @@ class TestRotation:
         p = []
         for run in range(5):
             c = Rotation.from_random()
-            o = Rotation.from_spherical_component(c,sigma,shape)
+            o = Rotation.from_spherical_component(c,sigma,shape,degrees=True)
             _, angles = c.misorientation(o).as_axis_angle(pair=True,degrees=True)
             angles[::2] *= -1                                                                       # flip angle for every second to symmetrize distribution
 
@@ -1077,11 +1077,11 @@ class TestRotation:
     def test_from_fiber_component(self,sigma,shape):
         p = []
         for run in range(5):
-            alpha = np.random.random()*2*np.pi,np.arccos(np.random.random())
-            beta  = np.random.random()*2*np.pi,np.arccos(np.random.random())
+            alpha = np.arccos(np.random.random()),np.random.random()*2*np.pi
+            beta  = np.arccos(np.random.random()),np.random.random()*2*np.pi
 
             f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
-            f_in_S = np.array([np.sin(beta[0] )*np.cos(beta[1] ), np.sin(beta[0] )*np.sin(beta[1] ), np.cos(beta[0] )])
+            f_in_S = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
             ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
             n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)           # rotation to align fiber axis in crystal and sample system
 

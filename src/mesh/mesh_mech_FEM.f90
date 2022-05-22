@@ -20,7 +20,6 @@ module mesh_mechanical_FEM
   use FEM_utilities
   use discretization
   use discretization_mesh
-  use DAMASK_interface
   use config
   use IO
   use FEM_quadrature

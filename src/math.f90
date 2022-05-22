@@ -82,7 +82,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief initialization of random seed generator and internal checks
 !--------------------------------------------------------------------------------------------------
-subroutine math_init
+subroutine math_init()
 
   real(pReal), dimension(4) :: randTest
   integer :: randSize
@@ -127,7 +127,9 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
 
   integer, dimension(:,:), intent(inout) :: a
   integer, intent(in),optional :: istart,iend, sortDim
+
   integer :: ipivot,s,e,d
+
 
   if (present(istart)) then
     s = istart
@@ -164,8 +166,10 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
     integer, dimension(:,:), intent(inout) :: a
     integer,                 intent(out)   :: p                                                     ! Pivot element
     integer,                 intent(in)    :: istart,iend,sort
-    integer, dimension(size(a,1))          :: tmp
+
+    integer, dimension(size(a,1)) :: tmp
     integer :: i,j
+
 
     do
       ! find the first element on the right side less than or equal to the pivot point
@@ -204,7 +208,9 @@ pure function math_expand(what,how)
   real(pReal),   dimension(:), intent(in) :: what
   integer,       dimension(:), intent(in) :: how
   real(pReal), dimension(sum(how)) ::  math_expand
+
   integer :: i
+
 
   if (sum(how) == 0) return
 
@@ -221,8 +227,10 @@ end function math_expand
 pure function math_range(N)
 
   integer, intent(in) :: N                                                                          !< length of range
-  integer :: i
   integer, dimension(N) :: math_range
+
+  integer :: i
+
 
   math_range = [(i,i=1,N)]
 
@@ -235,8 +243,10 @@ end function math_range
 pure function math_eye(d)
 
   integer, intent(in) :: d                                                                          !< tensor dimension
-  integer :: i
   real(pReal), dimension(d,d) :: math_eye
+
+  integer :: i
+
 
   math_eye = 0.0_pReal
   do i=1,d
@@ -302,6 +312,7 @@ real(pReal) pure function math_delta(i,j)
 
   integer, intent (in) :: i,j
 
+
   math_delta = merge(0.0_pReal, 1.0_pReal, i /= j)
 
 end function math_delta
@@ -314,6 +325,7 @@ pure function math_cross(A,B)
 
   real(pReal), dimension(3), intent(in) ::  A,B
   real(pReal), dimension(3) :: math_cross
+
 
   math_cross = [ A(2)*B(3) -A(3)*B(2), &
                  A(3)*B(1) -A(1)*B(3), &
@@ -329,6 +341,7 @@ pure function math_outer(A,B)
 
   real(pReal), dimension(:), intent(in) ::  A,B
   real(pReal), dimension(size(A,1),size(B,1)) ::  math_outer
+
   integer :: i,j
 
 
@@ -351,6 +364,7 @@ real(pReal) pure function math_inner(A,B)
   real(pReal), dimension(:),         intent(in) :: A
   real(pReal), dimension(size(A,1)), intent(in) :: B
 
+
   math_inner = sum(A*B)
 
 end function math_inner
@@ -362,6 +376,7 @@ end function math_inner
 real(pReal) pure function math_tensordot(A,B)
 
   real(pReal), dimension(3,3), intent(in) :: A,B
+
 
   math_tensordot = sum(A*B)
 
@@ -376,6 +391,7 @@ pure function math_mul3333xx33(A,B)
   real(pReal), dimension(3,3,3,3), intent(in) :: A
   real(pReal), dimension(3,3),     intent(in) :: B
   real(pReal), dimension(3,3) :: math_mul3333xx33
+
   integer :: i,j
 
 
@@ -395,10 +411,11 @@ end function math_mul3333xx33
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx3333(A,B)
 
-  integer :: i,j,k,l
   real(pReal), dimension(3,3,3,3), intent(in) :: A
   real(pReal), dimension(3,3,3,3), intent(in) :: B
   real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
+
+  integer :: i,j,k,l
 
 
 #ifndef __INTEL_COMPILER
@@ -423,6 +440,7 @@ pure function math_exp33(A,n)
 
   real(pReal) :: invFac
   integer     :: n_,i
+
 
   if (present(n)) then
     n_ = n
@@ -456,6 +474,7 @@ pure function math_inv33(A)
   real(pReal) :: DetA
   logical     :: error
 
+
   call math_invert33(math_inv33,DetA,error,A)
   if (error) math_inv33 = 0.0_pReal
 
@@ -473,6 +492,7 @@ pure subroutine math_invert33(InvA, DetA, error, A)
   real(pReal),                 intent(out) :: DetA
   logical,                     intent(out) :: error
   real(pReal), dimension(3,3), intent(in)  :: A
+
 
   InvA(1,1) =  A(2,2) * A(3,3) - A(2,3) * A(3,2)
   InvA(2,1) = -A(2,1) * A(3,3) + A(2,3) * A(3,1)
@@ -504,7 +524,7 @@ end subroutine math_invert33
 !--------------------------------------------------------------------------------------------------
 pure function math_invSym3333(A)
 
-  real(pReal),dimension(3,3,3,3)            :: math_invSym3333
+  real(pReal),dimension(3,3,3,3) :: math_invSym3333
 
   real(pReal),dimension(3,3,3,3),intent(in) :: A
 
@@ -512,6 +532,7 @@ pure function math_invSym3333(A)
   real(pReal), dimension(6,6) :: temp66
   real(pReal), dimension(6*6) :: work
   integer                     :: ierr_i, ierr_f
+
 
   temp66 = math_sym3333to66(A)
   call dgetrf(6,6,temp66,6,ipiv6,ierr_i)
@@ -538,6 +559,7 @@ pure subroutine math_invert(InvA, error, A)
   real(pReal), dimension(size(A,1)**2) :: work
   integer                              :: ierr
 
+
   invA = A
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
   error = (ierr /= 0)
@@ -555,6 +577,7 @@ pure function math_symmetric33(m)
   real(pReal), dimension(3,3) :: math_symmetric33
   real(pReal), dimension(3,3), intent(in) :: m
 
+
   math_symmetric33 = 0.5_pReal * (m + transpose(m))
 
 end function math_symmetric33
@@ -567,6 +590,7 @@ pure function math_skew33(m)
 
   real(pReal), dimension(3,3) :: math_skew33
   real(pReal), dimension(3,3), intent(in) :: m
+
 
   math_skew33 = m - math_symmetric33(m)
 
@@ -581,6 +605,7 @@ pure function math_spherical33(m)
   real(pReal), dimension(3,3) :: math_spherical33
   real(pReal), dimension(3,3), intent(in) :: m
 
+
   math_spherical33 = math_I3 * math_trace33(m)/3.0_pReal
 
 end function math_spherical33
@@ -594,6 +619,7 @@ pure function math_deviatoric33(m)
   real(pReal), dimension(3,3) :: math_deviatoric33
   real(pReal), dimension(3,3), intent(in) :: m
 
+
   math_deviatoric33 = m - math_spherical33(m)
 
 end function math_deviatoric33
@@ -606,6 +632,7 @@ real(pReal) pure function math_trace33(m)
 
   real(pReal), dimension(3,3), intent(in) :: m
 
+
   math_trace33 = m(1,1) + m(2,2) + m(3,3)
 
 end function math_trace33
@@ -617,6 +644,7 @@ end function math_trace33
 real(pReal) pure function math_det33(m)
 
   real(pReal), dimension(3,3), intent(in) :: m
+
 
   math_det33 = m(1,1)* (m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
              - m(1,2)* (m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
@@ -631,6 +659,7 @@ end function math_det33
 real(pReal) pure function math_detSym33(m)
 
   real(pReal), dimension(3,3), intent(in) :: m
+
 
   math_detSym33 = -(m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2) &
                   + m(1,1)*m(2,2)*m(3,3) + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
@@ -760,6 +789,7 @@ pure function math_99to3333(m99)
   real(pReal), dimension(9,9), intent(in) :: m99
 
   integer :: i,j
+
 
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:9, j=1:9)
@@ -1012,26 +1042,37 @@ pure subroutine math_eigh33(w,v,m)
   real(pReal) :: T, U, norm, threshold
   logical :: error
 
+
   w = math_eigvalsh33(m)
 
-  v(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
-               m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
-               m(1, 2)**2]
+  v(1:3,2) = [ m(1,2) * m(2,3) - m(1,3) * m(2,2), &
+               m(1,3) * m(1,2) - m(2,3) * m(1,1), &
+               m(1,2)**2]
 
   T = maxval(abs(w))
   U = max(T, T**2)
   threshold = sqrt(5.68e-14_pReal * U**2)
 
-  v(1:3,1) = [ v(1,2) + m(1, 3) * w(1), &
-               v(2,2) + m(2, 3) * w(1), &
+#ifndef __INTEL_LLVM_COMPILER
+  v(1:3,1) = [m(1,3)*w(1) + v(1,2), &
+              m(2,3)*w(1) + v(2,2), &
+#else
+  v(1:3,1) = [IEEE_FMA(m(1,3),w(1),v(1,2)), &
+              IEEE_FMA(m(2,3),w(1),v(2,2)), &
+#endif
               (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
   norm = norm2(v(1:3, 1))
   fallback1: if (norm < threshold) then
     call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
-    v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
-                 v(2,2) + m(2, 3) * w(2), &
+#ifndef __INTEL_LLVM_COMPILER
+    v(1:3,2) = [m(1,3)*w(2) + v(1,2), &
+                m(2,3)*w(2) + v(2,2), &
+#else
+    v(1:3,2) = [IEEE_FMA(m(1,3),w(2),v(1,2)), &
+                IEEE_FMA(m(2,3),w(2),v(2,2)), &
+#endif
                 (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
     norm = norm2(v(1:3, 2))
     fallback2: if (norm < threshold) then
@@ -1065,6 +1106,7 @@ pure function math_rotationalPart(F) result(R)
   real(pReal), dimension(2) :: &
     I_F                                                                                             ! first two invariants of F
   real(pReal) :: x,Phi
+
 
   C = matmul(transpose(F),F)
   I_C = math_invariantsSym33(C)
@@ -1105,6 +1147,7 @@ pure function math_eigvalsh(m)
   integer :: ierr
   real(pReal), dimension(size(m,1)**2) :: work
 
+
   m_= m                                                                                             ! copy matrix to input (will be destroyed)
   call dsyev('N','U',size(m,1),m_,size(m,1),math_eigvalsh,work,size(work,1),ierr)
   if (ierr /= 0) math_eigvalsh = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
@@ -1125,6 +1168,7 @@ pure function math_eigvalsh33(m)
   real(pReal), dimension(3) :: math_eigvalsh33,I
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
+
 
   I = math_invariantsSym33(m)                                                                       ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
@@ -1156,6 +1200,7 @@ pure function math_invariantsSym33(m)
 
   real(pReal), dimension(3,3), intent(in) :: m
   real(pReal), dimension(3) :: math_invariantsSym33
+
 
   math_invariantsSym33(1) = math_trace33(m)
   math_invariantsSym33(2) = m(1,1)*m(2,2) + m(1,1)*m(3,3) + m(2,2)*m(3,3) &
@@ -1265,7 +1310,7 @@ end function math_clip
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some math functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   integer, dimension(2,4) :: &
     sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])

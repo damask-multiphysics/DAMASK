@@ -551,7 +551,7 @@ class Rotation:
         Parameters
         ----------
         degrees : bool, optional
-            Return angles in degrees.
+            Return angles in degrees. Defaults to False.
 
         Returns
         -------
@@ -721,7 +721,7 @@ class Rotation:
         Parameters
         ----------
         q : numpy.ndarray, shape (...,4)
-            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1, q_0 ≥ 0.
+            Unit quaternion (q_0, q_1, q_2, q_3) in positive real hemisphere, i.e. ǀqǀ = 1 and q_0 ≥ 0.
         accept_homomorph : bool, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
@@ -777,11 +777,11 @@ class Rotation:
 
     @staticmethod
     def from_axis_angle(axis_angle: np.ndarray,
-                        degrees:bool = False,
+                        degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
-        Initialize from Axis angle pair.
+        Initialize from axis–angle pair.
 
         Parameters
         ----------
@@ -818,12 +818,12 @@ class Rotation:
                    orthonormal: bool = True,
                    reciprocal: bool = False) -> 'Rotation':
         """
-        Initialize from lattice basis vectors.
+        Initialize from basis vector triplet.
 
         Parameters
         ----------
         basis : numpy.ndarray, shape (...,3,3)
-            Three three-dimensional lattice basis vectors.
+            Three three-dimensional basis vectors.
         orthonormal : bool, optional
             Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
         reciprocal : bool, optional
@@ -857,7 +857,7 @@ class Rotation:
         Parameters
         ----------
         R : numpy.ndarray, shape (...,3,3)
-            Rotation matrix with det(R) = 1, R.T ∙ R = I.
+            Rotation matrix with det(R) = 1 and R.T ∙ R = I.
 
         """
         return Rotation.from_basis(R)
@@ -866,14 +866,14 @@ class Rotation:
     def from_parallel(a: np.ndarray,
                       b: np.ndarray ) -> 'Rotation':
         """
-        Initialize from pairs of two orthogonal lattice basis vectors.
+        Initialize from pairs of two orthogonal basis vectors.
 
         Parameters
         ----------
         a : numpy.ndarray, shape (...,2,3)
-            Two three-dimensional lattice vectors of first orthogonal basis.
+            Two three-dimensional vectors of first orthogonal basis.
         b : numpy.ndarray, shape (...,2,3)
-            Corresponding three-dimensional lattice vectors of second basis.
+            Corresponding three-dimensional vectors of second basis.
 
         """
         a_ = np.array(a)
@@ -896,7 +896,7 @@ class Rotation:
                               normalize: bool = False,
                               P: Literal[1, -1] = -1) -> 'Rotation':
         """
-        Initialize from Rodrigues–Frank vector (angle separated from axis).
+        Initialize from Rodrigues–Frank vector (with angle separated from axis).
 
         Parameters
         ----------
@@ -1010,7 +1010,7 @@ class Rotation:
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
                  shape: Union[int, IntSequence] = None,
-                 degrees: bool = True,
+                 degrees: bool = False,
                  fractions: bool = True,
                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
@@ -1063,7 +1063,7 @@ class Rotation:
     def from_spherical_component(center: 'Rotation',
                                  sigma: float,
                                  shape: Union[int, IntSequence] = None,
-                                 degrees: bool = True,
+                                 degrees: bool = False,
                                  rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given center.
@@ -1096,39 +1096,67 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha: IntSequence,
-                             beta: IntSequence,
+    def from_fiber_component(crystal: IntSequence,
+                             sample: IntSequence,
                              sigma: float = 0.0,
                              shape: Union[int, IntSequence] = None,
-                             degrees: bool = True,
+                             degrees: bool = False,
                              rng_seed: NumpyRngSeed = None):
         """
         Initialize with samples from a Gaussian distribution around a given direction.
 
         Parameters
         ----------
-        alpha : numpy.ndarray, shape (2)
-            Polar coordinates (phi from x, theta from z) of fiber direction in crystal frame.
-        beta : numpy.ndarray, shape (2)
-            Polar coordinates (phi from x, theta from z) of fiber direction in sample frame.
+        crystal : numpy.ndarray, shape (2)
+            Polar coordinates (polar angle θ from [0 0 1], azimuthal angle φ from [1 0 0])
+            of fiber direction in crystal frame.
+        sample : numpy.ndarray, shape (2)
+            Polar coordinates (polar angle θ from z, azimuthal angle φ from x)
+            of fiber direction in sample frame.
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
         shape : int or sequence of ints, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            sigma, alpha, and beta are given in degrees.
+            sigma and polar coordinates are given in degrees.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
 
+        Notes
+        -----
+        The crystal direction for (θ=0,φ=0) is [0 0 1],
+        the sample direction for (θ=0,φ=0) is z.
+
+        Polar coordinates follow the ISO 80000-2:2019 convention
+        typically used in physics.
+        See https://en.wikipedia.org/wiki/Spherical_coordinate_system.
+
+        Ranges 0≤θ≤π and 0≤φ≤2π give a unique set of coordinates.
+
+        Examples
+        --------
+        Create an ideal α-fiber texture (<1 1 0> ǀǀ RD=x) consisting of
+        200 orientations:
+
+        >>> import damask
+        >>> import numpy as np
+        >>> alpha = damask.Rotation.from_fiber_component([np.pi/4.,0.],[np.pi/2.,0.],shape=200)
+
+        Create an ideal γ-fiber texture (<1 1 1> ǀǀ ND=z) consisting of
+        100 orientations:
+
+        >>> import damask
+        >>> gamma = damask.Rotation.from_fiber_component([54.7,45.0],[0.,0.],shape=100,degrees=True)
+
         """
         rng = np.random.default_rng(rng_seed)
-        sigma_,alpha_,beta_ = (np.radians(coordinate) for coordinate in (sigma,alpha,beta)) if degrees else \
-                              map(np.array, (sigma,alpha,beta))
+        sigma_,alpha,beta = (np.radians(coordinate) for coordinate in (sigma,crystal,sample)) if degrees else \
+                             map(np.array, (sigma,crystal,sample))
 
-        d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
-        d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
+        d_cr  = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
+        d_lab = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
         ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame

@@ -83,7 +83,7 @@ recursive function parse_flow(YAML_flow) result(node)
     s, &                                                                                            ! start position of dictionary or list
     d                                                                                               ! position of key: value separator (':')
 
-  flow_string = trim(adjustl(YAML_flow(:)))
+  flow_string = trim(adjustl(YAML_flow))
   if (len_trim(flow_string) == 0) then
     node => emptyDict
     return
@@ -168,7 +168,10 @@ logical function quotedString(line)
 
   character(len=*), intent(in) :: line
 
+
   quotedString = .false.
+
+  if (len(line) == 0) return
 
   if (scan(line(:1),IO_QUOTES) == 1) then
     quotedString = .true.
@@ -198,7 +201,7 @@ function to_flow(mixed) result(flow)
   block
     character(len=strlen,kind=c_char), pointer :: s
     call c_f_pointer(str_ptr,s)
-    flow = s
+    flow = s(:len(s)-1)
   end block
 
   call free_C(str_ptr)

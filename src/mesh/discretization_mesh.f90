@@ -15,7 +15,7 @@ module discretization_mesh
   use MPI_f08
 #endif
 
-  use DAMASK_interface
+  use CLI
   use parallelization
   use IO
   use config
@@ -101,9 +101,9 @@ subroutine discretization_mesh_init(restart)
   debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>16)
-  call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,'n/a',PETSC_TRUE,globalMesh,err_PETSc)
+  call DMPlexCreateFromFile(PETSC_COMM_WORLD,CLI_geomFile,'n/a',PETSC_TRUE,globalMesh,err_PETSc)
 #else
-  call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,PETSC_TRUE,globalMesh,err_PETSc)
+  call DMPlexCreateFromFile(PETSC_COMM_WORLD,CLI_geomFile,PETSC_TRUE,globalMesh,err_PETSc)
 #endif
   CHKERRQ(err_PETSc)
   call DMGetDimension(globalMesh,dimPlex,err_PETSc)

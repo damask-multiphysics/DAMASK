@@ -323,17 +323,16 @@ pure function rotTensor2(self,T,active) result(tRot)
 
   logical           :: passive
 
+
   if (present(active)) then
     passive = .not. active
   else
     passive = .true.
   endif
 
-  if (passive) then
-    tRot = matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix()))
-  else
-    tRot = matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix())
-  endif
+  tRot = merge(matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
+               matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
+               passive)
 
 end function rotTensor2
 
@@ -450,6 +449,7 @@ pure function qu2om(qu) result(om)
   om(1,3) = 2.0_pReal*(qu(2)*qu(4)+qu(1)*qu(3))
 
   if (sign(1.0_pReal,P) < 0.0_pReal) om = transpose(om)
+  om = om/math_det33(om)**(1.0_pReal/3.0_pReal)
 
 end function qu2om
 
@@ -575,7 +575,7 @@ end function qu2cu
 
 !---------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief convert rotation matrix to cubochoric
+!> @brief convert rotation matrix to unit quaternion
 !> @details the original formulation (direct conversion) had (numerical?) issues
 !---------------------------------------------------------------------------------------------------
 pure function om2qu(om) result(qu)
@@ -602,14 +602,15 @@ pure function om2qu(om) result(qu)
       endif
   endif
   if(sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
-  qu = qu*[1.0_pReal,P,P,P]
+  qu(2:4) = merge(qu(2:4),qu(2:4)*P,dEq0(qu(2:4)))
+  qu = qu/norm2(qu)
 
 end function om2qu
 
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief orientation matrix to Euler angles
+!> @brief convert orientation matrix to Euler angles
 !> @details Two step check for special cases to avoid invalid operations (not needed for python)
 !---------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
@@ -658,11 +659,7 @@ function om2ax(om) result(ax)
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
     if (ierr /= 0) error stop 'LAPACK error'
-#if defined(__GFORTRAN__) &&  __GNUC__<9
-    i = maxloc(merge(1,0,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1)
-#else
     i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
-#endif
     if (i == 0) error stop 'om2ax conversion failed'
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
@@ -1338,8 +1335,8 @@ pure function cu2ho(cu) result(ho)
       ! transform to sphere grid (inverse Lambert)
       ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
       c = sum(T**2)
-      s = PI * c/(24.0*XYZ(3)**2)
-      c = sqrt(PI) * c / sqrt(24.0_pReal) / XYZ(3)
+      s = c * PI/(24.0*XYZ(3)**2)
+      c = c * sqrt(PI/24.0_pReal) / XYZ(3)
       q = sqrt( 1.0 - s )
       LamXYZ = [ T(order(2)) * q, T(order(1)) * q, PREF * XYZ(3) - c ]
     end if special
@@ -1426,10 +1423,6 @@ subroutine selfTest()
 
 
   do i = 1, 20
-
-#if defined(__GFORTRAN__) && __GNUC__<9
-    if(i<7) cycle
-#endif
 
     if(i==1) then
       qu = om2qu(math_I3)

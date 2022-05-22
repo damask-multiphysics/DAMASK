@@ -3,7 +3,7 @@ import shlex
 import re
 from pathlib import Path
 
-_marc_version = '2021.3.1'
+_marc_version = '2022.1'
 _marc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 
@@ -64,7 +64,7 @@ class Marc:
             Defaults to ''.
 
         """
-        usersub = (self.damask_root/'src/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
+        usersub = (self.damask_root/'src/Marc/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
         if not usersub.is_file():
             raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
 
