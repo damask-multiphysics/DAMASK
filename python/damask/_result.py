@@ -11,7 +11,7 @@ from pathlib import Path
 from functools import partial
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Union, Optional, Callable, Any, Sequence, Literal, Dict, List, Tuple
+from typing import Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
 
 import h5py
 import numpy as np
@@ -229,7 +229,7 @@ class Result:
                         if idx >= len(self.times): continue
                         if   np.isclose(c,self.times[idx]):
                             choice.append(self.increments[idx])
-                        elif np.isclose(c,self.times[idx+1]):                                       # type: ignore
+                        elif np.isclose(c,self.times[idx+1]):
                             choice.append(self.increments[idx+1])                                   # type: ignore
 
             valid = _match(choice,getattr(self,what))
@@ -678,7 +678,7 @@ class Result:
         ...                   'Mises equivalent of the Cauchy stress')
 
         """
-        dataset_mapping = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
+        dataset_mapping = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                        # datasets used in the formula
         args             = {'formula':formula,'label':name,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
 
@@ -1464,7 +1464,7 @@ class Result:
 
         default_arg = partial(self._job_pointwise,callback=func,datasets=datasets,args=args,lock=lock)
 
-        for group,result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)): #type: ignore
+        for group,result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):# type: ignore
             if not result:
                 continue
             lock.acquire()
@@ -1476,12 +1476,10 @@ class Result:
                         dataset.attrs['overwritten'] = True
                     else:
                         shape = result['data'].shape
-                        if result['data'].size >= chunk_size*2:
+                        if compress := (result['data'].size >= chunk_size*2):
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
-                            compress = True
                         else:
                             chunks = shape
-                            compress = False
                         dataset = f[group].create_dataset(result['label'],data=result['data'],
                                                           maxshape=shape, chunks=chunks,
                                                           compression = 'gzip' if compress else None,
@@ -1764,7 +1762,7 @@ class Result:
             Datasets structured by phase/homogenization and according to selected view.
 
         """
-        r: Dict[str, Dict[str, Any]]  = {}
+        r = {}                                                                                      # type: ignore
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
@@ -1788,12 +1786,12 @@ class Result:
 
 
     def place(self,
-              output: Union[str, list] = '*',
+              output: Union[str, List[str]] = '*',
               flatten: bool = True,
               prune: bool = True,
               constituents: IntSequence = None,
               fill_float: float = np.nan,
-              fill_int: int = 0) -> Optional[Dict[str, Dict[str, Dict[str, Dict[str, Union[np.ma.MaskedArray]]]]]]:
+              fill_int: int = 0):
         """
         Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
@@ -1831,10 +1829,10 @@ class Result:
             Datasets structured by spatial position and according to selected view.
 
         """
-        r: Dict[str, Dict[str, Dict[str, Dict[str, Union[np.ma.MaskedArray]]]]] = {}
+        r = {}                                                                                      # type: ignore
 
         constituents_ = list(map(int,constituents)) if isinstance(constituents,Iterable) else \
-                      (range(self.N_constituents) if constituents is None else [constituents]) #type: ignore
+                      (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
                    [f'#{c}' for c in constituents_]
@@ -1896,7 +1894,7 @@ class Result:
             Defaults to False.
 
         """
-        def export(name: str, obj: Union[h5py.Dataset,h5py.Group], output: Union[str,list], overwrite: bool):
+        def export(name: str, obj: Union[h5py.Dataset,h5py.Group], output: Union[str,List[str]], overwrite: bool):
             if type(obj) == h5py.Dataset and  _match(output,[name]):
                 d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
                 if not Path(name).exists() or overwrite:

@@ -160,7 +160,7 @@ class Table:
             'linear'  ==> 1_v 2_v 3_v
 
         """
-        self.data.columns = self._label(self.shapes,how) #type: ignore
+        self.data.columns = self._label(self.shapes,how)                                            # type: ignore
 
 
     def _add_comment(self,
