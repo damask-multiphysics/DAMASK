@@ -12,8 +12,8 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: dict,
-                 data: np.ndarray,
+                 shapes: dict = {},
+                 data: np.ndarray = None,
                  comments: Union[str, Iterable[str]] = None):
         """
         New spreadsheet.
