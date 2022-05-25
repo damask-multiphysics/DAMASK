@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Iterable
 
 import pandas as pd
 import numpy as np
@@ -12,9 +12,9 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: dict = {},
-                 data: np.ndarray = None,
-                 comments: Union[str, list] = None):
+                 shapes: dict,
+                 data: np.ndarray,
+                 comments: Union[str, Iterable[str]] = None):
         """
         New spreadsheet.
 
@@ -30,7 +30,7 @@ class Table:
 
         """
         comments_ = [comments] if isinstance(comments,str) else comments
-        self.comments = [] if comments_ is None else [c for c in comments_]
+        self.comments = [] if comments_ is None else [str(c) for c in comments_]
         self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
         self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
@@ -160,7 +160,7 @@ class Table:
             'linear'  ==> 1_v 2_v 3_v
 
         """
-        self.data.columns = self._label(self.shapes,how) #type: ignore
+        self.data.columns = self._label(self.shapes,how)                                            # type: ignore
 
 
     def _add_comment(self,
@@ -434,8 +434,8 @@ class Table:
 
 
     def rename(self,
-               old: Union[str, List[str]],
-               new: Union[str, List[str]],
+               old: Union[str, Iterable[str]],
+               new: Union[str, Iterable[str]],
                info: str = None) -> 'Table':
         """
         Rename column data.

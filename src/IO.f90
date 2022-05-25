@@ -428,6 +428,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'too many systems requested'
     case (146)
       msg = 'number of values does not match'
+    case (147)
+      msg = 'V_e needs to be symmetric'
     case (148)
       msg = 'Nconstituents mismatch between homogenization and material'
 

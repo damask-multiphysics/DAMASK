@@ -103,7 +103,7 @@ class VTK:
 
         Parameters
         ----------
-        comments : str or list of str
+        comments : str or sequence of str
             Comments.
 
         """
@@ -153,11 +153,11 @@ class VTK:
 
         Parameters
         ----------
-        cells : iterable of int, len (3)
+        cells : sequence of int, len (3)
             Number of cells along each dimension.
-        size : iterable of float, len (3)
+        size : sequence of float, len (3)
             Physical length along each dimension.
-        origin : iterable of float, len (3), optional
+        origin : sequence of float, len (3), optional
             Coordinates of grid origin.
 
         Returns
@@ -257,7 +257,7 @@ class VTK:
 
         Parameters
         ----------
-        grid : iterables of floats, len (3)
+        grid : sequence of sequences of floats, len (3)
             Grid coordinates along x, y, and z directions.
 
         Returns
