@@ -107,10 +107,8 @@ subroutine discretization_grid_init(restart)
 
   if (worldsize>cells(3)) call IO_error(894, ext_msg='number of processes exceeds cells(3)')
 
-  call fftw_mpi_init
-  devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T), &
-                                   int(cells(2),C_INTPTR_T), &
-                                   int(cells(1),C_INTPTR_T)/2+1, &
+  call fftw_mpi_init()
+  devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T),int(cells(2),C_INTPTR_T),int(cells(1)/2+1,C_INTPTR_T), &
                                    PETSC_COMM_WORLD, &
                                    z, &                                                             ! domain cells size along z
                                    z_offset)                                                        ! domain cells offset along z
@@ -123,7 +121,7 @@ subroutine discretization_grid_init(restart)
   myGrid = [cells(1:2),cells3]
   mySize = [geomSize(1:2),size3]
 
-  call MPI_Gather(product(cells(1:2))*cells3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
+  call MPI_Gather(product(cells(1:2))*cells3Offset,1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
                   1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Gather(product(myGrid),               1_MPI_INTEGER_KIND,MPI_INTEGER,sendcounts,&
