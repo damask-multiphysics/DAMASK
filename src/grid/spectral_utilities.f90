@@ -297,7 +297,7 @@ subroutine spectral_utilities_init()
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_fourier,tensorField_real, &
                                                PETSC_COMM_WORLD,FFTW_planner_flag)
-  if (.not. c_associated(planTensorBack)) error stop 'FFTW error c2r tensor'
+  if (.not. c_associated(planTensorBack))  error stop 'FFTW error c2r tensor'
 
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
@@ -310,20 +310,18 @@ subroutine spectral_utilities_init()
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_fourier,vectorField_real, &
                                                PETSC_COMM_WORLD,FFTW_planner_flag)
-  if (.not. c_associated(planVectorBack)) error stop 'FFTW error c2r vector'
+  if (.not. c_associated(planVectorBack))  error stop 'FFTW error c2r vector'
 
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans
-  planScalarForth = fftw_mpi_plan_dft_r2c(3,cellsFFTW(3:1:-1),scalarSize, &
-                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
-                                               scalarField_real,scalarField_fourier, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag)
+  planScalarForth = fftw_mpi_plan_dft_r2c_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
+                                             scalarField_real,scalarField_fourier, &
+                                             PETSC_COMM_WORLD,FFTW_planner_flag)
   if (.not. c_associated(planScalarForth)) error stop 'FFTW error r2c scalar'
-  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3,cellsFFTW(3:1:-1),scalarSize, &
-                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
-                                               scalarField_fourier,scalarField_real, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag)
-  if (.not. c_associated(planScalarBack)) error stop 'FFTW error c2r scalar'
+  planScalarBack  = fftw_mpi_plan_dft_c2r_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
+                                             scalarField_fourier,scalarField_real, &
+                                             PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planScalarBack))  error stop 'FFTW error c2r scalar'
 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
