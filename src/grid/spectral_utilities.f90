@@ -269,22 +269,22 @@ subroutine spectral_utilities_init()
   allocate (xi2nd (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
 
   tensorField = fftw_alloc_complex(tensorSize*alloc_local)
-  call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
-                   2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),cellsFFTW(2),z])         ! place a pointer for a real tensor representation
-  call c_f_pointer(tensorField, tensorField_fourier, [3_C_INTPTR_T,3_C_INTPTR_T, &
-                   cellsFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              cellsFFTW(2),z])         ! place a pointer for a fourier tensor representation
+  call c_f_pointer(tensorField,tensorField_real, &
+                   [3_C_INTPTR_T,3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+  call c_f_pointer(tensorField,tensorField_fourier, &
+                   [3_C_INTPTR_T,3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
   vectorField = fftw_alloc_complex(vectorSize*alloc_local)
-  call c_f_pointer(vectorField, vectorField_real,   [3_C_INTPTR_T,&
-                   2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),cellsFFTW(2),z])         ! place a pointer for a real vector representation
-  call c_f_pointer(vectorField, vectorField_fourier,[3_C_INTPTR_T,&
-                   cellsFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               cellsFFTW(2),z])         ! place a pointer for a fourier vector representation
+  call c_f_pointer(vectorField,vectorField_real, &
+                   [3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+  call c_f_pointer(vectorField,vectorField_fourier, &
+                   [3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
-  scalarField = fftw_alloc_complex(scalarSize*alloc_local)                                          ! allocate data for real representation (no in place transform)
-  call c_f_pointer(scalarField,    scalarField_real, &
-                   [2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T + 1),cellsFFTW(2),z])                   ! place a pointer for a real scalar representation
-  call c_f_pointer(scalarField, scalarField_fourier, &
-                    [             cellsFFTW(1)/2_C_INTPTR_T + 1 ,cellsFFTW(2),z])                   ! place a pointer for a fourier scarlar representation
+  scalarField = fftw_alloc_complex(scalarSize*alloc_local)
+  call c_f_pointer(scalarField,scalarField_real, &
+                   [2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+  call c_f_pointer(scalarField,scalarField_fourier, &
+                   [              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
