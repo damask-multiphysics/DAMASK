@@ -357,10 +357,10 @@ end function IO_stringAsBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Write error statements to standard out and terminate the run with exit #9xxx
 !--------------------------------------------------------------------------------------------------
-subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
+subroutine IO_error(error_ID,el,ip,ext_msg)
 
   integer,                    intent(in) :: error_ID
-  integer,          optional, intent(in) :: el,ip,g,instance
+  integer,          optional, intent(in) :: el,ip
   character(len=*), optional, intent(in) :: ext_msg
 
   external                      :: quit
@@ -564,10 +564,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
     write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
-  if (present(g)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
-  if (present(instance)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
   write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
   flush(IO_STDERR)
@@ -580,10 +576,10 @@ end subroutine IO_error
 !--------------------------------------------------------------------------------------------------
 !> @brief Write warning statement to standard out.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
+subroutine IO_warning(warning_ID,el,ip,ext_msg)
 
   integer,                    intent(in) :: warning_ID
-  integer,          optional, intent(in) :: el,ip,g
+  integer,          optional, intent(in) :: el,ip
   character(len=*), optional, intent(in) :: ext_msg
 
   character(len=:), allocatable :: msg
@@ -591,7 +587,7 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
   select case (warning_ID)
     case (47)
-      msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
+      msg = 'invalid parameter for FFTW, using FFTW_PATIENT'
     case (207)
       msg = 'line truncated'
     case (600)
@@ -621,8 +617,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
     write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
     write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
-  if (present(g)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
   write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
   flush(IO_STDERR)
