@@ -115,6 +115,8 @@ subroutine grid_mechanical_FEM_init
   class(tNode), pointer :: &
     num_grid, &
     debug_grid
+  character(len=pStringLen) :: &
+    extmsg = ''
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
 
@@ -134,12 +136,14 @@ subroutine grid_mechanical_FEM_init
   num%itmin           = num_grid%get_asInt  ('itmin',defaultVal=1)
   num%itmax           = num_grid%get_asInt  ('itmax',defaultVal=250)
 
-  if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
-  if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
-  if (num%eps_stress_atol <= 0.0_pReal)          call IO_error(301,ext_msg='eps_stress_atol')
-  if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
-  if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
-  if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
+  if (num%eps_div_atol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_div_atol'
+  if (num%eps_div_rtol < 0.0_pReal)              extmsg = trim(extmsg)//' eps_div_rtol'
+  if (num%eps_stress_atol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_stress_atol'
+  if (num%eps_stress_rtol < 0.0_pReal)           extmsg = trim(extmsg)//' eps_stress_rtol'
+  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' itmax'
+  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' itmin'
+
+  if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
