@@ -153,9 +153,8 @@ subroutine spectral_utilities_init()
     vectorField, &                                                                                  !< field containing data for FFTW in real space when debugging FFTW (no in place)
     scalarField                                                                                     !< field containing data for FFTW in real space when debugging FFTW (no in place)
   integer(C_INTPTR_T), dimension(3) :: cellsFFTW
-  integer(C_INTPTR_T) :: alloc_local, z, devNull
+  integer(C_INTPTR_T) :: N, z, devNull
   integer(C_INTPTR_T), parameter :: &
-    scalarSize = 1_C_INTPTR_T, &
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
   character(len=*), parameter :: &
@@ -261,26 +260,34 @@ subroutine spectral_utilities_init()
   print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
-! MPI allocation
-  cellsFFTW = int(cells,C_INTPTR_T)
-  alloc_local = fftw_mpi_local_size_3d(cellsFFTW(3), cellsFFTW(2), cellsFFTW(1)/2 +1, &
-                                       PETSC_COMM_WORLD, z, devNull)
+! allocation
   allocate (xi1st (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for first derivatives, only half the size for first dimension
   allocate (xi2nd (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
 
-  tensorField = fftw_alloc_complex(tensorSize*alloc_local)
+  cellsFFTW = int(cells,C_INTPTR_T)
+
+  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
+                               tensorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
+  if (z /= cells3) error stop 'domain decomposition mismatch (tensor)'
+  tensorField = fftw_alloc_complex(N)
   call c_f_pointer(tensorField,tensorField_real, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
   call c_f_pointer(tensorField,tensorField_fourier, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
-  vectorField = fftw_alloc_complex(vectorSize*alloc_local)
+  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
+                               vectorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
+  if (z /= cells3) error stop 'domain decomposition mismatch (vector)'
+  vectorField = fftw_alloc_complex(N)
   call c_f_pointer(vectorField,vectorField_real, &
                    [3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
   call c_f_pointer(vectorField,vectorField_fourier, &
                    [3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
-  scalarField = fftw_alloc_complex(scalarSize*alloc_local)
+  N = fftw_mpi_local_size_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T,&
+                             PETSC_COMM_WORLD,z,devNull)
+  if (z /= cells3) error stop 'domain decomposition mismatch (scalar)'
+  scalarField = fftw_alloc_complex(N)
   call c_f_pointer(scalarField,scalarField_real, &
                    [2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
   call c_f_pointer(scalarField,scalarField_fourier, &
