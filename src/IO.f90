@@ -25,10 +25,10 @@ module IO
     CR = achar(13), &
     LF = IO_EOL
   character(len=*), parameter :: &
-    IO_DIVIDER = '───────────────────'//&
-                 '───────────────────'//&
-                 '───────────────────'//&
-                 '────────────'
+    DIVIDER = '───────────────────'//&
+              '───────────────────'//&
+              '───────────────────'//&
+              '────────────'
 
   public :: &
     IO_init, &
@@ -546,10 +546,10 @@ subroutine IO_error(error_ID,el,ext_msg)
   end select
 
   !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
   write(IO_STDERR,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
   write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
-  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
   write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
@@ -561,7 +561,7 @@ subroutine IO_error(error_ID,el,ext_msg)
   if (present(el)) &
     write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
   flush(IO_STDERR)
   call quit(9000+error_ID)
   !$OMP END CRITICAL (write2out)
@@ -601,10 +601,10 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
   end select
 
   !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
   write(IO_STDERR,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
   write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
-  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
   write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
@@ -624,7 +624,7 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
     write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
   endif
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
   flush(IO_STDERR)
   !$OMP END CRITICAL (write2out)
 
