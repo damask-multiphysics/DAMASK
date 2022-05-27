@@ -576,7 +576,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   do i = 1,6
     if (abs(C_target_unrotated66(i,i))<tol_math_check) &
-    call IO_error(135,el=i,ext_msg='matrix diagonal "el"ement in transformation')
+    call IO_error(135,'matrix diagonal in transformation',label1='entry',ID1=i)
   enddo
 
   call buildTransformationSystem(Q,S,Ntrans,cOverA_trans,a_cF,a_cI)

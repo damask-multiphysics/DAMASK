@@ -129,7 +129,7 @@ function IO_read(fileName) result(fileContent)
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if (myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(100,trim(fileName))
   allocate(character(len=fileLength)::fileContent)
   if (fileLength==0) then
     close(fileUnit)
@@ -137,7 +137,7 @@ function IO_read(fileName) result(fileContent)
   endif
 
   read(fileUnit,iostat=myStat) fileContent
-  if (myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(102,trim(fileName))
   close(fileUnit)
 
   if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
@@ -206,7 +206,7 @@ function IO_stringValue(string,chunkPos,myChunk)
 
   validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     IO_stringValue = ''
-    call IO_error(110,el=myChunk,ext_msg='IO_stringValue: "'//trim(string)//'"')
+    call IO_error(110,'IO_stringValue: "'//trim(string)//'"',label1='chunk',ID1=myChunk)
   else validChunk
     IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
   endif validChunk
@@ -303,10 +303,10 @@ integer function IO_stringAsInt(string)
 
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) IO_stringAsInt
-    if (readStatus /= 0) call IO_error(111,ext_msg=string)
+    if (readStatus /= 0) call IO_error(111,string)
   else valid
     IO_stringAsInt = 0
-    call IO_error(111,ext_msg=string)
+    call IO_error(111,string)
   endif valid
 
 end function IO_stringAsInt
@@ -325,10 +325,10 @@ real(pReal) function IO_stringAsFloat(string)
 
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) IO_stringAsFloat
-    if (readStatus /= 0) call IO_error(112,ext_msg=string)
+    if (readStatus /= 0) call IO_error(112,string)
   else valid
     IO_stringAsFloat = 0.0_pReal
-    call IO_error(112,ext_msg=string)
+    call IO_error(112,string)
   endif valid
 
 end function IO_stringAsFloat
@@ -348,32 +348,30 @@ logical function IO_stringAsBool(string)
     IO_stringAsBool = .false.
   else
     IO_stringAsBool = .false.
-    call IO_error(113,ext_msg=string)
+    call IO_error(113,string)
   endif
 
 end function IO_stringAsBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write error statements to standard out and terminate the run with exit #9xxx
+!> @brief Write error statements to standard out and terminate the run with exit #9xxx.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_error(error_ID,el,ext_msg)
+subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   integer,                    intent(in) :: error_ID
-  integer,          optional, intent(in) :: el
-  character(len=*), optional, intent(in) :: ext_msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,          optional, intent(in) :: ID1,ID2
 
   external                      :: quit
   character(len=:), allocatable :: msg
   character(len=pStringLen)     :: formatString
 
 
-  select case (error_ID)
+  if (present(ID1) .and. .not. present(label1)) error stop 'error value without label (1)'
+  if (present(ID2) .and. .not. present(label2)) error stop 'error value without label (2)'
 
-!--------------------------------------------------------------------------------------------------
-! internal errors
-    case (0)
-      msg = 'internal check failed:'
+  select case (error_ID)
 
 !--------------------------------------------------------------------------------------------------
 ! file handling errors
@@ -558,8 +556,16 @@ subroutine IO_error(error_ID,el,ext_msg)
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
     write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
-  if (present(el)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+  if (present(label1)) then
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
+                                                       max(1,72-len_trim(label1)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
+  endif
+  if (present(label2)) then
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
+                                                       max(1,72-len_trim(label2)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
+  endif
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
   write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
   flush(IO_STDERR)

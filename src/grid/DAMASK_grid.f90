@@ -290,7 +290,7 @@ program DAMASK_grid
       if (loadCases(l)%f_restart < huge(0)) &
         print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
 
-      if (errorID > 0) call IO_error(error_ID = errorID, el = l)
+      if (errorID > 0) call IO_error(errorID,label1='line',ID1=l)
 
     endif reportAndCheck
   enddo

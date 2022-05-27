@@ -80,13 +80,13 @@ subroutine discretization_Marc_init
 
   num_commercialFEM => config_numerics%get('commercialFEM',defaultVal = emptyDict)
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
-  if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
+  if (mesh_unitlength <= 0.0_pReal) call IO_error(301,'unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,materialAt)
   nElems = size(connectivity_elem,2)
 
-  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
-  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
+  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,'element')
+  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,'IP')
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
@@ -579,7 +579,7 @@ subroutine inputRead_elemType(elem, &
   character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i,j,t,l,remainingChunks
+  integer :: i,j,t,t_,l,remainingChunks
 
 
   t = -1
@@ -594,7 +594,8 @@ subroutine inputRead_elemType(elem, &
           t = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
           call elem%init(t)
         else
-          if (t /= mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))) call IO_error(191,el=t)
+          t_ = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
+          if (t /= t_) call IO_error(191,IO_stringValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
         endif
         remainingChunks = elem%nNodes - (chunkPos(1) - 2)
         do while(remainingChunks > 0)
@@ -617,7 +618,7 @@ subroutine inputRead_elemType(elem, &
    character(len=*), intent(in) :: what
 
 
-   select case (IO_lc(what))
+   select case (what)
       case (   '6')
         mapElemtype = 1            ! Two-dimensional Plane Strain Triangle
       case ( '125')                ! 155, 128 (need test)
@@ -645,7 +646,7 @@ subroutine inputRead_elemType(elem, &
       case ( '21')
         mapElemtype = 13           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
       case default
-        call IO_error(error_ID=190,ext_msg=IO_lc(what))
+        call IO_error(190,what)
    end select
 
   end function mapElemtype
