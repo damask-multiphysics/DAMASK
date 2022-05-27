@@ -15,7 +15,6 @@ module IO
   implicit none
   private
 
-  integer, parameter :: IO_panelwidth = 69
   character(len=*), parameter, public :: &
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
     IO_QUOTES  = "'"//'"'
@@ -25,8 +24,6 @@ module IO
   character, parameter :: &
     CR = achar(13), &
     LF = IO_EOL
-  character(len=*), parameter :: &
-    DIVIDER = repeat('─',IO_panelwidth)
 
   public :: &
     IO_init, &
@@ -52,10 +49,11 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_init
+subroutine IO_init()
 
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
-  call selfTest
+
+  call selfTest()
 
 end subroutine IO_init
 
@@ -351,56 +349,6 @@ logical function IO_stringAsBool(string)
 end function IO_stringAsBool
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Write statements to standard error.
-!--------------------------------------------------------------------------------------------------
-subroutine IO_panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
-
-  character(len=*),           intent(in) :: paneltype,msg
-  character(len=*), optional, intent(in) :: ext_msg,label1,label2
-  integer,                    intent(in) :: ID
-  integer,          optional, intent(in) :: ID1,ID2
-
-  character(len=pStringLen)              :: formatString
-
-
-  if (.not. present(label1) .and.       present(ID1)) error stop 'missing label for value 1'
-  if (.not. present(label2) .and.       present(ID2)) error stop 'missing label for value 2'
-  if (      present(label1) .and. .not. present(ID1)) error stop 'missing value for label 1'
-  if (      present(label2) .and. .not. present(ID2)) error stop 'missing value for label 2'
-
-  !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
-  write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,IO_panelwidth-24-len_trim(paneltype)),'x,a)'
-  write(IO_STDERR,formatString)          ' │',trim(paneltype),                                      '│'
-  write(formatString,'(a,i2,a)') '(a,24x,i3,',max(1,IO_panelwidth-24-3),'x,a)'
-  write(IO_STDERR,formatString)          ' │',ID,                                                   '│'
-  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
-  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
-                                                     max(1,IO_panelwidth+3-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
-  if (present(ext_msg)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
-                                                       max(1,IO_panelwidth+3-len_trim(ext_msg)-4),'x,a)'
-    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  endif
-  if (present(label1)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
-                                                       max(1,IO_panelwidth+3-len_trim(label1)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
-  endif
-  if (present(label2)) then
-    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
-                                                       max(1,IO_panelwidth+3-len_trim(label2)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
-  endif
-  write(formatString,'(a,i2.2,a)') '(a,',max(1,IO_panelwidth),'x,a)'
-  write(IO_STDERR,formatString)          ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
-  flush(IO_STDERR)
-  !$OMP END CRITICAL (write2out)
-
-end subroutine IO_panel
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write error statements and terminate the run with exit #9xxx.
@@ -586,7 +534,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   end select
 
-  call IO_panel('error',error_ID,msg, &
+  call panel('error',error_ID,msg, &
                  ext_msg=ext_msg, &
                  label1=label1,ID1=ID1, &
                  label2=label2,ID2=ID2)
@@ -623,7 +571,7 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
       error stop 'invalid warning number'
   end select
 
-  call IO_panel('warning',warning_ID,msg, &
+  call panel('warning',warning_ID,msg, &
                  ext_msg=ext_msg, &
                  label1=label1,ID1=ID1, &
                  label2=label2,ID2=ID2)
@@ -654,7 +602,61 @@ pure function CRLF2LF(string)
 
   CRLF2LF = CRLF2LF(:c-n)
 
-end function
+end function CRLF2LF
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write statements to standard error.
+!--------------------------------------------------------------------------------------------------
+subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
+
+  character(len=*),           intent(in) :: paneltype,msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,                    intent(in) :: ID
+  integer,          optional, intent(in) :: ID1,ID2
+
+  character(len=pStringLen)              :: formatString
+  integer, parameter                     :: panelwidth = 69
+  character(len=*), parameter            :: DIVIDER = repeat('─',panelwidth)
+
+
+  if (.not. present(label1) .and.       present(ID1)) error stop 'missing label for value 1'
+  if (.not. present(label2) .and.       present(ID2)) error stop 'missing label for value 2'
+  if (      present(label1) .and. .not. present(ID1)) error stop 'missing value for label 1'
+  if (      present(label2) .and. .not. present(ID2)) error stop 'missing value for label 2'
+
+  !$OMP CRITICAL (write2out)
+  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
+  write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,panelwidth-24-len_trim(paneltype)),'x,a)'
+  write(IO_STDERR,formatString)          ' │',trim(paneltype),                                      '│'
+  write(formatString,'(a,i2,a)') '(a,24x,i3,',max(1,panelwidth-24-3),'x,a)'
+  write(IO_STDERR,formatString)          ' │',ID,                                                   '│'
+  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
+  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
+                                                     max(1,panelwidth+3-len_trim(msg)-4),'x,a)'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
+  if (present(ext_msg)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
+                                                       max(1,panelwidth+3-len_trim(ext_msg)-4),'x,a)'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
+  endif
+  if (present(label1)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
+                                                       max(1,panelwidth+3-len_trim(label1)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
+  endif
+  if (present(label2)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
+                                                       max(1,panelwidth+3-len_trim(label2)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
+  endif
+  write(formatString,'(a,i2.2,a)') '(a,',max(1,panelwidth),'x,a)'
+  write(IO_STDERR,formatString)          ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
+  flush(IO_STDERR)
+  !$OMP END CRITICAL (write2out)
+
+end subroutine panel
 
 
 !--------------------------------------------------------------------------------------------------
