@@ -357,10 +357,10 @@ end function IO_stringAsBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Write error statements to standard out and terminate the run with exit #9xxx
 !--------------------------------------------------------------------------------------------------
-subroutine IO_error(error_ID,el,ip,ext_msg)
+subroutine IO_error(error_ID,el,ext_msg)
 
   integer,                    intent(in) :: error_ID
-  integer,          optional, intent(in) :: el,ip
+  integer,          optional, intent(in) :: el
   character(len=*), optional, intent(in) :: ext_msg
 
   external                      :: quit
@@ -562,8 +562,6 @@ subroutine IO_error(error_ID,el,ip,ext_msg)
   endif
   if (present(el)) &
     write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
-  if (present(ip)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
   write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
   flush(IO_STDERR)
@@ -584,6 +582,7 @@ subroutine IO_warning(warning_ID,el,ip,ext_msg)
 
   character(len=:), allocatable :: msg
   character(len=pStringLen)     :: formatString
+
 
   select case (warning_ID)
     case (47)

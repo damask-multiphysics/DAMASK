@@ -594,7 +594,7 @@ subroutine inputRead_elemType(elem, &
           t = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
           call elem%init(t)
         else
-          if (t /= mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))) call IO_error(191,el=t,ip=i)
+          if (t /= mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))) call IO_error(191,el=t)
         endif
         remainingChunks = elem%nNodes - (chunkPos(1) - 2)
         do while(remainingChunks > 0)
@@ -615,6 +615,7 @@ subroutine inputRead_elemType(elem, &
   integer function mapElemtype(what)
 
    character(len=*), intent(in) :: what
+
 
    select case (IO_lc(what))
       case (   '6')
