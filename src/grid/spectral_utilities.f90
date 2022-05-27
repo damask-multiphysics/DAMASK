@@ -249,7 +249,7 @@ subroutine spectral_utilities_init()
     case('fftw_exhaustive')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(47,trim(num_grid%get_asString('fftw_plan_mode')),ext_msg='using default FFTW_MEASURE')
+      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid%get_asString('fftw_plan_mode'))//'"')
       FFTW_planner_flag = FFTW_MEASURE
   end select
 
