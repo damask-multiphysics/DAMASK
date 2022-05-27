@@ -540,10 +540,8 @@ subroutine IO_error(error_ID,el,ext_msg)
     case (950)
       msg = 'max number of cut back exceeded, terminating'
 
-!-------------------------------------------------------------------------------------------------
-! general error messages
     case default
-      msg = 'unknown error number...'
+      error stop 'invalid error number'
 
   end select
 
@@ -599,7 +597,7 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
     case (709)
       msg = 'read only the first document'
     case default
-      msg = 'unknown warning number'
+      error stop 'invalid warning number'
   end select
 
   !$OMP CRITICAL (write2out)
@@ -666,6 +664,7 @@ subroutine selfTest()
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
+
 
   if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
   if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
