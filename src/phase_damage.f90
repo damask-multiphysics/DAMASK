@@ -383,9 +383,9 @@ module function phase_K_phi(co,ce) result(K)
 
   integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: K
-  real(pReal), parameter :: l = 1.0_pReal
 
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D) * l**2
+
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D)
 
 end function phase_K_phi
 
@@ -401,6 +401,7 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
     en
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
+
   integer :: &
     myOffset, &
     mySize
