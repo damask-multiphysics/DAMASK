@@ -24,6 +24,7 @@ module YAML_parse
 
     subroutine to_flow_C(flow,length_flow,mixed) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR, C_PTR
+      implicit none
 
       type(C_PTR), intent(out) :: flow
       integer(C_INT), intent(out) :: length_flow
