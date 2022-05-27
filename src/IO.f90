@@ -15,6 +15,7 @@ module IO
   implicit none
   private
 
+  integer, parameter :: IO_panelwidth = 69
   character(len=*), parameter, public :: &
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13), &                         !< whitespace characters
     IO_QUOTES  = "'"//'"'
@@ -25,10 +26,7 @@ module IO
     CR = achar(13), &
     LF = IO_EOL
   character(len=*), parameter :: &
-    DIVIDER = '───────────────────'//&
-              '───────────────────'//&
-              '───────────────────'//&
-              '────────────'
+    DIVIDER = repeat('─',IO_panelwidth)
 
   public :: &
     IO_init, &
@@ -57,7 +55,6 @@ contains
 subroutine IO_init
 
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
-
   call selfTest
 
 end subroutine IO_init
@@ -355,7 +352,58 @@ end function IO_stringAsBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write error statements to standard out and terminate the run with exit #9xxx.
+!> @brief Write statements to standard error.
+!--------------------------------------------------------------------------------------------------
+subroutine IO_panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
+
+  character(len=*),           intent(in) :: paneltype,msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,                    intent(in) :: ID
+  integer,          optional, intent(in) :: ID1,ID2
+
+  character(len=pStringLen)              :: formatString
+
+
+  if (.not. present(label1) .and.       present(ID1)) error stop 'missing label for value 1'
+  if (.not. present(label2) .and.       present(ID2)) error stop 'missing label for value 2'
+  if (      present(label1) .and. .not. present(ID1)) error stop 'missing value for label 1'
+  if (      present(label2) .and. .not. present(ID2)) error stop 'missing value for label 2'
+
+  !$OMP CRITICAL (write2out)
+  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
+  write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,IO_panelwidth-24-len_trim(paneltype)),'x,a)'
+  write(IO_STDERR,formatString)          ' │',trim(paneltype),                                      '│'
+  write(formatString,'(a,i2,a)') '(a,24x,i3,',max(1,IO_panelwidth-24-3),'x,a)'
+  write(IO_STDERR,formatString)          ' │',ID,                                                   '│'
+  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
+  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
+                                                     max(1,IO_panelwidth+3-len_trim(msg)-4),'x,a)'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
+  if (present(ext_msg)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
+                                                       max(1,IO_panelwidth+3-len_trim(ext_msg)-4),'x,a)'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
+  endif
+  if (present(label1)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
+                                                       max(1,IO_panelwidth+3-len_trim(label1)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
+  endif
+  if (present(label2)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
+                                                       max(1,IO_panelwidth+3-len_trim(label2)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
+  endif
+  write(formatString,'(a,i2.2,a)') '(a,',max(1,IO_panelwidth),'x,a)'
+  write(IO_STDERR,formatString)          ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
+  flush(IO_STDERR)
+  !$OMP END CRITICAL (write2out)
+
+end subroutine IO_panel
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write error statements and terminate the run with exit #9xxx.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
@@ -365,11 +413,6 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   external                      :: quit
   character(len=:), allocatable :: msg
-  character(len=pStringLen)     :: formatString
-
-
-  if (present(ID1) .and. .not. present(label1)) error stop 'error value without label (1)'
-  if (present(ID2) .and. .not. present(label2)) error stop 'error value without label (2)'
 
   select case (error_ID)
 
@@ -444,7 +487,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (190)
       msg = 'unknown element type:'
     case (191)
-      msg = 'mesh consists of more than one element type'
+      msg = 'mesh contains more than one element type'
 
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
@@ -481,27 +524,27 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 !------------------------------------------------------------------------------------------------
 ! errors related to YAML data
     case (701)
-      msg = 'Incorrect indent/Null value not allowed'
+      msg = 'incorrect indent/Null value not allowed'
     case (702)
-      msg = 'Invalid use of flow YAML'
+      msg = 'invalid use of flow YAML'
     case (703)
-      msg = 'Invalid YAML'
+      msg = 'invalid YAML'
     case (704)
-      msg = 'Space expected after a colon for <key>: <value> pair'
+      msg = 'space expected after a colon for <key>: <value> pair'
     case (705)
-      msg = 'Unsupported feature'
+      msg = 'unsupported feature'
     case (706)
-      msg = 'Type mismatch in YAML data node'
+      msg = 'type mismatch in YAML data node'
     case (707)
-      msg = 'Abrupt end of file'
+      msg = 'abrupt end of file'
     case (708)
-      msg = '--- expected after YAML file header'
+      msg = '"---" expected after YAML file header'
     case (709)
-      msg = 'Length mismatch'
+      msg = 'length mismatch'
     case (710)
-      msg = 'Closing quotation mark missing in string'
+      msg = 'closing quotation mark missing in string'
     case (711)
-      msg = 'Incorrect type'
+      msg = 'incorrect type'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the mesh solver
@@ -543,40 +586,17 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   end select
 
-  !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
-  write(IO_STDERR,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
-  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
-  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
-  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
-                                                     max(1,72-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
-  if (present(ext_msg)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
-                                                       max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  endif
-  if (present(label1)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
-                                                       max(1,72-len_trim(label1)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
-  endif
-  if (present(label2)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
-                                                       max(1,72-len_trim(label2)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
-  endif
-  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
-  flush(IO_STDERR)
+  call IO_panel('error',error_ID,msg, &
+                 ext_msg=ext_msg, &
+                 label1=label1,ID1=ID1, &
+                 label2=label2,ID2=ID2)
   call quit(9000+error_ID)
-  !$OMP END CRITICAL (write2out)
 
 end subroutine IO_error
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write warning statement to standard out.
+!> @brief Write warning statements.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
 
@@ -585,11 +605,7 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
   integer,          optional, intent(in) :: ID1,ID2
 
   character(len=:), allocatable :: msg
-  character(len=pStringLen)     :: formatString
 
-
-  if (present(ID1) .and. .not. present(label1)) error stop 'warning value without label (1)'
-  if (present(ID2) .and. .not. present(label2)) error stop 'warning value without label (2)'
 
   select case (warning_ID)
     case (47)
@@ -602,37 +618,15 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
       msg = 'stiffness close to zero'
     case (709)
       msg = 'read only the first document'
+
     case default
       error stop 'invalid warning number'
   end select
 
-  !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
-  write(IO_STDERR,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
-  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
-  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
-  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
-                                                     max(1,72-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
-  if (present(ext_msg)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
-                                                       max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  endif
-  if (present(label1)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
-                                                       max(1,72-len_trim(label1)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
-  endif
-  if (present(label2)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
-                                                       max(1,72-len_trim(label2)-9-7),'x,a)'
-    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
-  endif
-  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
-  flush(IO_STDERR)
-  !$OMP END CRITICAL (write2out)
+  call IO_panel('warning',warning_ID,msg, &
+                 ext_msg=ext_msg, &
+                 label1=label1,ID1=ID1, &
+                 label2=label2,ID2=ID2)
 
 end subroutine IO_warning
 
