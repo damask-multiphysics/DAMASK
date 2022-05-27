@@ -95,7 +95,7 @@ function IO_readlines(fileName) result(fileContent)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
-        call IO_warning(207,ext_msg=trim(fileName),el=l)
+        call IO_warning(207,trim(fileName),label1='line',ID1=l)
         warned = .true.
       endif
     else
@@ -574,15 +574,18 @@ end subroutine IO_error
 !--------------------------------------------------------------------------------------------------
 !> @brief Write warning statement to standard out.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_warning(warning_ID,el,ip,ext_msg)
+subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
 
   integer,                    intent(in) :: warning_ID
-  integer,          optional, intent(in) :: el,ip
-  character(len=*), optional, intent(in) :: ext_msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,          optional, intent(in) :: ID1,ID2
 
   character(len=:), allocatable :: msg
   character(len=pStringLen)     :: formatString
 
+
+  if (present(ID1) .and. .not. present(label1)) error stop 'warning value without label (1)'
+  if (present(ID2) .and. .not. present(label2)) error stop 'warning value without label (2)'
 
   select case (warning_ID)
     case (47)
@@ -612,10 +615,16 @@ subroutine IO_warning(warning_ID,el,ip,ext_msg)
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
     write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
-  if (present(el)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
-  if (present(ip)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+  if (present(label1)) then
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
+                                                       max(1,72-len_trim(label1)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
+  endif
+  if (present(label2)) then
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
+                                                       max(1,72-len_trim(label2)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
+  endif
   write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
   write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
   flush(IO_STDERR)

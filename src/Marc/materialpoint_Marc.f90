@@ -240,7 +240,8 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
 
   endif
 
-  if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
+  if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) &
+    call IO_warning(601,label1='element (CP)',ID1=elCP,label2='IP',ID2=ip)
 
   cauchyStress = materialpoint_cs   (1:6,    ip,elCP)
   jacobian     = materialpoint_dcsdE(1:6,1:6,ip,elCP)

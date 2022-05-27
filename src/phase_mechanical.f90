@@ -1167,8 +1167,8 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
-      call IO_warning(warning_ID=600, &
-                      ext_msg='inversion error in analytic tangent calculation')
+      call IO_warning(600,'inversion error in analytic tangent calculation', &
+                      label1='phase',ID1=ph,label2='entry',ID2=en)
       dFidS = 0.0_pReal
     else
       dFidS = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
@@ -1201,8 +1201,8 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
   if (error) then
-    call IO_warning(warning_ID=600, &
-                    ext_msg='inversion error in analytic tangent calculation')
+    call IO_warning(600,'inversion error in analytic tangent calculation', &
+                    label1='phase',ID1=ph,label2='entry',ID2=en)
     dSdF = rhs_3333
   else
     dSdF = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
