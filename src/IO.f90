@@ -609,7 +609,7 @@ subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
 
   select case (warning_ID)
     case (47)
-      msg = 'invalid parameter for FFTW, using FFTW_PATIENT'
+      msg = 'invalid parameter for FFTW'
     case (207)
       msg = 'line truncated'
     case (600)
