@@ -4,13 +4,12 @@
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
-  use, intrinsic :: iso_c_binding
-
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
+  use FFTW3
 
   use prec
   use CLI
@@ -25,8 +24,6 @@ module spectral_utilities
 
   implicit none
   private
-
-  include 'fftw3-mpi.f03'
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information

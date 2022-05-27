@@ -10,6 +10,7 @@ module discretization_grid
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
+  use FFTW3
 
   use prec
   use parallelization
@@ -50,7 +51,6 @@ subroutine discretization_grid_init(restart)
 
   logical, intent(in) :: restart
 
-  include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
     mySize, &                                                                                       !< domain size of this process
     origin                                                                                          !< (global) distance to origin
