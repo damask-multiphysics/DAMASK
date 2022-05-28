@@ -576,7 +576,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
 
   do i = 1,6
     if (abs(C_target_unrotated66(i,i))<tol_math_check) &
-    call IO_error(135,el=i,ext_msg='matrix diagonal "el"ement in transformation')
+    call IO_error(135,'matrix diagonal in transformation',label1='entry',ID1=i)
   enddo
 
   call buildTransformationSystem(Q,S,Ntrans,cOverA_trans,a_cF,a_cI)
@@ -1431,7 +1431,7 @@ function lattice_SchmidMatrix_slip(Nslip,lattice,cOverA) result(SchmidMatrix)
   do i = 1, sum(Nslip)
     SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
-      call IO_error(0,i,ext_msg = 'dilatational Schmid matrix for slip')
+      error stop 'dilatational Schmid matrix for slip'
   enddo
 
 end function lattice_SchmidMatrix_slip
@@ -1478,7 +1478,7 @@ function lattice_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
   do i = 1, sum(Ntwin)
     SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
-      call IO_error(0,i,ext_msg = 'dilatational Schmid matrix for twin')
+      error stop 'dilatational Schmid matrix for twin'
   enddo
 
 end function lattice_SchmidMatrix_twin

@@ -24,11 +24,6 @@ module IO
   character, parameter :: &
     CR = achar(13), &
     LF = IO_EOL
-  character(len=*), parameter :: &
-    IO_DIVIDER = '───────────────────'//&
-                 '───────────────────'//&
-                 '───────────────────'//&
-                 '────────────'
 
   public :: &
     IO_init, &
@@ -54,11 +49,11 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_init
+subroutine IO_init()
 
   print'(/,1x,a)', '<<<+-  IO init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest
+  call selfTest()
 
 end subroutine IO_init
 
@@ -95,7 +90,7 @@ function IO_readlines(fileName) result(fileContent)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
-        call IO_warning(207,ext_msg=trim(fileName),el=l)
+        call IO_warning(207,trim(fileName),label1='line',ID1=l)
         warned = .true.
       endif
     else
@@ -129,7 +124,7 @@ function IO_read(fileName) result(fileContent)
   inquire(file = fileName, size=fileLength)
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if (myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(100,trim(fileName))
   allocate(character(len=fileLength)::fileContent)
   if (fileLength==0) then
     close(fileUnit)
@@ -137,7 +132,7 @@ function IO_read(fileName) result(fileContent)
   endif
 
   read(fileUnit,iostat=myStat) fileContent
-  if (myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
+  if (myStat /= 0) call IO_error(102,trim(fileName))
   close(fileUnit)
 
   if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
@@ -206,7 +201,7 @@ function IO_stringValue(string,chunkPos,myChunk)
 
   validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     IO_stringValue = ''
-    call IO_error(110,el=myChunk,ext_msg='IO_stringValue: "'//trim(string)//'"')
+    call IO_error(110,'IO_stringValue: "'//trim(string)//'"',label1='chunk',ID1=myChunk)
   else validChunk
     IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
   endif validChunk
@@ -303,10 +298,10 @@ integer function IO_stringAsInt(string)
 
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) IO_stringAsInt
-    if (readStatus /= 0) call IO_error(111,ext_msg=string)
+    if (readStatus /= 0) call IO_error(111,string)
   else valid
     IO_stringAsInt = 0
-    call IO_error(111,ext_msg=string)
+    call IO_error(111,string)
   endif valid
 
 end function IO_stringAsInt
@@ -325,10 +320,10 @@ real(pReal) function IO_stringAsFloat(string)
 
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) IO_stringAsFloat
-    if (readStatus /= 0) call IO_error(112,ext_msg=string)
+    if (readStatus /= 0) call IO_error(112,string)
   else valid
     IO_stringAsFloat = 0.0_pReal
-    call IO_error(112,ext_msg=string)
+    call IO_error(112,string)
   endif valid
 
 end function IO_stringAsFloat
@@ -348,32 +343,26 @@ logical function IO_stringAsBool(string)
     IO_stringAsBool = .false.
   else
     IO_stringAsBool = .false.
-    call IO_error(113,ext_msg=string)
+    call IO_error(113,string)
   endif
 
 end function IO_stringAsBool
 
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief Write error statements to standard out and terminate the run with exit #9xxx
+!> @brief Write error statements and terminate the run with exit #9xxx.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
+subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
   integer,                    intent(in) :: error_ID
-  integer,          optional, intent(in) :: el,ip,g,instance
-  character(len=*), optional, intent(in) :: ext_msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,          optional, intent(in) :: ID1,ID2
 
   external                      :: quit
   character(len=:), allocatable :: msg
-  character(len=pStringLen)     :: formatString
-
 
   select case (error_ID)
-
-!--------------------------------------------------------------------------------------------------
-! internal errors
-    case (0)
-      msg = 'internal check failed:'
 
 !--------------------------------------------------------------------------------------------------
 ! file handling errors
@@ -446,7 +435,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (190)
       msg = 'unknown element type:'
     case (191)
-      msg = 'mesh consists of more than one element type'
+      msg = 'mesh contains more than one element type'
 
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
@@ -483,27 +472,27 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 !------------------------------------------------------------------------------------------------
 ! errors related to YAML data
     case (701)
-      msg = 'Incorrect indent/Null value not allowed'
+      msg = 'incorrect indent/Null value not allowed'
     case (702)
-      msg = 'Invalid use of flow YAML'
+      msg = 'invalid use of flow YAML'
     case (703)
-      msg = 'Invalid YAML'
+      msg = 'invalid YAML'
     case (704)
-      msg = 'Space expected after a colon for <key>: <value> pair'
+      msg = 'space expected after a colon for <key>: <value> pair'
     case (705)
-      msg = 'Unsupported feature'
+      msg = 'unsupported feature'
     case (706)
-      msg = 'Type mismatch in YAML data node'
+      msg = 'type mismatch in YAML data node'
     case (707)
-      msg = 'Abrupt end of file'
+      msg = 'abrupt end of file'
     case (708)
-      msg = '--- expected after YAML file header'
+      msg = '"---" expected after YAML file header'
     case (709)
-      msg = 'Length mismatch'
+      msg = 'length mismatch'
     case (710)
-      msg = 'Closing quotation mark missing in string'
+      msg = 'closing quotation mark missing in string'
     case (711)
-      msg = 'Incorrect type'
+      msg = 'incorrect type'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the mesh solver
@@ -540,58 +529,35 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (950)
       msg = 'max number of cut back exceeded, terminating'
 
-!-------------------------------------------------------------------------------------------------
-! general error messages
     case default
-      msg = 'unknown error number...'
+      error stop 'invalid error number'
 
   end select
 
-  !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(IO_STDERR,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
-  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
-  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
-  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
-                                                     max(1,72-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
-  if (present(ext_msg)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
-                                                       max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  endif
-  if (present(el)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
-  if (present(ip)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
-  if (present(g)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
-  if (present(instance)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
-  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(IO_STDERR)
+  call panel('error',error_ID,msg, &
+                 ext_msg=ext_msg, &
+                 label1=label1,ID1=ID1, &
+                 label2=label2,ID2=ID2)
   call quit(9000+error_ID)
-  !$OMP END CRITICAL (write2out)
 
 end subroutine IO_error
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write warning statement to standard out.
+!> @brief Write warning statements.
 !--------------------------------------------------------------------------------------------------
-subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
+subroutine IO_warning(warning_ID,ext_msg,label1,ID1,label2,ID2)
 
   integer,                    intent(in) :: warning_ID
-  integer,          optional, intent(in) :: el,ip,g
-  character(len=*), optional, intent(in) :: ext_msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,          optional, intent(in) :: ID1,ID2
 
   character(len=:), allocatable :: msg
-  character(len=pStringLen)     :: formatString
+
 
   select case (warning_ID)
     case (47)
-      msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
+      msg = 'invalid parameter for FFTW'
     case (207)
       msg = 'line truncated'
     case (600)
@@ -600,33 +566,15 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'stiffness close to zero'
     case (709)
       msg = 'read only the first document'
+
     case default
-      msg = 'unknown warning number'
+      error stop 'invalid warning number'
   end select
 
-  !$OMP CRITICAL (write2out)
-  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(IO_STDERR,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
-  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
-  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
-  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
-                                                     max(1,72-len_trim(msg)-4),'x,a)'
-  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
-  if (present(ext_msg)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
-                                                       max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  endif
-  if (present(el)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
-  if (present(ip)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
-  if (present(g)) &
-    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
-  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
-  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(IO_STDERR)
-  !$OMP END CRITICAL (write2out)
+  call panel('warning',warning_ID,msg, &
+                 ext_msg=ext_msg, &
+                 label1=label1,ID1=ID1, &
+                 label2=label2,ID2=ID2)
 
 end subroutine IO_warning
 
@@ -654,7 +602,61 @@ pure function CRLF2LF(string)
 
   CRLF2LF = CRLF2LF(:c-n)
 
-end function
+end function CRLF2LF
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write statements to standard error.
+!--------------------------------------------------------------------------------------------------
+subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
+
+  character(len=*),           intent(in) :: paneltype,msg
+  character(len=*), optional, intent(in) :: ext_msg,label1,label2
+  integer,                    intent(in) :: ID
+  integer,          optional, intent(in) :: ID1,ID2
+
+  character(len=pStringLen)              :: formatString
+  integer, parameter                     :: panelwidth = 69
+  character(len=*), parameter            :: DIVIDER = repeat('─',panelwidth)
+
+
+  if (.not. present(label1) .and.       present(ID1)) error stop 'missing label for value 1'
+  if (.not. present(label2) .and.       present(ID2)) error stop 'missing label for value 2'
+  if (      present(label1) .and. .not. present(ID1)) error stop 'missing value for label 1'
+  if (      present(label2) .and. .not. present(ID2)) error stop 'missing value for label 2'
+
+  !$OMP CRITICAL (write2out)
+  write(IO_STDERR,'(/,a)')                ' ┌'//DIVIDER//'┐'
+  write(formatString,'(a,i2,a)') '(a,24x,a,',max(1,panelwidth-24-len_trim(paneltype)),'x,a)'
+  write(IO_STDERR,formatString)          ' │',trim(paneltype),                                      '│'
+  write(formatString,'(a,i2,a)') '(a,24x,i3,',max(1,panelwidth-24-3),'x,a)'
+  write(IO_STDERR,formatString)          ' │',ID,                                                   '│'
+  write(IO_STDERR,'(a)')                  ' ├'//DIVIDER//'┤'
+  write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
+                                                     max(1,panelwidth+3-len_trim(msg)-4),'x,a)'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
+  if (present(ext_msg)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
+                                                       max(1,panelwidth+3-len_trim(ext_msg)-4),'x,a)'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
+  endif
+  if (present(label1)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
+                                                       max(1,panelwidth+3-len_trim(label1)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
+  endif
+  if (present(label2)) then
+    write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
+                                                       max(1,panelwidth+3-len_trim(label2)-9-7),'x,a)'
+    write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
+  endif
+  write(formatString,'(a,i2.2,a)') '(a,',max(1,panelwidth),'x,a)'
+  write(IO_STDERR,formatString)          ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'
+  flush(IO_STDERR)
+  !$OMP END CRITICAL (write2out)
+
+end subroutine panel
 
 
 !--------------------------------------------------------------------------------------------------
@@ -664,6 +666,7 @@ subroutine selfTest()
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
+
 
   if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
   if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'

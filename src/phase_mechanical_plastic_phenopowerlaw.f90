@@ -269,7 +269,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(phenopowerlaw)')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
   end do
 

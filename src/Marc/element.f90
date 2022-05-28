@@ -714,7 +714,7 @@ subroutine tElement_init(self,elemType)
     case(13)
       self%cellNodeParentNodeWeights = CELLNODEPARENTNODEWEIGHTS13
     case default
-      call IO_error(0,ext_msg='invalid element type')
+      error stop 'invalid element type'
   end select
 
 

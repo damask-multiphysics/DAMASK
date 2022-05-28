@@ -504,7 +504,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(nonlocal)')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
   end do
 
