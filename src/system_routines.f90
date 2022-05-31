@@ -24,8 +24,10 @@ module system_routines
 
   interface
 
+
     function setCWD_C(cwd) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+      implicit none
 
       integer(C_INT) :: setCWD_C
       character(kind=C_CHAR), dimension(*), intent(in) :: cwd
@@ -34,6 +36,7 @@ module system_routines
     subroutine getCWD_C(cwd, stat) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
       use prec
+      implicit none
 
       character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                             ! NULL-terminated array
       integer(C_INT),                                intent(out) :: stat
@@ -42,6 +45,7 @@ module system_routines
     subroutine getHostName_C(hostname, stat) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
       use prec
+      implicit none
 
       character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: hostname                        ! NULL-terminated array
       integer(C_INT),                                  intent(out) :: stat
@@ -50,6 +54,7 @@ module system_routines
     subroutine getUserName_C(username, stat) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
       use prec
+      implicit none
 
       character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: username                        ! NULL-terminated array
       integer(C_INT),                                  intent(out) :: stat
@@ -57,27 +62,31 @@ module system_routines
 
     subroutine signalint_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
+      implicit none
 
       type(C_FUNPTR), intent(in), value :: handler
     end subroutine signalint_C
 
     subroutine signalusr1_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
+      implicit none
 
       type(C_FUNPTR), intent(in), value :: handler
     end subroutine signalusr1_C
 
     subroutine signalusr2_C(handler) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
+      implicit none
 
       type(C_FUNPTR), intent(in), value :: handler
     end subroutine signalusr2_C
 
     subroutine free_C(ptr) bind(C,name='free')
-      import c_ptr
-      type(c_ptr), value :: ptr
-    end subroutine free_C
+      use, intrinsic :: ISO_C_Binding, only: C_PTR
+      implicit none
 
+      type(C_PTR), value :: ptr
+    end subroutine free_C
 
   end interface
 
