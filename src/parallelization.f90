@@ -90,7 +90,7 @@ subroutine parallelization_init
 #ifdef LOGFILE
   write(rank_str,'(i4.4)') worldrank
   open(OUTPUT_UNIT,file='out.'//rank_str,status='replace',encoding='UTF-8')
-  open(ERROR_UNIT,file='error.'//rank_str,status='replace',encoding='UTF-8')
+  open(ERROR_UNIT,file='err.'//rank_str,status='replace',encoding='UTF-8')
 #else
   if (worldrank /= 0) then
     close(OUTPUT_UNIT)                                                                              ! disable output

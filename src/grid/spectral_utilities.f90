@@ -4,13 +4,12 @@
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
-  use, intrinsic :: iso_c_binding
-
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
+  use FFTW3
 
   use prec
   use CLI
@@ -25,8 +24,6 @@ module spectral_utilities
 
   implicit none
   private
-
-  include 'fftw3-mpi.f03'
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information
@@ -152,10 +149,9 @@ subroutine spectral_utilities_init()
     tensorField, &                                                                                  !< field containing data for FFTW in real and fourier space (in place)
     vectorField, &                                                                                  !< field containing data for FFTW in real space when debugging FFTW (no in place)
     scalarField                                                                                     !< field containing data for FFTW in real space when debugging FFTW (no in place)
-  integer(C_INTPTR_T), dimension(3) :: gridFFTW
-  integer(C_INTPTR_T) :: alloc_local, local_K, local_K_offset
+  integer(C_INTPTR_T), dimension(3) :: cellsFFTW
+  integer(C_INTPTR_T) :: N, z, devNull
   integer(C_INTPTR_T), parameter :: &
-    scalarSize = 1_C_INTPTR_T, &
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
   character(len=*), parameter :: &
@@ -261,69 +257,75 @@ subroutine spectral_utilities_init()
   print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
-! MPI allocation
-  gridFFTW = int(cells,C_INTPTR_T)
-  alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
-                                       PETSC_COMM_WORLD, local_K, local_K_offset)
+! allocation
   allocate (xi1st (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for first derivatives, only half the size for first dimension
   allocate (xi2nd (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
 
-  tensorField = fftw_alloc_complex(tensorSize*alloc_local)
-  call c_f_pointer(tensorField, tensorField_real,    [3_C_INTPTR_T,3_C_INTPTR_T, &
-                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])     ! place a pointer for a real tensor representation
-  call c_f_pointer(tensorField, tensorField_fourier, [3_C_INTPTR_T,3_C_INTPTR_T, &
-                   gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              gridFFTW(2),local_K])     ! place a pointer for a fourier tensor representation
+  cellsFFTW = int(cells,C_INTPTR_T)
 
-  vectorField = fftw_alloc_complex(vectorSize*alloc_local)
-  call c_f_pointer(vectorField, vectorField_real,   [3_C_INTPTR_T,&
-                   2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])     ! place a pointer for a real vector representation
-  call c_f_pointer(vectorField, vectorField_fourier,[3_C_INTPTR_T,&
-                   gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               gridFFTW(2),local_K])     ! place a pointer for a fourier vector representation
+  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
+                               tensorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
+  if (z /= cells3) error stop 'domain decomposition mismatch (tensor)'
+  tensorField = fftw_alloc_complex(N)
+  call c_f_pointer(tensorField,tensorField_real, &
+                   [3_C_INTPTR_T,3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+  call c_f_pointer(tensorField,tensorField_fourier, &
+                   [3_C_INTPTR_T,3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
-  scalarField = fftw_alloc_complex(scalarSize*alloc_local)                                          ! allocate data for real representation (no in place transform)
-  call c_f_pointer(scalarField,    scalarField_real, &
-                   [2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1),gridFFTW(2),local_K])               ! place a pointer for a real scalar representation
-  call c_f_pointer(scalarField, scalarField_fourier, &
-                    [             gridFFTW(1)/2_C_INTPTR_T + 1 ,gridFFTW(2),local_K])               ! place a pointer for a fourier scarlar representation
+  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
+                               vectorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
+  if (z /= cells3) error stop 'domain decomposition mismatch (vector)'
+  vectorField = fftw_alloc_complex(N)
+  call c_f_pointer(vectorField,vectorField_real, &
+                   [3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+  call c_f_pointer(vectorField,vectorField_fourier, &
+                   [3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
+
+  N = fftw_mpi_local_size_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T,&
+                             PETSC_COMM_WORLD,z,devNull)
+  if (z /= cells3) error stop 'domain decomposition mismatch (scalar)'
+  scalarField = fftw_alloc_complex(N)
+  call c_f_pointer(scalarField,scalarField_real, &
+                   [2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+  call c_f_pointer(scalarField,scalarField_fourier, &
+                   [              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
-  planTensorForth = fftw_mpi_plan_many_dft_r2c(3,gridFFTW(3:1:-1),tensorSize, &
+  planTensorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),tensorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_real,tensorField_fourier, &
                                                PETSC_COMM_WORLD,FFTW_planner_flag)
-  if (.not. c_associated(planTensorForth)) error stop 'FFTW error'
-  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3,gridFFTW(3:1:-1),tensorSize, &
-                                               FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
+  if (.not. c_associated(planTensorForth)) error stop 'FFTW error r2c tensor'
+  planTensorBack  = fftw_mpi_plan_many_dft_c2r(3,cellsFFTW(3:1:-1),tensorSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                tensorField_fourier,tensorField_real, &
-                                               PETSC_COMM_WORLD, FFTW_planner_flag)
-  if (.not. c_associated(planTensorBack)) error stop 'FFTW error'
+                                               PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planTensorBack))  error stop 'FFTW error c2r tensor'
 
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
-  planVectorForth = fftw_mpi_plan_many_dft_r2c(3,gridFFTW(3:1:-1),vectorSize, &
+  planVectorForth = fftw_mpi_plan_many_dft_r2c(3,cellsFFTW(3:1:-1),vectorSize, &
                                                FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_real,vectorField_fourier, &
                                                PETSC_COMM_WORLD,FFTW_planner_flag)
-  if (.not. c_associated(planVectorForth)) error stop 'FFTW error'
-  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3,gridFFTW(3:1:-1),vectorSize, &
-                                               FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
+  if (.not. c_associated(planVectorForth)) error stop 'FFTW error r2c vector'
+  planVectorBack  = fftw_mpi_plan_many_dft_c2r(3,cellsFFTW(3:1:-1),vectorSize, &
+                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
                                                vectorField_fourier,vectorField_real, &
-                                               PETSC_COMM_WORLD, FFTW_planner_flag)
-  if (.not. c_associated(planVectorBack)) error stop 'FFTW error'
+                                               PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planVectorBack))  error stop 'FFTW error c2r vector'
 
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans
-  planScalarForth = fftw_mpi_plan_many_dft_r2c(3,gridFFTW(3:1:-1),scalarSize, &
-                                               FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK, &
-                                               scalarField_real,scalarField_fourier, &
-                                               PETSC_COMM_WORLD,FFTW_planner_flag)
-  if (.not. c_associated(planScalarForth)) error stop 'FFTW error'
-  planScalarBack  = fftw_mpi_plan_many_dft_c2r(3,gridFFTW(3:1:-1),scalarSize, &
-                                               FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
-                                               scalarField_fourier,scalarField_real, &
-                                               PETSC_COMM_WORLD, FFTW_planner_flag)
-  if (.not. c_associated(planScalarBack)) error stop 'FFTW error'
+  planScalarForth = fftw_mpi_plan_dft_r2c_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
+                                             scalarField_real,scalarField_fourier, &
+                                             PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planScalarForth)) error stop 'FFTW error r2c scalar'
+  planScalarBack  = fftw_mpi_plan_dft_c2r_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1), &
+                                             scalarField_fourier,scalarField_real, &
+                                             PETSC_COMM_WORLD,FFTW_planner_flag)
+  if (.not. c_associated(planScalarBack))  error stop 'FFTW error c2r scalar'
 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
