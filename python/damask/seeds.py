@@ -45,7 +45,7 @@ def from_random(size: _FloatSequence,
     else:
         grid_coords = _grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
-               + _np.broadcast_to(size_/_np.array(cells,int),(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
+               + _np.broadcast_to(size_/_np.array(cells,_np.int64),(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25) # wobble w/o leaving grid
 
     return coords
 

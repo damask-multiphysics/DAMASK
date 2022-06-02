@@ -187,7 +187,7 @@ class VTK:
         ----------
         nodes : numpy.ndarray, shape (:,3)
             Spatial position of the nodes.
-        connectivity : numpy.ndarray of np.dtype = int
+        connectivity : numpy.ndarray of np.dtype = np.int64
             Cell connectivity (0-based), first dimension determines #Cells,
             second dimension determines #Nodes/Cell.
         cell_type : str
