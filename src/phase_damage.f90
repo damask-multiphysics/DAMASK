@@ -105,9 +105,7 @@ module subroutine damage_init
       damage_active = .true.
       source => sources%get(1)
       param(ph)%mu     = source%get_asFloat('mu')
-      param(ph)%D(1,1) = source%get_asFloat('D_11')
-      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%D(3,3) = source%get_asFloat('D_33')
-      param(ph)%D = lattice_symmetrize_33(param(ph)%D,phase_lattice(ph))
+      param(ph)%D  = math_I3 * source%get_asFloat('l_c')**2
     end if
 
   end do
@@ -385,9 +383,9 @@ module function phase_K_phi(co,ce) result(K)
 
   integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: K
-  real(pReal), parameter :: l = 1.0_pReal
 
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D) * l**2
+
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D)
 
 end function phase_K_phi
 
@@ -403,6 +401,7 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
     en
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
+
   integer :: &
     myOffset, &
     mySize

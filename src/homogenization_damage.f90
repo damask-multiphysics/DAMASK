@@ -166,6 +166,7 @@ module subroutine damage_results(ho,group)
 
   integer :: o
 
+
   associate(prm => param(ho))
       outputsLoop: do o = 1,size(prm%output)
         select case(prm%output(o))
