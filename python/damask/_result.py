@@ -334,7 +334,7 @@ class Result:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r_first = r.view(increment=0)
+        >>> r_first = r.view(increments=0)
 
         Get a view that shows all results between simulation times of 10 to 40:
 
