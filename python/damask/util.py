@@ -314,7 +314,7 @@ def scale_to_coprime(v: FloatSequence) -> np.ndarray:
             return a * b // np.gcd(a, b)
 
     v_ = np.array(v)
-    m = (v_ * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v_))**0.5).astype(int)
+    m = (v_ * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v_))**0.5).astype(np.int64)
     m = m//reduce(np.gcd,m)
 
     with np.errstate(invalid='ignore'):

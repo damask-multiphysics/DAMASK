@@ -134,7 +134,7 @@ class Table:
         labels = []
         for label in what:
             shape = self.shapes[label]
-            size = np.prod(shape,dtype=int)
+            size = np.prod(shape,dtype=np.int64)
             if   how == 'uniform':
                 labels += [label] * size
             elif how == 'shapes':
@@ -168,7 +168,7 @@ class Table:
                      shape: Tuple[int, ...],
                      info: str = None):
         if info is not None:
-            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
+            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
             self.comments.append(f'{specific} / {general}')
 
@@ -401,7 +401,7 @@ class Table:
         else:
 
             dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
-            size = np.prod(data.shape[1:],dtype=int)
+            size = np.prod(data.shape[1:],dtype=np.int64)
             new = pd.DataFrame(data=data.reshape(-1,size),
                                columns=[label]*size,
                               )
