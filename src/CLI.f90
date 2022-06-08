@@ -156,15 +156,15 @@ subroutine CLI_init
         if (CLI_restartInc < 0 .or. stat /=0) then
           print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
-        endif
+        end if
     end select
     if (err /= 0) call quit(1)
-  enddo
+  end do
 
   if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
     print'(/,a)', ' ERROR: Please specify geometry AND load case (-h for help)'
     call quit(1)
-  endif
+  end if
 
   if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
   CLI_geomFile = getGeometryFile(geometryArg)
@@ -205,14 +205,14 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   else absolutePath
     workingDirectory = getCWD()
     workingDirectory = trim(workingDirectory)//'/'//workingDirectoryArg
-  endif absolutePath
+  end if absolutePath
 
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if(error) then
     print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
-  endif
+  end if
 
 end subroutine setWorkingDirectory
 
@@ -256,7 +256,7 @@ function getGeometryFile(geometryParameter)
   if (.not. file_exists) then
     print*, 'ERROR: Geometry file does not exists: '//trim(getGeometryFile)
     call quit(1)
-  endif
+  end if
 
 end function getGeometryFile
 
@@ -279,7 +279,7 @@ function getLoadCaseFile(loadCaseParameter)
   if (.not. file_exists) then
     print*, 'ERROR: Load case file does not exists: '//trim(getLoadCaseFile)
     call quit(1)
-  endif
+  end if
 
 end function getLoadCaseFile
 
@@ -300,14 +300,14 @@ function rectifyPath(path)
   l = len_trim(rectifyPath)
   do i = l,3,-1
     if (rectifyPath(i-2:i) == '/./') rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
-  enddo
+  end do
 
 !--------------------------------------------------------------------------------------------------
 ! remove // from path
   l = len_trim(rectifyPath)
   do i = l,2,-1
     if (rectifyPath(i-1:i) == '//') rectifyPath(i-1:l) = rectifyPath(i:l)//' '
-  enddo
+  end do
 
 !--------------------------------------------------------------------------------------------------
 ! remove ../ and corresponding directory from rectifyPath
@@ -321,9 +321,9 @@ function rectifyPath(path)
        k = len_trim(rectifyPath)
        rectifyPath(j+1:k-1) = rectifyPath(j+2:k)
        rectifyPath(k:k) = ' '
-     endif
+     end if
      i = j+index(rectifyPath(j+1:l),'../')
-  enddo
+  end do
   if(len_trim(rectifyPath) == 0) rectifyPath = '/'
 
   rectifyPath = trim(rectifyPath)
@@ -349,10 +349,10 @@ function makeRelativePath(a,b)
   do i = 1, min(len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
     if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
     if (a_cleaned(i:i) == '/') posLastCommonSlash = i
-  enddo
+  end do
   do i = posLastCommonSlash+1,len_trim(a_cleaned)
     if (a_cleaned(i:i) == '/') remainingSlashes = remainingSlashes + 1
-  enddo
+  end do
 
   makeRelativePath = repeat('..'//'/',remainingSlashes)//b_cleaned(posLastCommonSlash+1:len_trim(b_cleaned))
 

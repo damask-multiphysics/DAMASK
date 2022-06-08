@@ -364,13 +364,13 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,prm%N_tw,pl%get_as1dFloat('h_sl-tw'), &
                                                    phase_lattice(ph))
       if (prm%fccTwinTransNucleation .and. size(prm%N_tw) /= 1) extmsg = trim(extmsg)//' N_tw: nucleation'
-    endif slipAndTwinActive
+    end if slipAndTwinActive
 
     slipAndTransActive: if (prm%sum_N_sl * prm%sum_N_tr > 0) then
       prm%h_sl_tr = lattice_interaction_SlipByTrans(N_sl,prm%N_tr,pl%get_as1dFloat('h_sl-tr'), &
                                                     phase_lattice(ph))
       if (prm%fccTwinTransNucleation .and. size(prm%N_tr) /= 1) extmsg = trim(extmsg)//' N_tr: nucleation'
-    endif slipAndTransActive
+    end if slipAndTransActive
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays

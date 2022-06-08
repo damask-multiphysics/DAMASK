@@ -123,7 +123,7 @@ function getCWD()
     getCWD = c_f_string(getCWD_Cstring)
   else
     error stop 'invalid working directory'
-  endif
+  end if
 
 end function getCWD
 
@@ -145,7 +145,7 @@ function getHostName()
     getHostName = c_f_string(getHostName_Cstring)
   else
     getHostName = 'n/a (Error!)'
-  endif
+  end if
 
 end function getHostName
 

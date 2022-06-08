@@ -92,15 +92,15 @@ function IO_readlines(fileName) result(fileContent)
       if (.not. warned) then
         call IO_warning(207,trim(fileName),label1='line',ID1=l)
         warned = .true.
-      endif
+      end if
     else
       line = rawData(startPos:endpos)
-    endif
+    end if
     startPos = endPos + 2                                                                           ! jump to next line start
 
     fileContent(l) = trim(line)//''
     l = l + 1
-  enddo
+  end do
 
 end function IO_readlines
 
@@ -129,7 +129,7 @@ function IO_read(fileName) result(fileContent)
   if (fileLength==0) then
     close(fileUnit)
     return
-  endif
+  end if
 
   read(fileUnit,iostat=myStat) fileContent
   if (myStat /= 0) call IO_error(102,trim(fileName))
@@ -183,8 +183,8 @@ pure function IO_stringPos(string)
     endOfString: if (right < left) then
       IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
       exit
-    endif endOfString
-  enddo
+    end if endOfString
+  end do
 
 end function IO_stringPos
 
@@ -204,7 +204,7 @@ function IO_stringValue(string,chunkPos,myChunk)
     call IO_error(110,'IO_stringValue: "'//trim(string)//'"',label1='chunk',ID1=myChunk)
   else validChunk
     IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
-  endif validChunk
+  end if validChunk
 
 end function IO_stringValue
 
@@ -257,8 +257,8 @@ pure function IO_lc(string)
       IO_lc(i:i) = LOWER(n:n)
     else
       IO_lc(i:i) = string(i:i)
-    endif
-  enddo
+    end if
+  end do
 
 end function IO_lc
 
@@ -280,7 +280,7 @@ function IO_rmComment(line)
     IO_rmComment = trim(line)
   else
     IO_rmComment = trim(line(:split-1))
-  endif
+  end if
 
 end function IO_rmComment
 
@@ -302,7 +302,7 @@ integer function IO_stringAsInt(string)
   else valid
     IO_stringAsInt = 0
     call IO_error(111,string)
-  endif valid
+  end if valid
 
 end function IO_stringAsInt
 
@@ -324,7 +324,7 @@ real(pReal) function IO_stringAsFloat(string)
   else valid
     IO_stringAsFloat = 0.0_pReal
     call IO_error(112,string)
-  endif valid
+  end if valid
 
 end function IO_stringAsFloat
 
@@ -344,7 +344,7 @@ logical function IO_stringAsBool(string)
   else
     IO_stringAsBool = .false.
     call IO_error(113,string)
-  endif
+  end if
 
 end function IO_stringAsBool
 
@@ -598,7 +598,7 @@ pure function CRLF2LF(string)
     CRLF2LF(c-n:c-n) = string(c:c)
     if (c == len_trim(string)) exit
     if (string(c:c+1) == CR//LF) n = n + 1
-  enddo
+  end do
 
   CRLF2LF = CRLF2LF(:c-n)
 
@@ -639,17 +639,17 @@ subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
     write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,panelwidth+3-len_trim(ext_msg)-4),'x,a)'
     write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
-  endif
+  end if
   if (present(label1)) then
     write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label1)),',i9,',&
                                                        max(1,panelwidth+3-len_trim(label1)-9-7),'x,a)'
     write(IO_STDERR,formatString)          '│ at ',trim(label1),ID1,                                '│'
-  endif
+  end if
   if (present(label2)) then
     write(formatString,'(a,i3.3,a,i3.3,a)') '(1x,a7,a',max(1,len_trim(label2)),',i9,',&
                                                        max(1,panelwidth+3-len_trim(label2)-9-7),'x,a)'
     write(IO_STDERR,formatString)          '│ at ',trim(label2),ID2,                                '│'
-  endif
+  end if
   write(formatString,'(a,i2.2,a)') '(a,',max(1,panelwidth),'x,a)'
   write(IO_STDERR,formatString)          ' │',                                                     '│'
   write(IO_STDERR,'(a)')                  ' └'//DIVIDER//'┘'

@@ -68,7 +68,7 @@ subroutine discretization_init(materialAt,&
     discretization_sharedNodesBegin = sharedNodesBegin
   else
     discretization_sharedNodesBegin = size(discretization_NodeCoords0,2)
-  endif
+  end if
 
 end subroutine discretization_init
 
