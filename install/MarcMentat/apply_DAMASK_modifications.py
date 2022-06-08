@@ -6,46 +6,18 @@ import argparse
 import shutil
 from pathlib import Path
 import importlib.machinery
-import signal
 import subprocess
 import shlex
-from functools import partial
 
 solver = importlib.machinery.SourceFileLoader(
                     'damask',f'{str(Path(__file__).parent.absolute().parents[1])}/python/damask/solver/_marc.py').load_module()
-
-def run(cmd, wd='./', env=None, timeout=None):
-    def pass_signal(sig,_,proc,default):
-        proc.send_signal(sig)
-        signal.signal(sig,default)
-        signal.raise_signal(sig)
-    signals = [signal.SIGINT,signal.SIGTERM]
-    print(f"running '{cmd}' in '{wd}'")
-    process = subprocess.Popen(shlex.split(cmd),
-                             stdout = subprocess.PIPE,
-                             stderr = subprocess.PIPE,
-                             env = os.environ if env is None else env,
-                             cwd = wd,
-                             encoding = 'utf-8')
-    sig_states = [signal.signal(sig,partial(pass_signal,proc=process,default=signal.getsignal(sig))) for sig in signals]
-    try:
-        stdout,stderr = process.communicate(timeout=timeout)
-    finally:
-        for sig,state in zip(signals,sig_states):
-            signal.signal(sig,state)
-    if process.returncode != 0:
-        print(stdout)
-        print(stderr)
-        raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
-    return stdout, stderr
-
 
 def copy_and_patch(patch,orig,editor):
     try:
         shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
         pass
-    run(f'patch {orig.parent/patch.stem} {patch} --backup --forward')
+    subprocess.run(shlex.split(f'patch {orig.parent/patch.stem} {patch} --backup --forward'))
     with open(orig.parent/patch.stem) as f_in:
         content = f_in.read()
     with open(orig.parent/patch.stem,'w') as f_out:
@@ -84,7 +56,7 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
 
 for cmd in ['patch','xvfb-run']:
     try:
-        run(f'{cmd} --help')
+        subprocess.run(shlex.split(f'{cmd} --help'))
     except FileNotFoundError:
         print(f'"{cmd}" not found, please install')
         sys.exit()
@@ -103,7 +75,7 @@ print('compiling Mentat menu binaries...')
 
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
-run(f'xvfb-run -a {executable} -compile {menu_file}')
+subprocess.run(shlex.split(f'xvfb-run -a {executable} -compile {menu_file}'))
 
 print('setting file access rights...')
 
