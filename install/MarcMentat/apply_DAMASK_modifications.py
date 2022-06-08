@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
+
 import os
 import sys
 import glob
 import argparse
 import shutil
 from pathlib import Path
-import importlib.machinery
 import subprocess
 import shlex
 
-solver = importlib.machinery.SourceFileLoader(
-                    'damask',f'{str(Path(__file__).parent.absolute().parents[1])}/python/damask/solver/_marc.py').load_module()
+sys.path.append(str(Path(__file__).parents[2]/'python/damask'))
+import solver
 
 def copy_and_patch(patch,orig,editor):
     try:
@@ -31,13 +31,13 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
                     help='Name of the editor (executable) used by Marc Mentat')
 parser.add_argument('--marc-root', dest='marc_root', metavar='string',
-                    default=solver._marc_root,
+                    default=solver._marc._marc_root,
                     help='Marc root directory')
 parser.add_argument('--marc-version', dest='marc_version', metavar='string',
-                    default=solver._marc_version,
+                    default=solver._marc._marc_version,
                     help='Marc version')
 parser.add_argument('--damask-root', dest='damask_root', metavar = 'string',
-                    default=solver._damask_root,
+                    default=solver._marc._damask_root,
                     help='DAMASK root directory')
 
 
