@@ -453,7 +453,7 @@ class Orientation(Rotation,Crystal):
             elif self.family == 'triclinic':
                 return np.ones(rho_abs.shape[:-1]).astype(bool)
             else:
-                raise(TypeError, f'unknown symmetry "{self.family}"')
+                raise TypeError(f'unknown symmetry "{self.family}"')
 
 
     @property
