@@ -167,11 +167,11 @@ def run(cmd: str,
 
     print(f"running '{cmd}' in '{wd}'")
     process = _subprocess.Popen(_shlex.split(cmd),
-                             stdout = _subprocess.PIPE,
-                             stderr = _subprocess.PIPE,
-                             env = _os.environ if env is None else env,
-                             cwd = wd,
-                             encoding = 'utf-8')
+                                stdout = _subprocess.PIPE,
+                                stderr = _subprocess.PIPE,
+                                env = _os.environ if env is None else env,
+                                cwd = wd,
+                                encoding = 'utf-8')
     # ensure that process is terminated (https://stackoverflow.com/questions/22916783)
     sig_states = [_signal.signal(sig,_partial(pass_signal,proc=process,default=_signal.getsignal(sig))) for sig in signals]
 
@@ -350,9 +350,9 @@ def project_equal_angle(vector: _np.ndarray,
     """
     shift = 'zyx'.index(direction)
     v = _np.roll(vector/_np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
-                shift,axis=-1)
+                 shift,axis=-1)
     return _np.roll(_np.block([v[...,:2]/(1.0+_np.abs(v[...,2:3])),_np.zeros_like(v[...,2:3])]),
-                   -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
+                    -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
 def project_equal_area(vector: _np.ndarray,
                        direction: _Literal['x', 'y', 'z'] = 'z',                                    # noqa
@@ -399,9 +399,9 @@ def project_equal_area(vector: _np.ndarray,
     """
     shift = 'zyx'.index(direction)
     v = _np.roll(vector/_np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector,
-                shift,axis=-1)
+                 shift,axis=-1)
     return _np.roll(_np.block([v[...,:2]/_np.sqrt(1.0+_np.abs(v[...,2:3])),_np.zeros_like(v[...,2:3])]),
-                   -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
+                    -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
 def execution_stamp(class_name: str,
                     function_name: str = None) -> str:
@@ -648,12 +648,12 @@ def Bravais_to_Miller(*,
     if (uvtw is not None) ^ (hkil is None):
         raise KeyError('specify either "uvtw" or "hkil"')
     axis,basis  = (_np.array(uvtw),_np.array([[1,0,-1,0],
-                                            [0,1,-1,0],
-                                            [0,0, 0,1]])) \
+                                              [0,1,-1,0],
+                                              [0,0, 0,1]])) \
                   if hkil is None else \
                   (_np.array(hkil),_np.array([[1,0,0,0],
-                                            [0,1,0,0],
-                                            [0,0,0,1]]))
+                                              [0,1,0,0],
+                                              [0,0,0,1]]))
     return _np.einsum('il,...l',basis,axis)
 
 
@@ -677,14 +677,14 @@ def Miller_to_Bravais(*,
     if (uvw is not None) ^ (hkl is None):
         raise KeyError('specify either "uvw" or "hkl"')
     axis,basis  = (_np.array(uvw),_np.array([[ 2,-1, 0],
-                                           [-1, 2, 0],
-                                           [-1,-1, 0],
-                                           [ 0, 0, 3]])/3) \
+                                             [-1, 2, 0],
+                                             [-1,-1, 0],
+                                             [ 0, 0, 3]])/3) \
                   if hkl is None else \
                   (_np.array(hkl),_np.array([[ 1, 0, 0],
-                                           [ 0, 1, 0],
-                                           [-1,-1, 0],
-                                           [ 0, 0, 1]]))
+                                             [ 0, 1, 0],
+                                             [-1,-1, 0],
+                                             [ 0, 0, 1]]))
     return _np.einsum('il,...l',basis,axis)
 
 
