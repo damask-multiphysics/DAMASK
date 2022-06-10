@@ -190,7 +190,7 @@ def run(cmd: str,
 
 
 def open_text(fname: _FileHandle,
-              mode: _Literal['r','w'] = 'r') -> _TextIO:
+              mode: _Literal['r','w'] = 'r') -> _TextIO:                                            # noqa
     """
     Open a text file.
 
@@ -307,7 +307,7 @@ def scale_to_coprime(v: _FloatSequence) -> _np.ndarray:
 
 
 def project_equal_angle(vector: _np.ndarray,
-                        direction: _Literal['x', 'y', 'z'] = 'z',
+                        direction: _Literal['x', 'y', 'z'] = 'z',                                   # noqa
                         normalize: bool = True,
                         keepdims: bool = False) -> _np.ndarray:
     """
@@ -355,7 +355,7 @@ def project_equal_angle(vector: _np.ndarray,
                    -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
 def project_equal_area(vector: _np.ndarray,
-                       direction: _Literal['x', 'y', 'z'] = 'z',
+                       direction: _Literal['x', 'y', 'z'] = 'z',                                    # noqa
                        normalize: bool = True,
                        keepdims: bool = False) -> _np.ndarray:
     """
@@ -443,7 +443,7 @@ def hybrid_IA(dist: _np.ndarray,
 
 def shapeshifter(fro: _Tuple[int, ...],
                  to: _Tuple[int, ...],
-                 mode: _Literal['left','right'] = 'left',
+                 mode: _Literal['left','right'] = 'left',                                           # noqa
                  keep_ones: bool = False) -> _Tuple[int, ...]:
     """
     Return dimensions that reshape 'fro' to become broadcastable to 'to'.
