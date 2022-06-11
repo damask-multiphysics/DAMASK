@@ -27,7 +27,7 @@
 ! USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ! ###################################################################
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief rotation storage and conversion
@@ -44,7 +44,7 @@
 !    Convention 5: the rotation angle ω is limited to the interval [0, π]
 !    Convention 6: the real part of a quaternion is positive, Re(q) > 0
 !    Convention 7: P = -1
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 
 module rotations
   use IO
@@ -111,60 +111,64 @@ subroutine rotations_init
 end subroutine rotations_init
 
 
-!---------------------------------------------------------------------------------------------------
-! Return rotation in different representations
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+! Return rotation in different representations.
+!--------------------------------------------------------------------------------------------------
 pure function asQuaternion(self)
 
   class(tRotation), intent(in) :: self
   real(pReal), dimension(4)    :: asQuaternion
 
+
   asQuaternion = self%q
 
 end function asQuaternion
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function asEulers(self)
 
   class(tRotation), intent(in) :: self
   real(pReal), dimension(3)    :: asEulers
 
+
   asEulers = qu2eu(self%q)
 
 end function asEulers
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function asAxisAngle(self)
 
   class(tRotation), intent(in) :: self
   real(pReal), dimension(4)    :: asAxisAngle
 
+
   asAxisAngle = qu2ax(self%q)
 
 end function asAxisAngle
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function asMatrix(self)
 
   class(tRotation), intent(in) :: self
   real(pReal), dimension(3,3)  :: asMatrix
 
+
   asMatrix = qu2om(self%q)
 
 end function asMatrix
 
-
-!---------------------------------------------------------------------------------------------------
-! Initialize rotation from different representations
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+! Initialize rotation from different representations.
+!--------------------------------------------------------------------------------------------------
 subroutine fromQuaternion(self,qu)
 
   class(tRotation), intent(out)         :: self
   real(pReal), dimension(4), intent(in) :: qu
+
 
   if (dNeq(norm2(qu),1.0_pReal,1.0e-8_pReal)) call IO_error(402,ext_msg='fromQuaternion')
 
   self%q = qu
 
 end subroutine fromQuaternion
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 subroutine fromEulers(self,eu,degrees)
 
   class(tRotation), intent(out)         :: self
@@ -172,6 +176,7 @@ subroutine fromEulers(self,eu,degrees)
   logical, intent(in), optional         :: degrees
 
   real(pReal), dimension(3)             :: Eulers
+
 
   if (.not. present(degrees)) then
     Eulers = eu
@@ -185,7 +190,7 @@ subroutine fromEulers(self,eu,degrees)
   self%q = eu2qu(Eulers)
 
 end subroutine fromEulers
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 subroutine fromAxisAngle(self,ax,degrees,P)
 
   class(tRotation), intent(out)         :: self
@@ -195,6 +200,7 @@ subroutine fromAxisAngle(self,ax,degrees,P)
 
   real(pReal)                           :: angle
   real(pReal),dimension(3)              :: axis
+
 
   if (.not. present(degrees)) then
     angle = ax(4)
@@ -215,11 +221,12 @@ subroutine fromAxisAngle(self,ax,degrees,P)
   self%q = ax2qu([axis,angle])
 
 end subroutine fromAxisAngle
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 subroutine fromMatrix(self,om)
 
   class(tRotation), intent(out)           :: self
   real(pReal), dimension(3,3), intent(in) :: om
+
 
   if (dNeq(math_det33(om),1.0_pReal,tol=1.0e-5_pReal)) &
     call IO_error(402,ext_msg='fromMatrix')
@@ -227,39 +234,41 @@ subroutine fromMatrix(self,om)
   self%q = om2qu(om)
 
 end subroutine fromMatrix
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 
 
-!---------------------------------------------------------------------------------------------------
-!> @brief: Rotate a rotation
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief: Compose rotations.
+!--------------------------------------------------------------------------------------------------
 pure elemental function rotRot__(self,R) result(rRot)
 
   type(tRotation)              :: rRot
   class(tRotation), intent(in) :: self,R
 
-  rRot = tRotation(multiply_quaternion(self%q,R%q))
+
+  rRot = tRotation(multiplyQuaternion(self%q,R%q))
   call rRot%standardize()
 
 end function rotRot__
 
 
-!---------------------------------------------------------------------------------------------------
-!> @brief quaternion representation with positive q
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief Convert to quaternion representation with positive q(1).
+!--------------------------------------------------------------------------------------------------
 pure elemental subroutine standardize(self)
 
   class(tRotation), intent(inout) :: self
+
 
   if (sign(1.0_pReal,self%q(1)) < 0.0_pReal) self%q = - self%q
 
 end subroutine standardize
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief Rotate a vector passively (default) or actively.
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function rotVector(self,v,active) result(vRot)
 
   real(pReal),                 dimension(3) :: vRot
@@ -269,6 +278,7 @@ pure function rotVector(self,v,active) result(vRot)
 
   real(pReal), dimension(4) :: v_normed, q
   logical                   :: passive
+
 
   if (present(active)) then
     passive = .not. active
@@ -280,22 +290,20 @@ pure function rotVector(self,v,active) result(vRot)
     vRot = v
   else
     v_normed = [0.0_pReal,v]/norm2(v)
-    if (passive) then
-      q = multiply_quaternion(self%q, multiply_quaternion(v_normed, conjugate_quaternion(self%q)))
-    else
-      q = multiply_quaternion(conjugate_quaternion(self%q), multiply_quaternion(v_normed, self%q))
-    endif
+    q = merge(multiplyQuaternion(self%q, multiplyQuaternion(v_normed, conjugateQuaternion(self%q))), &
+              multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
+              passive)
     vRot = q(2:4)*norm2(v)
   endif
 
 end function rotVector
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief Rotate a rank-2 tensor passively (default) or actively.
 !> @details: Rotation is based on rotation matrix
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function rotTensor2(self,T,active) result(tRot)
 
   real(pReal),                 dimension(3,3) :: tRot
@@ -319,11 +327,11 @@ pure function rotTensor2(self,T,active) result(tRot)
 end function rotTensor2
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief Rotate a rank-4 tensor passively (default) or actively.
 !> @details: rotation is based on rotation matrix
 !! ToDo: Need to check active/passive !!!
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function rotTensor4(self,T,active) result(tRot)
 
   real(pReal),                 dimension(3,3,3,3) :: tRot
@@ -351,11 +359,11 @@ pure function rotTensor4(self,T,active) result(tRot)
 end function rotTensor4
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief Rotate a rank-4 stiffness tensor in Voigt 6x6 notation passively (default) or actively.
 !> @details: https://scicomp.stackexchange.com/questions/35600
 !! ToDo: Need to check active/passive !!!
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function rotStiffness(self,C,active) result(cRot)
 
   real(pReal),                 dimension(6,6) :: cRot
@@ -391,24 +399,24 @@ pure function rotStiffness(self,C,active) result(cRot)
 end function rotStiffness
 
 
-!---------------------------------------------------------------------------------------------------
-!> @brief Misorientation.
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate misorientation.
+!--------------------------------------------------------------------------------------------------
 pure elemental function misorientation(self,other)
 
   type(tRotation)              :: misorientation
   class(tRotation), intent(in) :: self, other
 
 
-  misorientation%q = multiply_quaternion(other%q, conjugate_quaternion(self%q))
+  misorientation%q = multiplyQuaternion(other%q, conjugateQuaternion(self%q))
 
 end function misorientation
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief Convert unit quaternion to rotation matrix.
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function qu2om(qu) result(om)
 
   real(pReal), intent(in), dimension(4)   :: qu
@@ -436,10 +444,10 @@ pure function qu2om(qu) result(om)
 end function qu2om
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Convert unit quaternion to Euler angles.
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert unit quaternion to Bunge Euler angles.
+!--------------------------------------------------------------------------------------------------
 pure function qu2eu(qu) result(eu)
 
   real(pReal), intent(in), dimension(4) :: qu
@@ -466,16 +474,17 @@ pure function qu2eu(qu) result(eu)
 end function qu2eu
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert unit quaternion to axis angle pair
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert unit quaternion to axis-angle pair.
+!--------------------------------------------------------------------------------------------------
 pure function qu2ax(qu) result(ax)
 
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(4) :: ax
 
   real(pReal)                           :: omega, s
+
 
   if (dEq0(sum(qu(2:4)**2))) then
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]                                             ! axis = [001]
@@ -490,11 +499,11 @@ pure function qu2ax(qu) result(ax)
 end function qu2ax
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief convert rotation matrix to unit quaternion
+!> @brief Convert rotation matrix to unit quaternion.
 !> @details the original formulation (direct conversion) had (numerical?) issues
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function om2qu(om) result(qu)
 
   real(pReal), intent(in), dimension(3,3) :: om
@@ -502,6 +511,7 @@ pure function om2qu(om) result(qu)
 
   real(pReal) :: trace,s
   trace = math_trace33(om)
+
 
   if(trace > 0.0_pReal) then
     s = 0.5_pReal / sqrt(trace+1.0_pReal)
@@ -525,16 +535,17 @@ pure function om2qu(om) result(qu)
 end function om2qu
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert orientation matrix to Euler angles
+!> @brief Convert orientation matrix to Bunge Euler angles.
 !> @details Two step check for special cases to avoid invalid operations (not needed for python)
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
 
   real(pReal), intent(in), dimension(3,3) :: om
   real(pReal),             dimension(3)   :: eu
   real(pReal)                             :: zeta
+
 
   if    (dNeq(abs(om(3,3)),1.0_pReal,1.e-8_pReal)) then
     zeta = 1.0_pReal/sqrt(math_clip(1.0_pReal-om(3,3)**2,1e-64_pReal,1.0_pReal))
@@ -550,10 +561,10 @@ pure function om2eu(om) result(eu)
 end function om2eu
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert orientation matrix to axis angle pair
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert orientation matrix to axis-angle pair.
+!--------------------------------------------------------------------------------------------------
 function om2ax(om) result(ax)
 
   real(pReal), intent(in), dimension(3,3) :: om
@@ -564,6 +575,7 @@ function om2ax(om) result(ax)
   real(pReal), dimension((64+2)*3) :: work
   real(pReal), dimension(3,3)      :: VR, devNull, om_
   integer                          :: ierr, i
+
 
   om_ = om
 
@@ -586,16 +598,17 @@ function om2ax(om) result(ax)
 end function om2ax
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Euler angles to unit quaternion
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert Bunge Euler angles to unit quaternion.
+!--------------------------------------------------------------------------------------------------
 pure function eu2qu(eu) result(qu)
 
   real(pReal), intent(in), dimension(3) :: eu
   real(pReal),             dimension(4) :: qu
   real(pReal),             dimension(3) :: ee
   real(pReal)                           :: cPhi, sPhi
+
 
   ee = 0.5_pReal*eu
 
@@ -611,16 +624,17 @@ pure function eu2qu(eu) result(qu)
 end function eu2qu
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief Euler angles to orientation matrix
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert Euler angles to orientation matrix.
+!--------------------------------------------------------------------------------------------------
 pure function eu2om(eu) result(om)
 
   real(pReal), intent(in), dimension(3)   :: eu
   real(pReal),             dimension(3,3) :: om
 
   real(pReal),             dimension(3)   :: c, s
+
 
   c = cos(eu)
   s = sin(eu)
@@ -640,16 +654,17 @@ pure function eu2om(eu) result(om)
 end function eu2om
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert euler to axis angle
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert Bunge Euler angles to axis-angle pair.
+!--------------------------------------------------------------------------------------------------
 pure function eu2ax(eu) result(ax)
 
   real(pReal), intent(in), dimension(3) :: eu
   real(pReal),             dimension(4) :: ax
 
   real(pReal)                           :: t, delta, tau, alpha, sigma
+
 
   t     = tan(eu(2)*0.5_pReal)
   sigma = 0.5_pReal*(eu(1)+eu(3))
@@ -669,10 +684,10 @@ pure function eu2ax(eu) result(ax)
 end function eu2ax
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle pair to quaternion
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert axis-angle pair to unit quaternion.
+!--------------------------------------------------------------------------------------------------
 pure function ax2qu(ax) result(qu)
 
   real(pReal), intent(in), dimension(4) :: ax
@@ -692,16 +707,17 @@ pure function ax2qu(ax) result(qu)
 end function ax2qu
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle pair to orientation matrix
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert axis-angle pair to orientation matrix.
+!--------------------------------------------------------------------------------------------------
 pure function ax2om(ax) result(om)
 
   real(pReal), intent(in), dimension(4)   :: ax
   real(pReal),             dimension(3,3) :: om
 
   real(pReal)                             :: q, c, s, omc
+
 
   c = cos(ax(4))
   s = sin(ax(4))
@@ -728,14 +744,15 @@ pure function ax2om(ax) result(om)
 end function ax2om
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert axis angle pair to Euler angles
-!---------------------------------------------------------------------------------------------------
+!> @brief Convert axis-angle pair to Bunge Euler angles.
+!--------------------------------------------------------------------------------------------------
 pure function ax2eu(ax) result(eu)
 
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(3) :: eu
+
 
   eu = om2eu(ax2om(ax))
 
@@ -745,33 +762,32 @@ end function ax2eu
 !--------------------------------------------------------------------------------------------------
 !> @brief Multiply two quaternions.
 !--------------------------------------------------------------------------------------------------
-pure function multiply_quaternion(qu1,qu2)
+pure function multiplyQuaternion(qu1,qu2)
 
   real(pReal), dimension(4), intent(in) :: qu1, qu2
-  real(pReal), dimension(4) :: multiply_quaternion
+  real(pReal), dimension(4) :: multiplyQuaternion
 
 
-  multiply_quaternion(1) = qu1(1)*qu2(1) - qu1(2)*qu2(2) -      qu1(3)*qu2(3) - qu1(4)*qu2(4)
-  multiply_quaternion(2) = qu1(1)*qu2(2) + qu1(2)*qu2(1) + P * (qu1(3)*qu2(4) - qu1(4)*qu2(3))
-  multiply_quaternion(3) = qu1(1)*qu2(3) + qu1(3)*qu2(1) + P * (qu1(4)*qu2(2) - qu1(2)*qu2(4))
-  multiply_quaternion(4) = qu1(1)*qu2(4) + qu1(4)*qu2(1) + P * (qu1(2)*qu2(3) - qu1(3)*qu2(2))
+  multiplyQuaternion(1) = qu1(1)*qu2(1) - qu1(2)*qu2(2) -      qu1(3)*qu2(3) - qu1(4)*qu2(4)
+  multiplyQuaternion(2) = qu1(1)*qu2(2) + qu1(2)*qu2(1) + P * (qu1(3)*qu2(4) - qu1(4)*qu2(3))
+  multiplyQuaternion(3) = qu1(1)*qu2(3) + qu1(3)*qu2(1) + P * (qu1(4)*qu2(2) - qu1(2)*qu2(4))
+  multiplyQuaternion(4) = qu1(1)*qu2(4) + qu1(4)*qu2(1) + P * (qu1(2)*qu2(3) - qu1(3)*qu2(2))
 
-end function multiply_quaternion
+end function multiplyQuaternion
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate conjugate complex of a quaternion.
 !--------------------------------------------------------------------------------------------------
-pure function conjugate_quaternion(qu)
+pure function conjugateQuaternion(qu)
 
   real(pReal), dimension(4), intent(in) :: qu
-  real(pReal), dimension(4) :: conjugate_quaternion
+  real(pReal), dimension(4) :: conjugateQuaternion
 
 
-  conjugate_quaternion = [qu(1), -qu(2), -qu(3), -qu(4)]
+  conjugateQuaternion = [qu(1), -qu(2), -qu(3), -qu(4)]
 
-
-end function conjugate_quaternion
+end function conjugateQuaternion
 
 
 !--------------------------------------------------------------------------------------------------
@@ -780,8 +796,8 @@ end function conjugate_quaternion
 subroutine selfTest()
 
   type(tRotation)                 :: R
-  real(pReal), dimension(4)       :: qu, ax, ro
-  real(pReal), dimension(3)       :: x, eu, ho, v3
+  real(pReal), dimension(4)       :: qu, ax
+  real(pReal), dimension(3)       :: x, eu, v3
   real(pReal), dimension(3,3)     :: om, t33
   real(pReal), dimension(3,3,3,3) :: t3333
   real(pReal), dimension(6,6)     :: C
