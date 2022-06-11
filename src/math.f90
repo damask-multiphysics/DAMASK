@@ -1129,7 +1129,7 @@ pure function math_rotationalPart(F) result(R)
     - I_U(1)*I_F(1) * transpose(F) &
     + I_U(1) * transpose(matmul(F,F)) &
     - matmul(F,C)
-  R = R /(I_U(1)*I_U(2)-I_U(3))
+  R = R*math_det33(R)**(-1.0/3.0)
 
 end function math_rotationalPart
 
