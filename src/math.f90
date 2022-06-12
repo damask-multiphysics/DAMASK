@@ -1129,7 +1129,7 @@ pure function math_rotationalPart(F) result(R)
     - I_U(1)*I_F(1) * transpose(F) &
     + I_U(1) * transpose(matmul(F,F)) &
     - matmul(F,C)
-  R = R*math_det33(R)**(-1.0/3.0)
+  R = R*math_det33(R)**(-1.0_pReal/3.0_pReal)
 
 end function math_rotationalPart
 
@@ -1422,7 +1422,9 @@ subroutine selfTest()
   t33_2 = math_rotationalPart(transpose(t33))
   t33   = math_rotationalPart(t33)
   if (any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
-    error stop 'math_rotationalPart'
+    error stop 'math_rotationalPart (forward-backward)'
+  if (dNeq(1.0_pReal,math_det33(math_rotationalPart(t33)),tol=1.0e-10_pReal)) &
+    error stop 'math_rotationalPart (determinant)'
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1
