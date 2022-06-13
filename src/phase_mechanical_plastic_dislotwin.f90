@@ -11,26 +11,26 @@ submodule(phase:plastic) dislotwin
 
   type :: tParameters
     real(pReal) :: &
-      Q_cl                = 1.0_pReal, &                                                            !< activation energy for dislocation climb
-      omega               = 1.0_pReal, &                                                            !< frequency factor for dislocation climb
-      D                   = 1.0_pReal, &                                                            !< grain size
-      p_sb                = 1.0_pReal, &                                                            !< p-exponent in shear band velocity
-      q_sb                = 1.0_pReal, &                                                            !< q-exponent in shear band velocity
-      i_tw                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for twinning
-      i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
-      L_tw                = 1.0_pReal, &                                                            !< length of twin nuclei
-      L_tr                = 1.0_pReal, &                                                            !< length of trans nuclei
-      x_c                 = 1.0_pReal, &                                                            !< critical distance for formation of twin/trans nucleus
-      V_cs                = 1.0_pReal, &                                                            !< cross slip volume
-      xi_sb               = 1.0_pReal, &                                                            !< value for shearband resistance
-      v_sb                = 1.0_pReal, &                                                            !< value for shearband velocity_0
-      E_sb                = 1.0_pReal, &                                                            !< activation energy for shear bands
-      h                   = 1.0_pReal, &                                                            !< stack height of hex nucleus
-      gamma_char_tr       = sqrt(0.125_pReal), &                                                    !< Characteristic shear for transformation
-      a_cF                = 1.0_pReal, &
-      cOverA_hP           = 1.0_pReal, &
-      V_mol               = 1.0_pReal, &
-      rho                 = 1.0_pReal
+      Q_cl          = 1.0_pReal, &                                                                  !< activation energy for dislocation climb
+      omega         = 1.0_pReal, &                                                                  !< frequency factor for dislocation climb
+      D             = 1.0_pReal, &                                                                  !< grain size
+      p_sb          = 1.0_pReal, &                                                                  !< p-exponent in shear band velocity
+      q_sb          = 1.0_pReal, &                                                                  !< q-exponent in shear band velocity
+      i_tw          = 1.0_pReal, &                                                                  !< adjustment parameter to calculate MFP for twinning
+      i_tr          = 1.0_pReal, &                                                                  !< adjustment parameter to calculate MFP for transformation
+      L_tw          = 1.0_pReal, &                                                                  !< length of twin nuclei
+      L_tr          = 1.0_pReal, &                                                                  !< length of trans nuclei
+      x_c           = 1.0_pReal, &                                                                  !< critical distance for formation of twin/trans nucleus
+      V_cs          = 1.0_pReal, &                                                                  !< cross slip volume
+      tau_sb        = 1.0_pReal, &                                                                  !< value for shearband resistance
+      gamma_0_sb    = 1.0_pReal, &                                                                  !< value for shearband velocity_0
+      E_sb          = 1.0_pReal, &                                                                  !< activation energy for shear bands
+      h             = 1.0_pReal, &                                                                  !< stack height of hex nucleus
+      gamma_char_tr = sqrt(0.125_pReal), &                                                          !< Characteristic shear for transformation
+      a_cF          = 1.0_pReal, &
+      cOverA_hP     = 1.0_pReal, &
+      V_mol         = 1.0_pReal, &
+      rho           = 1.0_pReal
     type(tPolynomial) :: &
       Gamma_sf, &                                                                                   !< stacking fault energy
       Delta_G                                                                                       !< free energy difference between austensite and martensite
@@ -331,18 +331,18 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! shearband related parameters
-    prm%v_sb = pl%get_asFloat('v_sb',defaultVal=0.0_pReal)
-    if (prm%v_sb > 0.0_pReal) then
-      prm%xi_sb        = pl%get_asFloat('xi_sb')
+    prm%gamma_0_sb = pl%get_asFloat('gamma_0_sb',defaultVal=0.0_pReal)
+    if (prm%gamma_0_sb > 0.0_pReal) then
+      prm%tau_sb       = pl%get_asFloat('tau_sb')
       prm%E_sb         = pl%get_asFloat('Q_sb')
       prm%p_sb         = pl%get_asFloat('p_sb')
       prm%q_sb         = pl%get_asFloat('q_sb')
 
       ! sanity checks
-      if (prm%xi_sb         <  0.0_pReal) extmsg = trim(extmsg)//' xi_sb'
-      if (prm%E_sb          <  0.0_pReal) extmsg = trim(extmsg)//' Q_sb'
-      if (prm%p_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' p_sb'
-      if (prm%q_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' q_sb'
+      if (prm%tau_sb <  0.0_pReal) extmsg = trim(extmsg)//' tau_sb'
+      if (prm%E_sb   <  0.0_pReal) extmsg = trim(extmsg)//' Q_sb'
+      if (prm%p_sb   <= 0.0_pReal) extmsg = trim(extmsg)//' p_sb'
+      if (prm%q_sb   <= 0.0_pReal) extmsg = trim(extmsg)//' q_sb'
     end if
 
 !--------------------------------------------------------------------------------------------------
@@ -569,7 +569,7 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
     Lp      = Lp      * f_matrix
     dLp_dMp = dLp_dMp * f_matrix
 
-    shearBandingContribution: if (dNeq0(prm%v_sb)) then
+    shearBandingContribution: if (dNeq0(prm%gamma_0_sb)) then
 
       E_kB_T = prm%E_sb/(K_B*T)
       call math_eigh33(eigValues,eigVectors,Mp)                                                     ! is Mp symmetric by design?
@@ -580,10 +580,10 @@ module subroutine dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
         tau = math_tensordot(Mp,P_sb)
 
         significantShearBandStress: if (abs(tau) > tol_math_check) then
-          StressRatio_p = (abs(tau)/prm%xi_sb)**prm%p_sb
-          dot_gamma_sb = sign(prm%v_sb*exp(-E_kB_T*(1-StressRatio_p)**prm%q_sb), tau)
-          ddot_gamma_dtau = abs(dot_gamma_sb)*E_kB_T*prm%p_sb*prm%q_sb/prm%xi_sb &
-                          * (abs(tau)/prm%xi_sb)**(prm%p_sb-1.0_pReal) &
+          StressRatio_p = (abs(tau)/prm%tau_sb)**prm%p_sb
+          dot_gamma_sb = sign(prm%gamma_0_sb*exp(-E_kB_T*(1-StressRatio_p)**prm%q_sb), tau)
+          ddot_gamma_dtau = abs(dot_gamma_sb)*E_kB_T*prm%p_sb*prm%q_sb/prm%tau_sb &
+                          * (abs(tau)/prm%tau_sb)**(prm%p_sb-1.0_pReal) &
                           * (1.0_pReal-StressRatio_p)**(prm%q_sb-1.0_pReal)
 
           Lp = Lp + dot_gamma_sb * P_sb
