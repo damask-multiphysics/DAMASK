@@ -448,9 +448,12 @@ class Orientation(Rotation,Crystal):
             elif self.family == 'orthorhombic':
                 return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
             elif self.family == 'monoclinic':
-                return (1. >= rho_abs[...,1]).astype(bool)
+                return np.logical_or(   1. >= rho_abs[...,1],
+                                     np.isnan(rho_abs[...,1]))
+            elif self.family == 'triclinic':
+                return np.ones(rho_abs.shape[:-1]).astype(bool)
             else:
-                return np.all(np.isfinite(rho_abs),axis=-1)
+                raise TypeError(f'unknown symmetry "{self.family}"')
 
 
     @property
