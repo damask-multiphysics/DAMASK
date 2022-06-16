@@ -65,9 +65,9 @@ module subroutine damage_init()
         allocate(damageState_h(ho)%state (1,Nmembers), source=1.0_pReal)
       else
         prm%output = emptyStringArray
-      endif
+      end if
     end associate
-  enddo
+  end do
 
   call pass_init()
 
@@ -174,7 +174,7 @@ module subroutine damage_results(ho,group)
             call results_writeDataset(damagestate_h(ho)%state(1,:),group,prm%output(o),&
                                       'damage indicator','-')
         end select
-      enddo outputsLoop
+      end do outputsLoop
   end associate
 
 end subroutine damage_results

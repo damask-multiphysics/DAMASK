@@ -1,0 +1,15 @@
+type: dislotwin
+
+references:
+  - N. Jia et al.,
+    Acta Materialia 60(3):1099-1115, 2012,
+    https://doi.org/10.1016/j.actamat.2011.10.047
+  - N. Jia et al.,
+    Acta Materialia 60:3415-3434, 2012,
+    https://doi.org/10.1016/j.actamat.2012.03.005
+
+gamma_0_sb: 0.0001
+tau_sb: 180.0e6 # tau_hat_sb
+Q_sb: 4.0e-19 # Q_0
+p_sb: 1.15
+q_sb: 1.0

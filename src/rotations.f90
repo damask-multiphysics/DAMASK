@@ -182,7 +182,7 @@ subroutine fromEulers(self,eu,degrees)
     Eulers = eu
   else
     Eulers = merge(eu*INRAD,eu,degrees)
-  endif
+  end if
 
   if (any(Eulers<0.0_pReal) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
     call IO_error(402,ext_msg='fromEulers')
@@ -206,14 +206,14 @@ subroutine fromAxisAngle(self,ax,degrees,P)
     angle = ax(4)
   else
     angle = merge(ax(4)*INRAD,ax(4),degrees)
-  endif
+  end if
 
   if (.not. present(P)) then
     axis = ax(1:3)
   else
     axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,P == 1)
     if(abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
-  endif
+  end if
 
   if(dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
     call IO_error(402,ext_msg='fromAxisAngle')
@@ -284,7 +284,7 @@ pure function rotVector(self,v,active) result(vRot)
     passive = .not. active
   else
     passive = .true.
-  endif
+  end if
 
   if (dEq0(norm2(v))) then
     vRot = v
@@ -294,7 +294,7 @@ pure function rotVector(self,v,active) result(vRot)
               multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
               passive)
     vRot = q(2:4)*norm2(v)
-  endif
+  end if
 
 end function rotVector
 
@@ -318,7 +318,7 @@ pure function rotTensor2(self,T,active) result(tRot)
     passive = .not. active
   else
     passive = .true.
-  endif
+  end if
 
   tRot = merge(matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
                matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
@@ -347,14 +347,14 @@ pure function rotTensor4(self,T,active) result(tRot)
     R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
   else
     R = self%asMatrix()
-  endif
+  end if
 
   tRot = 0.0_pReal
   do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
   do m = 1,3;do n = 1,3;do o = 1,3;do p = 1,3
     tRot(i,j,k,l) = tRot(i,j,k,l) &
                   + R(i,m) * R(j,n) * R(k,o) * R(l,p) * T(m,n,o,p)
-  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
+  end do; end do; end do; end do; end do; end do; end do; end do
 
 end function rotTensor4
 
@@ -379,7 +379,7 @@ pure function rotStiffness(self,C,active) result(cRot)
     R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
   else
     R = self%asMatrix()
-  endif
+  end if
 
   M = reshape([R(1,1)**2,                   R(2,1)**2,                   R(3,1)**2, &
                R(2,1)*R(3,1),               R(1,1)*R(3,1),               R(1,1)*R(2,1), &
@@ -468,7 +468,7 @@ pure function qu2eu(qu) result(eu)
     eu = [atan2((-P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)-qu(3)*qu(4))*chi ), &
           atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
-  endif degenerated
+  end if degenerated
   where(sign(1.0_pReal,eu)<0.0_pReal) eu = mod(eu+TAU,[TAU,PI,TAU])
 
 end function qu2eu
@@ -526,8 +526,8 @@ pure function om2qu(om) result(qu)
       else
           s = 2.0_pReal * sqrt( 1.0_pReal + om(3,3) - om(1,1) - om(2,2) )
           qu = [ (om(2,1) - om(1,2)) /s,(om(1,3) + om(3,1)) / s,(om(2,3) + om(3,2)) / s,0.25_pReal * s]
-      endif
-  endif
+      end if
+  end if
   if(sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
   qu(2:4) = merge(qu(2:4),qu(2:4)*P,dEq0(qu(2:4)))
   qu = qu/norm2(qu)
@@ -593,7 +593,7 @@ function om2ax(om) result(ax)
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
       ax(1:3) = sign(ax(1:3),-P *[om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])
-  endif
+  end if
 
 end function om2ax
 
@@ -826,7 +826,7 @@ subroutine selfTest()
             cos(TAU*x(2))*B,&
             sin(TAU*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
-    endif
+    end if
 
 
     if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) error stop 'om2qu2om'

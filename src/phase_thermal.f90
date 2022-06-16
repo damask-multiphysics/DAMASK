@@ -122,25 +122,25 @@ module subroutine thermal_init(phases)
 
     allocate(thermalstate(ph)%p(thermal_Nsources(ph)))
 
-  enddo
+  end do
 
   allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
 
   if (maxval(thermal_Nsources) /= 0) then
     where(dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
     where(externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
-  endif
+  end if
 
   thermal_source_maxSizeDotState = 0
   do ph = 1,phases%length
 
     do so = 1,thermal_Nsources(ph)
       thermalState(ph)%p(so)%state  = thermalState(ph)%p(so)%state0
-    enddo
+    end do
 
     thermal_source_maxSizeDotState  = max(thermal_source_maxSizeDotState, &
                                           maxval(thermalState(ph)%p%sizeDotState))
-  enddo
+  end do
 
 end subroutine thermal_init
 
@@ -170,7 +170,7 @@ module function phase_f_T(ph,en) result(f)
 
    end select
 
-  enddo
+  end do
 
 end function phase_f_T
 
@@ -195,7 +195,7 @@ function phase_thermal_collectDotState(ph,en) result(broken)
 
     broken = broken .or. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,en)))
 
-  enddo SourceLoop
+  end do SourceLoop
 
 end function phase_thermal_collectDotState
 
@@ -262,7 +262,7 @@ function integrateThermalState(Delta_t, ph,en) result(broken)
     sizeDotState = thermalState(ph)%p(so)%sizeDotState
     thermalState(ph)%p(so)%state(1:sizeDotState,en) = thermalState(ph)%p(so)%state0(1:sizeDotState,en) &
                                                     + thermalState(ph)%p(so)%dotState(1:sizeDotState,en) * Delta_t
-  enddo
+  end do
 
 end function integrateThermalState
 
@@ -277,7 +277,7 @@ module subroutine thermal_restartWrite(groupHandle,ph)
 
   do so = 1,thermal_Nsources(ph)
     call HDF5_write(thermalState(ph)%p(so)%state,groupHandle,'omega_thermal')
-  enddo
+  end do
 
 end subroutine thermal_restartWrite
 
@@ -292,7 +292,7 @@ module subroutine thermal_restartRead(groupHandle,ph)
 
   do so = 1,thermal_Nsources(ph)
     call HDF5_read(thermalState(ph)%p(so)%state0,groupHandle,'omega_thermal')
-  enddo
+  end do
 
 end subroutine thermal_restartRead
 
@@ -305,8 +305,8 @@ module subroutine thermal_forward()
   do ph = 1, size(thermalState)
     do so = 1, size(thermalState(ph)%p)
       thermalState(ph)%p(so)%state0 = thermalState(ph)%p(so)%state
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine thermal_forward
 
@@ -380,8 +380,8 @@ function thermal_active(source_label,src_length)  result(active_source)
     do s = 1, sources%length
       src => sources%get(s)
       active_source(s,p) = src%get_asString('type') == source_label
-    enddo
-  enddo
+    end do
+  end do
 
 
 end function thermal_active

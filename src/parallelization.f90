@@ -97,7 +97,7 @@ subroutine parallelization_init
     open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
   else
     open(OUTPUT_UNIT,encoding='UTF-8')                                                              ! for special characters in output
-  endif
+  end if
 #endif
 
   print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
@@ -142,8 +142,8 @@ subroutine parallelization_init
 !$   if (OMP_NUM_THREADS < 1_pI32) then
 !$     print'(1x,a)', 'Invalid OMP_NUM_THREADS: "'//trim(NumThreadsString)//'", using default'
 !$     OMP_NUM_THREADS = 4_pI32
-!$   endif
-!$ endif
+!$   end if
+!$ end if
 !$ print'(1x,a,i0)',   'OMP_NUM_THREADS: ',OMP_NUM_THREADS
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 

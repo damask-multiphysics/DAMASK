@@ -365,7 +365,7 @@ subroutine homogenization_results
       call thermal_results(ho,group)
     end if
 
- enddo
+ end do
 
 end subroutine homogenization_results
 
@@ -383,7 +383,7 @@ subroutine homogenization_forward
     homogState (ho)%state0 = homogState (ho)%state
     if(damageState_h(ho)%sizeState > 0) &
       damageState_h(ho)%state0 = damageState_h(ho)%state
-  enddo
+  end do
 
 end subroutine homogenization_forward
 
@@ -408,7 +408,7 @@ subroutine homogenization_restartWrite(fileHandle)
 
     call HDF5_closeGroup(groupHandle(2))
 
-  enddo
+  end do
 
   call HDF5_closeGroup(groupHandle(1))
 
@@ -435,7 +435,7 @@ subroutine homogenization_restartRead(fileHandle)
 
     call HDF5_closeGroup(groupHandle(2))
 
-  enddo
+  end do
 
   call HDF5_closeGroup(groupHandle(1))
 
@@ -476,7 +476,7 @@ subroutine parseHomogenization
           case default
             call IO_error(500,ext_msg=homogThermal%get_asString('type'))
         end select
-    endif
+    end if
 
     if (homog%contains('damage')) then
       homogDamage => homog%get('damage')
@@ -486,8 +486,8 @@ subroutine parseHomogenization
           case default
             call IO_error(500,ext_msg=homogDamage%get_asString('type'))
         end select
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine parseHomogenization
 
