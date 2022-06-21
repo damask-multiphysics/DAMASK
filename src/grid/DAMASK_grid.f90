@@ -30,7 +30,11 @@ program DAMASK_grid
   use grid_thermal_spectral
   use results
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
+#else
+  implicit none
+#endif
 
   type :: tLoadCase
     type(tRotation)          :: rot                                                                !< rotation of BC

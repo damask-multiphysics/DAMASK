@@ -21,7 +21,11 @@ module FEM_utilities
   use homogenization
   use FEM_quadrature
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
+#else
+  implicit none
+#endif
   private
 
   logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill

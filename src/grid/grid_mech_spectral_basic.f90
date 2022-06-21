@@ -26,7 +26,11 @@ module grid_mechanical_spectral_basic
   use homogenization
   use discretization_grid
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
+#else
+  implicit none
+#endif
   private
 
   type(tSolutionParams) :: params
