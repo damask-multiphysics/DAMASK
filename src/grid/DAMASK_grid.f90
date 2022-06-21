@@ -30,7 +30,7 @@ program DAMASK_grid
   use grid_thermal_spectral
   use results
 
-  implicit none
+  implicit none(type,external)
 
   type :: tLoadCase
     type(tRotation)          :: rot                                                                !< rotation of BC

@@ -18,7 +18,7 @@ module parallelization
 
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
 #ifndef PETSC

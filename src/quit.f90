@@ -12,7 +12,7 @@ subroutine quit(stop_id)
 #endif
   use HDF5
 
-  implicit none
+  implicit none(type,external)
   integer, intent(in) :: stop_id
   integer, dimension(8) :: dateAndTime
   integer :: err_HDF5

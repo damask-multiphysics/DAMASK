@@ -23,7 +23,7 @@ module materialpoint_Marc
   use discretization
   use discretization_Marc
 
-  implicit none
+  implicit none(type,external)
   private
 
   real(pReal), dimension (:,:,:),   allocatable, private :: &

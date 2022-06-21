@@ -50,7 +50,7 @@ module rotations
   use IO
   use math
 
-  implicit none
+  implicit none(type,external)
   private
 
   real(pReal), parameter :: P = -1.0_pReal                                                          !< parameter for orientation conversion.
@@ -796,7 +796,7 @@ end function conjugateQuaternion
 subroutine selfTest()
 
   type(tRotation)                 :: R
-  real(pReal), dimension(4)       :: qu, ax
+  real(pReal), dimension(4)       :: qu
   real(pReal), dimension(3)       :: x, eu, v3
   real(pReal), dimension(3,3)     :: om, t33
   real(pReal), dimension(3,3,3,3) :: t3333

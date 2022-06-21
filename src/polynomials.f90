@@ -8,7 +8,7 @@ module polynomials
   use YAML_parse
   use YAML_types
 
-  implicit none
+  implicit none(type,external)
   private
 
   type, public :: tPolynomial

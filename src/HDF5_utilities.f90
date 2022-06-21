@@ -18,7 +18,7 @@ module HDF5_utilities
   use prec
   use parallelization
 
-  implicit none
+  implicit none(type,external)
   private
 
 !--------------------------------------------------------------------------------------------------

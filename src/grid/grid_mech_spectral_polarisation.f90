@@ -26,7 +26,7 @@ module grid_mechanical_spectral_polarisation
   use homogenization
   use discretization_grid
 
-  implicit none
+  implicit none(type,external)
   private
 
   type(tSolutionParams) :: params

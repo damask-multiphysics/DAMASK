@@ -17,7 +17,7 @@ module discretization_Marc
   use geometry_plastic_nonlocal
   use results
 
-  implicit none
+  implicit none(type,external)
   private
 
   real(pReal),                         public, protected :: &

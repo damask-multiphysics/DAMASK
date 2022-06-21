@@ -18,7 +18,7 @@ module CLI
   use parallelization
   use system_routines
 
-  implicit none
+  implicit none(type,external)
   private
   integer,                       public, protected :: &
     CLI_restartInc = 0                                                                              !< Increment at which calculation starts

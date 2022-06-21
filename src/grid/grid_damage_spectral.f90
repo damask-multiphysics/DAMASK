@@ -22,7 +22,7 @@ module grid_damage_spectral
   use YAML_types
   use config
 
-  implicit none
+  implicit none(type,external)
   private
 
   type :: tNumerics

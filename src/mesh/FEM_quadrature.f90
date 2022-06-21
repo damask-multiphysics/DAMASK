@@ -5,7 +5,7 @@
 module FEM_quadrature
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
   integer, parameter :: &

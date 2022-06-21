@@ -12,7 +12,7 @@ module math
   use YAML_types
   use LAPACK_interface
 
-  implicit none
+  implicit none(type,external)
   public
 #if __INTEL_COMPILER >= 1900
   ! do not make use of associated entities available to other modules

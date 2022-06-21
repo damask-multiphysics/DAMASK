@@ -21,7 +21,7 @@ module results
   use DAMASK_interface
 #endif
 
-  implicit none
+  implicit none(type,external)
   private
 
   integer(HID_T) :: resultsFile

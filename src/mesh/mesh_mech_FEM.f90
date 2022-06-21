@@ -26,7 +26,7 @@ module mesh_mechanical_FEM
   use homogenization
   use math
 
-  implicit none
+  implicit none(type,external)
   private
 
 !--------------------------------------------------------------------------------------------------
@@ -66,6 +66,15 @@ module mesh_mechanical_FEM
     P_av = 0.0_pReal
   logical :: ForwardData
   real(pReal), parameter :: eps = 1.0e-18_pReal
+
+  external :: &
+    PetscSectionGetNumFields, &
+    PetscFESetQuadrature, &
+    PetscFEGetDimension, &
+    PetscFEDestroy, &
+    PetscSectionGetDof, &
+    PetscFEGetDualSpace, &
+    PetscDualSpaceGetFunctional
 
   public :: &
     FEM_mechanical_init, &

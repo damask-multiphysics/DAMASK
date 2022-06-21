@@ -31,7 +31,7 @@ module materialpoint
   use discretization_grid
 #endif
 
-  implicit none
+  implicit none(type,external)
   public
 
 contains

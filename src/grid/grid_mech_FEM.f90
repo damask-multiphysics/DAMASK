@@ -27,7 +27,7 @@ module grid_mechanical_FEM
   use discretization
   use discretization_grid
 
-  implicit none
+  implicit none(type,external)
   private
 
   type(tSolutionParams) :: params

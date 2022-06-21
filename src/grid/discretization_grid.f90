@@ -23,7 +23,7 @@ module discretization_grid
   use discretization
   use geometry_plastic_nonlocal
 
-  implicit none
+  implicit none(type,external)
   private
 
   integer,     dimension(3), public, protected :: &

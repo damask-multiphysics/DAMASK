@@ -11,7 +11,7 @@ module YAML_types
   use IO
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
   type, abstract, public :: tNode

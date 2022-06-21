@@ -20,7 +20,7 @@ program DAMASK_mesh
   use FEM_Utilities
   use mesh_mechanical_FEM
 
-  implicit none
+  implicit none(type,external)
 
   type :: tLoadCase
     real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment

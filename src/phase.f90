@@ -19,7 +19,7 @@ module phase
   use HDF5
   use HDF5_utilities
 
-  implicit none
+  implicit none(type,external)
   private
 
   type :: tState

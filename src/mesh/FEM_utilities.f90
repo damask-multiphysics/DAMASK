@@ -21,7 +21,7 @@ module FEM_utilities
   use homogenization
   use FEM_quadrature
 
-  implicit none
+  implicit none(type,external)
   private
 
   logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
@@ -64,6 +64,11 @@ module FEM_utilities
     integer                            :: nComponents = 0
     type(tComponentBC), allocatable, dimension(:) :: componentBC
   end type tFieldBC
+
+  external :: &
+    PetscSectionGetFieldComponents, &
+    PetscSectionGetFieldDof, &
+    PetscSectionGetFieldOffset
 
   public :: &
     FEM_utilities_init, &

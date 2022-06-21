@@ -22,7 +22,7 @@ module spectral_utilities
   use discretization
   use homogenization
 
-  implicit none
+  implicit none(type,external)
   private
 
 !--------------------------------------------------------------------------------------------------

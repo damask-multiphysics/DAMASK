@@ -25,7 +25,7 @@ module discretization_mesh
   use YAML_types
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
   integer, public, protected :: &
@@ -52,6 +52,8 @@ module discretization_mesh
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
+  external :: &
+    DMView                                                                                          ! ToDo: write interface
   public :: &
     discretization_mesh_init, &
     mesh_FEM_build_ipVolumes, &

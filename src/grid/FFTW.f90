@@ -5,7 +5,7 @@
 module FFTW3
   use, intrinsic :: ISO_C_binding
 
-  implicit none
+  implicit none(type,external)
   public
 
   include 'fftw3-mpi.f03'
