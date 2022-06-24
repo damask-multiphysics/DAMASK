@@ -626,8 +626,9 @@ function crystallite_push33ToRef(co,ce, tensor33)
     ce
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
-  real(pReal), dimension(3,3)             :: T
+  real(pReal), dimension(3,3) :: T
   integer :: ph, en
+
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)
