@@ -131,7 +131,7 @@ subroutine FEM_utilities_init
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),err_PETSc)
   CHKERRQ(err_PETSc)
 
-  wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
+  wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)**(-1)
 
 
 end subroutine FEM_utilities_init

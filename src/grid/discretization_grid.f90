@@ -229,9 +229,9 @@ pure function cellSurfaceArea(geomSize,cells)
   real(pReal), dimension(6,1,product(cells)) :: cellSurfaceArea
 
 
-  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2)) * geomSize(3)/real(cells(3))
-  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3)) * geomSize(1)/real(cells(1))
-  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1)) * geomSize(2)/real(cells(2))
+  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2),pReal) * geomSize(3)/real(cells(3),pReal)
+  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3),pReal) * geomSize(1)/real(cells(1),pReal)
+  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1),pReal) * geomSize(2)/real(cells(2),pReal)
 
 end function cellSurfaceArea
 
