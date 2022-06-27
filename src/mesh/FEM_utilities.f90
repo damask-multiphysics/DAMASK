@@ -69,7 +69,7 @@ module FEM_utilities
     type(tComponentBC), allocatable, dimension(:) :: componentBC
   end type tFieldBC
 
-  external :: &
+  external :: &                                                                                     ! ToDo: write interfaces
     PetscSectionGetFieldComponents, &
     PetscSectionGetFieldDof, &
     PetscSectionGetFieldOffset
