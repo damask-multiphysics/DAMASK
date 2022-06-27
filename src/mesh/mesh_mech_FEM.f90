@@ -72,6 +72,9 @@ module mesh_mechanical_FEM
   real(pReal), parameter :: eps = 1.0e-18_pReal
 
   external :: &                                                                                     ! ToDo: write interfaces
+#ifdef PETSC_USE_64BIT_INDICES
+    ISDestroy, &
+#endif
     PetscSectionGetNumFields, &
     PetscFESetQuadrature, &
     PetscFEGetDimension, &
@@ -372,7 +375,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   CHKERRQ(err_PETSc)
   call VecWAXPY(x_local,1.0_pReal,xx_local,solution_local,err_PETSc)
   CHKERRQ(err_PETSc)
-  do field = 1, dimPlex; do face = 1, mesh_Nboundaries
+  do field = 1_pPETSCINT, dimPlex; do face = 1_pPETSCINT, mesh_Nboundaries
     if (params%fieldBC%componentBC(field)%Mask(face)) then
       call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,err_PETSc)
       if (bcSize > 0) then
@@ -387,7 +390,7 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
-  do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
+  do cell = cellStart, cellEnd-1_pPETSCINT                                                          !< loop over all elements
 
     call PetscSectionGetNumFields(section,numFields,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -396,11 +399,11 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
     call  DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvcellJ,detJ,err_PETSc)
     CHKERRQ(err_PETSc)
     IcellJMat = reshape(pInvcellJ,shape=[dimPlex,dimPlex])
-    do qPt = 0, nQuadrature-1
-      m = cell*nQuadrature + qPt+1
+    do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
+      m = cell*nQuadrature + qPt+1_pPETSCINT
       BMat = 0.0_pReal
-      do basis = 0, nBasis-1
-        do comp = 0, dimPlex-1
+      do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
+        do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
           cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
@@ -438,11 +441,11 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
     CHKERRQ(err_PETSc)
     IcellJMat = reshape(pInvcellJ,shape=[dimPlex,dimPlex])
     f_scal = 0.0_pReal
-    do qPt = 0, nQuadrature-1
-      m = cell*nQuadrature + qPt+1
+    do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
+      m = cell*nQuadrature + qPt+1_pPETSCINT
       BMat = 0.0_pReal
-      do basis = 0, nBasis-1
-        do comp = 0, dimPlex-1
+      do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
+        do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
           cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
@@ -544,11 +547,11 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
     MatB = 0.0_pReal
     FAvg = 0.0_pReal
     BMatAvg = 0.0_pReal
-    do qPt = 0, nQuadrature-1
-      m = cell*nQuadrature + qPt + 1
+    do qPt = 0_pPETSCINT, nQuadrature-1_pPETSCINT
+      m = cell*nQuadrature + qPt + 1_pPETSCINT
       BMat = 0.0_pReal
-      do basis = 0, nBasis-1
-        do comp = 0, dimPlex-1
+      do basis = 0_pPETSCINT, nBasis-1_pPETSCINT
+        do comp = 0_pPETSCINT, dimPlex-1_pPETSCINT
           cidx = basis*dimPlex+comp
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
@@ -754,7 +757,7 @@ subroutine FEM_mechanical_updateCoords()
   call PetscDSGetTabulation(mechQuad,0_pPETSCINT,basisField,basisFieldDer,err_PETSc)
   CHKERRQ(err_PETSc)
   allocate(ipCoords(3,nQuadrature,mesh_NcpElems),source=0.0_pReal)
-  do c=cellStart,cellEnd-1
+  do c=cellStart,cellEnd-1_pPETSCINT
     qOffset=0
     call DMPlexVecGetClosure(dm_local,section,x_local,c,x_scal,err_PETSc)                           !< get nodal coordinates of each element
     CHKERRQ(err_PETSc)
