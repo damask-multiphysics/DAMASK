@@ -247,7 +247,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
         mesh_ipCoordinates(dirI,qPt,cell+1) = pV0(dirI)
         do dirJ = 1, dimPlex
           mesh_ipCoordinates(dirI,qPt,cell+1) = mesh_ipCoordinates(dirI,qPt,cell+1) + &
-                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0)
+                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pReal)
         enddo
       enddo
       qOffset = qOffset + dimPlex

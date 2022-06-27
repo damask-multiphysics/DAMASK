@@ -593,7 +593,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
 
   iteration: do NiterationState = 1, num%nState
 
-    dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0, nIterationState > 1)
+    dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0_pReal, nIterationState > 1)
     dotState_last(1:sizeDotState,1) = dotState
 
     broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
@@ -756,7 +756,7 @@ function integrateStateRK4(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
   real(pReal), dimension(3), parameter :: &
     C = [0.5_pReal, 0.5_pReal, 1.0_pReal]
   real(pReal), dimension(4), parameter :: &
-    B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
+    B = [6.0_pReal, 3.0_pReal, 3.0_pReal, 6.0_pReal]**(-1)
 
 
   broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C)
@@ -1262,8 +1262,6 @@ module subroutine mechanical_restartRead(groupHandle,ph)
 
   integer(HID_T), intent(in) :: groupHandle
   integer, intent(in) :: ph
-
-  integer :: en
 
 
   call HDF5_read(plasticState(ph)%state0,groupHandle,'omega_plastic')

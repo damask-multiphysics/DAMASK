@@ -1110,7 +1110,7 @@ pure function math_rotationalPart(F) result(R)
 
   C = matmul(transpose(F),F)
   I_C = math_invariantsSym33(C)
-  I_F = [math_trace33(F), 0.5*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
+  I_F = [math_trace33(F), 0.5_pReal*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
 
   x = math_clip(I_C(1)**2 -3.0_pReal*I_C(2),0.0_pReal)**(3.0_pReal/2.0_pReal)
   if (dNeq0(x)) then
@@ -1386,7 +1386,7 @@ subroutine selfTest()
   call random_number(v3_3)
   call random_number(v3_4)
 
-  if (dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
+  if (dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0_pReal, &
           math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
     error stop 'math_volTetrahedron'
 

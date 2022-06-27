@@ -801,7 +801,7 @@ subroutine selfTest()
   real(pReal), dimension(3,3)     :: om, t33
   real(pReal), dimension(3,3,3,3) :: t3333
   real(pReal), dimension(6,6)     :: C
-  real    :: A,B
+  real(pReal) :: A,B
   integer :: i
 
 

@@ -912,7 +912,7 @@ pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
   real(pReal), dimension(param(ph)%sum_N_tw), optional, intent(out) :: &
     ddot_gamma_dtau_tw
 
-  real :: &
+  real(pReal) :: &
     tau, tau_r, tau_hat, &
     dot_N_0, &
     x0, V, &
@@ -988,7 +988,7 @@ pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
   real(pReal), dimension(param(ph)%sum_N_tr), optional, intent(out) :: &
     ddot_gamma_dtau_tr
 
-  real :: &
+  real(pReal) :: &
     tau, tau_r, tau_hat, &
     dot_N_0, &
     x0, V, &

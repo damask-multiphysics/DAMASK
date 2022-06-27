@@ -221,14 +221,14 @@ subroutine grid_mechanical_FEM_init
   delta = geomSize/real(cells,pReal)                                                                ! grid spacing
   detJ = product(delta)                                                                             ! cell volume
 
-  BMat = reshape(real([-1.0_pReal/delta(1),-1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1),-1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                       -1.0_pReal/delta(1), 1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1), 1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                       -1.0_pReal/delta(1),-1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1),-1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                       -1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3)],pReal), [3,8])/4.0_pReal ! shape function derivative matrix
+  BMat = reshape(real([-delta(1)**(-1),-delta(2)**(-1),-delta(3)**(-1), &
+                        delta(1)**(-1),-delta(2)**(-1),-delta(3)**(-1), &
+                       -delta(1)**(-1), delta(2)**(-1),-delta(3)**(-1), &
+                        delta(1)**(-1), delta(2)**(-1),-delta(3)**(-1), &
+                       -delta(1)**(-1),-delta(2)**(-1), delta(3)**(-1), &
+                        delta(1)**(-1),-delta(2)**(-1), delta(3)**(-1), &
+                       -delta(1)**(-1), delta(2)**(-1), delta(3)**(-1), &
+                        delta(1)**(-1), delta(2)**(-1), delta(3)**(-1)],pReal), [3,8])/4.0_pReal    ! shape function derivative matrix
 
   HGMat = matmul(transpose(HGcomp),HGcomp) &
         * HGCoeff*(delta(1)*delta(2) + delta(2)*delta(3) + delta(3)*delta(1))/16.0_pReal            ! hourglass stabilization matrix
@@ -656,7 +656,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   MatNullSpace                         :: matnull
   PetscErrorCode                       :: err_PETSc
 
-  BMatFull = 0.0
+  BMatFull = 0.0_pReal
   BMatFull(1:3,1 :8 ) = BMat
   BMatFull(4:6,9 :16) = BMat
   BMatFull(7:9,17:24) = BMat
@@ -686,7 +686,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
     enddo; enddo; enddo
     row = col
     ce = ce + 1
-    K_ele = 0.0
+    K_ele = 0.0_pReal
     K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
                                 homogenization_dPdF(2,2,2,2,ce) + &
                                 homogenization_dPdF(3,3,3,3,ce))/3.0_pReal
