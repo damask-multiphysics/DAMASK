@@ -4,8 +4,8 @@
 submodule(phase) thermal
 
   type :: tThermalParameters
-    real(pReal) ::                 C_p = 0.0_pReal                                                  !< heat capacity
-    real(pReal), dimension(3,3) :: K   = 0.0_pReal                                                  !< thermal conductivity
+    real(pReal) :: C_p = 0.0_pReal                                                                  !< heat capacity
+    real(pReal), dimension(3,3) :: K = 0.0_pReal                                                    !< thermal conductivity
     character(len=pStringLen), allocatable, dimension(:) :: output
   end type tThermalParameters
 
@@ -72,7 +72,7 @@ submodule(phase) thermal
 contains
 
 !----------------------------------------------------------------------------------------------
-!< @brief initializes thermal sources and kinematics mechanism
+!< @brief Initializes thermal sources and kinematics mechanism.
 !----------------------------------------------------------------------------------------------
 module subroutine thermal_init(phases)
 
@@ -146,7 +146,7 @@ end subroutine thermal_init
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief calculates thermal dissipation rate
+!< @brief Calculate thermal source.
 !----------------------------------------------------------------------------------------------
 module function phase_f_T(ph,en) result(f)
 
@@ -176,7 +176,7 @@ end function phase_f_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!> @brief tbd.
 !--------------------------------------------------------------------------------------------------
 function phase_thermal_collectDotState(ph,en) result(broken)
 
@@ -216,7 +216,7 @@ end function phase_mu_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Thermal conductivity/diffusivity in reference configuration.
+!> @brief Thermal conductivity in reference configuration.
 !--------------------------------------------------------------------------------------------------
 module function phase_K_T(co,ce) result(K)
 
@@ -254,6 +254,7 @@ function integrateThermalState(Delta_t, ph,en) result(broken)
   integer :: &
     so, &
     sizeDotState
+
 
   broken = phase_thermal_collectDotState(ph,en)
   if (broken) return
