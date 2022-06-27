@@ -151,7 +151,7 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
   character(len=*),          intent(in) :: &
     fileContent
 
-  character(len=:), allocatable :: dataType, headerType
+  character(len=:), allocatable :: headerType
   logical :: inFile, inImage, compressed
   integer(pI64) :: &
     startPos, endPos

@@ -3,8 +3,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) thermal
 
-  use lattice
-
   interface
 
     module subroutine pass_init
@@ -89,7 +87,7 @@ end subroutine thermal_init
 !--------------------------------------------------------------------------------------------------
 module subroutine thermal_partition(ce)
 
-  integer,     intent(in) :: ce
+  integer, intent(in) :: ce
 
   real(pReal) :: T, dot_T
   integer :: co
@@ -105,7 +103,7 @@ end subroutine thermal_partition
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenized thermal viscosity.
+!> @brief Homogenize thermal viscosity.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_mu_T(ce) result(mu)
 
@@ -124,7 +122,7 @@ end function homogenization_mu_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenized thermal conductivity in reference configuration.
+!> @brief Homogenize thermal conductivity.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_K_T(ce) result(K)
 
@@ -143,7 +141,7 @@ end function homogenization_K_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenized heat generation rate.
+!> @brief Homogenize heat generation rate.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_f_T(ce) result(f)
 
@@ -167,7 +165,7 @@ end function homogenization_f_T
 module subroutine homogenization_thermal_setField(T,dot_T, ce)
 
   integer, intent(in) :: ce
-  real(pReal),   intent(in) :: T, dot_T
+  real(pReal), intent(in) :: T, dot_T
 
 
   current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce)) = T
@@ -186,6 +184,7 @@ module subroutine thermal_results(ho,group)
   character(len=*), intent(in) :: group
 
   integer :: o
+
 
   associate(prm => param(ho))
     outputsLoop: do o = 1,size(prm%output)

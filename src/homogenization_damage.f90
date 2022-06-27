@@ -3,8 +3,6 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) damage
 
-  use lattice
-
   interface
 
     module subroutine pass_init
@@ -79,8 +77,9 @@ end subroutine damage_init
 !--------------------------------------------------------------------------------------------------
 module subroutine damage_partition(ce)
 
+  integer, intent(in) :: ce
+
   real(pReal) :: phi
-  integer,     intent(in) :: ce
 
 
   if(damageState_h(material_homogenizationID(ce))%sizeState < 1) return
@@ -91,7 +90,7 @@ end subroutine damage_partition
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenized damage viscosity.
+!> @brief Homogenize damage viscosity.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_mu_phi(ce) result(mu)
 
@@ -105,7 +104,7 @@ end function homogenization_mu_phi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenized damage conductivity/diffusivity in reference configuration.
+!> @brief Homogenize damage conductivity.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_K_phi(ce) result(K)
 
@@ -119,13 +118,12 @@ end function homogenization_K_phi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Homogenized damage driving force.
+!> @brief Homogenize damage driving force.
 !--------------------------------------------------------------------------------------------------
 module function homogenization_f_phi(phi,ce) result(f)
 
   integer, intent(in) :: ce
-  real(pReal), intent(in) :: &
-    phi
+  real(pReal), intent(in) :: phi
   real(pReal) :: f
 
 
@@ -140,8 +138,7 @@ end function homogenization_f_phi
 module subroutine homogenization_set_phi(phi,ce)
 
   integer, intent(in) :: ce
-  real(pReal),   intent(in) :: &
-    phi
+  real(pReal), intent(in) :: phi
 
   integer :: &
     ho, &

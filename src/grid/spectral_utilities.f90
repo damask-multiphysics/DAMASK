@@ -203,7 +203,7 @@ subroutine spectral_utilities_init()
   CHKERRQ(err_PETSc)
 
   cells1Red = cells(1)/2 + 1
-  wgt = 1.0/real(product(cells),pReal)
+  wgt = real(product(cells),pReal)**(-1)
 
   num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
   num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
@@ -270,7 +270,7 @@ subroutine spectral_utilities_init()
 
   N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
                                tensorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
-  if (z /= cells3) error stop 'domain decomposition mismatch (tensor)'
+  if (int(z) /= cells3) error stop 'domain decomposition mismatch (tensor)'
   tensorField = fftw_alloc_complex(N)
   call c_f_pointer(tensorField,tensorField_real, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
@@ -279,7 +279,7 @@ subroutine spectral_utilities_init()
 
   N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
                                vectorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
-  if (z /= cells3) error stop 'domain decomposition mismatch (vector)'
+  if (int(z) /= cells3) error stop 'domain decomposition mismatch (vector)'
   vectorField = fftw_alloc_complex(N)
   call c_f_pointer(vectorField,vectorField_real, &
                    [3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
@@ -288,7 +288,7 @@ subroutine spectral_utilities_init()
 
   N = fftw_mpi_local_size_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T,&
                              PETSC_COMM_WORLD,z,devNull)
-  if (z /= cells3) error stop 'domain decomposition mismatch (scalar)'
+  if (int(z) /= cells3) error stop 'domain decomposition mismatch (scalar)'
   scalarField = fftw_alloc_complex(N)
   call c_f_pointer(scalarField,scalarField_real, &
                    [2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
@@ -390,17 +390,17 @@ subroutine utilities_updateGamma(C)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-cells3Offset))*xi1st(m,i,j,k-cells3Offset)
         end do
         do concurrent(l = 1:3, m = 1:3)
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
         end do
 #else
         forall(l = 1:3, m = 1:3) &
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k-cells3Offset))*xi1st(m,i,j,k-cells3Offset)
         forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
 #endif
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
-        if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
+        if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pReal) then
           call math_invert(A_inv, err, A)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
 #ifndef __INTEL_COMPILER
@@ -523,17 +523,17 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
         end do
         do concurrent(l = 1:3, m = 1:3)
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
         end do
 #else
         forall(l = 1:3, m = 1:3) &
           xiDyad_cmplx(l,m) = conjg(-xi1st(l,i,j,k))*xi1st(m,i,j,k)
         forall(l = 1:3, m = 1:3) &
-          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal)*xiDyad_cmplx)
+          temp33_cmplx(l,m) = sum(cmplx(C_ref(l,1:3,m,1:3),0.0_pReal,pReal)*xiDyad_cmplx)
 #endif
         A(1:3,1:3) = temp33_cmplx%re; A(4:6,4:6) =  temp33_cmplx%re
         A(1:3,4:6) = temp33_cmplx%im; A(4:6,1:3) = -temp33_cmplx%im
-        if (abs(math_det33(A(1:3,1:3))) > 1e-16) then
+        if (abs(math_det33(A(1:3,1:3))) > 1.e-16_pReal) then
           call math_invert(A_inv, err, A)
           temp33_cmplx = cmplx(A_inv(1:3,1:3),A_inv(1:3,4:6),pReal)
 #ifndef __INTEL_COMPILER
@@ -592,8 +592,8 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do k = 1, cells3; do j = 1, cells(2) ;do i = 1, cells1Red
     GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
-                / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal) &
-                   * sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal),xi1st(1:3,i,j,k))))
+                / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal,pReal) &
+                   * sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal,pReal),xi1st(1:3,i,j,k))))
     scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
@@ -613,7 +613,7 @@ real(pReal) function utilities_divergenceRMS()
   print'(/,1x,a)', '... calculating divergence ................................................'
   flush(IO_STDOUT)
 
-  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
+  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
@@ -657,7 +657,7 @@ real(pReal) function utilities_curlRMS()
   print'(/,1x,a)', '... calculating curl ......................................................'
   flush(IO_STDOUT)
 
-  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
+  rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating max curl criterion in Fourier space

@@ -211,7 +211,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use OMP_LIB
 
   implicit none(type,external)
-  integer,                               intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
+  integer(pI64),                         intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     ngens, &                                                                                        !< size of stress-strain law
     nn, &                                                                                           !< integration point number
     ndi, &                                                                                          !< number of direct components
@@ -224,7 +224,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     jtype, &                                                                                        !< element type
     ifr, &                                                                                          !< set to 1 if R has been calculated
     ifu                                                                                             !< set to 1 if stretch has been calculated
-  integer, dimension(2),                 intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
+  integer(pI64), dimension(2),           intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     m, &                                                                                            !< (1) user element number, (2) internal element number
     matus, &                                                                                        !< (1) user material identification number, (2) internal material identification number
     kcus, &                                                                                         !< (1) layer number, (2) internal layer number
@@ -362,7 +362,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   endif
   lastLovl = lovl
 
-  call materialpoint_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
+  call materialpoint_general(computationMode,ffn,ffn1,t(1),timinc,int(m(1)),int(nn),stress,ddsdde)
 
   d = ddsdde(1:ngens,1:ngens)
   s = stress(1:ndi+nshear)
@@ -383,16 +383,17 @@ subroutine flux(f,ts,n,time)
   use discretization_Marc
 
   implicit none(type,external)
-  real(pReal), dimension(6),           intent(in) :: &
+  real(pReal),   dimension(6),  intent(in) :: &
     ts
-  integer,     dimension(10),          intent(in) :: &
+  integer(pI64), dimension(10), intent(in) :: &
     n
-  real(pReal),                         intent(in) :: &
+  real(pReal),                  intent(in) :: &
     time
-  real(pReal), dimension(2),           intent(out) :: &
+  real(pReal),   dimension(2),  intent(out) :: &
     f
 
-  f(1) = homogenization_f_T(discretization_Marc_FEM2DAMASK_cell(n(3),n(1)))
+
+  f(1) = homogenization_f_T(discretization_Marc_FEM2DAMASK_cell(int(n(3)),int(n(1))))
   f(2) = 0.0_pReal
 
  end subroutine flux
@@ -410,7 +411,8 @@ subroutine uedinc(inc,incsub)
   use discretization_Marc
 
   implicit none(type,external)
-  integer, intent(in) :: inc, incsub
+  integer(pI64), intent(in) :: inc, incsub
+
   integer :: n, nqncomp, nqdatatype
   integer, save :: inc_written
   real(pReal), allocatable, dimension(:,:) :: d_n
@@ -427,9 +429,9 @@ subroutine uedinc(inc,incsub)
     enddo
 
     call discretization_Marc_UpdateNodeAndIpCoords(d_n)
-    call materialpoint_results(inc,cptim)
+    call materialpoint_results(int(inc),cptim)
 
-    inc_written = inc
+    inc_written = int(inc)
   endif
 
 end subroutine uedinc

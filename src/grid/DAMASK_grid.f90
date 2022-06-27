@@ -276,7 +276,7 @@ program DAMASK_grid
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
 
-      if (loadCases(l)%r <= 0.0)       errorID = 833
+      if (loadCases(l)%r <= 0.0_pReal) errorID = 833
       if (loadCases(l)%t < 0.0_pReal)  errorID = 834
       if (loadCases(l)%N < 1)          errorID = 835
       if (loadCases(l)%f_out < 1)      errorID = 836
@@ -505,7 +505,7 @@ subroutine getMaskedTensor(values,mask,tensor)
   integer :: i,j
 
 
-  values = 0.0
+  values = 0.0_pReal
   do i = 1,3
     row => tensor%get(i)
     do j = 1,3

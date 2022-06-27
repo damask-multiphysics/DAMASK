@@ -117,8 +117,3 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug all")
 # -check:                  Checks at runtime, where
 #    arg_temp_created:       will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #    stack:
-
-#------------------------------------------------------------------------------------------------
-#  precision settings
-set (PRECISION_FLAGS "${PRECISION_FLAGS} -real-size 64")
-# set precision for standard real to 32 | 64 | 128 (= 4 | 8 | 16 bytes, type pReal is always 8 bytes)

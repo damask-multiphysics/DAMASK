@@ -2008,7 +2008,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       ],pReal),shape(CFTOHP_SYSTEMTRANS))
 
   real(pReal), dimension(4,cF_Ntrans), parameter :: &
-    CFTOCI_SYSTEMTRANS = reshape([&
+    CFTOCI_SYSTEMTRANS = real(reshape([&
       0.0, 1.0, 0.0,     10.26, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
       0.0,-1.0, 0.0,     10.26, &
       0.0, 0.0, 1.0,     10.26, &
@@ -2021,7 +2021,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
      -1.0, 0.0, 0.0,     10.26, &
       0.0, 1.0, 0.0,     10.26, &
       0.0,-1.0, 0.0,     10.26  &
-      ],shape(CFTOCI_SYSTEMTRANS))
+      ],shape(CFTOCI_SYSTEMTRANS)),pReal)
 
   integer, dimension(9,cF_Ntrans), parameter :: &
     CFTOCI_BAINVARIANT = reshape( [&
@@ -2040,7 +2040,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       ],shape(CFTOCI_BAINVARIANT))
 
   real(pReal), dimension(4,cF_Ntrans), parameter :: &
-    CFTOCI_BAINROT = reshape([&
+    CFTOCI_BAINROT = real(reshape([&
       1.0, 0.0, 0.0,     45.0, &                                                                    ! Rotate cF austensite to bain variant
       1.0, 0.0, 0.0,     45.0, &
       1.0, 0.0, 0.0,     45.0, &
@@ -2053,7 +2053,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       0.0, 0.0, 1.0,     45.0, &
       0.0, 0.0, 1.0,     45.0, &
       0.0, 0.0, 1.0,     45.0  &
-      ],shape(CFTOCI_BAINROT))
+      ],shape(CFTOCI_BAINROT)),pReal)
 
   if (present(a_cI) .and. present(a_cF)) then
     do i = 1,sum(Ntrans)
