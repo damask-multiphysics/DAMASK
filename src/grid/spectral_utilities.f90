@@ -28,8 +28,8 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! grid related information
   real(pReal), protected,  public                :: wgt                                             !< weighting factor 1/Nelems
-  integer,     protected,  public                :: cells1Red                                       !< cells(1)/2
   real(pReal), protected,  public,  dimension(3) :: scaledGeomSize                                  !< scaled geometry size for calculation of divergence
+  integer :: cells1Red                                                                              !< cells(1)/2+1
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
