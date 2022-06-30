@@ -224,16 +224,16 @@ subroutine spectral_utilities_init()
     do j = 1, 3
      if (j /= minloc(geomSize,1) .and. j /= maxloc(geomSize,1)) &
        scaledGeomSize = geomSize/geomSize(j)
-    enddo
+    end do
   elseif (num%divergence_correction == 2) then
     do j = 1, 3
      if (      j /= int(minloc(geomSize/real(cells,pReal),1)) &
          .and. j /= int(maxloc(geomSize/real(cells,pReal),1))) &
        scaledGeomSize = geomSize/geomSize(j)*real(cells(j),pReal)
-    enddo
+    end do
   else
     scaledGeomSize = geomSize
-  endif
+  end if
 
   select case(IO_lc(num_grid%get_asString('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
@@ -344,13 +344,13 @@ subroutine spectral_utilities_init()
             elsewhere
               xi1st(1:3,i,j,k-cells3Offset) = xi2nd(1:3,i,j,k-cells3Offset)
             endwhere
-  enddo; enddo; enddo
+  end do; end do; end do
 
   if (num%memory_efficient) then                                                                    ! allocate just single fourth order tensor
     allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
   else                                                                                              ! precalculation of gamma_hat field
     allocate (gamma_hat(3,3,3,3,cells1Red,cells(2),cells3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
-  endif
+  end if
 
   call selfTest()
 
@@ -410,7 +410,7 @@ subroutine utilities_updateGamma(C)
       end if
     end do; end do; end do
     !$OMP END PARALLEL DO
-  endif
+  end if
 
 end subroutine utilities_updateGamma
 
@@ -590,7 +590,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
                 / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal,pReal) &
                    * sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal,pReal),xi1st(1:3,i,j,k))))
     scalarField_fourier(i,j,k) = scalarField_fourier(i,j,k)*GreenOp_hat
-  enddo; enddo; enddo
+  end do; end do; end do
   !$OMP END PARALLEL DO
 
 end subroutine utilities_fourierGreenConvolution
@@ -604,6 +604,7 @@ real(pReal) function utilities_divergenceRMS()
   integer :: i, j, k
   integer(MPI_INTEGER_KIND) :: err_MPI
   complex(pReal), dimension(3) :: rescaledGeom
+
 
   print'(/,1x,a)', '... calculating divergence ................................................'
   flush(IO_STDOUT)
@@ -620,7 +621,7 @@ real(pReal) function utilities_divergenceRMS()
                                           conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2) &             ! --> sum squared L_2 norm of vector
                         +sum(aimag(matmul(tensorField_fourier(1:3,1:3,i,j,k),&
                                           conjg(-xi1st(1:3,i,j,k))*rescaledGeom))**2))
-    enddo
+    end do
     utilities_divergenceRMS = utilities_divergenceRMS &                                             ! these two layers (DC and Nyquist) do not have a conjugate complex counterpart (if cells(1) /= 1)
                + sum( real(matmul(tensorField_fourier(1:3,1:3,1       ,j,k), &
                                   conjg(-xi1st(1:3,1,j,k))*rescaledGeom))**2) &
@@ -630,7 +631,7 @@ real(pReal) function utilities_divergenceRMS()
                                   conjg(-xi1st(1:3,cells1Red,j,k))*rescaledGeom))**2) &
                + sum(aimag(matmul(tensorField_fourier(1:3,1:3,cells1Red,j,k), &
                                   conjg(-xi1st(1:3,cells1Red,j,k))*rescaledGeom))**2)
-  enddo; enddo
+  end do; end do
   if (cells(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                   ! counted twice in case of cells(1) == 1
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
@@ -667,10 +668,10 @@ real(pReal) function utilities_curlRMS()
                              -tensorField_fourier(l,3,i,j,k)*xi1st(1,i,j,k)*rescaledGeom(1))
         curl_fourier(l,3) = (+tensorField_fourier(l,2,i,j,k)*xi1st(1,i,j,k)*rescaledGeom(1) &
                              -tensorField_fourier(l,1,i,j,k)*xi1st(2,i,j,k)*rescaledGeom(2))
-      enddo
+      end do
       utilities_curlRMS = utilities_curlRMS &
                         +2.0_pReal*sum(curl_fourier%re**2+curl_fourier%im**2)                       ! Has somewhere a conj. complex counterpart. Therefore count it twice.
-    enddo
+    end do
     do l = 1, 3
        curl_fourier = (+tensorField_fourier(l,3,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2) &
                        -tensorField_fourier(l,2,1,j,k)*xi1st(3,1,j,k)*rescaledGeom(3))
@@ -678,7 +679,7 @@ real(pReal) function utilities_curlRMS()
                        -tensorField_fourier(l,3,1,j,k)*xi1st(1,1,j,k)*rescaledGeom(1))
        curl_fourier = (+tensorField_fourier(l,2,1,j,k)*xi1st(1,1,j,k)*rescaledGeom(1) &
                        -tensorField_fourier(l,1,1,j,k)*xi1st(2,1,j,k)*rescaledGeom(2))
-    enddo
+    end do
     utilities_curlRMS = utilities_curlRMS &
                       + sum(curl_fourier%re**2 + curl_fourier%im**2)                                ! this layer (DC) does not have a conjugate complex counterpart (if cells(1) /= 1)
     do l = 1, 3
@@ -688,10 +689,10 @@ real(pReal) function utilities_curlRMS()
                       -tensorField_fourier(l,3,cells1Red,j,k)*xi1st(1,cells1Red,j,k)*rescaledGeom(1))
       curl_fourier = (+tensorField_fourier(l,2,cells1Red,j,k)*xi1st(1,cells1Red,j,k)*rescaledGeom(1) &
                       -tensorField_fourier(l,1,cells1Red,j,k)*xi1st(2,cells1Red,j,k)*rescaledGeom(2))
-    enddo
+    end do
     utilities_curlRMS = utilities_curlRMS &
                       + sum(curl_fourier%re**2 + curl_fourier%im**2)                                ! this layer (Nyquist) does not have a conjugate complex counterpart (if cells(1) /= 1)
-  enddo; enddo
+  end do; end do
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
@@ -733,11 +734,11 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
       print'(/,1x,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
         'Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
       flush(IO_STDOUT)
-    endif
+    end if
 
     do i = 1,9; do j = 1,9
       mask(i,j) = mask_stressVector(i) .and. mask_stressVector(j)
-    enddo; enddo
+    end do; end do
     c_reduced = reshape(pack(temp99_Real,mask),[size_reduced,size_reduced])
 
     allocate(s_reduced,mold = c_reduced)
@@ -754,11 +755,11 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
       print trim(formatString), 'C * S (load) ', transpose(matmul(c_reduced,s_reduced))
       print trim(formatString), 'S (load) ', transpose(s_reduced)
       if (errmatinv) error stop 'matrix inversion error'
-    endif
+    end if
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
   else
     temp99_real = 0.0_pReal
-  endif
+  end if
 
   utilities_maskedCompliance = math_99to3333(temp99_Real)
 
@@ -766,7 +767,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     print'(/,1x,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
       'Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
     flush(IO_STDOUT)
-  endif
+  end if
 
 end function utilities_maskedCompliance
 
@@ -880,12 +881,12 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
     if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
       dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
       dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
-    endif
+    end if
     if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)) then
       dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
       dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2)
-    endif
-  enddo
+    end if
+  end do
 
   valueAndRank = [dPdF_norm_max,real(worldrank,pReal)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1_MPI_INTEGER_KIND,MPI_2DOUBLE_PRECISION,MPI_MAXLOC,MPI_COMM_WORLD,err_MPI)
@@ -961,7 +962,7 @@ function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
     fieldDiff = fieldDiff - aim
     utilities_forwardField = utilities_forwardField - &
                      spread(spread(spread(fieldDiff,3,cells(1)),4,cells(2)),5,cells3)
-  endif
+  end if
 
 end function utilities_forwardField
 
@@ -1115,15 +1116,15 @@ subroutine utilities_updateCoords(F)
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
       nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
                                   + IPfluct_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3)+1)*0.125_pReal
-    enddo averageFluct
-  enddo; enddo; enddo
+    end do averageFluct
+  end do; end do; end do
 
  !--------------------------------------------------------------------------------------------------
  ! calculate cell center displacements
   do k = 1,cells3; do j = 1,cells(2); do i = 1,cells(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
                         + matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)-0.5_pReal))
-  enddo; enddo; enddo
+  end do; end do; end do
 
   call discretization_setNodeCoords(reshape(NodeCoords,[3,(cells(1)+1)*(cells(2)+1)*(cells3+1)]))
   call discretization_setIPcoords  (reshape(IPcoords,  [3,cells(1)*cells(2)*cells3]))
@@ -1146,7 +1147,7 @@ subroutine utilities_saveReferenceStiffness
     if (ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
     write(fileUnit) C_ref
     close(fileUnit)
-  endif
+  end if
 
 end subroutine utilities_saveReferenceStiffness
 
