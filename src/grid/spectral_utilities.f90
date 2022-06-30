@@ -150,7 +150,7 @@ subroutine spectral_utilities_init()
     vectorField, &                                                                                  !< field containing data for FFTW in real space when debugging FFTW (no in place)
     scalarField                                                                                     !< field containing data for FFTW in real space when debugging FFTW (no in place)
   integer(C_INTPTR_T), dimension(3) :: cellsFFTW
-  integer(C_INTPTR_T) :: N, z, devNull
+  integer(C_INTPTR_T) :: N, cells3FFTW, cells3_offset
   integer(C_INTPTR_T), parameter :: &
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
@@ -263,32 +263,32 @@ subroutine spectral_utilities_init()
 
   cellsFFTW = int(cells,C_INTPTR_T)
 
-  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
-                               tensorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
-  if (int(z) /= cells3) error stop 'domain decomposition mismatch (tensor)'
+  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)],&
+                               tensorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,cells3FFTW,cells3_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (tensor)'
   tensorField = fftw_alloc_complex(N)
   call c_f_pointer(tensorField,tensorField_real, &
-                   [3_C_INTPTR_T,3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+                   [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
   call c_f_pointer(tensorField,tensorField_fourier, &
-                   [3_C_INTPTR_T,3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
+                   [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(2),cells3FFTW])
 
-  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T],&
-                               vectorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,z,devNull)
-  if (int(z) /= cells3) error stop 'domain decomposition mismatch (vector)'
+  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)],&
+                               vectorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,cells3FFTW,cells3_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector)'
   vectorField = fftw_alloc_complex(N)
   call c_f_pointer(vectorField,vectorField_real, &
-                   [3_C_INTPTR_T,2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+                   [3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
   call c_f_pointer(vectorField,vectorField_fourier, &
-                   [3_C_INTPTR_T,              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
+                   [3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(2),cells3FFTW])
 
-  N = fftw_mpi_local_size_3d(cellsFFTW(3),cellsFFTW(2),cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T,&
-                             PETSC_COMM_WORLD,z,devNull)
-  if (int(z) /= cells3) error stop 'domain decomposition mismatch (scalar)'
+  N = fftw_mpi_local_size_3d(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T),&
+                             PETSC_COMM_WORLD,cells3FFTW,cells3_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar)'
   scalarField = fftw_alloc_complex(N)
   call c_f_pointer(scalarField,scalarField_real, &
-                   [2_C_INTPTR_T*(cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T),cellsFFTW(2),z])
+                   [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
   call c_f_pointer(scalarField,scalarField_fourier, &
-                   [              cellsFFTW(1)/2_C_INTPTR_T+1_C_INTPTR_T, cellsFFTW(2),z])
+                   [int(cells1Red,  C_INTPTR_T),cellsFFTW(2),cells3FFTW])
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
@@ -585,7 +585,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
-  do k = 1, cells3; do j = 1, cells(2) ;do i = 1, cells1Red
+  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells1Red
     GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
                 / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal,pReal) &
                    * sum(conjg(xi1st(1:3,i,j,k))* matmul(cmplx(D_ref,0.0_pReal,pReal),xi1st(1:3,i,j,k))))
