@@ -146,11 +146,15 @@ subroutine spectral_utilities_init()
     FFTW_planner_flag
   integer, dimension(3) :: k_s
   type(C_PTR) :: &
-    tensorField, &                                                                                  !< field containing data for FFTW in real and fourier space (in place)
-    vectorField, &                                                                                  !< field containing data for FFTW in real space when debugging FFTW (no in place)
-    scalarField                                                                                     !< field containing data for FFTW in real space when debugging FFTW (no in place)
+    tensorField, &                                                                                  !< tensor data for FFTW in real and Fourier space (in-place)
+    vectorField, &                                                                                  !< vector data for FFTW in real and Fourier space (in-place)
+    scalarField                                                                                     !< scalar data for FFTW in real and Fourier space (in-place)
   integer(C_INTPTR_T), dimension(3) :: cellsFFTW
-  integer(C_INTPTR_T) :: N, cells3FFTW, cells3_offset
+  integer(C_INTPTR_T) :: N, &
+    cells3FFTW, &                                                                                   !< # of cells in 3. dim on current process in real space
+    cells3_offset, &                                                                                !< offset for cells in 3. dim on current process in real space
+    cells2FFTW, &                                                                                   !< # of cells in 2. dim on current process in Fourier space
+    cells2_offset                                                                                   !< offset for cells in 2. dim on curren process in Fourier space
   integer(C_INTPTR_T), parameter :: &
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
@@ -158,7 +162,7 @@ subroutine spectral_utilities_init()
     PETSCDEBUG = ' -snes_view -snes_monitor '
   class(tNode) , pointer :: &
     num_grid, &
-    debug_grid                                                                                      ! pointer to grid  debug options
+    debug_grid                                                                                      ! pointer to grid debug options
 
   print'(/,1x,a)', '<<<+-  spectral_utilities init  -+>>>'
 
@@ -263,8 +267,9 @@ subroutine spectral_utilities_init()
 
   cellsFFTW = int(cells,C_INTPTR_T)
 
-  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)],&
-                               tensorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,cells3FFTW,cells3_offset)
+  N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
+                                          tensorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
+                                          cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
   if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (tensor)'
   tensorField = fftw_alloc_complex(N)
   call c_f_pointer(tensorField,tensorField_real, &
@@ -272,8 +277,9 @@ subroutine spectral_utilities_init()
   call c_f_pointer(tensorField,tensorField_fourier, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(2),cells3FFTW])
 
-  N = fftw_mpi_local_size_many(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)],&
-                               vectorSize,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD,cells3FFTW,cells3_offset)
+  N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
+                                          vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
+                                          cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
   if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector)'
   vectorField = fftw_alloc_complex(N)
   call c_f_pointer(vectorField,vectorField_real, &
@@ -281,8 +287,8 @@ subroutine spectral_utilities_init()
   call c_f_pointer(vectorField,vectorField_fourier, &
                    [3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(2),cells3FFTW])
 
-  N = fftw_mpi_local_size_3d(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T),&
-                             PETSC_COMM_WORLD,cells3FFTW,cells3_offset)
+  N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
+                                        PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
   if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar)'
   scalarField = fftw_alloc_complex(N)
   call c_f_pointer(scalarField,scalarField_real, &
