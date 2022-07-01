@@ -955,10 +955,12 @@ function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
     rate                                                                                            !< rate by which to forward
   real(pReal), intent(in), optional, dimension(3,3) :: &
     aim                                                                                             !< average field value aim
+
   real(pReal),                       dimension(3,3,cells(1),cells(2),cells3) :: &
     utilities_forwardField
-  real(pReal),                       dimension(3,3)                       :: fieldDiff              !< <a + adot*t> - aim
+  real(pReal),                       dimension(3,3) :: fieldDiff                                    !< <a + adot*t> - aim
   integer(MPI_INTEGER_KIND) :: err_MPI
+
 
   utilities_forwardField = field_lastInc + rate*Delta_t
   if (present(aim)) then                                                                            !< correct to match average
@@ -966,8 +968,8 @@ function utilities_forwardField(Delta_t,field_lastInc,rate,aim)
     call MPI_Allreduce(MPI_IN_PLACE,fieldDiff,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     fieldDiff = fieldDiff - aim
-    utilities_forwardField = utilities_forwardField - &
-                     spread(spread(spread(fieldDiff,3,cells(1)),4,cells(2)),5,cells3)
+    utilities_forwardField = utilities_forwardField &
+                           - spread(spread(spread(fieldDiff,3,cells(1)),4,cells(2)),5,cells3)
   end if
 
 end function utilities_forwardField
@@ -981,7 +983,9 @@ end function utilities_forwardField
 pure function utilities_getFreqDerivative(k_s)
 
   integer, intent(in),  dimension(3) :: k_s                                                         !< indices of frequency
+
   complex(pReal),       dimension(3) :: utilities_getFreqDerivative
+
 
   select case (spectral_derivative_ID)
     case (DERIVATIVE_CONTINUOUS_ID)
@@ -1082,7 +1086,7 @@ subroutine utilities_updateCoords(F)
 
  !--------------------------------------------------------------------------------------------------
  ! average F
-  if (cells3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
+  if (cells3Offset == 0) Favg = tensorField_fourier(1:3,1:3,1,1,1)%re*wgt
   call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
@@ -1146,6 +1150,7 @@ subroutine utilities_saveReferenceStiffness
   integer :: &
     fileUnit,ierr
 
+
   if (worldrank == 0) then
     print'(/,1x,a)', '... writing reference stiffness data required for restart to file .........'; flush(IO_STDOUT)
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
@@ -1172,6 +1177,10 @@ subroutine selfTest()
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   tensorField_real_ = tensorField_real
   call utilities_FFTtensorForward()
+  if (worldsize==1) then
+    if (any(dNeq(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3)/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
+      error stop 'tensorField avg'
+  endif
   call utilities_FFTtensorBackward()
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   if (maxval(abs(tensorField_real_ - tensorField_real))>5.0e-15_pReal) error stop 'tensorField'
@@ -1180,6 +1189,10 @@ subroutine selfTest()
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   vectorField_real_ = vectorField_real
   call utilities_FFTvectorForward()
+  if (worldsize==1) then
+    if (any(dNeq(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2)/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
+      error stop 'vector avg'
+  endif
   call utilities_FFTvectorBackward()
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   if (maxval(abs(vectorField_real_ - vectorField_real))>5.0e-15_pReal) error stop 'vectorField'
@@ -1188,6 +1201,10 @@ subroutine selfTest()
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   scalarField_real_ = scalarField_real
   call utilities_FFTscalarForward()
+  if (worldsize==1) then
+    if (dNeq(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1)/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
+      error stop 'scalar avg'
+  endif
   call utilities_FFTscalarBackward()
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   if (maxval(abs(scalarField_real_ - scalarField_real))>5.0e-15_pReal) error stop 'scalarField'
