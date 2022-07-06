@@ -29,7 +29,10 @@ module spectral_utilities
 ! grid related information
   real(pReal), protected,  public                :: wgt                                             !< weighting factor 1/Nelems
   real(pReal), protected,  public,  dimension(3) :: scaledGeomSize                                  !< scaled geometry size for calculation of divergence
-  integer :: cells1Red                                                                              !< cells(1)/2+1
+  integer :: &
+    cells1Red, &                                                                                    !< cells(1)/2+1
+    cells2, &                                                                                       !< (local) cells in 2nd direction
+    cells2Offset                                                                                    !< (local) cells offset in 2nd direction
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
@@ -260,11 +263,6 @@ subroutine spectral_utilities_init()
 
   print'(/,1x,a)', 'FFTW initialized'; flush(IO_STDOUT)
 
-!--------------------------------------------------------------------------------------------------
-! allocation
-  allocate (xi1st (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for first derivatives, only half the size for first dimension
-  allocate (xi2nd (3,cells1Red,cells(2),cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
-
   cellsFFTW = int(cells,C_INTPTR_T)
 
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
@@ -295,6 +293,15 @@ subroutine spectral_utilities_init()
                    [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
   call c_f_pointer(scalarField,scalarField_fourier, &
                    [int(cells1Red,  C_INTPTR_T),cellsFFTW(2),cells3FFTW])
+                  ![int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])  ! ToDo
+
+  cells2Offset = 0 ! ToDo
+  cells2 = cells(2) ! ToDo
+
+!--------------------------------------------------------------------------------------------------
+! allocation
+  allocate (xi1st (3,cells1Red,cells2,cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))            ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,cells1Red,cells2,cells3),source = cmplx(0.0_pReal,0.0_pReal,pReal))            ! frequencies for second derivatives, only half the size for first dimension
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
@@ -336,14 +343,16 @@ subroutine spectral_utilities_init()
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
   do k = cells3Offset+1, cells3Offset+cells3
+ !do k = 1, cells(3) ToDo
     k_s(3) = k - 1
     if (k > cells(3)/2 + 1) k_s(3) = k_s(3) - cells(3)                                              ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-      do j = 1, cells(2)
+      do j = cells2Offset+1, cells2offset+cells2
         k_s(2) = j - 1
         if (j > cells(2)/2 + 1) k_s(2) = k_s(2) - cells(2)                                          ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
           do i = 1, cells1Red
             k_s(1) = i - 1                                                                          ! symmetry, junst running from 0,1,...,N/2,N/2+1
             xi2nd(1:3,i,j,k-cells3Offset) = utilities_getFreqDerivative(k_s)
+            !xi2nd(1:3,i,j-cells2Offset,k) = utilities_getFreqDerivative(k_s) ToDo
             where(mod(cells,2)==0 .and. [i,j,k] == cells/2+1 .and. &
                   spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID)                               ! for even grids, set the Nyquist Freq component to 0.0
               xi1st(1:3,i,j,k-cells3Offset) = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -356,6 +365,7 @@ subroutine spectral_utilities_init()
     allocate (gamma_hat(3,3,3,3,1,1,1), source = cmplx(0.0_pReal,0.0_pReal,pReal))
   else                                                                                              ! precalculation of gamma_hat field
     allocate (gamma_hat(3,3,3,3,cells1Red,cells(2),cells3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
+   !allocate (gamma_hat(3,3,3,3,cells1Red,cells2,cells(3)), source = cmplx(0.0_pReal,0.0_pReal,pReal)) ToDo
   end if
 
   call selfTest()
