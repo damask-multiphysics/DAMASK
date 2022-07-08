@@ -12,8 +12,14 @@ subroutine quit(stop_id)
 #endif
   use HDF5
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
+
   integer, intent(in) :: stop_id
+
   integer, dimension(8) :: dateAndTime
   integer :: err_HDF5
   integer(MPI_INTEGER_KIND) :: err_MPI

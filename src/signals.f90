@@ -6,7 +6,7 @@ module signals
   use prec
   use system_routines
 
-  implicit none
+  implicit none(type,external)
   private
 
   logical, volatile, public, protected :: &

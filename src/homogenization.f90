@@ -18,7 +18,7 @@ module homogenization
   use results
   use lattice
 
-  implicit none
+  implicit none(type,external)
   private
 
   type :: tState

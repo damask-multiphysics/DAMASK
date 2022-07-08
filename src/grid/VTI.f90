@@ -8,7 +8,7 @@ module VTI
   use base64
   use IO
 
-  implicit none
+  implicit none(type,external)
   private
 
   public :: &

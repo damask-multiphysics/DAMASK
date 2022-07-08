@@ -8,7 +8,7 @@ module LAPACK_interface
 
     pure subroutine dgeev(jobvl,jobvr,n,a,lda,wr,wi,vl,ldvl,vr,ldvr,work,lwork,info)
       use prec
-      implicit none
+      implicit none(type,external)
 
       character,   intent(in)                             :: jobvl,jobvr
       integer,     intent(in)                             :: n,lda,ldvl,ldvr,lwork
@@ -22,7 +22,7 @@ module LAPACK_interface
 
     pure subroutine dgesv(n,nrhs,a,lda,ipiv,b,ldb,info)
       use prec
-      implicit none
+      implicit none(type,external)
 
       integer,     intent(in)                             :: n,nrhs,lda,ldb
       real(pReal), intent(inout), dimension(lda,n)        :: a
@@ -33,7 +33,7 @@ module LAPACK_interface
 
     pure subroutine dgetrf(m,n,a,lda,ipiv,info)
       use prec
-      implicit none
+      implicit none(type,external)
 
       integer,     intent(in)                             :: m,n,lda
       real(pReal), intent(inout), dimension(lda,n)        :: a
@@ -43,7 +43,7 @@ module LAPACK_interface
 
     pure subroutine dgetri(n,a,lda,ipiv,work,lwork,info)
       use prec
-      implicit none
+      implicit none(type,external)
 
       integer,     intent(in)                             :: n,lda,lwork
       real(pReal), intent(inout), dimension(lda,n)        :: a
@@ -54,7 +54,7 @@ module LAPACK_interface
 
     pure subroutine dsyev(jobz,uplo,n,a,lda,w,work,lwork,info)
       use prec
-      implicit none
+      implicit none(type,external)
 
       character,   intent(in)                             :: jobz,uplo
       integer,     intent(in)                             :: n,lda,lwork

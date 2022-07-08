@@ -9,7 +9,7 @@ module config
   use results
   use parallelization
 
-  implicit none
+  implicit none(type,external)
   private
 
   class(tNode), pointer, public :: &
