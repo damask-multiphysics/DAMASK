@@ -131,7 +131,7 @@ class Rotation:
         """
         Return self==other.
 
-        Equal to other.
+        Test equality of other.
 
         Parameters
         ----------
@@ -149,7 +149,7 @@ class Rotation:
         """
         Return self!=other.
 
-        Not equal to other.
+        Test inequality of other.
 
         Parameters
         ----------

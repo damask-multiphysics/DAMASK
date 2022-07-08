@@ -152,7 +152,7 @@ class Orientation(Rotation,Crystal):
         """
         Return self==other.
 
-        Equal to other.
+        Test equality of other.
 
         Parameters
         ----------
@@ -172,7 +172,7 @@ class Orientation(Rotation,Crystal):
         """
         Return self!=other.
 
-        Not equal to other.
+        Test inequality of other.
 
         Parameters
         ----------

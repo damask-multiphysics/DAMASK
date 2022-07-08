@@ -61,7 +61,7 @@ class VTK:
         """
         Return self==other.
 
-        Equal to other.
+        Test equality of other.
 
         Parameters
         ----------

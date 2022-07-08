@@ -54,7 +54,7 @@ class Table:
         """
         Return self==other.
 
-        Compare to other Table.
+        Test equality of other table.
 
         """
         return NotImplemented if not isinstance(other,Table) else \
@@ -66,7 +66,7 @@ class Table:
         """
         Return x[y].
 
-        Slice the Table according to item.
+        Return table slice according to item.
 
         Parameters
         ----------

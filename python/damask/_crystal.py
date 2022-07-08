@@ -422,7 +422,7 @@ class Crystal():
         """
         Return self==other.
 
-        Equal to other.
+        Test equality of other.
 
         Parameters
         ----------

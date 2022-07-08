@@ -51,7 +51,7 @@ class Colormap(mpl.colors.ListedColormap):
         """
         Return self==other.
 
-        Test equality of colormaps.
+        Test equality of other.
 
         """
         if not isinstance(other, Colormap):
@@ -104,7 +104,7 @@ class Colormap(mpl.colors.ListedColormap):
         """
         Return ~self.
 
-        Return reverse of self
+        Reverse.
 
         """
         return self.reversed()
