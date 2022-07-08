@@ -48,7 +48,12 @@ class Colormap(mpl.colors.ListedColormap):
 
     def __eq__(self,
                other: object) -> bool:
-        """Test equality of colormaps."""
+        """
+        Return self==other.
+
+        Test equality of colormaps.
+
+        """
         if not isinstance(other, Colormap):
             return NotImplemented
         return         len(self.colors) == len(other.colors) \
@@ -56,31 +61,61 @@ class Colormap(mpl.colors.ListedColormap):
 
     def __add__(self,
                 other: 'Colormap') -> 'Colormap':
-        """Concatenate."""
+        """
+        Return self+other.
+
+        Concatenate.
+
+        """
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
     def __iadd__(self,
                  other: 'Colormap') -> 'Colormap':
-        """Concatenate (in-place)."""
+        """
+        Return self+=other.
+
+        Concatenate (in-place).
+
+        """
         return self.__add__(other)
 
     def __mul__(self,
                 factor: int) -> 'Colormap':
-        """Repeat."""
+        """
+        Return self*other.
+
+        Repeat.
+
+        """
         return Colormap(np.vstack([self.colors]*factor),f'{self.name}*{factor}')
 
     def __imul__(self,
                  factor: int) -> 'Colormap':
-        """Repeat (in-place)."""
+        """
+        Return self*=other.
+
+        Repeat (in-place).
+
+        """
         return self.__mul__(factor)
 
     def __invert__(self) -> 'Colormap':
-        """Reverse."""
+        """
+        Return ~self.
+
+        Return reverse of self
+
+        """
         return self.reversed()
 
     def __repr__(self) -> str:
-        """Show as matplotlib figure."""
+        """
+        Return repr(self).
+
+        Show as matplotlib figure.
+
+        """
         fig = plt.figure(self.name,figsize=(5,.5))
         ax1 = fig.add_axes([0, 0, 1, 1])
         ax1.set_axis_off()

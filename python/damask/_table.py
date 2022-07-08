@@ -37,7 +37,12 @@ class Table:
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         self._relabel('shapes')
         data_repr = self.data.__repr__()
         self._relabel('uniform')
@@ -46,7 +51,12 @@ class Table:
 
     def __eq__(self,
                other: object) -> bool:
-        """Compare to other Table."""
+        """
+        Return self==other.
+
+        Compare to other Table.
+
+        """
         return NotImplemented if not isinstance(other,Table) else \
                self.shapes == other.shapes and self.data.equals(other.data)
 
@@ -54,6 +64,8 @@ class Table:
     def __getitem__(self,
                     item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
+        Return x[y].
+
         Slice the Table according to item.
 
         Parameters
@@ -102,12 +114,22 @@ class Table:
 
 
     def __len__(self) -> int:
-        """Number of rows."""
+        """
+        Return len(self).
+
+        Number of rows.
+
+        """
         return len(self.data)
 
 
     def __copy__(self) -> 'Table':
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         return copy.deepcopy(self)
 
     copy = __copy__

@@ -64,7 +64,12 @@ class Config(dict):
         super().__init__(**kwargs)
 
     def __repr__(self) -> str:
-        """Show as in file."""
+        """
+        Return repr(self).
+
+        Show as in file.
+
+        """
         output = StringIO()
         self.save(output)
         output.seek(0)
@@ -72,7 +77,12 @@ class Config(dict):
 
 
     def __copy__(self: MyType) -> MyType:
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         return copy.deepcopy(self)
 
     copy = __copy__
@@ -81,6 +91,8 @@ class Config(dict):
     def __or__(self: MyType,
                other) -> MyType:
         """
+        Return self|other.
+
         Update configuration with contents of other.
 
         Parameters
@@ -105,7 +117,12 @@ class Config(dict):
 
     def __ior__(self: MyType,
                 other) -> MyType:
-        """Update configuration with contents of other."""
+        """
+        Return self|=other.
+
+        Update configuration with contents of other.
+
+        """
         return self.__or__(other)
 
 

@@ -120,14 +120,24 @@ class Orientation(Rotation,Crystal):
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         return util.srepr([Crystal.__repr__(self),
                            Rotation.__repr__(self)])
 
 
     def __copy__(self: MyType,
                  rotation: Union[FloatSequence, Rotation] = None) -> MyType:
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         dup = copy.deepcopy(self)
         if rotation is not None:
             dup.quaternion = Rotation(rotation).quaternion
@@ -140,6 +150,8 @@ class Orientation(Rotation,Crystal):
     def __eq__(self,
                other: object) -> bool:
         """
+        Return self==other.
+
         Equal to other.
 
         Parameters
@@ -158,6 +170,8 @@ class Orientation(Rotation,Crystal):
     def __ne__(self,
                other: object) -> bool:
         """
+        Return self!=other.
+
         Not equal to other.
 
         Parameters

@@ -39,7 +39,12 @@ class VTK:
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         info = [self.vtk_data.__vtkname__]
 
         for data in ['Cell Data', 'Point Data']:
@@ -54,6 +59,8 @@ class VTK:
     def __eq__(self,
                other: object) -> bool:
         """
+        Return self==other.
+
         Equal to other.
 
         Parameters
