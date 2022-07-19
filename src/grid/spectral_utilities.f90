@@ -804,7 +804,7 @@ end subroutine utilities_fourierScalarGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
 
-  scalarField_fourier(1:cells1Red,1:cells(2),1:cells3) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
+  scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
                                                              *conjg(-xi1st),1)
 
 end subroutine utilities_fourierVectorDivergence
