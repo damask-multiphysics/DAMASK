@@ -468,8 +468,8 @@ def shapeshifter(fro: _Tuple[int, ...],
     new_dims : tuple
         Dimensions for reshape.
 
-    Example
-    -------
+    Examples
+    --------
     >>> import numpy as np
     >>> from damask import util
     >>> a = np.ones((3,4,2))
