@@ -32,8 +32,8 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! grid related information
-  real(pReal), protected,  public                :: wgt                                             !< weighting factor 1/Nelems
-  real(pReal), protected,  public,  dimension(3) :: scaledGeomSize                                  !< scaled geometry size for calculation of divergence
+  real(pReal), protected, public               :: wgt                                               !< weighting factor 1/Nelems
+  real(pReal), protected, public, dimension(3) :: scaledGeomSize                                    !< scaled geometry size for calculation of divergence
   integer :: &
     cells1Red, &                                                                                    !< cells(1)/2+1
     cells2, &                                                                                       !< (local) cells in 2nd direction
@@ -42,16 +42,16 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
 
-  real(C_DOUBLE),           public,  dimension(:,:,:,:,:),     pointer     :: tensorField_real      !< tensor field in real space
-  real(C_DOUBLE),           public,  dimension(:,:,:,:),       pointer     :: vectorField_real      !< vector field in real space
-  real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real      !< scalar field in real space
-  complex(C_DOUBLE_COMPLEX),         dimension(:,:,:,:,:),     pointer     :: tensorField_fourier   !< tensor field in Fourier space
-  complex(C_DOUBLE_COMPLEX),         dimension(:,:,:,:),       pointer     :: vectorField_fourier   !< vector field in Fourier space
-  complex(C_DOUBLE_COMPLEX),         dimension(:,:,:),         pointer     :: scalarField_fourier   !< scalar field in Fourier space
-  complex(pReal),                    dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat             !< gamma operator (field) for spectral method
-  complex(pReal),                    dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
-  complex(pReal),                    dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
-  real(pReal),                       dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
+  real(C_DOUBLE),         public, dimension(:,:,:,:,:),     pointer     :: tensorField_real         !< tensor field in real space
+  real(C_DOUBLE),         public, dimension(:,:,:,:),       pointer     :: vectorField_real         !< vector field in real space
+  real(C_DOUBLE),         public, dimension(:,:,:),         pointer     :: scalarField_real         !< scalar field in real space
+  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:,:),     pointer     :: tensorField_fourier      !< tensor field in Fourier space
+  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:),       pointer     :: vectorField_fourier      !< vector field in Fourier space
+  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:),         pointer     :: scalarField_fourier      !< scalar field in Fourier space
+  complex(pReal),                 dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                !< gamma operator (field) for spectral method
+  complex(pReal),                 dimension(:,:,:,:),       allocatable :: xi1st                    !< wave vector field for first derivatives
+  complex(pReal),                 dimension(:,:,:,:),       allocatable :: xi2nd                    !< wave vector field for second derivatives
+  real(pReal),                    dimension(3,3,3,3)                    :: C_ref                    !< mechanic reference stiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -273,20 +273,21 @@ subroutine spectral_utilities_init()
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
                                           tensorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
                                           cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (tensor)'
+  cells2 = int(cells2FFTW)
+  cells2Offset = int(cells2_offset)
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (tensor, real space)'
   tensorField = fftw_alloc_complex(N)
   call c_f_pointer(tensorField,tensorField_real, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
   call c_f_pointer(tensorField,tensorField_fourier, &
                    [3_C_INTPTR_T,3_C_INTPTR_T,int(cells1Red,  C_INTPTR_T),cellsFFTW(3),cells2FFTW])
 
-  cells2=int(cells2FFTW)
-  cells2Offset=int(cells2_offset)
 
   N = fftw_mpi_local_size_many_transposed(3,[cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T)], &
                                           vectorSize,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,PETSC_COMM_WORLD, &
                                           cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector)'
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (vector, real space)'
+  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (vector, Fourier space)'
   vectorField = fftw_alloc_complex(N)
   call c_f_pointer(vectorField,vectorField_real, &
                    [3_C_INTPTR_T,int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
@@ -295,7 +296,8 @@ subroutine spectral_utilities_init()
 
   N = fftw_mpi_local_size_3d_transposed(cellsFFTW(3),cellsFFTW(2),int(cells1Red,C_INTPTR_T), &
                                         PETSC_COMM_WORLD,cells3FFTW,cells3_offset,cells2FFTW,cells2_offset)
-  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar)'
+  if (int(cells3FFTW) /= cells3) error stop 'domain decomposition mismatch (scalar, real space)'
+  if (int(cells2FFTW) /= cells2) error stop 'domain decomposition mismatch (scalar, Fourier space)'
   scalarField = fftw_alloc_complex(N)
   call c_f_pointer(scalarField,scalarField_real, &
                    [int(cells1Red*2,C_INTPTR_T),cellsFFTW(2),cells3FFTW])
