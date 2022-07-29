@@ -5,7 +5,7 @@
 module element
   use IO
 
-  implicit none
+  implicit none(type,external)
   private
 
 !---------------------------------------------------------------------------------------------------

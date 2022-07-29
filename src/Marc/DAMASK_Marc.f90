@@ -25,7 +25,7 @@ module DAMASK_interface
   use ifport, only: &
     CHDIR
 
-  implicit none
+  implicit none(type,external)
   private
 
   logical,          protected, public :: symmetricSolver
@@ -210,7 +210,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use materialpoint_Marc
   use OMP_LIB
 
-  implicit none
+  implicit none(type,external)
   integer(pI64),                         intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     ngens, &                                                                                        !< size of stress-strain law
     nn, &                                                                                           !< integration point number
@@ -382,7 +382,7 @@ subroutine flux(f,ts,n,time)
   use homogenization
   use discretization_Marc
 
-  implicit none
+  implicit none(type,external)
   real(pReal),   dimension(6),  intent(in) :: &
     ts
   integer(pI64), dimension(10), intent(in) :: &
@@ -410,7 +410,7 @@ subroutine uedinc(inc,incsub)
   use materialpoint_Marc
   use discretization_Marc
 
-  implicit none
+  implicit none(type,external)
   integer(pI64), intent(in) :: inc, incsub
 
   integer :: n, nqncomp, nqdatatype

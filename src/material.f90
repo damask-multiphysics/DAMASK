@@ -14,7 +14,7 @@ module material
   use discretization
   use YAML_types
 
-  implicit none
+  implicit none(type,external)
   private
 
   type, public :: tRotationContainer

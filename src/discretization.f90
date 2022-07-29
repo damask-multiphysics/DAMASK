@@ -7,7 +7,7 @@ module discretization
   use prec
   use results
 
-  implicit none
+  implicit none(type,external)
   private
 
   integer,     public, protected :: &

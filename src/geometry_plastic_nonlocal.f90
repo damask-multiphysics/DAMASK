@@ -9,7 +9,7 @@ module geometry_plastic_nonlocal
   use prec
   use results
 
-  implicit none
+  implicit none(type,external)
   public
 
   integer, protected :: &

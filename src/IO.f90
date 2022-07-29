@@ -12,7 +12,7 @@ module IO
 
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
   character(len=*), parameter, public :: &

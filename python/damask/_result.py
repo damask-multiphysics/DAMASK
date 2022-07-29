@@ -83,7 +83,7 @@ class Result:
 
     >>> import damask
     >>> r = damask.Result('my_file.hdf5')
-    >>> r.add_Cauchy()
+    >>> r.add_stress_Cauchy()
     >>> r.add_equivalent_Mises('sigma')
     >>> r.export_VTK()
     >>> r_last = r.view(increments=-1)

@@ -13,7 +13,7 @@ module lattice
   use math
   use rotations
 
-  implicit none
+  implicit none(type,external)
   private
 
 !--------------------------------------------------------------------------------------------------
