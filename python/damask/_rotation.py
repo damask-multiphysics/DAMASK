@@ -117,7 +117,7 @@ class Rotation:
     def __getitem__(self,
                     item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
         """
-        Return x[y].
+        Return self[item].
 
         Return slice according to item.
 
@@ -376,7 +376,7 @@ class Rotation:
         """
         Return self@other.
 
-        Rotate vector, second order tensor, or fourth order tensor.
+        Rotate vector, second-order tensor, or fourth-order tensor.
 
         Parameters
         ----------
@@ -408,7 +408,7 @@ class Rotation:
                 R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
-                raise ValueError('can only rotate vectors, 2nd order tensors, and 4th order tensors')
+                raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
         elif isinstance(other, Rotation):
             raise TypeError('use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:

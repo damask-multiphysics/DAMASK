@@ -54,7 +54,7 @@ class Table:
         """
         Return self==other.
 
-        Test equality of other table.
+        Test equality of other.
 
         """
         return NotImplemented if not isinstance(other,Table) else \
@@ -64,9 +64,9 @@ class Table:
     def __getitem__(self,
                     item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
-        Return x[y].
+        Return self[item].
 
-        Return table slice according to item.
+        Return slice according to item.
 
         Parameters
         ----------
