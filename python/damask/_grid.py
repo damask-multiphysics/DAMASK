@@ -62,7 +62,12 @@ class Grid:
         self.comments = [] if comments_ is None else [str(c) for c in comments_]
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         mat_min = np.nanmin(self.material)
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials
@@ -76,7 +81,12 @@ class Grid:
 
 
     def __copy__(self) -> 'Grid':
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         return copy.deepcopy(self)
 
     copy = __copy__
@@ -85,6 +95,8 @@ class Grid:
     def __eq__(self,
                other: object) -> bool:
         """
+        Return self==other.
+
         Test equality of other.
 
         Parameters

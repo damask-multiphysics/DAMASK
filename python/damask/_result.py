@@ -152,14 +152,24 @@ class Result:
 
 
     def __copy__(self) -> "Result":
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         return copy.deepcopy(self)
 
     copy = __copy__
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         with h5py.File(self.fname,'r') as f:
             header = [f'Created by {f.attrs["creator"]}',
                       f'        on {f.attrs["created"]}',

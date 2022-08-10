@@ -88,14 +88,24 @@ class Rotation:
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
 
     def __copy__(self: MyType,
                  rotation: Union[FloatSequence, 'Rotation'] = None) -> MyType:
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         dup = copy.deepcopy(self)
         if rotation is not None:
             dup.quaternion = Rotation(rotation).quaternion
@@ -106,7 +116,12 @@ class Rotation:
 
     def __getitem__(self,
                     item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
-        """Return slice according to item."""
+        """
+        Return self[item].
+
+        Return slice according to item.
+
+        """
         return self.copy() if self.shape == () else \
                self.copy(self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
 
@@ -114,7 +129,9 @@ class Rotation:
     def __eq__(self,
                other: object) -> bool:
         """
-        Equal to other.
+        Return self==other.
+
+        Test equality of other.
 
         Parameters
         ----------
@@ -130,7 +147,9 @@ class Rotation:
     def __ne__(self,
                other: object) -> bool:
         """
-        Not equal to other.
+        Return self!=other.
+
+        Test inequality of other.
 
         Parameters
         ----------
@@ -214,12 +233,22 @@ class Rotation:
 
 
     def __len__(self) -> int:
-        """Length of leading/leftmost dimension of array."""
+        """
+        Return len(self).
+
+        Length of leading/leftmost dimension of array.
+
+        """
         return 0 if self.shape == () else self.shape[0]
 
 
     def __invert__(self: MyType) -> MyType:
-        """Inverse rotation (backward rotation)."""
+        """
+        Return ~self.
+
+        Inverse rotation (backward rotation).
+
+        """
         dup = self.copy()
         dup.quaternion[...,1:] *= -1
         return dup
@@ -228,6 +257,8 @@ class Rotation:
     def __pow__(self: MyType,
                 exp: Union[float, int]) -> MyType:
         """
+        Return self**exp.
+
         Perform the rotation 'exp' times.
 
         Parameters
@@ -243,6 +274,8 @@ class Rotation:
     def __ipow__(self: MyType,
                  exp: Union[float, int]) -> MyType:
         """
+        Return self**=exp.
+
         Perform the rotation 'exp' times (in-place).
 
         Parameters
@@ -257,6 +290,8 @@ class Rotation:
     def __mul__(self: MyType,
                 other: MyType) -> MyType:
         """
+        Return self*other.
+
         Compose with other.
 
         Parameters
@@ -284,6 +319,8 @@ class Rotation:
     def __imul__(self: MyType,
                  other: MyType) -> MyType:
         """
+        Return self*=other.
+
         Compose with other (in-place).
 
         Parameters
@@ -298,6 +335,8 @@ class Rotation:
     def __truediv__(self: MyType,
                     other: MyType) -> MyType:
         """
+        Return self/other.
+
         Compose with inverse of other.
 
         Parameters
@@ -319,6 +358,8 @@ class Rotation:
     def __itruediv__(self: MyType,
                      other: MyType) -> MyType:
         """
+        Return self/=other.
+
         Compose with inverse of other (in-place).
 
         Parameters
@@ -333,7 +374,9 @@ class Rotation:
     def __matmul__(self,
                    other: np.ndarray) -> np.ndarray:
         """
-        Rotate vector, second order tensor, or fourth order tensor.
+        Return self@other.
+
+        Rotate vector, second-order tensor, or fourth-order tensor.
 
         Parameters
         ----------
@@ -365,7 +408,7 @@ class Rotation:
                 R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
-                raise ValueError('can only rotate vectors, 2nd order tensors, and 4th order tensors')
+                raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
         elif isinstance(other, Rotation):
             raise TypeError('use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
