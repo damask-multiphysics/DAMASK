@@ -63,7 +63,7 @@ module function isobrittle_init() result(mySources)
       associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
         src => sources%get(1)
 
-        prm%W_crit = src%get_asFloat('W_crit')
+        prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
 
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(src)
@@ -75,7 +75,7 @@ module function isobrittle_init() result(mySources)
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
         Nmembers = count(material_phaseID==ph)
-        call phase_allocateState(damageState(ph),Nmembers,1,1,1)
+        call phase_allocateState(damageState(ph),Nmembers,1,0,1)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
@@ -139,7 +139,7 @@ module subroutine isobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','J/m³') ! Wrong, this is dimensionless
+          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
       end select
     end do outputsLoop
 

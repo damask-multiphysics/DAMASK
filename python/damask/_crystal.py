@@ -403,7 +403,12 @@ class Crystal():
 
 
     def __repr__(self):
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         family = f'Crystal family: {self.family}'
         return family if self.lattice is None else \
                util.srepr([family,
@@ -415,7 +420,9 @@ class Crystal():
     def __eq__(self,
                other: object) -> bool:
         """
-        Equal to other.
+        Return self==other.
+
+        Test equality of other.
 
         Parameters
         ----------

@@ -62,7 +62,12 @@ class Grid:
         self.comments = [] if comments_ is None else [str(c) for c in comments_]
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         mat_min = np.nanmin(self.material)
         mat_max = np.nanmax(self.material)
         mat_N   = self.N_materials
@@ -76,7 +81,12 @@ class Grid:
 
 
     def __copy__(self) -> 'Grid':
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         return copy.deepcopy(self)
 
     copy = __copy__
@@ -85,6 +95,8 @@ class Grid:
     def __eq__(self,
                other: object) -> bool:
         """
+        Return self==other.
+
         Test equality of other.
 
         Parameters
@@ -117,8 +129,8 @@ class Grid:
         self._material = np.copy(material)
 
         if self.material.dtype in np.sctypes['float'] and \
-           np.all(self.material == self.material.astype(int).astype(float)):
-            self._material = self.material.astype(int)
+           np.all(self.material == self.material.astype(np.int64).astype(float)):
+            self._material = self.material.astype(np.int64)
 
 
     @property
@@ -285,7 +297,7 @@ class Grid:
             raise TypeError(f'mismatch between {cells.prod()} expected entries and {i} found')
 
         if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
-            material = material.astype(int) - (1 if material.min() > 0 else 0)
+            material = material.astype(np.int64) - (1 if material.min() > 0 else 0)
 
         return Grid(material = material.reshape(cells,order='F'),
                     size     = size,
@@ -916,7 +928,7 @@ class Grid:
                                            cval=np.nanmax(self.material) + 1 if fill is None else fill)
             # avoid scipy interpolation errors for rotations close to multiples of 90°
             material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
-                       np.rot90(material,k=np.rint(angle/90.).astype(int),axes=axes)
+                       np.rot90(material,k=np.rint(angle/90.).astype(np.int64),axes=axes)
 
         origin = self.origin-(np.asarray(material.shape)-self.cells)*.5 * self.size/self.cells
 
@@ -1094,7 +1106,7 @@ class Grid:
 
         rng = np.random.default_rng(rng_seed)
 
-        d = np.floor(distance).astype(int)
+        d = np.floor(distance).astype(np.int64)
         ext = np.linspace(-d,d,1+2*d,dtype=float),
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
@@ -1197,7 +1209,7 @@ class Grid:
             mask = np.sum(np.power(coords_rot/r,2.0**np.array(exponent)),axis=-1) > 1.0
 
         if periodic:                                                                                # translate back to center
-            mask = np.roll(mask,((c/self.size-0.5)*self.cells).round().astype(int),(0,1,2))
+            mask = np.roll(mask,((c/self.size-0.5)*self.cells).round().astype(np.int64),(0,1,2))
 
         return Grid(material = np.where(np.logical_not(mask) if inverse else mask,
                                         self.material,
@@ -1249,7 +1261,7 @@ class Grid:
             return np.any(stencil != me if selection is None else
                           np.in1d(stencil,np.array(list(selection - {me}))))
 
-        d = np.floor(distance).astype(int)
+        d = np.floor(distance).astype(np.int64)
         ext = np.linspace(-d,d,1+2*d,dtype=float),
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8

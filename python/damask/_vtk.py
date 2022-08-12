@@ -39,7 +39,12 @@ class VTK:
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         info = [self.vtk_data.__vtkname__]
 
         for data in ['Cell Data', 'Point Data']:
@@ -54,7 +59,9 @@ class VTK:
     def __eq__(self,
                other: object) -> bool:
         """
-        Equal to other.
+        Return self==other.
+
+        Test equality of other.
 
         Parameters
         ----------
@@ -187,7 +194,7 @@ class VTK:
         ----------
         nodes : numpy.ndarray, shape (:,3)
             Spatial position of the nodes.
-        connectivity : numpy.ndarray of np.dtype = int
+        connectivity : numpy.ndarray of np.dtype = np.int64
             Cell connectivity (0-based), first dimension determines #Cells,
             second dimension determines #Nodes/Cell.
         cell_type : str

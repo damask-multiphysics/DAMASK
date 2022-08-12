@@ -69,8 +69,8 @@ module function plastic_isotropic_init() result(myPlasticity)
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  print'(/,a)', 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
-  print'(/,a)', 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
+  print'(/,1x,a)', 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
+  print'(  1x,a)', 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
   phases => config_material%get('phase')
   allocate(param(phases%length))
@@ -135,7 +135,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(isotropic)')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
   end do
 

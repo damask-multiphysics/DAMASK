@@ -12,7 +12,7 @@ module math
   use YAML_types
   use LAPACK_interface
 
-  implicit none
+  implicit none(type,external)
   public
 #if __INTEL_COMPILER >= 1900
   ! do not make use of associated entities available to other modules
@@ -135,25 +135,25 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
     s = istart
   else
     s = lbound(a,2)
-  endif
+  end if
 
   if (present(iend)) then
     e = iend
   else
     e = ubound(a,2)
-  endif
+  end if
 
   if (present(sortDim)) then
     d = sortDim
   else
     d = 1
-  endif
+  end if
 
   if (s < e) then
     call qsort_partition(a,ipivot, s,e, d)
     call math_sort(a, s, ipivot-1, d)
     call math_sort(a, ipivot+1, e, d)
-  endif
+  end if
 
 
   contains
@@ -175,11 +175,11 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
       ! find the first element on the right side less than or equal to the pivot point
       do j = iend, istart, -1
         if (a(sort,j) <= a(sort,istart)) exit
-      enddo
+      end do
       ! find the first element on the left side greater than the pivot point
       do i = istart, iend
         if (a(sort,i) > a(sort,istart)) exit
-      enddo
+      end do
       cross: if (i >= j) then ! exchange left value with pivot and return with the partition index
         tmp         = a(:,istart)
         a(:,istart) = a(:,j)
@@ -190,8 +190,8 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
         tmp    = a(:,i)
         a(:,i) = a(:,j)
         a(:,j) = tmp
-      endif cross
-    enddo
+      end if cross
+    end do
 
   end subroutine qsort_partition
 
@@ -216,7 +216,7 @@ pure function math_expand(what,how)
 
   do i = 1, size(how)
     math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1,size(what))+1)
-  enddo
+  end do
 
 end function math_expand
 
@@ -251,7 +251,7 @@ pure function math_eye(d)
   math_eye = 0.0_pReal
   do i=1,d
     math_eye(i,i) = 1.0_pReal
-  enddo
+  end do
 
 end function math_eye
 
@@ -270,7 +270,7 @@ pure function math_identity4th()
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:3, j=1:3, k=1:3, l=1:3)
     math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
-  enddo
+  end do
 #else
   forall(i=1:3, j=1:3, k=1:3, l=1:3) &
     math_identity4th(i,j,k,l) = 0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
@@ -298,7 +298,7 @@ real(pReal) pure function math_LeviCivita(i,j,k)
     math_LeviCivita = -1.0_pReal
   else
     math_LeviCivita =  0.0_pReal
-  endif
+  end if
 
 end function math_LeviCivita
 
@@ -348,7 +348,7 @@ pure function math_outer(A,B)
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:size(A,1), j=1:size(B,1))
     math_outer(i,j) = A(i)*B(j)
-  enddo
+  end do
 #else
   forall(i=1:size(A,1), j=1:size(B,1)) math_outer(i,j) = A(i)*B(j)
 #endif
@@ -398,7 +398,7 @@ pure function math_mul3333xx33(A,B)
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:3, j=1:3)
     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
-  enddo
+  end do
 #else
   forall (i=1:3, j=1:3) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
 #endif
@@ -421,7 +421,7 @@ pure function math_mul3333xx3333(A,B)
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:3, j=1:3, k=1:3, l=1:3)
     math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
-  enddo
+  end do
 #else
   forall(i=1:3, j=1:3, k=1:3, l=1:3) math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
 #endif
@@ -446,7 +446,7 @@ pure function math_exp33(A,n)
     n_ = n
   else
     n_ = 5
-  endif
+  end if
 
   invFac     = 1.0_pReal                                                                            ! 0!
   B          = math_I3
@@ -456,7 +456,7 @@ pure function math_exp33(A,n)
     invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/(i!)
     B = matmul(B,A)
     math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/(i!)
-  enddo
+  end do
 
 end function math_exp33
 
@@ -514,7 +514,7 @@ pure subroutine math_invert33(InvA, DetA, error, A)
 
     InvA = InvA/DetA
     error = .false.
-  endif
+  end if
 
 end subroutine math_invert33
 
@@ -541,7 +541,7 @@ pure function math_invSym3333(A)
     error stop 'matrix inversion error'
   else
     math_invSym3333 = math_66toSym3333(temp66)
-  endif
+  end if
 
 end function math_invSym3333
 
@@ -696,7 +696,7 @@ pure function math_9to33(v9)
 
   do i = 1, 9
     math_9to33(MAPPLAIN(1,i),MAPPLAIN(2,i)) = v9(i)
-  enddo
+  end do
 
 end function math_9to33
 
@@ -721,7 +721,7 @@ pure function math_sym33to6(m33,weighted)
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
     w = NRMMANDEL
-  endif
+  end if
 
   math_sym33to6 = [(w(i)*m33(MAPNYE(1,i),MAPNYE(2,i)),i=1,6)]
 
@@ -748,12 +748,12 @@ pure function math_6toSym33(v6,weighted)
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
     w = INVNRMMANDEL
-  endif
+  end if
 
   do i=1,6
     math_6toSym33(MAPNYE(1,i),MAPNYE(2,i)) = w(i)*v6(i)
     math_6toSym33(MAPNYE(2,i),MAPNYE(1,i)) = w(i)*v6(i)
-  enddo
+  end do
 
 end function math_6toSym33
 
@@ -772,7 +772,7 @@ pure function math_3333to99(m3333)
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:9, j=1:9)
     math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
-  enddo
+  end do
 #else
   forall(i=1:9, j=1:9) math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
 #endif
@@ -794,7 +794,7 @@ pure function math_99to3333(m99)
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:9, j=1:9)
     math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
-  enddo
+  end do
 #else
   forall(i=1:9, j=1:9) math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
 #endif
@@ -827,7 +827,7 @@ pure function math_sym3333to66(m3333,weighted)
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:6, j=1:6)
     math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
-  enddo
+  end do
 #else
   forall(i=1:6, j=1:6) math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
 #endif
@@ -1080,8 +1080,8 @@ pure subroutine math_eigh33(w,v,m)
     else fallback2
       v(1:3,2) = v(1:3, 2) / norm
       v(1:3,3) = math_cross(v(1:3,1),v(1:3,2))
-     endif fallback2
-  endif fallback1
+     end if fallback2
+  end if fallback1
 
 end subroutine math_eigh33
 
@@ -1110,7 +1110,7 @@ pure function math_rotationalPart(F) result(R)
 
   C = matmul(transpose(F),F)
   I_C = math_invariantsSym33(C)
-  I_F = [math_trace33(F), 0.5*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
+  I_F = [math_trace33(F), 0.5_pReal*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
 
   x = math_clip(I_C(1)**2 -3.0_pReal*I_C(2),0.0_pReal)**(3.0_pReal/2.0_pReal)
   if (dNeq0(x)) then
@@ -1120,7 +1120,7 @@ pure function math_rotationalPart(F) result(R)
     lambda = sqrt(math_clip(lambda,0.0_pReal)/3.0_pReal)
   else
     lambda = sqrt(I_C(1)/3.0_pReal)
-  endif
+  end if
 
   I_U = [sum(lambda), lambda(1)*lambda(2)+lambda(2)*lambda(3)+lambda(3)*lambda(1), product(lambda)]
 
@@ -1129,7 +1129,7 @@ pure function math_rotationalPart(F) result(R)
     - I_U(1)*I_F(1) * transpose(F) &
     + I_U(1) * transpose(matmul(F,F)) &
     - matmul(F,C)
-  R = R /(I_U(1)*I_U(2)-I_U(3))
+  R = R*math_det33(R)**(-1.0_pReal/3.0_pReal)
 
 end function math_rotationalPart
 
@@ -1188,7 +1188,7 @@ pure function math_eigvalsh33(m)
                                                              cos((phi+2.0_pReal*TAU)/3.0_pReal) &
                                                             ] &
                     + I(1)/3.0_pReal
-  endif
+  end if
 
 end function math_eigvalsh33
 
@@ -1238,7 +1238,7 @@ integer pure function math_binomial(n,k)
   do i = 1, k_
     math_binomial = (math_binomial * n_)/i
     n_ = n_ -1
-  enddo
+  end do
 
 end function math_binomial
 
@@ -1302,7 +1302,7 @@ real(pReal) pure elemental function math_clip(a, left, right)
   if (present(right)) math_clip = min(right,math_clip)
   if (present(left) .and. present(right)) then
     if (left>right) error stop 'left > right'
-  endif
+  end if
 
 end function math_clip
 
@@ -1386,7 +1386,7 @@ subroutine selfTest()
   call random_number(v3_3)
   call random_number(v3_4)
 
-  if (dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
+  if (dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0_pReal, &
           math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
     error stop 'math_volTetrahedron'
 
@@ -1402,7 +1402,7 @@ subroutine selfTest()
 
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
-  enddo
+  end do
   if (any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
     error stop 'math_inv33'
 
@@ -1418,11 +1418,13 @@ subroutine selfTest()
 
   do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
     call random_number(t33)
-  enddo
+  end do
   t33_2 = math_rotationalPart(transpose(t33))
   t33   = math_rotationalPart(t33)
   if (any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
-    error stop 'math_rotationalPart'
+    error stop 'math_rotationalPart (forward-backward)'
+  if (dNeq(1.0_pReal,math_det33(math_rotationalPart(t33)),tol=1.0e-10_pReal)) &
+    error stop 'math_rotationalPart (determinant)'
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1

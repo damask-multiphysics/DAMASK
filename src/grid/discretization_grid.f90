@@ -10,6 +10,7 @@ module discretization_grid
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use MPI_f08
 #endif
+  use FFTW3
 
   use prec
   use parallelization
@@ -22,7 +23,11 @@ module discretization_grid
   use discretization
   use geometry_plastic_nonlocal
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
   private
 
   integer,     dimension(3), public, protected :: &
@@ -50,7 +55,6 @@ subroutine discretization_grid_init(restart)
 
   logical, intent(in) :: restart
 
-  include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
     mySize, &                                                                                       !< domain size of this process
     origin                                                                                          !< (global) distance to origin
@@ -107,10 +111,8 @@ subroutine discretization_grid_init(restart)
 
   if (worldsize>cells(3)) call IO_error(894, ext_msg='number of processes exceeds cells(3)')
 
-  call fftw_mpi_init
-  devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T), &
-                                   int(cells(2),C_INTPTR_T), &
-                                   int(cells(1),C_INTPTR_T)/2+1, &
+  call fftw_mpi_init()
+  devNull = fftw_mpi_local_size_3d(int(cells(3),C_INTPTR_T),int(cells(2),C_INTPTR_T),int(cells(1)/2+1,C_INTPTR_T), &
                                    PETSC_COMM_WORLD, &
                                    z, &                                                             ! domain cells size along z
                                    z_offset)                                                        ! domain cells offset along z
@@ -123,7 +125,7 @@ subroutine discretization_grid_init(restart)
   myGrid = [cells(1:2),cells3]
   mySize = [geomSize(1:2),size3]
 
-  call MPI_Gather(product(cells(1:2))*cells3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
+  call MPI_Gather(product(cells(1:2))*cells3Offset,1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
                   1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call MPI_Gather(product(myGrid),               1_MPI_INTEGER_KIND,MPI_INTEGER,sendcounts,&
@@ -231,9 +233,9 @@ pure function cellSurfaceArea(geomSize,cells)
   real(pReal), dimension(6,1,product(cells)) :: cellSurfaceArea
 
 
-  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2)) * geomSize(3)/real(cells(3))
-  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3)) * geomSize(1)/real(cells(1))
-  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1)) * geomSize(2)/real(cells(2))
+  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2),pReal) * geomSize(3)/real(cells(3),pReal)
+  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3),pReal) * geomSize(1)/real(cells(1),pReal)
+  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1),pReal) * geomSize(2)/real(cells(2),pReal)
 
 end function cellSurfaceArea
 

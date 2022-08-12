@@ -88,14 +88,24 @@ class Rotation:
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
                + str(self.quaternion)
 
 
     def __copy__(self: MyType,
                  rotation: Union[FloatSequence, 'Rotation'] = None) -> MyType:
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         dup = copy.deepcopy(self)
         if rotation is not None:
             dup.quaternion = Rotation(rotation).quaternion
@@ -106,7 +116,12 @@ class Rotation:
 
     def __getitem__(self,
                     item: Union[Tuple[int], int, bool, np.bool_, np.ndarray]):
-        """Return slice according to item."""
+        """
+        Return self[item].
+
+        Return slice according to item.
+
+        """
         return self.copy() if self.shape == () else \
                self.copy(self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
 
@@ -114,7 +129,9 @@ class Rotation:
     def __eq__(self,
                other: object) -> bool:
         """
-        Equal to other.
+        Return self==other.
+
+        Test equality of other.
 
         Parameters
         ----------
@@ -130,7 +147,9 @@ class Rotation:
     def __ne__(self,
                other: object) -> bool:
         """
-        Not equal to other.
+        Return self!=other.
+
+        Test inequality of other.
 
         Parameters
         ----------
@@ -214,12 +233,22 @@ class Rotation:
 
 
     def __len__(self) -> int:
-        """Length of leading/leftmost dimension of array."""
+        """
+        Return len(self).
+
+        Length of leading/leftmost dimension of array.
+
+        """
         return 0 if self.shape == () else self.shape[0]
 
 
     def __invert__(self: MyType) -> MyType:
-        """Inverse rotation (backward rotation)."""
+        """
+        Return ~self.
+
+        Inverse rotation (backward rotation).
+
+        """
         dup = self.copy()
         dup.quaternion[...,1:] *= -1
         return dup
@@ -228,6 +257,8 @@ class Rotation:
     def __pow__(self: MyType,
                 exp: Union[float, int]) -> MyType:
         """
+        Return self**exp.
+
         Perform the rotation 'exp' times.
 
         Parameters
@@ -243,6 +274,8 @@ class Rotation:
     def __ipow__(self: MyType,
                  exp: Union[float, int]) -> MyType:
         """
+        Return self**=exp.
+
         Perform the rotation 'exp' times (in-place).
 
         Parameters
@@ -257,6 +290,8 @@ class Rotation:
     def __mul__(self: MyType,
                 other: MyType) -> MyType:
         """
+        Return self*other.
+
         Compose with other.
 
         Parameters
@@ -284,6 +319,8 @@ class Rotation:
     def __imul__(self: MyType,
                  other: MyType) -> MyType:
         """
+        Return self*=other.
+
         Compose with other (in-place).
 
         Parameters
@@ -298,6 +335,8 @@ class Rotation:
     def __truediv__(self: MyType,
                     other: MyType) -> MyType:
         """
+        Return self/other.
+
         Compose with inverse of other.
 
         Parameters
@@ -319,6 +358,8 @@ class Rotation:
     def __itruediv__(self: MyType,
                      other: MyType) -> MyType:
         """
+        Return self/=other.
+
         Compose with inverse of other (in-place).
 
         Parameters
@@ -333,7 +374,9 @@ class Rotation:
     def __matmul__(self,
                    other: np.ndarray) -> np.ndarray:
         """
-        Rotate vector, second order tensor, or fourth order tensor.
+        Return self@other.
+
+        Rotate vector, second-order tensor, or fourth-order tensor.
 
         Parameters
         ----------
@@ -365,7 +408,7 @@ class Rotation:
                 R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
-                raise ValueError('can only rotate vectors, 2nd order tensors, and 4th order tensors')
+                raise ValueError('can only rotate vectors, second-order tensors, and fourth-order tensors')
         elif isinstance(other, Rotation):
             raise TypeError('use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
@@ -1372,7 +1415,7 @@ class Rotation:
         w[np.isclose(w[...,0],1.0+0.0j),1:] = 0.
         w[np.isclose(w[...,1],1.0+0.0j),2:] = 0.
         vr = np.swapaxes(vr,-1,-2)
-        ax = np.where(np.abs(diag_delta)<1e-12,
+        ax = np.where(np.abs(diag_delta)<1e-13,
                              np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,)),
                       np.abs(np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,))) \
                       *np.sign(diag_delta))
@@ -1581,14 +1624,13 @@ class Rotation:
     @staticmethod
     def _ho2ax(ho: np.ndarray) -> np.ndarray:
         """Homochoric vector to axis–angle pair."""
-        tfit = np.array([+1.0000000000018852,      -0.5000000002194847,
-                         -0.024999992127593126,    -0.003928701544781374,
-                         -0.0008152701535450438,   -0.0002009500426119712,
-                         -0.00002397986776071756,  -0.00008202868926605841,
-                         +0.00012448715042090092,  -0.0001749114214822577,
-                         +0.0001703481934140054,   -0.00012062065004116828,
-                         +0.000059719705868660826, -0.00001980756723965647,
-                         +0.000003953714684212874, -0.00000036555001439719544])
+        tfit = np.array([+0.9999999999999968,     -0.49999999999986866,     -0.025000000000632055,
+                         -0.003928571496460683,   -0.0008164666077062752,   -0.00019411896443261646,
+                         -0.00004985822229871769, -0.000014164962366386031, -1.9000248160936107e-6,
+                         -5.72184549898506e-6,    +7.772149920658778e-6,    -0.00001053483452909705,
+                         +9.528014229335313e-6,   -5.660288876265125e-6,    +1.2844901692764126e-6,
+                         +1.1255185726258763e-6,  -1.3834391419956455e-6,   +7.513691751164847e-7,
+                         -2.401996891720091e-7,   +4.386887017466388e-8,    -3.5917775353564864e-9])
         hmag_squared = np.sum(ho**2.,axis=-1,keepdims=True)
         s = np.sum(tfit*hmag_squared**np.arange(len(tfit)),axis=-1,keepdims=True)
         with np.errstate(invalid='ignore'):
@@ -1679,7 +1721,7 @@ class Rotation:
 
         """
         with np.errstate(invalid='ignore',divide='ignore'):
-            # get pyramide and scale by grid parameter ratio
+            # get pyramid and scale by grid parameter ratio
             XYZ = np.take_along_axis(cu,Rotation._get_pyramid_order(cu,'forward'),-1) * _sc
             order = np.abs(XYZ[...,1:2]) <= np.abs(XYZ[...,0:1])
             q = np.pi/12.0 * np.where(order,XYZ[...,1:2],XYZ[...,0:1]) \

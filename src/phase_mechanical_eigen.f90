@@ -61,7 +61,7 @@ module subroutine eigen_init(phases)
 
   if (maxval(Nmodels) /= 0) then
     where(thermalexpansion_init(maxval(Nmodels))) model = EIGEN_thermal_expansion_ID
-  endif
+  end if
 
   allocate(model_damage(phases%length),  source = EIGEN_UNDEFINED_ID)
 

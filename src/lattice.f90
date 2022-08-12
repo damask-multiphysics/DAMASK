@@ -13,7 +13,7 @@ module lattice
   use math
   use rotations
 
-  implicit none
+  implicit none(type,external)
   private
 
 !--------------------------------------------------------------------------------------------------
@@ -484,8 +484,8 @@ function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(character
         case default
           call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(lattice))
       end select
-    enddo mySystems
-  enddo myFamilies
+    end do mySystems
+  end do myFamilies
 
 end function lattice_characteristicShear_Twin
 
@@ -523,7 +523,7 @@ function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
   do i = 1, sum(Ntwin)
     call R%fromAxisAngle([coordinateSystem(1:3,2,i),PI],P=1)                                        ! ToDo: Why always 180 deg?
     lattice_C66_twin(1:6,1:6,i) = R%rotStiffness(C66)
-  enddo
+  end do
 
 end function lattice_C66_twin
 
@@ -572,19 +572,19 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
     C_target_unrotated66 = C_parent66
   else
     call IO_error(137,ext_msg='lattice_C66_trans : '//trim(lattice_target))
-  endif
+  end if
 
   do i = 1,6
     if (abs(C_target_unrotated66(i,i))<tol_math_check) &
-    call IO_error(135,el=i,ext_msg='matrix diagonal "el"ement in transformation')
-  enddo
+    call IO_error(135,'matrix diagonal in transformation',label1='entry',ID1=i)
+  end do
 
   call buildTransformationSystem(Q,S,Ntrans,cOverA_trans,a_cF,a_cI)
 
   do i = 1,sum(Ntrans)
     call R%fromMatrix(Q(1:3,1:3,i))
     lattice_C66_trans(1:6,1:6,i) = R%rotStiffness(C_target_unrotated66)
-  enddo
+  end do
 
  end function lattice_C66_trans
 
@@ -632,7 +632,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
                                               math_cross(normal, direction))
     if (size(nonSchmidCoefficients)>5) nonSchmidMatrix(1:3,1:3,i) = nonSchmidMatrix(1:3,1:3,i) &
       + nonSchmidCoefficients(6) * math_outer(direction, direction)
-  enddo
+  end do
 
 end function lattice_nonSchmidMatrix
 
@@ -1431,8 +1431,8 @@ function lattice_SchmidMatrix_slip(Nslip,lattice,cOverA) result(SchmidMatrix)
   do i = 1, sum(Nslip)
     SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
-      call IO_error(0,i,ext_msg = 'dilatational Schmid matrix for slip')
-  enddo
+      error stop 'dilatational Schmid matrix for slip'
+  end do
 
 end function lattice_SchmidMatrix_slip
 
@@ -1478,8 +1478,8 @@ function lattice_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
   do i = 1, sum(Ntwin)
     SchmidMatrix(1:3,1:3,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
     if (abs(math_trace33(SchmidMatrix(1:3,1:3,i))) > tol_math_check) &
-      call IO_error(0,i,ext_msg = 'dilatational Schmid matrix for twin')
-  enddo
+      error stop 'dilatational Schmid matrix for twin'
+  end do
 
 end function lattice_SchmidMatrix_twin
 
@@ -1552,7 +1552,7 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMa
     SchmidMatrix(1:3,1:3,1,i) = math_outer(coordinateSystem(1:3,1,i),coordinateSystem(1:3,2,i))
     SchmidMatrix(1:3,1:3,2,i) = math_outer(coordinateSystem(1:3,3,i),coordinateSystem(1:3,2,i))
     SchmidMatrix(1:3,1:3,3,i) = math_outer(coordinateSystem(1:3,2,i),coordinateSystem(1:3,2,i))
-  enddo
+  end do
 
 end function lattice_SchmidMatrix_cleavage
 
@@ -1719,8 +1719,8 @@ pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
    do i = 1, 6
      do j = i+1, 6
        C66_sym(j,i) = C66_sym(i,j)
-     enddo
-   enddo
+     end do
+   end do
 
 end function lattice_symmetrize_C66
 
@@ -1782,7 +1782,7 @@ function slipProjection_transverse(Nslip,lattice,cOverA) result(projection)
 
   do i=1, sum(Nslip); do j=1, sum(Nslip)
     projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
-  enddo; enddo
+  end do; end do
 
 end function slipProjection_transverse
 
@@ -1806,7 +1806,7 @@ function slipProjection_direction(Nslip,lattice,cOverA) result(projection)
 
   do i=1, sum(Nslip); do j=1, sum(Nslip)
     projection(i,j) = abs(math_inner(n(:,i),d(:,j)))
-  enddo; enddo
+  end do; end do
 
 end function slipProjection_direction
 
@@ -1890,8 +1890,8 @@ function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,valu
 
           buildInteraction(l,k) = values(matrix(i,j))
 
-      enddo; enddo
-  enddo; enddo
+      end do; end do
+  end do; end do
 
 end function buildInteraction
 
@@ -1957,8 +1957,8 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
       buildCoordinateSystem(1:3,3,a) = math_cross(direction/norm2(direction),&
                                                   normal   /norm2(normal))
 
-    enddo activeSystems
-  enddo activeFamilies
+    end do activeSystems
+  end do activeFamilies
 
 end function buildCoordinateSystem
 
@@ -2008,7 +2008,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       ],pReal),shape(CFTOHP_SYSTEMTRANS))
 
   real(pReal), dimension(4,cF_Ntrans), parameter :: &
-    CFTOCI_SYSTEMTRANS = reshape([&
+    CFTOCI_SYSTEMTRANS = real(reshape([&
       0.0, 1.0, 0.0,     10.26, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
       0.0,-1.0, 0.0,     10.26, &
       0.0, 0.0, 1.0,     10.26, &
@@ -2021,7 +2021,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
      -1.0, 0.0, 0.0,     10.26, &
       0.0, 1.0, 0.0,     10.26, &
       0.0,-1.0, 0.0,     10.26  &
-      ],shape(CFTOCI_SYSTEMTRANS))
+      ],shape(CFTOCI_SYSTEMTRANS)),pReal)
 
   integer, dimension(9,cF_Ntrans), parameter :: &
     CFTOCI_BAINVARIANT = reshape( [&
@@ -2040,7 +2040,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       ],shape(CFTOCI_BAINVARIANT))
 
   real(pReal), dimension(4,cF_Ntrans), parameter :: &
-    CFTOCI_BAINROT = reshape([&
+    CFTOCI_BAINROT = real(reshape([&
       1.0, 0.0, 0.0,     45.0, &                                                                    ! Rotate cF austensite to bain variant
       1.0, 0.0, 0.0,     45.0, &
       1.0, 0.0, 0.0,     45.0, &
@@ -2053,7 +2053,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       0.0, 0.0, 1.0,     45.0, &
       0.0, 0.0, 1.0,     45.0, &
       0.0, 0.0, 1.0,     45.0  &
-      ],shape(CFTOCI_BAINROT))
+      ],shape(CFTOCI_BAINROT)),pReal)
 
   if (present(a_cI) .and. present(a_cF)) then
     do i = 1,sum(Ntrans)
@@ -2066,7 +2066,7 @@ subroutine buildTransformationSystem(Q,S,Ntrans,cOverA,a_cF,a_cI)
       U = (a_cI/a_cF) * (math_outer(x,x) + (math_outer(y,y)+math_outer(z,z)) * sqrt(2.0_pReal))
       Q(1:3,1:3,i) = matmul(R%asMatrix(),B%asMatrix())
       S(1:3,1:3,i) = matmul(R%asMatrix(),U) - MATH_I3
-    enddo
+    end do
   else if (present(cOverA)) then
     ss      = MATH_I3
     sd      = MATH_I3
@@ -2125,7 +2125,7 @@ function getlabels(active,potential,system) result(labels)
         write(label(i+1:i+2),'(I2.1)') int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
-      enddo direction
+      end do direction
       label(i:i) = ']'
 
       i = i +1
@@ -2134,13 +2134,13 @@ function getlabels(active,potential,system) result(labels)
         write(label(i+1:i+2),'(I2.1)') int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
-      enddo normal
+      end do normal
       label(i:i) = ')'
 
       labels(a) = label
 
-    enddo activeSystems
-  enddo activeFamilies
+    end do activeSystems
+  end do activeFamilies
 
 end function getlabels
 
@@ -2170,7 +2170,7 @@ pure function lattice_equivalent_nu(C,assumption) result(nu)
       / (S(1,1)+S(2,2)+S(3,3) +2.0_pReal*(S(1,2)+S(2,3)+S(1,3)))
   else
     error stop 'invalid assumption'
-  endif
+  end if
 
   mu = lattice_equivalent_mu(C,assumption)
   nu = (1.5_pReal*K-mu)/(3.0_pReal*K+mu)
@@ -2202,7 +2202,7 @@ pure function lattice_equivalent_mu(C,assumption) result(mu)
        / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
   else
     error stop 'invalid assumption'
-  endif
+  end if
 
 end function lattice_equivalent_mu
 
@@ -2266,7 +2266,7 @@ subroutine selfTest
     if (any(dNeq(T(1,1),[T_hP(1,1),T_hP(2,2)])))           error stop 'Symmetry33_11-22/hP'
     if (any(dNeq(T(1,1),[T_tI(1,1),T_tI(2,2)])))           error stop 'Symmetry33_11-22/tI'
 
-  enddo
+  end do
 
   call random_number(C)
   C(1,1) = C(1,1) + C(1,2) + 0.1_pReal

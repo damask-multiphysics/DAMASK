@@ -8,7 +8,7 @@ module polynomials
   use YAML_parse
   use YAML_types
 
-  implicit none
+  implicit none(type,external)
   private
 
   type, public :: tPolynomial
@@ -112,7 +112,7 @@ pure function eval(self,x) result(y)
 #else
     y = IEEE_FMA(y,x-self%x_ref,self%coef(o))
 #endif
-  enddo
+  end do
 
 end function eval
 

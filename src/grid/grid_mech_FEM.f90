@@ -27,7 +27,12 @@ module grid_mechanical_FEM
   use discretization
   use discretization_grid
 
+
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
   private
 
   type(tSolutionParams) :: params
@@ -115,6 +120,8 @@ subroutine grid_mechanical_FEM_init
   class(tNode), pointer :: &
     num_grid, &
     debug_grid
+  character(len=pStringLen) :: &
+    extmsg = ''
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
 
@@ -134,12 +141,14 @@ subroutine grid_mechanical_FEM_init
   num%itmin           = num_grid%get_asInt  ('itmin',defaultVal=1)
   num%itmax           = num_grid%get_asInt  ('itmax',defaultVal=250)
 
-  if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
-  if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
-  if (num%eps_stress_atol <= 0.0_pReal)          call IO_error(301,ext_msg='eps_stress_atol')
-  if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
-  if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
-  if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
+  if (num%eps_div_atol <= 0.0_pReal)             extmsg = trim(extmsg)//' eps_div_atol'
+  if (num%eps_div_rtol < 0.0_pReal)              extmsg = trim(extmsg)//' eps_div_rtol'
+  if (num%eps_stress_atol <= 0.0_pReal)          extmsg = trim(extmsg)//' eps_stress_atol'
+  if (num%eps_stress_rtol < 0.0_pReal)           extmsg = trim(extmsg)//' eps_stress_rtol'
+  if (num%itmax <= 1)                            extmsg = trim(extmsg)//' itmax'
+  if (num%itmin > num%itmax .or. num%itmin < 1)  extmsg = trim(extmsg)//' itmin'
+
+  if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -217,14 +226,14 @@ subroutine grid_mechanical_FEM_init
   delta = geomSize/real(cells,pReal)                                                                ! grid spacing
   detJ = product(delta)                                                                             ! cell volume
 
-  BMat = reshape(real([-1.0_pReal/delta(1),-1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1),-1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                       -1.0_pReal/delta(1), 1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1), 1.0_pReal/delta(2),-1.0_pReal/delta(3), &
-                       -1.0_pReal/delta(1),-1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1),-1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                       -1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3), &
-                        1.0_pReal/delta(1), 1.0_pReal/delta(2), 1.0_pReal/delta(3)],pReal), [3,8])/4.0_pReal ! shape function derivative matrix
+  BMat = reshape(real([-delta(1)**(-1),-delta(2)**(-1),-delta(3)**(-1), &
+                        delta(1)**(-1),-delta(2)**(-1),-delta(3)**(-1), &
+                       -delta(1)**(-1), delta(2)**(-1),-delta(3)**(-1), &
+                        delta(1)**(-1), delta(2)**(-1),-delta(3)**(-1), &
+                       -delta(1)**(-1),-delta(2)**(-1), delta(3)**(-1), &
+                        delta(1)**(-1),-delta(2)**(-1), delta(3)**(-1), &
+                       -delta(1)**(-1), delta(2)**(-1), delta(3)**(-1), &
+                        delta(1)**(-1), delta(2)**(-1), delta(3)**(-1)],pReal), [3,8])/4.0_pReal    ! shape function derivative matrix
 
   HGMat = matmul(transpose(HGcomp),HGcomp) &
         * HGCoeff*(delta(1)*delta(2) + delta(2)*delta(3) + delta(3)*delta(1))/16.0_pReal            ! hourglass stabilization matrix
@@ -652,7 +661,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   MatNullSpace                         :: matnull
   PetscErrorCode                       :: err_PETSc
 
-  BMatFull = 0.0
+  BMatFull = 0.0_pReal
   BMatFull(1:3,1 :8 ) = BMat
   BMatFull(4:6,9 :16) = BMat
   BMatFull(7:9,17:24) = BMat
@@ -682,7 +691,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
     enddo; enddo; enddo
     row = col
     ce = ce + 1
-    K_ele = 0.0
+    K_ele = 0.0_pReal
     K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ce) + &
                                 homogenization_dPdF(2,2,2,2,ce) + &
                                 homogenization_dPdF(3,3,3,3,ce))/3.0_pReal

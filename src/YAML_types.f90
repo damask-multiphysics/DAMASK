@@ -11,7 +11,7 @@ module YAML_types
   use IO
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
   type, abstract, public :: tNode
@@ -411,7 +411,7 @@ function tNode_get_byIndex(self,i) result(node)
 
   do j = 2,i
     item => item%next
-  enddo
+  end do
   node => item%node
 
 end function tNode_get_byIndex
@@ -681,7 +681,7 @@ function tNode_contains(self,k)  result(exists)
           exists = .true.
           return
         end if
-      enddo
+      end do
     class is(tList)
       list => self%asList()
       do j=1, list%length
@@ -689,7 +689,7 @@ function tNode_contains(self,k)  result(exists)
           exists = .true.
           return
         end if
-      enddo
+      end do
     class default
       call IO_error(706,ext_msg='Expected list or dict')
   end select
@@ -731,7 +731,7 @@ function tNode_get_byKey(self,k,defaultVal) result(node)
     end if
     item => item%next
     j = j + 1
-  enddo
+  end do
 
   if (.not. found) then
     call IO_error(143,ext_msg=k)
@@ -1333,7 +1333,7 @@ function tList_as1dString(self)
     scalar => item%node%asScalar()
     tList_as1dString(i) = scalar%asString()
     item => item%next
-  enddo
+  end do
 
 end function tList_as1dString
 
@@ -1384,7 +1384,7 @@ subroutine tDict_set(self,key,node)
     searchExisting: do while (associated(item%next))
       if (item%key == key) exit
       item => item%next
-    enddo searchExisting
+    end do searchExisting
     if (item%key /= key) then
       allocate(item%next)
       item => item%next

@@ -18,7 +18,11 @@ module parallelization
 
   use prec
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
   private
 
 #ifndef PETSC
@@ -90,14 +94,14 @@ subroutine parallelization_init
 #ifdef LOGFILE
   write(rank_str,'(i4.4)') worldrank
   open(OUTPUT_UNIT,file='out.'//rank_str,status='replace',encoding='UTF-8')
-  open(ERROR_UNIT,file='error.'//rank_str,status='replace',encoding='UTF-8')
+  open(ERROR_UNIT,file='err.'//rank_str,status='replace',encoding='UTF-8')
 #else
   if (worldrank /= 0) then
     close(OUTPUT_UNIT)                                                                              ! disable output
     open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
   else
     open(OUTPUT_UNIT,encoding='UTF-8')                                                              ! for special characters in output
-  endif
+  end if
 #endif
 
   print'(/,1x,a)', '<<<+-  parallelization init  -+>>>'
@@ -142,8 +146,8 @@ subroutine parallelization_init
 !$   if (OMP_NUM_THREADS < 1_pI32) then
 !$     print'(1x,a)', 'Invalid OMP_NUM_THREADS: "'//trim(NumThreadsString)//'", using default'
 !$     OMP_NUM_THREADS = 4_pI32
-!$   endif
-!$ endif
+!$   end if
+!$ end if
 !$ print'(1x,a,i0)',   'OMP_NUM_THREADS: ',OMP_NUM_THREADS
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 

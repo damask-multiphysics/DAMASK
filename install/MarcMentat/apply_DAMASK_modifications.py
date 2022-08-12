@@ -6,15 +6,18 @@ import glob
 import argparse
 import shutil
 from pathlib import Path
+import subprocess
+import shlex
 
-import damask
+sys.path.append(str(Path(__file__).parents[2]/'python/damask'))
+import solver
 
 def copy_and_patch(patch,orig,editor):
     try:
         shutil.copyfile(orig,orig.parent/patch.stem)
     except shutil.SameFileError:
         pass
-    damask.util.run(f'patch {orig.parent/patch.stem} {patch} --backup --forward')
+    subprocess.run(shlex.split(f'patch {orig.parent/patch.stem} {patch} --backup --forward'))
     with open(orig.parent/patch.stem) as f_in:
         content = f_in.read()
     with open(orig.parent/patch.stem,'w') as f_out:
@@ -28,14 +31,15 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
                     help='Name of the editor (executable) used by Marc Mentat')
 parser.add_argument('--marc-root', dest='marc_root', metavar='string',
-                    default=damask.solver._marc._marc_root,
+                    default=solver._marc._marc_root,
                     help='Marc root directory')
 parser.add_argument('--marc-version', dest='marc_version', metavar='string',
-                    default=damask.solver._marc._marc_version,
+                    default=solver._marc._marc_version,
                     help='Marc version')
 parser.add_argument('--damask-root', dest='damask_root', metavar = 'string',
-                    default=damask.solver._marc._damask_root,
+                    default=solver._marc._damask_root,
                     help='DAMASK root directory')
+
 
 args = parser.parse_args()
 marc_root = Path(args.marc_root).expanduser()
@@ -52,7 +56,7 @@ matches = {'Marc_tools':  [['comp_user','comp_damask_*mp'],
 
 for cmd in ['patch','xvfb-run']:
     try:
-        damask.util.run(f'{cmd} --help')
+        subprocess.run(shlex.split(f'{cmd} --help'))
     except FileNotFoundError:
         print(f'"{cmd}" not found, please install')
         sys.exit()
@@ -71,7 +75,7 @@ print('compiling Mentat menu binaries...')
 
 executable = marc_root/f'mentat{marc_version}/bin/mentat'
 menu_file  = marc_root/f'mentat{marc_version}/menus/linux64/main.msb'
-damask.util.run(f'xvfb-run -a {executable} -compile {menu_file}')
+subprocess.run(shlex.split(f'xvfb-run -a {executable} -compile {menu_file}'))
 
 print('setting file access rights...')
 

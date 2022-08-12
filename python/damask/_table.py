@@ -37,7 +37,12 @@ class Table:
 
 
     def __repr__(self) -> str:
-        """Give short human-readable summary."""
+        """
+        Return repr(self).
+
+        Give short human-readable summary.
+
+        """
         self._relabel('shapes')
         data_repr = self.data.__repr__()
         self._relabel('uniform')
@@ -46,7 +51,12 @@ class Table:
 
     def __eq__(self,
                other: object) -> bool:
-        """Compare to other Table."""
+        """
+        Return self==other.
+
+        Test equality of other.
+
+        """
         return NotImplemented if not isinstance(other,Table) else \
                self.shapes == other.shapes and self.data.equals(other.data)
 
@@ -54,7 +64,9 @@ class Table:
     def __getitem__(self,
                     item: Union[slice, Tuple[slice, ...]]) -> 'Table':
         """
-        Slice the Table according to item.
+        Return self[item].
+
+        Return slice according to item.
 
         Parameters
         ----------
@@ -102,12 +114,22 @@ class Table:
 
 
     def __len__(self) -> int:
-        """Number of rows."""
+        """
+        Return len(self).
+
+        Number of rows.
+
+        """
         return len(self.data)
 
 
     def __copy__(self) -> 'Table':
-        """Create deep copy."""
+        """
+        Return deepcopy(self).
+
+        Create deep copy.
+
+        """
         return copy.deepcopy(self)
 
     copy = __copy__
@@ -134,7 +156,7 @@ class Table:
         labels = []
         for label in what:
             shape = self.shapes[label]
-            size = np.prod(shape,dtype=int)
+            size = np.prod(shape,dtype=np.int64)
             if   how == 'uniform':
                 labels += [label] * size
             elif how == 'shapes':
@@ -168,7 +190,7 @@ class Table:
                      shape: Tuple[int, ...],
                      info: str = None):
         if info is not None:
-            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
+            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
             self.comments.append(f'{specific} / {general}')
 
@@ -401,7 +423,7 @@ class Table:
         else:
 
             dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
-            size = np.prod(data.shape[1:],dtype=int)
+            size = np.prod(data.shape[1:],dtype=np.int64)
             new = pd.DataFrame(data=data.reshape(-1,size),
                                columns=[label]*size,
                               )

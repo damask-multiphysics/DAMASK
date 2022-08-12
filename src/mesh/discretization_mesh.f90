@@ -25,7 +25,11 @@ module discretization_mesh
   use YAML_types
   use prec
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
   private
 
   integer, public, protected :: &
@@ -52,6 +56,11 @@ module discretization_mesh
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
+  external :: &
+#ifdef PETSC_USE_64BIT_INDICES
+    DMDestroy, &
+#endif
+    DMView                                                                                          ! ToDo: write interface
   public :: &
     discretization_mesh_init, &
     mesh_FEM_build_ipVolumes, &
@@ -242,12 +251,12 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,err_PETSc)
     CHKERRQ(err_PETSc)
     qOffset = 0
-    do qPt = 1, mesh_maxNips
-      do dirI = 1, dimPlex
+    do qPt = 1_pPETSCINT, mesh_maxNips
+      do dirI = 1_pPETSCINT, dimPlex
         mesh_ipCoordinates(dirI,qPt,cell+1) = pV0(dirI)
-        do dirJ = 1, dimPlex
+        do dirJ = 1_pPETSCINT, dimPlex
           mesh_ipCoordinates(dirI,qPt,cell+1) = mesh_ipCoordinates(dirI,qPt,cell+1) + &
-                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0)
+                                                pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pReal)
         enddo
       enddo
       qOffset = qOffset + dimPlex

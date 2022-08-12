@@ -10,18 +10,26 @@ _damask_root = str(Path(__file__).parents[3])
 class Marc:
     """Wrapper to run DAMASK with MSC Marc."""
 
-    def __init__(self,marc_version=_marc_version,marc_root=_marc_root,damask_root=_damask_root):
+    def __init__(self,
+                 version: str = _marc_version,
+                 marc_root: str = _marc_root,
+                 damask_root: str = _damask_root):
         """
         Create a Marc solver object.
 
         Parameters
         ----------
-        version : string
-            Marc version
+        version : str, optional
+            Marc version. Defaults to latest supported Marc version.
+        marc_root : str, optional
+            Marc root location. Defaults to /opt/msc.
+        damask_root : str, optional
+            DAMASK root location.
+            Default is autodected based on location of the Python library.
 
         """
-        self.marc_version = marc_version
-        self.marc_root    = Path(marc_root)
+        self.marc_version = version
+        self.marc_root = Path(marc_root)
         self.damask_root = Path(damask_root)
 
     @property
@@ -44,9 +52,10 @@ class Marc:
         return path_tools
 
 
-    def submit_job(self, model, job,
-                   compile      = False,
-                   optimization = ''):
+    def submit_job(self, model: str, job: str,
+                   compile: bool = False,
+                   optimization: str = '',
+                   env = None):
         """
         Assemble command line arguments and call Marc executable.
 
@@ -62,6 +71,8 @@ class Marc:
         optimization : str, optional
             Optimization level '' (-O0), 'l' (-O1), or 'h' (-O3).
             Defaults to ''.
+        env : dict, optional
+            Environment for execution.
 
         """
         usersub = (self.damask_root/'src/Marc/DAMASK_Marc').with_suffix('.f90' if compile else '.marc')
@@ -73,18 +84,16 @@ class Marc:
 
         cmd = f'{self.tools_path/script} -jid {model}_{job} -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no ' \
             + (f'-u {usersub} -save y' if compile else f'-prog {usersub.with_suffix("")}')
-
         print(cmd)
 
-        ret = subprocess.run(shlex.split(cmd),capture_output=True)
+        ret = subprocess.run(shlex.split(cmd),capture_output=True,env=env)
 
-        try:
-            v = int(re.search('Exit number ([0-9]+)',ret.stderr.decode()).group(1))
-            if 3004 != v:
+        if (m := re.search('Exit number ([0-9]+)',ret.stderr.decode())) is not None:
+            if 3004 != (v := int(m.group(1))):
                 print(ret.stderr.decode())
                 print(ret.stdout.decode())
                 raise RuntimeError(f'Marc simulation failed ({v})')
-        except (AttributeError,ValueError):
+        else:
             print(ret.stderr.decode())
             print(ret.stdout.decode())
             raise RuntimeError('Marc simulation failed (unknown return value)')

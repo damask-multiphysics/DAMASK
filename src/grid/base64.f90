@@ -7,7 +7,7 @@ module base64
   use prec
   use IO
 
-  implicit none
+  implicit none(type,external)
   private
 
   character(len=*), parameter :: &

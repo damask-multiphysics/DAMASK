@@ -7,7 +7,7 @@ module discretization
   use prec
   use results
 
-  implicit none
+  implicit none(type,external)
   private
 
   integer,     public, protected :: &
@@ -68,7 +68,7 @@ subroutine discretization_init(materialAt,&
     discretization_sharedNodesBegin = sharedNodesBegin
   else
     discretization_sharedNodesBegin = size(discretization_NodeCoords0,2)
-  endif
+  end if
 
 end subroutine discretization_init
 

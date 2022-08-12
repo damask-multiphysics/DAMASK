@@ -19,7 +19,7 @@ module phase
   use HDF5
   use HDF5_utilities
 
-  implicit none
+  implicit none(type,external)
   private
 
   type :: tState
@@ -539,7 +539,8 @@ subroutine crystallite_init()
   class(tNode), pointer :: &
     num_crystallite, &
     phases
-
+  character(len=pStringLen) :: &
+    extmsg = ''
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
@@ -555,22 +556,19 @@ subroutine crystallite_init()
   num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
   num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
-  if (num%subStepMinCryst   <= 0.0_pReal)      call IO_error(301,ext_msg='subStepMinCryst')
-  if (num%subStepSizeCryst  <= 0.0_pReal)      call IO_error(301,ext_msg='subStepSizeCryst')
-  if (num%stepIncreaseCryst <= 0.0_pReal)      call IO_error(301,ext_msg='stepIncreaseCryst')
+  if (num%subStepMinCryst   <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepMinCryst'
+  if (num%subStepSizeCryst  <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepSizeCryst'
+  if (num%stepIncreaseCryst <= 0.0_pReal)      extmsg = trim(extmsg)//' stepIncreaseCryst'
+  if (num%subStepSizeLp <= 0.0_pReal)          extmsg = trim(extmsg)//' subStepSizeLp'
+  if (num%subStepSizeLi <= 0.0_pReal)          extmsg = trim(extmsg)//' subStepSizeLi'
+  if (num%rtol_crystalliteState  <= 0.0_pReal) extmsg = trim(extmsg)//' rtol_crystalliteState'
+  if (num%rtol_crystalliteStress <= 0.0_pReal) extmsg = trim(extmsg)//' rtol_crystalliteStress'
+  if (num%atol_crystalliteStress <= 0.0_pReal) extmsg = trim(extmsg)//' atol_crystalliteStress'
+  if (num%iJacoLpresiduum < 1)                 extmsg = trim(extmsg)//' iJacoLpresiduum'
+  if (num%nState  < 1)                         extmsg = trim(extmsg)//' nState'
+  if (num%nStress < 1)                         extmsg = trim(extmsg)//' nStress'
 
-  if (num%subStepSizeLp <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLp')
-  if (num%subStepSizeLi <= 0.0_pReal)          call IO_error(301,ext_msg='subStepSizeLi')
-
-  if (num%rtol_crystalliteState  <= 0.0_pReal) call IO_error(301,ext_msg='rtol_crystalliteState')
-  if (num%rtol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='rtol_crystalliteStress')
-  if (num%atol_crystalliteStress <= 0.0_pReal) call IO_error(301,ext_msg='atol_crystalliteStress')
-
-  if (num%iJacoLpresiduum < 1)                 call IO_error(301,ext_msg='iJacoLpresiduum')
-
-  if (num%nState < 1)                          call IO_error(301,ext_msg='nState')
-  if (num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
-
+  if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
   phases => config_material%get('phase')
 
@@ -628,8 +626,9 @@ function crystallite_push33ToRef(co,ce, tensor33)
     ce
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
-  real(pReal), dimension(3,3)             :: T
+  real(pReal), dimension(3,3) :: T
   integer :: ph, en
+
 
   ph = material_phaseID(co,ce)
   en = material_phaseEntry(co,ce)

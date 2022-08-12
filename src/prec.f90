@@ -15,7 +15,7 @@ module prec
   use PETScSys
 #endif
 
-  implicit none
+  implicit none(type,external)
   public
 
   ! https://stevelionel.com/drfortran/2017/03/27/doctor-fortran-in-it-takes-all-kinds

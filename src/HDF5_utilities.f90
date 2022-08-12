@@ -18,7 +18,11 @@ module HDF5_utilities
   use prec
   use parallelization
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
   private
 
 !--------------------------------------------------------------------------------------------------
@@ -509,7 +513,7 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   do i=1,size(attrValue)
     attrValue_(i) = attrValue(i)//C_NULL_CHAR
     ptr(i) = c_loc(attrValue_(i))
-  enddo
+  end do
 
   call H5Screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id,hdferr,shape(attrValue_,kind=HSIZE_T))
   if(hdferr < 0) error stop 'HDF5 error'

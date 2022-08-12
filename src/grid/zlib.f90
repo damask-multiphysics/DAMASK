@@ -5,7 +5,7 @@
 module zlib
   use prec
 
-  implicit none
+  implicit none(type,external)
   private
 
   public :: &
@@ -13,15 +13,14 @@ module zlib
 
   interface
 
-  subroutine inflate_C(s_deflated,s_inflated,deflated,inflated) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_SIGNED_CHAR, C_INT64_T
+    subroutine inflate_C(s_deflated,s_inflated,deflated,inflated) bind(C)
+      use, intrinsic :: ISO_C_Binding, only: C_SIGNED_CHAR, C_INT64_T
+      implicit none(type,external)
 
-    integer(C_INT64_T),                            intent(in)  :: s_deflated,s_inflated
-    integer(C_SIGNED_CHAR), dimension(s_deflated), intent(in)  :: deflated
-    integer(C_SIGNED_CHAR), dimension(s_inflated), intent(out) :: inflated
-
-  end subroutine inflate_C
+      integer(C_INT64_T),                            intent(in)  :: s_deflated,s_inflated
+      integer(C_SIGNED_CHAR), dimension(s_deflated), intent(in)  :: deflated
+      integer(C_SIGNED_CHAR), dimension(s_inflated), intent(out) :: inflated
+    end subroutine inflate_C
 
   end interface
 
@@ -36,6 +35,7 @@ function zlib_inflate(deflated,size_inflated)
   integer(pI64),                        intent(in) :: size_inflated
 
   integer(C_SIGNED_CHAR), dimension(size_inflated) :: zlib_inflate
+
 
   call inflate_C(size(deflated,kind=C_INT64_T),int(size_inflated,C_INT64_T),deflated,zlib_inflate)
 

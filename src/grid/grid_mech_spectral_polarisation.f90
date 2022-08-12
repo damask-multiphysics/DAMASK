@@ -26,7 +26,11 @@ module grid_mechanical_spectral_polarisation
   use homogenization
   use discretization_grid
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
   private
 
   type(tSolutionParams) :: params
@@ -130,6 +134,8 @@ subroutine grid_mechanical_spectral_polarisation_init
   class (tNode), pointer :: &
     num_grid, &
     debug_grid
+  character(len=pStringLen) :: &
+    extmsg = ''
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 
@@ -157,16 +163,18 @@ subroutine grid_mechanical_spectral_polarisation_init
   num%alpha           = num_grid%get_asFloat('alpha',          defaultVal=1.0_pReal)
   num%beta            = num_grid%get_asFloat('beta',           defaultVal=1.0_pReal)
 
-  if (num%eps_div_atol <= 0.0_pReal)                      call IO_error(301,ext_msg='eps_div_atol')
-  if (num%eps_div_rtol < 0.0_pReal)                       call IO_error(301,ext_msg='eps_div_rtol')
-  if (num%eps_curl_atol <= 0.0_pReal)                     call IO_error(301,ext_msg='eps_curl_atol')
-  if (num%eps_curl_rtol < 0.0_pReal)                      call IO_error(301,ext_msg='eps_curl_rtol')
-  if (num%eps_stress_atol <= 0.0_pReal)                   call IO_error(301,ext_msg='eps_stress_atol')
-  if (num%eps_stress_rtol < 0.0_pReal)                    call IO_error(301,ext_msg='eps_stress_rtol')
-  if (num%itmax <= 1)                                     call IO_error(301,ext_msg='itmax')
-  if (num%itmin > num%itmax .or. num%itmin < 1)           call IO_error(301,ext_msg='itmin')
-  if (num%alpha <= 0.0_pReal .or. num%alpha >  2.0_pReal) call IO_error(301,ext_msg='alpha')
-  if (num%beta < 0.0_pReal .or. num%beta > 2.0_pReal)     call IO_error(301,ext_msg='beta')
+  if (num%eps_div_atol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_div_atol'
+  if (num%eps_div_rtol < 0.0_pReal)                       extmsg = trim(extmsg)//' eps_div_rtol'
+  if (num%eps_curl_atol <= 0.0_pReal)                     extmsg = trim(extmsg)//' eps_curl_atol'
+  if (num%eps_curl_rtol < 0.0_pReal)                      extmsg = trim(extmsg)//' eps_curl_rtol'
+  if (num%eps_stress_atol <= 0.0_pReal)                   extmsg = trim(extmsg)//' eps_stress_atol'
+  if (num%eps_stress_rtol < 0.0_pReal)                    extmsg = trim(extmsg)//' eps_stress_rtol'
+  if (num%itmax <= 1)                                     extmsg = trim(extmsg)//' itmax'
+  if (num%itmin > num%itmax .or. num%itmin < 1)           extmsg = trim(extmsg)//' itmin'
+  if (num%alpha <= 0.0_pReal .or. num%alpha >  2.0_pReal) extmsg = trim(extmsg)//' alpha'
+  if (num%beta < 0.0_pReal .or. num%beta > 2.0_pReal)     extmsg = trim(extmsg)//' beta'
+
+  if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc

@@ -5,7 +5,7 @@
 module constants
   use prec
 
-  implicit none
+  implicit none(type,external)
   public
 
   real(pReal), parameter :: &

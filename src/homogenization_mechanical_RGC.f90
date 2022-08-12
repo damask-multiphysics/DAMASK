@@ -561,7 +561,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
                                                 *cosh(prm%c_alpha*nDefNorm) &
                                                 *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
                                                 *tanh(nDefNorm/num%xSmoo)
-       end do; end do;enddo; end do
+       end do; end do;end do; end do
      end do interfaceLoop
 
 
@@ -601,9 +601,9 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
     ! calculate the stress and penalty due to volume discrepancy
     vPen      = 0.0_pReal
     do i = 1,nGrain
-      vPen(:,:,i) = -1.0_pReal/real(nGrain,pReal)*num%volDiscrMod*num%volDiscrPow/num%maxVolDiscr* &
-                         sign((abs(vDiscrep)/num%maxVolDiscr)**(num%volDiscrPow - 1.0),vDiscrep)* &
-                         gVol(i)*transpose(math_inv33(fDef(:,:,i)))
+      vPen(:,:,i) = -real(nGrain,pReal)**(-1)*num%volDiscrMod*num%volDiscrPow/num%maxVolDiscr &
+                  * sign((abs(vDiscrep)/num%maxVolDiscr)**(num%volDiscrPow - 1.0_pReal),vDiscrep) &
+                  * gVol(i)*transpose(math_inv33(fDef(:,:,i)))
     end do
 
   end subroutine volumePenalty

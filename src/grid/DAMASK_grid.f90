@@ -30,7 +30,11 @@ program DAMASK_grid
   use grid_thermal_spectral
   use results
 
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  implicit none(type,external)
+#else
   implicit none
+#endif
 
   type :: tLoadCase
     type(tRotation)          :: rot                                                                !< rotation of BC
@@ -272,7 +276,7 @@ program DAMASK_grid
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
 
-      if (loadCases(l)%r <= 0.0)       errorID = 833
+      if (loadCases(l)%r <= 0.0_pReal) errorID = 833
       if (loadCases(l)%t < 0.0_pReal)  errorID = 834
       if (loadCases(l)%N < 1)          errorID = 835
       if (loadCases(l)%f_out < 1)      errorID = 836
@@ -290,7 +294,7 @@ program DAMASK_grid
       if (loadCases(l)%f_restart < huge(0)) &
         print'(2x,a,1x,i0)',   'f_restart:', loadCases(l)%f_restart
 
-      if (errorID > 0) call IO_error(error_ID = errorID, el = l)
+      if (errorID > 0) call IO_error(errorID,label1='line',ID1=l)
 
     endif reportAndCheck
   enddo
@@ -501,7 +505,7 @@ subroutine getMaskedTensor(values,mask,tensor)
   integer :: i,j
 
 
-  values = 0.0
+  values = 0.0_pReal
   do i = 1,3
     row => tensor%get(i)
     do j = 1,3

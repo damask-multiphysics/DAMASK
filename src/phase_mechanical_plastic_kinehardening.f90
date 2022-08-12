@@ -224,7 +224,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(kinehardening)')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg))
 
   end do
 

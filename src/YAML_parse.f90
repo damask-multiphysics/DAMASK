@@ -12,7 +12,7 @@ module YAML_parse
   use system_routines
 #endif
 
-  implicit none
+  implicit none(type,external)
   private
 
   public :: &
@@ -24,6 +24,7 @@ module YAML_parse
 
     subroutine to_flow_C(flow,length_flow,mixed) bind(C)
       use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR, C_PTR
+      implicit none(type,external)
 
       type(C_PTR), intent(out) :: flow
       integer(C_INT), intent(out) :: length_flow
@@ -102,7 +103,7 @@ recursive function parse_flow(YAML_flow) result(node)
         class is (tDict)
           call node%set(key,myVal)
       end select
-    enddo
+    end do
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
     e = 1
     allocate(tList::node)
@@ -115,7 +116,7 @@ recursive function parse_flow(YAML_flow) result(node)
         class is (tList)
           call node%append(myVal)
       end select
-    enddo
+    end do
   else                                                                                              ! scalar value
     allocate(tScalar::node)
       select type (node)
@@ -155,7 +156,7 @@ integer function find_end(str,e_char)
     N_sq = N_sq - merge(1,0,str(i:i) == ']')
     N_cu = N_cu - merge(1,0,str(i:i) == '}')
     i = i + 1
-  enddo
+  end do
   find_end = i
 
 end function find_end
@@ -332,7 +333,7 @@ subroutine skip_empty_lines(blck,s_blck)
   do while(empty .and. len_trim(blck(s_blck:)) /= 0)
     empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
     if(empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
-  enddo
+  end do
 
 end subroutine skip_empty_lines
 
@@ -386,7 +387,7 @@ logical function flow_is_closed(str,e_char)
     N_cu = N_cu + merge(1,0,line(i:i) == '{')
     N_sq = N_sq - merge(1,0,line(i:i) == ']')
     N_cu = N_cu - merge(1,0,line(i:i) == '}')
-  enddo
+  end do
 
 end function flow_is_closed
 
@@ -409,7 +410,7 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
     flow_line = flow_line//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
     line_end  = flow_is_closed(flow_line,e_char)
     s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
-  enddo
+  end do
 
 end subroutine remove_line_break
 
@@ -438,7 +439,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
     inline = inline//' '//trim(adjustl(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))))
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     indent_next = indentDepth(blck(s_blck:))
-  enddo
+  end do
 
   if(scan(inline,",") > 0) inline = '"'//inline//'"'
 
@@ -480,7 +481,7 @@ recursive subroutine line_isFlow(flow,s_flow,line)
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow +2
       s = s + find_end(line(s+1:),']')
-    enddo
+    end do
     s_flow = s_flow - 1
     if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
     flow(s_flow:s_flow) = ']'
@@ -497,7 +498,7 @@ recursive subroutine line_isFlow(flow,s_flow,line)
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow +2
       s = s + find_end(line(s+1:),'}')
-    enddo
+    end do
     s_flow = s_flow -1
     if(flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow -1
     flow(s_flow:s_flow) = '}'
@@ -645,7 +646,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       s_flow = s_flow + 2
     end if
 
-  enddo
+  end do
 
   s_flow = s_flow - 1
   if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
@@ -732,7 +733,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
     flow(s_flow:s_flow) = ' '
     s_flow = s_flow + 1
     offset = 0
-  enddo
+  end do
 
   s_flow = s_flow - 1
   if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1

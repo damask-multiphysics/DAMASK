@@ -4,8 +4,9 @@
 submodule(phase) damage
 
   type :: tDamageParameters
-    real(pReal) ::                 mu = 0.0_pReal                                                   !< viscosity
-    real(pReal), dimension(3,3) :: D  = 0.0_pReal                                                   !< conductivity/diffusivity
+    real(pReal) :: &
+      mu = 0.0_pReal, &                                                                             !< viscosity
+      l_c = 0.0_pReal                                                                               !< characteristic length
   end type tDamageParameters
 
   enum, bind(c); enumerator :: &
@@ -104,10 +105,8 @@ module subroutine damage_init
     if (sources%length == 1) then
       damage_active = .true.
       source => sources%get(1)
-      param(ph)%mu     = source%get_asFloat('mu')
-      param(ph)%D(1,1) = source%get_asFloat('D_11')
-      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%D(3,3) = source%get_asFloat('D_33')
-      param(ph)%D = lattice_symmetrize_33(param(ph)%D,phase_lattice(ph))
+      param(ph)%mu = source%get_asFloat('mu')
+      param(ph)%l_c = source%get_asFloat('l_c')
     end if
 
   end do
@@ -119,7 +118,7 @@ module subroutine damage_init
     where(anisobrittle_init()) phase_damage = DAMAGE_ANISOBRITTLE_ID
   end if
 
-  phase_damage_maxSizeDotState     = maxval(damageState%sizeDotState)
+  phase_damage_maxSizeDotState = maxval(damageState%sizeDotState)
 
 end subroutine damage_init
 
@@ -159,9 +158,9 @@ module function phase_damage_C66(C66,ph,en) result(C66_degraded)
 
   damageType: select case (phase_damage(ph))
     case (DAMAGE_ISOBRITTLE_ID) damageType
-     C66_degraded = C66 * damage_phi(ph,en)**2
+      C66_degraded = C66 * damage_phi(ph,en)**2
     case default damageType
-     C66_degraded = C66
+      C66_degraded = C66
   end select damageType
 
 end function phase_damage_C66
@@ -385,9 +384,9 @@ module function phase_K_phi(co,ce) result(K)
 
   integer, intent(in) :: co, ce
   real(pReal), dimension(3,3) :: K
-  real(pReal), parameter :: l = 1.0_pReal
 
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%D) * l**2
+
+  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%l_c**2*math_I3)
 
 end function phase_K_phi
 
@@ -403,6 +402,7 @@ function phase_damage_deltaState(Fe, ph, en) result(broken)
     en
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
+
   integer :: &
     myOffset, &
     mySize

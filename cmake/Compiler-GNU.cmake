@@ -135,10 +135,3 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=undefined")
 # detect undefined behavior
 # Additional options
 # -fsanitize=address,leak,thread
-
-#------------------------------------------------------------------------------------------------
-#  precision settings
-set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-real-8")
-# set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
-set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-double-8")
-# set precision to 8 bytes for double real, would be 16 bytes if -fdefault-real-8 is used
