@@ -38,6 +38,17 @@ class TestTable:
         d = default.get('F')
         assert np.allclose(d,1.0) and d.shape[1:] == (3,3)
 
+    def test_empty_init(self):
+        N = 3
+        D = dict(
+                 scal=np.arange(10),
+                 vctr=np.arange(10*N).reshape((10,N)),
+                )
+        t = Table()
+        for label,data in D.items():
+            t = t.set(label,data)
+        assert np.allclose(t.get('scal').flatten()*3,t.get('vctr')[:,0])
+
     def test_set(self,default):
         d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)

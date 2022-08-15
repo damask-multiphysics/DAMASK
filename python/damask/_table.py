@@ -12,18 +12,18 @@ class Table:
     """Manipulate multi-dimensional spreadsheet-like data."""
 
     def __init__(self,
-                 shapes: dict,
-                 data: np.ndarray,
+                 shapes: dict = {},
+                 data: np.ndarray = None,
                  comments: Union[str, Iterable[str]] = None):
         """
         New spreadsheet.
 
         Parameters
         ----------
-        shapes : dict with str:tuple pairs
-            Shapes of the data columns.
+        shapes : dict with str:tuple pairs, optional
+            Shapes of the data columns. Mandatory if 'data' is given.
             For instance, 'F':(3,3) for a deformation gradient, or 'r':(1,) for a scalar.
-        data : numpy.ndarray or pandas.DataFrame
+        data : numpy.ndarray or pandas.DataFrame, optional
             Data. Existing column labels of a pandas.DataFrame will be replaced.
         comments : str or iterable of str, optional
             Additional, human-readable information.
@@ -427,7 +427,7 @@ class Table:
             new = pd.DataFrame(data=data.reshape(-1,size),
                                columns=[label]*size,
                               )
-            new.index = dup.data.index
+            new.index = new.index if dup.data.index.empty else dup.data.index
             dup.data = pd.concat([dup.data,new],axis=1)
 
         return dup
