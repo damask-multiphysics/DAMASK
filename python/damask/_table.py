@@ -20,10 +20,10 @@ class Table:
 
         Parameters
         ----------
-        shapes : dict with str:tuple pairs
-            Shapes of the data columns.
+        shapes : dict with str:tuple pairs, optional
+            Shapes of the data columns. Mandatory if 'data' is given.
             For instance, 'F':(3,3) for a deformation gradient, or 'r':(1,) for a scalar.
-        data : numpy.ndarray or pandas.DataFrame
+        data : numpy.ndarray or pandas.DataFrame, optional
             Data. Existing column labels of a pandas.DataFrame will be replaced.
         comments : str or iterable of str, optional
             Additional, human-readable information.
