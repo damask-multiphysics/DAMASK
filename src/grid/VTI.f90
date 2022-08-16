@@ -30,13 +30,13 @@ function VTI_readDataset_int(fileContent,label) result(dataset)
   integer, dimension(:), allocatable :: &
     dataset
 
-  character(len=:), allocatable :: dataType, headerType, base64_str
+  character(len=:), allocatable :: dataType, headerType, base64Str
   logical :: compressed
 
 
-  call VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
+  call VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
                            fileContent,label)
-  dataset = as_Int(base64_str,headerType,compressed,dataType)
+  dataset = as_Int(base64Str,headerType,compressed,dataType)
 
   if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
 
@@ -55,13 +55,13 @@ function VTI_readDataset_real(fileContent,label) result(dataset)
   real(pReal),  dimension(:), allocatable :: &
     dataset
 
-  character(len=:), allocatable :: dataType, headerType, base64_str
+  character(len=:), allocatable :: dataType, headerType, base64Str
   logical :: compressed
 
 
-  call VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
+  call VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
                            fileContent,label)
-  dataset = as_real(base64_str,headerType,compressed,dataType)
+  dataset = as_real(base64Str,headerType,compressed,dataType)
 
   if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
 
@@ -72,13 +72,13 @@ end function VTI_readDataset_real
 !> @brief Read dataset as raw data (base64 string) from a VTK image data (*.vti) file.
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
+subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
                                   fileContent,label)
 
   character(len=*), intent(in) :: &
     label, &
     fileContent
-  character(len=:), allocatable, intent(out) :: dataType, headerType, base64_str
+  character(len=:), allocatable, intent(out) :: dataType, headerType, base64Str
   logical, intent(out) :: compressed
 
   logical :: inFile, inImage
@@ -119,7 +119,7 @@ subroutine VTI_readDataset_raw(base64_str,dataType,headerType,compressed, &
               startPos = endPos + 2_pI64
               endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
               s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
-              base64_str = fileContent(s:endPos)
+              base64Str = fileContent(s:endPos)
               exit outer
             end if
             startPos = endPos + 2_pI64
@@ -230,9 +230,9 @@ end subroutine
 !--------------------------------------------------------------------------------------------------
 !> @brief Interpret Base64 string in vtk XML file as integer of default kind.
 !--------------------------------------------------------------------------------------------------
-function as_Int(base64_str,headerType,compressed,dataType)
+function as_Int(base64Str,headerType,compressed,dataType)
 
-  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+  character(len=*), intent(in) :: base64Str, &                                                      ! base64 encoded string
                                   headerType, &                                                     ! header type (UInt32 or Uint64)
                                   dataType                                                          ! data type (Int32, Int64, Float32, Float64)
   logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
@@ -242,13 +242,13 @@ function as_Int(base64_str,headerType,compressed,dataType)
 
   select case(dataType)
     case('Int32')
-      as_Int = int(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)))
+      as_Int = int(prec_bytesToC_INT32_T(asBytes(base64Str,headerType,compressed)))
     case('Int64')
-      as_Int = int(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)))
+      as_Int = int(prec_bytesToC_INT64_T(asBytes(base64Str,headerType,compressed)))
     case('Float32')
-      as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)))
+      as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64Str,headerType,compressed)))
     case('Float64')
-      as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
+      as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)))
     case default
       call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
   end select
@@ -259,9 +259,9 @@ end function as_Int
 !--------------------------------------------------------------------------------------------------
 !> @brief Interpret Base64 string in vtk XML file as real of kind pReal.
 !--------------------------------------------------------------------------------------------------
-function as_real(base64_str,headerType,compressed,dataType)
+function as_real(base64Str,headerType,compressed,dataType)
 
-  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+  character(len=*), intent(in) :: base64Str, &                                                      ! base64 encoded string
                                   headerType, &                                                     ! header type (UInt32 or Uint64)
                                   dataType                                                          ! data type (Int32, Int64, Float32, Float64)
   logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
@@ -271,13 +271,13 @@ function as_real(base64_str,headerType,compressed,dataType)
 
   select case(dataType)
     case('Int32')
-      as_real = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_INT32_T(asBytes(base64Str,headerType,compressed)),pReal)
     case('Int64')
-      as_real = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_INT64_T(asBytes(base64Str,headerType,compressed)),pReal)
     case('Float32')
-      as_real = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_FLOAT  (asBytes(base64Str,headerType,compressed)),pReal)
     case('Float64')
-      as_real = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)),pReal)
     case default
       call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
   end select
@@ -288,9 +288,9 @@ end function as_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Interpret Base64 string in vtk XML file as bytes.
 !--------------------------------------------------------------------------------------------------
-function asBytes(base64_str,headerType,compressed) result(bytes)
+function asBytes(base64Str,headerType,compressed) result(bytes)
 
-  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+  character(len=*), intent(in) :: base64Str, &                                                      ! base64 encoded string
                                   headerType                                                        ! header type (UInt32 or Uint64)
   logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
 
@@ -298,9 +298,9 @@ function asBytes(base64_str,headerType,compressed) result(bytes)
 
 
   if (compressed) then
-    bytes = asBytes_compressed(base64_str,headerType)
+    bytes = asBytes_compressed(base64Str,headerType)
   else
-    bytes = asBytes_uncompressed(base64_str,headerType)
+    bytes = asBytes_uncompressed(base64Str,headerType)
   end if
 
 end function asBytes
@@ -315,9 +315,9 @@ end function asBytes
 ! #p-size = Size of last partial block (zero if it not needed)
 ! #c-size-i = Size in bytes of block i after compression
 !--------------------------------------------------------------------------------------------------
-function asBytes_compressed(base64_str,headerType) result(bytes)
+function asBytes_compressed(base64Str,headerType) result(bytes)
 
-  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+  character(len=*), intent(in) :: base64Str, &                                                      ! base64 encoded string
                                   headerType                                                        ! header type (UInt32 or Uint64)
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
@@ -327,21 +327,21 @@ function asBytes_compressed(base64_str,headerType) result(bytes)
 
 
   if      (headerType == 'UInt32') then
-    temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
+    temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64Str(:base64_nChar(4_pI64)))),pI64)
     nBlock = int(temp(1),pI64)
     headerLen = 4_pI64 * (3_pI64 + nBlock)
-    temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+    temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64Str(:base64_nChar(headerLen)))),pI64)
   else if (headerType == 'UInt64') then
-    temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
+    temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64Str(:base64_nChar(8_pI64)))),pI64)
     nBlock = int(temp(1),pI64)
     headerLen = 8_pI64 * (3_pI64 + nBlock)
-    temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+    temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64Str(:base64_nChar(headerLen)))),pI64)
   end if
 
   allocate(size_inflated(nBlock),source=temp(2))
   size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
   size_deflated = temp(4:)
-  bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
+  bytes_inflated = base64_to_bytes(base64Str(base64_nChar(headerLen)+1_pI64:))
 
   allocate(bytes(sum(size_inflated)))
   e = 0_pI64
@@ -359,9 +359,9 @@ end function asBytes_compressed
 !> @details An uncompressed Base64 string consists of N headers blocks and a N data blocks
 ![#bytes-1/DATA-1][#bytes-2/DATA-2]...
 !--------------------------------------------------------------------------------------------------
-function asBytes_uncompressed(base64_str,headerType) result(bytes)
+function asBytes_uncompressed(base64Str,headerType) result(bytes)
 
-  character(len=*), intent(in) :: base64_str, &                                                     ! base64 encoded string
+  character(len=*), intent(in) :: base64Str, &                                                      ! base64 encoded string
                                   headerType                                                        ! header type (UInt32 or Uint64)
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
@@ -373,15 +373,15 @@ function asBytes_uncompressed(base64_str,headerType) result(bytes)
 
   s=0_pI64
   if      (headerType == 'UInt32') then
-    do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
-      nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
-      bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
+    do while(s+base64_nChar(4_pI64)<(len(base64Str,pI64)))
+      nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64Str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
+      bytes = [bytes,base64_to_bytes(base64Str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
       s = s + base64_nChar(4_pI64+nByte(1))
     end do
   else if (headerType == 'UInt64') then
-    do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
-      nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
-      bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
+    do while(s+base64_nChar(8_pI64)<(len(base64Str,pI64)))
+      nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64Str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
+      bytes = [bytes,base64_to_bytes(base64Str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
       s = s + base64_nChar(8_pI64+nByte(1))
     end do
   end if
