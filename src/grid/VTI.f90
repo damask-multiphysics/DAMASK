@@ -38,8 +38,6 @@ function VTI_readDataset_int(fileContent,label) result(dataset)
                            fileContent,label)
   dataset = as_Int(base64Str,headerType,compressed,dataType)
 
-  if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
-
 end function VTI_readDataset_int
 
 
@@ -62,8 +60,6 @@ function VTI_readDataset_real(fileContent,label) result(dataset)
   call VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
                            fileContent,label)
   dataset = as_real(base64Str,headerType,compressed,dataType)
-
-  if (.not. allocated(dataset)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
 
 end function VTI_readDataset_real
 
@@ -132,6 +128,8 @@ subroutine VTI_readDataset_raw(base64Str,dataType,headerType,compressed, &
     startPos = endPos + 2_pI64
 
   end do outer
+
+  if (.not. allocated(base64Str)) call IO_error(error_ID = 844, ext_msg='dataset "'//label//'" not found')
 
 end subroutine VTI_readDataset_raw
 
