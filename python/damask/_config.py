@@ -120,7 +120,7 @@ class Config(dict):
         """
         Return self|=other.
 
-        Update configuration with contents of other.
+        Update configuration with contents of other (in-place).
 
         """
         return self.__or__(other)

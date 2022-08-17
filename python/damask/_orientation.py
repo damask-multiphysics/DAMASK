@@ -246,11 +246,13 @@ class Orientation(Rotation,Crystal):
     def __mul__(self: MyType,
                 other: Union[Rotation, 'Orientation']) -> MyType:
         """
-        Compose this orientation with other.
+        Return self*other.
+
+        Compose with other.
 
         Parameters
         ----------
-        other : Rotation or Orientation
+        other : Rotation or Orientation, shape (self.shape)
             Object for composition.
 
         Returns
