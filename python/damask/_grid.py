@@ -1206,7 +1206,7 @@ class Grid:
         coords_rot = R.broadcast_to(tuple(self.cells))@coords
 
         with np.errstate(all='ignore'):
-            mask = np.sum(np.power(coords_rot/r,2.0**np.array(exponent)),axis=-1) > 1.0
+            mask = np.sum(np.power(np.abs(coords_rot)/r,2.0**np.array(exponent)),axis=-1) > 1.0
 
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c/self.size-0.5)*self.cells).round().astype(np.int64),(0,1,2))
