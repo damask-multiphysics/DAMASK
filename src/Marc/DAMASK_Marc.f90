@@ -46,6 +46,8 @@ subroutine DAMASK_interface_init
   integer                 :: ierr
   character(len=pPathLen) :: wd
 
+  external                :: quit
+
   print'(/,1x,a)', '<<<+-  DAMASK_Marc init -+>>>'
 
   print*, 'Roters et al., Computational Materials Science 158:420–478, 2019'
