@@ -299,7 +299,6 @@ class TestGrid:
         G_2 = Grid(np.ones(g,'i'),s,o).add_primitive(diameter,center2,exponent)
         assert np.count_nonzero(G_1.material!=2) == np.count_nonzero(G_2.material!=2)
 
-
     @pytest.mark.parametrize('center',[np.random.randint(4,10,(3)),
                                        np.random.randint(2,10),
                                        np.random.rand()*4,
@@ -315,6 +314,14 @@ class TestGrid:
         G_2 = Grid(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
         assert G_1 == G_2
 
+    @pytest.mark.parametrize('exponent',[1,np.inf,np.random.random(3)*2.])
+    def test_add_primitive_shape_symmetry(self,exponent):
+        """Shapes defined in the center should always produce a grid with reflection symmetry along the coordinate axis."""
+        o = np.random.random(3)-.5
+        s = np.random.random(3)*5.
+        grid = Grid(np.zeros(np.random.randint(8,32,3),'i'),s,o).add_primitive(np.random.random(3)*3.,o+s/2.,exponent)
+        for axis in [0,1,2]:
+            assert np.all(grid.material==np.flip(grid.material,axis=axis))
 
     @pytest.mark.parametrize('selection',[1,None])
     def test_vicinity_offset(self,selection):
