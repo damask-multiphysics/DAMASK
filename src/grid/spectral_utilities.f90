@@ -128,8 +128,6 @@ module spectral_utilities
     utilities_curlRMS, &
     utilities_fourierScalarGradient, &
     utilities_fourierVectorDivergence, &
-    utilities_fourierVectorGradient, &
-    utilities_fourierTensorDivergence, &
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
@@ -439,7 +437,7 @@ end subroutine utilities_updateGamma
 !> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
 ! to 0.0
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorForward
+subroutine utilities_FFTtensorForward()
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
@@ -451,7 +449,7 @@ end subroutine utilities_FFTtensorForward
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorBackward
+subroutine utilities_FFTtensorBackward()
 
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real = tensorField_real * wgt                                                         ! normalize the result by number of elements
@@ -463,7 +461,7 @@ end subroutine utilities_FFTtensorBackward
 !> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
 ! to 0.0
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarForward
+subroutine utilities_FFTscalarForward()
 
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
@@ -475,7 +473,7 @@ end subroutine utilities_FFTscalarForward
 !> @brief backward FFT of data in scalarField_fourier to scalarField_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarBackward
+subroutine utilities_FFTscalarBackward()
 
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
@@ -488,7 +486,7 @@ end subroutine utilities_FFTscalarBackward
 !> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
 ! to 0.0
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorForward
+subroutine utilities_FFTvectorForward()
 
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
@@ -500,7 +498,7 @@ end subroutine utilities_FFTvectorForward
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorBackward
+subroutine utilities_FFTvectorBackward()
 
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
@@ -651,10 +649,10 @@ real(pReal) function utilities_divergenceRMS()
                + sum(aimag(matmul(tensorField_fourier(1:3,1:3,cells1Red,k,j), &
                                   conjg(-xi1st(1:3,cells1Red,k,j))*rescaledGeom))**2)
   end do; end do
-  if (cells(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                   ! counted twice in case of cells(1) == 1
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
+  if (cells(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                  ! counted twice in case of cells(1) == 1
 
 end function utilities_divergenceRMS
 
@@ -668,6 +666,7 @@ real(pReal) function utilities_curlRMS()
   integer(MPI_INTEGER_KIND) :: err_MPI
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
+
 
   print'(/,1x,a)', '... calculating curl ......................................................'
   flush(IO_STDOUT)
@@ -715,7 +714,7 @@ real(pReal) function utilities_curlRMS()
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
+  utilities_curlRMS = sqrt(utilities_curlRMS) * wgt                                                 ! RMS in real space calculated with Parsevals theorem from Fourier space
   if (cells(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                              ! counted twice in case of cells(1) == 1
 
 end function utilities_curlRMS
@@ -815,36 +814,6 @@ subroutine utilities_fourierVectorDivergence()
                                                              *conjg(-xi1st),1)
 
 end subroutine utilities_fourierVectorDivergence
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate vector gradient in fourier field
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierVectorGradient()
-
-  integer :: i, j, k, m, n
-
-  do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
-    do m = 1, 3; do n = 1, 3
-      tensorField_fourier(m,n,i,k,j) = vectorField_fourier(m,i,k,j)*xi1st(n,i,k,j)
-    end do; end do
-  end do; end do; end do
-
-end subroutine utilities_fourierVectorGradient
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate tensor divergence in fourier field
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierTensorDivergence()
-
-  integer :: i, j, k
-
-  do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
-    vectorField_fourier(:,i,k,j) = matmul(tensorField_fourier(:,:,i,k,j),conjg(-xi1st(:,i,k,j)))
-  end do; end do; end do
-
-end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1036,9 +1005,8 @@ end function utilities_getFreqDerivative
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate coordinates in current configuration for given defgrad field
-! using integration in Fourier space. Similar as in mesh.f90, but using data already defined for
-! convolution
+!> @brief Calculate coordinates in current configuration for given defgrad field
+! using integration in Fourier space.
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateCoords(F)
 
@@ -1085,14 +1053,14 @@ subroutine utilities_updateCoords(F)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then
       vectorField_fourier(1:3,i,k,j) = matmul(tensorField_fourier(1:3,1:3,i,k,j),xi2nd(1:3,i,k,j)) &
-                                     / sum(conjg(-xi2nd(1:3,i,k,j))*xi2nd(1:3,i,k,j)) * cmplx(wgt,0.0,pReal)
+                                     / sum(conjg(-xi2nd(1:3,i,k,j))*xi2nd(1:3,i,k,j))
     else
       vectorField_fourier(1:3,i,k,j) = cmplx(0.0,0.0,pReal)
     end if
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  call utilities_FFTvectorBackward()
 
  !--------------------------------------------------------------------------------------------------
  ! average F
@@ -1155,7 +1123,7 @@ end subroutine utilities_updateCoords
 !---------------------------------------------------------------------------------------------------
 !> @brief Write out the current reference stiffness for restart.
 !---------------------------------------------------------------------------------------------------
-subroutine utilities_saveReferenceStiffness
+subroutine utilities_saveReferenceStiffness()
 
   integer :: &
     fileUnit,ierr
