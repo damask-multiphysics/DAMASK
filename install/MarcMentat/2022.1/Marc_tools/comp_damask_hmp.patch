@@ -46,4 +46,4 @@
      /bin/rm $userobj
 +	/bin/rm $DIRJOB/*.mod
 +	/bin/rm $DIRJOB/*.smod
-+    /bin/rm $DIRJOB/*_genmod.f90
++   /bin/rm $DIRJOB/*_genmod.f90
