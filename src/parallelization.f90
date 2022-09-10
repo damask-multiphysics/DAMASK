@@ -67,10 +67,12 @@ subroutine parallelization_init
   PetscErrorCode :: err_PETSc
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
-  ! Otherwise, the first call to PETSc will do the initialization.
   call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND)   error stop 'MPI init failed'
   if (threadLevel<MPI_THREAD_FUNNELED) error stop 'MPI library does not support OpenMP'
+#else
+  call MPI_Init(err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND)   error stop 'MPI init failed'
 #endif
 
 #if defined(DEBUG)
