@@ -1,5 +1,5 @@
---- run_damask_mp.orig	2022-09-10 12:21:11.130118821 +0200
-+++ run_damask_mp	2022-09-10 12:32:23.577358746 +0200
+---
++++
 @@ -302,7 +302,23 @@
  
  . "$DIR/getarch"
@@ -124,7 +124,7 @@
  User objects/libs    : $objs
  Restart file job ID  : $rid
  Substructure file ID : $sid
-@@ -1689,7 +1674,7 @@
+@@ -1687,7 +1672,7 @@
                      ;;
                    esac        
                  fi
@@ -133,7 +133,7 @@
  		read value
  		if test "$value"
  		then
-@@ -1698,50 +1683,19 @@
+@@ -1696,50 +1681,19 @@
                        user=
                      ;;
                      *)
@@ -190,7 +190,7 @@
                      ;;
                    esac
  		fi
-@@ -2276,11 +2230,12 @@
+@@ -2274,11 +2228,12 @@
  #
  # user subroutine used
  #
@@ -205,7 +205,7 @@
      case $program in
        \/* | \.\/*)
          bd=
-@@ -2393,7 +2348,7 @@
+@@ -2391,7 +2346,7 @@
      fi
      if test "$user"
      then
@@ -214,7 +214,7 @@
       usersub=1
      fi
      export execpath      
-@@ -3276,44 +3231,27 @@
+@@ -3274,44 +3229,27 @@
      echo
      if test "$user"
      then
@@ -240,7 +240,7 @@
          if test $MACHINENAME = "CRAY"
          then
 -            $FORTRAN $usersub || \
-+            $DFORTRANMP $user || \
++            $DFORTHIGHMP $user || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -249,7 +249,7 @@
              /bin/rm $program 2>/dev/null
          else
 -            $FORTRAN $usersub -o $userobj || \
-+            $DFORTRANMP $user -o $userobj || \
++            $DFORTHIGHMP $user -o $userobj || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -264,7 +264,7 @@
      fi
  
  
-@@ -3333,6 +3271,7 @@
+@@ -3331,6 +3269,7 @@
      $TKLIBS  \
      $MRCLIBS     \
      $METISLIBS \
@@ -272,7 +272,7 @@
      $SFLIB \
      $OPENSSL_LIB \
      $SYSLIBS  \
-@@ -3346,6 +3285,9 @@
+@@ -3344,6 +3283,9 @@
  	prgsav=yes
  fi
  /bin/rm $userobj 2>/dev/null
@@ -282,7 +282,7 @@
  
  #
  # run marc
-@@ -3392,7 +3334,7 @@
+@@ -3390,7 +3332,7 @@
    fi
  else
    if test $cpdll = yes; then
@@ -291,7 +291,7 @@
       /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
    fi
    if test $rmdll = yes
-@@ -3558,7 +3500,7 @@
+@@ -3556,7 +3498,7 @@
                # first copy over the user sub if local directories
                if test ${dirstatus[$counter]} = "local"
                then
@@ -300,12 +300,12 @@
                fi
                # do the compilation on the other machine
                if test ${dirstatus[$counter]} = "shared"
-@@ -3571,21 +3513,21 @@
+@@ -3569,21 +3511,21 @@
                remoteuser=$DIR1/`$BASENAME $user`
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
 -              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
-+              $RSH $i $DIR2/tools/comp_damask_mp $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
                # check if successful, the new executable should be there
                line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
                if test "$line"
@@ -325,7 +325,7 @@
                fi
              fi
            fi
-@@ -3595,39 +3537,27 @@
+@@ -3593,39 +3535,27 @@
      if test "$userhost"
      then
        echo
@@ -345,7 +345,7 @@
          if test $MACHINENAME = "CRAY"
          then
 -            $FORTRAN $usersub || \
-+            $DFORTRANMP $user || \
++            $DFORTHIGHMP $user || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -355,7 +355,7 @@
              /bin/rm $program 2>/dev/null
          else
 -            $FORTRAN $usersub -o $userobj || \
-+            $DFORTRANMP $user -o $userobj || \
++            $DFORTHIGHMP $user -o $userobj || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -371,7 +371,7 @@
    fi # if test $user
  
  
-@@ -3647,6 +3577,7 @@
+@@ -3645,6 +3575,7 @@
    $TKLIBS  \
    $MRCLIBS     \
    $METISLIBS \
@@ -379,7 +379,7 @@
    $SFLIB \
    $OPENSSL_LIB \
    $SYSLIBS  \
-@@ -3688,6 +3619,9 @@
+@@ -3686,6 +3617,9 @@
  	prgsav=yes
  fi   # if test $link
  /bin/rm $userobj 2>/dev/null
@@ -389,7 +389,7 @@
  
  #
  # run marc
-@@ -3781,7 +3715,7 @@
+@@ -3779,7 +3713,7 @@
  else
  #dllrun >0
    if test $cpdll = yes; then
@@ -398,7 +398,7 @@
       /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
    fi
    if test $rmdll = yes;then
-@@ -3906,7 +3840,7 @@
+@@ -3904,7 +3838,7 @@
                # first copy over the user sub if local directories
                if test ${dirstatus[$counter]} = "local"
                then
@@ -407,12 +407,12 @@
                fi
                # do the compilation on the other machine
                if test ${dirstatus[$counter]} = "shared"
-@@ -3919,20 +3853,20 @@
+@@ -3917,20 +3851,20 @@
                remoteuser=$DIR1/`$BASENAME $user`
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
 -              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
-+              $RSH $i $DIR2/tools/comp_damask_mp $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
                # check if successful, the new executable should be there
                line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
                if test "$line"
@@ -431,7 +431,7 @@
                fi
              fi
            fi
-@@ -3942,37 +3876,25 @@
+@@ -3940,37 +3874,25 @@
      if test "$userhost"
      then
        echo
@@ -451,7 +451,7 @@
          if test $MACHINENAME = "CRAY"
          then
 -            $FORTRAN $usersub || \
-+            $DFORTRANMP $user || \
++            $DFORTHIGHMP $user || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -460,7 +460,7 @@
              /bin/rm $program 2>/dev/null
          else
 -            $FORTRAN $usersub -o $userobj || \
-+            $DFORTRANMP $user -o $userobj || \
++            $DFORTHIGHMP $user -o $userobj || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -475,7 +475,7 @@
    fi # if test $user
  
  
-@@ -3992,6 +3914,7 @@
+@@ -3990,6 +3912,7 @@
    $TKLIBS  \
    $MRCLIBS     \
    $METISLIBS \
@@ -483,7 +483,7 @@
    $SFLIB \
    $OPENSSL_LIB \
    $SYSLIBS \
-@@ -4032,7 +3955,9 @@
+@@ -4030,7 +3953,9 @@
  	prgsav=yes
  fi   # if test $link
  /bin/rm $userobj 2>/dev/null
@@ -494,7 +494,7 @@
  # done if no job id given
  if test -z "$jid"
  then
-@@ -4151,7 +4076,7 @@
+@@ -4149,7 +4074,7 @@
  else
  #dllrun >0
    if test $cpdll = yes; then
