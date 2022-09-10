@@ -399,8 +399,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   real(pReal)                         steplengthLp, &
                                       steplengthLi, &
                                       atol_Lp, &
-                                      atol_Li, &
-                                      devNull
+                                      atol_Li
   integer                             NiterationStressLp, &                                         ! number of stress integrations
                                       NiterationStressLi, &                                         ! number of inner stress integrations
                                       ierr, &                                                       ! error indicator for LAPACK
@@ -417,9 +416,9 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                              ! take as first guess
   Liguess = phase_mechanical_Li(ph)%data(1:3,1:3,en)                                              ! take as first guess
 
-  call math_invert33(invFp_current,devNull,error,subFp0)
+  call math_invert33(invFp_current,error=error,A=subFp0)
   if (error) return ! error
-  call math_invert33(invFi_current,devNull,error,subFi0)
+  call math_invert33(invFi_current,error=error,A=subFi0)
   if (error) return ! error
 
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
@@ -541,7 +540,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   end do LiLoop
 
   invFp_new = matmul(invFp_current,B)
-  call math_invert33(Fp_new,devNull,error,invFp_new)
+  call math_invert33(Fp_new,error=error,A=invFp_new)
   if (error) return ! error
 
   phase_mechanical_P(ph)%data(1:3,1:3,en)  = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
