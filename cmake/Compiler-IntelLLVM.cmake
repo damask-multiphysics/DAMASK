@@ -95,8 +95,8 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
 #   ... for uninitialized variables.
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
 #   ... initializes stack local variables to an unusual value to aid error detection
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
-#   ... capture all floating-point exceptions, sets -ftz automatically
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
+#   ... capture all floating-point exceptions, need to overwrite -no-ftz
 
 # disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
 #set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
