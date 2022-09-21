@@ -168,7 +168,7 @@ module subroutine damage_results(ho,group)
       outputsLoop: do o = 1,size(prm%output)
         select case(prm%output(o))
           case ('phi')
-            call results_writeDataset(damagestate_h(ho)%state(1,:),group,prm%output(o),&
+            call results_writeDataset(current(ho)%phi,group,prm%output(o),&
                                       'damage indicator','-')
         end select
       end do outputsLoop

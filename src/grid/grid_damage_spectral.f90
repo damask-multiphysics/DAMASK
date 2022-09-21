@@ -70,7 +70,9 @@ contains
 subroutine grid_damage_spectral_init()
 
   PetscInt, dimension(0:worldsize-1) :: localK
+  integer :: i, j, k, ce
   DM :: damage_grid
+  PetscScalar, dimension(:,:,:), pointer :: phi_PETSc
   Vec :: uBound, lBound
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
@@ -110,9 +112,9 @@ subroutine grid_damage_spectral_init()
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  allocate(phi_current(cells(1),cells(2),cells3), source=1.0_pReal)
-  allocate(phi_lastInc(cells(1),cells(2),cells3), source=1.0_pReal)
-  allocate(phi_stagInc(cells(1),cells(2),cells3), source=1.0_pReal)
+  phi_current = discretization_grid_getInitialCondition('phi')
+  phi_lastInc = phi_current
+  phi_stagInc = phi_current
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -164,7 +166,17 @@ subroutine grid_damage_spectral_init()
     call DMRestoreGlobalVector(damage_grid,uBound,err_PETSc)
     CHKERRQ(err_PETSc)
   end if
-  call VecSet(solution_vec,1.0_pReal,err_PETSc)
+
+  ce = 0
+  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+    ce = ce + 1
+    call homogenization_set_phi(phi_current(i,j,k),ce)
+  end do; end do; end do
+
+  call DMDAVecGetArrayF90(damage_grid,solution_vec,phi_PETSc,err_PETSc)
+  CHKERRQ(err_PETSc)
+  phi_PETSc = phi_current
+  call DMDAVecRestoreArrayF90(damage_grid,solution_vec,phi_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
   call updateReference()
