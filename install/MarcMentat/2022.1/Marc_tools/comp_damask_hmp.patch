@@ -32,7 +32,7 @@
  
  
      $LOAD ${program}  $DIR/lib/main.o\
-@@ -33,9 +42,13 @@ echo "program: $program"
+@@ -33,9 +42,13 @@
      $TKLIBS \
      $MRCLIBS \
      $METISLIBS \

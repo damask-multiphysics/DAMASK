@@ -1,6 +1,6 @@
 ---
 +++
-@@ -63,10 +64,10 @@ doe_nparallel=$6
+@@ -63,10 +63,10 @@
  if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
    slv="-iam sfm"
  fi
@@ -13,7 +13,7 @@
    slv="-iam datfit"
  fi
  
-@@ -91,6 +92,7 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
+@@ -91,6 +91,7 @@
        srcfile="-u $srcfile -save y"
        ;;
      runsaved)
@@ -21,7 +21,7 @@
        srcfile="-prog $srcfile"
        ;;
    esac
-@@ -189,12 +191,12 @@ unset PYTHONHOME
+@@ -189,12 +190,12 @@
  unset PYTHONPATH
  
  if [ "$doe_first" = "-" ]; then # submit of regular Marc job
