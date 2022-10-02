@@ -1,7 +1,7 @@
 # special flags for some files
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # long lines for interaction matrix
-    SET_SOURCE_FILES_PROPERTIES("lattice.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-240")
+    set_source_files_properties("lattice.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-240")
 endif()
 
 file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c)
@@ -13,6 +13,15 @@ elseif(PROJECT_NAME STREQUAL "damask-mesh")
     set(executable-name "DAMASK_mesh")
     file(GLOB solver-sources CONFIGURE_DEPENDS mesh/*.f90)
 endif()
+
+foreach(solver-source ${solver-sources})
+    file(READ ${solver-source} content)
+    string(FIND "${content}" "CHKERR" found)
+    if(NOT ${found} EQUAL -1)
+      set_source_files_properties(${solver-source} PROPERTIES COMPILE_FLAGS "-ffree-line-length-160")
+    endif()
+endforeach()
+
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
     add_executable(${executable-name} ${damask-sources} ${solver-sources})
