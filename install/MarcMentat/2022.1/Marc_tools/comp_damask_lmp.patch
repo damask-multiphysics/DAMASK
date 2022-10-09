@@ -32,7 +32,7 @@
  
  
      $LOAD ${program}  $DIR/lib/main.o\
-@@ -33,9 +42,13 @@ echo "program: $program"
+@@ -33,9 +42,13 @@
      $TKLIBS \
      $MRCLIBS \
      $METISLIBS \
@@ -46,4 +46,4 @@
      /bin/rm $userobj
 +	/bin/rm $DIRJOB/*.mod
 +	/bin/rm $DIRJOB/*.smod
-+    /bin/rm $DIRJOB/*_genmod.f90
++   /bin/rm $DIRJOB/*_genmod.f90
