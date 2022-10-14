@@ -110,7 +110,7 @@ subroutine grid_thermal_spectral_init()
   T_current = discretization_grid_getInitialCondition('T')
   T_lastInc = T_current
   T_stagInc = T_current
-  dotT_lastInc = 0.0_pReal
+  allocate(dotT_lastInc(size(T_current,1),size(T_current,2),size(T_current,3)), source=0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
