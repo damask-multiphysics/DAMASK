@@ -2,6 +2,7 @@
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # long lines for interaction matrix
     set_source_files_properties("lattice.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-240")
+    set_source_files_properties("parallelization.f90" PROPERTIES COMPILE_FLAGS "-ffree-line-length-none")
 endif()
 
 file(GLOB damask-sources CONFIGURE_DEPENDS *.f90 *.c)
@@ -18,7 +19,7 @@ foreach(solver-source ${solver-sources})
     file(READ ${solver-source} content)
     string(FIND "${content}" "CHKERR" found)
     if(NOT ${found} EQUAL -1)
-      set_source_files_properties(${solver-source} PROPERTIES COMPILE_FLAGS "-ffree-line-length-160")
+        set_source_files_properties(${solver-source} PROPERTIES COMPILE_FLAGS "-ffree-line-length-none")
     endif()
 endforeach()
 
