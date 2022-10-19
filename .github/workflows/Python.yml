@@ -40,7 +40,6 @@ jobs:
           $VERSION | Out-File VERSION
 
       - name: Build and Install
-        if: runner.os != 'Windows'
         run: |
           cd python
           python -m build
