@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.17.1'
+  PETSC_VERSION: '3.18.0'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -158,7 +158,10 @@ jobs:
         if: contains( matrix.intel_v, 'classic')
         run: |
           cd petsc-${PETSC_VERSION}
-          ./configure --with-fc=mpiifort --with-cc=mpiicc --with-cxx=mpiicpc \
+          ./configure \
+          --with-fc='mpiifort -fc=ifort -diag-disable=10441' \
+          --with-cc='mpiicc -cc=icc -diag-disable=10441' \
+          --with-cxx='mpiicpc -cxx=icpc -diag-disable=10441' \
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
 
@@ -166,7 +169,10 @@ jobs:
         if: contains( matrix.intel_v, 'llvm')
         run: |
           cd petsc-${PETSC_VERSION}
-          ./configure --with-fc=mpiifort --with-cc="mpiicc -cc=icx" --with-cxx="mpiicpc -cxx=icpx" \
+          ./configure \
+          --with-fc='mpiifort -fc=ifx' \
+          --with-cc='mpiicc -cc=icx' \
+          --with-cxx='mpiicpc -cxx=icpx' \
           --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib
           make all
 

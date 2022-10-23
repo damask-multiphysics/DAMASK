@@ -192,7 +192,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   call ISGetSize(bcPointsIS,nBcPoints,err_PETSc)
   CHKERRQ(err_PETSc)
   if (nBcPoints > 0) call ISGetIndicesF90(bcPointsIS,bcPoints,err_PETSc)
-  call VecGetArrayF90(localVec,localArray,err_PETSc); CHKERRQ(err_PETSc)
+  call VecGetArrayF90(localVec,localArray,err_PETSc)
+  CHKERRQ(err_PETSc)
   do point = 1, nBcPoints
     call PetscSectionGetFieldDof(section,bcPoints(point),field,numDof,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -202,9 +203,12 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
       localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
     end do
   end do
-  call VecRestoreArrayF90(localVec,localArray,err_PETSc); CHKERRQ(err_PETSc)
-  call VecAssemblyBegin(localVec, err_PETSc); CHKERRQ(err_PETSc)
-  call VecAssemblyEnd  (localVec, err_PETSc); CHKERRQ(err_PETSc)
+  call VecRestoreArrayF90(localVec,localArray,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecAssemblyBegin(localVec, err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecAssemblyEnd  (localVec, err_PETSc)
+  CHKERRQ(err_PETSc)
   if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,err_PETSc)
   CHKERRQ(err_PETSc)
 

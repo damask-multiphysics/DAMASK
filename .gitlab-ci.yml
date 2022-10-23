@@ -63,6 +63,13 @@ create_testroot:
 
 
 ###################################################################################################
+setuptools:
+  stage: python
+  script:
+    - sed -i 's/-[[:digit:]]*-.*//' VERSION
+    - cd python
+    - python3 -m build --wheel --no-isolation
+
 pytest:
   stage: python
   script:

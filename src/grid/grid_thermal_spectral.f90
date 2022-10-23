@@ -50,8 +50,8 @@ module grid_thermal_spectral
   real(pReal), dimension(:,:,:), allocatable :: &
     T_current, &                                                                                    !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
-    T_stagInc                                                                                       !< field of staggered temperature
-
+    T_stagInc, &                                                                                    !< field of staggered temperature
+    dotT_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
@@ -110,6 +110,7 @@ subroutine grid_thermal_spectral_init()
   T_current = discretization_grid_getInitialCondition('T')
   T_lastInc = T_current
   T_stagInc = T_current
+  dotT_lastInc = 0.0_pReal * T_current
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -152,6 +153,7 @@ subroutine grid_thermal_spectral_init()
 
     call HDF5_read(T_current,groupHandle,'T',.false.)
     call HDF5_read(T_lastInc,groupHandle,'T_lastInc',.false.)
+    call HDF5_read(dotT_lastInc,groupHandle,'dotT_lastInc',.false.)
   end if restartRead
 
   ce = 0
@@ -261,9 +263,10 @@ subroutine grid_thermal_spectral_forward(cutBack)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
+      call homogenization_thermal_setField(T_current(i,j,k),dotT_lastInc(i,j,k),ce)
     end do; end do; end do
   else
+    dotT_lastInc = (T_current - T_lastInc)/params%Delta_t
     T_lastInc = T_current
     call updateReference
   end if
@@ -292,6 +295,7 @@ subroutine grid_thermal_spectral_restartWrite
   groupHandle = HDF5_openGroup(fileHandle,'solver')
   call HDF5_write(T,groupHandle,'T')
   call HDF5_write(T_lastInc,groupHandle,'T_lastInc')
+  call HDF5_write(dotT_lastInc,groupHandle,'dotT_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 

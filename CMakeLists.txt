@@ -11,7 +11,7 @@ endif()
 project(Prerequisites LANGUAGES)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 pkg_check_modules(PETSC_MIN REQUIRED PETSc>=3.12.0 QUIET) #CMake does not support version range
-pkg_check_modules(PETSC REQUIRED PETSc<3.18.0)
+pkg_check_modules(PETSC REQUIRED PETSc<3.19.0)
 
 pkg_get_variable(CMAKE_Fortran_COMPILER PETSc fcompiler)
 pkg_get_variable(CMAKE_C_COMPILER PETSc ccompiler)

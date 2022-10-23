@@ -158,7 +158,8 @@ subroutine discretization_mesh_init(restart)
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
-  call DMDestroy(globalMesh,err_PETSc); CHKERRQ(err_PETSc)
+  call DMDestroy(globalMesh,err_PETSc)
+  CHKERRQ(err_PETSc)
 
   call DMGetStratumSize(geomMesh,'depth',dimPlex,Nelems,err_PETSc)
   CHKERRQ(err_PETSc)

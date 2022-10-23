@@ -7,7 +7,7 @@
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 17
+#define PETSC_MINOR_MAX 18
 
 module CLI
   use, intrinsic :: ISO_fortran_env
