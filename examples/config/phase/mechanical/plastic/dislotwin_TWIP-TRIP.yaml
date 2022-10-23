@@ -56,7 +56,7 @@ Delta_G: 1.2055e+2
 Delta_G,T: 2.5515
 Delta_G,T^2: 1.4952e-3
 
-h _tr-tr: [1.0, 1.0]
+h_tr-tr: [1.0, 1.0]
 h_sl-tr: [1.5, 1.5, 1.5]
 
 # Twin & Transformation
