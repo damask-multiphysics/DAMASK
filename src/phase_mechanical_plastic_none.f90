@@ -17,7 +17,7 @@ module function plastic_none_init() result(myPlasticity)
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     ph
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
 
@@ -27,7 +27,7 @@ module function plastic_none_init() result(myPlasticity)
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:none init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
     call phase_allocateState(plasticState(ph),count(material_phaseID == ph),0,0,0)

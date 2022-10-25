@@ -93,7 +93,7 @@ contains
 subroutine FEM_utilities_init
 
   character(len=pStringLen) :: petsc_optionsOrder
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_mesh, &
     debug_mesh                                                                                      ! pointer to mesh debug options
   integer :: &
@@ -107,7 +107,7 @@ subroutine FEM_utilities_init
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
 
-  num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
+  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
 
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
@@ -117,8 +117,8 @@ subroutine FEM_utilities_init
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
-  debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
-  debugPETSc  =  debug_mesh%contains('PETSc')
+  debug_mesh => config_debug%get_dict('mesh',defaultVal=emptyDict)
+  debugPETSc =  debug_mesh%contains('PETSc')
 
   if(debugPETSc) print'(3(/,1x,a),/)', &
                  'Initializing PETSc with debug options: ', &

@@ -90,7 +90,7 @@ subroutine discretization_mesh_init(restart)
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscInt, dimension(:), allocatable :: &
     materialAt
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_mesh
   integer :: p_i, dim                                                                               !< integration order (quadrature rule)
   type(tvec) :: coords_node0
@@ -101,7 +101,7 @@ subroutine discretization_mesh_init(restart)
 
 !--------------------------------------------------------------------------------
 ! read numerics parameter
-  num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
+  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
   p_i = num_mesh%get_asInt('p_i',defaultVal = 2)
 
 !---------------------------------------------------------------------------------

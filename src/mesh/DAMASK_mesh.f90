@@ -65,7 +65,7 @@ program DAMASK_mesh
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
     component
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_mesh
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
@@ -90,7 +90,7 @@ program DAMASK_mesh
 
 !---------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
-  num_mesh => config_numerics%get('mesh', defaultVal=emptyDict)
+  num_mesh => config_numerics%get_dict('mesh', defaultVal=emptyDict)
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 

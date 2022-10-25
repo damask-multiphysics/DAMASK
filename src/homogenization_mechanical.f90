@@ -222,7 +222,7 @@ end subroutine mechanical_results
 !--------------------------------------------------------------------------------------------------
 subroutine parseMechanical()
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     material_homogenization, &
     homog, &
     mechanical
@@ -230,14 +230,14 @@ subroutine parseMechanical()
   integer :: ho
 
 
-  material_homogenization => config_material%get('homogenization')
+  material_homogenization => config_material%get_dict('homogenization')
 
   allocate(mechanical_type(size(material_name_homogenization)), source=MECHANICAL_UNDEFINED_ID)
   allocate(output_mechanical(size(material_name_homogenization)))
 
   do ho=1, size(material_name_homogenization)
-    homog => material_homogenization%get(ho)
-    mechanical => homog%get('mechanical')
+    homog => material_homogenization%get_dict(ho)
+    mechanical => homog%get_dict('mechanical')
 #if defined(__GFORTRAN__)
     output_mechanical(ho)%label = output_as1dString(mechanical)
 #else

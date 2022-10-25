@@ -101,8 +101,9 @@ end subroutine materialpoint_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_init
 
-  class(tNode), pointer :: &
+  type(tList), pointer :: &
     debug_materialpoint
+
 
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
@@ -113,7 +114,7 @@ subroutine materialpoint_init
 !------------------------------------------------------------------------------
 ! read debug options
 
-  debug_materialpoint => config_debug%get('materialpoint',defaultVal=emptyList)
+  debug_materialpoint => config_debug%get_list('materialpoint',defaultVal=emptyList)
   debugmaterialpoint%basic     = debug_materialpoint%contains('basic')
   debugmaterialpoint%extensive = debug_materialpoint%contains('extensive')
   debugmaterialpoint%selective = debug_materialpoint%contains('selective')

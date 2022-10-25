@@ -283,7 +283,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     outdatedByNewInc  = .false., &                                                                  !< needs description
     materialpoint_init_done   = .false., &                                                          !< remember whether init has been done already
     debug_basic       = .true.
-  class(tNode), pointer :: &
+  type(tList), pointer :: &
     debug_Marc                                                                                      ! pointer to Marc debug options
 
   if(debug_basic) then
@@ -307,7 +307,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   if (.not. materialpoint_init_done) then
     materialpoint_init_done = .true.
     call materialpoint_initAll
-    debug_Marc => config_debug%get('Marc',defaultVal=emptyList)
+    debug_Marc => config_debug%get_list('Marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
   endif
 

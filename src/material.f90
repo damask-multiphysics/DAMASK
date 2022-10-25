@@ -83,13 +83,13 @@ end subroutine material_init
 !--------------------------------------------------------------------------------------------------
 subroutine parse()
 
-  class(tNode), pointer :: materials, &                                                             !> list of materials
-                           material, &                                                              !> material definition
-                           constituents, &                                                          !> list of constituents
-                           constituent, &                                                           !> constituent definition
-                           phases, &
-                           homogenizations, &
-                           homogenization
+  type(tList), pointer :: materials, &                                                              !> all materials
+                          constituents                                                              !> all constituents of a material
+  type(tDict), pointer :: phases, &                                                                 !> all phases
+                          homogenizations, &                                                        !> all homogenizations
+                          material, &                                                               !> material definition
+                          constituent, &                                                            !> constituent definition
+                          homogenization
 
   class(tItem), pointer :: item
   integer, dimension(:), allocatable :: &
@@ -107,25 +107,20 @@ subroutine parse()
     ma
 
 
-  materials       => config_material%get('material')
-  phases          => config_material%get('phase')
-  homogenizations => config_material%get('homogenization')
+  materials       => config_material%get_list('material')
+  phases          => config_material%get_dict('phase')
+  homogenizations => config_material%get_dict('homogenization')
 
 
   if (maxval(discretization_materialAt) > materials%length) &
     call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
-#if defined (__GFORTRAN__)
-  material_name_phase          = getKeys(phases)
-  material_name_homogenization = getKeys(homogenizations)
-#else
-  material_name_phase          = phases%Keys()
-  material_name_homogenization = homogenizations%Keys()
-#endif
+  material_name_phase          = phases%keys()
+  material_name_homogenization = homogenizations%keys()
 
   allocate(homogenization_Nconstituents(homogenizations%length))
   do ho=1, homogenizations%length
-    homogenization => homogenizations%get(ho)
+    homogenization => homogenizations%get_dict(ho)
     homogenization_Nconstituents(ho) = homogenization%get_asInt('N_constituents')
   end do
   homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
@@ -140,40 +135,33 @@ subroutine parse()
   allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
 
   ! parse YAML structure
-  select type(materials)
+  item => materials%first
+  do ma = 1, materials%length
+    material => item%node%asDict()
+    ho_of(ma) = homogenizations%index(material%get_asString('homogenization'))
+    constituents => material%get_list('constituents')
 
-    class is(tList)
+    homogenization => homogenizations%get_dict(ho_of(ma))
+    if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
 
-      item => materials%first
-      do ma = 1, materials%length
-        material => item%node
-        ho_of(ma) = homogenizations%getIndex(material%get_asString('homogenization'))
-        constituents => material%get('constituents')
+    allocate(material_O_0(ma)%data(constituents%length))
+    allocate(material_V_e_0(ma)%data(1:3,1:3,constituents%length))
 
-        homogenization => homogenizations%get(ho_of(ma))
-        if (constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+    do co = 1, constituents%length
+      constituent => constituents%get_dict(co)
+       v_of(ma,co) = constituent%get_asFloat('v')
+      ph_of(ma,co) = phases%index(constituent%get_asString('phase'))
 
-        allocate(material_O_0(ma)%data(constituents%length))
-        allocate(material_V_e_0(ma)%data(1:3,1:3,constituents%length))
+      call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
+      material_V_e_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('V_e',defaultVal=math_I3,requiredShape=[3,3])
+      if (any(dNeq(material_V_e_0(ma)%data(1:3,1:3,co),transpose(material_V_e_0(ma)%data(1:3,1:3,co))))) &
+        call IO_error(147)
 
-        do co = 1, constituents%length
-          constituent => constituents%get(co)
-           v_of(ma,co) = constituent%get_asFloat('v')
-          ph_of(ma,co) = phases%getIndex(constituent%get_asString('phase'))
+    end do
+    if (dNeq(sum(v_of(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
 
-          call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dFloat('O',requiredSize=4))
-          material_V_e_0(ma)%data(1:3,1:3,co) = constituent%get_as2dFloat('V_e',defaultVal=math_I3,requiredShape=[3,3])
-          if (any(dNeq(material_V_e_0(ma)%data(1:3,1:3,co),transpose(material_V_e_0(ma)%data(1:3,1:3,co))))) &
-            call IO_error(147)
-
-        end do
-        if (dNeq(sum(v_of(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
-
-        item => item%next
-      end do
-
-  end select
-
+    item => item%next
+  end do
 
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
@@ -223,7 +211,7 @@ end subroutine parse
 !--------------------------------------------------------------------------------------------------
 function getKeys(dict)
 
-  class(tNode), intent(in) :: dict
+  type(tDict), intent(in) :: dict
   character(len=:),          dimension(:), allocatable :: getKeys
   character(len=pStringLen), dimension(:), allocatable :: temp
 
@@ -232,7 +220,7 @@ function getKeys(dict)
   allocate(temp(dict%length))
   l = 0
   do i=1, dict%length
-    temp(i) = dict%getKey(i)
+    temp(i) = dict%key(i)
     l = max(len_trim(temp(i)),l)
   end do
 

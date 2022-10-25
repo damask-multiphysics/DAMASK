@@ -77,19 +77,20 @@ module subroutine damage_init
   integer :: &
     ph, &
     Nmembers
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
    phases, &
    phase, &
-   sources, &
    source
+  type(tList), pointer :: &
+   sources
   logical:: damage_active
 
   print'(/,1x,a)', '<<<+-  phase:damage init  -+>>>'
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
 
   allocate(current(phases%length))
-  allocate(damageState (phases%length))
+  allocate(damageState(phases%length))
   allocate(param(phases%length))
 
   damage_active = .false.
@@ -99,12 +100,12 @@ module subroutine damage_init
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
 
-    phase => phases%get(ph)
-    sources => phase%get('damage',defaultVal=emptyList)
+    phase => phases%get_dict(ph)
+    sources => phase%get_list('damage',defaultVal=emptyList)
     if (sources%length > 1) error stop
     if (sources%length == 1) then
       damage_active = .true.
-      source => sources%get(1)
+      source => sources%get_dict(1)
       param(ph)%mu = source%get_asFloat('mu')
       param(ph)%l_c = source%get_asFloat('l_c')
     end if
@@ -440,19 +441,20 @@ function source_active(source_label)  result(active_source)
   character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
   logical, dimension(:), allocatable  :: active_source
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, &
     src
+  type(tList), pointer :: &
+    sources
   integer :: ph
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(active_source(phases%length))
   do ph = 1, phases%length
-    phase => phases%get(ph)
-    sources => phase%get('damage',defaultVal=emptyList)
-    src => sources%get(1)
+    phase => phases%get_dict(ph)
+    sources => phase%get_list('damage',defaultVal=emptyList)
+    src => sources%get_dict(1)
     active_source(ph) = src%get_asString('type',defaultVal = 'x') == source_label
   end do
 

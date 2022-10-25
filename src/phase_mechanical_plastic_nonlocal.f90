@@ -190,7 +190,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     extmsg  = ''
   type(tInitialParameters) :: &
     ini
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
@@ -213,7 +213,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print'(  1x,a)', 'http://publications.rwth-aachen.de/record/229993'
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
 
   allocate(geom(phases%length))
 
@@ -230,9 +230,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     associate(prm => param(ph),  dot => dotState(ph),   stt => state(ph), &
               st0 => state0(ph), del => deltaState(ph), dst => dependentState(ph))
 
-    phase => phases%get(ph)
-    mech => phase%get('mechanical')
-    pl => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech => phase%get_dict('mechanical')
+    pl => mech%get_dict('plastic')
 
     plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
 #if defined (__GFORTRAN__)
@@ -520,7 +520,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     if(.not. myPlasticity(ph)) cycle
 
-    phase => phases%get(ph)
+    phase => phases%get_dict(ph)
     Nmembers = count(material_phaseID == ph)
     l = 0
     do t = 1,4

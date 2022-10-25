@@ -28,12 +28,13 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances, p, k
-  class(tNode), pointer :: &
+  type(tList), pointer :: &
+    kinematics
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    mech, &
-    kinematics, &
-    myConfig
+    mech
+
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
 
@@ -42,26 +43,23 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   print'(/,a,i2)', ' # phases: ',Ninstances; flush(IO_STDOUT)
   if (Ninstances == 0) return
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(Ninstances))
   allocate(kinematics_thermal_expansion_instance(phases%length), source=0)
 
   do p = 1, phases%length
     if (any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p)
+    phase => phases%get_dict(p)
     if (count(myKinematics(:,p)) == 0) cycle
-    mech => phase%get('mechanical')
-    kinematics => mech%get('eigen')
+    mech => phase%get_dict('mechanical')
+    kinematics => mech%get_list('eigen')
     do k = 1, kinematics%length
       if (myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
 
-          myConfig => kinematics%get(k)
-
-          prm%A_11 = polynomial(myConfig%asDict(),'A_11','T')
+          prm%A_11 = polynomial(kinematics%get_dict(k),'A_11','T')
           if (any(phase_lattice(p) == ['hP','tI'])) &
-            prm%A_33 = polynomial(myConfig%asDict(),'A_33','T')
-
+            prm%A_33 = polynomial(kinematics%get_dict(k),'A_33','T')
         end associate
       end if
     end do

@@ -196,7 +196,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init()
 
-  class (tNode) , pointer :: &
+  type(tDict) , pointer :: &
     num_homog, &
     num_homogGeneric
 
@@ -207,8 +207,8 @@ subroutine homogenization_init()
   allocate(damageState_h   (size(material_name_homogenization)))
   call parseHomogenization()
 
-  num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
-  num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
+  num_homog        => config_numerics%get_dict('homogenization',defaultVal=emptyDict)
+  num_homogGeneric => num_homog%get_dict('generic',defaultVal=emptyDict)
 
   num%nMPstate = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
   if (num%nMPstate < 1) call IO_error(301,ext_msg='nMPstate')
@@ -447,7 +447,7 @@ end subroutine homogenization_restartRead
 !--------------------------------------------------------------------------------------------------
 subroutine parseHomogenization
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     material_homogenization, &
     homog, &
     homogThermal, &
@@ -455,17 +455,17 @@ subroutine parseHomogenization
 
   integer :: h
 
-  material_homogenization => config_material%get('homogenization')
+  material_homogenization => config_material%get_dict('homogenization')
 
   allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_UNDEFINED_ID)
   allocate(thermal_active(size(material_name_homogenization)),source=.false.)
   allocate(damage_active(size(material_name_homogenization)),source=.false.)
 
   do h=1, size(material_name_homogenization)
-    homog => material_homogenization%get(h)
+    homog => material_homogenization%get_dict(h)
 
     if (homog%contains('thermal')) then
-      homogThermal => homog%get('thermal')
+      homogThermal => homog%get_dict('thermal')
         select case (homogThermal%get_asString('type'))
           case('pass')
             thermal_type(h) = THERMAL_PASS_ID
@@ -479,7 +479,7 @@ subroutine parseHomogenization
     end if
 
     if (homog%contains('damage')) then
-      homogDamage => homog%get('damage')
+      homogDamage => homog%get_dict('damage')
         select case (homogDamage%get_asString('type'))
           case('pass')
             damage_active(h) = .true.

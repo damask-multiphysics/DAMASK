@@ -12,7 +12,7 @@ module config
   implicit none(type,external)
   private
 
-  class(tNode), pointer, public :: &
+  type(tDict), pointer, public :: &
     config_material, &
     config_numerics, &
     config_debug
@@ -58,7 +58,7 @@ subroutine parse_material()
   end if
   call parallelization_bcast_str(fileContent)
 
-  config_material => YAML_parse_str(fileContent)
+  config_material => YAML_parse_str_asDict(fileContent)
 
 end subroutine parse_material
 
@@ -88,7 +88,7 @@ subroutine parse_numerics()
     end if
     call parallelization_bcast_str(fileContent)
 
-    config_numerics => YAML_parse_str(fileContent)
+    config_numerics => YAML_parse_str_asDict(fileContent)
 
   end if
 
@@ -120,7 +120,7 @@ subroutine parse_debug()
     end if
     call parallelization_bcast_str(fileContent)
 
-    config_debug => YAML_parse_str(fileContent)
+    config_debug => YAML_parse_str_asDict(fileContent)
 
   end if
 

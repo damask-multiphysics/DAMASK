@@ -43,11 +43,11 @@ submodule(phase) mechanical
   interface
 
     module subroutine eigen_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine eigen_init
 
     module subroutine elastic_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine elastic_init
 
     module subroutine plastic_init
@@ -198,7 +198,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine mechanical_init(phases)
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
   integer :: &
@@ -208,7 +208,7 @@ module subroutine mechanical_init(phases)
     ph, &
     en, &
     Nmembers
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_crystallite, &
     phase, &
     mech
@@ -248,8 +248,8 @@ module subroutine mechanical_init(phases)
     allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
 
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
+    phase => phases%get_dict(ph)
+    mech  => phase%get_dict('mechanical')
 #if defined(__GFORTRAN__)
     output_mechanical(ph)%label = output_as1dString(mech)
 #else
@@ -286,7 +286,7 @@ module subroutine mechanical_init(phases)
     plasticState(ph)%state0 = plasticState(ph)%state
   end do
 
-  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
+  num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
   select case(num_crystallite%get_asString('integrator',defaultVal='FPI'))
 

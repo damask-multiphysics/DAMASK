@@ -35,7 +35,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine thermal_init()
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     configHomogenizations, &
     configHomogenization, &
     configHomogenizationThermal
@@ -45,18 +45,18 @@ module subroutine thermal_init()
   print'(/,1x,a)', '<<<+-  homogenization:thermal init  -+>>>'
 
 
-  configHomogenizations => config_material%get('homogenization')
+  configHomogenizations => config_material%get_dict('homogenization')
   allocate(param(configHomogenizations%length))
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
     allocate(current(ho)%T(count(material_homogenizationID==ho)), source=T_ROOM)
     allocate(current(ho)%dot_T(count(material_homogenizationID==ho)), source=0.0_pReal)
-    configHomogenization => configHomogenizations%get(ho)
+    configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
 
       if (configHomogenization%contains('thermal')) then
-        configHomogenizationThermal => configHomogenization%get('thermal')
+        configHomogenizationThermal => configHomogenization%get_dict('thermal')
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(configHomogenizationThermal)
 #else

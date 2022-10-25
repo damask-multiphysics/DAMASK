@@ -106,15 +106,21 @@ program DAMASK_grid
 
   external :: &
     quit
-  class (tNode), pointer :: &
-    num_grid, &
+  class(tNode), pointer :: &
+    tmp
+  type(tDict), pointer :: &
     config_load, &
-    load_steps, &
+    num_grid, &
     load_step, &
     solver, &
     step_bc, &
     step_mech, &
     step_discretization
+  type(tList), pointer :: &
+#ifdef __INTEL_LLVM_COMPILER
+    tensor, &
+#endif
+    load_steps
   character(len=:), allocatable :: &
     fileContent, fname
 
@@ -130,7 +136,7 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
-  num_grid => config_numerics%get('grid', defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid', defaultVal=emptyDict)
   stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
@@ -147,8 +153,8 @@ program DAMASK_grid
   endif
 
   call parallelization_bcast_str(fileContent)
-  config_load => YAML_parse_str(fileContent)
-  solver => config_load%get('solver')
+  config_load => YAML_parse_str_asDict(fileContent)
+  solver => config_load%get_dict('solver')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
@@ -202,34 +208,42 @@ program DAMASK_grid
 
 
 !--------------------------------------------------------------------------------------------------
-  load_steps => config_load%get('loadstep')
+  load_steps => config_load%get_list('loadstep')
   allocate(loadCases(load_steps%length))                                                            ! array of load cases
 
   do l = 1, load_steps%length
 
-    load_step => load_steps%get(l)
-    step_bc   => load_step%get('boundary_conditions')
-    step_mech => step_bc%get('mechanical')
+    load_step => load_steps%get_dict(l)
+    step_bc   => load_step%get_dict('boundary_conditions')
+    step_mech => step_bc%get_dict('mechanical')
     loadCases(l)%stress%myType=''
     readMech: do m = 1, step_mech%length
-      select case (step_mech%getKey(m))
+      select case (step_mech%key(m))
         case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
-          loadCases(l)%deformation%myType = step_mech%getKey(m)
-          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get(m))
+          loadCases(l)%deformation%myType = step_mech%key(m)
+#ifdef __INTEL_LLVM_COMPILER
+          tensor => step_mech%get_list(m)
+          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,tensor)
+#else
+          call getMaskedTensor(loadCases(l)%deformation%values,loadCases(l)%deformation%mask,step_mech%get_list(m))
+#endif
         case ('dot_P','P')
-          loadCases(l)%stress%myType = step_mech%getKey(m)
-          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get(m))
+          loadCases(l)%stress%myType = step_mech%key(m)
+#ifdef __INTEL_LLVM_COMPILER
+          tensor => step_mech%get_list(m)
+          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,tensor)
+#else
+          call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
+#endif
       end select
       call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dFloat('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
     enddo readMech
     if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
 
-    step_discretization => load_step%get('discretization')
-    if (.not. step_discretization%contains('t')) call IO_error(error_ID=837,ext_msg = 't missing')
-    if (.not. step_discretization%contains('N')) call IO_error(error_ID=837,ext_msg = 'N missing')
-    loadCases(l)%t         = step_discretization%get_asFloat('t')
-    loadCases(l)%N         = step_discretization%get_asInt  ('N')
-    loadCases(l)%r         = step_discretization%get_asFloat('r',         defaultVal= 1.0_pReal)
+    step_discretization => load_step%get_dict('discretization')
+    loadCases(l)%t = step_discretization%get_asFloat('t')
+    loadCases(l)%N = step_discretization%get_asInt  ('N')
+    loadCases(l)%r = step_discretization%get_asFloat('r',defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
     if (load_step%get_asString('f_out',defaultVal='n/a') == 'none') then
@@ -499,15 +513,15 @@ subroutine getMaskedTensor(values,mask,tensor)
 
   real(pReal), intent(out), dimension(3,3) :: values
   logical,     intent(out), dimension(3,3) :: mask
-  class (tNode), pointer :: tensor
+  type(tList), pointer :: tensor
 
-  class (tNode), pointer :: row
+  type(tList), pointer :: row
   integer :: i,j
 
 
   values = 0.0_pReal
   do i = 1,3
-    row => tensor%get(i)
+    row => tensor%get_list(i)
     do j = 1,3
       mask(i,j) = row%get_asString(j) == 'x'
       if (.not. mask(i,j)) values(i,j) = row%get_asFloat(j)

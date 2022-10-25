@@ -117,22 +117,24 @@ subroutine grid_mechanical_FEM_init
     u_current,u_lastInc
   PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
-  class(tNode), pointer :: &
-    num_grid, &
+  type(tDict), pointer :: &
+    num_grid
+  type(tList), pointer :: &
     debug_grid
   character(len=pStringLen) :: &
     extmsg = ''
+
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
-  debug_grid => config_debug%get('grid',defaultVal=emptyList)
+  debug_grid => config_debug%get_list('grid',defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
   num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
   num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)

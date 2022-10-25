@@ -126,14 +126,14 @@ subroutine FEM_mechanical_init(fieldBC)
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: err_PETSc
   real(pReal), dimension(3,3) :: devNull
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_mesh
 
   print'(/,1x,a)', '<<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
-  num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
+  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
   num%p_i               = int(num_mesh%get_asInt('p_i',defaultVal = 2),pPETSCINT)
   num%itmax             = int(num_mesh%get_asInt('itmax',defaultVal=250),pPETSCINT)
   num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)

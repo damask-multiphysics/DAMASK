@@ -76,7 +76,7 @@ subroutine grid_damage_spectral_init()
   Vec :: uBound, lBound
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_grid, &
     num_generic
   character(len=pStringLen) :: &
@@ -89,12 +89,12 @@ subroutine grid_damage_spectral_init()
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
   num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
   num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
   num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
 
-  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
   num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
 
   if (num%residualStiffness < 0.0_pReal) call IO_error(301,ext_msg='residualStiffness')

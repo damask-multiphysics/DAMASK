@@ -34,15 +34,16 @@ contains
 
 module subroutine eigen_init(phases)
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
   integer :: &
     ph
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phase, &
-    kinematics, &
     mechanics
+  type(tList), pointer :: &
+    kinematics
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:eigen init  -+>>>'
 
@@ -51,9 +52,9 @@ module subroutine eigen_init(phases)
   allocate(Nmodels(phases%length),source = 0)
 
   do ph = 1,phases%length
-    phase => phases%get(ph)
-    mechanics => phase%get('mechanical')
-    kinematics => mechanics%get('eigen',defaultVal=emptyList)
+    phase => phases%get_dict(ph)
+    mechanics => phase%get_dict('mechanical')
+    kinematics => mechanics%get_list('eigen',defaultVal=emptyList)
     Nmodels(ph) = kinematics%length
   end do
 
@@ -80,26 +81,27 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
   integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
   logical, dimension(:,:), allocatable :: active_kinematics
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    kinematics, &
-    kinematics_type, &
-    mechanics
+    mechanics, &
+    kinematic
+  type(tList), pointer :: &
+    kinematics
   integer :: ph,k
 
-  phases => config_material%get('phase')
+
+  phases => config_material%get_dict('phase')
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
   do ph = 1, phases%length
-    phase => phases%get(ph)
-    mechanics => phase%get('mechanical')
-    kinematics => mechanics%get('eigen',defaultVal=emptyList)
+    phase => phases%get_dict(ph)
+    mechanics => phase%get_dict('mechanical')
+    kinematics => mechanics%get_list('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
-      kinematics_type => kinematics%get(k)
-      active_kinematics(k,ph) = kinematics_type%get_asString('type') == kinematics_label
+      kinematic => kinematics%get_dict(k)
+      active_kinematics(k,ph) = kinematic%get_asString('type') == kinematics_label
     end do
   end do
-
 
 end function kinematics_active
 
@@ -113,20 +115,21 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
   character(len=*), intent(in)       :: kinematics_label                                            !< name of kinematic mechanism
   logical, dimension(:), allocatable :: active_kinematics
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    kinematics, &
     kinematics_type
+  type(tList), pointer :: &
+    kinematics
   integer :: ph
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(active_kinematics(phases%length), source = .false.)
   do ph = 1, phases%length
-    phase => phases%get(ph)
-    kinematics => phase%get('damage',defaultVal=emptyList)
+    phase => phases%get_dict(ph)
+    kinematics => phase%get_list('damage',defaultVal=emptyList)
     if (kinematics%length < 1) return
-    kinematics_type => kinematics%get(1)
+    kinematics_type => kinematics%get_dict(1)
     if (.not. kinematics_type%contains('type')) continue
     active_kinematics(ph) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
   end do

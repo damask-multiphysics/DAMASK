@@ -166,9 +166,11 @@ subroutine spectral_utilities_init()
     tensorSize = 9_C_INTPTR_T
   character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
-  class(tNode) , pointer :: &
-    num_grid, &
-    debug_grid                                                                                      ! pointer to grid debug options
+  type(tDict) , pointer :: &
+    num_grid
+  type(tList) , pointer :: &
+    debug_grid
+
 
   print'(/,1x,a)', '<<<+-  spectral_utilities init  -+>>>'
 
@@ -186,9 +188,9 @@ subroutine spectral_utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
-  num_grid        => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid        => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
-  debug_grid      => config_debug%get('grid',defaultVal=emptyList)
+  debug_grid      => config_debug%get_List('grid',defaultVal=emptyList)
   debugGeneral    =  debug_grid%contains('basic')
   debugRotation   =  debug_grid%contains('rotation')
   debugPETSc      =  debug_grid%contains('PETSc')

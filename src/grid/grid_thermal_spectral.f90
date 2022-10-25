@@ -78,7 +78,7 @@ subroutine grid_thermal_spectral_init()
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_grid
 
   print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
@@ -88,7 +88,7 @@ subroutine grid_thermal_spectral_init()
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
   num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
   num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
