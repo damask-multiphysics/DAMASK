@@ -371,6 +371,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
       if (prm%fccTwinTransNucleation .and. size(prm%N_tr) /= 1) extmsg = trim(extmsg)//' N_tr: nucleation'
     end if slipAndTransActive
 
+    twinAndTransActive: if (prm%sum_N_tw * prm%sum_N_tr > 0) then
+      if (dNeq(prm%b_tw(1),prm%b_tr(1))) extmsg = trim(extmsg)//' b_tw != b_tr'
+    end if twinAndTransActive
+
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     Nmembers  = count(material_phaseID == ph)

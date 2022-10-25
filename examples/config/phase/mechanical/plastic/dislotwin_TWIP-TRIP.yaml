@@ -33,7 +33,7 @@ h_sl-sl: [0.122, 0.122, 0.625, 0.07, 0.137, 0.137, 0.122]
 
 # Twin
 N_tw: [12]
-b_tw: [1.47e-10] # a/sqrt(6)
+b_tw: [1.47e-10] # a_cF/sqrt(6)
 L_tw: 1.91e-7 # 1300 *b_tw
 i_tw: 10.0
 t_tw: [5.0e-8]
@@ -44,7 +44,7 @@ h_sl-tw: [1.0, 1.0, 1.0]
 
 # Transformation
 N_tr: [12]
-b_tr: [1.47e-10] # a/sqrt(6)
+b_tr: [1.47e-10] # a_cF/sqrt(6)
 L_tr: 2.21e-7 # 1500 *b_tr
 i_tr: 10.0 # adjusted
 t_tr: [1.0e-7]
