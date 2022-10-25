@@ -78,7 +78,7 @@ module subroutine RGC_init()
     Nmembers, &
     sizeState, nIntFaceTot
 
-  class (tNode), pointer :: &
+  class(tDict), pointer :: &
     num_homogenization, &
     num_mechanical, &
     num_RGC, &                                                                                      ! pointer to RGC numerics data
@@ -98,15 +98,15 @@ module subroutine RGC_init()
   print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/18/1/015006'//IO_EOL
 
 
-  material_homogenization => config_material%get('homogenization')
+  material_homogenization => config_material%get_dict('homogenization')
   allocate(param(material_homogenization%length))
   allocate(state(material_homogenization%length))
   allocate(state0(material_homogenization%length))
   allocate(dependentState(material_homogenization%length))
 
-  num_homogenization => config_numerics%get('homogenization',defaultVal=emptyDict)
-  num_mechanical => num_homogenization%get('mechanical',defaultVal=emptyDict)
-  num_RGC => num_mechanical%get('RGC',defaultVal=emptyDict)
+  num_homogenization => config_numerics%get_dict('homogenization',defaultVal=emptyDict)
+  num_mechanical => num_homogenization%get_dict('mechanical',defaultVal=emptyDict)
+  num_RGC => num_mechanical%get_dict('RGC',defaultVal=emptyDict)
 
   num%atol         =  num_RGC%get_asFloat('atol',              defaultVal=1.0e+4_pReal)
   num%rtol         =  num_RGC%get_asFloat('rtol',              defaultVal=1.0e-3_pReal)
@@ -139,8 +139,8 @@ module subroutine RGC_init()
 
   do ho = 1, size(mechanical_type)
     if (mechanical_type(ho) /= MECHANICAL_RGC_ID) cycle
-    homog => material_homogenization%get(ho)
-    homogMech => homog%get('mechanical')
+    homog => material_homogenization%get_dict(ho)
+    homogMech => homog%get_dict('mechanical')
     associate(prm => param(ho), &
               stt => state(ho), &
               st0 => state0(ho), &

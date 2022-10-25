@@ -32,7 +32,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine damage_init()
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     configHomogenizations, &
     configHomogenization, &
     configHomogenizationDamage
@@ -42,17 +42,17 @@ module subroutine damage_init()
   print'(/,1x,a)', '<<<+-  homogenization:damage init  -+>>>'
 
 
-  configHomogenizations => config_material%get('homogenization')
+  configHomogenizations => config_material%get_dict('homogenization')
   allocate(param(configHomogenizations%length))
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
     Nmembers = count(material_homogenizationID == ho)
     allocate(current(ho)%phi(Nmembers), source=1.0_pReal)
-    configHomogenization => configHomogenizations%get(ho)
+    configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
       if (configHomogenization%contains('damage')) then
-        configHomogenizationDamage => configHomogenization%get('damage')
+        configHomogenizationDamage => configHomogenization%get_dict('damage')
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(configHomogenizationDamage)
 #else

@@ -92,7 +92,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     a                                                                                               !< non-Schmid coefficients
   character(len=pStringLen) :: &
     extmsg = ''
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
@@ -106,7 +106,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
@@ -117,9 +117,9 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     associate(prm => param(ph), stt => state(ph), &
               idx_dot => indexDotState(ph))
 
-    phase => phases%get(ph)
-    mech => phase%get('mechanical')
-    pl => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech => phase%get_dict('mechanical')
+    pl => mech%get_dict('plastic')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters

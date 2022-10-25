@@ -131,8 +131,9 @@ subroutine grid_mechanical_spectral_polarisation_init
 #else
   integer :: fileUnit
 #endif
-  class (tNode), pointer :: &
-    num_grid, &
+  type(tDict), pointer :: &
+    num_grid
+  type(tList), pointer :: &
     debug_grid
   character(len=pStringLen) :: &
     extmsg = ''
@@ -144,12 +145,12 @@ subroutine grid_mechanical_spectral_polarisation_init
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
-  debug_grid => config_debug%get('grid',defaultVal=emptyList)
+  debug_grid => config_debug%get_list('grid',defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
   num%update_gamma    = num_grid%get_asBool ('update_gamma',   defaultVal=.false.)
   num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)

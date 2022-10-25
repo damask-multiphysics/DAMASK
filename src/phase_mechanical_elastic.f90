@@ -19,12 +19,12 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine elastic_init(phases)
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
   integer :: &
     ph
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phase, &
     mech, &
     elastic
@@ -38,9 +38,9 @@ module subroutine elastic_init(phases)
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    phase   => phases%get(ph)
-    mech    => phase%get('mechanical')
-    elastic => mech%get('elastic')
+    phase   => phases%get_dict(ph)
+    mech    => phase%get_dict('mechanical')
+    elastic => mech%get_dict('elastic')
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
 
     associate(prm => param(ph))

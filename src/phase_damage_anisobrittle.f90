@@ -35,11 +35,12 @@ module function anisobrittle_init() result(mySources)
 
   logical, dimension(:), allocatable :: mySources
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, &
     src
+  type(tList), pointer :: &
+    sources
   integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
@@ -52,17 +53,17 @@ module function anisobrittle_init() result(mySources)
   print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
 
 
   do ph = 1, phases%length
     if (mySources(ph)) then
-      phase => phases%get(ph)
-      sources => phase%get('damage')
+      phase => phases%get_dict(ph)
+      sources => phase%get_list('damage')
 
       associate(prm  => param(ph))
-        src => sources%get(1)
+        src => sources%get_dict(1)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))

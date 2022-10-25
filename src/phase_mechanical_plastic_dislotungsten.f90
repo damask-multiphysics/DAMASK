@@ -93,7 +93,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     a                                                                                               !< non-Schmid coefficients
   character(len=pStringLen) :: &
     extmsg = ''
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
@@ -109,7 +109,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   print'(/,1x,a)', 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
@@ -121,9 +121,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
               idx_dot => indexDotState(ph))
 
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech  => phase%get_dict('mechanical')
+    pl  => mech%get_dict('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)

@@ -87,13 +87,13 @@ subroutine math_init()
   real(pReal), dimension(4) :: randTest
   integer :: randSize
   integer, dimension(:), allocatable :: seed
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_generic
 
 
   print'(/,1x,a)', '<<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
-  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
 
   call random_seed(size=randSize)
   allocate(seed(randSize))

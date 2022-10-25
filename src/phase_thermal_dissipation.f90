@@ -26,11 +26,13 @@ module function dissipation_init(source_length) result(mySources)
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, thermal, &
+    thermal, &
     src
+  class(tList), pointer :: &
+    sources
   integer :: so,Nmembers,ph
 
 
@@ -40,18 +42,18 @@ module function dissipation_init(source_length) result(mySources)
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    phase => phases%get(ph)
+    phase => phases%get_dict(ph)
     if (count(mySources(:,ph)) == 0) cycle !ToDo: error if > 1
-    thermal => phase%get('thermal')
-    sources => thermal%get('source')
+    thermal => phase%get_dict('thermal')
+    sources => thermal%get_list('source')
     do so = 1, sources%length
       if (mySources(so,ph)) then
         associate(prm  => param(ph))
-          src => sources%get(so)
+          src => sources%get_dict(so)
 
           prm%kappa = src%get_asFloat('kappa')
           Nmembers = count(material_phaseID == ph)

@@ -33,11 +33,13 @@ module function externalheat_init(source_length) result(mySources)
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, thermal, &
+    thermal, &
     src
+  type(tList), pointer :: &
+    sources
   integer :: so,Nmembers,ph
 
 
@@ -47,20 +49,20 @@ module function externalheat_init(source_length) result(mySources)
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(source_thermal_externalheat_offset  (phases%length), source=0)
 
   do ph = 1, phases%length
-    phase => phases%get(ph)
+    phase => phases%get_dict(ph)
     if (count(mySources(:,ph)) == 0) cycle
-    thermal => phase%get('thermal')
-    sources => thermal%get('source')
+    thermal => phase%get_dict('thermal')
+    sources => thermal%get_list('source')
     do so = 1, sources%length
       if (mySources(so,ph)) then
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
-          src => sources%get(so)
+          src => sources%get_dict(so)
 
           prm%t_n = src%get_as1dFloat('t_n')
           prm%nIntervals = size(prm%t_n) - 1

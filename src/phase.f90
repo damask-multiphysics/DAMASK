@@ -96,14 +96,14 @@ module phase
 
 ! == cleaned:begin =================================================================================
     module subroutine mechanical_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine mechanical_init
 
     module subroutine damage_init
     end subroutine damage_init
 
     module subroutine thermal_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine thermal_init
 
 
@@ -376,16 +376,16 @@ subroutine phase_init
 
   integer :: &
     ph, ce, co, ma
-  class (tNode), pointer :: &
-    debug_constitutive, &
-    materials, &
+  type(tDict), pointer :: &
     phases, &
     phase
+  type(tList), pointer :: &
+    debug_constitutive
 
 
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
-  debug_constitutive => config_debug%get('phase', defaultVal=emptyList)
+  debug_constitutive => config_debug%get_list('phase', defaultVal=emptyList)
   debugConstitutive%basic     = debug_constitutive%contains('basic')
   debugConstitutive%extensive = debug_constitutive%contains('extensive')
   debugConstitutive%selective = debug_constitutive%contains('selective')
@@ -394,8 +394,7 @@ subroutine phase_init
   debugConstitutive%grain     = config_debug%get_asInt('constituent',     defaultVal = 1)
 
 
-  materials => config_material%get('material')
-  phases    => config_material%get('phase')
+  phases => config_material%get_dict('phase')
 
   allocate(phase_lattice(phases%length))
   allocate(phase_cOverA(phases%length),source=-1.0_pReal)
@@ -403,7 +402,7 @@ subroutine phase_init
   allocate(phase_O_0(phases%length))
 
   do ph = 1,phases%length
-    phase => phases%get(ph)
+    phase => phases%get_dict(ph)
     phase_lattice(ph) = phase%get_asString('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
       call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
@@ -536,13 +535,13 @@ subroutine crystallite_init()
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
     en, ph
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_crystallite, &
     phases
   character(len=pStringLen) :: &
     extmsg = ''
 
-  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
+  num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
   num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
   num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
@@ -570,7 +569,7 @@ subroutine crystallite_init()
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
 
   !$OMP PARALLEL DO PRIVATE(ce,ph,en)
   do el = 1, discretization_Nelems

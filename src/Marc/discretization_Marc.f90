@@ -69,7 +69,7 @@ subroutine discretization_Marc_init
   real(pReal), dimension(:,:,:,:), allocatable :: &
     unscaledNormals
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_commercialFEM
 
 
@@ -78,7 +78,7 @@ subroutine discretization_Marc_init
   debug_e = config_debug%get_asInt('element',defaultVal=1)
   debug_i = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
-  num_commercialFEM => config_numerics%get('commercialFEM',defaultVal = emptyDict)
+  num_commercialFEM => config_numerics%get_dict('commercialFEM',defaultVal = emptyDict)
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,'unitlength')
 

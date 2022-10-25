@@ -14,8 +14,8 @@ if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost")
-  # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+  #set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost") # ifx 2022.0 has problems with YAML types and IPO
+  set (OPTIMIZATION_FLAGS    "-O3 -fp-model fast=2 -xHost")
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules

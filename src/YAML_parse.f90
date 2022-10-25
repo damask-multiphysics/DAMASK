@@ -17,7 +17,8 @@ module YAML_parse
 
   public :: &
     YAML_parse_init, &
-    YAML_parse_str
+    YAML_parse_str_asList, &
+    YAML_parse_str_asDict
 
 #ifdef FYAML
   interface
@@ -53,16 +54,37 @@ end subroutine YAML_parse_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse a YAML string into a a structure of nodes.
+!> @brief Parse a YAML string with list as root into a a structure of nodes.
 !--------------------------------------------------------------------------------------------------
-function YAML_parse_str(str) result(node)
+function YAML_parse_str_asList(str) result(list)
 
   character(len=*), intent(in) :: str
-  class (tNode), pointer :: node
+  type(tList), pointer :: list
+
+  class(tNode), pointer :: node
+
 
   node => parse_flow(to_flow(str))
+  list => node%asList()
 
-end function YAML_parse_str
+end function YAML_parse_str_asList
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Parse a YAML string with dict as root into a a structure of nodes.
+!--------------------------------------------------------------------------------------------------
+function YAML_parse_str_asDict(str) result(dict)
+
+  character(len=*), intent(in) :: str
+  type(tDict), pointer :: dict
+
+  class(tNode), pointer :: node
+
+
+  node => parse_flow(to_flow(str))
+  dict => node%asDict()
+
+end function YAML_parse_str_asDict
 
 
 !--------------------------------------------------------------------------------------------------
@@ -72,9 +94,9 @@ end function YAML_parse_str
 recursive function parse_flow(YAML_flow) result(node)
 
   character(len=*), intent(in)    :: YAML_flow                                                      !< YAML file in flow style
-  class (tNode), pointer          :: node
+  class(tNode), pointer          :: node
 
-  class (tNode),    pointer       :: &
+  class(tNode),    pointer       :: &
     myVal
   character(len=:), allocatable   :: &
     flow_string, &

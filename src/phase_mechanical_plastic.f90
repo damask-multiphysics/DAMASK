@@ -421,19 +421,19 @@ function plastic_active(plastic_label) result(active_plastic)
   character(len=*), intent(in)       :: plastic_label                                               !< type of plasticity model
   logical, dimension(:), allocatable :: active_plastic
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
     pl
   integer :: ph
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(active_plastic(phases%length), source = .false. )
   do ph = 1, phases%length
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl    => mech%get('plastic',defaultVal = emptyDict)
+    phase => phases%get_dict(ph)
+    mech  => phase%get_dict('mechanical')
+    pl    => mech%get_dict('plastic',defaultVal = emptyDict)
     active_plastic(ph) = pl%get_asString('type',defaultVal='none') == plastic_label
   end do
 
