@@ -27,15 +27,13 @@ module parallelization
 
 #ifndef PETSC
   integer, parameter, public :: &
-    MPI_INTEGER_KIND = pI64
+    MPI_INTEGER_KIND = pI64                                                                         !< needed for MSC.Marc
   integer(MPI_INTEGER_KIND), parameter, public :: &
-    worldrank = 0_MPI_INTEGER_KIND, &                                                               !< MPI dummy worldrank
-    worldsize = 1_MPI_INTEGER_KIND                                                                  !< MPI dummy worldsize
 #else
   integer(MPI_INTEGER_KIND), protected, public :: &
+#endif
     worldrank = 0_MPI_INTEGER_KIND, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
     worldsize = 1_MPI_INTEGER_KIND                                                                  !< MPI worldsize (/=1 for MPI simulations only)
-#endif
 
 #ifndef PETSC
 public :: parallelization_bcast_str
