@@ -484,7 +484,7 @@ function tList_as2dFloat(self)
 
   do i=1,self%length
     row_data => self%get_list(i)
-    if (row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='Varying number of columns')
+    if (row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='inconsistent column count in tList_as2dFloat')
     tList_as2dFloat(i,:) = self%get_as1dFloat(i)
   end do
 
@@ -614,13 +614,13 @@ function tList_get(self,i) result(node)
 
   class(tList), intent(in), target :: self
   integer,      intent(in)         :: i
-  class(tNode),  pointer :: node
+  class(tNode), pointer :: node
 
-  class(tItem),  pointer :: item
+  class(tItem), pointer :: item
   integer :: j
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get')
+  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get @ '//IO_intAsString(i))
   item => self%first
   do j = 2,i
     item => item%next
@@ -935,7 +935,7 @@ function tDict_key(self,i)  result(key)
   type(tItem), pointer :: item
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key')
+  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsString(i))
   item => self%first
   do j = 1, i-1
     item => item%next
