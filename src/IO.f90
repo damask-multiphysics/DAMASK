@@ -252,9 +252,13 @@ pure function IO_lc(string)
   integer :: i,n
 
 
-  do i=1,len(string)
+  do i = 1,len(string)
     n = index(UPPER,string(i:i))
-    IO_lc(i:i) = merge(string(i:i),LOWER(n:n),n==0)
+    if (n==0) then
+      IO_lc(i:i) = string(i:i)
+    else
+      IO_lc(i:i) = LOWER(n:n)
+    end if
   end do
 
 end function IO_lc
