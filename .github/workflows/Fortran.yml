@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.18.0'
+  PETSC_VERSION: '3.18.1'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -102,7 +102,7 @@ jobs:
 
   intel:
 
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-22.04]
 
     strategy:
       matrix:
@@ -143,6 +143,7 @@ jobs:
       - name: PETSc - Prepare
         run: |
           tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
+          sed -i "1715s/if not os.path.isfile(os.path.join(self.packageDir,'configure')):/if True:/g" ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=intel-${INTEL_V}
           printenv >> $GITHUB_ENV
