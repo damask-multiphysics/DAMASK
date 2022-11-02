@@ -1275,7 +1275,7 @@ end subroutine mechanical_restartRead
 
 
 !--------------------------------------------------------------------------------------------------
-!< @brief Get first Piola-Kichhoff stress (for use by non-mech physics).
+!< @brief Get first Piola-Kirchhoff stress (for use by non-mech physics).
 !--------------------------------------------------------------------------------------------------
 module function mechanical_S(ph,en) result(S)
 
@@ -1317,7 +1317,7 @@ end function mechanical_F_e
 
 
 !--------------------------------------------------------------------------------------------------
-!< @brief Get second Piola-Kichhoff stress (for use by homogenization).
+!< @brief Get second Piola-Kirchhoff stress (for use by homogenization).
 !--------------------------------------------------------------------------------------------------
 module function phase_P(co,ce) result(P)
 
