@@ -2,7 +2,7 @@ name: Grid and Mesh Solver
 on: [push]
 
 env:
-  PETSC_VERSION: '3.18.0'
+  PETSC_VERSION: '3.18.1'
   HOMEBREW_NO_ANALYTICS: 'ON'     # Make Homebrew installation a little quicker
   HOMEBREW_NO_AUTO_UPDATE: 'ON'
   HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 'ON'
@@ -25,7 +25,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: GCC - Install (Linux)
         if: contains( matrix.os, 'ubuntu')
@@ -46,7 +46,7 @@ jobs:
 
       - name: PETSc - Cache download
         id: petsc-download
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: download
           key: petsc-${{ env.PETSC_VERSION }}.tar.gz
@@ -65,7 +65,7 @@ jobs:
 
       - name: PETSc - Cache installation
         id: petsc-install
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: petsc-${{ env.PETSC_VERSION }}
           key: petsc-${{ env.PETSC_VERSION }}-${{ matrix.os }}-gcc${{ matrix.gcc_v }}-${{ hashFiles('**/petscversion.h') }}
@@ -102,7 +102,7 @@ jobs:
 
   intel:
 
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-22.04]
 
     strategy:
       matrix:
@@ -112,7 +112,7 @@ jobs:
       INTEL_V: ${{ matrix.intel_v }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Intel - Install
         run: |
@@ -130,7 +130,7 @@ jobs:
 
       - name: PETSc - Cache download
         id: petsc-download
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: download
           key: petsc-${{ env.PETSC_VERSION }}.tar.gz
@@ -143,13 +143,15 @@ jobs:
       - name: PETSc - Prepare
         run: |
           tar -xf download/petsc-${PETSC_VERSION}.tar.gz -C .
+          sed -i "1715s/if not os.path.isfile(os.path.join(self.packageDir,'configure')):/if True:/g" \
+          ./petsc-${PETSC_VERSION}/config/BuildSystem/config/package.py
           export PETSC_DIR=${PWD}/petsc-${PETSC_VERSION}
           export PETSC_ARCH=intel-${INTEL_V}
           printenv >> $GITHUB_ENV
 
       - name: PETSc - Cache installation
         id: petsc-install
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: petsc-${{ env.PETSC_VERSION }}
           key: petsc-${{ env.PETSC_VERSION }}-intel-${{ matrix.intel_v }}-${{ hashFiles('**/petscversion.h') }}
