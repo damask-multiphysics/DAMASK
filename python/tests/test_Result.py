@@ -5,10 +5,12 @@ import shutil
 import os
 import sys
 import hashlib
+import fnmatch
 from datetime import datetime
 
 import pytest
 import vtk
+import h5py
 import numpy as np
 
 from damask import Result
@@ -542,6 +544,11 @@ class TestResult:
     @pytest.mark.parametrize('overwrite',[True,False])
     def test_export_setup(self,ref_path,tmp_path,fname,output,overwrite):
         r = Result(ref_path/fname)
+        r.export_setup(output,target_dir=tmp_path)
+        with h5py.File(ref_path/fname,'r') as f_hdf5:
+            for file in fnmatch.filter(f_hdf5['setup'].keys(),output):
+                with open(tmp_path/file) as f:
+                    assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
         r.export_setup(output,target_dir=tmp_path,overwrite=overwrite)
 
     def test_export_setup_custom_path(self,ref_path,tmp_path):
