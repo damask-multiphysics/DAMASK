@@ -276,7 +276,7 @@ class Result:
             Increment number of all increments within the given bounds.
 
         """
-        s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith(prefix_inc) else x),
+        s,e = map(lambda x: int(x.split(prefix_inc)[-1] if isinstance(x,str) and x.startswith(prefix_inc) else x),
                   (self.incs[ 0] if start is None else start,
                    self.incs[-1] if  end  is None else  end))
         return [i for i in self.incs if s <= i <= e]
@@ -1516,7 +1516,9 @@ class Result:
 
 
     def export_XDMF(self,
-                    output: Union[str, List[str]] = '*'):
+                    output: Union[str, List[str]] = '*',
+                    target_dir: Union[str, Path] = None,
+                    absolute_path: bool = False):
         """
         Write XDMF file to directly visualize data from DADF5 file.
 
@@ -1529,11 +1531,16 @@ class Result:
         output : (list of) str
             Names of the datasets included in the XDMF file.
             Defaults to '*', in which case all datasets are considered.
+        target_dir : str or pathlib.Path, optional
+            Directory to save XDMF file. Will be created if non-existent.
+        absolute_path : bool, optional
+            Store absolute (instead of relative) path to DADF5 file.
+            Defaults to False, i.e. the XDMF file expects the
+            DADF5 file at a stable relative path.
 
         """
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
-
 
         attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
 
@@ -1544,28 +1551,33 @@ class Result:
 
 
         xdmf = ET.Element('Xdmf')
-        xdmf.attrib={'Version':  '2.0',
-                     'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
+        xdmf.attrib = {'Version':  '2.0',
+                       'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
 
         domain = ET.SubElement(xdmf, 'Domain')
 
         collection = ET.SubElement(domain, 'Grid')
-        collection.attrib={'GridType':       'Collection',
-                           'CollectionType': 'Temporal',
-                           'Name':           'Increments'}
+        collection.attrib = {'GridType':       'Collection',
+                             'CollectionType': 'Temporal',
+                             'Name':           'Increments'}
 
         time = ET.SubElement(collection, 'Time')
-        time.attrib={'TimeType': 'List'}
+        time.attrib = {'TimeType': 'List'}
 
         time_data = ET.SubElement(time, 'DataItem')
         times = [self.times[self.increments.index(i)] for i in self.visible['increments']]
-        time_data.attrib={'Format':     'XML',
-                          'NumberType': 'Float',
-                          'Dimensions': f'{len(times)}'}
+        time_data.attrib = {'Format':     'XML',
+                            'NumberType': 'Float',
+                            'Dimensions': f'{len(times)}'}
         time_data.text = ' '.join(map(str,times))
 
         attributes = []
         data_items = []
+
+        hdf5_name = self.fname.name
+        hdf5_dir  = self.fname.parent
+        xdmf_dir  = Path.cwd() if target_dir is None else Path(target_dir)
+        hdf5_link = (hdf5_dir if absolute_path else Path(os.path.relpath(hdf5_dir,xdmf_dir.resolve())))/hdf5_name
 
         with h5py.File(self.fname,'r') as f:
             for inc in self.visible['increments']:
@@ -1601,8 +1613,7 @@ class Result:
                 data_items[-1].attrib = {'Format':     'HDF',
                                          'Precision':  '8',
                                          'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
-                data_items[-1].text = f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
-
+                data_items[-1].text = f'{hdf5_link}:/{inc}/geometry/u_n'
                 for ty in ['phase','homogenization']:
                     for label in self.visible[ty+'s']:
                         for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
@@ -1624,9 +1635,10 @@ class Result:
                                                          'Precision':  f'{dtype.itemsize}',
                                                          'Dimensions': '{} {} {} {}'.format(*self.cells[::-1],1 if shape == () else
                                                                                                         np.prod(shape))}
-                                data_items[-1].text = f'{os.path.split(self.fname)[1]}:{name}'
+                                data_items[-1].text = f'{hdf5_link}:{name}'
 
-        with util.open_text(self.fname.with_suffix('.xdmf').name,'w') as f:
+        xdmf_dir.mkdir(parents=True,exist_ok=True)
+        with util.open_text((xdmf_dir/hdf5_name).with_suffix('.xdmf'),'w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
@@ -1654,6 +1666,7 @@ class Result:
                    output: Union[str,list] = '*',
                    mode: str = 'cell',
                    constituents: IntSequence = None,
+                   target_dir: Union[str, Path] = None,
                    fill_float: float = np.nan,
                    fill_int: int = 0,
                    parallel: bool = True):
@@ -1676,6 +1689,8 @@ class Result:
         constituents : (list of) int, optional
             Constituents to consider.
             Defaults to None, in which case all constituents are considered.
+        target_dir : str or pathlib.Path, optional
+            Directory to save VTK files. Will be created if non-existent.
         fill_float : float
             Fill value for non-existent entries of floating point type.
             Defaults to NaN.
@@ -1705,6 +1720,9 @@ class Result:
                    [f'#{c}' for c in constituents_]
 
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
+
+        vtk_dir = Path.cwd() if target_dir is None else Path(target_dir)
+        vtk_dir.mkdir(parents=True,exist_ok=True)
 
         with h5py.File(self.fname,'r') as f:
             if self.version_minor >= 13:
@@ -1744,8 +1762,9 @@ class Result:
                         for label,dataset in outs.items():
                             v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
 
-                v.save(f'{self.fname.stem}_inc{inc[10:].zfill(N_digits)}',parallel=parallel)
 
+                v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
+                       parallel=parallel)
 
     def get(self,
             output: Union[str, List[str]] = '*',
@@ -1890,7 +1909,9 @@ class Result:
 
     def export_setup(self,
                      output: Union[str, List[str]] = '*',
-                     overwrite: bool = False):
+                     target_dir: Union[str, Path] = None,
+                     overwrite: bool = False,
+                     ):
         """
         Export configuration files.
 
@@ -1899,21 +1920,35 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to export to the file.
             Defaults to '*', in which case all datasets are exported.
+        target_dir : str or pathlib.Path, optional
+            Directory to save configuration files. Will be created if non-existent.
         overwrite : bool, optional
             Overwrite existing configuration files.
             Defaults to False.
 
         """
-        def export(name: str, obj: Union[h5py.Dataset,h5py.Group], output: Union[str,List[str]], overwrite: bool):
-            if type(obj) == h5py.Dataset and  _match(output,[name]):
-                d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
-                if not Path(name).exists() or overwrite:
-                    with util.open_text(name,'w') as f_out: f_out.write(obj[0].decode())
-                    print(f'Exported {d} to "{name}".')
-                else:
-                    print(f'"{name}" exists, {d} not exported.')
-            elif type(obj) == h5py.Group:
-                os.makedirs(name, exist_ok=True)
+        def export(name: str,
+                   obj: Union[h5py.Dataset,h5py.Group],
+                   output: Union[str,List[str]],
+                   cfg_dir: Path,
+                   overwrite: bool):
 
+            cfg = cfg_dir/name
+
+            if type(obj) == h5py.Dataset and _match(output,[name]):
+                d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
+                if overwrite or not cfg.exists():
+                    with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
+                    print(f'Exported {d} to "{cfg}".')
+                else:
+                    print(f'"{cfg}" exists, {d} not exported.')
+            elif type(obj) == h5py.Group:
+                cfg.mkdir(parents=True,exist_ok=True)
+
+        cfg_dir = (Path.cwd() if target_dir is None else Path(target_dir))
+        cfg_dir.mkdir(parents=True,exist_ok=True)
         with h5py.File(self.fname,'r') as f_in:
-            f_in['setup'].visititems(partial(export,output=output,overwrite=overwrite))
+            f_in['setup'].visititems(partial(export,
+                                             output=output,
+                                             cfg_dir=cfg_dir,
+                                             overwrite=overwrite))
