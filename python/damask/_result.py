@@ -1814,6 +1814,47 @@ class Result:
         return None if (type(r) == dict and r == {}) else r
 
 
+    def export_DADF5(self,
+                     fname,
+                     output: Union[str, List[str]] = '*'):
+        """
+        Export visible components into a new DADF5 file.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            Name of the DADF5 file to be created.
+        output : (list of) str
+            Names of the datasets to write.
+            Defaults to '*', in which case all datasets are write.
+
+        """
+        if Path(fname).expanduser().absolute() == self.fname:
+            raise PermissionError(f'cannot overwrite {self.fname}')
+        with h5py.File(self.fname,'r') as f_in, h5py.File(fname,'w') as f_out:
+            for k,v in f_in.attrs.items():
+                f_out.attrs.create(k,v)
+            for g in ['setup','geometry','cell_to']:
+                f_in.copy(g,f_out)
+
+            for inc in util.show_progress(self.visible['increments']):
+                f_in.copy(inc,f_out,shallow=True)
+                for out in _match(output,f_in['/'.join([inc,'geometry'])].keys()):
+                    f_in[inc]['geometry'].copy(out,f_out[inc]['geometry'])
+
+                for label in self.homogenizations:
+                    f_in[inc]['homogenization'].copy(label,f_out[inc]['homogenization'],shallow=True)
+                for label in self.phases:
+                    f_in[inc]['phase'].copy(label,f_out[inc]['phase'],shallow=True)
+
+                for ty in ['phase','homogenization']:
+                    for label in self.visible[ty+'s']:
+                        for field in _match(self.visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
+                            p = '/'.join([inc,ty,label,field])
+                            for out in _match(output,f_in[p].keys()):
+                               f_in[p].copy(out,f_out[p])
+
+
     def place(self,
               output: Union[str, List[str]] = '*',
               flatten: bool = True,

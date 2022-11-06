@@ -6,6 +6,7 @@ import os
 import sys
 import hashlib
 import fnmatch
+import random
 from datetime import datetime
 
 import pytest
@@ -562,3 +563,21 @@ class TestResult:
             os.chdir(cwd)
             r.export_setup('material.yaml',target_dir=t)
             assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
+
+    @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+    def test_export_DADF5(self,ref_path,tmp_path,fname):
+        r = Result(ref_path/fname)
+        r = r.view(phases = random.sample(r.phases,1))
+        r = r.view(increments = random.sample(r.increments,np.random.randint(2,len(r.increments))))
+        r.export_DADF5(tmp_path/fname)
+        r_exp = Result(tmp_path/fname)
+        assert str(r.get()) == str(r_exp.get())
+        assert str(r.place()) == str(r_exp.place())
+
+    @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+    def test_export_DADF5_name_clash(self,ref_path,tmp_path,fname):
+        r = Result(ref_path/fname)
+        with pytest.raises(PermissionError):
+            r.export_DADF5(r.fname)
