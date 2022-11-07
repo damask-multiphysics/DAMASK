@@ -611,8 +611,7 @@ class Rotation:
         Cube orientation as Bunge Euler angles.
 
         >>> import damask
-        >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_Euler_angles()
+        >>> damask.Rotation([1,0,0,0]).as_Euler_angles()
         array([0., 0., 0.])
 
         """
@@ -643,8 +642,7 @@ class Rotation:
         Cube orientation as axis–angle pair.
 
         >>> import damask
-        >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_axis_angle(pair=True)
+        >>> damask.Rotation([1,0,0,0]).as_axis_angle(pair=True)
         (array([0., 0., 1.]), array(0.))
 
         """
@@ -666,8 +664,7 @@ class Rotation:
         Cube orientation as rotation matrix.
 
         >>> import damask
-        >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_matrix()
+        >>> damask.Rotation([1,0,0,0]).as_matrix()
         array([[1., 0., 0.],
                [0., 1., 0.],
                [0., 0., 1.]])
@@ -697,8 +694,7 @@ class Rotation:
         Cube orientation as three-component Rodrigues–Frank vector.
 
         >>> import damask
-        >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_Rodrigues_vector(compact=True)
+        >>> damask.Rotation([1,0,0,0]).as_Rodrigues_vector(compact=True)
         array([ 0.,  0., 0.])
 
         """
@@ -723,8 +719,7 @@ class Rotation:
         Cube orientation as homochoric vector.
 
         >>> import damask
-        >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_homochoric()
+        >>> damask.Rotation([1,0,0,0]).as_homochoric()
         array([0., 0., 0.])
 
         """
@@ -744,8 +739,7 @@ class Rotation:
         Cube orientation as cubochoric vector.
 
         >>> import damask
-        >>> import numpy as np
-        >>> damask.Rotation(np.array([1,0,0,0])).as_cubochoric()
+        >>> damask.Rotation([1,0,0,0]).as_cubochoric()
         array([0., 0., 0.])
 
         """
@@ -1131,7 +1125,6 @@ class Rotation:
         200 orientations:
 
         >>> import damask
-        >>> import numpy as np
         >>> center = damask.Rotation.from_Euler_angles([35.0,45.0,0.0],degrees=True)
         >>> brass = damask.Rotation.from_spherical_component(center=center,sigma=3.0,shape=200,degrees=True)
 
@@ -1139,7 +1132,6 @@ class Rotation:
         100 orientations:
 
         >>> import damask
-        >>> import numpy as np
         >>> center = damask.Rotation.from_Euler_angles([0.0,45.0,0.0],degrees=True)
         >>> goss = damask.Rotation.from_spherical_component(center=center,sigma=3.0,shape=100,degrees=True)
 
