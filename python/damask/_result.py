@@ -285,14 +285,14 @@ class Result:
                        start: float = None,
                        end: float = None) -> Sequence[float]:
         """
-        Get all increments within a given time range.
+        Get times of all increments within a given time range.
 
         Parameters
         ----------
         start : float, optional
-            Time of start increment. Defaults to first.
+            Time of start increment. Defaults to time of first.
         end : float, optional
-            Time of end increment. Defaults to last.
+            Time of end increment. Defaults to time of last.
 
         Returns
         -------
