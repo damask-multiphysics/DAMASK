@@ -283,7 +283,7 @@ class Result:
 
     def times_in_range(self,
                        start: float = None,
-                       end: float = None) -> Sequence[int]:
+                       end: float = None) -> Sequence[float]:
         """
         Get all increments within a given time range.
 
@@ -817,7 +817,7 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-        eigenvalue : {'max', 'mid', 'min'}
+        eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue. Defaults to 'max'.
 
         Examples
@@ -863,7 +863,7 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-        eigenvalue : {'max', 'mid', 'min'}
+        eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue to which the eigenvector corresponds.
             Defaults to 'max'.
 
@@ -897,7 +897,7 @@ class Result:
         ----------
         l : numpy.array of shape (3)
             Lab frame direction for inverse pole figure.
-        q : str
+        q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
 
@@ -1104,7 +1104,7 @@ class Result:
 
         Parameters
         ----------
-        q : str
+        q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
         uvw|hkl : numpy.ndarray of shape (3)
@@ -1528,7 +1528,7 @@ class Result:
 
         Parameters
         ----------
-        output : (list of) str
+        output : (list of) str, optional
             Names of the datasets included in the XDMF file.
             Defaults to '*', in which case all datasets are considered.
         target_dir : str or pathlib.Path, optional
@@ -1663,7 +1663,7 @@ class Result:
 
 
     def export_VTK(self,
-                   output: Union[str,list] = '*',
+                   output: Union[str,List[str]] = '*',
                    mode: str = 'cell',
                    constituents: IntSequence = None,
                    target_dir: Union[str, Path] = None,
@@ -1683,7 +1683,7 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to export to the VTK file.
             Defaults to '*', in which case all datasets are exported.
-        mode : {'cell', 'point'}
+        mode : {'cell', 'point'}, optional
             Export in cell format or point format.
             Defaults to 'cell'.
         constituents : (list of) int, optional
@@ -1691,13 +1691,13 @@ class Result:
             Defaults to None, in which case all constituents are considered.
         target_dir : str or pathlib.Path, optional
             Directory to save VTK files. Will be created if non-existent.
-        fill_float : float
+        fill_float : float, optional
             Fill value for non-existent entries of floating point type.
             Defaults to NaN.
-        fill_int : int
+        fill_int : int, optional
             Fill value for non-existent entries of integer type.
             Defaults to 0.
-        parallel : bool
+        parallel : bool, optional
             Write VTK files in parallel in a separate background process.
             Defaults to True.
 
@@ -1775,14 +1775,14 @@ class Result:
 
         Parameters
         ----------
-        output : (list of) str
+        output : (list of) str, optional
             Names of the datasets to read.
             Defaults to '*', in which case all datasets are read.
-        flatten : bool
+        flatten : bool, optional
             Remove singular levels of the folder hierarchy.
             This might be beneficial in case of single increment,
             phase/homogenization, or field. Defaults to True.
-        prune : bool
+        prune : bool, optional
             Remove branches with no data. Defaults to True.
 
         Returns
@@ -1824,9 +1824,9 @@ class Result:
         ----------
         fname : str or pathlib.Path
             Name of the DADF5 file to be created.
-        output : (list of) str
-            Names of the datasets to write.
-            Defaults to '*', in which case all datasets are write.
+        output : (list of) str, optional
+            Names of the datasets to export.
+            Defaults to '*', in which case all visible datasets are exported.
 
         """
         if Path(fname).expanduser().absolute() == self.fname:
@@ -1877,19 +1877,19 @@ class Result:
         output : (list of) str, optional
             Names of the datasets to read.
             Defaults to '*', in which case all datasets are placed.
-        flatten : bool
+        flatten : bool, optional
             Remove singular levels of the folder hierarchy.
             This might be beneficial in case of single increment or field.
             Defaults to True.
-        prune : bool
+        prune : bool, optional
             Remove branches with no data. Defaults to True.
         constituents : (list of) int, optional
             Constituents to consider.
             Defaults to None, in which case all constituents are considered.
-        fill_float : float
+        fill_float : float, optional
             Fill value for non-existent entries of floating point type.
             Defaults to NaN.
-        fill_int : int
+        fill_int : int, optional
             Fill value for non-existent entries of integer type.
             Defaults to 0.
 
