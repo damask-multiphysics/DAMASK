@@ -1120,10 +1120,28 @@ class Rotation:
         shape : int or sequence of ints, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            sigma is given in degrees. Defaults to True.
+            sigma is given in degrees. Defaults to False.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+
+        Examples
+        --------
+        Create a brass texture consisting of
+        200 orientations:
+
+        >>> import damask
+        >>> import numpy as np
+        >>> center = damask.Rotation.from_Euler_angles([35.0,45.0,0.0],degrees=True)
+        >>> brass = damask.Rotation.from_spherical_component(center=center,sigma=3.0,shape=200,degrees=True)
+
+        Create a Goss texture consisting of
+        100 orientations:
+
+        >>> import damask
+        >>> import numpy as np
+        >>> center = damask.Rotation.from_Euler_angles([0.0,45.0,0.0],degrees=True)
+        >>> goss = damask.Rotation.from_spherical_component(center=center,sigma=3.0,shape=100,degrees=True)
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -1162,7 +1180,7 @@ class Rotation:
         shape : int or sequence of ints, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
-            sigma and polar coordinates are given in degrees.
+            sigma and polar coordinates are given in degrees. Defaults to False.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
