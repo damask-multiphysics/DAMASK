@@ -144,16 +144,15 @@ class TestGridFilters:
     def test_regrid_identity(self):
          size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
-         F = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))
-         assert all(grid_filters.regrid(size,F,cells) == np.arange(cells.prod()))
+         F = np.broadcast_to(np.eye(3), (*cells,3,3))
+         assert (grid_filters.regrid(size,F,cells).flatten() == np.arange(cells.prod())).all
 
     def test_regrid_double_cells(self):
          size = np.random.random(3)                                                                 # noqa
          cells = np.random.randint(8,32,(3))
          g = Grid.from_Voronoi_tessellation(cells,size,seeds.from_random(size,10))
-         F = np.broadcast_to(np.eye(3), tuple(cells)+(3,3))
-         assert all(g.scale(cells*2).material.flatten() ==
-                    g.material.flatten()[grid_filters.regrid(size,F,cells*2)])
+         F = np.broadcast_to(np.eye(3), (*cells,3,3))
+         assert g.scale(cells*2) == g.assemble(grid_filters.regrid(size,F,cells*2))
 
     @pytest.mark.parametrize('differential_operator',[grid_filters.curl,
                                                       grid_filters.divergence,
@@ -319,7 +318,6 @@ class TestGridFilters:
      ]
 
     @pytest.mark.parametrize('field_def,div_def',div_test_data)
-
     def test_div(self,field_def,div_def):
         size = np.random.random(3)+1.0
         cells = np.random.randint(8,32,(3))
@@ -336,3 +334,31 @@ class TestGridFilters:
             div=div.reshape(tuple(cells))
 
         assert np.allclose(div,grid_filters.divergence(size,field))
+
+
+    def test_ravel_index(self):
+        cells = np.random.randint(8,32,(3))
+
+        indices = np.block(np.meshgrid(np.arange(cells[0]),
+                                       np.arange(cells[1]),
+                                       np.arange(cells[2]),indexing='ij')).reshape(tuple(cells)+(3,),order='F')
+        x,y,z = map(np.random.randint,cells)
+        assert grid_filters.ravel_index(indices)[x,y,z] == np.arange(0,np.product(cells)).reshape(cells,order='F')[x,y,z]
+
+    def test_unravel_index(self):
+        cells = np.random.randint(8,32,(3))
+        indices = np.arange(np.prod(cells)).reshape(cells,order='F')
+        x,y,z = map(np.random.randint,cells)
+        assert np.all(grid_filters.unravel_index(indices)[x,y,z] == [x,y,z])
+
+    def test_ravel_unravel_index(self):
+        cells = np.random.randint(8,32,(3))
+        indices = np.random.randint(0,np.prod(cells),cells).reshape(cells)
+        assert np.all(indices==grid_filters.ravel_index(grid_filters.unravel_index(indices)))
+
+    def test_unravel_ravel_index(self):
+        cells = np.hstack([np.random.randint(8,32,(3)),1])
+        indices = np.block([np.random.randint(0,cells[0],cells),
+                            np.random.randint(0,cells[1],cells),
+                            np.random.randint(0,cells[2],cells)])
+        assert np.all(indices==grid_filters.unravel_index(grid_filters.ravel_index(indices)))
