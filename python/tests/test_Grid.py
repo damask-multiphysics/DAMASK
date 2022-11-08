@@ -212,6 +212,14 @@ class TestGrid:
         assert     default == modified.renumber()
 
 
+    def test_assemble(self):
+        cells = np.random.randint(8,16,3)
+        N = cells.prod()
+        g = Grid(np.arange(N).reshape(cells),np.ones(3))
+        idx = np.random.randint(0,N,N).reshape(cells)
+        assert (idx == g.assemble(idx).material).all
+
+
     def test_substitute(self,default):
         offset = np.random.randint(1,500)
         modified = Grid(default.material + offset,
