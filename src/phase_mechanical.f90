@@ -926,7 +926,7 @@ subroutine results(group,ph)
                                  'second Piola-Kirchhoff stress','Pa')
       case('O')
         call results_writeDataset(to_quaternion(phase_O(ph)%data),group//'/mechanical','O', &
-                                 'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
+                                 'crystal orientation as quaternion q_0 (q_1 q_2 q_3)','1')
         call results_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/O')
         if (any(phase_lattice(ph) == ['hP', 'tI'])) &
           call results_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/O')
