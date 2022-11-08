@@ -1820,6 +1820,9 @@ class Result:
         """
         Export visible components into a new DADF5 file.
 
+        A DADF5 (DAMASK HDF5) file contains DAMASK results.
+        Its group/folder structure reflects the layout in material.yaml.
+
         Parameters
         ----------
         fname : str or pathlib.Path
