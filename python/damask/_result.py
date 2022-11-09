@@ -566,7 +566,7 @@ class Result:
         """Simulation setup files used to generate the Result object."""
         files = []
         with h5py.File(self.fname,'r') as f_in:
-            f_in['setup'].visit(lambda name: files.append(name))
+            f_in['setup'].visititems(lambda name,obj: files.append(name) if isinstance(obj,h5py.Dataset) else None)
         return files
 
     @property
@@ -1986,13 +1986,12 @@ class Result:
 
             cfg = cfg_dir/name
 
-            if type(obj) == h5py.Dataset and _match(output,[name]):
+            if type(obj) == h5py.Dataset and _match(output,name):
                 d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
-                if overwrite or not cfg.exists():
-                    with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
-                    print(f'{d} --> "{cfg}"')
+                if cfg.exists() and not overwrite:
+                    raise PermissionError(f'"{cfg}" exists')
                 else:
-                    print(f'{d} --x "{cfg}" exists!')
+                    with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
             elif type(obj) == h5py.Group:
                 cfg.mkdir(parents=True,exist_ok=True)
 
