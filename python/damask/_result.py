@@ -1868,8 +1868,7 @@ class Result:
         """
         Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
-        The returned data structure reflects the group/folder structure
-        in the DADF5 file.
+        The returned data structure reflects the group/folder structure in the DADF5 file.
 
         Multi-phase data is fused into a single output.
         `place` is equivalent to `get` if only one phase/homogenization
@@ -1957,7 +1956,7 @@ class Result:
                      overwrite: bool = False,
                      ):
         """
-        Export original simulation setup of Result object.
+        Export original simulation setup of the Result object.
 
         Parameters
         ----------
