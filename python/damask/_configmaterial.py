@@ -209,8 +209,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: SX
-        homogenization: {}
-        phase: {}
+        homogenization: {SX: {t.b.d}}
+        phase: {Aluminum: {t.b.d}, Steel: {t.b.d}}
 
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='single_crystal')
         material:
@@ -224,8 +224,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: single_crystal
-        homogenization: {}
-        phase: {}
+        homogenization: {single_crystal: {t.b.d}}
+        phase: {Aluminum: {t.b.d}, Steel: {t.b.d}}
 
         """
         kwargs_ = {k:table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T for k,v in kwargs.items()}
@@ -428,7 +428,6 @@ class ConfigMaterial(Config):
         --------
         Create a dual-phase steel microstructure for micromechanical simulations:
 
-        >>> import numpy as np
         >>> import damask
         >>> m = damask.ConfigMaterial()
         >>> m = m.material_add(phase = ['Ferrite','Martensite'],
@@ -446,12 +445,11 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Martensite
             homogenization: SX
-        homogenization: {}
-        phase: {}
+        homogenization: {SX: {t.b.d}}
+        phase: {Ferrite: {t.b.d}, Martensite: {t.b.d}}
 
         Create a duplex stainless steel microstructure for forming simulations:
 
-        >>> import numpy as np
         >>> import damask
         >>> m = damask.ConfigMaterial()
         >>> m = m.material_add(phase = np.array(['Austenite','Ferrite']).reshape(1,2),
@@ -476,8 +474,8 @@ class ConfigMaterial(Config):
                 O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
                 v: 0.8
             homogenization: Taylor
-        homogenization: {}
-        phase: {}
+        homogenization: {Taylor: {t.b.d}}
+        phase: {Austenite: {t.b.d}, Ferrite: {t.b.d}}
 
         """
         N,n,shaped = 1,1,{}
@@ -507,5 +505,9 @@ class ConfigMaterial(Config):
 
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
+        for k in np.unique(shaped['phase']):
+            if k not in dup['phase']: dup['phase'][str(k)] = {'t.b.d'} 
+        for k in np.unique(shaped['homogenization']):
+            if k not in dup['homogenization']: dup['homogenization'][str(k)] = {'t.b.d'}
 
         return dup

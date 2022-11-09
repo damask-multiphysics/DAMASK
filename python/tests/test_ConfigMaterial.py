@@ -98,6 +98,13 @@ class TestConfigMaterial:
         for i,m in enumerate(c['material']):
             assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
 
+    def test_updated_dicts(self,ref_path):
+        m1 = ConfigMaterial().material_add(phase=['Aluminum'],O=[1.0,0.0,0.0,0.0],homogenization='SX')
+        m2 = ConfigMaterial.load(ref_path/'material.yaml').material_add(phase=['Aluminum'],O=[1.0,0.0,0.0,0.0],homogenization='SX')
+        assert m1['phase'] == {'Aluminum': {'t.b.d'}}
+        assert m1['homogenization'] == {'SX': {'t.b.d'}}
+        assert not m2['phase']['Aluminum'] == {}
+
     def test_from_table_with_constant(self):
         N = np.random.randint(3,10)
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
