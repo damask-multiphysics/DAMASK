@@ -1986,17 +1986,14 @@ class Result:
 
             cfg = cfg_dir/name
 
-            if type(obj) == h5py.Dataset and _match(output,name):
-                d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
+            if type(obj) == h5py.Dataset and _match(output,[name]):
                 if cfg.exists() and not overwrite:
                     raise PermissionError(f'"{cfg}" exists')
                 else:
+                    cfg.parent.mkdir(parents=True,exist_ok=True)
                     with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
-            elif type(obj) == h5py.Group:
-                cfg.mkdir(parents=True,exist_ok=True)
 
         cfg_dir = (Path.cwd() if target_dir is None else Path(target_dir))
-        cfg_dir.mkdir(parents=True,exist_ok=True)
         with h5py.File(self.fname,'r') as f_in:
             f_in['setup'].visititems(partial(export,
                                              output=output,
