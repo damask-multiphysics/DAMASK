@@ -564,6 +564,10 @@ class TestResult:
             r.export_simulation_setup_files('material.yaml',target_dir=t)
             assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
 
+    def test_list_simulation_setup_files(self,ref_path):
+        r = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        assert r.list_simulation_setup_files()==['4grains2x4x3.vti', 'compressionY.yaml', 'material.yaml']
+
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
     def test_export_DADF5(self,ref_path,tmp_path,fname):

@@ -1996,3 +1996,14 @@ class Result:
                                              output=output,
                                              cfg_dir=cfg_dir,
                                              overwrite=overwrite))
+
+    def list_simulation_setup_files(self):
+        """List available simulation setup files used to generate the Result object."""
+        simulation_datasets = []
+
+        def retrieve_dataset(name, node):
+            simulation_datasets.append(name)
+
+        with h5py.File(self.fname,'r') as f_in:
+            f_in['setup'].visititems(retrieve_dataset)
+        return simulation_datasets
