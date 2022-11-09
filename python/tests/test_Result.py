@@ -538,39 +538,54 @@ class TestResult:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
 
+    def test_simulation_setup_files(self,default):
+        assert set(default.simulation_setup_files) == set(['12grains6x7x8.vti',
+                                                            'material.yaml',
+                                                            'tensionY.yaml',
+                                                            'previous/12grains6x7x8.vti',
+                                                            'previous/material.yaml',
+                                                            'previous/tensionY.yaml'])
+
+    def test_export_simulation_setup_files(self,tmp_path,default):
+        sub = 'deep/down'
+        default.export_simulation_setup(target_dir=tmp_path/sub,overwrite=True)
+        for f in default.simulation_setup_files:
+            assert (tmp_path/sub/f).exists()
+
+    def test_export_simulation_setup_overwrite(self,tmp_path,default):
+        os.chdir(tmp_path)
+        default.export_simulation_setup('material.yaml',overwrite=True)
+        with pytest.raises(PermissionError):
+            default.export_simulation_setup('material.yaml',overwrite=False)
+
+    @pytest.mark.parametrize('output',['12grains6x7x8.vti',
+                                       'tensionY.yaml',
+                                      ])
+    def test_export_simulation_setup_content(self,ref_path,tmp_path,default,output):
+        default.export_simulation_setup(output,target_dir=tmp_path,overwrite=True)
+        assert open(tmp_path/output).read() == open(ref_path/output).read()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
     @pytest.mark.parametrize('output',['material.yaml','*'])
-    @pytest.mark.parametrize('overwrite',[True,False])
-    def test_export_simulation_setup(self,ref_path,tmp_path,fname,output,overwrite):
+    def test_export_simulation_setup_consistency(self,ref_path,tmp_path,fname,output):
         r = Result(ref_path/fname)
         r.export_simulation_setup(output,target_dir=tmp_path)
         with h5py.File(ref_path/fname,'r') as f_hdf5:
             for file in fnmatch.filter(f_hdf5['setup'].keys(),output):
                 with open(tmp_path/file) as f:
                     assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
-        r.export_simulation_setup(output,target_dir=tmp_path,overwrite=overwrite)
-
-    def test_export_simulation_setup_restart(self,default,tmp_path):
-        default.export_simulation_setup(target_dir=tmp_path)
-        assert (tmp_path/'previous').is_dir()
 
     def test_export_simulation_setup_custom_path(self,ref_path,tmp_path):
-        src = ref_path/'4grains2x4x3_compressionY.hdf5'
         subdir = 'export_dir'
         absdir = tmp_path/subdir
         absdir.mkdir(exist_ok=True)
 
-        r = Result(src)
+        r = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for t,cwd in zip([absdir,subdir,None],[tmp_path,tmp_path,absdir]):
             os.chdir(cwd)
             r.export_simulation_setup('material.yaml',target_dir=t)
             assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
-
-    def test_simulation_setup_files(self,ref_path):
-        r = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
-        assert set(r.simulation_setup_files) == set(['4grains2x4x3.vti', 'compressionY.yaml', 'material.yaml'])
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
