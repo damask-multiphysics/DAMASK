@@ -543,16 +543,16 @@ class TestResult:
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
     @pytest.mark.parametrize('output',['material.yaml','*'])
     @pytest.mark.parametrize('overwrite',[True,False])
-    def test_export_setup(self,ref_path,tmp_path,fname,output,overwrite):
+    def test_export_simulation_setup_files(self,ref_path,tmp_path,fname,output,overwrite):
         r = Result(ref_path/fname)
-        r.export_setup(output,target_dir=tmp_path)
+        r.export_simulation_setup_files(output,target_dir=tmp_path)
         with h5py.File(ref_path/fname,'r') as f_hdf5:
             for file in fnmatch.filter(f_hdf5['setup'].keys(),output):
                 with open(tmp_path/file) as f:
                     assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
-        r.export_setup(output,target_dir=tmp_path,overwrite=overwrite)
+        r.export_simulation_setup_files(output,target_dir=tmp_path,overwrite=overwrite)
 
-    def test_export_setup_custom_path(self,ref_path,tmp_path):
+    def test_export_simulation_setup_files_custom_path(self,ref_path,tmp_path):
         src = ref_path/'4grains2x4x3_compressionY.hdf5'
         subdir = 'export_dir'
         absdir = tmp_path/subdir
@@ -561,7 +561,7 @@ class TestResult:
         r = Result(src)
         for t,cwd in zip([absdir,subdir,None],[tmp_path,tmp_path,absdir]):
             os.chdir(cwd)
-            r.export_setup('material.yaml',target_dir=t)
+            r.export_simulation_setup_files('material.yaml',target_dir=t)
             assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',

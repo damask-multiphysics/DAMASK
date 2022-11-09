@@ -109,7 +109,7 @@ class Result:
             if self.version_major != 0 or not 12 <= self.version_minor <= 14:
                 raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
             if self.version_major == 0 and self.version_minor < 14:
-                self.export_setup = None                                                            # type: ignore
+                self.export_simulation_setup_files = None                                                 # type: ignore
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
 
@@ -1951,13 +1951,13 @@ class Result:
         return None if (type(r) == dict and r == {}) else r
 
 
-    def export_setup(self,
+    def export_simulation_setup_files(self,
                      output: Union[str, List[str]] = '*',
                      target_dir: Union[str, Path] = None,
                      overwrite: bool = False,
                      ):
         """
-        Export configuration files.
+        Export original simulation setup of Result object.
 
         Parameters
         ----------
@@ -1988,8 +1988,8 @@ class Result:
                     print(f'"{cfg}" exists, {d} not exported.')
             elif type(obj) == h5py.Group:
                 cfg.mkdir(parents=True,exist_ok=True)
-
         cfg_dir = (Path.cwd() if target_dir is None else Path(target_dir))
+
         cfg_dir.mkdir(parents=True,exist_ok=True)
         with h5py.File(self.fname,'r') as f_in:
             f_in['setup'].visititems(partial(export,
