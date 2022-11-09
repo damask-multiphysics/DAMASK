@@ -378,7 +378,7 @@ class TestResult:
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
-    def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
+    def test_export_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view(increments=inc)
         result.export_VTK(output,target_dir=tmp_path,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
@@ -395,7 +395,7 @@ class TestResult:
 
     @pytest.mark.parametrize('mode',['point','cell'])
     @pytest.mark.parametrize('output',[False,True])
-    def test_vtk_marc(self,tmp_path,ref_path,mode,output):
+    def test_export_vtk_marc(self,tmp_path,ref_path,mode,output):
         os.chdir(tmp_path)
         result = Result(ref_path/'check_compile_job1.hdf5')
         result.export_VTK(output,mode)
@@ -551,6 +551,10 @@ class TestResult:
                 with open(tmp_path/file) as f:
                     assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
         r.export_simulation_setup(output,target_dir=tmp_path,overwrite=overwrite)
+
+    def test_export_simulation_setup_restart(self,default,tmp_path):
+        default.export_simulation_setup(target_dir=tmp_path)
+        assert (tmp_path/'previous').is_dir()
 
     def test_export_simulation_setup_custom_path(self,ref_path,tmp_path):
         src = ref_path/'4grains2x4x3_compressionY.hdf5'
