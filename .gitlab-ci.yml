@@ -74,8 +74,8 @@ pytest:
   stage: python
   script:
     - cd python
-    - pytest --basetemp ${TESTROOT}/python -v --cov --cov-report=term
-    - coverage report --fail-under=90
+    - pytest --basetemp ${TESTROOT}/python -v --cov
+    - coverage report --fail-under=90 --show-missing
 
 mypy:
   stage: python
