@@ -109,7 +109,7 @@ class Result:
             if self.version_major != 0 or not 12 <= self.version_minor <= 14:
                 raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
             if self.version_major == 0 and self.version_minor < 14:
-                self.export_setup = None                                                            # type: ignore
+                self.export_simulation_setup = None                                                 # type: ignore
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
 
@@ -560,6 +560,14 @@ class Result:
         globals()[func.__name__]=func
         print(f'Function {func.__name__} enabled in add_calculation.')
 
+
+    @property
+    def simulation_setup_files(self):
+        """Simulation setup files used to generate the Result object."""
+        files = []
+        with h5py.File(self.fname,'r') as f_in:
+            f_in['setup'].visititems(lambda name,obj: files.append(name) if isinstance(obj,h5py.Dataset) else None)
+        return files
 
     @property
     def incs(self):
@@ -1515,6 +1523,166 @@ class Result:
         pool.join()
 
 
+    def _mappings(self):
+        """Mappings to place data spatially."""
+        with h5py.File(self.fname,'r') as f:
+
+            at_cell_ph = []
+            in_data_ph = []
+            for c in range(self.N_constituents):
+                at_cell_ph.append({label: np.where(self.phase[:,c] == label)[0] \
+                                          for label in self.visible['phases']})
+                in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
+                                          for label in self.visible['phases']})
+
+            at_cell_ho = {label: np.where(self.homogenization[:] == label)[0] \
+                                 for label in self.visible['homogenizations']}
+            in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
+                                 for label in self.visible['homogenizations']}
+
+        return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
+
+
+    def get(self,
+            output: Union[str, List[str]] = '*',
+            flatten: bool = True,
+            prune: bool = True):
+        """
+        Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
+
+        Parameters
+        ----------
+        output : (list of) str, optional
+            Names of the datasets to read.
+            Defaults to '*', in which case all datasets are read.
+        flatten : bool, optional
+            Remove singular levels of the folder hierarchy.
+            This might be beneficial in case of single increment,
+            phase/homogenization, or field. Defaults to True.
+        prune : bool, optional
+            Remove branches with no data. Defaults to True.
+
+        Returns
+        -------
+        data : dict of numpy.ndarray
+            Datasets structured by phase/homogenization and according to selected view.
+
+        """
+        r = {}                                                                                      # type: ignore
+
+        with h5py.File(self.fname,'r') as f:
+            for inc in util.show_progress(self.visible['increments']):
+                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
+
+                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
+                    r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
+
+                for ty in ['phase','homogenization']:
+                    for label in self.visible[ty+'s']:
+                        r[inc][ty][label] = {}
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                            r[inc][ty][label][field] = {}
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                r[inc][ty][label][field][out] = _read(f['/'.join([inc,ty,label,field,out])])
+
+        if prune:   r = util.dict_prune(r)
+        if flatten: r = util.dict_flatten(r)
+
+        return None if (type(r) == dict and r == {}) else r
+
+
+    def place(self,
+              output: Union[str, List[str]] = '*',
+              flatten: bool = True,
+              prune: bool = True,
+              constituents: IntSequence = None,
+              fill_float: float = np.nan,
+              fill_int: int = 0):
+        """
+        Merge data into spatial order that is compatible with the damask.VTK geometry representation.
+
+        The returned data structure reflects the group/folder structure in the DADF5 file.
+
+        Multi-phase data is fused into a single output.
+        `place` is equivalent to `get` if only one phase/homogenization
+        and one constituent is present.
+
+        Parameters
+        ----------
+        output : (list of) str, optional
+            Names of the datasets to read.
+            Defaults to '*', in which case all visible datasets are placed.
+        flatten : bool, optional
+            Remove singular levels of the folder hierarchy.
+            This might be beneficial in case of single increment or field.
+            Defaults to True.
+        prune : bool, optional
+            Remove branches with no data. Defaults to True.
+        constituents : (list of) int, optional
+            Constituents to consider.
+            Defaults to None, in which case all constituents are considered.
+        fill_float : float, optional
+            Fill value for non-existent entries of floating point type.
+            Defaults to NaN.
+        fill_int : int, optional
+            Fill value for non-existent entries of integer type.
+            Defaults to 0.
+
+        Returns
+        -------
+        data : dict of numpy.ma.MaskedArray
+            Datasets structured by spatial position and according to selected view.
+
+        """
+        r = {}                                                                                      # type: ignore
+
+        constituents_ = list(map(int,constituents)) if isinstance(constituents,Iterable) else \
+                      (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
+
+        suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
+                   [f'#{c}' for c in constituents_]
+
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
+
+        with h5py.File(self.fname,'r') as f:
+
+            for inc in util.show_progress(self.visible['increments']):
+                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
+
+                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
+                    r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
+
+                for ty in ['phase','homogenization']:
+                    for label in self.visible[ty+'s']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                            if field not in r[inc][ty].keys():
+                                r[inc][ty][field] = {}
+
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
+
+                                if ty == 'phase':
+                                    if out+suffixes[0] not in r[inc][ty][field].keys():
+                                        for c,suffix in zip(constituents_,suffixes):
+                                            r[inc][ty][field][out+suffix] = \
+                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+
+                                    for c,suffix in zip(constituents_,suffixes):
+                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+
+                                if ty == 'homogenization':
+                                    if out not in r[inc][ty][field].keys():
+                                        r[inc][ty][field][out] = \
+                                            _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+
+                                    r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
+
+        if prune:   r = util.dict_prune(r)
+        if flatten: r = util.dict_flatten(r)
+
+        return None if (type(r) == dict and r == {}) else r
+
+
     def export_XDMF(self,
                     output: Union[str, List[str]] = '*',
                     target_dir: Union[str, Path] = None,
@@ -1642,26 +1810,6 @@ class Result:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
-    def _mappings(self):
-        """Mappings to place data spatially."""
-        with h5py.File(self.fname,'r') as f:
-
-            at_cell_ph = []
-            in_data_ph = []
-            for c in range(self.N_constituents):
-                at_cell_ph.append({label: np.where(self.phase[:,c] == label)[0] \
-                                          for label in self.visible['phases']})
-                in_data_ph.append({label: f['/'.join(['cell_to','phase'])]['entry'][at_cell_ph[c][label]][:,c] \
-                                          for label in self.visible['phases']})
-
-            at_cell_ho = {label: np.where(self.homogenization[:] == label)[0] \
-                                 for label in self.visible['homogenizations']}
-            in_data_ho = {label: f['/'.join(['cell_to','homogenization'])]['entry'][at_cell_ho[label]] \
-                                 for label in self.visible['homogenizations']}
-
-        return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
-
-
     def export_VTK(self,
                    output: Union[str,List[str]] = '*',
                    mode: str = 'cell',
@@ -1682,7 +1830,7 @@ class Result:
         ----------
         output : (list of) str, optional
             Names of the datasets to export to the VTK file.
-            Defaults to '*', in which case all datasets are exported.
+            Defaults to '*', in which case all visible datasets are exported.
         mode : {'cell', 'point'}, optional
             Export in cell format or point format.
             Defaults to 'cell'.
@@ -1766,54 +1914,6 @@ class Result:
                 v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
 
-    def get(self,
-            output: Union[str, List[str]] = '*',
-            flatten: bool = True,
-            prune: bool = True):
-        """
-        Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
-
-        Parameters
-        ----------
-        output : (list of) str, optional
-            Names of the datasets to read.
-            Defaults to '*', in which case all datasets are read.
-        flatten : bool, optional
-            Remove singular levels of the folder hierarchy.
-            This might be beneficial in case of single increment,
-            phase/homogenization, or field. Defaults to True.
-        prune : bool, optional
-            Remove branches with no data. Defaults to True.
-
-        Returns
-        -------
-        data : dict of numpy.ndarray
-            Datasets structured by phase/homogenization and according to selected view.
-
-        """
-        r = {}                                                                                      # type: ignore
-
-        with h5py.File(self.fname,'r') as f:
-            for inc in util.show_progress(self.visible['increments']):
-                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
-
-                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
-                    r[inc]['geometry'][out] = _read(f['/'.join([inc,'geometry',out])])
-
-                for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        r[inc][ty][label] = {}
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
-                            r[inc][ty][label][field] = {}
-                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
-                                r[inc][ty][label][field][out] = _read(f['/'.join([inc,ty,label,field,out])])
-
-        if prune:   r = util.dict_prune(r)
-        if flatten: r = util.dict_flatten(r)
-
-        return None if (type(r) == dict and r == {}) else r
-
-
     def export_DADF5(self,
                      fname,
                      output: Union[str, List[str]] = '*'):
@@ -1858,116 +1958,23 @@ class Result:
                                f_in[p].copy(out,f_out[p])
 
 
-    def place(self,
-              output: Union[str, List[str]] = '*',
-              flatten: bool = True,
-              prune: bool = True,
-              constituents: IntSequence = None,
-              fill_float: float = np.nan,
-              fill_int: int = 0):
-        """
-        Merge data into spatial order that is compatible with the damask.VTK geometry representation.
-
-        The returned data structure reflects the group/folder structure
-        in the DADF5 file.
-
-        Multi-phase data is fused into a single output.
-        `place` is equivalent to `get` if only one phase/homogenization
-        and one constituent is present.
-
-        Parameters
-        ----------
-        output : (list of) str, optional
-            Names of the datasets to read.
-            Defaults to '*', in which case all datasets are placed.
-        flatten : bool, optional
-            Remove singular levels of the folder hierarchy.
-            This might be beneficial in case of single increment or field.
-            Defaults to True.
-        prune : bool, optional
-            Remove branches with no data. Defaults to True.
-        constituents : (list of) int, optional
-            Constituents to consider.
-            Defaults to None, in which case all constituents are considered.
-        fill_float : float, optional
-            Fill value for non-existent entries of floating point type.
-            Defaults to NaN.
-        fill_int : int, optional
-            Fill value for non-existent entries of integer type.
-            Defaults to 0.
-
-        Returns
-        -------
-        data : dict of numpy.ma.MaskedArray
-            Datasets structured by spatial position and according to selected view.
-
-        """
-        r = {}                                                                                      # type: ignore
-
-        constituents_ = list(map(int,constituents)) if isinstance(constituents,Iterable) else \
-                      (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
-
-        suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
-                   [f'#{c}' for c in constituents_]
-
-        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
-
-        with h5py.File(self.fname,'r') as f:
-
-            for inc in util.show_progress(self.visible['increments']):
-                r[inc] = {'phase':{},'homogenization':{},'geometry':{}}
-
-                for out in _match(output,f['/'.join([inc,'geometry'])].keys()):
-                    r[inc]['geometry'][out] = ma.array(_read(f['/'.join([inc,'geometry',out])]),fill_value = fill_float)
-
-                for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
-                            if field not in r[inc][ty].keys():
-                                r[inc][ty][field] = {}
-
-                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
-                                data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
-
-                                if ty == 'phase':
-                                    if out+suffixes[0] not in r[inc][ty][field].keys():
-                                        for c,suffix in zip(constituents_,suffixes):
-                                            r[inc][ty][field][out+suffix] = \
-                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
-
-                                    for c,suffix in zip(constituents_,suffixes):
-                                        r[inc][ty][field][out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
-
-                                if ty == 'homogenization':
-                                    if out not in r[inc][ty][field].keys():
-                                        r[inc][ty][field][out] = \
-                                            _empty_like(data,self.N_materialpoints,fill_float,fill_int)
-
-                                    r[inc][ty][field][out][at_cell_ho[label]] = data[in_data_ho[label]]
-
-        if prune:   r = util.dict_prune(r)
-        if flatten: r = util.dict_flatten(r)
-
-        return None if (type(r) == dict and r == {}) else r
-
-
-    def export_setup(self,
+    def export_simulation_setup(self,
                      output: Union[str, List[str]] = '*',
                      target_dir: Union[str, Path] = None,
                      overwrite: bool = False,
                      ):
         """
-        Export configuration files.
+        Export original simulation setup of the Result object.
 
         Parameters
         ----------
         output : (list of) str, optional
             Names of the datasets to export to the file.
-            Defaults to '*', in which case all datasets are exported.
+            Defaults to '*', in which case all setup files are exported.
         target_dir : str or pathlib.Path, optional
-            Directory to save configuration files. Will be created if non-existent.
+            Directory to save setup files. Will be created if non-existent.
         overwrite : bool, optional
-            Overwrite existing configuration files.
+            Overwrite any existing setup files.
             Defaults to False.
 
         """
@@ -1980,17 +1987,13 @@ class Result:
             cfg = cfg_dir/name
 
             if type(obj) == h5py.Dataset and _match(output,[name]):
-                d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
-                if overwrite or not cfg.exists():
-                    with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
-                    print(f'Exported {d} to "{cfg}".')
+                if cfg.exists() and not overwrite:
+                    raise PermissionError(f'"{cfg}" exists')
                 else:
-                    print(f'"{cfg}" exists, {d} not exported.')
-            elif type(obj) == h5py.Group:
-                cfg.mkdir(parents=True,exist_ok=True)
+                    cfg.parent.mkdir(parents=True,exist_ok=True)
+                    with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
 
         cfg_dir = (Path.cwd() if target_dir is None else Path(target_dir))
-        cfg_dir.mkdir(parents=True,exist_ok=True)
         with h5py.File(self.fname,'r') as f_in:
             f_in['setup'].visititems(partial(export,
                                              output=output,

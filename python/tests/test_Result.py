@@ -294,7 +294,7 @@ class TestResult:
         default.add_curl('x')
         in_file   = default.place('curl(x)')
         in_memory = grid_filters.curl(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
-        assert (in_file==in_memory).all()
+        assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('shape',['vector','tensor'])
     def test_add_divergence(self,default,shape):
@@ -304,7 +304,7 @@ class TestResult:
         default.add_divergence('x')
         in_file   = default.place('divergence(x)')
         in_memory = grid_filters.divergence(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
-        assert (in_file==in_memory).all()
+        assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('shape',['scalar','pseudo_scalar','vector'])
     def test_add_gradient(self,default,shape):
@@ -315,7 +315,7 @@ class TestResult:
         default.add_gradient('x')
         in_file   = default.place('gradient(x)')
         in_memory = grid_filters.gradient(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
-        assert (in_file==in_memory).all()
+        assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
@@ -338,7 +338,7 @@ class TestResult:
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            assert created_first < created_second and np.allclose(last.place('sigma'),311.)
+            assert created_first  < created_second and     np.allclose(last.place('sigma'),311.)
         else:
             assert created_first == created_second and not np.allclose(last.place('sigma'),311.)
 
@@ -378,7 +378,7 @@ class TestResult:
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
-    def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
+    def test_export_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view(increments=inc)
         result.export_VTK(output,target_dir=tmp_path,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
@@ -395,7 +395,7 @@ class TestResult:
 
     @pytest.mark.parametrize('mode',['point','cell'])
     @pytest.mark.parametrize('output',[False,True])
-    def test_vtk_marc(self,tmp_path,ref_path,mode,output):
+    def test_export_vtk_marc(self,tmp_path,ref_path,mode,output):
         os.chdir(tmp_path)
         result = Result(ref_path/'check_compile_job1.hdf5')
         result.export_VTK(output,mode)
@@ -418,7 +418,7 @@ class TestResult:
     def test_vtk_custom_path(self,tmp_path,single_phase):
         export_dir = tmp_path/'export_dir'
         single_phase.export_VTK(mode='point',target_dir=export_dir,parallel=False)
-        assert set(os.listdir(export_dir))==set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
+        assert set(os.listdir(export_dir)) == set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
         for what,shape in {'scalar':(),'vector':(3,),'tensor':(3,3),'matrix':(12,)}.items():
@@ -538,30 +538,53 @@ class TestResult:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
 
+    def test_simulation_setup_files(self,default):
+        assert set(default.simulation_setup_files) == set(['12grains6x7x8.vti',
+                                                            'material.yaml',
+                                                            'tensionY.yaml',
+                                                            'previous/12grains6x7x8.vti',
+                                                            'previous/material.yaml',
+                                                            'previous/tensionY.yaml'])
+
+    def test_export_simulation_setup_files(self,tmp_path,default):
+        sub = 'deep/down'
+        default.export_simulation_setup(target_dir=tmp_path/sub,overwrite=True)
+        for f in default.simulation_setup_files:
+            assert (tmp_path/sub/f).exists()
+
+    def test_export_simulation_setup_overwrite(self,tmp_path,default):
+        os.chdir(tmp_path)
+        default.export_simulation_setup('material.yaml',overwrite=True)
+        with pytest.raises(PermissionError):
+            default.export_simulation_setup('material.yaml',overwrite=False)
+
+    @pytest.mark.parametrize('output',['12grains6x7x8.vti',
+                                       'tensionY.yaml',
+                                      ])
+    def test_export_simulation_setup_content(self,ref_path,tmp_path,default,output):
+        default.export_simulation_setup(output,target_dir=tmp_path,overwrite=True)
+        assert open(tmp_path/output).read() == open(ref_path/output).read()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
     @pytest.mark.parametrize('output',['material.yaml','*'])
-    @pytest.mark.parametrize('overwrite',[True,False])
-    def test_export_setup(self,ref_path,tmp_path,fname,output,overwrite):
+    def test_export_simulation_setup_consistency(self,ref_path,tmp_path,fname,output):
         r = Result(ref_path/fname)
-        r.export_setup(output,target_dir=tmp_path)
+        r.export_simulation_setup(output,target_dir=tmp_path)
         with h5py.File(ref_path/fname,'r') as f_hdf5:
             for file in fnmatch.filter(f_hdf5['setup'].keys(),output):
                 with open(tmp_path/file) as f:
                     assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
-        r.export_setup(output,target_dir=tmp_path,overwrite=overwrite)
 
-    def test_export_setup_custom_path(self,ref_path,tmp_path):
-        src = ref_path/'4grains2x4x3_compressionY.hdf5'
+    def test_export_simulation_setup_custom_path(self,ref_path,tmp_path):
         subdir = 'export_dir'
         absdir = tmp_path/subdir
-        absdir.mkdir()
+        absdir.mkdir(exist_ok=True)
 
-        r = Result(src)
+        r = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
         for t,cwd in zip([absdir,subdir,None],[tmp_path,tmp_path,absdir]):
             os.chdir(cwd)
-            r.export_setup('material.yaml',target_dir=t)
+            r.export_simulation_setup('material.yaml',target_dir=t)
             assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
