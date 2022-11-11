@@ -35,6 +35,8 @@ submodule(phase:plastic) dislotungsten
       P_nS_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
+    character(len=5)                                     :: &
+      isotropic_bound
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
     logical :: &
@@ -130,6 +132,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+    
+    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='Voigt')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -333,7 +337,7 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
             dot_rho_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
             dot_gamma_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)))
 
-    mu = elastic_mu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
     T = thermal_T(ph,en)
 
     call kinetics(Mp,T,ph,en,&
@@ -384,7 +388,7 @@ module subroutine dislotungsten_dependentState(ph,en)
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    dst%tau_pass(:,en) = elastic_mu(ph,en)*prm%b_sl &
+    dst%tau_pass(:,en) = elastic_mu(ph,en,prm%isotropic_bound)*prm%b_sl &
                        * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
     Lambda_sl_inv = 1.0_pReal/prm%D &

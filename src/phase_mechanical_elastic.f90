@@ -8,7 +8,6 @@ submodule(phase:mechanical) elastic
       C_33, &
       C_44, &
       C_66
-    character(len=pStringLen) :: modulus_type
   end type tParameters
 
   type(tParameters), allocatable, dimension(:) :: param
@@ -58,8 +57,6 @@ module subroutine elastic_init(phases)
       if (phase_lattice(ph) == 'tI') &
         prm%C_66 = polynomial(elastic%asDict(),'C_66','T')
 
-      prm%modulus_type=elastic%get_asString('modulus_type',defaultVal='Voigt')
-
     end associate
   end do
 
@@ -105,17 +102,18 @@ end function elastic_C66
 !--------------------------------------------------------------------------------------------------
 !> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_mu(ph,en) result(mu)
+pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
 
   integer, intent(in) :: &
     ph, &
     en
+  character(len=5), intent(in) :: isotropic_bound
   real(pReal) :: &
     mu
 
   associate(prm => param(ph))
 
-  mu = lattice_equivalent_mu(elastic_C66(ph,en),prm%modulus_type)
+    mu = lattice_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 
@@ -125,17 +123,18 @@ end function elastic_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_nu(ph,en) result(nu)
+pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
 
   integer, intent(in) :: &
     ph, &
     en
+  character(len=5), intent(in) :: isotropic_bound
   real(pReal) :: &
     nu
 
   associate(prm => param(ph))
 
-  nu = lattice_equivalent_nu(elastic_C66(ph,en),prm%modulus_type)
+    nu = lattice_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 

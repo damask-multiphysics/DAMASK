@@ -115,6 +115,8 @@ submodule(phase:plastic) nonlocal
       sum_N_sl = 0
     integer,     dimension(:),     allocatable :: &
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
+    character(len=5)                           :: &
+      isotropic_bound          
     character(len=pStringLen), dimension(:), allocatable :: &
       output
     logical :: &
@@ -241,6 +243,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
+    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='Voigt')
     prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
@@ -609,8 +612,8 @@ module subroutine nonlocal_dependentState(ph, en)
 
   associate(prm => param(ph),dst => dependentState(ph), stt => state(ph))
 
-  mu = elastic_mu(ph,en)
-  nu = elastic_nu(ph,en)
+  mu = elastic_mu(ph,en,prm%isotropic_bound)
+  nu = elastic_nu(ph,en,prm%isotropic_bound)
   rho = getRho(ph,en)
 
   stt%rho_forest(:,en) = matmul(prm%forestProjection_Edge, sum(abs(rho(:,edg)),2)) &
@@ -880,8 +883,8 @@ module subroutine plastic_nonlocal_deltaState(Mp,ph,en)
 
   associate(prm => param(ph),dst => dependentState(ph),del => deltaState(ph))
 
-  mu = elastic_mu(ph,en)
-  nu = elastic_nu(ph,en)
+  mu = elastic_mu(ph,en,prm%isotropic_bound)
+  nu = elastic_nu(ph,en,prm%isotropic_bound)
 
   !*** shortcut to state variables
   forall (s = 1:prm%sum_N_sl, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,ph),en)
@@ -994,8 +997,8 @@ module subroutine nonlocal_dotState(Mp,timestep, &
 
   associate(prm => param(ph), dst => dependentState(ph), dot => dotState(ph), stt => state(ph))
 
-  mu = elastic_mu(ph,en)
-  nu = elastic_nu(ph,en)
+  mu = elastic_mu(ph,en,prm%isotropic_bound)
+  nu = elastic_nu(ph,en,prm%isotropic_bound)
   Temperature = thermal_T(ph,en)
 
   tau = 0.0_pReal

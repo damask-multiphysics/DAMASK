@@ -376,8 +376,8 @@ module lattice
 
   public :: &
     lattice_init, &
-    lattice_equivalent_nu, &
-    lattice_equivalent_mu, &
+    lattice_isotropic_nu, &
+    lattice_isotropic_mu, &
     lattice_symmetrize_33, &
     lattice_symmetrize_C66, &
     lattice_SchmidMatrix_slip, &
@@ -2149,10 +2149,11 @@ end function getlabels
 !> @brief Equivalent Poisson's ratio (ν)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
-pure function lattice_equivalent_nu(C,assumption) result(nu)
+pure function lattice_isotropic_nu(C,assumption,lattice) result(nu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=5),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+  character(len=2),            intent(in) :: lattice
   real(pReal) :: nu
 
   real(pReal) :: K, mu
@@ -2172,20 +2173,22 @@ pure function lattice_equivalent_nu(C,assumption) result(nu)
     error stop 'invalid assumption'
   end if
 
-  mu = lattice_equivalent_mu(C,assumption)
+  mu = lattice_isotropic_mu(C,assumption,lattice)
   nu = (1.5_pReal*K-mu)/(3.0_pReal*K+mu)
 
-end function lattice_equivalent_nu
+end function lattice_isotropic_nu
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Equivalent shear modulus (μ)
 !> @details https://doi.org/10.1143/JPSJ.20.635
+!> @details Nonlinear Mechanics of Crystals 10.1007/978-94-007-0350-6, pp 563
 !--------------------------------------------------------------------------------------------------
-pure function lattice_equivalent_mu(C,assumption) result(mu)
+pure function lattice_isotropic_mu(C,assumption,lattice) result(mu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=5),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+  character(len=2),            intent(in) :: lattice
   real(pReal) :: mu
 
   logical                     :: error
@@ -2193,18 +2196,32 @@ pure function lattice_equivalent_mu(C,assumption) result(mu)
 
 
   if     (IO_lc(assumption) == 'voigt') then
-    mu = (1.0_pReal*(C(1,1)+C(2,2)+C(3,3)) -1.0_pReal*(C(1,2)+C(2,3)+C(1,3)) +3.0_pReal*(C(4,4)+C(5,5)+C(6,6))) &
-       / 15.0_pReal
+      select case(lattice)
+        case('cF','cI')
+          mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pReal) / 5.0_pReal
+        case default
+          mu = (  C(1,1)+C(2,2)+C(3,3) &
+                -(C(1,2)+C(2,3)+C(1,3)) &
+                +(C(4,4)+C(5,5)+C(6,6)) * 3.0_pReal &
+               ) / 15.0_pReal
+      end select
+
   elseif (IO_lc(assumption) == 'reuss') then
-    call math_invert(S,error,C)
-    if (error) error stop 'matrix inversion failed'
-    mu = 15.0_pReal &
-       / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
+      select case(lattice)
+        case('cF','cI')
+          mu = 1.0_pReal &
+               / ((4.0_pReal/(5.0_pReal * (C(1,1)-C(1,2)))) + (3.0_pReal/(5.0_pReal*C(4,4))))
+        case default
+          call math_invert(S,error,C)
+          if (error) error stop 'matrix inversion failed'
+          mu = 15.0_pReal &
+              / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
+      end select
   else
     error stop 'invalid assumption'
   end if
 
-end function lattice_equivalent_mu
+end function lattice_isotropic_mu
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2270,16 +2287,42 @@ subroutine selfTest
 
   call random_number(C)
   C(1,1) = C(1,1) + C(1,2) + 0.1_pReal
+  C(1,3) = C(1,2)
+  C(3,3) = C(1,1) 
   C(4,4) = 0.5_pReal * (C(1,1) - C(1,2))
-  C = lattice_symmetrize_C66(C,'cI')
-  if (dNeq(C(4,4),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
-  if (dNeq(C(4,4),lattice_equivalent_mu(C,'reuss'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
+  C(6,6) = C(4,4)
 
-  lambda = C(1,2)
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_equivalent_mu(C,'voigt')), &
-          lattice_equivalent_nu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_nu/voigt'
-  if (dNeq(lambda*0.5_pReal/(lambda+lattice_equivalent_mu(C,'reuss')), &
-          lattice_equivalent_nu(C,'reuss'),1.0e-12_pReal)) error stop 'equivalent_nu/reuss'
+  C_cI = lattice_symmetrize_C66(C,'cI')
+  if (dNeq(C_cI(4,4),lattice_isotropic_mu(C_cI,'voigt','cI'),1.0e-12_pReal)) error stop 'isotropic_mu/cI/voigt'
+  if (dNeq(C_cI(4,4),lattice_isotropic_mu(C_cI,'reuss','cI'),1.0e-12_pReal)) error stop 'isotropic_mu/cI/reuss'
+
+  lambda = C_cI(1,2)
+  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_cI,'voigt','cI')), &
+          lattice_isotropic_nu(C_cI,'voigt','cI'),1.0e-12_pReal)) error stop 'isotropic_nu/cI/voigt'
+  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_cI,'reuss','cI')), &
+          lattice_isotropic_nu(C_cI,'reuss','cI'),1.0e-12_pReal)) error stop 'isotropic_nu/cI/reuss'
+
+
+  C_hP = lattice_symmetrize_C66(C,'hP')
+  if (dNeq(C(4,4),lattice_isotropic_mu(C_hP,'voigt','hP'),1.0e-12_pReal)) error stop 'isotropic_mu/hP/voigt'
+  if (dNeq(C(4,4),lattice_isotropic_mu(C_hP,'reuss','hP'),1.0e-12_pReal)) error stop 'isotropic_mu/hP/reuss'
+ 
+  lambda = C_hP(1,2)
+  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_hP,'voigt','hP')), &
+          lattice_isotropic_nu(C_hP,'voigt','hP'),1.0e-12_pReal)) error stop 'isotropic_nu/hP/voigt'
+  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_hP,'reuss','hP')), &
+          lattice_isotropic_nu(C_hP,'reuss','hP'),1.0e-12_pReal)) error stop 'isotropic_nu/hP/reuss'
+
+  C_tI = lattice_symmetrize_C66(C,'tI')
+  if (dNeq(C(6,6),lattice_isotropic_mu(C_tI,'voigt','tI'),1.0e-12_pReal)) error stop 'isotropic_mu/tI/voigt'
+  if (dNeq(C(6,6),lattice_isotropic_mu(C_tI,'reuss','tI'),1.0e-12_pReal)) error stop 'isotropic_mu/tI/reuss'
+
+  lambda = C_tI(1,2)
+  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_tI,'voigt','tI')), &
+          lattice_isotropic_nu(C_tI,'voigt','tI'),1.0e-12_pReal)) error stop 'isotropic_nu/tI/voigt'
+  if (dNeq(lambda*0.5_pReal/(lambda+lattice_isotropic_mu(C_tI,'reuss','tI')), &
+          lattice_isotropic_nu(C_tI,'reuss','tI'),1.0e-12_pReal)) error stop 'isotropic_nu/tI/reuss'
+
 
 end subroutine selfTest
 
