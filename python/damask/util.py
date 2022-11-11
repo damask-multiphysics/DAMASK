@@ -40,9 +40,10 @@ _colors = {
 # Functions
 ####################################################################################################
 def srepr(msg,
-          glue: str = '\n') -> str:
+          glue: str = '\n',
+          quote: bool = False) -> str:
     r"""
-    Join items with glue string.
+    Join (quoted) items with glue string.
 
     Parameters
     ----------
@@ -50,19 +51,22 @@ def srepr(msg,
         Items to join.
     glue : str, optional
         Glue used for joining operation. Defaults to '\n'.
+    quote : bool, optional
+        Quote items. Defaults to False.
 
     Returns
     -------
     joined : str
-        String representation of the joined items.
+        String representation of the joined and quoted items.
 
     """
+    q = '"' if quote else ''
     if (not hasattr(msg, 'strip') and
            (hasattr(msg, '__getitem__') or
             hasattr(msg, '__iter__'))):
-        return glue.join(str(x) for x in msg)
+        return glue.join(q+str(x)+q for x in msg)
     else:
-        return msg if isinstance(msg,str) else repr(msg)
+        return q+(msg if isinstance(msg,str) else repr(msg))+q
 
 
 def emph(msg) -> str:

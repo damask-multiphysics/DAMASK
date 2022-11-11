@@ -245,7 +245,7 @@ class ConfigMaterial(Config):
         Check for completeness.
 
         Only the general file layout is considered.
-        This check does not consider whether parameters for
+        This check does not consider whether specific parameters for
         a particular phase/homogenization model are missing.
 
         Returns
@@ -255,51 +255,53 @@ class ConfigMaterial(Config):
 
         """
         ok = True
-        for top_level in ['homogenization','phase','material']:
-            ok &= top_level in self
-            if top_level not in self: print(f'{top_level} entry missing')
+        msg = []
+        all = set(['homogenization','phase','material'])
+        miss = set([item for item in all if item not in self])
+        empty = set([item for item in all-miss if self[item] is None])
+
+        if miss:
+            msg.append(f'Top-level{"s" if len(miss)>1 else ""} {util.srepr(miss,",",quote=True)} missing')
+            ok = False
+        if empty:
+            msg.append(f'Top-level{"s" if len(empty)>1 else ""} {util.srepr(empty,",",quote=True)} empty')
 
         if ok:
-           ok &= len(self['material']) > 0
-           if len(self['material']) < 1: print('Incomplete material definition')
+            ok &= len(self['material']) > 0
+            if len(self['material']) < 1: msg.append('No materials defined')
 
-        if ok:
             homogenization = set()
             phase          = set()
             for i,v in enumerate(self['material']):
                 if 'homogenization' in v:
                     homogenization.add(v['homogenization'])
                 else:
-                    print(f'No homogenization specified in material {i}')
+                    msg.append(f'No homogenization specified for material {i}')
                     ok = False
 
                 if 'constituents' in v:
                     for ii,vv in enumerate(v['constituents']):
                         if 'O' not in vv:
-                            print('No orientation specified in constituent {ii} of material {i}')
+                            msg.append(f'No orientation specified for constituent {ii} of material {i}')
                             ok = False
                         if 'phase' in vv:
                             phase.add(vv['phase'])
                         else:
-                            print(f'No phase specified in constituent {ii} of material {i}')
+                            msg.append(f'No phase specified for constituent {ii} of material {i}')
                             ok = False
 
-            if self['phase'] is None:
-                print('Description of phase dictionary is missing')
-                ok = False
-            else:
-                if phase - set(self['phase']):
-                    print(f'Phase(s) {phase-set(self["phase"])} missing')
+            for v,other in {'phase':phase,
+                            'homogenization':homogenization}.items():
+                me = set([] if v in empty else self[v])
+                if _miss := other - me:
+                    msg.append(f'{v.capitalize()}{"s" if len(_miss)>1 else ""} {util.srepr(_miss,",",quote=True)} missing')
+                    ok = False
+                _empty = [item for item in me if self[v][item] is None]
+                if len(_empty) > 0:
+                    msg.append(f'{v.capitalize()}{"s" if len(_empty)>1 else ""} {util.srepr(_empty,",",quote=True)} undefined')
                     ok = False
 
-            if self['homogenization'] is None:
-                print('Description of homogenization dictionary is missing')
-                ok = False
-            else:
-                if homogenization - set(self['homogenization']):
-                    print(f'Homogenization(s) {homogenization-set(self["homogenization"])} missing')
-                    ok = False
-
+        print(util.srepr(msg))
         return ok
 
 
