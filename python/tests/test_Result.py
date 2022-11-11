@@ -100,6 +100,16 @@ class TestResult:
         assert n0.get('F') is n1.get('F') is None and \
                len(n0.visible[label]) == len(n1.visible[label]) == 0
 
+    def test_view_invalid_incstimes(self,default):
+        with pytest.raises(ValueError):
+            default.view(increments=0,times=0)
+
+    @pytest.mark.parametrize('inc',[0,10])
+    @pytest.mark.parametrize('sign',[+1,-1])
+    def test_view_approxtimes(self,default,inc,sign):
+        eps = sign*1e-3
+        assert [default.increments[inc]] == default.view(times=default.times[inc]+eps).visible['increments']
+
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
 
