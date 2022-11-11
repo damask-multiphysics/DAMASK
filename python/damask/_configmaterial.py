@@ -160,7 +160,7 @@ class ConfigMaterial(Config):
                 pass
 
 
-        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
+        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},
                                       'homogenization':{'direct':{'N_constituents':1}}})
         constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
 
@@ -209,8 +209,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: SX
-        homogenization: {SX: {t.b.d}}
-        phase: {Aluminum: {t.b.d}, Steel: {t.b.d}}
+        homogenization: {SX: null}
+        phase: {Aluminum: null, Steel: null}
 
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='single_crystal')
         material:
@@ -224,8 +224,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: single_crystal
-        homogenization: {single_crystal: {t.b.d}}
-        phase: {Aluminum: {t.b.d}, Steel: {t.b.d}}
+        homogenization: {single_crystal: null}
+        phase: {Aluminum: null, Steel: null}
 
         """
         kwargs_ = {k:table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T for k,v in kwargs.items()}
@@ -282,22 +282,22 @@ class ConfigMaterial(Config):
                             print(f'No phase specified in constituent {ii} of material {i}')
                             ok = False
 
-            for k,v in self['phase'].items():
-                if 'lattice' not in v:
-                    print(f'No lattice specified in phase {k}')
+            if self['phase'] is None:
+                print('Description of phase dictionary is missing')
+                ok = False
+            else:
+                if phase - set(self['phase']):
+                    print(f'Phase(s) {phase-set(self["phase"])} missing')
                     ok = False
 
-            for k,v in self['homogenization'].items():
-                if 'N_constituents' not in v:
-                    print(f'No. of constituents not specified in homogenization {k}')
+            if self['homogenization'] is None:
+                print('Description of homogenization dictionary is missing')
+                ok = False
+            else:
+                if homogenization - set(self['homogenization']):
+                    print(f'Homogenization(s) {homogenization-set(self["homogenization"])} missing')
                     ok = False
 
-            if phase - set(self['phase']):
-                print(f'Phase(s) {phase-set(self["phase"])} missing')
-                ok = False
-            if homogenization - set(self['homogenization']):
-                print(f'Homogenization(s) {homogenization-set(self["homogenization"])} missing')
-                ok = False
         return ok
 
 
@@ -320,7 +320,7 @@ class ConfigMaterial(Config):
 
         if 'phase' in self:
             for k,v in self['phase'].items():
-                if 'lattice' in v:
+                if v is not None and 'lattice' in v:
                     try:
                         Orientation(lattice=v['lattice'])
                     except KeyError:
@@ -445,8 +445,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Martensite
             homogenization: SX
-        homogenization: {SX: {t.b.d}}
-        phase: {Ferrite: {t.b.d}, Martensite: {t.b.d}}
+        homogenization: {SX: null}
+        phase: {Ferrite: null, Martensite: null}
 
         Create a duplex stainless steel microstructure for forming simulations:
 
@@ -474,8 +474,8 @@ class ConfigMaterial(Config):
                 O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
                 v: 0.8
             homogenization: Taylor
-        homogenization: {Taylor: {t.b.d}}
-        phase: {Austenite: {t.b.d}, Ferrite: {t.b.d}}
+        homogenization: {Taylor: null}
+        phase: {Austenite: null, Ferrite: null}
 
         """
         N,n,shaped = 1,1,{}
@@ -505,9 +505,9 @@ class ConfigMaterial(Config):
 
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
-        for k in np.unique(shaped['phase']):
-            if k not in dup['phase']: dup['phase'][str(k)] = {'t.b.d'} 
-        for k in np.unique(shaped['homogenization']):
-            if k not in dup['homogenization']: dup['homogenization'][str(k)] = {'t.b.d'}
+
+        for what in ['phase','homogenization']:
+            for k in np.unique(shaped[what]):
+                if k not in dup[what]: dup[what][str(k)] = None
 
         return dup
