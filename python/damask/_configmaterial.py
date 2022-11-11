@@ -193,10 +193,10 @@ class ConfigMaterial(Config):
         >>> import damask.ConfigMaterial as cm
         >>> t = damask.Table.load('small.txt')
         >>> t
-            pos  pos  pos   qu   qu    qu    qu   phase    homog
-        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
-        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        1    1    1    0  0.8   0.19  0.24 -0.51  Steel    SX
+            3:pos  pos  pos   4:qu   qu    qu    qu   phase    homog
+        0     0    0    0     0.19  0.8   0.24 -0.51  Aluminum SX
+        1     1    0    0     0.8   0.19  0.24 -0.51  Steel    SX
+        2     1    1    0     0.8   0.19  0.24 -0.51  Steel    SX
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
         material:
           - constituents:
@@ -233,6 +233,8 @@ class ConfigMaterial(Config):
         _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
         kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+        for what in ['phase','homogenization']:
+            if what not in kwargs_: kwargs_[what]= what+'_label'
 
         return ConfigMaterial().material_add(**kwargs_)
 
