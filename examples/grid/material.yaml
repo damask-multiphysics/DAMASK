@@ -9,7 +9,7 @@ phase:
     lattice: cF
     mechanical:
       output: [F, P, F_e, F_p, L_p, O]
-      elastic: {type: Hooke, C_11: 106.75e+9, C_12: 60.41e+9, C_44: 28.34e+9}
+      elastic: {type: Hooke, C_11: 106.75e+9, C_12: 60.41e+9, C_44: 28.34e+9, modulus_type: 'Voigt'}
       plastic:
         type: phenopowerlaw
         N_sl: [12]

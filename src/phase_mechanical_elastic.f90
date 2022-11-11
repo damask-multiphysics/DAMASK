@@ -8,6 +8,7 @@ submodule(phase:mechanical) elastic
       C_33, &
       C_44, &
       C_66
+    character(len=pStringLen) :: modulus_type
   end type tParameters
 
   type(tParameters), allocatable, dimension(:) :: param
@@ -56,6 +57,8 @@ module subroutine elastic_init(phases)
 
       if (phase_lattice(ph) == 'tI') &
         prm%C_66 = polynomial(elastic%asDict(),'C_66','T')
+
+      prm%modulus_type=elastic%get_asString('modulus_type',defaultVal='Voigt')
 
     end associate
   end do
@@ -110,8 +113,11 @@ pure module function elastic_mu(ph,en) result(mu)
   real(pReal) :: &
     mu
 
+  associate(prm => param(ph))
 
-  mu = lattice_equivalent_mu(elastic_C66(ph,en),'voigt')
+  mu = lattice_equivalent_mu(elastic_C66(ph,en),prm%modulus_type)
+
+  end associate
 
 end function elastic_mu
 
@@ -127,8 +133,11 @@ pure module function elastic_nu(ph,en) result(nu)
   real(pReal) :: &
     nu
 
+  associate(prm => param(ph))
 
-  nu = lattice_equivalent_nu(elastic_C66(ph,en),'voigt')
+  nu = lattice_equivalent_nu(elastic_C66(ph,en),prm%modulus_type)
+
+  end associate
 
 end function elastic_nu
 
