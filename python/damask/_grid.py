@@ -972,15 +972,16 @@ class Grid:
         # materials: 1
 
         """
-        options = ('nearest',False,None)
         orig = tuple(map(np.linspace,self.origin             + self.size/self.cells*.5,
                                      self.origin + self.size - self.size/self.cells*.5,self.cells))
+        interpolator = partial(interpolate.RegularGridInterpolator,
+                               points=orig,method='nearest',bounds_error=False,fill_value=None)
         new = grid_filters.coordinates0_point(cells,self.size,self.origin)
 
-        return Grid(material = interpolate.RegularGridInterpolator(orig,self.material,*options)(new).astype(int),
+        return Grid(material = interpolator(values=self.material)(new).astype(int),
                     size     = self.size,
                     origin   = self.origin,
-                    initial_conditions = {k: interpolate.RegularGridInterpolator(orig,v,*options)(new)
+                    initial_conditions = {k: interpolator(values=v)(new)
                                           for k,v in self.initial_conditions.items()},
                     comments = self.comments+[util.execution_stamp('Grid','scale')],
                    )
