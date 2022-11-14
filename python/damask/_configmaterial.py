@@ -254,6 +254,9 @@ class ConfigMaterial(Config):
             Whether the material.yaml definition is complete.
 
         """
+        def LabeledList(label,items):
+            return f'{label.capitalize()}{"s" if len(items)>1 else ""} {util.srepr(items,",",quote=True)}'
+
         ok = True
         msg = []
         all = set(['homogenization','phase','material'])
@@ -261,10 +264,10 @@ class ConfigMaterial(Config):
         empty = set([item for item in all-miss if self[item] is None])
 
         if miss:
-            msg.append(f'Top-level{"s" if len(miss)>1 else ""} {util.srepr(miss,",",quote=True)} missing')
+            msg.append(f'{LabeledList("top-level",miss)} missing')
             ok = False
         if empty:
-            msg.append(f'Top-level{"s" if len(empty)>1 else ""} {util.srepr(empty,",",quote=True)} empty')
+            msg.append(f'{LabeledList("top-level",empty)} empty')
 
         if ok:
             ok &= len(self['material']) > 0
@@ -294,11 +297,10 @@ class ConfigMaterial(Config):
                             'homogenization':homogenization}.items():
                 me = set([] if v in empty else self[v])
                 if _miss := other - me:
-                    msg.append(f'{v.capitalize()}{"s" if len(_miss)>1 else ""} {util.srepr(_miss,",",quote=True)} missing')
+                    msg.append(f'{LabeledList(v,_miss)} missing')
                     ok = False
-                _empty = [item for item in me if self[v][item] is None]
-                if len(_empty) > 0:
-                    msg.append(f'{v.capitalize()}{"s" if len(_empty)>1 else ""} {util.srepr(_empty,",",quote=True)} undefined')
+                if len(_empty := [item for item in me if self[v][item] is None]) > 0:
+                    msg.append(f'{LabeledList(v,_empty)} undefined')
                     ok = False
 
         print(util.srepr(msg))
