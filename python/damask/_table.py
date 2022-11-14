@@ -25,7 +25,7 @@ class Table:
             For instance, 'F':(3,3) for a deformation gradient, or 'r':(1,) for a scalar.
         data : numpy.ndarray or pandas.DataFrame, optional
             Data. Existing column labels of a pandas.DataFrame will be replaced.
-        comments : str or iterable of str, optional
+        comments : (iterable of) str, optional
             Additional, human-readable information.
 
         """
@@ -464,9 +464,9 @@ class Table:
 
         Parameters
         ----------
-        label_old : str or iterable of str
+        label_old : (iterable of) str
             Old column label(s).
-        label_new : str or iterable of str
+        label_new : (iterable of) str
             New column label(s).
 
         Returns
