@@ -773,12 +773,12 @@ class Rotation:
             raise ValueError('P ∉ {-1,1}')
 
         qu[...,1:4] *= -P
+
         if accept_homomorph:
             qu[qu[...,0] < 0.0] *= -1
-        else:
-            if np.any(qu[...,0] < 0.0):
-                raise ValueError('quaternion with negative first (real) component')
-        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0)):
+        elif np.any(qu[...,0] < 0.0):
+            raise ValueError('quaternion with negative first (real) component')
+        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=1e-8)):
             raise ValueError('quaternion is not of unit length')
 
         return Rotation(qu)
