@@ -751,6 +751,7 @@ class Rotation:
     @staticmethod
     def from_quaternion(q: Union[Sequence[FloatSequence], np.ndarray],
                         accept_homomorph: bool = False,
+                        normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
         """
         Initialize from quaternion.
@@ -762,6 +763,8 @@ class Rotation:
         accept_homomorph : bool, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
+        normalize: bool, optional
+            Allow ǀqǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
 
@@ -773,12 +776,14 @@ class Rotation:
             raise ValueError('P ∉ {-1,1}')
 
         qu[...,1:4] *= -P
+
         if accept_homomorph:
             qu[qu[...,0] < 0.0] *= -1
-        else:
-            if np.any(qu[...,0] < 0.0):
-                raise ValueError('quaternion with negative first (real) component')
-        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0)):
+        elif np.any(qu[...,0] < 0.0):
+            raise ValueError('quaternion with negative first (real) component')
+        if normalize:
+            qu /= np.linalg.norm(qu,axis=-1,keepdims=True)
+        elif not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=1e-8)):
             raise ValueError('quaternion is not of unit length')
 
         return Rotation(qu)

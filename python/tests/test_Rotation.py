@@ -760,11 +760,12 @@ class TestRotation:
 
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('accept_homomorph',[True,False])
-    def test_quaternion(self,set_of_rotations,P,accept_homomorph):
-        c = np.array([1,P*-1,P*-1,P*-1]) * (-1 if accept_homomorph else 1)
+    @pytest.mark.parametrize('normalize',[True,False])
+    def test_quaternion(self,set_of_rotations,P,accept_homomorph,normalize):
+        c = np.array([1,P*-1,P*-1,P*-1]) * (-1 if accept_homomorph else 1) * (0.9 if normalize else 1.0)
         for rot in set_of_rotations:
             m = rot.as_cubochoric()
-            o = Rotation.from_quaternion(rot.as_quaternion()*c,accept_homomorph,P).as_cubochoric()
+            o = Rotation.from_quaternion(rot.as_quaternion()*c,accept_homomorph,normalize,P).as_cubochoric()
             ok = np.allclose(m,o,atol=atol)
             if np.count_nonzero(np.isclose(np.abs(o),np.pi**(2./3.)*.5)):
                 ok |= np.allclose(m*-1.,o,atol=atol)
