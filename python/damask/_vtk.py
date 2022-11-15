@@ -110,7 +110,7 @@ class VTK:
 
         Parameters
         ----------
-        comments : str or sequence of str
+        comments : (sequence of) str
             Comments.
 
         """

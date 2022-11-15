@@ -50,7 +50,7 @@ class Grid:
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
         initial_conditions : dictionary, optional
             Labels and values of the inital conditions at each material point.
-        comments : str or sequence of str, optional
+        comments : (sequence of) str, optional
             Additional, human-readable information, e.g. history of operations.
 
         """
@@ -427,7 +427,7 @@ class Grid:
         coordinates : str
             Label of the vector column containing the spatial coordinates.
             Need to be ordered (1./x fast, 3./z slow).
-        labels : str or sequence of str
+        labels : (sequence of) str
             Label(s) of the columns containing the material definition.
             Each unique combination of values results in one material ID.
 
@@ -1043,9 +1043,9 @@ class Grid:
 
         Parameters
         ----------
-        from_material : int or sequence of int
+        from_material : (sequence of) int
             Material indices to be substituted.
-        to_material : int or sequence of int
+        to_material : (sequence of) int
             New material indices.
 
         Returns
@@ -1104,7 +1104,7 @@ class Grid:
         distance : float, optional
             Voxel distance checked for presence of other materials.
             Defaults to sqrt(3).
-        selection : int or collection of int, optional
+        selection : (collection of) int, optional
             Material IDs to consider. Defaults to all.
         invert_selection : bool, optional
             Consider all material IDs except those in selection. Defaults to False.
@@ -1179,7 +1179,7 @@ class Grid:
             Center of the primitive.
             If given as integers, cell centers are addressed.
             If given as floats, physical coordinates are addressed.
-        exponent : float or sequence of float, len (3)
+        exponent : (sequence of) float, len (3)
             Exponents for the three axes.
             0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
             1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
@@ -1271,7 +1271,7 @@ class Grid:
         offset : int, optional
             Offset (positive or negative) to tag material IDs.
             Defaults to material.max()+1.
-        selection : int or collection of int, optional
+        selection : (collection of) int, optional
             Material IDs that trigger an offset.
             Defaults to any other than own material ID.
         invert_selection : bool, optional
