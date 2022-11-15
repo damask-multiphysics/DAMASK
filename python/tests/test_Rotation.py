@@ -899,9 +899,10 @@ class TestRotation:
             assert np.allclose(rot_broadcast.quaternion[...,i,:], rot.quaternion)
 
 
-    @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion, np.array([-1,0,0,0])),
+    @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion,        np.array([-1,0,0,0])),
                                                  (Rotation.from_quaternion,        np.array([1,1,1,0])),
                                                  (Rotation.from_Euler_angles,      np.array([1,4,0])),
+                                                 (Rotation.from_Euler_angles,      np.array([-1,0,0])),
                                                  (Rotation.from_axis_angle,        np.array([1,0,0,4])),
                                                  (Rotation.from_axis_angle,        np.array([1,1,0,1])),
                                                  (Rotation.from_matrix,            np.random.rand(3,3)),
@@ -909,7 +910,8 @@ class TestRotation:
                                                  (Rotation.from_Rodrigues_vector,  np.array([1,0,0,-1])),
                                                  (Rotation.from_Rodrigues_vector,  np.array([1,1,0,1])),
                                                  (Rotation.from_homochoric,        np.array([2,2,2])),
-                                                 (Rotation.from_cubochoric,        np.array([1.1,0,0]))  ])
+                                                 (Rotation.from_cubochoric,        np.array([1.1,0,0])),
+                                                ])
     def test_invalid_value(self,function,invalid):
         with pytest.raises(ValueError):
             function(invalid)

@@ -778,7 +778,7 @@ class Rotation:
         else:
             if np.any(qu[...,0] < 0.0):
                 raise ValueError('quaternion with negative first (real) component')
-        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0)):
+        if not np.allclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0):
             raise ValueError('quaternion is not of unit length')
 
         return Rotation(qu)
@@ -807,7 +807,7 @@ class Rotation:
             raise ValueError('invalid shape')
 
         eu = np.radians(eu) if degrees else eu
-        if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or np.any(eu[...,1] > np.pi):                 # ToDo: No separate check for PHI
+        if np.any(eu < 0.0) or np.any(eu > np.pi*np.array([2,1,2])):
             raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π]')
 
         return Rotation(Rotation._eu2qu(eu))
@@ -841,11 +841,10 @@ class Rotation:
 
         ax[...,0:3] *= -P
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
-        if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
             raise ValueError('axis–angle rotation angle outside of [0..π]')
-        if not np.all(np.isclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0)):
-            print(np.linalg.norm(ax[...,0:3],axis=-1))
+        if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
+        elif not np.allclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0):
             raise ValueError('axis–angle rotation axis is not of unit length')
 
         return Rotation(Rotation._ax2qu(ax))
@@ -877,12 +876,12 @@ class Rotation:
         if not orthonormal:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
             om = np.einsum('...ij,...jl',U,Vh)
-        if not np.all(np.isclose(np.linalg.det(om),1.0)):
-            raise ValueError('orientation matrix has determinant ≠ 1')
-        if    not np.all(np.isclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0)) \
-           or not np.all(np.isclose(np.einsum('...i,...i',om[...,1],om[...,2]), 0.0)) \
-           or not np.all(np.isclose(np.einsum('...i,...i',om[...,2],om[...,0]), 0.0)):
+        elif  not np.allclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0) \
+           or not np.allclose(np.einsum('...i,...i',om[...,1],om[...,2]), 0.0) \
+           or not np.allclose(np.einsum('...i,...i',om[...,2],om[...,0]), 0.0):
             raise ValueError('orientation matrix is not orthogonal')
+        if not np.allclose(np.linalg.det(om),1.0):
+            raise ValueError('orientation matrix has determinant ≠ 1')
 
         return Rotation(Rotation._om2qu(om))
 
@@ -952,10 +951,10 @@ class Rotation:
             raise ValueError('P ∉ {-1,1}')
 
         ro[...,0:3] *= -P
-        if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
         if np.any(ro[...,3] < 0.0):
             raise ValueError('Rodrigues vector rotation angle is negative')
-        if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
+        if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
+        elif not np.allclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0):
             raise ValueError('Rodrigues vector rotation axis is not of unit length')
 
         return Rotation(Rotation._ro2qu(ro))
