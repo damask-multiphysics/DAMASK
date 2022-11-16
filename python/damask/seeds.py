@@ -118,7 +118,7 @@ def from_grid(grid,
     ----------
     grid : damask.Grid
         Grid from which the material IDs are used as seeds.
-    selection : int or collection of int, optional
+    selection : (collection of) int, optional
         Material IDs to consider.
     invert_selection : bool, optional
         Consider all material IDs except those in selection. Defaults to False.

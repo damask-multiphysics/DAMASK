@@ -708,6 +708,7 @@ class TestRotation:
     @pytest.mark.parametrize('degrees',[True,False])
     def test_axis_angle(self,set_of_rotations,degrees,normalize,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
+        c[:3] *= 0.9 if normalize else 1.0
         for rot in set_of_rotations:
             m = rot.as_Euler_angles()
             o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalize,P).as_Euler_angles()
@@ -730,15 +731,29 @@ class TestRotation:
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) \
                       and o[3]<=np.pi+1.e-9, f'{m},{o},{rot.as_quaternion()}'
 
+    def test_parallel(self,set_of_rotations):
+        a = np.array([[1.0,0.0,0.0],
+                      [0.0,1.0,0.0]])
+        for rot in set_of_rotations:
+            assert rot.allclose(Rotation.from_parallel(a,rot.broadcast_to((2,))@a))
+
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('normalize',[True,False])
     def test_Rodrigues(self,set_of_rotations,normalize,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
+        c[:3] *= 0.9 if normalize else 1.0
         for rot in set_of_rotations:
             m = rot.as_matrix()
             o = Rotation.from_Rodrigues_vector(rot.as_Rodrigues_vector()*c,normalize,P).as_matrix()
             ok = np.allclose(m,o,atol=atol)
             assert ok and np.isclose(np.linalg.det(o),1.0), f'{m},{o}'
+
+    def test_Rodrigues_compact(self,set_of_rotations):
+        for rot in set_of_rotations:
+            c = rot.as_Rodrigues_vector(compact=True)
+            r = rot.as_Rodrigues_vector(compact=False)
+            assert np.allclose(r[:3]*r[3], c, equal_nan=True)
+
 
     @pytest.mark.parametrize('P',[1,-1])
     def test_homochoric(self,set_of_rotations,P):
@@ -760,8 +775,9 @@ class TestRotation:
 
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('accept_homomorph',[True,False])
+    # @pytest.mark.parametrize('normalize',[True,False])
     def test_quaternion(self,set_of_rotations,P,accept_homomorph):
-        c = np.array([1,P*-1,P*-1,P*-1]) * (-1 if accept_homomorph else 1)
+        c = np.array([1,P*-1,P*-1,P*-1]) * (-1 if accept_homomorph else 1) #* (0.9 if normalize else 1.0)
         for rot in set_of_rotations:
             m = rot.as_cubochoric()
             o = Rotation.from_quaternion(rot.as_quaternion()*c,accept_homomorph,P).as_cubochoric()
@@ -888,6 +904,15 @@ class TestRotation:
         R = Rotation.from_random(np.random.randint(8,32,(3)))                                       # noqa
         with pytest.raises(ValueError):
             fr(eval(f'R.{to}()'),P=-30)
+
+
+    def test_invalid_multiplication(self):
+        rot = Rotation.from_random()
+        with pytest.raises(TypeError):
+            rot@Rotation.from_random()
+        with pytest.raises(TypeError):
+            rot@[1,2,3,4]
+
 
     @pytest.mark.parametrize('shape',[None,(3,),(4,2)])
     def test_broadcast(self,shape):

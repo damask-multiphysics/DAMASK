@@ -46,7 +46,7 @@ def srepr(msg,
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Items to join.
     glue : str, optional
         Glue used for joining operation. Defaults to '\n'.
@@ -71,7 +71,7 @@ def emph(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Message to format.
 
     Returns
@@ -88,7 +88,7 @@ def deemph(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Message to format.
 
     Returns
@@ -105,7 +105,7 @@ def warn(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Message to format.
 
     Returns
@@ -122,7 +122,7 @@ def strikeout(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or iterable of objects with __repr__
+    msg : (iterable of) object with __repr__
         Message to format.
 
     Returns
@@ -738,7 +738,7 @@ def tail_repack(extended: _Union[str, _Sequence[str]],
 
     Parameters
     ----------
-    extended : str or list of str
+    extended : (list of) str
         Extended string list with potentially autosplitted tailing string relative to `existing`.
     existing : list of str
         Base string list.
@@ -767,7 +767,7 @@ def aslist(arg: _Union[_IntCollection, int, None]) -> _List:
 
     Parameters
     ----------
-    arg : int or collection of int or None
+    arg : (collection of) int or None
         Entity to transform into list.
 
     Returns

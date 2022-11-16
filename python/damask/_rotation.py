@@ -468,7 +468,7 @@ class Rotation:
 
         Parameters
         ----------
-        shape : int or sequence of ints
+        shape : (sequence of) int
             New shape, number of elements needs to match the original shape.
             If an integer is supplied, then the result will be a 1-D array of that length.
         order : {'C', 'F', 'A'}, optional
@@ -496,7 +496,7 @@ class Rotation:
 
         Parameters
         ----------
-        shape : int or sequence of ints
+        shape : (sequence of) int
             Shape of broadcasted array, needs to be compatible with the original shape.
         mode : str, optional
             Where to preferentially locate missing dimensions.
@@ -773,12 +773,12 @@ class Rotation:
             raise ValueError('P ∉ {-1,1}')
 
         qu[...,1:4] *= -P
+
         if accept_homomorph:
             qu[qu[...,0] < 0.0] *= -1
-        else:
-            if np.any(qu[...,0] < 0.0):
-                raise ValueError('quaternion with negative first (real) component')
-        if not np.allclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=0.0):
+        elif np.any(qu[...,0] < 0.0):
+            raise ValueError('quaternion with negative first (real) component')
+        if not np.allclose(np.linalg.norm(qu,axis=-1), 1.0,rtol=1e-8):
             raise ValueError('quaternion is not of unit length')
 
         return Rotation(qu)
@@ -1022,7 +1022,7 @@ class Rotation:
 
         Parameters
         ----------
-        shape : int or sequence of ints, optional
+        shape : (sequence of) int, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
@@ -1058,7 +1058,7 @@ class Rotation:
             Texture intensity values (probability density or volume fraction) at Euler space grid points.
         phi : numpy.ndarray, shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
-        shape : int or sequence of ints, optional
+        shape : (sequence of) int, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
             Euler space grid coordinates are in degrees. Defaults to True.
@@ -1110,7 +1110,7 @@ class Rotation:
             Central rotation.
         sigma : float
             Standard deviation of (Gaussian) misorientation distribution.
-        shape : int or sequence of ints, optional
+        shape : (sequence of) int, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
             sigma is given in degrees. Defaults to False.
@@ -1168,7 +1168,7 @@ class Rotation:
         sigma : float, optional
             Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
-        shape : int or sequence of ints, optional
+        shape : (sequence of) int, optional
             Shape of the returned array. Defaults to None, which gives a scalar.
         degrees : bool, optional
             sigma and polar coordinates are given in degrees. Defaults to False.

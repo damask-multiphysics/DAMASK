@@ -248,7 +248,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        fraction : float or sequence of float
+        fraction : (sequence of) float
             Fractional coordinate(s) to evaluate Colormap at.
 
         Returns
