@@ -46,7 +46,7 @@
 +
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
-+  DAMASKROOT=`dirname $DAMASK_USER`/..
++  DAMASKROOT=`dirname $DAMASK_USER`/../..
 +  read DAMASKVERSION < $DAMASKROOT/VERSION
 +  DAMASKVERSION="'"$DAMASKVERSION"'"
 +else

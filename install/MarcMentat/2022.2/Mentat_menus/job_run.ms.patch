@@ -1,6 +1,6 @@
---- 
-+++ 
-@@ -260,10 +260,17 @@
+---
++++
+@@ -261,11 +261,18 @@
        }
        button {
         position +25 =
@@ -9,19 +9,20 @@
         text "ADVANCED JOB SUBMISSION"
         help "job_run#Job Submission And Control"
         popmenu job_submit_adv_pm
-+      }
+       }
 +      button {
 +       position +18 =
 +       size 7 4
 +       text "DAMASK"
 +       help "damask_run#Job Submission And Control"
 +       popmenu damask
-       }
++      }
        button {
         position 0 +4
-@@ -1123,6 +1130,134 @@
-  mode permanent
+        size 16 4
+@@ -1202,6 +1209,135 @@
  }
+ 
  
 +#--------------------------------------------------------------------------------------------------
 +popmenu damask {
@@ -151,6 +152,7 @@
 + }
 + mode permanent
 +}
- 
++
  #--------------------------------------------------------------------------------------------------
  popmenu job_exit_msg_pm {
+ 
