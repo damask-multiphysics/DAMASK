@@ -283,7 +283,7 @@
 -         usersub=$usersubname
 -        fi
 -
-+        userobj=$usermoext.o
++        userobj=$usernoext.o
      fi
      cat > $jid.runmarcscript << END4
      if test "$user"
