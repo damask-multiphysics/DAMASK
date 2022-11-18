@@ -424,6 +424,8 @@ class ConfigMaterial(Config):
         ----------
         **kwargs
             Key-value pairs.
+            First index of array-like values runs over materials,
+            whereas second index runs over constituents.
 
         Returns
         -------
@@ -432,12 +434,12 @@ class ConfigMaterial(Config):
 
         Examples
         --------
-        Create a dual-phase steel microstructure for micromechanical simulations:
+        Create two grains of ferrite and one grain of martensite, each with random orientation:
 
         >>> import damask
         >>> m = damask.ConfigMaterial()
-        >>> m = m.material_add(phase = ['Ferrite','Martensite'],
-        ...                    O = damask.Rotation.from_random(2),
+        >>> m = m.material_add(phase = ['Ferrite','Martensite','Ferrite'],
+        ...                    O = damask.Rotation.from_random(3),
         ...                    homogenization = 'SX')
         >>> m
         material:
@@ -451,59 +453,89 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Martensite
             homogenization: SX
+          - constituents:
+              - O: [0.47925185, -0.04294454, 0.78760173, -0.3849116 ]
+                v: 1.0
+                phase: Ferrite
+            homogenization: SX
         homogenization: {SX: null}
         phase: {Ferrite: null, Martensite: null}
 
-        Create a duplex stainless steel microstructure for forming simulations:
+        Create hundred materials that each approximate a duplex stainless steel microstructure
+        with three austenite and one relatively bigger ferrite grain of random orientation each:
 
         >>> import damask
         >>> m = damask.ConfigMaterial()
-        >>> m = m.material_add(phase = np.array(['Austenite','Ferrite']).reshape(1,2),
-        ...                    O = damask.Rotation.from_random((2,2)),
-        ...                    v = np.array([0.2,0.8]).reshape(1,2),
+        >>> m = m.material_add(phase = np.array(['Austenite']*3+['Ferrite']),
+        ...                    O = damask.Rotation.from_random((100,4)),
+        ...                    v = np.array([0.2]*3+[0.4]),
         ...                    homogenization = 'Taylor')
         >>> m
         material:
           - constituents:
-              - phase: Austenite
-                O: [0.659802978293224, 0.6953785848195171, 0.22426295326327111, -0.17554139512785227]
-                v: 0.2
-              - phase: Ferrite
-                O: [0.49356745891301596, 0.2841806579193434, -0.7487679215072818, -0.339085707289975]
-                v: 0.8
+              - v: 0.2
+                phase: Austenite
+                O: [0.46183665006602664, 0.2215160420973196, -0.5594313187331139, 0.6516702781083836]
+              - v: 0.2
+                phase: Austenite
+                O: [0.11321658382410027, 0.6354079414360444, 0.00562701344273936, 0.7638108992590535]
+              - v: 0.2
+                phase: Austenite
+                O: [0.050991978809077604, 0.8069522034362003, -0.11352928955610851, -0.5773552285027659]
+              - v: 0.4
+                phase: Ferrite
+                O: [0.9460076150721788, 0.15880754622367604, -0.0069841062241482385, -0.28249066842661014]
             homogenization: Taylor
+          .
+          .
+          .
           - constituents:
-              - phase: Austenite
-                O: [0.26542221365204055, 0.7268854930702071, 0.4474726435701472, -0.44828201137283735]
-                v: 0.2
-              - phase: Ferrite
-                O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
-                v: 0.8
+              - v: 0.2
+                phase: Austenite
+                O: [0.12531400788494199, -0.18637769037997565, 0.31737548053338394, -0.9213210951197429]
+              - v: 0.2
+                phase: Austenite
+                O: [0.37453930577161404, -0.33529507696450805, -0.3266564259130028, -0.800370601162502]
+              - v: 0.2
+                phase: Austenite
+                O: [0.035776891752713764, -0.720706371010592, -0.4540438656728926, -0.5226342017569017]
+              - v: 0.4
+                phase: Ferrite
+                O: [0.6782596727966124, -0.20800082041703685, -0.138636083554039, 0.6909989227925536]
             homogenization: Taylor
+
         homogenization: {Taylor: null}
+
         phase: {Austenite: null, Ferrite: null}
 
         """
-        N,n,shaped = 1,1,{}
+        _constituent_properties = ['phase','O','v','V_e']
+        _dim = {'O':(4,),'V_e':(3,3,)}
+        _ex = dict((k, -len(v)) for k, v in _dim.items())
 
-        map_dim = {'O':-1,'V_e':-2}
+        N,n,shaped = 1,1,{'v': None,
+                          'phase': None,
+                          'homogenization': None,
+                          }
+
         for k,v in kwargs.items():
             shaped[k] = np.array(v)
-            s = shaped[k].shape[:map_dim.get(k,None)]
+            s = shaped[k].shape[:_ex.get(k,None)]
             N = max(N,s[0]) if len(s)>0 else N
             n = max(n,s[1]) if len(s)>1 else n
 
+        shaped['v'] = np.array(1./n) if shaped['v'] is None else shaped['v']
+
         mat: Sequence[dict] = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
 
-        if 'v' not in kwargs:
-            shaped['v'] = np.broadcast_to(1/n,(N,n))
-
-        map_shape = {'O':(N,n,4),'V_e':(N,n,3,3)}
         for k,v in shaped.items():
-            target = map_shape.get(k,(N,n))
-            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape, target, mode = 'right')), target)
+            target = (N,n) + _dim.get(k,())
+            obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(() if v is None else v.shape,
+                                                                        target,
+                                                                        mode = 'right')),
+                                  target)
             for i in range(N):
-                if k in ['phase','O','v','V_e']:
+                if k in _constituent_properties:
                     for j in range(n):
                         mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
                 else:
@@ -514,6 +546,6 @@ class ConfigMaterial(Config):
 
         for what in ['phase','homogenization']:
             for k in np.unique(shaped[what]):
-                if k not in dup[what]: dup[what][str(k)] = None
+                if not (k is None or k in dup[what]): dup[what][str(k)] = None
 
         return dup
