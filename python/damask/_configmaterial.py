@@ -232,9 +232,9 @@ class ConfigMaterial(Config):
 
         _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
-        kwargs_ = {'phase':'phase_label',
-                   'homogenization': 'homogenization_label'} \
-                | {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+        for what in ['phase','homogenization']:
+            if what not in kwargs_: kwargs_[what] = what+'_label'
 
         return ConfigMaterial().material_add(**kwargs_)
 
