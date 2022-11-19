@@ -616,9 +616,11 @@ end subroutine utilities_fourierGreenConvolution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate root mean square of divergence of field_fourier
+!> @brief Calculate root mean square of divergence.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_divergenceRMS()
+real(pReal) function utilities_divergenceRMS(tensorField)
+
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
 
   integer :: i, j, k
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -627,6 +629,9 @@ real(pReal) function utilities_divergenceRMS()
 
   print'(/,1x,a)', '... calculating divergence ................................................'
   flush(IO_STDOUT)
+
+  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = tensorField
+  call utilities_FFTtensorforward()
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
@@ -660,9 +665,11 @@ end function utilities_divergenceRMS
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate max of curl of field_fourier
+!> @brief Calculate root mean square of curl.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_curlRMS()
+real(pReal) function utilities_curlRMS(tensorField)
+
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
 
   integer  ::  i, j, k, l
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -672,6 +679,9 @@ real(pReal) function utilities_curlRMS()
 
   print'(/,1x,a)', '... calculating curl ......................................................'
   flush(IO_STDOUT)
+
+  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = tensorField
+  call utilities_FFTtensorforward()
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 

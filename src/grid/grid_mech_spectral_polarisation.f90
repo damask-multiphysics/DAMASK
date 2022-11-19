@@ -634,6 +634,8 @@ subroutine formResidual(in, FandF_tau, &
                                       P_av,C_volAvg,C_minMaxAvg, &
                                       F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+  err_div = utilities_divergenceRMS(r_F)
+  err_curl = utilities_curlRMS(F)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
@@ -641,10 +643,6 @@ subroutine formResidual(in, FandF_tau, &
   err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
                             P_av-P_aim, &
                             params%stress_mask)))
-! calculate divergence
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r_F                                    !< stress field in disguise
-  call utilities_FFTtensorForward
-  err_div = utilities_divergenceRMS()                                                               !< root mean squared error in divergence of stress
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
@@ -657,12 +655,6 @@ subroutine formResidual(in, FandF_tau, &
                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
                        + r_F_tau(1:3,1:3,i,j,k)
   end do; end do; end do
-
-!--------------------------------------------------------------------------------------------------
-! calculating curl
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = F
-  call utilities_FFTtensorForward
-  err_curl = utilities_curlRMS()
 
 end subroutine formResidual
 

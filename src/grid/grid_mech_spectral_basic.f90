@@ -536,6 +536,7 @@ subroutine formResidual(in, F, &
                                       F,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  err_div = utilities_divergenceRMS(r)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
@@ -547,7 +548,6 @@ subroutine formResidual(in, F, &
 ! updated deformation gradient using fix point algorithm of basic scheme
   tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r                                      ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
-  err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
   call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
 
