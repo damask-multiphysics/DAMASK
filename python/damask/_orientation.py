@@ -94,7 +94,7 @@ class Orientation(Rotation,Crystal):
 
     """
 
-    @util.extend_docstring(_parameter_doc)
+    @util.extend_docstring(extra_parameters=_parameter_doc)
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
@@ -300,84 +300,95 @@ class Orientation(Rotation,Crystal):
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_random, _parameter_doc)
+    @util.extend_docstring(Rotation.from_random,
+                           extra_parameters=_parameter_doc)
     def from_random(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
         return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
+    @util.extend_docstring(Rotation.from_quaternion,
+                           extra_parameters=_parameter_doc)
     def from_quaternion(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
         return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
+    @util.extend_docstring(Rotation.from_Euler_angles,
+                           extra_parameters=_parameter_doc)
     def from_Euler_angles(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
         return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
+    @util.extend_docstring(Rotation.from_axis_angle,
+                           extra_parameters=_parameter_doc)
     def from_axis_angle(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
         return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_basis,_parameter_doc)
+    @util.extend_docstring(Rotation.from_basis,
+                           extra_parameters=_parameter_doc)
     def from_basis(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
         return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
+    @util.extend_docstring(Rotation.from_matrix,
+                           extra_parameters=_parameter_doc)
     def from_matrix(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
         return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
+    @util.extend_docstring(Rotation.from_Rodrigues_vector,
+                           extra_parameters=_parameter_doc)
     def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
         return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
+    @util.extend_docstring(Rotation.from_homochoric,
+                           extra_parameters=_parameter_doc)
     def from_homochoric(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
         return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
+    @util.extend_docstring(Rotation.from_cubochoric,
+                           extra_parameters=_parameter_doc)
     def from_cubochoric(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
         return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
+    @util.extend_docstring(Rotation.from_spherical_component,
+                           extra_parameters=_parameter_doc)
     def from_spherical_component(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
         return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
+    @util.extend_docstring(Rotation.from_fiber_component,
+                           extra_parameters=_parameter_doc)
     def from_fiber_component(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
         return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extend_docstring(_parameter_doc)
+    @util.extend_docstring(extra_parameters=_parameter_doc)
     def from_directions(cls,
                         uvw: FloatSequence,
                         hkl: FloatSequence,
@@ -391,6 +402,10 @@ class Orientation(Rotation,Crystal):
             Lattice direction aligned with lab frame x-direction.
         hkl : numpy.ndarray, shape (...,3)
             Lattice plane normal aligned with lab frame z-direction.
+
+        Returns
+        -------
+        new : damask.Orientation
 
         """
         o = cls(**kwargs)
@@ -538,8 +553,7 @@ class Orientation(Rotation,Crystal):
 
         Notes
         -----
-        Currently requires same crystal family for both orientations.
-        For extension to cases with differing symmetry see A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
+        Requires same crystal family for both orientations.
 
         Examples
         --------
@@ -569,6 +583,8 @@ class Orientation(Rotation,Crystal):
         >>> plt.show()
 
         """
+        # For extension to cases with differing symmetry see
+        # https://doi.org/10.1107/S0021889808016373 and https://doi.org/10.1107/S0108767391006864
         if self.family != other.family:
             raise NotImplementedError('disorientation between different crystal families')
 

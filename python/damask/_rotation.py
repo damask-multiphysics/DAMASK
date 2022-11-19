@@ -732,7 +732,7 @@ class Rotation:
         Returns
         -------
         x : numpy.ndarray, shape (...,3)
-              Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
+            Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
 
         Examples
         --------
@@ -768,6 +768,10 @@ class Rotation:
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
 
+        Returns
+        -------
+        new : damask.Rotation
+
         """
         qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,): raise ValueError('invalid shape')
@@ -799,6 +803,10 @@ class Rotation:
             or (φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]) if degrees == True.
         degrees : bool, optional
             Euler angles are given in degrees. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         Notes
         -----
@@ -833,6 +841,10 @@ class Rotation:
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         """
         ax = np.array(axis_angle,dtype=float)
@@ -898,6 +910,10 @@ class Rotation:
         R : numpy.ndarray, shape (...,3,3)
             Rotation matrix with det(R) = 1 and R.T ∙ R = I.
 
+        Returns
+        -------
+        new : damask.Rotation
+
         """
         return Rotation.from_basis(R)
 
@@ -913,6 +929,10 @@ class Rotation:
             Two three-dimensional vectors of first orthogonal basis.
         b : numpy.ndarray, shape (...,2,3)
             Corresponding three-dimensional vectors of second basis.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         """
         a_ = np.array(a,dtype=float)
@@ -946,6 +966,10 @@ class Rotation:
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
 
+        Returns
+        -------
+        new : damask.Rotation
+
         """
         ro = np.array(rho,dtype=float)
         if ro.shape[:-2:-1] != (4,): raise ValueError('invalid shape')
@@ -974,6 +998,10 @@ class Rotation:
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
 
+        Returns
+        -------
+        new : damask.Rotation
+
         """
         ho = np.array(h,dtype=float)
         if ho.shape[:-2:-1] != (3,): raise ValueError('invalid shape')
@@ -998,6 +1026,10 @@ class Rotation:
             Cubochoric vector (x_1, x_2, x_3) with max(x_i) < 1/2*π^(2/3).
         P : int ∈ {-1,1}, optional
             Sign convention. Defaults to -1.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         """
         cu = np.array(x,dtype=float)
@@ -1024,6 +1056,10 @@ class Rotation:
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         """
         rng = np.random.default_rng(rng_seed)
@@ -1065,6 +1101,10 @@ class Rotation:
         rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         Notes
         -----
@@ -1150,7 +1190,7 @@ class Rotation:
                              sigma: float = 0.,
                              shape: Union[int, IntSequence] = None,
                              degrees: bool = False,
-                             rng_seed: NumpyRngSeed = None):
+                             rng_seed: NumpyRngSeed = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given direction.
 
@@ -1172,6 +1212,10 @@ class Rotation:
         rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator.
             Defaults to None, i.e. unpredictable entropy will be pulled from the OS.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         Notes
         -----
