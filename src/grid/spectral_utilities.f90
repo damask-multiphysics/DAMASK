@@ -552,7 +552,7 @@ function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenF
 
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
-    GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
+    GreenOp_hat = cmplx(wgt,0.0_pReal,pReal) &
                 / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal,pReal) &
                    * sum(conjg(xi1st(1:3,i,k,j))* matmul(cmplx(D_ref,0.0_pReal,pReal),xi1st(1:3,i,k,j))))
     scalarField_fourier(i,k,j) = scalarField_fourier(i,k,j)*GreenOp_hat
@@ -560,7 +560,7 @@ function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenF
   !$OMP END PARALLEL DO
 
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3) * wgt
+  greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3)
 
 end function utilities_GreenConvolution
 
