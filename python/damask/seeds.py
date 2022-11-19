@@ -1,4 +1,3 @@
-
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
 from typing import Tuple as _Tuple

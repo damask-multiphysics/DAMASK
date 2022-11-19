@@ -8,7 +8,6 @@ import h5py
 
 from damask import util
 
-
 class TestUtil:
 
     @pytest.mark.xfail(sys.platform == 'win32', reason='echo is not a Windows command')
@@ -208,3 +207,128 @@ class TestUtil:
     @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
     def test_Bravais_Miller_Bravais(self,vector,kw_Miller,kw_Bravais):
         assert np.all(vector == util.Miller_to_Bravais(**{kw_Miller:util.Bravais_to_Miller(**{kw_Bravais:vector})}))
+
+
+    @pytest.mark.parametrize('extra_parameters',["""
+            p2 : str, optional
+                p2 description 1
+                p2 description 2
+            """,
+            """
+
+                        p2 : str, optional
+                            p2 description 1
+                            p2 description 2
+
+            """,
+            """
+p2 : str, optional
+    p2 description 1
+    p2 description 2
+            """])
+    @pytest.mark.parametrize('invalid_docstring',["""
+                        Function description
+
+                        Parameters ----------
+                        p0 : numpy.ndarray, shape (...,4)
+                            p0 description 1
+                            p0 description 2
+                        p1 : int, optional
+                            p1 description
+
+                        Remaining description
+                    """,
+                    """
+                        Function description
+
+                        Parameters
+                         ----------
+                        p0 : numpy.ndarray, shape (...,4)
+                            p0 description 1
+                            p0 description 2
+                        p1 : int, optional
+                            p1 description
+
+                        Remaining description
+                    """,])
+    def test_extend_docstring_parameters(self,extra_parameters,invalid_docstring):
+        test_docstring = """
+            Function description
+
+            Parameters
+            ----------
+            p0 : numpy.ndarray, shape (...,4)
+                p0 description 1
+                p0 description 2
+            p1 : int, optional
+                p1 description
+
+            Remaining description
+        """
+        invalid_docstring = """
+            Function description
+
+            Parameters ----------
+            p0 : numpy.ndarray, shape (...,4)
+                p0 description 1
+                p0 description 2
+            p1 : int, optional
+                p1 description
+
+            Remaining description
+        """
+        expected = """
+            Function description
+
+            Parameters
+            ----------
+            p0 : numpy.ndarray, shape (...,4)
+                p0 description 1
+                p0 description 2
+            p1 : int, optional
+                p1 description
+            p2 : str, optional
+                p2 description 1
+                p2 description 2
+
+            Remaining description
+        """.split("\n")
+        assert expected == util._docstringer(test_docstring,extra_parameters).split('\n')
+        with pytest.raises(RuntimeError):
+            util._docstringer(invalid_docstring,extra_parameters)
+
+    def test_replace_docstring_return_type(self):
+        class TestClassOriginal:
+            pass
+
+        def original_func() -> TestClassOriginal:
+            pass
+
+        class TestClassDecorated:
+            def decorated_func_bound(self) -> 'TestClassDecorated':
+                pass
+
+        def decorated_func() -> TestClassDecorated:
+            pass
+
+        original_func.__doc__ = """
+            Function description/Parameters
+
+            Returns
+            -------
+            Return value : test_util.TestClassOriginal
+
+            Remaining description
+        """
+
+        expected = """
+            Function description/Parameters
+
+            Returns
+            -------
+            Return value : test_util.TestClassDecorated
+
+            Remaining description
+        """
+        assert expected == util._docstringer(original_func,return_type=decorated_func)
+        assert expected == util._docstringer(original_func,return_type=TestClassDecorated.decorated_func_bound)

@@ -210,6 +210,14 @@ def open_text(fname: _FileHandle,
            open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
 
 
+def execution_stamp(class_name: str,
+                    function_name: str = None) -> str:
+    """Timestamp the execution of a (function within a) class."""
+    now = _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
+    _function_name = '' if function_name is None else f'.{function_name}'
+    return f'damask.{class_name}{_function_name} v{_version} ({now})'
+
+
 def natural_sort(key: str) -> _List[_Union[int, str]]:
     """
     Natural sort.
@@ -403,13 +411,6 @@ def project_equal_area(vector: _np.ndarray,
     return _np.roll(_np.block([v[...,:2]/_np.sqrt(1.0+_np.abs(v[...,2:3])),_np.zeros_like(v[...,2:3])]),
                     -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
-def execution_stamp(class_name: str,
-                    function_name: str = None) -> str:
-    """Timestamp the execution of a (function within a) class."""
-    now = _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
-    _function_name = '' if function_name is None else f'.{function_name}'
-    return f'damask.{class_name}{_function_name} v{_version} ({now})'
-
 
 def hybrid_IA(dist: _np.ndarray,
               N: int,
@@ -486,18 +487,18 @@ def shapeshifter(fro: _Tuple[int, ...],
     final_shape: _List[int] = []
     index = 0
     for i,item in enumerate(_to):
-        if item==_fro[index]:
+        if item == _fro[index]:
             final_shape.append(item)
             index+=1
         else:
             final_shape.append(1)
-            if _fro[index]==1 and not keep_ones:
+            if _fro[index] == 1 and not keep_ones:
                 index+=1
-        if index==len(_fro):
+        if index == len(_fro):
             final_shape = final_shape+[1]*(len(_to)-i-1)
             break
-    if index!=len(_fro): raise ValueError(f'shapes cannot be shifted {fro} --> {to}')
-    return tuple(final_shape[::-1] if mode=='left' else final_shape)
+    if index != len(_fro): raise ValueError(f'shapes cannot be shifted {fro} --> {to}')
+    return tuple(final_shape[::-1] if mode == 'left' else final_shape)
 
 def shapeblender(a: _Tuple[int, ...],
                  b: _Tuple[int, ...]) -> _Tuple[int, ...]:
@@ -528,37 +529,82 @@ def shapeblender(a: _Tuple[int, ...],
     return a + b[i:]
 
 
-def extend_docstring(extra_docstring: str) -> _Callable:
+def _docstringer(docstring: _Union[str, _Callable],
+                 extra_parameters: str = None,
+                 # extra_examples: str = None,
+                 # extra_notes: str = None,
+                 return_type: _Union[str, _Callable] = None) -> str:
     """
-    Decorator: Append to function's docstring.
+    Extend a docstring.
 
     Parameters
     ----------
-    extra_docstring : str
-       Docstring to append.
+    docstring : str or callable, optional
+       Docstring (of callable) to extend.
+    extra_parameters : str, optional
+       Additional information to append to Parameters section.
+    return_type : str or callable, optional
+       Type of return variable.
 
     """
-    def _decorator(func):
-        func.__doc__ += extra_docstring
-        return func
-    return _decorator
+    docstring_ = str(     docstring if isinstance(docstring,str)
+                     else docstring.__doc__ if hasattr(docstring,'__doc__')
+                     else '')
+    d = dict(Parameters=extra_parameters,
+             # Examples=extra_examples,
+             # Notes=extra_notes,
+             )
+    for key,extra in [(k,v) for (k,v) in d.items() if v is not None]:
+        if not (heading := _re.search(fr'^([ ]*){key}\s*\n\1{"-"*len(key)}',
+                                      docstring_,flags=_re.MULTILINE)):
+            raise RuntimeError(f"Docstring {docstring_} lacks a correctly formatted {key} section to insert values into")
+        content = [line for line in extra.split('\n') if line.strip()]
+        indent = len(heading.group(1))
+        shift = min([len(line)-len(line.lstrip(' '))-indent for line in content])
+        extra = '\n'.join([(line[shift:] if shift > 0 else
+                          f'{" "*-shift}{line}') for line in content])
+        docstring_ = _re.sub(fr'(^([ ]*){key}\s*\n\2{"-"*len(key)}[\n ]*[A-Za-z0-9 ]*: ([^\n]+\n)*)',
+                             fr'\1{extra}\n',
+                             docstring_,flags=_re.MULTILINE)
 
+    if return_type is None:
+        return docstring_
+    else:
+        if isinstance(return_type,str):
+            return_type_ = return_type
+        else:
+            return_class = return_type.__annotations__.get('return','')
+            return_type_ = (_sys.modules[return_type.__module__].__name__.split('.')[0]
+                            +'.'
+                            +(return_class.__name__ if not isinstance(return_class,str) else return_class)
+                           )
 
-def extended_docstring(f: _Callable,
-                       extra_docstring: str) -> _Callable:
+        return _re.sub(r'(^([ ]*)Returns\s*\n\2-------\s*\n[ ]*[A-Za-z0-9 ]*: )(.*)\n',
+                           fr'\1{return_type_}\n',
+                           docstring_,flags=_re.MULTILINE)
+
+def extend_docstring(docstring: _Union[str, _Callable] = None,
+                     extra_parameters: str = None) -> _Callable:
     """
-    Decorator: Combine another function's docstring with a given docstring.
+    Decorator: Extend the function's docstring.
 
     Parameters
     ----------
-    f : function
-       Function of which the docstring is taken.
-    extra_docstring : str
-       Docstring to append.
+    docstring : str or callable, optional
+       Docstring to extend. Defaults to that of decorated function.
+    extra_parameters : str, optional
+       Additional information to append to Parameters section.
+
+    Notes
+    -----
+    Return type will become own type if docstring is callable.
 
     """
     def _decorator(func):
-        func.__doc__ = f.__doc__ + extra_docstring
+        func.__doc__ = _docstringer(func.__doc__ if docstring is None else docstring,
+                                    extra_parameters,
+                                    func if isinstance(docstring,_Callable) else None,
+                                   )
         return func
     return _decorator
 
@@ -649,7 +695,6 @@ def Bravais_to_Miller(*,
                                               [0,0,0,1]]))
     return _np.einsum('il,...l',basis,axis)
 
-
 def Miller_to_Bravais(*,
                       uvw: _np.ndarray = None,
                       hkl: _np.ndarray = None) -> _np.ndarray:
@@ -705,7 +750,6 @@ def dict_prune(d: _Dict) -> _Dict:
             new[k] = v
 
     return new
-
 
 def dict_flatten(d: _Dict) -> _Dict:
     """
