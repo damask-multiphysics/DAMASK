@@ -330,14 +330,10 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   call utilities_fourierGreenConvolution(K_ref, mu_ref, params%Delta_t)
   call utilities_FFTscalarBackward
 
-  where(scalarField_real(1:cells(1),1:cells(2),1:cells3) > phi_lastInc) &
-        scalarField_real(1:cells(1),1:cells(2),1:cells3) = phi_lastInc
-  where(scalarField_real(1:cells(1),1:cells(2),1:cells3) < num%residualStiffness) &
-        scalarField_real(1:cells(1),1:cells(2),1:cells3) = num%residualStiffness
-
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  r = scalarField_real(1:cells(1),1:cells(2),1:cells3) - phi_current
+  r = max(min(scalarField_real(1:cells(1),1:cells(2),1:cells3),phi_lastInc),num%residualStiffness) &
+    - phi_current
   err_PETSc = 0
 
 end subroutine formResidual
