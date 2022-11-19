@@ -551,7 +551,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, FandF_tau, &
                         r, dummy,err_PETSc)
@@ -561,6 +561,9 @@ subroutine formResidual(in, FandF_tau, &
     target, intent(in) :: FandF_tau
   PetscScalar, dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE),&
     target, intent(out) :: r                                                                        !< residuum field
+  PetscObject :: dummy
+  PetscErrorCode :: err_PETSc
+
   PetscScalar, pointer, dimension(:,:,:,:,:) :: &
     F, &
     F_tau, &
@@ -569,13 +572,10 @@ subroutine formResidual(in, FandF_tau, &
   PetscInt :: &
     PETScIter, &
     nfuncs
-  PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer :: &
     i, j, k, e
 
-!---------------------------------------------------------------------------------------------------
 
   F       => FandF_tau(1:3,1:3,1,&
                        XG_RANGE,YG_RANGE,ZG_RANGE)
@@ -612,17 +612,16 @@ subroutine formResidual(in, FandF_tau, &
 !--------------------------------------------------------------------------------------------------
 !
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-    tensorField_real(1:3,1:3,i,j,k) = &
+    r_F_tau(1:3,1:3,i,j,k) = &
       num%beta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
       num%alpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   end do; end do; end do
 
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
-
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  r_F_tau = num%beta*F - tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
+  r_F_tau = num%beta*F &
+          - utilities_fourierGammaConvolution(r_F_tau,params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response

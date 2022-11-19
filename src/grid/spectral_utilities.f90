@@ -42,7 +42,7 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
 
-  real(C_DOUBLE),         public, dimension(:,:,:,:,:),     pointer     :: tensorField_real         !< tensor field in real space
+  real(C_DOUBLE),                 dimension(:,:,:,:,:),     pointer     :: tensorField_real         !< tensor field in real space
   real(C_DOUBLE),         public, dimension(:,:,:,:),       pointer     :: vectorField_real         !< vector field in real space
   real(C_DOUBLE),         public, dimension(:,:,:),         pointer     :: scalarField_real         !< scalar field in real space
   complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:,:),     pointer     :: tensorField_fourier      !< tensor field in Fourier space
@@ -505,12 +505,14 @@ end subroutine utilities_FFTvectorBackward
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierGammaConvolution(fieldAim)
+function utilities_fourierGammaConvolution(field, fieldAim) result(gammaField)
 
+  real(pReal), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
   real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
-  complex(pReal),          dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
-  real(pReal),             dimension(6,6) :: A, A_inv
+  real(pReal),             dimension(3,3,cells(1),cells(2),cells3) :: gammaField
 
+  complex(pReal), dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
+  real(pReal),    dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
     l, m, n, o
@@ -520,8 +522,11 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   print'(/,1x,a)', '... doing gamma convolution ...............................................'
   flush(IO_STDOUT)
 
-  call utilities_FFTtensorForward()
-!--------------------------------------------------------------------------------------------------
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+
+  !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
   memoryEfficient: if (num%memory_efficient) then
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
@@ -582,9 +587,10 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   end if memoryEfficient
 
   if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
-  call utilities_FFTtensorBackward()
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
+  gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)*wgt
 
-end subroutine utilities_fourierGammaConvolution
+end function utilities_fourierGammaConvolution
 
 
 !--------------------------------------------------------------------------------------------------

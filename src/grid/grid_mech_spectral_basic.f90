@@ -491,7 +491,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, F, &
                         r, dummy, err_PETSc)
@@ -501,14 +501,16 @@ subroutine formResidual(in, F, &
     intent(in) :: F                                                                                 !< deformation gradient field
   PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
     intent(out) :: r                                                                                !< residuum field
+  PetscObject :: dummy
+  PetscErrorCode :: err_PETSc
+
   real(pReal),  dimension(3,3) :: &
     deltaF_aim
   PetscInt :: &
     PETScIter, &
     nfuncs
-  PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
+
 
   call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -544,12 +546,7 @@ subroutine formResidual(in, F, &
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pReal,P_av - P_aim,params%stress_mask)))
 
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r                                      ! store fPK field for subsequent FFT forward transform
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
-
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  r = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)                                      ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+  r = utilities_fourierGammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))      ! convolution of Gamma and tensorField_fourier
 
 end subroutine formResidual
 
