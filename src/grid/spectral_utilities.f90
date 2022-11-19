@@ -379,6 +379,7 @@ end subroutine spectral_utilities_init
 subroutine utilities_updateGamma(C)
 
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
+
   complex(pReal),              dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
   real(pReal),                 dimension(6,6) :: A, A_inv
   integer :: &
@@ -386,7 +387,8 @@ subroutine utilities_updateGamma(C)
     l, m, n, o
   logical :: err
 
-  C_ref = C
+
+  C_ref = C/wgt
 
   if (.not. num%memory_efficient) then
     gamma_hat = cmplx(0.0_pReal,0.0_pReal,pReal)                                                    ! for the singular point and any non invertible A
@@ -586,9 +588,9 @@ function utilities_fourierGammaConvolution(field, fieldAim) result(gammaField)
     !$OMP END PARALLEL DO
   end if memoryEfficient
 
-  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
+  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pReal,pReal)
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
-  gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)*wgt
+  gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
 
 end function utilities_fourierGammaConvolution
 
@@ -634,8 +636,9 @@ real(pReal) function utilities_divergenceRMS(tensorField)
   print'(/,1x,a)', '... calculating divergence ................................................'
   flush(IO_STDOUT)
 
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = tensorField
-  call utilities_FFTtensorforward()
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
@@ -684,8 +687,9 @@ real(pReal) function utilities_curlRMS(tensorField)
   print'(/,1x,a)', '... calculating curl ......................................................'
   flush(IO_STDOUT)
 
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = tensorField
-  call utilities_FFTtensorforward()
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
@@ -737,7 +741,7 @@ end function utilities_curlRMS
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates mask compliance tensor used to adjust F to fullfill stress BC
+!> @brief Calculate masked compliance tensor used to adjust F to fullfill stress BC.
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
