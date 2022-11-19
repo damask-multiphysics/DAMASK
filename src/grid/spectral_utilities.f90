@@ -431,68 +431,6 @@ end subroutine utilities_updateGamma
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in field_real to field_fourier
-!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
-! to 0.0
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorForward()
-
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-
-end subroutine utilities_FFTtensorForward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorBackward()
-
-  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
-  tensorField_real = tensorField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTtensorBackward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in scalarField_real to scalarField_fourier
-!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
-! to 0.0
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarForward()
-
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
-
-end subroutine utilities_FFTscalarForward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in scalarField_fourier to scalarField_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarBackward()
-
-  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTscalarBackward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
-! to 0.0
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorForward()
-
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
-
-end subroutine utilities_FFTvectorForward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
@@ -619,7 +557,8 @@ function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenF
     scalarField_fourier(i,k,j) = scalarField_fourier(i,k,j)*GreenOp_hat
   end do; end do; end do
   !$OMP END PARALLEL DO
-  call utilities_FFTscalarBackward()
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
 
   greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3)
 
@@ -823,11 +762,13 @@ subroutine utilities_fourierScalarGradient()
   integer :: i, j, k
 
 
-  call utilities_FFTscalarForward()
+  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
     vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)                    ! ToDo: no -conjg?
   end do; end do; end do
-  call utilities_FFTvectorBackward()
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
 
 end subroutine utilities_fourierScalarGradient
 
@@ -837,10 +778,12 @@ end subroutine utilities_fourierScalarGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
 
-  call utilities_FFTvectorForward()
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
                                                              *conjg(-xi1st),1)
-  call utilities_FFTscalarBackward()
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
 
 end subroutine utilities_fourierVectorDivergence
 
@@ -1075,8 +1018,9 @@ subroutine utilities_updateCoords(F)
   step = geomSize/real(cells, pReal)
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space to get fluctuations of cell center discplacements
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = F
-  call utilities_FFTtensorForward()
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = F
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
   !$OMP PARALLEL DO
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -1089,7 +1033,8 @@ subroutine utilities_updateCoords(F)
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-  call utilities_FFTvectorBackward()
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
 
  !--------------------------------------------------------------------------------------------------
  ! average F
@@ -1183,38 +1128,38 @@ subroutine selfTest()
   call random_number(tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   tensorField_real_ = tensorField_real
-  call utilities_FFTtensorForward()
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
   if (worldsize==1) then
     if (any(dNeq(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3)/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
       error stop 'tensorField avg'
   endif
-  call utilities_FFTtensorBackward()
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(tensorField_real_ - tensorField_real))>5.0e-15_pReal) error stop 'tensorField'
+  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) error stop 'tensorField'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   vectorField_real_ = vectorField_real
-  call utilities_FFTvectorForward()
+  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   if (worldsize==1) then
     if (any(dNeq(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2)/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
       error stop 'vector avg'
   endif
-  call utilities_FFTvectorBackward()
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(vectorField_real_ - vectorField_real))>5.0e-15_pReal) error stop 'vectorField'
+  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) error stop 'vectorField'
 
   call random_number(scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   scalarField_real_ = scalarField_real
-  call utilities_FFTscalarForward()
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   if (worldsize==1) then
     if (dNeq(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1)/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
       error stop 'scalar avg'
   endif
-  call utilities_FFTscalarBackward()
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(scalarField_real_ - scalarField_real))>5.0e-15_pReal) error stop 'scalarField'
+  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) error stop 'scalarField'
 
 end subroutine selfTest
 
