@@ -545,7 +545,6 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
-  tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r                                      ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
   err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use

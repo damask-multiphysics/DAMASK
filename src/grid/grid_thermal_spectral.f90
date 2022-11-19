@@ -326,7 +326,6 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   T_current = x_scal
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
-  scalarField_real = 0.0_pReal
   scalarField_real(1:cells(1),1:cells(2),1:cells3) = T_current
   call utilities_FFTscalarForward
   call utilities_fourierScalarGradient                                                              !< calculate gradient of temperature field

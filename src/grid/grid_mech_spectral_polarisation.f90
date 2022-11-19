@@ -611,7 +611,6 @@ subroutine formResidual(in, FandF_tau, &
 
 !--------------------------------------------------------------------------------------------------
 !
-  tensorField_real = 0.0_pReal
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     tensorField_real(1:3,1:3,i,j,k) = &
       num%beta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
@@ -643,7 +642,6 @@ subroutine formResidual(in, FandF_tau, &
                             P_av-P_aim, &
                             params%stress_mask)))
 ! calculate divergence
-  tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r_F                                    !< stress field in disguise
   call utilities_FFTtensorForward
   err_div = utilities_divergenceRMS()                                                               !< root mean squared error in divergence of stress
@@ -662,7 +660,6 @@ subroutine formResidual(in, FandF_tau, &
 
 !--------------------------------------------------------------------------------------------------
 ! calculating curl
-  tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = F
   call utilities_FFTtensorForward
   err_curl = utilities_curlRMS()
