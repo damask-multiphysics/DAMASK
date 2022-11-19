@@ -42,16 +42,16 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
 
-  real(C_DOUBLE),                 dimension(:,:,:,:,:),     pointer     :: tensorField_real         !< tensor field in real space
-  real(C_DOUBLE),         public, dimension(:,:,:,:),       pointer     :: vectorField_real         !< vector field in real space
-  real(C_DOUBLE),         public, dimension(:,:,:),         pointer     :: scalarField_real         !< scalar field in real space
-  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:,:),     pointer     :: tensorField_fourier      !< tensor field in Fourier space
-  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:),       pointer     :: vectorField_fourier      !< vector field in Fourier space
-  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:),         pointer     :: scalarField_fourier      !< scalar field in Fourier space
-  complex(pReal),                 dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                !< gamma operator (field) for spectral method
-  complex(pReal),                 dimension(:,:,:,:),       allocatable :: xi1st                    !< wave vector field for first derivatives
-  complex(pReal),                 dimension(:,:,:,:),       allocatable :: xi2nd                    !< wave vector field for second derivatives
-  real(pReal),                    dimension(3,3,3,3)                    :: C_ref                    !< mechanic reference stiffness
+  real(C_DOUBLE),            dimension(:,:,:,:,:),     pointer     :: tensorField_real              !< tensor field in real space
+  real(C_DOUBLE),            dimension(:,:,:,:),       pointer     :: vectorField_real              !< vector field in real space
+  real(C_DOUBLE),            dimension(:,:,:),         pointer     :: scalarField_real              !< scalar field in real space
+  complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:,:),     pointer     :: tensorField_fourier           !< tensor field in Fourier space
+  complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
+  complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
+  complex(pReal),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pReal),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
+  complex(pReal),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
+  real(pReal),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -120,8 +120,8 @@ module spectral_utilities
     utilities_GreenConvolution, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
-    utilities_fourierScalarGradient, &
-    utilities_fourierVectorDivergence, &
+    utilities_ScalarGradient, &
+    utilities_VectorDivergence, &
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
@@ -755,37 +755,46 @@ end function utilities_maskedCompliance
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate scalar gradient in fourier field
+!> @brief Calculate gradient of scalar field.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierScalarGradient()
+function utilities_ScalarGradient(field) result(grad)
+
+  real(pReal), intent(in), dimension(  cells(1),cells(2),cells3) :: field
+  real(pReal),             dimension(3,cells(1),cells(2),cells3) :: grad
 
   integer :: i, j, k
 
 
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
     vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)                    ! ToDo: no -conjg?
   end do; end do; end do
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
+  grad = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)*wgt
 
-end subroutine utilities_fourierScalarGradient
+end function utilities_ScalarGradient
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate vector divergence in fourier field
+!> @brief Calculate divergence of vector field.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierVectorDivergence()
+function utilities_VectorDivergence(field) result(div)
 
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
+  real(pReal), intent(in), dimension(3,cells(1),cells(2),cells3) :: field
+  real(pReal),             dimension(  cells(1),cells(2),cells3) :: div
+
+
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  vectorField_real(1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
                                                              *conjg(-xi1st),1)
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
+  div = scalarField_real(1:cells(1),1:cells(2),1:cells3)*wgt
 
-end subroutine utilities_fourierVectorDivergence
+end function utilities_VectorDivergence
 
 
 !--------------------------------------------------------------------------------------------------

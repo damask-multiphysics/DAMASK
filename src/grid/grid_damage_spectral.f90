@@ -302,23 +302,23 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   PetscErrorCode, intent(out) :: err_PETSc
 
   integer :: i, j, k, ce
+  real(pReal), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
   phi_current = x_scal
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
-  scalarField_real(1:cells(1),1:cells(2),1:cells3) = phi_current
-  call utilities_fourierScalarGradient()
+  vectorField = utilities_ScalarGradient(phi_current)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, vectorField_real(1:3,i,j,k))
+    vectorField(1:3,i,j,k) = matmul(homogenization_K_phi(ce) - K_ref, vectorField(1:3,i,j,k))
   end do; end do; end do
-  call utilities_fourierVectorDivergence()
+  r = utilities_VectorDivergence(vectorField)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    r(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
+    r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
              + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
              + mu_ref*phi_current(i,j,k)
   end do; end do; end do
