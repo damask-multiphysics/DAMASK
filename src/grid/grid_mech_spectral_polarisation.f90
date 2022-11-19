@@ -621,7 +621,7 @@ subroutine formResidual(in, FandF_tau, &
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
   r_F_tau = num%beta*F &
-          - utilities_fourierGammaConvolution(r_F_tau,params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
+          - utilities_GammaConvolution(r_F_tau,params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response

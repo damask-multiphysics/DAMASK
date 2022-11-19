@@ -546,7 +546,7 @@ subroutine formResidual(in, F, &
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pReal,P_av - P_aim,params%stress_mask)))
 
-  r = utilities_fourierGammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))      ! convolution of Gamma and tensorField_fourier
+  r = utilities_GammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
 end subroutine formResidual
 

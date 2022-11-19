@@ -341,17 +341,15 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    scalarField_real(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
-                            + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
-                            + mu_ref*T_current(i,j,k)
+    r(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
+             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
+             + mu_ref*T_current(i,j,k)
   end do; end do; end do
-
-  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%Delta_t)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
   r = T_current &
-    - scalarField_real(1:cells(1),1:cells(2),1:cells3)
+    - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
   err_PETSc = 0
 
 end subroutine formResidual

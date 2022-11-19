@@ -116,8 +116,8 @@ module spectral_utilities
   public :: &
     spectral_utilities_init, &
     utilities_updateGamma, &
-    utilities_fourierGammaConvolution, &
-    utilities_fourierGreenConvolution, &
+    utilities_GammaConvolution, &
+    utilities_GreenConvolution, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
     utilities_fourierScalarGradient, &
@@ -507,7 +507,7 @@ end subroutine utilities_FFTvectorBackward
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
-function utilities_fourierGammaConvolution(field, fieldAim) result(gammaField)
+function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
   real(pReal), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
   real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
@@ -528,8 +528,6 @@ function utilities_fourierGammaConvolution(field, fieldAim) result(gammaField)
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
-  !--------------------------------------------------------------------------------------------------
-! do the actual spectral method calculation (mechanical equilibrium)
   memoryEfficient: if (num%memory_efficient) then
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
     do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -592,22 +590,27 @@ function utilities_fourierGammaConvolution(field, fieldAim) result(gammaField)
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
 
-end function utilities_fourierGammaConvolution
+end function utilities_GammaConvolution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief doing convolution DamageGreenOp_hat * field_real
+!> @brief Convolution of Greens' operator for damage/thermal.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
+function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenField)
 
+  real(pReal), intent(in), dimension(cells(1),cells(2),cells3) :: field
   real(pReal), dimension(3,3), intent(in) :: D_ref
   real(pReal),                 intent(in) :: mu_ref, Delta_t
+  real(pReal), dimension(cells(1),cells(2),cells3) :: greenField
+
   complex(pReal)                          :: GreenOp_hat
   integer                                 :: i, j, k
 
-!--------------------------------------------------------------------------------------------------
-! do the actual spectral method calculation
-  call utilities_FFTscalarForward()
+
+  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
+
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
@@ -618,7 +621,9 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
   !$OMP END PARALLEL DO
   call utilities_FFTscalarBackward()
 
-end subroutine utilities_fourierGreenConvolution
+  greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3)
+
+end function utilities_GreenConvolution
 
 
 !--------------------------------------------------------------------------------------------------
