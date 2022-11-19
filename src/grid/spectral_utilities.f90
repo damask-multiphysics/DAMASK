@@ -300,8 +300,8 @@ subroutine spectral_utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocation
-  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))            ! frequencies for first derivatives, only half the size for first dimension
-  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))            ! frequencies for second derivatives, only half the size for first dimension
+  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
@@ -525,6 +525,7 @@ function utilities_GammaConvolution(field, fieldAim) result(gammaField)
   end if memoryEfficient
 
   if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pReal,pReal)
+
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
 
@@ -557,10 +558,9 @@ function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenF
     scalarField_fourier(i,k,j) = scalarField_fourier(i,k,j)*GreenOp_hat
   end do; end do; end do
   !$OMP END PARALLEL DO
-  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
 
-  greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3)
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+  greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3) * wgt
 
 end function utilities_GreenConvolution
 
@@ -1025,12 +1025,19 @@ subroutine utilities_updateCoords(F)
 
 
   step = geomSize/real(cells, pReal)
- !--------------------------------------------------------------------------------------------------
- ! integration in Fourier space to get fluctuations of cell center discplacements
+
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = F
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
+ !--------------------------------------------------------------------------------------------------
+ ! average F
+  if (cells3Offset == 0) Favg = tensorField_fourier(1:3,1:3,1,1,1)%re*wgt
+  call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+
+ !--------------------------------------------------------------------------------------------------
+ ! integration in Fourier space to get fluctuations of cell center discplacements
   !$OMP PARALLEL DO
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then
@@ -1044,12 +1051,6 @@ subroutine utilities_updateCoords(F)
 
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
-
- !--------------------------------------------------------------------------------------------------
- ! average F
-  if (cells3Offset == 0) Favg = tensorField_fourier(1:3,1:3,1,1,1)%re*wgt
-  call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
