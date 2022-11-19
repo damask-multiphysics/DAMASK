@@ -242,10 +242,12 @@ end function grid_thermal_spectral_solution
 subroutine grid_thermal_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
+
   integer :: i, j, k, ce
   DM :: dm_local
   PetscScalar,  dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: err_PETSc
+
 
   if (cutBack) then
     T_current = T_lastInc
@@ -307,7 +309,7 @@ end subroutine grid_thermal_spectral_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the spectral thermal residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
 
@@ -320,24 +322,22 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
     X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
     r
   PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode, intent(out) :: err_PETSc
+
   integer :: i, j, k, ce
+
 
   T_current = x_scal
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
   scalarField_real(1:cells(1),1:cells(2),1:cells3) = T_current
-  call utilities_FFTscalarForward
-  call utilities_fourierScalarGradient                                                              !< calculate gradient of temperature field
-  call utilities_FFTvectorBackward
+  call utilities_fourierScalarGradient()
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
     vectorField_real(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField_real(1:3,i,j,k))
   end do; end do; end do
-  call utilities_FFTvectorForward
-  call utilities_fourierVectorDivergence                                                            !< calculate temperature divergence in fourier field
-  call utilities_FFTscalarBackward
+  call utilities_fourierVectorDivergence()
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
@@ -346,15 +346,12 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
                             + mu_ref*T_current(i,j,k)
   end do; end do; end do
 
-!--------------------------------------------------------------------------------------------------
-! convolution of temperature field with green operator
-  call utilities_FFTscalarForward
   call utilities_fourierGreenConvolution(K_ref, mu_ref, params%Delta_t)
-  call utilities_FFTscalarBackward
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  r = T_current - scalarField_real(1:cells(1),1:cells(2),1:cells3)
+  r = T_current &
+    - scalarField_real(1:cells(1),1:cells(2),1:cells3)
   err_PETSc = 0
 
 end subroutine formResidual

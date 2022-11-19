@@ -116,12 +116,6 @@ module spectral_utilities
   public :: &
     spectral_utilities_init, &
     utilities_updateGamma, &
-    utilities_FFTtensorForward, &
-    utilities_FFTtensorBackward, &
-    utilities_FFTvectorForward, &
-    utilities_FFTvectorBackward, &
-    utilities_FFTscalarForward, &
-    utilities_FFTscalarBackward, &
     utilities_fourierGammaConvolution, &
     utilities_fourierGreenConvolution, &
     utilities_divergenceRMS, &
@@ -526,6 +520,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   print'(/,1x,a)', '... doing gamma convolution ...............................................'
   flush(IO_STDOUT)
 
+  call utilities_FFTtensorForward()
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
   memoryEfficient: if (num%memory_efficient) then
@@ -587,6 +582,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   end if memoryEfficient
 
   if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
+  call utilities_FFTtensorBackward()
 
 end subroutine utilities_fourierGammaConvolution
 
@@ -603,6 +599,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation
+  call utilities_FFTscalarForward()
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
@@ -611,6 +608,7 @@ subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
     scalarField_fourier(i,k,j) = scalarField_fourier(i,k,j)*GreenOp_hat
   end do; end do; end do
   !$OMP END PARALLEL DO
+  call utilities_FFTscalarBackward()
 
 end subroutine utilities_fourierGreenConvolution
 
@@ -810,9 +808,11 @@ subroutine utilities_fourierScalarGradient()
   integer :: i, j, k
 
 
+  call utilities_FFTscalarForward()
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
     vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)                    ! ToDo: no -conjg?
   end do; end do; end do
+  call utilities_FFTvectorBackward()
 
 end subroutine utilities_fourierScalarGradient
 
@@ -822,8 +822,10 @@ end subroutine utilities_fourierScalarGradient
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_fourierVectorDivergence()
 
+  call utilities_FFTvectorForward()
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
                                                              *conjg(-xi1st),1)
+  call utilities_FFTscalarBackward()
 
 end subroutine utilities_fourierVectorDivergence
 

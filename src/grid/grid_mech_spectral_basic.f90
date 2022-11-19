@@ -544,12 +544,8 @@ subroutine formResidual(in, F, &
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pReal,P_av - P_aim,params%stress_mask)))
 
-!--------------------------------------------------------------------------------------------------
-! updated deformation gradient using fix point algorithm of basic scheme
   tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r                                      ! store fPK field for subsequent FFT forward transform
-  call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
-  call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual

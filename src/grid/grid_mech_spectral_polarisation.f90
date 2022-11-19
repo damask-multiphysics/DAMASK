@@ -618,11 +618,7 @@ subroutine formResidual(in, FandF_tau, &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   end do; end do; end do
 
-!--------------------------------------------------------------------------------------------------
-! doing convolution in Fourier space
-  call utilities_FFTtensorForward
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
-  call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
