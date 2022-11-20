@@ -616,29 +616,44 @@ subroutine formResidual(in, FandF_tau, &
   r_F_tau = num%beta*F &
           - utilities_GammaConvolution(r_F_tau,params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
 
+  err_curl = utilities_curlRMS(F)
+
+#ifdef __GFORTRAN__
+  call utilities_constitutiveResponse(r_F, &
+#else
   associate (P => r_F)
     call utilities_constitutiveResponse(P, &
+#endif
                                         P_av,C_volAvg,C_minMaxAvg, &
                                         F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
     call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+#ifdef __GFORTRAN__
+    err_div = utilities_divergenceRMS(r_F)
+#else
     err_div = utilities_divergenceRMS(P)
-    err_curl = utilities_curlRMS(F)
+#endif
+    e = 0
+    do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+      e = e + 1
+      r_F(1:3,1:3,i,j,k) = &
+        math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
+#ifdef __GFORTRAN__
+                         r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
+#else
+                         P(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
+#endif
+                         math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
+                         + r_F_tau(1:3,1:3,i,j,k)
+    end do; end do; end do
+#ifndef __GFORTRAN__
   end associate
+#endif
 
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
   err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
                             P_av-P_aim, &
                             params%stress_mask)))
 
-  e = 0
-  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-    e = e + 1
-    r_F(1:3,1:3,i,j,k) = &
-      math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
-                       r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
-                       math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
-                       + r_F_tau(1:3,1:3,i,j,k)
-  end do; end do; end do
 
 end subroutine formResidual
 
