@@ -1118,7 +1118,7 @@ subroutine utilities_saveReferenceStiffness()
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
          status='replace',access='stream',action='write',iostat=ierr)
     if (ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
-    write(fileUnit) C_ref
+    write(fileUnit) C_ref*wgt
     close(fileUnit)
   end if
 
