@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from typing import Sequence, Dict, Any, Collection
+from typing import Union, Sequence, Dict, Any, Collection
 
 from ._typehints import FileHandle
 from . import Config
@@ -513,14 +513,16 @@ class ConfigMaterial(Config):
         _dim = {'O':(4,),'V_e':(3,3,)}
         _ex = dict((k, -len(v)) for k, v in _dim.items())
 
-        N,n,shaped = 1,1,{'v': None,
-                          'phase': None,
-                          'homogenization': None,
-                          }
+        N,n = 1,1
+        shaped : Dict[str, Union[None,np.ndarray]] = \
+                 {'v': None,
+                  'phase': None,
+                  'homogenization': None,
+                  }
 
         for k,v in kwargs.items():
             shaped[k] = np.array(v)
-            s = shaped[k].shape[:_ex.get(k,None)]
+            s = shaped[k].shape[:_ex.get(k,None)]                               # type: ignore
             N = max(N,s[0]) if len(s)>0 else N
             n = max(n,s[1]) if len(s)>1 else n
 
@@ -544,8 +546,8 @@ class ConfigMaterial(Config):
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
-        for what in ['phase','homogenization']:
-            for k in np.unique(shaped[what]):
-                if not (k is None or k in dup[what]): dup[what][str(k)] = None
+        for what in [item for item in ['phase','homogenization'] if shaped[item] is not None]:
+            for k in np.unique(shaped[what]):                                   # type: ignore
+                if k not in dup[what]: dup[what][str(k)] = None
 
         return dup
