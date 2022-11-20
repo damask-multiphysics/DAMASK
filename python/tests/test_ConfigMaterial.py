@@ -65,17 +65,6 @@ class TestConfigMaterial:
         del material_config['material'][0]['homogenization']
         assert not material_config.is_complete
 
-    def test_incomplete_homogenization_N_constituents(self,ref_path):
-        material_config = ConfigMaterial.load(ref_path/'material.yaml')
-        for h in material_config['homogenization'].keys():
-            del material_config['homogenization'][h]['N_constituents']
-        assert not material_config.is_complete
-
-    def test_incomplete_phase_lattice(self,ref_path):
-        material_config = ConfigMaterial.load(ref_path/'material.yaml')
-        del material_config['phase']['Aluminum']['lattice']
-        assert not material_config.is_complete
-
     def test_incomplete_wrong_phase(self,ref_path):
         material_config = ConfigMaterial.load(ref_path/'material.yaml')
         new = material_config.material_rename_phase({'Steel':'FeNbC'})
@@ -85,6 +74,16 @@ class TestConfigMaterial:
         material_config = ConfigMaterial.load(ref_path/'material.yaml')
         new = material_config.material_rename_homogenization({'Taylor':'isostrain'})
         assert not new.is_complete
+
+    def test_empty_phase(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
+        material_config['phase'] = None
+        assert not material_config.is_complete
+
+    def test_empty_homogenization(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
+        material_config['homogenization'] = None
+        assert not material_config.is_complete
 
     def test_from_table(self):
         N = np.random.randint(3,10)
@@ -97,6 +96,15 @@ class TestConfigMaterial:
         assert len(c['material']) == N
         for i,m in enumerate(c['material']):
             assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
+
+    def test_updated_dicts(self,ref_path):
+        m1 = ConfigMaterial().material_add(phase=['Aluminum'],O=[1.0,0.0,0.0,0.0],homogenization='SX')
+        m2 = ConfigMaterial.load(ref_path/'material.yaml')
+        for k in m2['phase']:
+            m2 = m2.material_add(phase=[k],O=[1.0,0.0,0.0,0.0],homogenization='SX')
+            assert not m2['phase'].get(k) is None
+        assert m1['phase'].get('Aluminum') is None
+        assert m1['homogenization'].get('SX') is None
 
     def test_from_table_with_constant(self):
         N = np.random.randint(3,10)

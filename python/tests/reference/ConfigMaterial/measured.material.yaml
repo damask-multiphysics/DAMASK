@@ -1,4 +1,4 @@
-phase: {'1': t.b.d., '2': t.b.d.}
+phase: {'1': null, '2': null}
 
 homogenization:
   direct: {N_constituents: 1}
