@@ -597,8 +597,6 @@ subroutine formResidual(in, FandF_tau, &
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
-!--------------------------------------------------------------------------------------------------
-! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
@@ -609,38 +607,29 @@ subroutine formResidual(in, FandF_tau, &
     flush(IO_STDOUT)
   end if newIteration
 
-!--------------------------------------------------------------------------------------------------
-!
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     r_F_tau(1:3,1:3,i,j,k) = &
       num%beta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
       num%alpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   end do; end do; end do
-
-!--------------------------------------------------------------------------------------------------
-! constructing residual
   r_F_tau = num%beta*F &
           - utilities_GammaConvolution(r_F_tau,params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
 
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
-  call utilities_constitutiveResponse(r_F, &                                                        ! "residuum" gets field of first PK stress (to save memory)
-                                      P_av,C_volAvg,C_minMaxAvg, &
-                                      F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-  err_div = utilities_divergenceRMS(r_F)
-  err_curl = utilities_curlRMS(F)
+  associate (P => r_F)
+    call utilities_constitutiveResponse(P, &
+                                        P_av,C_volAvg,C_minMaxAvg, &
+                                        F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
+    call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+    err_div = utilities_divergenceRMS(P)
+    err_curl = utilities_curlRMS(F)
+  end associate
 
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
   err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
                             P_av-P_aim, &
                             params%stress_mask)))
 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
   e = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     e = e + 1

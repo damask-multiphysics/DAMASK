@@ -519,8 +519,6 @@ subroutine formResidual(in, F, &
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
-!--------------------------------------------------------------------------------------------------
-! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
@@ -531,17 +529,15 @@ subroutine formResidual(in, F, &
     flush(IO_STDOUT)
   end if newIteration
 
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
-  call utilities_constitutiveResponse(r, &                                                          ! residuum gets field of first PK stress (to save memory)
-                                      P_av,C_volAvg,C_minMaxAvg, &
-                                      F,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  err_div = utilities_divergenceRMS(r)
+  associate (P => r)
+    call utilities_constitutiveResponse(P, &
+                                        P_av,C_volAvg,C_minMaxAvg, &
+                                        F,params%Delta_t,params%rotation_BC)
+    call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    err_div = utilities_divergenceRMS(P)
+  end associate
 
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
   deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pReal,P_av - P_aim,params%stress_mask)))
