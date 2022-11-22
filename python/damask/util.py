@@ -10,8 +10,9 @@ import signal as _signal
 import fractions as _fractions
 from collections import abc as _abc
 from functools import reduce as _reduce, partial as _partial
-from typing import Callable as _Callable, Union as _Union, Iterable as _Iterable, Sequence as _Sequence, Dict as _Dict,  \
-                   List as _List, Tuple as _Tuple, Literal as _Literal, Any as _Any, Collection as _Collection, TextIO as _TextIO
+from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
+                   Sequence as _Sequence, Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
+                   Any as _Any, Collection as _Collection, TextIO as _TextIO
 from pathlib import Path as _Path
 
 import numpy as _np
@@ -140,8 +141,8 @@ def strikeout(msg) -> str:
 
 def run(cmd: str,
         wd: str = './',
-        env: _Dict[str, str] = None,
-        timeout: int = None) -> _Tuple[str, str]:
+        env: _Optional[_Dict[str, str]] = None,
+        timeout: _Optional[int] = None) -> _Tuple[str, str]:
     """
     Run a command.
 
@@ -215,7 +216,7 @@ def open_text(fname: _FileHandle,
 
 
 def execution_stamp(class_name: str,
-                    function_name: str = None) -> str:
+                    function_name: _Optional[str] = None) -> str:
     """Timestamp the execution of a (function within a) class."""
     now = _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
     _function_name = '' if function_name is None else f'.{function_name}'
@@ -238,7 +239,7 @@ def natural_sort(key: str) -> _List[_Union[int, str]]:
 
 
 def show_progress(iterable: _Iterable,
-                  N_iter: int = None,
+                  N_iter: _Optional[int] = None,
                   prefix: str = '',
                   bar_length: int = 50) -> _Any:
     """
@@ -418,7 +419,7 @@ def project_equal_area(vector: _np.ndarray,
 
 def hybrid_IA(dist: _np.ndarray,
               N: int,
-              rng_seed: _NumpyRngSeed = None) -> _np.ndarray:
+              rng_seed: _Optional[_NumpyRngSeed] = None) -> _np.ndarray:
     """
     Hybrid integer approximation.
 
@@ -534,10 +535,10 @@ def shapeblender(a: _Tuple[int, ...],
 
 
 def _docstringer(docstring: _Union[str, _Callable],
-                 extra_parameters: str = None,
-                 # extra_examples: str = None,
-                 # extra_notes: str = None,
-                 return_type: _Union[str, _Callable] = None) -> str:
+                 extra_parameters: _Optional[str] = None,
+                 # extra_examples: _Optional[str] = None,
+                 # extra_notes: _Optional[str] = None,
+                 return_type: _Union[None, str, _Callable] = None) -> str:
     """
     Extend a docstring.
 
@@ -587,8 +588,8 @@ def _docstringer(docstring: _Union[str, _Callable],
                            fr'\1{return_type_}\n',
                            docstring_,flags=_re.MULTILINE)
 
-def extend_docstring(docstring: _Union[str, _Callable] = None,
-                     extra_parameters: str = None) -> _Callable:
+def extend_docstring(docstring: _Union[None, str, _Callable] = None,
+                     extra_parameters: _Optional[str] = None) -> _Callable:
     """
     Decorator: Extend the function's docstring.
 
@@ -672,8 +673,8 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
 
 
 def Bravais_to_Miller(*,
-                      uvtw: _np.ndarray = None,
-                      hkil: _np.ndarray = None) -> _np.ndarray:
+                      uvtw: _Optional[_np.ndarray] = None,
+                      hkil: _Optional[_np.ndarray] = None) -> _np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -700,8 +701,8 @@ def Bravais_to_Miller(*,
     return _np.einsum('il,...l',basis,axis)
 
 def Miller_to_Bravais(*,
-                      uvw: _np.ndarray = None,
-                      hkl: _np.ndarray = None) -> _np.ndarray:
+                      uvw: _Optional[_np.ndarray] = None,
+                      hkl: _Optional[_np.ndarray] = None) -> _np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 

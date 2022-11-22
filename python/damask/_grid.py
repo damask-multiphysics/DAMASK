@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence, Dict
+from typing import Optional, Union, TextIO, List, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
@@ -34,8 +34,8 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions: Dict[str,np.ndarray] = None,
-                 comments: Union[str, Sequence[str]] = None):
+                 initial_conditions: Optional[Dict[str,np.ndarray]] = None,
+                 comments: Union[None, str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
 
@@ -348,9 +348,11 @@ class Grid:
 
     @staticmethod
     def load_DREAM3D(fname: Union[str, Path],
-                     feature_IDs: str = None, cell_data: str = None,
-                     phases: str = 'Phases', Euler_angles: str = 'EulerAngles',
-                     base_group: str = None) -> 'Grid':
+                     feature_IDs: Optional[str] = None,
+                     cell_data: Optional[str] = None,
+                     phases: str = 'Phases',
+                     Euler_angles: str = 'EulerAngles',
+                     base_group: Optional[str] = None) -> 'Grid':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -463,7 +465,7 @@ class Grid:
                                    size: FloatSequence,
                                    seeds: np.ndarray,
                                    weights: FloatSequence,
-                                   material: IntSequence = None,
+                                   material: Optional[IntSequence] = None,
                                    periodic: bool = True):
         """
         Create grid from Laguerre tessellation.
@@ -520,7 +522,7 @@ class Grid:
     def from_Voronoi_tessellation(cells: IntSequence,
                                   size: FloatSequence,
                                   seeds: np.ndarray,
-                                  material: IntSequence = None,
+                                  material: Optional[IntSequence] = None,
                                   periodic: bool = True) -> 'Grid':
         """
         Create grid from Voronoi tessellation.
@@ -763,9 +765,9 @@ class Grid:
 
 
     def canvas(self,
-               cells: IntSequence = None,
-               offset: IntSequence = None,
-               fill: int = None) -> 'Grid':
+               cells: Optional[IntSequence] = None,
+               offset: Optional[IntSequence] = None,
+               fill: Optional[int] = None) -> 'Grid':
         """
         Crop or enlarge/pad grid.
 
@@ -901,7 +903,7 @@ class Grid:
 
     def rotate(self,
                R: Rotation,
-               fill: int = None) -> 'Grid':
+               fill: Optional[int] = None) -> 'Grid':
         """
         Rotate grid (and pad if required).
 
@@ -1093,10 +1095,10 @@ class Grid:
 
     def clean(self,
               distance: float = np.sqrt(3),
-              selection: IntCollection = None,
+              selection: Optional[IntCollection] = None,
               invert_selection: bool = False,
               periodic: bool = True,
-              rng_seed: NumpyRngSeed = None) -> 'Grid':
+              rng_seed: Optional[NumpyRngSeed] = None) -> 'Grid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
 
@@ -1163,7 +1165,7 @@ class Grid:
                       dimension: Union[FloatSequence, IntSequence],
                       center: Union[FloatSequence, IntSequence],
                       exponent: Union[FloatSequence, float],
-                      fill: int = None,
+                      fill: Optional[int] = None,
                       R: Rotation = Rotation(),
                       inverse: bool = False,
                       periodic: bool = True) -> 'Grid':
@@ -1254,8 +1256,8 @@ class Grid:
 
     def vicinity_offset(self,
                         distance: float = np.sqrt(3),
-                        offset: int = None,
-                        selection: IntCollection = None,
+                        offset: Optional[int] = None,
+                        selection: Optional[IntCollection] = None,
                         invert_selection: bool = False,
                         periodic: bool = True) -> 'Grid':
         """

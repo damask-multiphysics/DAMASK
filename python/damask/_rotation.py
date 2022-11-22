@@ -1,5 +1,5 @@
 import copy
-from typing import Union, Sequence, Tuple, Literal, List, TypeVar
+from typing import Optional, Union, Sequence, Tuple, Literal, List, TypeVar
 
 import numpy as np
 
@@ -99,7 +99,7 @@ class Rotation:
 
 
     def __copy__(self: MyType,
-                 rotation: Union[FloatSequence, 'Rotation'] = None) -> MyType:
+                 rotation: Union[None, FloatSequence, 'Rotation'] = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -514,7 +514,7 @@ class Rotation:
 
 
     def average(self: MyType,
-                weights: FloatSequence = None) -> MyType:
+                weights: Optional[FloatSequence] = None) -> MyType:
         """
         Average along last array dimension.
 
@@ -1044,8 +1044,8 @@ class Rotation:
 
 
     @staticmethod
-    def from_random(shape: Union[int, IntSequence] = None,
-                    rng_seed: NumpyRngSeed = None) -> 'Rotation':
+    def from_random(shape: Union[None, int, IntSequence] = None,
+                    rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
         """
         Initialize with samples from a uniform distribution.
 
@@ -1078,10 +1078,10 @@ class Rotation:
     @staticmethod
     def from_ODF(weights: np.ndarray,
                  phi: np.ndarray,
-                 shape: Union[int, IntSequence] = None,
+                 shape: Union[None, int, IntSequence] = None,
                  degrees: bool = False,
                  fractions: bool = True,
-                 rng_seed: NumpyRngSeed = None) -> 'Rotation':
+                 rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
         """
         Initialize with samples from a binned orientation distribution function (ODF).
 
@@ -1135,9 +1135,9 @@ class Rotation:
     @staticmethod
     def from_spherical_component(center: 'Rotation',
                                  sigma: float,
-                                 shape: Union[int, IntSequence] = None,
+                                 shape: Union[None, int, IntSequence] = None,
                                  degrees: bool = False,
-                                 rng_seed: NumpyRngSeed = None) -> 'Rotation':
+                                 rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given center.
 
@@ -1188,9 +1188,9 @@ class Rotation:
     def from_fiber_component(crystal: IntSequence,
                              sample: IntSequence,
                              sigma: float = 0.,
-                             shape: Union[int, IntSequence] = None,
+                             shape: Union[None, int, IntSequence] = None,
                              degrees: bool = False,
-                             rng_seed: NumpyRngSeed = None) -> 'Rotation':
+                             rng_seed: Optional[NumpyRngSeed] = None) -> 'Rotation':
         """
         Initialize with samples from a Gaussian distribution around a given direction.
 

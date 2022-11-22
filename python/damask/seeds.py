@@ -1,6 +1,6 @@
 """Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
 
-from typing import Tuple as _Tuple
+from typing import Optional as _Optional, Tuple as _Tuple
 
 from scipy import spatial as _spatial
 import numpy as _np
@@ -13,8 +13,8 @@ from . import grid_filters as _grid_filters
 
 def from_random(size: _FloatSequence,
                 N_seeds: int,
-                cells: _IntSequence = None,
-                rng_seed: _NumpyRngSeed = None) -> _np.ndarray:
+                cells: _Optional[_IntSequence] = None,
+                rng_seed: _Optional[_NumpyRngSeed] = None) -> _np.ndarray:
     """
     Place seeds randomly in space.
 
@@ -54,7 +54,7 @@ def from_Poisson_disc(size: _FloatSequence,
                       N_candidates: int,
                       distance: float,
                       periodic: bool = True,
-                      rng_seed: _NumpyRngSeed = None) -> _np.ndarray:
+                      rng_seed: _Optional[_NumpyRngSeed] = None) -> _np.ndarray:
     """
     Place seeds according to a Poisson disc distribution.
 
@@ -106,7 +106,7 @@ def from_Poisson_disc(size: _FloatSequence,
 
 
 def from_grid(grid,
-              selection: _IntCollection = None,
+              selection: _Optional[_IntCollection] = None,
               invert_selection: bool = False,
               average: bool = False,
               periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:

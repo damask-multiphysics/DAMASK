@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from typing import Union, Sequence, Dict, Any, Collection
+from typing import Optional, Union, Sequence, Dict, Any, Collection
 
 from ._typehints import FileHandle
 from . import Config
@@ -22,7 +22,7 @@ class ConfigMaterial(Config):
     """
 
     def __init__(self,
-                 d: Dict[str, Any] = None,
+                 d: Optional[Dict[str, Any]] = None,
                  **kwargs):
         """
         New material configuration.
@@ -83,13 +83,13 @@ class ConfigMaterial(Config):
 
     @staticmethod
     def load_DREAM3D(fname: str,
-                     grain_data: str = None,
-                     cell_data: str = None,
+                     grain_data: Optional[str] = None,
+                     cell_data: Optional[str] = None,
                      cell_ensemble_data: str = 'CellEnsembleData',
                      phases: str = 'Phases',
                      Euler_angles: str = 'EulerAngles',
                      phase_names: str = 'PhaseName',
-                     base_group: str = None) -> 'ConfigMaterial':
+                     base_group: Optional[str] = None) -> 'ConfigMaterial':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -354,8 +354,8 @@ class ConfigMaterial(Config):
 
     def material_rename_phase(self,
                               mapping: Dict[str, str],
-                              ID: Sequence[int] = None,
-                              constituent: Sequence[int] = None) -> 'ConfigMaterial':
+                              ID: Optional[Sequence[int]] = None,
+                              constituent: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
         """
         Change phase name in material.
 
@@ -388,7 +388,7 @@ class ConfigMaterial(Config):
 
     def material_rename_homogenization(self,
                                        mapping: Dict[str, str],
-                                       ID: Sequence[int] = None) -> 'ConfigMaterial':
+                                       ID: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
         """
         Change homogenization name in material.
 

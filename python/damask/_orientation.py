@@ -1,6 +1,6 @@
 import inspect
 import copy
-from typing import Union, Callable, Dict, Any, Tuple, TypeVar
+from typing import Optional, Union, Callable, Dict, Any, Tuple, TypeVar
 
 import numpy as np
 
@@ -98,10 +98,10 @@ class Orientation(Rotation,Crystal):
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
-                 family: CrystalFamily = None,
-                 lattice: CrystalLattice = None,
-                 a: float = None, b: float = None, c: float = None,
-                 alpha: float = None, beta: float = None, gamma: float = None,
+                 family: Optional[CrystalFamily] = None,
+                 lattice: Optional[CrystalLattice] = None,
+                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
                  degrees: bool = False):
         """
         New orientation.
@@ -131,7 +131,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __copy__(self: MyType,
-                 rotation: Union[FloatSequence, Rotation] = None) -> MyType:
+                 rotation: Union[None, FloatSequence, Rotation] = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -617,7 +617,7 @@ class Orientation(Rotation,Crystal):
 
 
     def average(self,
-                weights: FloatSequence = None,
+                weights: Optional[FloatSequence] = None,
                 return_cloud: bool = False):
         """
         Return orientation average over last dimension.
@@ -819,8 +819,8 @@ class Orientation(Rotation,Crystal):
     # functions that require lattice, not just family
 
     def to_pole(self, *,
-                uvw: FloatSequence = None,
-                hkl: FloatSequence = None,
+                uvw: Optional[FloatSequence] = None,
+                hkl: Optional[FloatSequence] = None,
                 with_symmetry: bool = False,
                 normalize: bool = True) -> np.ndarray:
         """
@@ -861,8 +861,8 @@ class Orientation(Rotation,Crystal):
 
 
     def Schmid(self, *,
-               N_slip: IntSequence = None,
-               N_twin: IntSequence = None) -> np.ndarray:
+               N_slip: Optional[IntSequence] = None,
+               N_twin: Optional[IntSequence] = None) -> np.ndarray:
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 
