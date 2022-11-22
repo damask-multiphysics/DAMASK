@@ -1088,7 +1088,7 @@ class Rotation:
         dg = 1. if fractions else _dg(phi,degrees)
         dV_V = dg * np.maximum(0.,weights.squeeze())
 
-        N = 1 if shape is None else np.prod(shape)
+        N = 1 if shape is None else np.prod(shape).astype(int)
         return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees).reshape(() if shape is None else shape)
 
 
@@ -1210,11 +1210,11 @@ class Rotation:
         if np.isclose(ax_align[3],0.): ax_align[:3] = np.array([1.,0.,0.])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0. else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
 
-        N = 1 if shape is None else np.prod(shape)
+        N = 1 if shape is None else np.prod(shape).astype(int)
         u,Theta  = (rng.random((N,2)) * 2. * np.array([1.,np.pi]) - np.array([1.,0.])).T
         omega  = abs(rng.normal(scale=sigma_,size=N))
-        p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
-                             np.sqrt(1-u**2)*np.sin(Theta),
+        p = np.column_stack([np.sqrt(1.-u**2)*np.cos(Theta),
+                             np.sqrt(1.-u**2)*np.sin(Theta),
                              u, omega])
         p[:,:3] = np.einsum('ij,...j',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])                      # remove component along fiber axis
         f = np.column_stack((np.broadcast_to(d_lab,(N,3)),rng.random(N)*np.pi))
@@ -1290,7 +1290,7 @@ class Rotation:
                                     np.broadcast_to(np.pi,qu[...,0:1].shape),
                                     np.zeros(qu.shape[:-1]+(1,))]),
                           np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
-                                    np.arctan2( 2.*chi,          q03_s-q12_s    ),
+                                    np.arctan2(           2.*chi,    q03_s-q12_s   ),
                                     np.arctan2(( _P*q02+q13)*chi, (-_P*q01+q23)*chi)])
                               )
                      )
@@ -1394,7 +1394,7 @@ class Rotation:
             zeta = 1./np.sqrt(1.-om[...,2,2:3]**2)
             eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.,0.),
                           np.block([np.arctan2(om[...,0,1:2],om[...,0,0:1]),
-                                    np.pi*0.5*(1-om[...,2,2:3]),
+                                    np.pi*0.5*(1.-om[...,2,2:3]),
                                     np.zeros(om.shape[:-2]+(1,)),
                                    ]),
                           np.block([np.arctan2(om[...,2,0:1]*zeta,-om[...,2,1:2]*zeta),
