@@ -106,8 +106,6 @@ program DAMASK_grid
 
   external :: &
     quit
-  class(tNode), pointer :: &
-    tmp
   type(tDict), pointer :: &
     config_load, &
     num_grid, &
