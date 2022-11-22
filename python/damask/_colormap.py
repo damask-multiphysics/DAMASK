@@ -3,6 +3,7 @@ import json
 import functools
 import colorsys
 from typing import Union, TextIO
+from itertools import chain
 
 import numpy as np
 import scipy.interpolate as interp
@@ -373,16 +374,12 @@ class Colormap(mpl.colors.ListedColormap):
             File to store results. Defaults to colormap name + '.json'.
 
         """
-        colors = []
-        for i,c in enumerate(np.round(self.colors,6).tolist()):
-            colors+=[i]+c
-
         out = [{
                 'Creator':util.execution_stamp('Colormap'),
                 'ColorSpace':'RGB',
                 'Name':self.name,
                 'DefaultMap':True,
-                'RGBPoints':colors
+                'RGBPoints':list(chain.from_iterable([(i,*c) for i,c in enumerate(self.colors.round(6))]))
                }]
 
         fhandle = self._get_file_handle(fname,'.json')
