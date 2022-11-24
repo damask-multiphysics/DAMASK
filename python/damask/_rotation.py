@@ -879,6 +879,10 @@ class Rotation:
         reciprocal : bool, optional
             Basis vectors are given in reciprocal (instead of real) space. Defaults to False.
 
+        Returns
+        -------
+        new : damask.Rotation
+
         """
         om = np.array(basis,dtype=float)
         if om.shape[-2:] != (3,3): raise ValueError('invalid shape')
