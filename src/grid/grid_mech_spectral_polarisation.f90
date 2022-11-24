@@ -541,7 +541,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
   print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error stress BC  = ', &
+  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error mech BC    = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
