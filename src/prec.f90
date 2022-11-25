@@ -23,8 +23,10 @@ module prec
   integer,     parameter :: pI32       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
   integer,     parameter :: pI64       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
 #ifdef PETSC
-  PetscInt,    private   :: dummy
-  integer,     parameter :: pPETSCINT  = kind(dummy)
+  PetscInt,    private   :: dummy_int
+  integer,     parameter :: pPETSCINT  = kind(dummy_int)
+  PetscScalar, private   :: dummy_scalar
+  real(pReal), parameter :: pPETSCSCALAR = kind(dummy_scalar)
 #endif
   integer,     parameter :: pSTRINGLEN = 256                                                        !< default string length
   integer,     parameter :: pPATHLEN   = 4096                                                       !< maximum length of a path name on linux
@@ -252,7 +254,9 @@ subroutine selfTest()
   integer(pI64), dimension(1) :: i
   real(pReal),   dimension(2) :: r
 
-
+#ifdef PETSC
+  if (pReal /= pPETSCSCALAR)                error stop 'PetSC and Fortran scalar datatypes do not match'
+#endif
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'
 
