@@ -416,7 +416,7 @@ def project_equal_area(vector: _np.ndarray,
                     -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
 
-def hybrid_IA(dist: _np.ndarray,
+def hybrid_IA(dist: _FloatSequence,
               N: int,
               rng_seed: _NumpyRngSeed = None) -> _np.ndarray:
     """
@@ -425,19 +425,25 @@ def hybrid_IA(dist: _np.ndarray,
     Parameters
     ----------
     dist : numpy.ndarray
-        Distribution to be approximated
+        Distribution to be approximated.
     N : int
         Number of samples to draw.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
+    Returns
+    -------
+    hist : numpy.ndarray, shape (N)
+        Integer approximation of the distribution.
+
     """
-    N_opt_samples,N_inv_samples = (max(_np.count_nonzero(dist),N),0)                                 # random subsampling if too little samples requested
+    N_opt_samples = max(_np.count_nonzero(dist),N)                                                  # random subsampling if too little samples requested
+    N_inv_samples = 0
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
     while (not _np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
-        repeats = _np.rint(scale*dist).astype(_np.int64)
+        repeats = _np.rint(scale*_np.array(dist)).astype(_np.int64)
         N_inv_samples = _np.sum(repeats)
         scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
                                    if N_inv_samples < N_opt_samples else \
