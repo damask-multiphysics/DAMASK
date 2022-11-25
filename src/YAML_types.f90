@@ -196,6 +196,7 @@ subroutine selfTest
     s1 = '1'
     s2 = '2'
     allocate(l)
+    if (l%contains('1'))                                 error stop 'empty tList_contains'
     call l%append(s1)
     call l%append(s2)
     if (any(l%as1dInt() /= [1,2]))                       error stop 'tList_as1dInt'
@@ -204,7 +205,9 @@ subroutine selfTest
     s2 = 'false'
     if (any(l%as1dBool() .neqv. [.true.,.false.]))       error stop 'tList_as1dBool'
     if (any(l%as1dString() /= ['true ','false']))        error stop 'tList_as1dString'
-    if (l%asFormattedString() /= '[true, false]')        error stop 'tScalar_asFormattedString'
+    if (l%asFormattedString() /= '[true, false]')        error stop 'tList_asFormattedString'
+    if (   .not. l%contains('true') &
+      .or. .not. l%contains('false'))                    error stop 'tList_contains'
 
   end block list
 
@@ -226,6 +229,8 @@ subroutine selfTest
     s3 = '3'
     s4 = '4'
     allocate(d)
+    if (d%contains('one-two'))                           error stop 'empty tDict_contains'
+    if (d%get_asInt('one-two',defaultVal=-1) /= -1)      error stop 'empty tDict_get'
     call d%set('one-two',l)
     call d%set('three',s3)
     call d%set('four',s4)
@@ -233,6 +238,13 @@ subroutine selfTest
                                                          error stop 'tDict_asFormattedString'
     if (d%get_asInt('three') /= 3)                       error stop 'tDict_get_asInt'
     if (any(d%get_as1dInt('one-two') /= [1,2]))          error stop 'tDict_get_as1dInt'
+    call d%set('one-two',s4)
+    if (d%asFormattedString() /= '{one-two: 4, three: 3, four: 4}') &
+                                                         error stop 'tDict_set overwrite'
+    if (   .not. d%contains('one-two') &
+      .or. .not. d%contains('three') &
+      .or. .not. d%contains('four') &
+      )                                                  error stop 'tDict_contains'
 
   end block dict
 
@@ -407,7 +419,7 @@ recursive function tList_asFormattedString(self) result(str)
 
   str = '['
   item => self%first
-  do i = 1, self%length -1
+  do i = 2, self%length
     str = str//item%node%asFormattedString()//', '
     item => item%next
   end do
@@ -482,7 +494,7 @@ function tList_as2dFloat(self)
   row_data => self%get_list(1)
   allocate(tList_as2dFloat(self%length,row_data%length))
 
-  do i=1,self%length
+  do i = 1, self%length
     row_data => self%get_list(i)
     if (row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='inconsistent column count in tList_as2dFloat')
     tList_as2dFloat(i,:) = self%get_as1dFloat(i)
@@ -593,15 +605,14 @@ function tList_contains(self,k)  result(exists)
   type(tScalar), pointer :: scalar
 
 
-  exists = .false.
   item => self%first
-  do j = 1, self%length
+  exists = .false.
+  j = 1
+  do while (j <= self%length .and. .not. exists)
     scalar => item%node%asScalar()
-    if (scalar%value == k) then
-      exists = .true.
-      exit
-    endif
+    exists = scalar%value == k
     item => item%next
+    j = j + 1
   end do
 
 end function tList_contains
@@ -620,9 +631,10 @@ function tList_get(self,i) result(node)
   integer :: j
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get @ '//IO_intAsString(i))
+  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get @ '//IO_intAsString(i) &
+                                                                  //' of '//IO_intAsString(self%length) )
   item => self%first
-  do j = 2,i
+  do j = 2, i
     item => item%next
   end do
   node => item%node
@@ -854,7 +866,7 @@ recursive function tDict_asFormattedString(self) result(str)
 
   str = '{'
   item => self%first
-  do i = 1, self%length -1
+  do i = 2, self%length
     str = str//trim(item%key)//': '//item%node%asFormattedString()//', '
     item => item%next
   end do
@@ -881,8 +893,7 @@ subroutine tDict_set(self,key,node)
     self%length = 1
   else
     item => self%first
-    searchExisting: do while (associated(item%next))
-      if (item%key == key) exit
+    searchExisting: do while (associated(item%next) .and. item%key /= key)
       item => item%next
     end do searchExisting
     if (item%key /= key) then
@@ -935,9 +946,10 @@ function tDict_key(self,i)  result(key)
   type(tItem), pointer :: item
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsString(i))
+  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsString(i) &
+                                                                  //' of '//IO_intAsString(self%length) )
   item => self%first
-  do j = 1, i-1
+  do j = 2, i
     item => item%next
   end do
 
@@ -986,11 +998,10 @@ function tDict_contains(self,k)  result(exists)
 
 
   exists = .false.
-  do j=1, self%length
-    if (self%key(j) == k) then
-      exists = .true.
-      return
-    end if
+  j = 1
+  do while(j <= self%length .and. .not. exists)
+    exists = self%key(j) == k
+    j = j + 1
   end do
 
 end function tDict_contains
@@ -1008,27 +1019,21 @@ function tDict_get(self,k,defaultVal) result(node)
 
   type(tItem), pointer :: item
   integer :: j
-  logical :: found
 
-
-  found = present(defaultVal)
-  if (found) node => defaultVal
-
-  j = 1
   item => self%first
-  do while(j <= self%length)
+
+  do j=1, self%length
     if (item%key == k) then
-      found = .true.
-      exit
+      node => item%node
+      return
     end if
     item => item%next
-    j = j + 1
   end do
 
-  if (.not. found) then
-    call IO_error(143,ext_msg=k)
+  if (present(defaultVal)) then
+    node => defaultVal
   else
-    if (associated(item)) node => item%node
+    call IO_error(143,ext_msg=k)
   end if
 
 end function tDict_get
