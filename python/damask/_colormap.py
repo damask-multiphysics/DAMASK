@@ -2,7 +2,7 @@ import os
 import json
 import functools
 import colorsys
-from typing import Union, TextIO
+from typing import Optional, Union, TextIO
 from itertools import chain
 
 import numpy as np
@@ -275,8 +275,8 @@ class Colormap(mpl.colors.ListedColormap):
 
     def shade(self,
               field: np.ndarray,
-              bounds: FloatSequence = None,
-              gap: float = None) -> Image:
+              bounds: Optional[FloatSequence] = None,
+              gap: Optional[float] = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
 
@@ -315,7 +315,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def reversed(self,
-                 name: str = None) -> 'Colormap':
+                 name: Optional[str] = None) -> 'Colormap':
         """
         Reverse.
 
@@ -364,7 +364,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_paraview(self,
-                      fname: FileHandle = None):
+                      fname: Optional[FileHandle] = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -388,7 +388,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_ASCII(self,
-                   fname: FileHandle = None):
+                   fname: Optional[FileHandle] = None):
         """
         Save as ASCII file.
 
@@ -403,7 +403,7 @@ class Colormap(mpl.colors.ListedColormap):
         t.save(self._get_file_handle(fname,'.txt'))
 
 
-    def save_GOM(self, fname: FileHandle = None):
+    def save_GOM(self, fname: Optional[FileHandle] = None):
         """
         Save as ASCII file for use in GOM Aramis.
 
@@ -424,7 +424,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_gmsh(self,
-                  fname: FileHandle = None):
+                  fname: Optional[FileHandle] = None):
         """
         Save as ASCII file for use in gmsh.
 

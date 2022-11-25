@@ -11,7 +11,7 @@ from pathlib import Path
 from functools import partial
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Union, Callable, Any, Sequence, Literal, Dict, List, Tuple, Optional
+from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
 
 import h5py
 import numpy as np
@@ -189,11 +189,11 @@ class Result:
 
     def _manage_view(self,
                      action: Literal['set', 'add', 'del'],
-                     increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-                     times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-                     phases: Union[str, Sequence[str], bool] = None,
-                     homogenizations: Union[str, Sequence[str], bool] = None,
-                     fields: Union[str, Sequence[str], bool] = None) -> "Result":
+                     increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+                     times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+                     phases: Union[None, str, Sequence[str], bool] = None,
+                     homogenizations: Union[None, str, Sequence[str], bool] = None,
+                     fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
         Manages the visibility of the groups.
 
@@ -256,8 +256,8 @@ class Result:
 
 
     def increments_in_range(self,
-                            start: Union[str, int] = None,
-                            end: Union[str, int] = None) -> Sequence[int]:
+                            start: Union[None, str, int] = None,
+                            end: Union[None, str, int] = None) -> Sequence[int]:
         """
         Get all increments within a given range.
 
@@ -280,8 +280,8 @@ class Result:
         return [i for i in self.incs if s <= i <= e]
 
     def times_in_range(self,
-                       start: float = None,
-                       end: float = None) -> Sequence[float]:
+                       start: Optional[float] = None,
+                       end: Optional[float] = None) -> Sequence[float]:
         """
         Get times of all increments within a given time range.
 
@@ -304,12 +304,12 @@ class Result:
 
 
     def view(self,*,
-             increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-             times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-             phases: Union[str, Sequence[str], bool] = None,
-             homogenizations: Union[str, Sequence[str], bool] = None,
-             fields: Union[str, Sequence[str], bool] = None,
-             protected: bool = None) -> "Result":
+             increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+             times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+             phases: Union[None, str, Sequence[str], bool] = None,
+             homogenizations: Union[None, str, Sequence[str], bool] = None,
+             fields: Union[None, str, Sequence[str], bool] = None,
+             protected: Optional[bool] = None) -> "Result":
         """
         Set view.
 
@@ -361,11 +361,11 @@ class Result:
 
 
     def view_more(self,*,
-                  increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-                  times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-                  phases: Union[str, Sequence[str], bool] = None,
-                  homogenizations: Union[str, Sequence[str], bool] = None,
-                  fields: Union[str, Sequence[str], bool] = None) -> "Result":
+                  increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+                  times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+                  phases: Union[None, str, Sequence[str], bool] = None,
+                  homogenizations: Union[None, str, Sequence[str], bool] = None,
+                  fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
         Add to view.
 
@@ -404,11 +404,11 @@ class Result:
 
 
     def view_less(self,*,
-                  increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-                  times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-                  phases: Union[str, Sequence[str], bool] = None,
-                  homogenizations: Union[str, Sequence[str], bool] = None,
-                  fields: Union[str, Sequence[str], bool] = None) -> "Result":
+                  increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+                  times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+                  phases: Union[None, str, Sequence[str], bool] = None,
+                  homogenizations: Union[None, str, Sequence[str], bool] = None,
+                  fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
         Remove from view.
 
@@ -650,7 +650,7 @@ class Result:
                         formula: str,
                         name: str,
                         unit: str = 'n/a',
-                        description: str = None):
+                        description: Optional[str] = None):
         """
         Add result of a general formula.
 
@@ -966,7 +966,7 @@ class Result:
                 }
     def add_equivalent_Mises(self,
                              T_sym: str,
-                             kind: str = None):
+                             kind: Optional[str] = None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -1021,7 +1021,7 @@ class Result:
                  }
     def add_norm(self,
                  x: str,
-                 ord: Union[int, float, Literal['fro', 'nuc']] = None):
+                 ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
         """
         Add the norm of vector or tensor.
 
@@ -1101,8 +1101,8 @@ class Result:
     def add_pole(self,
                  q: str = 'O',
                  *,
-                 uvw: FloatSequence = None,
-                 hkl: FloatSequence = None,
+                 uvw: Optional[FloatSequence] = None,
+                 hkl: Optional[FloatSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True):
         """
@@ -1593,7 +1593,7 @@ class Result:
               output: Union[str, List[str]] = '*',
               flatten: bool = True,
               prune: bool = True,
-              constituents: IntSequence = None,
+              constituents: Optional[IntSequence] = None,
               fill_float: float = np.nan,
               fill_int: int = 0) -> Optional[Dict[str,Any]]:
         """
@@ -1683,7 +1683,7 @@ class Result:
 
     def export_XDMF(self,
                     output: Union[str, List[str]] = '*',
-                    target_dir: Union[str, Path] = None,
+                    target_dir: Union[None, str, Path] = None,
                     absolute_path: bool = False):
         """
         Write XDMF file to directly visualize data from DADF5 file.
@@ -1811,8 +1811,8 @@ class Result:
     def export_VTK(self,
                    output: Union[str,List[str]] = '*',
                    mode: str = 'cell',
-                   constituents: IntSequence = None,
-                   target_dir: Union[str, Path] = None,
+                   constituents: Optional[IntSequence] = None,
+                   target_dir: Union[None, str, Path] = None,
                    fill_float: float = np.nan,
                    fill_int: int = 0,
                    parallel: bool = True):
@@ -1958,7 +1958,7 @@ class Result:
 
     def export_simulation_setup(self,
                      output: Union[str, List[str]] = '*',
-                     target_dir: Union[str, Path] = None,
+                     target_dir: Union[None, str, Path] = None,
                      overwrite: bool = False,
                      ):
         """

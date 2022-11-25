@@ -1,7 +1,7 @@
 import os
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Literal, List, Sequence
+from typing import Optional, Union, Literal, List, Sequence
 
 import numpy as np
 import vtk
@@ -286,7 +286,7 @@ class VTK:
 
     @staticmethod
     def load(fname: Union[str, Path],
-             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
+             dataset_type: Literal[None, 'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
         """
         Load from VTK file.
 
@@ -409,11 +409,11 @@ class VTK:
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     def set(self,
-            label: str = None,
-            data: Union[np.ndarray, np.ma.MaskedArray] = None,
-            info: str = None,
+            label: Optional[str] = None,
+            data: Union[None, np.ndarray, np.ma.MaskedArray] = None,
+            info: Optional[str] = None,
             *,
-            table: 'Table' = None):
+            table: Optional['Table'] = None):
         """
         Add new or replace existing point or cell data.
 
@@ -533,7 +533,7 @@ class VTK:
 
 
     def show(self,
-             label: str = None,
+             label: Optional[str] = None,
              colormap: Union[Colormap, str] = 'cividis'):
         """
         Render.
