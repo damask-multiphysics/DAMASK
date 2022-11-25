@@ -27,10 +27,6 @@ class Rotation:
     - A rotation angle ω is taken to be positive for a counterclockwise rotation
       when viewing from the end point of the rotation axis towards the origin.
     - Rotations will be interpreted in the passive sense.
-    - Euler angle triplets are implemented using the Bunge convention,
-      with angular ranges of [0,2π], [0,π], [0,2π].
-    - The rotation angle ω is limited to the interval [0,π].
-    - The real part of a quaternion is positive, Re(q) ≥ 0
     - P = -1 (as default).
 
     Examples
