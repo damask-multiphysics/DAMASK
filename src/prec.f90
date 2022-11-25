@@ -205,7 +205,7 @@ end function prec_bytesToC_FLOAT
 pure function prec_bytesToC_DOUBLE(bytes)
 
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_DOUBLE array
-  real(C_DOUBLE), dimension(size(bytes,kind=pI64)/(storage_size(0._C_DOUBLE,pI64)/8_pI64)) :: &
+  real(pReal),    dimension(size(bytes,kind=pI64)/(storage_size(0._C_DOUBLE,pI64)/8_pI64)) :: &
     prec_bytesToC_DOUBLE
 
 

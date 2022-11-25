@@ -539,8 +539,8 @@ subroutine formResidual(da_local,x_local, &
 
   DM                   :: da_local
   Vec                  :: x_local, f_local
-  PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, r
-  PetscScalar, dimension(8,3) :: x_elem,  f_elem
+  real(pReal), pointer,dimension(:,:,:,:) :: x_scal, r
+  real(pReal), dimension(8,3) :: x_elem,  f_elem
   PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
   PetscInt :: &
     PETScIter, &
@@ -659,12 +659,12 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   Vec                                  :: x_local, coordinates
   Mat                                  :: Jac_pre, Jac
   MatStencil,dimension(4,24)           :: row, col
-  PetscScalar,pointer,dimension(:,:,:,:) :: x_scal
-  PetscScalar,dimension(24,24)         :: K_ele
-  PetscScalar,dimension(9,24)          :: BMatFull
+  real(pReal),pointer,dimension(:,:,:,:) :: x_scal
+  real(pReal),dimension(24,24)         :: K_ele
+  real(pReal),dimension(9,24)          :: BMatFull
   PetscInt                             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
-  PetscScalar                          :: diag
+  real(pReal)                          :: diag
   PetscObject                          :: dummy
   MatNullSpace                         :: matnull
   PetscErrorCode                       :: err_PETSc

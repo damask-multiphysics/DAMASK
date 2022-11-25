@@ -42,9 +42,9 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
 
-  real(C_DOUBLE),            dimension(:,:,:,:,:),     pointer     :: tensorField_real              !< tensor field in real space
-  real(C_DOUBLE),            dimension(:,:,:,:),       pointer     :: vectorField_real              !< vector field in real space
-  real(C_DOUBLE),            dimension(:,:,:),         pointer     :: scalarField_real              !< scalar field in real space
+  real(pReal),               dimension(:,:,:,:,:),     pointer     :: tensorField_real              !< tensor field in real space
+  real(pReal),               dimension(:,:,:,:),       pointer     :: vectorField_real              !< vector field in real space
+  real(pReal),               dimension(:,:,:),         pointer     :: scalarField_real              !< scalar field in real space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:,:),     pointer     :: tensorField_fourier           !< tensor field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
   complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
