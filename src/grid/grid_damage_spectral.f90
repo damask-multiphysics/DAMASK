@@ -33,7 +33,7 @@ module grid_damage_spectral
     integer :: &
       itmax                                                                                         !< maximum number of iterations
     real(pReal) :: &
-      residualStiffness, &                                                                          !< non-zero residual damage
+      phi_min, &                                                                                    !< non-zero residual damage
       eps_damage_atol, &                                                                            !< absolute tolerance for damage evolution
       eps_damage_rtol                                                                               !< relative tolerance for damage evolution
   end type tNumerics
@@ -95,9 +95,9 @@ subroutine grid_damage_spectral_init()
   num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
 
   num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
-  num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+  num%phi_min = num_generic%get_asFloat('phi_min', defaultVal=1.0e-6_pReal)
 
-  if (num%residualStiffness < 0.0_pReal) call IO_error(301,ext_msg='residualStiffness')
+  if (num%phi_min < 0.0_pReal) call IO_error(301,ext_msg='phi_min')
   if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
   if (num%eps_damage_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_damage_atol')
   if (num%eps_damage_rtol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_damage_rtol')
@@ -325,7 +325,7 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%residualStiffness) &
+  r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%phi_min) &
     - phi_current
   err_PETSc = 0
 
