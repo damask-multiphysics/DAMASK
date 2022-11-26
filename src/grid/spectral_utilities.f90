@@ -763,7 +763,7 @@ function utilities_scalarGradient(field) result(grad)
   scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
-    vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)                    ! ToDo: no -conjg?
+    vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)
   end do; end do; end do
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   grad = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)*wgt
@@ -784,7 +784,7 @@ function utilities_vectorDivergence(field) result(div)
   vectorField_real(1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
-                                                             *conjg(-xi1st),1)
+                                                             *conjg(-xi1st),1)                      ! ToDo: use "xi1st" instead of "conjg(-xi1st)"?
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   div = scalarField_real(1:cells(1),1:cells(2),1:cells3)*wgt
 
@@ -930,7 +930,7 @@ end function utilities_forwardField
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates filter for fourier convolution depending on type given in numerics.config
+!> @brief Calculate Filter for Fourier convolution.
 !> @details this is the full operator to calculate derivatives, i.e. 2 \pi i k for the
 ! standard approach
 !--------------------------------------------------------------------------------------------------
@@ -1171,14 +1171,54 @@ subroutine selfTest()
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   scalarField_real_ = r(1,1)
-  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-15_pReal)   error stop 'grad constant'
+  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pReal)   error stop 'grad constant'
 
   vectorField_real_ = spread(spread(spread(r(1,:),2,cells(1)),3,cells(2)),4,cells3)
-  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-15_pReal) error stop 'div constant'
+  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pReal) error stop 'div constant'
 
   tensorField_real_ = spread(spread(spread(r,3,cells(1)),4,cells(2)),5,cells3)
-  if (utilities_divergenceRMS(tensorField_real_)>5.0e-15_pReal) error stop 'RMS div constant'
-  if (utilities_curlRMS(tensorField_real_)>5.0e-15_pReal)       error stop 'RMS curl constant'
+  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pReal) error stop 'RMS div constant'
+  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pReal)       error stop 'RMS curl constant'
+
+  if (cells(1) > 2 .and.  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID) then
+    scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
+    scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad cosine'
+    scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
+    vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
+    scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad sine'
+
+    vectorField_real_(2:3,:,:,:) = 0.0_pReal
+    vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
+    vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div cosine'
+    vectorField_real_(2:3,:,:,:) = 0.0_pReal
+    vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
+    scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
+    vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div sine'
+  end if
+
+  contains
+
+    function planeCosine(n)
+      integer, intent(in) :: n
+      real(pReal), dimension(n) :: planeCosine
+
+      planeCosine = cos(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
+
+    end function planeCosine
+
+    function planeSine(n)
+      integer, intent(in) :: n
+      real(pReal), dimension(n) :: planeSine
+
+      planeSine = sin(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
+
+    end function planeSine
 
 end subroutine selfTest
 
