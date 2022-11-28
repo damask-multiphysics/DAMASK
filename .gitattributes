@@ -14,7 +14,7 @@
 # ignore files from MSC.Marc in language statistics
 install/MarcMentat/**     linguist-vendored
 src/Marc/include/*             linguist-vendored
-install/MarcMentat/apply_DAMASK_modifications.py linguist-vendored=false
+install/MarcMentat/MSC_modifications.py linguist-vendored=false
 
 # ignore reference files for tests in language statistics
 python/tests/reference/**           linguist-vendored
