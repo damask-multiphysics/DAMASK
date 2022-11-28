@@ -793,7 +793,7 @@ def tail_repack(extended: _Union[str, _Sequence[str]],
 
     Parameters
     ----------
-    extended : (list of) str
+    extended : (sequence of) str
         Extended string list with potentially autosplitted tailing string relative to `existing`.
     existing : list of str
         Base string list.
@@ -811,9 +811,9 @@ def tail_repack(extended: _Union[str, _Sequence[str]],
         ['a','new','shiny','e','n','t','r','y']
 
     """
-    return [extended] if isinstance(extended,str) else existing + \
-         ([''.join(extended[len(existing):])] if _np.prod([len(i) for i in extended[len(existing):]]) == 1 else
-          list(extended[len(existing):]))
+    new = extended[len(existing):]
+    return [extended] if isinstance(extended,str) else \
+           existing + list([''.join(new)] if _np.prod([len(i) for i in new]) == 1 else new)
 
 
 def aslist(arg: _Union[_IntCollection, int, None]) -> _List:
