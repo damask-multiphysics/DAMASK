@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from typing import Sequence, Dict, Any, Collection
+from typing import Optional, Union, Sequence, Dict, Any, Collection
 
 from ._typehints import FileHandle
 from . import Config
@@ -22,7 +22,7 @@ class ConfigMaterial(Config):
     """
 
     def __init__(self,
-                 d: Dict[str, Any] = None,
+                 d: Optional[Dict[str, Any]] = None,
                  **kwargs):
         """
         New material configuration.
@@ -83,13 +83,13 @@ class ConfigMaterial(Config):
 
     @staticmethod
     def load_DREAM3D(fname: str,
-                     grain_data: str = None,
-                     cell_data: str = None,
+                     grain_data: Optional[str] = None,
+                     cell_data: Optional[str] = None,
                      cell_ensemble_data: str = 'CellEnsembleData',
                      phases: str = 'Phases',
                      Euler_angles: str = 'EulerAngles',
                      phase_names: str = 'PhaseName',
-                     base_group: str = None) -> 'ConfigMaterial':
+                     base_group: Optional[str] = None) -> 'ConfigMaterial':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -160,7 +160,7 @@ class ConfigMaterial(Config):
                 pass
 
 
-        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k):'t.b.d.' for k in np.unique(phase)},
+        base_config = ConfigMaterial({'phase':{k if isinstance(k,int) else str(k): None for k in np.unique(phase)},
                                       'homogenization':{'direct':{'N_constituents':1}}})
         constituent = {k:np.atleast_1d(v[idx].squeeze()) for k,v in zip(['O','phase'],[O,phase])}
 
@@ -193,10 +193,10 @@ class ConfigMaterial(Config):
         >>> import damask.ConfigMaterial as cm
         >>> t = damask.Table.load('small.txt')
         >>> t
-            pos  pos  pos   qu   qu    qu    qu   phase    homog
-        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
-        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        1    1    1    0  0.8   0.19  0.24 -0.51  Steel    SX
+            3:pos  pos  pos   4:qu   qu    qu    qu   phase    homog
+        0     0    0    0     0.19  0.8   0.24 -0.51  Aluminum SX
+        1     1    0    0     0.8   0.19  0.24 -0.51  Steel    SX
+        2     1    1    0     0.8   0.19  0.24 -0.51  Steel    SX
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='homog')
         material:
           - constituents:
@@ -209,8 +209,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: SX
-        homogenization: {}
-        phase: {}
+        homogenization: {SX: null}
+        phase: {Aluminum: null, Steel: null}
 
         >>> cm.from_table(t,O='qu',phase='phase',homogenization='single_crystal')
         material:
@@ -224,8 +224,8 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Steel
             homogenization: single_crystal
-        homogenization: {}
-        phase: {}
+        homogenization: {single_crystal: null}
+        phase: {Aluminum: null, Steel: null}
 
         """
         kwargs_ = {k:table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T for k,v in kwargs.items()}
@@ -233,6 +233,8 @@ class ConfigMaterial(Config):
         _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
         idx = np.sort(idx)
         kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
+        for what in ['phase','homogenization']:
+            if what not in kwargs_: kwargs_[what] = what+'_label'
 
         return ConfigMaterial().material_add(**kwargs_)
 
@@ -243,7 +245,7 @@ class ConfigMaterial(Config):
         Check for completeness.
 
         Only the general file layout is considered.
-        This check does not consider whether parameters for
+        This check does not consider whether specific parameters for
         a particular phase/homogenization model are missing.
 
         Returns
@@ -252,52 +254,56 @@ class ConfigMaterial(Config):
             Whether the material.yaml definition is complete.
 
         """
+        def LabeledList(label,items):
+            return f'{label.capitalize()}{"s" if len(items)>1 else ""} {util.srepr(items,",",quote=True)}'
+
         ok = True
-        for top_level in ['homogenization','phase','material']:
-            ok &= top_level in self
-            if top_level not in self: print(f'{top_level} entry missing')
+        msg = []
+        all = set(['homogenization','phase','material'])
+        miss = set([item for item in all if item not in self])
+        empty = set([item for item in all-miss if self[item] is None])
+
+        if miss:
+            msg.append(f'{LabeledList("top-level",miss)} missing')
+            ok = False
+        if empty:
+            msg.append(f'{LabeledList("top-level",empty)} empty')
 
         if ok:
-           ok &= len(self['material']) > 0
-           if len(self['material']) < 1: print('Incomplete material definition')
+            ok &= len(self['material']) > 0
+            if len(self['material']) < 1: msg.append('No materials defined')
 
-        if ok:
             homogenization = set()
             phase          = set()
             for i,v in enumerate(self['material']):
                 if 'homogenization' in v:
                     homogenization.add(v['homogenization'])
                 else:
-                    print(f'No homogenization specified in material {i}')
+                    msg.append(f'No homogenization specified for material {i}')
                     ok = False
 
                 if 'constituents' in v:
                     for ii,vv in enumerate(v['constituents']):
                         if 'O' not in vv:
-                            print('No orientation specified in constituent {ii} of material {i}')
+                            msg.append(f'No orientation specified for constituent {ii} of material {i}')
                             ok = False
                         if 'phase' in vv:
                             phase.add(vv['phase'])
                         else:
-                            print(f'No phase specified in constituent {ii} of material {i}')
+                            msg.append(f'No phase specified for constituent {ii} of material {i}')
                             ok = False
 
-            for k,v in self['phase'].items():
-                if 'lattice' not in v:
-                    print(f'No lattice specified in phase {k}')
+            for v,other in {'phase':phase,
+                            'homogenization':homogenization}.items():
+                me = set([] if v in empty else self[v])
+                if _miss := other - me:
+                    msg.append(f'{LabeledList(v,_miss)} missing')
+                    ok = False
+                if len(_empty := [item for item in me if self[v][item] is None]) > 0:
+                    msg.append(f'{LabeledList(v,_empty)} undefined')
                     ok = False
 
-            for k,v in self['homogenization'].items():
-                if 'N_constituents' not in v:
-                    print(f'No. of constituents not specified in homogenization {k}')
-                    ok = False
-
-            if phase - set(self['phase']):
-                print(f'Phase(s) {phase-set(self["phase"])} missing')
-                ok = False
-            if homogenization - set(self['homogenization']):
-                print(f'Homogenization(s) {homogenization-set(self["homogenization"])} missing')
-                ok = False
+        print(util.srepr(msg))
         return ok
 
 
@@ -320,7 +326,7 @@ class ConfigMaterial(Config):
 
         if 'phase' in self:
             for k,v in self['phase'].items():
-                if 'lattice' in v:
+                if v is not None and 'lattice' in v:
                     try:
                         Orientation(lattice=v['lattice'])
                     except KeyError:
@@ -348,8 +354,8 @@ class ConfigMaterial(Config):
 
     def material_rename_phase(self,
                               mapping: Dict[str, str],
-                              ID: Sequence[int] = None,
-                              constituent: Sequence[int] = None) -> 'ConfigMaterial':
+                              ID: Optional[Sequence[int]] = None,
+                              constituent: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
         """
         Change phase name in material.
 
@@ -382,7 +388,7 @@ class ConfigMaterial(Config):
 
     def material_rename_homogenization(self,
                                        mapping: Dict[str, str],
-                                       ID: Sequence[int] = None) -> 'ConfigMaterial':
+                                       ID: Optional[Sequence[int]] = None) -> 'ConfigMaterial':
         """
         Change homogenization name in material.
 
@@ -418,6 +424,8 @@ class ConfigMaterial(Config):
         ----------
         **kwargs
             Key-value pairs.
+            First index of array-like values runs over materials,
+            whereas second index runs over constituents.
 
         Returns
         -------
@@ -426,13 +434,12 @@ class ConfigMaterial(Config):
 
         Examples
         --------
-        Create a dual-phase steel microstructure for micromechanical simulations:
+        Create two grains of ferrite and one grain of martensite, each with random orientation:
 
-        >>> import numpy as np
         >>> import damask
         >>> m = damask.ConfigMaterial()
-        >>> m = m.material_add(phase = ['Ferrite','Martensite'],
-        ...                    O = damask.Rotation.from_random(2),
+        >>> m = m.material_add(phase = ['Ferrite','Martensite','Ferrite'],
+        ...                    O = damask.Rotation.from_random(3),
         ...                    homogenization = 'SX')
         >>> m
         material:
@@ -446,60 +453,91 @@ class ConfigMaterial(Config):
                 v: 1.0
                 phase: Martensite
             homogenization: SX
-        homogenization: {}
-        phase: {}
+          - constituents:
+              - O: [0.47925185, -0.04294454, 0.78760173, -0.3849116 ]
+                v: 1.0
+                phase: Ferrite
+            homogenization: SX
+        homogenization: {SX: null}
+        phase: {Ferrite: null, Martensite: null}
 
-        Create a duplex stainless steel microstructure for forming simulations:
+        Create hundred materials that each approximate a duplex stainless steel microstructure
+        with three austenite and one relatively bigger ferrite grain of random orientation each:
 
-        >>> import numpy as np
         >>> import damask
         >>> m = damask.ConfigMaterial()
-        >>> m = m.material_add(phase = np.array(['Austenite','Ferrite']).reshape(1,2),
-        ...                    O = damask.Rotation.from_random((2,2)),
-        ...                    v = np.array([0.2,0.8]).reshape(1,2),
+        >>> m = m.material_add(phase = np.array(['Austenite']*3+['Ferrite']),
+        ...                    O = damask.Rotation.from_random((100,4)),
+        ...                    v = np.array([0.2]*3+[0.4]),
         ...                    homogenization = 'Taylor')
         >>> m
         material:
           - constituents:
-              - phase: Austenite
-                O: [0.659802978293224, 0.6953785848195171, 0.22426295326327111, -0.17554139512785227]
-                v: 0.2
-              - phase: Ferrite
-                O: [0.49356745891301596, 0.2841806579193434, -0.7487679215072818, -0.339085707289975]
-                v: 0.8
+              - v: 0.2
+                phase: Austenite
+                O: [0.46183665006602664, 0.2215160420973196, -0.5594313187331139, 0.6516702781083836]
+              - v: 0.2
+                phase: Austenite
+                O: [0.11321658382410027, 0.6354079414360444, 0.00562701344273936, 0.7638108992590535]
+              - v: 0.2
+                phase: Austenite
+                O: [0.050991978809077604, 0.8069522034362003, -0.11352928955610851, -0.5773552285027659]
+              - v: 0.4
+                phase: Ferrite
+                O: [0.9460076150721788, 0.15880754622367604, -0.0069841062241482385, -0.28249066842661014]
             homogenization: Taylor
+          .
+          .
+          .
           - constituents:
-              - phase: Austenite
-                O: [0.26542221365204055, 0.7268854930702071, 0.4474726435701472, -0.44828201137283735]
-                v: 0.2
-              - phase: Ferrite
-                O: [0.6545817158479885, -0.08004812803625233, -0.6226561293931374, 0.4212059104577611]
-                v: 0.8
+              - v: 0.2
+                phase: Austenite
+                O: [0.12531400788494199, -0.18637769037997565, 0.31737548053338394, -0.9213210951197429]
+              - v: 0.2
+                phase: Austenite
+                O: [0.37453930577161404, -0.33529507696450805, -0.3266564259130028, -0.800370601162502]
+              - v: 0.2
+                phase: Austenite
+                O: [0.035776891752713764, -0.720706371010592, -0.4540438656728926, -0.5226342017569017]
+              - v: 0.4
+                phase: Ferrite
+                O: [0.6782596727966124, -0.20800082041703685, -0.138636083554039, 0.6909989227925536]
             homogenization: Taylor
-        homogenization: {}
-        phase: {}
+
+        homogenization: {Taylor: null}
+
+        phase: {Austenite: null, Ferrite: null}
 
         """
-        N,n,shaped = 1,1,{}
+        _constituent_properties = ['phase','O','v','V_e']
+        _dim = {'O':(4,),'V_e':(3,3,)}
+        _ex = dict((k, -len(v)) for k, v in _dim.items())
 
-        map_dim = {'O':-1,'V_e':-2}
+        N,n = 1,1
+        shaped : Dict[str, Union[None,np.ndarray]] = \
+                 {'v': None,
+                  'phase': None,
+                  'homogenization': None,
+                  }
+
         for k,v in kwargs.items():
             shaped[k] = np.array(v)
-            s = shaped[k].shape[:map_dim.get(k,None)]
+            s = shaped[k].shape[:_ex.get(k,None)]                               # type: ignore
             N = max(N,s[0]) if len(s)>0 else N
             n = max(n,s[1]) if len(s)>1 else n
 
+        shaped['v'] = np.array(1./n) if shaped['v'] is None else shaped['v']
+
         mat: Sequence[dict] = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
 
-        if 'v' not in kwargs:
-            shaped['v'] = np.broadcast_to(1/n,(N,n))
-
-        map_shape = {'O':(N,n,4),'V_e':(N,n,3,3)}
         for k,v in shaped.items():
-            target = map_shape.get(k,(N,n))
-            obj = np.broadcast_to(v.reshape(util.shapeshifter(v.shape, target, mode = 'right')), target)
+            target = (N,n) + _dim.get(k,())
+            obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(() if v is None else v.shape,
+                                                                        target,
+                                                                        mode = 'right')),
+                                  target)
             for i in range(N):
-                if k in ['phase','O','v','V_e']:
+                if k in _constituent_properties:
                     for j in range(n):
                         mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
                 else:
@@ -507,5 +545,9 @@ class ConfigMaterial(Config):
 
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
+
+        for what in [item for item in ['phase','homogenization'] if shaped[item] is not None]:
+            for k in np.unique(shaped[what]):                                   # type: ignore
+                if k not in dup[what]: dup[what][str(k)] = None
 
         return dup

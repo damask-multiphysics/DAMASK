@@ -1,6 +1,6 @@
 import re
 import copy
-from typing import Union, Tuple, List, Iterable
+from typing import Optional, Union, Tuple, List, Iterable
 
 import pandas as pd
 import numpy as np
@@ -13,8 +13,8 @@ class Table:
 
     def __init__(self,
                  shapes: dict = {},
-                 data: np.ndarray = None,
-                 comments: Union[str, Iterable[str]] = None):
+                 data: Optional[np.ndarray] = None,
+                 comments: Union[None, str, Iterable[str]] = None):
         """
         New spreadsheet.
 
@@ -25,7 +25,7 @@ class Table:
             For instance, 'F':(3,3) for a deformation gradient, or 'r':(1,) for a scalar.
         data : numpy.ndarray or pandas.DataFrame, optional
             Data. Existing column labels of a pandas.DataFrame will be replaced.
-        comments : str or iterable of str, optional
+        comments : (iterable of) str, optional
             Additional, human-readable information.
 
         """
@@ -188,7 +188,7 @@ class Table:
     def _add_comment(self,
                      label: str,
                      shape: Tuple[int, ...],
-                     info: str = None):
+                     info: Optional[str] = None):
         if info is not None:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
             general  = util.execution_stamp('Table')
@@ -383,7 +383,7 @@ class Table:
     def set(self,
             label: str,
             data: np.ndarray,
-            info: str = None) -> 'Table':
+            info: Optional[str] = None) -> 'Table':
         """
         Add new or replace existing column data.
 
@@ -458,15 +458,15 @@ class Table:
     def rename(self,
                old: Union[str, Iterable[str]],
                new: Union[str, Iterable[str]],
-               info: str = None) -> 'Table':
+               info: Optional[str] = None) -> 'Table':
         """
         Rename column data.
 
         Parameters
         ----------
-        label_old : str or iterable of str
+        label_old : (iterable of) str
             Old column label(s).
-        label_new : str or iterable of str
+        label_new : (iterable of) str
             New column label(s).
 
         Returns

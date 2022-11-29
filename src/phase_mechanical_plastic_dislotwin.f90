@@ -303,7 +303,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
       prm%i_tr       = pl%get_asFloat('i_tr')
-      prm%Delta_G    = polynomial(pl%asDict(),'Delta_G','T')
+      prm%Delta_G    = polynomial(pl,'Delta_G','T')
       prm%L_tr       = pl%get_asFloat('L_tr')
       a_cF           = prm%b_tr(1)*sqrt(6.0_pReal)                                                  ! b_tr is Shockley partial
       prm%h          = 5.0_pReal * a_cF/sqrt(3.0_pReal)
@@ -361,7 +361,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     end if
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0 .or. prm%extendedDislocations) &
-      prm%Gamma_sf = polynomial(pl%asDict(),'Gamma_sf','T')
+      prm%Gamma_sf = polynomial(pl,'Gamma_sf','T')
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,prm%N_tw,pl%get_as1dFloat('h_sl-tw'), &

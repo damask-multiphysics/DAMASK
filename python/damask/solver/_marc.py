@@ -3,7 +3,7 @@ import shlex
 import re
 from pathlib import Path
 
-_marc_version = '2022.1'
+_marc_version = '2022.2'
 _marc_root = '/opt/msc'
 _damask_root = str(Path(__file__).parents[3])
 

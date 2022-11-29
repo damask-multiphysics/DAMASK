@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence, Dict
+from typing import Optional, Union, TextIO, List, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
@@ -34,8 +34,8 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions: Dict[str,np.ndarray] = None,
-                 comments: Union[str, Sequence[str]] = None):
+                 initial_conditions: Optional[Dict[str,np.ndarray]] = None,
+                 comments: Union[None, str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
 
@@ -50,7 +50,7 @@ class Grid:
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
         initial_conditions : dictionary, optional
             Labels and values of the inital conditions at each material point.
-        comments : str or sequence of str, optional
+        comments : (sequence of) str, optional
             Additional, human-readable information, e.g. history of operations.
 
         """
@@ -348,9 +348,11 @@ class Grid:
 
     @staticmethod
     def load_DREAM3D(fname: Union[str, Path],
-                     feature_IDs: str = None, cell_data: str = None,
-                     phases: str = 'Phases', Euler_angles: str = 'EulerAngles',
-                     base_group: str = None) -> 'Grid':
+                     feature_IDs: Optional[str] = None,
+                     cell_data: Optional[str] = None,
+                     phases: str = 'Phases',
+                     Euler_angles: str = 'EulerAngles',
+                     base_group: Optional[str] = None) -> 'Grid':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -427,7 +429,7 @@ class Grid:
         coordinates : str
             Label of the vector column containing the spatial coordinates.
             Need to be ordered (1./x fast, 3./z slow).
-        labels : str or sequence of str
+        labels : (sequence of) str
             Label(s) of the columns containing the material definition.
             Each unique combination of values results in one material ID.
 
@@ -463,7 +465,7 @@ class Grid:
                                    size: FloatSequence,
                                    seeds: np.ndarray,
                                    weights: FloatSequence,
-                                   material: IntSequence = None,
+                                   material: Optional[IntSequence] = None,
                                    periodic: bool = True):
         """
         Create grid from Laguerre tessellation.
@@ -520,7 +522,7 @@ class Grid:
     def from_Voronoi_tessellation(cells: IntSequence,
                                   size: FloatSequence,
                                   seeds: np.ndarray,
-                                  material: IntSequence = None,
+                                  material: Optional[IntSequence] = None,
                                   periodic: bool = True) -> 'Grid':
         """
         Create grid from Voronoi tessellation.
@@ -763,9 +765,9 @@ class Grid:
 
 
     def canvas(self,
-               cells: IntSequence = None,
-               offset: IntSequence = None,
-               fill: int = None) -> 'Grid':
+               cells: Optional[IntSequence] = None,
+               offset: Optional[IntSequence] = None,
+               fill: Optional[int] = None) -> 'Grid':
         """
         Crop or enlarge/pad grid.
 
@@ -901,7 +903,7 @@ class Grid:
 
     def rotate(self,
                R: Rotation,
-               fill: int = None) -> 'Grid':
+               fill: Optional[int] = None) -> 'Grid':
         """
         Rotate grid (and pad if required).
 
@@ -972,15 +974,16 @@ class Grid:
         # materials: 1
 
         """
-        options = ('nearest',False,None)
         orig = tuple(map(np.linspace,self.origin             + self.size/self.cells*.5,
                                      self.origin + self.size - self.size/self.cells*.5,self.cells))
+        interpolator = partial(interpolate.RegularGridInterpolator,
+                               points=orig,method='nearest',bounds_error=False,fill_value=None)
         new = grid_filters.coordinates0_point(cells,self.size,self.origin)
 
-        return Grid(material = interpolate.RegularGridInterpolator(orig,self.material,*options)(new).astype(int),
+        return Grid(material = interpolator(values=self.material)(new).astype(int),
                     size     = self.size,
                     origin   = self.origin,
-                    initial_conditions = {k: interpolate.RegularGridInterpolator(orig,v,*options)(new)
+                    initial_conditions = {k: interpolator(values=v)(new)
                                           for k,v in self.initial_conditions.items()},
                     comments = self.comments+[util.execution_stamp('Grid','scale')],
                    )
@@ -1043,9 +1046,9 @@ class Grid:
 
         Parameters
         ----------
-        from_material : int or sequence of int
+        from_material : (sequence of) int
             Material indices to be substituted.
-        to_material : int or sequence of int
+        to_material : (sequence of) int
             New material indices.
 
         Returns
@@ -1092,10 +1095,10 @@ class Grid:
 
     def clean(self,
               distance: float = np.sqrt(3),
-              selection: IntCollection = None,
+              selection: Optional[IntCollection] = None,
               invert_selection: bool = False,
               periodic: bool = True,
-              rng_seed: NumpyRngSeed = None) -> 'Grid':
+              rng_seed: Optional[NumpyRngSeed] = None) -> 'Grid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
 
@@ -1104,7 +1107,7 @@ class Grid:
         distance : float, optional
             Voxel distance checked for presence of other materials.
             Defaults to sqrt(3).
-        selection : int or collection of int, optional
+        selection : (collection of) int, optional
             Material IDs to consider. Defaults to all.
         invert_selection : bool, optional
             Consider all material IDs except those in selection. Defaults to False.
@@ -1162,7 +1165,7 @@ class Grid:
                       dimension: Union[FloatSequence, IntSequence],
                       center: Union[FloatSequence, IntSequence],
                       exponent: Union[FloatSequence, float],
-                      fill: int = None,
+                      fill: Optional[int] = None,
                       R: Rotation = Rotation(),
                       inverse: bool = False,
                       periodic: bool = True) -> 'Grid':
@@ -1179,7 +1182,7 @@ class Grid:
             Center of the primitive.
             If given as integers, cell centers are addressed.
             If given as floats, physical coordinates are addressed.
-        exponent : float or sequence of float, len (3)
+        exponent : (sequence of) float, len (3)
             Exponents for the three axes.
             0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
             1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
@@ -1253,8 +1256,8 @@ class Grid:
 
     def vicinity_offset(self,
                         distance: float = np.sqrt(3),
-                        offset: int = None,
-                        selection: IntCollection = None,
+                        offset: Optional[int] = None,
+                        selection: Optional[IntCollection] = None,
                         invert_selection: bool = False,
                         periodic: bool = True) -> 'Grid':
         """
@@ -1271,7 +1274,7 @@ class Grid:
         offset : int, optional
             Offset (positive or negative) to tag material IDs.
             Defaults to material.max()+1.
-        selection : int or collection of int, optional
+        selection : (collection of) int, optional
             Material IDs that trigger an offset.
             Defaults to any other than own material ID.
         invert_selection : bool, optional

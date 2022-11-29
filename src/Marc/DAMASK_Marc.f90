@@ -413,6 +413,8 @@ subroutine uedinc(inc,incsub)
   use discretization_Marc
 
   implicit none(type,external)
+
+  external :: nodvar
   integer(pI64), intent(in) :: inc, incsub
 
   integer :: n, nqncomp, nqdatatype

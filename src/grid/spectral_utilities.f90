@@ -42,16 +42,16 @@ module spectral_utilities
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
 
-  real(C_DOUBLE),         public, dimension(:,:,:,:,:),     pointer     :: tensorField_real         !< tensor field in real space
-  real(C_DOUBLE),         public, dimension(:,:,:,:),       pointer     :: vectorField_real         !< vector field in real space
-  real(C_DOUBLE),         public, dimension(:,:,:),         pointer     :: scalarField_real         !< scalar field in real space
-  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:,:),     pointer     :: tensorField_fourier      !< tensor field in Fourier space
-  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:,:),       pointer     :: vectorField_fourier      !< vector field in Fourier space
-  complex(C_DOUBLE_COMPLEX),      dimension(:,:,:),         pointer     :: scalarField_fourier      !< scalar field in Fourier space
-  complex(pReal),                 dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                !< gamma operator (field) for spectral method
-  complex(pReal),                 dimension(:,:,:,:),       allocatable :: xi1st                    !< wave vector field for first derivatives
-  complex(pReal),                 dimension(:,:,:,:),       allocatable :: xi2nd                    !< wave vector field for second derivatives
-  real(pReal),                    dimension(3,3,3,3)                    :: C_ref                    !< mechanic reference stiffness
+  real(C_DOUBLE),            dimension(:,:,:,:,:),     pointer     :: tensorField_real              !< tensor field in real space
+  real(C_DOUBLE),            dimension(:,:,:,:),       pointer     :: vectorField_real              !< vector field in real space
+  real(C_DOUBLE),            dimension(:,:,:),         pointer     :: scalarField_real              !< scalar field in real space
+  complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:,:),     pointer     :: tensorField_fourier           !< tensor field in Fourier space
+  complex(C_DOUBLE_COMPLEX), dimension(:,:,:,:),       pointer     :: vectorField_fourier           !< vector field in Fourier space
+  complex(C_DOUBLE_COMPLEX), dimension(:,:,:),         pointer     :: scalarField_fourier           !< scalar field in Fourier space
+  complex(pReal),            dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                     !< gamma operator (field) for spectral method
+  complex(pReal),            dimension(:,:,:,:),       allocatable :: xi1st                         !< wave vector field for first derivatives
+  complex(pReal),            dimension(:,:,:,:),       allocatable :: xi2nd                         !< wave vector field for second derivatives
+  real(pReal),               dimension(3,3,3,3)                    :: C_ref                         !< mechanic reference stiffness
 
 
 !--------------------------------------------------------------------------------------------------
@@ -116,18 +116,12 @@ module spectral_utilities
   public :: &
     spectral_utilities_init, &
     utilities_updateGamma, &
-    utilities_FFTtensorForward, &
-    utilities_FFTtensorBackward, &
-    utilities_FFTvectorForward, &
-    utilities_FFTvectorBackward, &
-    utilities_FFTscalarForward, &
-    utilities_FFTscalarBackward, &
-    utilities_fourierGammaConvolution, &
-    utilities_fourierGreenConvolution, &
+    utilities_GammaConvolution, &
+    utilities_GreenConvolution, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
-    utilities_fourierScalarGradient, &
-    utilities_fourierVectorDivergence, &
+    utilities_ScalarGradient, &
+    utilities_VectorDivergence, &
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
@@ -306,8 +300,8 @@ subroutine spectral_utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocation
-  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))            ! frequencies for first derivatives, only half the size for first dimension
-  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))            ! frequencies for second derivatives, only half the size for first dimension
+  allocate (xi1st (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for first derivatives, only half the size for first dimension
+  allocate (xi2nd (3,cells1Red,cells(3),cells2),source = cmplx(0.0_pReal,0.0_pReal,pReal))          ! frequencies for second derivatives, only half the size for first dimension
 
 !--------------------------------------------------------------------------------------------------
 ! tensor MPI fftw plans
@@ -385,6 +379,7 @@ end subroutine spectral_utilities_init
 subroutine utilities_updateGamma(C)
 
   real(pReal), intent(in), dimension(3,3,3,3) :: C                                                  !< input stiffness to store as reference stiffness
+
   complex(pReal),              dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
   real(pReal),                 dimension(6,6) :: A, A_inv
   integer :: &
@@ -392,7 +387,8 @@ subroutine utilities_updateGamma(C)
     l, m, n, o
   logical :: err
 
-  C_ref = C
+
+  C_ref = C/wgt
 
   if (.not. num%memory_efficient) then
     gamma_hat = cmplx(0.0_pReal,0.0_pReal,pReal)                                                    ! for the singular point and any non invertible A
@@ -435,68 +431,6 @@ end subroutine utilities_updateGamma
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in field_real to field_fourier
-!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
-! to 0.0
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorForward()
-
-  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-
-end subroutine utilities_FFTtensorForward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTtensorBackward()
-
-  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
-  tensorField_real = tensorField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTtensorBackward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in scalarField_real to scalarField_fourier
-!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
-! to 0.0
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarForward()
-
-  scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
-
-end subroutine utilities_FFTscalarForward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in scalarField_fourier to scalarField_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTscalarBackward()
-
-  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
-  scalarField_real = scalarField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTscalarBackward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex. Extra padding entries are set
-! to 0.0
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorForward()
-
-  vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
-
-end subroutine utilities_FFTvectorForward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
 !> @details Does an weighted inverse FFT transform from complex to real
 !--------------------------------------------------------------------------------------------------
@@ -511,12 +445,14 @@ end subroutine utilities_FFTvectorBackward
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierGammaConvolution(fieldAim)
+function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
+  real(pReal), intent(in), dimension(3,3,cells(1),cells(2),cells3) :: field
   real(pReal), intent(in), dimension(3,3) :: fieldAim                                               !< desired average value of the field after convolution
-  complex(pReal),          dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
-  real(pReal),             dimension(6,6) :: A, A_inv
+  real(pReal),             dimension(3,3,cells(1),cells(2),cells3) :: gammaField
 
+  complex(pReal), dimension(3,3) :: temp33_cmplx, xiDyad_cmplx
+  real(pReal),    dimension(6,6) :: A, A_inv
   integer :: &
     i, j, k, &
     l, m, n, o
@@ -526,8 +462,10 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   print'(/,1x,a)', '... doing gamma convolution ...............................................'
   flush(IO_STDOUT)
 
-!--------------------------------------------------------------------------------------------------
-! do the actual spectral method calculation (mechanical equilibrium)
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+
   memoryEfficient: if (num%memory_efficient) then
     !$OMP PARALLEL DO PRIVATE(l,m,n,o,temp33_cmplx,xiDyad_cmplx,A,A_inv,err,gamma_hat)
     do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
@@ -586,39 +524,53 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
     !$OMP END PARALLEL DO
   end if memoryEfficient
 
-  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim/wgt,0.0_pReal,pReal)
+  if (cells3Offset == 0) tensorField_fourier(1:3,1:3,1,1,1) = cmplx(fieldAim,0.0_pReal,pReal)
 
-end subroutine utilities_fourierGammaConvolution
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
+  gammaField = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
+
+end function utilities_GammaConvolution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief doing convolution DamageGreenOp_hat * field_real
+!> @brief Convolution of Greens' operator for damage/thermal.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierGreenConvolution(D_ref, mu_ref, Delta_t)
+function utilities_GreenConvolution(field, D_ref, mu_ref, Delta_t) result(greenField)
 
+  real(pReal), intent(in), dimension(cells(1),cells(2),cells3) :: field
   real(pReal), dimension(3,3), intent(in) :: D_ref
   real(pReal),                 intent(in) :: mu_ref, Delta_t
+  real(pReal), dimension(cells(1),cells(2),cells3) :: greenField
+
   complex(pReal)                          :: GreenOp_hat
   integer                                 :: i, j, k
 
-!--------------------------------------------------------------------------------------------------
-! do the actual spectral method calculation
+
+  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
+
   !$OMP PARALLEL DO PRIVATE(GreenOp_hat)
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
-    GreenOp_hat = cmplx(1.0_pReal,0.0_pReal,pReal) &
+    GreenOp_hat = cmplx(wgt,0.0_pReal,pReal) &
                 / (cmplx(mu_ref,0.0_pReal,pReal) + cmplx(Delta_t,0.0_pReal,pReal) &
                    * sum(conjg(xi1st(1:3,i,k,j))* matmul(cmplx(D_ref,0.0_pReal,pReal),xi1st(1:3,i,k,j))))
     scalarField_fourier(i,k,j) = scalarField_fourier(i,k,j)*GreenOp_hat
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-end subroutine utilities_fourierGreenConvolution
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+  greenField = scalarField_real(1:cells(1),1:cells(2),1:cells3)
+
+end function utilities_GreenConvolution
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate root mean square of divergence of field_fourier
+!> @brief Calculate root mean square of divergence.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_divergenceRMS()
+real(pReal) function utilities_divergenceRMS(tensorField)
+
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
 
   integer :: i, j, k
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -627,6 +579,10 @@ real(pReal) function utilities_divergenceRMS()
 
   print'(/,1x,a)', '... calculating divergence ................................................'
   flush(IO_STDOUT)
+
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
@@ -660,9 +616,11 @@ end function utilities_divergenceRMS
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate max of curl of field_fourier
+!> @brief Calculate root mean square of curl.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function utilities_curlRMS()
+real(pReal) function utilities_curlRMS(tensorField)
+
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: tensorField
 
   integer  ::  i, j, k, l
   integer(MPI_INTEGER_KIND) :: err_MPI
@@ -672,6 +630,10 @@ real(pReal) function utilities_curlRMS()
 
   print'(/,1x,a)', '... calculating curl ......................................................'
   flush(IO_STDOUT)
+
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal,pReal)
 
@@ -723,7 +685,7 @@ end function utilities_curlRMS
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates mask compliance tensor used to adjust F to fullfill stress BC
+!> @brief Calculate masked compliance tensor used to adjust F to fullfill stress BC.
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
@@ -793,29 +755,46 @@ end function utilities_maskedCompliance
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate scalar gradient in fourier field
+!> @brief Calculate gradient of scalar field.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierScalarGradient()
+function utilities_ScalarGradient(field) result(grad)
+
+  real(pReal), intent(in), dimension(  cells(1),cells(2),cells3) :: field
+  real(pReal),             dimension(3,cells(1),cells(2),cells3) :: grad
 
   integer :: i, j, k
 
 
+  scalarField_real(cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
     vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)                    ! ToDo: no -conjg?
   end do; end do; end do
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  grad = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)*wgt
 
-end subroutine utilities_fourierScalarGradient
+end function utilities_ScalarGradient
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate vector divergence in fourier field
+!> @brief Calculate divergence of vector field.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_fourierVectorDivergence()
+function utilities_VectorDivergence(field) result(div)
 
+  real(pReal), intent(in), dimension(3,cells(1),cells(2),cells3) :: field
+  real(pReal),             dimension(  cells(1),cells(2),cells3) :: div
+
+
+  vectorField_real(1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  vectorField_real(1:3,1:cells(1),            1:cells(2),1:cells3) = field
+  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
                                                              *conjg(-xi1st),1)
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
+  div = scalarField_real(1:cells(1),1:cells(2),1:cells3)*wgt
 
-end subroutine utilities_fourierVectorDivergence
+end function utilities_VectorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1046,11 +1025,19 @@ subroutine utilities_updateCoords(F)
 
 
   step = geomSize/real(cells, pReal)
+
+  tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = F
+  tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
+
+ !--------------------------------------------------------------------------------------------------
+ ! average F
+  if (cells3Offset == 0) Favg = tensorField_fourier(1:3,1:3,1,1,1)%re*wgt
+  call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+
  !--------------------------------------------------------------------------------------------------
  ! integration in Fourier space to get fluctuations of cell center discplacements
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = F
-  call utilities_FFTtensorForward()
-
   !$OMP PARALLEL DO
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then
@@ -1062,13 +1049,8 @@ subroutine utilities_updateCoords(F)
   end do; end do; end do
   !$OMP END PARALLEL DO
 
-  call utilities_FFTvectorBackward()
-
- !--------------------------------------------------------------------------------------------------
- ! average F
-  if (cells3Offset == 0) Favg = tensorField_fourier(1:3,1:3,1,1,1)%re*wgt
-  call MPI_Bcast(Favg,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
+  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
@@ -1136,7 +1118,7 @@ subroutine utilities_saveReferenceStiffness()
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
          status='replace',access='stream',action='write',iostat=ierr)
     if (ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
-    write(fileUnit) C_ref
+    write(fileUnit) C_ref*wgt
     close(fileUnit)
   end if
 
@@ -1156,38 +1138,38 @@ subroutine selfTest()
   call random_number(tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   tensorField_real_ = tensorField_real
-  call utilities_FFTtensorForward()
+  call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
   if (worldsize==1) then
     if (any(dNeq(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3)/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
       error stop 'tensorField avg'
   endif
-  call utilities_FFTtensorBackward()
+  call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(tensorField_real_ - tensorField_real))>5.0e-15_pReal) error stop 'tensorField'
+  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) error stop 'tensorField'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   vectorField_real_ = vectorField_real
-  call utilities_FFTvectorForward()
+  call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   if (worldsize==1) then
     if (any(dNeq(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2)/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
       error stop 'vector avg'
   endif
-  call utilities_FFTvectorBackward()
+  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(vectorField_real_ - vectorField_real))>5.0e-15_pReal) error stop 'vectorField'
+  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) error stop 'vectorField'
 
   call random_number(scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   scalarField_real_ = scalarField_real
-  call utilities_FFTscalarForward()
+  call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   if (worldsize==1) then
     if (dNeq(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1)/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
       error stop 'scalar avg'
   endif
-  call utilities_FFTscalarBackward()
+  call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(scalarField_real_ - scalarField_real))>5.0e-15_pReal) error stop 'scalarField'
+  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) error stop 'scalarField'
 
 end subroutine selfTest
 

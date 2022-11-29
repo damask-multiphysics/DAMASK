@@ -541,7 +541,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
   print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error stress BC  = ', &
+  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error mech BC    = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
@@ -551,7 +551,7 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in, FandF_tau, &
                         r, dummy,err_PETSc)
@@ -561,6 +561,9 @@ subroutine formResidual(in, FandF_tau, &
     target, intent(in) :: FandF_tau
   PetscScalar, dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE),&
     target, intent(out) :: r                                                                        !< residuum field
+  PetscObject :: dummy
+  PetscErrorCode :: err_PETSc
+
   PetscScalar, pointer, dimension(:,:,:,:,:) :: &
     F, &
     F_tau, &
@@ -569,13 +572,10 @@ subroutine formResidual(in, FandF_tau, &
   PetscInt :: &
     PETScIter, &
     nfuncs
-  PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer :: &
     i, j, k, e
 
-!---------------------------------------------------------------------------------------------------
 
   F       => FandF_tau(1:3,1:3,1,&
                        XG_RANGE,YG_RANGE,ZG_RANGE)
@@ -597,8 +597,6 @@ subroutine formResidual(in, FandF_tau, &
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
-!--------------------------------------------------------------------------------------------------
-! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
@@ -609,63 +607,53 @@ subroutine formResidual(in, FandF_tau, &
     flush(IO_STDOUT)
   end if newIteration
 
-!--------------------------------------------------------------------------------------------------
-!
-  tensorField_real = 0.0_pReal
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-    tensorField_real(1:3,1:3,i,j,k) = &
+    r_F_tau(1:3,1:3,i,j,k) = &
       num%beta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
       num%alpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   end do; end do; end do
+  r_F_tau = num%beta*F &
+          - utilities_GammaConvolution(r_F_tau,params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
 
-!--------------------------------------------------------------------------------------------------
-! doing convolution in Fourier space
-  call utilities_FFTtensorForward
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
-  call utilities_FFTtensorBackward
+  err_curl = utilities_curlRMS(F)
 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  r_F_tau = num%beta*F - tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)
+#ifdef __GFORTRAN__
+  call utilities_constitutiveResponse(r_F, &
+#else
+  associate (P => r_F)
+    call utilities_constitutiveResponse(P, &
+#endif
+                                        P_av,C_volAvg,C_minMaxAvg, &
+                                        F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
+    call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+#ifdef __GFORTRAN__
+    err_div = utilities_divergenceRMS(r_F)
+#else
+    err_div = utilities_divergenceRMS(P)
+#endif
+    e = 0
+    do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
+      e = e + 1
+      r_F(1:3,1:3,i,j,k) = &
+        math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
+#ifdef __GFORTRAN__
+                         r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
+#else
+                         P(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
+#endif
+                         math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
+                         + r_F_tau(1:3,1:3,i,j,k)
+    end do; end do; end do
+#ifndef __GFORTRAN__
+  end associate
+#endif
 
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
-  call utilities_constitutiveResponse(r_F, &                                                        ! "residuum" gets field of first PK stress (to save memory)
-                                      P_av,C_volAvg,C_minMaxAvg, &
-                                      F - r_F_tau/num%beta,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
   err_BC = maxval(abs(merge(math_mul3333xx33(C_scale,F_aim-params%rotation_BC%rotate(F_av)), &
                             P_av-P_aim, &
                             params%stress_mask)))
-! calculate divergence
-  tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r_F                                    !< stress field in disguise
-  call utilities_FFTtensorForward
-  err_div = utilities_divergenceRMS()                                                               !< root mean squared error in divergence of stress
 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  e = 0
-  do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
-    e = e + 1
-    r_F(1:3,1:3,i,j,k) = &
-      math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,e) + C_scale), &
-                       r_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
-                       math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
-                       + r_F_tau(1:3,1:3,i,j,k)
-  end do; end do; end do
-
-!--------------------------------------------------------------------------------------------------
-! calculating curl
-  tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = F
-  call utilities_FFTtensorForward
-  err_curl = utilities_curlRMS()
 
 end subroutine formResidual
 

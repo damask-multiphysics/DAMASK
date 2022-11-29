@@ -2,7 +2,8 @@ import os
 import json
 import functools
 import colorsys
-from typing import Union, TextIO
+from typing import Optional, Union, TextIO
+from itertools import chain
 
 import numpy as np
 import scipy.interpolate as interp
@@ -248,7 +249,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        fraction : float or sequence of float
+        fraction : (sequence of) float
             Fractional coordinate(s) to evaluate Colormap at.
 
         Returns
@@ -274,8 +275,8 @@ class Colormap(mpl.colors.ListedColormap):
 
     def shade(self,
               field: np.ndarray,
-              bounds: FloatSequence = None,
-              gap: float = None) -> Image:
+              bounds: Optional[FloatSequence] = None,
+              gap: Optional[float] = None) -> Image:
         """
         Generate PIL image of 2D field using colormap.
 
@@ -314,7 +315,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def reversed(self,
-                 name: str = None) -> 'Colormap':
+                 name: Optional[str] = None) -> 'Colormap':
         """
         Reverse.
 
@@ -363,7 +364,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_paraview(self,
-                      fname: FileHandle = None):
+                      fname: Optional[FileHandle] = None):
         """
         Save as JSON file for use in Paraview.
 
@@ -373,16 +374,12 @@ class Colormap(mpl.colors.ListedColormap):
             File to store results. Defaults to colormap name + '.json'.
 
         """
-        colors = []
-        for i,c in enumerate(np.round(self.colors,6).tolist()):
-            colors+=[i]+c
-
         out = [{
                 'Creator':util.execution_stamp('Colormap'),
                 'ColorSpace':'RGB',
                 'Name':self.name,
                 'DefaultMap':True,
-                'RGBPoints':colors
+                'RGBPoints':list(chain.from_iterable([(i,*c) for i,c in enumerate(self.colors.round(6))]))
                }]
 
         fhandle = self._get_file_handle(fname,'.json')
@@ -391,7 +388,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_ASCII(self,
-                   fname: FileHandle = None):
+                   fname: Optional[FileHandle] = None):
         """
         Save as ASCII file.
 
@@ -406,7 +403,7 @@ class Colormap(mpl.colors.ListedColormap):
         t.save(self._get_file_handle(fname,'.txt'))
 
 
-    def save_GOM(self, fname: FileHandle = None):
+    def save_GOM(self, fname: Optional[FileHandle] = None):
         """
         Save as ASCII file for use in GOM Aramis.
 
@@ -427,7 +424,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def save_gmsh(self,
-                  fname: FileHandle = None):
+                  fname: Optional[FileHandle] = None):
         """
         Save as ASCII file for use in gmsh.
 

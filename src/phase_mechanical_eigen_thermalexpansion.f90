@@ -9,8 +9,8 @@ submodule(phase:eigen) thermalexpansion
 
   type :: tParameters
     type(tPolynomial) :: &
-      A_11, &
-      A_33
+      Alpha_11, &
+      Alpha_33
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param
@@ -57,9 +57,9 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
       if (myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
 
-          prm%A_11 = polynomial(kinematics%get_dict(k),'A_11','T')
+          prm%Alpha_11 = polynomial(kinematics%get_dict(k),'Alpha_11','T')
           if (any(phase_lattice(p) == ['hP','tI'])) &
-            prm%A_33 = polynomial(kinematics%get_dict(k),'A_33','T')
+            prm%Alpha_33 = polynomial(kinematics%get_dict(k),'Alpha_33','T')
         end associate
       end if
     end do
@@ -80,7 +80,7 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
 
   real(pReal) :: T, dot_T
-  real(pReal), dimension(3,3) :: A
+  real(pReal), dimension(3,3) :: Alpha
 
 
   T     = thermal_T(ph,me)
@@ -88,11 +88,11 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
 
-    A = 0.0_pReal
-    A(1,1) = prm%A_11%at(T)
-    if (any(phase_lattice(ph) == ['hP','tI'])) A(3,3) = prm%A_33%at(T)
-    A = lattice_symmetrize_33(A,phase_lattice(ph))
-    Li = dot_T * A
+    Alpha = 0.0_pReal
+    Alpha(1,1) = prm%Alpha_11%at(T)
+    if (any(phase_lattice(ph) == ['hP','tI'])) Alpha(3,3) = prm%Alpha_33%at(T)
+    Alpha = lattice_symmetrize_33(Alpha,phase_lattice(ph))
+    Li = dot_T * Alpha
 
   end associate
   dLi_dTstar = 0.0_pReal

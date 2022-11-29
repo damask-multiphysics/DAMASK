@@ -4,7 +4,7 @@ references:
   - https://commons.wikimedia.org/wiki/File:Coefficient_dilatation_lineique_aciers.svg,
     fit to image description (Scilab code)
 
-A_11: 11.365e-6
-A_11,T: 5.0e-9
+Alpha_11: 11.365e-6
+Alpha_11,T: 5.0e-9
 
 T_ref: 273.0

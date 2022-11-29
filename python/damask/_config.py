@@ -2,7 +2,7 @@ import copy
 from io import StringIO
 from collections.abc import Iterable
 import abc
-from typing import Union, Dict, Any, Type, TypeVar
+from typing import Optional, Union, Dict, Any, Type, TypeVar
 
 import numpy as np
 import yaml
@@ -21,7 +21,7 @@ class NiceDumper(yaml.SafeDumper):
     """Make YAML readable for humans."""
 
     def write_line_break(self,
-                         data: str = None):
+                         data: Optional[str] = None):
         super().write_line_break(data)
 
         if len(self.indents) == 1:
@@ -53,7 +53,7 @@ class Config(dict):
     """YAML-based configuration."""
 
     def __init__(self,
-                 yml: Union[str, Dict[str, Any]] = None,
+                 yml: Union[None, str, Dict[str, Any]] = None,
                  **kwargs):
         """Initialize from YAML, dict, or key=value pairs."""
         if isinstance(yml,str):
