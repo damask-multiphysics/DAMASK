@@ -46,7 +46,7 @@ module grid_damage_spectral
   SNES :: SNES_damage
   Vec  :: solution_vec
   real(pReal), dimension(:,:,:), allocatable :: &
-    phi_current, &                                                                                  !< field of current damage
+    phi, &                                                                                          !< field of current damage
     phi_lastInc, &                                                                                  !< field of previous damage
     phi_stagInc                                                                                     !< field of staggered damage
 
@@ -112,9 +112,9 @@ subroutine grid_damage_spectral_init()
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  phi_current = discretization_grid_getInitialCondition('phi')
-  phi_lastInc = phi_current
-  phi_stagInc = phi_current
+  phi = discretization_grid_getInitialCondition('phi')
+  phi_lastInc = phi
+  phi_stagInc = phi
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -170,12 +170,12 @@ subroutine grid_damage_spectral_init()
   ce = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    call homogenization_set_phi(phi_current(i,j,k),ce)
+    call homogenization_set_phi(phi(i,j,k),ce)
   end do; end do; end do
 
   call DMDAVecGetArrayF90(damage_grid,solution_vec,phi_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  phi_PETSc = phi_current
+  phi_PETSc = phi
   call DMDAVecRestoreArrayF90(damage_grid,solution_vec,phi_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -218,20 +218,20 @@ function grid_damage_spectral_solution(Delta_t) result(solution)
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
   end if
-  stagNorm = maxval(abs(phi_current - phi_stagInc))
+  stagNorm = maxval(abs(phi - phi_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*maxval(phi_current))
+  solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*maxval(phi))
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  phi_stagInc = phi_current
+  phi_stagInc = phi
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    call homogenization_set_phi(phi_current(i,j,k),ce)
+    call homogenization_set_phi(phi(i,j,k),ce)
   end do; end do; end do
 
   call VecMin(solution_vec,devNull,phi_min,err_PETSc)
@@ -261,7 +261,7 @@ subroutine grid_damage_spectral_forward(cutBack)
 
 
   if (cutBack) then
-    phi_current = phi_lastInc
+    phi = phi_lastInc
     phi_stagInc = phi_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state
@@ -269,16 +269,16 @@ subroutine grid_damage_spectral_forward(cutBack)
     CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,phi_PETSc,err_PETSc)                              !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    phi_PETSc = phi_current
+    phi_PETSc = phi
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,phi_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      call homogenization_set_phi(phi_current(i,j,k),ce)
+      call homogenization_set_phi(phi(i,j,k),ce)
     end do; end do; end do
   else
-    phi_lastInc = phi_current
+    phi_lastInc = phi
     call updateReference
   end if
 
@@ -297,7 +297,7 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
     x_scal
   PetscScalar, dimension( &
     X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-    r
+    r                                                                                               !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc
 
@@ -305,10 +305,8 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   real(pReal), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
-  phi_current = x_scal
-!--------------------------------------------------------------------------------------------------
-! evaluate polarization field
-  vectorField = utilities_ScalarGradient(phi_current)
+  phi = x_scal
+  vectorField = utilities_ScalarGradient(phi)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
@@ -318,15 +316,13 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi_current(i,j,k),ce)) &
-             + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
-             + mu_ref*phi_current(i,j,k)
+    r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_phi(phi(i,j,k),ce)) &
+             + homogenization_mu_phi(ce)*(phi_lastInc(i,j,k) - phi(i,j,k)) &
+             + mu_ref*phi(i,j,k)
   end do; end do; end do
 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
   r = max(min(utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t),phi_lastInc),num%phi_min) &
-    - phi_current
+    - phi
   err_PETSc = 0
 
 end subroutine formResidual

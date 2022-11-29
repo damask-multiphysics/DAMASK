@@ -115,7 +115,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_polarisation_init
+subroutine grid_mechanical_spectral_polarisation_init()
 
   real(pReal), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
@@ -125,6 +125,7 @@ subroutine grid_mechanical_spectral_polarisation_init
     F, &                                                                                            ! specific (sub)pointer
     F_tau                                                                                           ! specific (sub)pointer
   PetscInt, dimension(0:worldsize-1) :: localK
+  real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   type(MPI_File) :: fileUnit
@@ -250,10 +251,14 @@ subroutine grid_mechanical_spectral_polarisation_init
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call HDF5_read(F,groupHandle,'F')
-    call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
-    call HDF5_read(F_tau,groupHandle,'F_tau')
-    call HDF5_read(F_tau_lastInc,groupHandle,'F_tau_lastInc')
+    call HDF5_read(temp33n,groupHandle,'F')
+    F = reshape(temp33n,[9,cells(1),cells(2),cells3])
+    call HDF5_read(temp33n,groupHandle,'F_lastInc')
+    F_lastInc = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
+    call HDF5_read(temp33n,groupHandle,'F_tau')
+    F_tau = reshape(temp33n,[9,cells(1),cells(2),cells3])
+    call HDF5_read(temp33n,groupHandle,'F_tau_lastInc')
+    F_tau_lastInc = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
 
   elseif (CLI_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
@@ -476,10 +481,10 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  call HDF5_write(F,groupHandle,'F')
-  call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
-  call HDF5_write(F_tau,groupHandle,'F_tau')
-  call HDF5_write(F_tau_lastInc,groupHandle,'F_tau_lastInc')
+  call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
+  call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
+  call HDF5_write(reshape(F_tau,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_tau')
+  call HDF5_write(reshape(F_tau_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_tau_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 

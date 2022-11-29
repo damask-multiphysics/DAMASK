@@ -111,10 +111,12 @@ subroutine grid_mechanical_FEM_init
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   real(pReal), dimension(3,3,3,3) :: devNull
+  real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
+  real(pReal), dimension(3,product(cells(1:2))*cells3) :: temp3n
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-    u_current,u_lastInc
+    u,u_lastInc
   PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
@@ -220,7 +222,7 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(err_PETSc)
   call VecSet(solution_rate   ,0.0_pReal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -260,10 +262,14 @@ subroutine grid_mechanical_FEM_init
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call HDF5_read(F,groupHandle,'F')
-    call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
-    call HDF5_read(u_current,groupHandle,'u')
-    call HDF5_read(u_lastInc,groupHandle,'u_lastInc')
+    call HDF5_read(temp33n,groupHandle,'F')
+    F = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
+    call HDF5_read(temp33n,groupHandle,'F_lastInc')
+    F_lastInc = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
+    call HDF5_read(temp3n,groupHandle,'u')
+    u = reshape(temp3n,[3,cells(1),cells(2),cells3])
+    call HDF5_read(temp3n,groupHandle,'u_lastInc')
+    u_lastInc = reshape(temp3n,[3,cells(1),cells(2),cells3])
 
   elseif (CLI_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
@@ -275,7 +281,7 @@ subroutine grid_mechanical_FEM_init
   call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pReal)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -354,10 +360,10 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     rotation_BC
   PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-    u_current,u_lastInc
+    u,u_lastInc
 
 
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -410,7 +416,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 
   call VecAXPY(solution_current,Delta_t,solution_rate,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -441,10 +447,10 @@ subroutine grid_mechanical_FEM_restartWrite
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
+  PetscScalar, dimension(:,:,:,:), pointer :: u,u_lastInc
 
 
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -453,10 +459,10 @@ subroutine grid_mechanical_FEM_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  call HDF5_write(F,groupHandle,'F')
-  call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
-  call HDF5_write(u_current,groupHandle,'u')
-  call HDF5_write(u_lastInc,groupHandle,'u_lastInc')
+  call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
+  call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
+  call HDF5_write(reshape(u,[3,product(cells(1:2))*cells3]),groupHandle,'u')
+  call HDF5_write(reshape(u_lastInc,[3,product(cells(1:2))*cells3]),groupHandle,'u_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
@@ -473,7 +479,7 @@ subroutine grid_mechanical_FEM_restartWrite
     call HDF5_closeFile(fileHandle)
   endif
 
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
