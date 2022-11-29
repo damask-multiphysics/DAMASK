@@ -1127,16 +1127,22 @@ subroutine selfTest()
   real(pReal), allocatable, dimension(:,:,:,:,:) :: tensorField_real_
   real(pReal), allocatable, dimension(:,:,:,:) :: vectorField_real_
   real(pReal), allocatable, dimension(:,:,:) :: scalarField_real_
+  real(pReal), dimension(3,3) :: tensorSum
+  real(pReal), dimension(3) :: vectorSum
+  real(pReal) :: scalarSum
   real(pReal), dimension(3,3) :: r
   integer(MPI_INTEGER_KIND) :: err_MPI
+
 
   call random_number(tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   tensorField_real_ = tensorField_real
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-  if (worldsize==1) then
-    if (any(dNeq(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3)/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
-      error stop 'tensorField avg'
+  call MPI_Allreduce(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3),tensorSum,9_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (worldrank==0) then
+    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'tensor avg'
   endif
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
@@ -1146,9 +1152,11 @@ subroutine selfTest()
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   vectorField_real_ = vectorField_real
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
-  if (worldsize==1) then
-    if (any(dNeq(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2)/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
-      error stop 'vector avg'
+  call MPI_Allreduce(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2),vectorSum,3_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (worldrank==0) then
+    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'vector avg'
   endif
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
@@ -1158,9 +1166,11 @@ subroutine selfTest()
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   scalarField_real_ = scalarField_real
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
-  if (worldsize==1) then
-    if (dNeq(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1)/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
-      error stop 'scalar avg'
+  call MPI_Allreduce(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1),scalarSum,1_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (worldrank==0) then
+    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) error stop 'scalar avg'
   endif
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
