@@ -75,8 +75,8 @@ def curl(size: _FloatSequence,
     e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,f_fourier)*2.0j*_np.pi if n == 3 else         # vector, 3   -> 3
-             _np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,f_fourier)*2.0j*_np.pi)                       # tensor, 3x3 -> 3x3
+    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks' if n == 3 else
+                        'slm,ijkl,ijknm->ijksn',e,k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->3, tensor 3x3->3x3
 
     return _np.fft.irfftn(curl_,axes=(0,1,2),s=f.shape[:3])
 
@@ -104,7 +104,7 @@ def divergence(size: _FloatSequence,
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
     divergence_ = (_np.einsum('ijkl,ijkl ->ijk' if n==3 else
-                              'ijkm,ijklm->ijkl', k_s,f_fourier)*2.0j*_np.pi)                       # vector 3 -> 1, tensor 3x3 -> 3
+                              'ijkm,ijklm->ijkl', k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->1, tensor 3x3->3
 
     return _np.fft.irfftn(divergence_,axes=(0,1,2),s=f.shape[:3])
 
@@ -132,7 +132,7 @@ def gradient(size: _FloatSequence,
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
     gradient_ = (_np.einsum('ijkl,ijkm->ijkm' if n==1 else
-                            'ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                          # scalar 1 -> 3, vector 3 -> 3x3
+                            'ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                          # scalar 1->3, vector 3->3x3
 
     return _np.fft.irfftn(gradient_,axes=(0,1,2),s=f.shape[:3])
 
