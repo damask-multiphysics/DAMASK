@@ -574,7 +574,7 @@ def _docstringer(docstring: _Union[str, _Callable],
         shift = min([len(line)-len(line.lstrip(' '))-indent for line in content])
         extra = '\n'.join([(line[shift:] if shift > 0 else
                           f'{" "*-shift}{line}') for line in content])
-        docstring_ = _re.sub(fr'(^([ ]*){key}\s*\n\2{"-"*len(key)}[\n ]*[A-Za-z0-9 ]*: ([^\n]+\n)*)',
+        docstring_ = _re.sub(fr'(^([ ]*){key}\s*\n\2{"-"*len(key)}[\n ]*[A-Za-z0-9_ ]*: ([^\n]+\n)*)',
                              fr'\1{extra}\n',
                              docstring_,flags=_re.MULTILINE)
 
@@ -590,7 +590,7 @@ def _docstringer(docstring: _Union[str, _Callable],
                             +(return_class.__name__ if not isinstance(return_class,str) else return_class)
                            )
 
-        return _re.sub(r'(^([ ]*)Returns\s*\n\2-------\s*\n[ ]*[A-Za-z0-9 ]*: )(.*)\n',
+        return _re.sub(r'(^([ ]*)Returns\s*\n\2-------\s*\n[ ]*[A-Za-z0-9_ ]*: )(.*)\n',
                            fr'\1{return_type_}\n',
                            docstring_,flags=_re.MULTILINE)
 
