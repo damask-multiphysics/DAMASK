@@ -74,7 +74,7 @@ submodule(phase:plastic) dislotwin
       fcc_twinNucleationSlipPair                                                                    ! ToDo: Better name? Is also use for trans
     character(len=:),          allocatable                 :: &
       lattice_tr
-    character(len=5)                                       :: &
+    character(len=9)                                       :: &
       isotropic_bound
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
@@ -188,7 +188,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-   prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='Voigt')
+   prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters

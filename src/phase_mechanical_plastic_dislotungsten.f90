@@ -35,7 +35,7 @@ submodule(phase:plastic) dislotungsten
       P_nS_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
-    character(len=5)                                     :: &
+    character(len=9)                                     :: &
       isotropic_bound
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
@@ -132,8 +132,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
-    
-    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='Voigt')
+
+    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters

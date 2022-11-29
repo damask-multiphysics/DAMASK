@@ -655,7 +655,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
     C = phase_homogenizedC66(material_phaseID(co,ce),material_phaseEntry(co,ce))                    ! damage not included!
 
-    equivalentMu = lattice_isotropic_mu(C,'voigt',phase_lattice_structure(co,ce))
+    equivalentMu = lattice_isotropic_mu(C,phase_lattice_structure(co,ce),'isostrain')
 
   end function equivalentMu
 

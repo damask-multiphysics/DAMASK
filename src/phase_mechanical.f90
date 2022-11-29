@@ -172,13 +172,13 @@ submodule(phase) mechanical
     pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
       real(pReal) :: mu
       integer, intent(in) :: ph, en
-      character(len=5), intent(in) :: isotropic_bound
+      character(len=*), intent(in) :: isotropic_bound
     end function elastic_mu
 
     pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
       real(pReal) :: nu
       integer, intent(in) :: ph, en
-      character(len=5), intent(in) :: isotropic_bound
+      character(len=*), intent(in) :: isotropic_bound
     end function elastic_nu
 
   end interface

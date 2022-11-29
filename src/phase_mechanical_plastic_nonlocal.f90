@@ -115,8 +115,8 @@ submodule(phase:plastic) nonlocal
       sum_N_sl = 0
     integer,     dimension(:),     allocatable :: &
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
-    character(len=5)                           :: &
-      isotropic_bound          
+    character(len=9)                           :: &
+      isotropic_bound
     character(len=pStringLen), dimension(:), allocatable :: &
       output
     logical :: &
@@ -243,7 +243,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='Voigt')
+    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
     prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
