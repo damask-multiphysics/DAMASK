@@ -73,10 +73,9 @@ submodule(phase:plastic) dislotwin
     integer,                   allocatable, dimension(:,:) :: &
       fcc_twinNucleationSlipPair                                                                    ! ToDo: Better name? Is also use for trans
     character(len=:),          allocatable                 :: &
-      lattice_tr
-    character(len=9)                                       :: &
+      lattice_tr, &
       isotropic_bound
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pStringLen), allocatable, dimension(:)   :: &
       output
     logical :: &
       extendedDislocations, &                                                                       !< consider split into partials for climb calculation

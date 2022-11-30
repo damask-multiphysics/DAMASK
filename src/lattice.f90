@@ -422,7 +422,7 @@ end subroutine lattice_init
 function lattice_characteristicShear_Twin(Ntwin,lattice,CoverA) result(characteristicShear)
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
-  character(len=2),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
+  character(len=*),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
   real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
   real(pReal), dimension(sum(Ntwin))               :: characteristicShear
 
@@ -496,7 +496,7 @@ end function lattice_characteristicShear_Twin
 function lattice_C66_twin(Ntwin,C66,lattice,CoverA)
 
   integer,     dimension(:),            intent(in) :: Ntwin                                         !< number of active twin systems per family
-  character(len=2),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
+  character(len=*),                     intent(in) :: lattice                                       !< Bravais lattice (Pearson symbol)
   real(pReal), dimension(6,6),          intent(in) :: C66                                           !< unrotated parent stiffness matrix
   real(pReal),                          intent(in) :: cOverA                                        !< c/a ratio
   real(pReal), dimension(6,6,sum(Ntwin))           :: lattice_C66_twin
@@ -535,7 +535,7 @@ function lattice_C66_trans(Ntrans,C_parent66,lattice_target, &
                            cOverA_trans,a_cF,a_cI)
 
   integer,     dimension(:),             intent(in) :: Ntrans                                       !< number of active twin systems per family
-  character(len=2),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
+  character(len=*),                      intent(in) :: lattice_target                               !< Bravais lattice (Pearson symbol)
   real(pReal), dimension(6,6),           intent(in) :: C_parent66
   real(pReal),                 optional, intent(in) :: cOverA_trans, a_cF, a_cI
   real(pReal), dimension(6,6,sum(Ntrans))           :: lattice_C66_trans
@@ -647,7 +647,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,lattice) result(
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-slip interaction
-  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
+  character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax
@@ -965,7 +965,7 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,lattice) result(
 
   integer,         dimension(:),                   intent(in) :: Ntwin                              !< number of active twin systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
-  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
+  character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Ntwin),sum(Ntwin))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtwinMax
@@ -1064,7 +1064,7 @@ function lattice_interaction_TransByTrans(Ntrans,interactionValues,lattice) resu
 
   integer,         dimension(:),                     intent(in) :: Ntrans                           !< number of active trans systems per family
   real(pReal),     dimension(:),                     intent(in) :: interactionValues                !< values for trans-trans interaction
-  character(len=2),                                  intent(in) :: lattice                          !<Bravais lattice (Pearson symbol) (parent crystal)
+  character(len=*),                                  intent(in) :: lattice                          !<Bravais lattice (Pearson symbol) (parent crystal)
   real(pReal),     dimension(sum(Ntrans),sum(Ntrans))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtransMax
@@ -1107,7 +1107,7 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,lattice) r
   integer,         dimension(:),                   intent(in) :: Nslip, &                           !< number of active slip systems per family
                                                                  Ntwin                              !< number of active twin systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for slip-twin interaction
-  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
+  character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Nslip),sum(Ntwin))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax, &
@@ -1267,7 +1267,7 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,lattice)
   integer,         dimension(:),                    intent(in) :: Nslip, &                          !< number of active slip systems per family
                                                                   Ntrans                            !< number of active trans systems per family
   real(pReal),     dimension(:),                    intent(in) :: interactionValues                 !< values for slip-trans interaction
-  character(len=2),                                 intent(in) :: lattice                           !< Bravais lattice (Pearson symbol) (parent crystal)
+  character(len=*),                                 intent(in) :: lattice                           !< Bravais lattice (Pearson symbol) (parent crystal)
   real(pReal),     dimension(sum(Nslip),sum(Ntrans))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NslipMax, &
@@ -1320,7 +1320,7 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,lattice) r
   integer,         dimension(:),                   intent(in) :: Ntwin, &                           !< number of active twin systems per family
                                                                  Nslip                              !< number of active slip systems per family
   real(pReal),     dimension(:),                   intent(in) :: interactionValues                  !< values for twin-twin interaction
-  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
+  character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),     dimension(sum(Ntwin),sum(Nslip))           :: interactionMatrix
 
   integer, dimension(:),   allocatable :: NtwinMax, &
@@ -1394,7 +1394,7 @@ end function lattice_interaction_TwinBySlip
 function lattice_SchmidMatrix_slip(Nslip,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),            intent(in) :: Nslip                                     !< number of active slip systems per family
-  character(len=2),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
+  character(len=*),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
   real(pReal),                              intent(in) :: cOverA
   real(pReal),     dimension(3,3,sum(Nslip))           :: SchmidMatrix
 
@@ -1444,7 +1444,7 @@ end function lattice_SchmidMatrix_slip
 function lattice_SchmidMatrix_twin(Ntwin,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),            intent(in) :: Ntwin                                     !< number of active twin systems per family
-  character(len=2),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
+  character(len=*),                         intent(in) :: lattice                                   !< Bravais lattice (Pearson symbol)
   real(pReal),                              intent(in) :: cOverA                                    !< c/a ratio
   real(pReal),     dimension(3,3,sum(Ntwin))           :: SchmidMatrix
 
@@ -1491,7 +1491,7 @@ end function lattice_SchmidMatrix_twin
 function lattice_SchmidMatrix_trans(Ntrans,lattice_target,cOverA,a_cF,a_cI) result(SchmidMatrix)
 
   integer,         dimension(:),             intent(in) :: Ntrans                                   !< number of active twin systems per family
-  character(len=2),                          intent(in) :: lattice_target                           !< Bravais lattice (Pearson symbol)
+  character(len=*),                          intent(in) :: lattice_target                           !< Bravais lattice (Pearson symbol)
   real(pReal),                     optional, intent(in) :: cOverA, a_cI, a_cF
   real(pReal),     dimension(3,3,sum(Ntrans))           :: SchmidMatrix
 
@@ -1520,7 +1520,7 @@ end function lattice_SchmidMatrix_trans
 function lattice_SchmidMatrix_cleavage(Ncleavage,lattice,cOverA) result(SchmidMatrix)
 
   integer,         dimension(:),                  intent(in) :: Ncleavage                           !< number of active cleavage systems per family
-  character(len=2),                               intent(in) :: lattice                             !< Bravais lattice (Pearson symbol)
+  character(len=*),                               intent(in) :: lattice                             !< Bravais lattice (Pearson symbol)
   real(pReal),                                    intent(in) :: cOverA                              !< c/a ratio
   real(pReal),     dimension(3,3,3,sum(Ncleavage))           :: SchmidMatrix
 
@@ -1563,7 +1563,7 @@ end function lattice_SchmidMatrix_cleavage
 function lattice_slip_direction(Nslip,lattice,cOverA) result(d)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
-  character(len=2),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
+  character(len=*),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
   real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
   real(pReal),     dimension(3,sum(Nslip))            :: d
 
@@ -1581,7 +1581,7 @@ end function lattice_slip_direction
 function lattice_slip_normal(Nslip,lattice,cOverA) result(n)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
-  character(len=2),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
+  character(len=*),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
   real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
   real(pReal),     dimension(3,sum(Nslip))            :: n
 
@@ -1599,7 +1599,7 @@ end function lattice_slip_normal
 function lattice_slip_transverse(Nslip,lattice,cOverA) result(t)
 
   integer,         dimension(:),           intent(in) :: Nslip                                      !< number of active slip systems per family
-  character(len=2),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
+  character(len=*),                        intent(in) :: lattice                                    !< Bravais lattice (Pearson symbol)
   real(pReal),                             intent(in) :: cOverA                                     !< c/a ratio
   real(pReal),     dimension(3,sum(Nslip))            :: t
 
@@ -1618,7 +1618,7 @@ end function lattice_slip_transverse
 function lattice_labels_slip(Nslip,lattice) result(labels)
 
   integer,         dimension(:),  intent(in)  :: Nslip                                              !< number of active slip systems per family
-  character(len=2),               intent(in)  :: lattice                                            !< Bravais lattice (Pearson symbol)
+  character(len=*),               intent(in)  :: lattice                                            !< Bravais lattice (Pearson symbol)
 
   character(len=:), dimension(:),   allocatable :: labels
 
@@ -1660,7 +1660,7 @@ pure function lattice_symmetrize_33(T,lattice) result(T_sym)
   real(pReal), dimension(3,3) :: T_sym
 
   real(pReal), dimension(3,3), intent(in) :: T
-  character(len=2),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
+  character(len=*),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
 
 
   T_sym = 0.0_pReal
@@ -1688,7 +1688,7 @@ pure function lattice_symmetrize_C66(C66,lattice) result(C66_sym)
   real(pReal), dimension(6,6) :: C66_sym
 
   real(pReal), dimension(6,6), intent(in) :: C66
-  character(len=2),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
+  character(len=*),            intent(in) :: lattice                                                !< Bravais lattice (Pearson symbol)
 
   integer :: i,j
 
@@ -1732,7 +1732,7 @@ end function lattice_symmetrize_C66
 function lattice_labels_twin(Ntwin,lattice) result(labels)
 
   integer,         dimension(:),  intent(in)  :: Ntwin                                              !< number of active slip systems per family
-  character(len=2),               intent(in)  :: lattice                                            !< Bravais lattice (Pearson symbol)
+  character(len=*),               intent(in)  :: lattice                                            !< Bravais lattice (Pearson symbol)
 
   character(len=:), dimension(:),   allocatable :: labels
 
@@ -1770,7 +1770,7 @@ end function lattice_labels_twin
 function slipProjection_transverse(Nslip,lattice,cOverA) result(projection)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
+  character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
 
@@ -1794,7 +1794,7 @@ end function slipProjection_transverse
 function slipProjection_direction(Nslip,lattice,cOverA) result(projection)
 
   integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=2),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
+  character(len=*),                                intent(in) :: lattice                            !< Bravais lattice (Pearson symbol)
   real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
   real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
 
@@ -1818,7 +1818,7 @@ end function slipProjection_direction
 function coordinateSystem_slip(Nslip,lattice,cOverA) result(coordinateSystem)
 
   integer,          dimension(:),            intent(in) :: Nslip                                    !< number of active slip systems per family
-  character(len=2),                          intent(in) :: lattice                                  !< Bravais lattice (Pearson symbol)
+  character(len=*),                          intent(in) :: lattice                                  !< Bravais lattice (Pearson symbol)
   real(pReal),                               intent(in) :: cOverA                                   !< c/a ratio
   real(pReal),     dimension(3,3,sum(Nslip))            :: coordinateSystem
 
@@ -1907,7 +1907,7 @@ function buildCoordinateSystem(active,potential,system,lattice,cOverA)
     potential                                                                                       !< # of potential systems per family
   real(pReal), dimension(:,:), intent(in) :: &
     system
-  character(len=2),            intent(in) :: &
+  character(len=*),            intent(in) :: &
     lattice                                                                                         !< Bravais lattice (Pearson symbol)
   real(pReal),                 intent(in) :: &
     cOverA
@@ -2152,7 +2152,7 @@ end function getlabels
 pure function lattice_isotropic_nu(C,lattice,assumption) result(nu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
-  character(len=2),            intent(in) :: lattice
+  character(len=*),            intent(in) :: lattice
   character(len=*),            intent(in) :: assumption                                             !< Assumption (isostrain = 'Voigt', isostress = 'Reuss')
   real(pReal) :: nu
 
@@ -2185,7 +2185,7 @@ end function lattice_isotropic_nu
 pure function lattice_isotropic_mu(C,lattice,assumption) result(mu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
-  character(len=2),            intent(in) :: lattice
+  character(len=*),            intent(in) :: lattice
   character(len=*),            intent(in) :: assumption                                             !< Assumption (isostrain = 'Voigt', isostress = 'Reuss')
   real(pReal) :: mu
 

@@ -442,7 +442,7 @@ function phase_lattice_structure(co,ce) result(lattice)
 
   integer, intent(in) :: co, ce
 
-  character(len=2)    :: lattice
+  character(len=:), allocatable :: lattice
 
   lattice = phase_lattice(material_phaseID(co,ce))
 

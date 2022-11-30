@@ -35,7 +35,7 @@ submodule(phase:plastic) dislotungsten
       P_nS_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
-    character(len=9)                                     :: &
+    character(len=:),          allocatable               :: &
       isotropic_bound
     character(len=pStringLen), allocatable, dimension(:) :: &
       output

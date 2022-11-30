@@ -115,7 +115,7 @@ submodule(phase:plastic) nonlocal
       sum_N_sl = 0
     integer,     dimension(:),     allocatable :: &
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
-    character(len=9)                           :: &
+    character(len=:),              allocatable :: &
       isotropic_bound
     character(len=pStringLen), dimension(:), allocatable :: &
       output
