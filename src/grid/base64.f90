@@ -82,7 +82,7 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
   else
     s_str = 1_pI64
     s_bytes = 1_pI64
-  endif
+  end if
 
   if(present(e)) then
     if(e>base64_nByte(len(base64_str,kind=pI64))) call IO_error(114, ext_msg='e out of range')
@@ -93,7 +93,7 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
     e_bytes = base64_nByte(len(base64_str,kind=pI64)) - base64_nByte(s_str)
     if(base64_str(e_str-0_pI64:e_str-0_pI64) == '=') e_bytes = e_bytes - 1_pI64
     if(base64_str(e_str-1_pI64:e_str-1_pI64) == '=') e_bytes = e_bytes - 1_pI64
-  endif
+  end if
 
   bytes = decodeBase64(base64_str(s_str:e_str))
   bytes = bytes(s_bytes:e_bytes)
@@ -122,8 +122,8 @@ pure function decodeBase64(base64_str) result(bytes)
         charPos(p) = int(index(base64_encoding,base64_str(c+p:c+p))-1,C_SIGNED_CHAR)
       else
         charPos(p) = 0_C_SIGNED_CHAR
-      endif
-    enddo
+      end if
+    end do
 
     call mvbits(charPos(0),0,6,bytes(b+0),2)
     call mvbits(charPos(1),4,2,bytes(b+0),0)
@@ -133,7 +133,7 @@ pure function decodeBase64(base64_str) result(bytes)
     call mvbits(charPos(3),0,6,bytes(b+2),0)
     b = b+3_pI64
     c = c+4_pI64
-  enddo
+  end do
 
 end function decodeBase64
 

@@ -199,11 +199,11 @@ subroutine FEM_mechanical_init(fieldBC)
     CHKERRQ(err_PETSc)
     call PetscSectionGetDof(section,cellStart,pnumDof(topologDim),err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
   numBC = 0
   do field = 1, dimPlex; do faceSet = 1, mesh_Nboundaries
     if (fieldBC%componentBC(field)%Mask(faceSet)) numBC = numBC + 1
-  enddo; enddo
+  end do; end do
   allocate(pbcField(numBC), source=0_pPETSCINT)
   allocate(pbcComps(numBC))
   allocate(pbcPoints(numBC))
@@ -229,9 +229,9 @@ subroutine FEM_mechanical_init(fieldBC)
       else
         call ISCreateGeneral(PETSC_COMM_WORLD,0_pPETSCINT,[0_pPETSCINT],PETSC_COPY_VALUES,pbcPoints(numBC),err_PETSc)
         CHKERRQ(err_PETSc)
-      endif
-    endif
-  enddo; enddo
+      end if
+    end if
+  end do; end do
   call DMPlexCreateSection(mechanical_mesh,nolabel,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -240,7 +240,7 @@ subroutine FEM_mechanical_init(fieldBC)
   do faceSet = 1, numBC
     call ISDestroy(pbcPoints(faceSet),err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -299,11 +299,11 @@ subroutine FEM_mechanical_init(fieldBC)
       call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,err_PETSc)
       CHKERRQ(err_PETSc)
       x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0_pReal)
-    enddo
+    end do
     px_scal => x_scal
     call DMPlexVecSetClosure(mechanical_mesh,section,solution_local,cell,px_scal,5,err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
   call utilities_constitutiveResponse(0.0_pReal,devNull,.true.)
 
 end subroutine FEM_mechanical_init
@@ -348,7 +348,7 @@ type(tSolutionState) function FEM_mechanical_solution( &
     FEM_mechanical_solution%converged = .true.
     call SNESGetIterationNumber(mechanical_snes,FEM_mechanical_solution%iterationsNeeded,err_PETSc)
     CHKERRQ(err_PETSc)
-  endif
+  end if
 
   print'(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
@@ -409,9 +409,9 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
                                        0.0_pReal,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
         call ISDestroy(bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
-      endif
-    endif
-  enddo; enddo
+      end if
+    end if
+  end do; end do
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate field derivatives
@@ -433,10 +433,10 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
             matmul(IcellJMat,basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
-        enddo
-      enddo
+        end do
+      end do
       homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
-    enddo
+    end do
     if (num%BBarStabilisation) then
       detFAvg = math_det33(sum(homogenization_F(1:3,1:3,cell*nQuadrature+1:(cell+1)*nQuadrature),dim=3)/real(nQuadrature,pReal))
       do qPt = 0, nQuadrature-1
@@ -444,11 +444,11 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
         homogenization_F(1:dimPlex,1:dimPlex,m) = homogenization_F(1:dimPlex,1:dimPlex,m) &
                                                 * (detFAvg/math_det33(homogenization_F(1:3,1:3,m)))**(1.0_pReal/real(dimPlex,pReal))
 
-      enddo
-    endif
+      end do
+    end if
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -475,20 +475,20 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
             matmul(IcellJMat,basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
-        enddo
-      enddo
+        end do
+      end do
       f_scal = f_scal &
              +  matmul(transpose(BMat), &
                        reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,m)), &
                                shape=[dimPlex*dimPlex]))*qWeights(qPt+1_pPETSCINT)
-    enddo
+    end do
     f_scal = f_scal*abs(detJ)
     pf_scal => f_scal
     call DMPlexVecSetClosure(dm_local,section,f_local,cell,pf_scal,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
   call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -559,9 +559,9 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
                                        0.0_pReal,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
         call ISDestroy(bcPoints,err_PETSc)
         CHKERRQ(err_PETSc)
-      endif
-    endif
-  enddo; enddo
+      end if
+    end if
+  end do; end do
   call DMPlexGetHeightStratum(dm_local,0_pPETSCINT,cellStart,cellEnd,err_PETSc)
   CHKERRQ(err_PETSc)
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
@@ -583,8 +583,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
           i = ((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp
           BMat(comp*dimPlex+1_pPETSCINT:(comp+1_pPETSCINT)*dimPlex,basis*dimPlex+comp+1_pPETSCINT) = &
             matmul(reshape(pInvcellJ,[dimPlex,dimPlex]),basisFieldDer(i*dimPlex+1_pPETSCINT:(i+1_pPETSCINT)*dimPlex))
-        enddo
-      enddo
+        end do
+      end do
       MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1_pPETSCINT)
@@ -602,8 +602,8 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
         BMatAvg = BMatAvg + BMat
       else
         K_eA = K_eA + matmul(transpose(BMat),MatA)
-      endif
-    enddo
+      end if
+    end do
     if (num%BBarStabilisation) then
       FInv = math_inv33(FAvg)
       K_e = K_eA*math_det33(FAvg/real(nQuadrature,pReal))**(1.0_pReal/real(dimPlex,pReal)) + &
@@ -612,7 +612,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
              K_eB)/real(dimPlex,pReal)
     else
       K_e = K_eA
-    endif
+    end if
     K_e = (K_e + eps*math_eye(int(cellDof))) * abs(detJ)
 #ifndef __INTEL_COMPILER
     pK_e(1:cellDOF**2) => K_e
@@ -624,7 +624,7 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
     CHKERRQ(err_PETSc)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
   call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
@@ -704,9 +704,9 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
                                          0.0_pReal,fieldBC%componentBC(field)%Value(face),timeinc_old)
           call ISDestroy(bcPoints,err_PETSc)
           CHKERRQ(err_PETSc)
-        endif
-      endif
-    enddo; enddo
+        end if
+      end if
+    end do; end do
     call DMRestoreLocalVector(dm_local,x_local,err_PETSc)
     CHKERRQ(err_PETSc)
 
@@ -716,7 +716,7 @@ subroutine FEM_mechanical_forward(guess,timeinc,timeinc_old,fieldBC)
     CHKERRQ(err_PETSc)
     call VecScale(solution_rate,timeinc_old**(-1),err_PETSc)
     CHKERRQ(err_PETSc)
-  endif
+  end if
   call VecCopy(solution_rate,solution,err_PETSc)
   CHKERRQ(err_PETSc)
   call VecScale(solution,timeinc,err_PETSc)
@@ -800,7 +800,7 @@ subroutine FEM_mechanical_updateCoords()
     call DMPlexGetPointLocal(dm_local, p, s, e, err_PETSc)
     CHKERRQ(err_PETSc)
     nodeCoords(1:dimPlex,p)=nodeCoords_linear(s+1:e)
-  enddo
+  end do
 
   call discretization_setNodeCoords(nodeCoords)
   call VecRestoreArrayF90(x_local,nodeCoords_linear,err_PETSc)
@@ -827,9 +827,9 @@ subroutine FEM_mechanical_updateCoords()
                                      x_scal(nOffset+1:nOffset+dimPlex))
           q = q+dimPlex
           nOffset = nOffset+dimPlex
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     call DMPlexVecRestoreClosure(dm_local,section,x_local,c,x_scal,err_PETSc)
     CHKERRQ(err_PETSc)
   end do

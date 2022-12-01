@@ -1783,6 +1783,6 @@ subroutine storeGeometry(ph)
     end do
   end do
 
-end subroutine
+end subroutine storeGeometry
 
 end submodule nonlocal
