@@ -95,7 +95,7 @@ subroutine materialpoint_init
     call phase_restartRead(fileHandle)
 
     call HDF5_closeFile(fileHandle)
-  endif
+  end if
 
 end subroutine materialpoint_init
 

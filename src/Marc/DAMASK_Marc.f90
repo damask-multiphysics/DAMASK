@@ -70,7 +70,7 @@ subroutine DAMASK_interface_init
   if (ierr /= 0) then
     print*, 'working directory "'//trim(wd)//'" does not exist'
     call quit(1)
-  endif
+  end if
   symmetricSolver = solverIsSymmetric()
 
 end subroutine DAMASK_interface_init
@@ -111,8 +111,8 @@ logical function solverIsSymmetric()
         s = s + verify(line(s+1:),' ')                                                              ! start of second chunk
         e = s + scan  (line(s+1:),' ')                                                              ! end of second chunk
       solverIsSymmetric = line(s:e) /= '1'
-    endif
-  enddo
+    end if
+  end do
 100 close(fileUnit)
   contains
 
@@ -134,7 +134,7 @@ logical function solverIsSymmetric()
       lc(i:i) = string(i:i)
       n = index(UPPER,lc(i:i))
       if (n/=0) lc(i:i) = LOWER(n:n)
-    enddo
+    end do
   end function lc
 
 end function solverIsSymmetric
@@ -299,7 +299,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                                   transpose(ffn)
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
                                   transpose(ffn1)
-  endif
+  end if
 
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1_pI32)                                                                  ! no openMP
@@ -309,7 +309,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     call materialpoint_initAll
     debug_Marc => config_debug%get_list('Marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
-  endif
+  end if
 
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
   if (lovl == 4 ) then                                                                              ! jacobian requested by marc
@@ -333,35 +333,35 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
         lastIncConverged = .true.
         outdatedByNewInc = .true.
         print'(a,i6,1x,i2)', '<< HYPELA2 >> new increment..! ',m(1),nn
-      endif
+      end if
     else if ( timinc < theDelta ) then                                                              ! >> cutBack <<
       lastIncConverged = .false.
       outdatedByNewInc = .false.
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
       print'(a,i6,1x,i2)', '<< HYPELA2 >> cutback detected..! ',m(1),nn
-    endif                                                                                           ! convergence treatment end
+    end if                                                                                          ! convergence treatment end
     flush(6)
 
     if (lastLovl /= lovl) then
       cycleCounter  = cycleCounter + 1
       !mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates
       !call mesh_build_ipCoordinates()                                                              ! update ip coordinates
-    endif
+    end if
     if (outdatedByNewInc) then
       computationMode = ior(computationMode,materialpoint_AGERESULTS)
       outdatedByNewInc = .false.
-    endif
+    end if
     if (lastIncConverged) then
       computationMode = ior(computationMode,materialpoint_BACKUPJACOBIAN)
       lastIncConverged = .false.
-    endif
+    end if
 
     theTime  = cptim
     theDelta = timinc
     theInc   = inc
 
-  endif
+  end if
   lastLovl = lovl
 
   call materialpoint_general(computationMode,ffn,ffn1,t(1),timinc,int(m(1)),int(nn),stress,ddsdde)
@@ -429,13 +429,13 @@ subroutine uedinc(inc,incsub)
       if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
         call nodvar(1,n,d_n(1:3,discretization_Marc_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
         if(nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
-      endif
-    enddo
+      end if
+    end do
 
     call discretization_Marc_UpdateNodeAndIpCoords(d_n)
     call materialpoint_results(int(inc),cptim)
 
     inc_written = int(inc)
-  endif
+  end if
 
 end subroutine uedinc

@@ -334,7 +334,7 @@ function discretization_grid_getInitialCondition(label) result(ic)
     ic_global = VTI_readDataset_real(IO_read(CLI_geomFile),label)
   else
     allocate(ic_global(0))                                                                          ! needed for IntelMPI
-  endif
+  end if
 
   call MPI_Gather(product(cells(1:2))*cells3Offset, 1_MPI_INTEGER_KIND,MPI_INTEGER,displs,&
                   1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)

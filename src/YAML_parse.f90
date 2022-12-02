@@ -764,7 +764,7 @@ end subroutine dct
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief decide whether next block is list or dict
+! @brief Decide whether next block is list or dict.
 !--------------------------------------------------------------------------------------------------
 recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
 
@@ -811,7 +811,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     end if
   end if
 
-end subroutine
+end subroutine decide
 
 
 !--------------------------------------------------------------------------------------------------

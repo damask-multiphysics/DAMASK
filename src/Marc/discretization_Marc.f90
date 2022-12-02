@@ -275,8 +275,8 @@ subroutine inputRead_fileFormat(fileFormat,fileContent)
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
       fileFormat = IO_intValue(fileContent(l),chunkPos,2)
       exit
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_fileFormat
 
@@ -302,8 +302,8 @@ subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
       initialcond = IO_intValue(fileContent(l),chunkPos,4)
       hypoelastic = IO_intValue(fileContent(l),chunkPos,5)
       exit
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_tableStyles
 
@@ -331,16 +331,16 @@ subroutine inputRead_matNumber(matNumber, &
         data_blocks = IO_intValue(fileContent(l+1),chunkPos,1)
       else
         data_blocks = 1
-      endif
+      end if
       allocate(matNumber(data_blocks), source = 0)
       do i = 0, data_blocks - 1
         j = i*(2+tableStyle) + 1
         chunkPos = IO_stringPos(fileContent(l+1+j))
         matNumber(i+1) = IO_intValue(fileContent(l+1+j),chunkPos,1)
-      enddo
+      end do
       exit
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_matNumber
 
@@ -368,8 +368,8 @@ subroutine inputRead_NnodesAndElements(nNodes,nElems,&
     elseif(IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = IO_stringPos(fileContent(l+1))
       nNodes = IO_IntValue (fileContent(l+1),chunkPos,2)
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_NnodesAndElements
 
@@ -411,12 +411,12 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
           if(IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then              ! line finished, read last value
             elemInCurrentSet = elemInCurrentSet + 1                                                 ! data ended
             exit
-          endif
-        enddo
-      endif
+          end if
+        end do
+      end if
       maxNelemInSet = max(maxNelemInSet, elemInCurrentSet)
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_NelemSets
 
@@ -448,8 +448,8 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
        elemSet = elemSet+1
        nameElemSet(elemSet)  = trim(IO_stringValue(fileContent(l),chunkPos,4))
        mapElemSet(:,elemSet) = continuousIntValues(fileContent(l+1:),size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_mapElemSets
 
@@ -484,17 +484,17 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
           j = j + 1
           chunkPos = IO_stringPos(fileContent(l+1+i+j))
           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
-        enddo
-      enddo
+        end do
+      end do
       exit
-    endif
-  enddo
+    end if
+  end do
 
   call math_sort(map_unsorted)
   allocate(FEM2DAMASK(minval(map_unsorted(1,:)):maxval(map_unsorted(1,:))),source=-1)
   do i = 1, nElems
     FEM2DAMASK(map_unsorted(1,i)) = map_unsorted(2,i)
-  enddo
+  end do
 
 end subroutine inputRead_mapElems
 
@@ -522,16 +522,16 @@ subroutine inputRead_mapNodes(FEM2DAMASK, &
       chunkPos = [1,1,10]
       do i = 1,nNodes
         map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
-      enddo
+      end do
       exit
-    endif
-  enddo
+    end if
+  end do
 
   call math_sort(map_unsorted)
   allocate(FEM2DAMASK(minval(map_unsorted(1,:)):maxval(map_unsorted(1,:))),source=-1)
   do i = 1, nNodes
     FEM2DAMASK(map_unsorted(1,i)) = map_unsorted(2,i)
-  enddo
+  end do
 
 end subroutine inputRead_mapNodes
 
@@ -560,10 +560,10 @@ subroutine inputRead_elemNodes(nodes, &
       do i=1,nNode
         m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
         nodes(1:3,m) = [(mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
-      enddo
+      end do
       exit
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine inputRead_elemNodes
 
@@ -596,17 +596,17 @@ subroutine inputRead_elemType(elem, &
         else
           t_ = mapElemtype(IO_stringValue(fileContent(l+1+i+j),chunkPos,2))
           if (t /= t_) call IO_error(191,IO_stringValue(fileContent(l+1+i+j),chunkPos,2),label1='type',ID1=t)
-        endif
+        end if
         remainingChunks = elem%nNodes - (chunkPos(1) - 2)
         do while(remainingChunks > 0)
           j = j + 1
           chunkPos = IO_stringPos(fileContent(l+1+i+j))
           remainingChunks = remainingChunks - chunkPos(1)
-        enddo
-      enddo
+        end do
+      end do
       exit
-    endif
-  enddo
+    end if
+  end do
 
   contains
 
@@ -686,7 +686,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
           do k = 1,chunkPos(1)-2
             inputRead_connectivityElem(k,e) = &
               discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
-          enddo
+          end do
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
             j = j + 1
@@ -694,14 +694,14 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
             do k = 1,chunkPos(1)
               inputRead_connectivityElem(nNodesAlreadyRead+k,e) = &
                 discretization_Marc_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
-            enddo
+            end do
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
-          enddo
-        endif
-      enddo
+          end do
+        end if
+      end do
       exit
-    endif
-  enddo
+    end if
+  end do
 
 end function inputRead_connectivityElem
 
@@ -749,12 +749,12 @@ subroutine inputRead_material(materialAt,&
           do i = 1,contInts(1)
             e = discretization_Marc_FEM2DAMASK_elem(contInts(1+i))
             materialAt(e) = ID + 1
-          enddo
+          end do
           if (initialcondTableStyle == 0) m = m + 1
-        enddo
-      endif
-    endif
-  enddo
+        end do
+      end if
+    end if
+  end do
 
   if(any(materialAt < 1)) call IO_error(180)
 
@@ -791,9 +791,9 @@ pure subroutine buildCells(connectivity,definition, &
     do c = 1, elem%NcellNodes
       realNode: if (count(elem%cellNodeParentNodeWeights(:,c) /= 0) == 1) then
         where(connectivity(:,:,e) == -c) connectivity(:,:,e) = connectivity_elem(c,e)
-      endif realNode
-    enddo
-  enddo
+      end if realNode
+    end do
+  end do
 
   nCellNode = maxval(connectivity_elem)
 
@@ -806,7 +806,7 @@ pure subroutine buildCells(connectivity,definition, &
     do c = 1, elem%NcellNodes
       if (count(elem%cellNodeParentNodeWeights(:,c) /= 0) == nParentNodes) &
         candidates_local = [candidates_local,c]
-    enddo
+    end do
     s = size(candidates_local)
 
     if (allocated(candidates_global)) deallocate(candidates_global)
@@ -822,8 +822,8 @@ pure subroutine buildCells(connectivity,definition, &
           if (elem%cellNodeParentNodeWeights(j,c) /= 0) then                                        ! real node 'j' partly defines cell node 'c'
             p = p + 1
             parentsAndWeights(p,1:2) = [connectivity_elem(j,e),elem%cellNodeParentNodeWeights(j,c)]
-          endif
-        enddo
+          end if
+        end do
         ! store (and order) real node IDs and their weights together with the element number and local ID
         do p = 1, nParentNodes
           m = maxloc(parentsAndWeights(:,1),1)
@@ -833,9 +833,9 @@ pure subroutine buildCells(connectivity,definition, &
           candidates_global(nParentNodes*2+1:nParentNodes*2+2,candidateID) = [e,c]
 
           parentsAndWeights(m,1) = -huge(parentsAndWeights(m,1))                                    ! out of the competition
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     ! sort according to real node IDs + weight (from left to right)
     call math_sort(candidates_global,sortDim=1)                                                     ! sort according to first column
@@ -847,13 +847,13 @@ pure subroutine buildCells(connectivity,definition, &
         do while (n+j<= size(candidates_local)*Nelem)
           if (candidates_global(p-1,n+j)/=candidates_global(p-1,n)) exit
           j = j + 1
-        enddo
+        end do
         e = n+j-1
         if (any(candidates_global(p,n:e)/=candidates_global(p,n))) &
           call math_sort(candidates_global(:,n:e),sortDim=p)
         n = e+1
-      enddo
-    enddo
+      end do
+    end do
 
     i = uniqueRows(candidates_global(1:2*nParentNodes,:))
     allocate(definition(nParentNodes-1)%parents(i,nParentNodes))
@@ -876,15 +876,15 @@ pure subroutine buildCells(connectivity,definition, &
         end where
 
         j = j+1
-      enddo
+      end do
       nCellNode = nCellNode + 1
       definition(nParentNodes-1)%parents(i,:) = parentsAndWeights(:,1)
       definition(nParentNodes-1)%weights(i,:) = parentsAndWeights(:,2)
       i = i + 1
       n = n+j
-    enddo
+    end do
 
-  enddo
+  end do
 
   contains
   !------------------------------------------------------------------------------------------------
@@ -906,10 +906,10 @@ pure subroutine buildCells(connectivity,definition, &
       do while (r+d<= size(A,2))
         if (any(A(:,r)/=A(:,r+d))) exit
         d = d+1
-      enddo
+      end do
       u = u+1
       r = r+d
-    enddo
+    end do
 
   end function uniqueRows
 
@@ -939,10 +939,10 @@ pure function buildCellNodes(node_elem)
         buildCellNodes(:,n) = buildCellNodes(:,n) &
                             + buildCellNodes(:,cellNodeDefinition(i)%parents(j,k)) &
                             * real(cellNodeDefinition(i)%weights(j,k),pReal)
-      enddo
+      end do
       buildCellNodes(:,n) = buildCellNodes(:,n)/real(sum(cellNodeDefinition(i)%weights(j,:)),pReal)
-    enddo
-  enddo
+    end do
+  end do
 
 end function buildCellNodes
 
@@ -970,9 +970,9 @@ pure function buildIPcoordinates(node_cell)
     do n = 1, size(connectivity_cell_reshaped,1)
       buildIPcoordinates(:,i) = buildIPcoordinates(:,i) &
                               + node_cell(:,connectivity_cell_reshaped(n,i))
-    enddo
+    end do
     buildIPcoordinates(:,i) = buildIPcoordinates(:,i)/real(size(connectivity_cell_reshaped,1),pReal)
-  enddo
+  end do
 
 end function buildIPcoordinates
 
@@ -1031,8 +1031,8 @@ pure function IPvolume(elem,node)
                         + dot_product((x7-x1),        math_cross((x5-x0),        (x7-x4)+(x3-x0)))
           IPvolume(i,e) = IPvolume(i,e)/12.0_pReal
       end select
-    enddo
-  enddo
+    end do
+  end do
 
 end function IPvolume
 
@@ -1075,11 +1075,11 @@ pure function IPareaNormal(elem,nElem,node)
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &
                                       + math_cross(nodePos(1:3,mod(n+0,m)+1) - nodePos(1:3,n), &
                                                    nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pReal
-            enddo
+            end do
         end select
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
 end function IPareaNormal
 
@@ -1109,10 +1109,10 @@ function IPneighborhood(elem)
         do n = 1, size(face_unordered)
           face(n,c) = minval(face_unordered)
           face_unordered(minloc(face_unordered)) = huge(face_unordered)
-        enddo
+        end do
         face(n:n+3,c) = [e,i,f]
-      enddo
-  enddo; enddo
+      end do
+  end do; end do
 
 !--------------------------------------------------------------------------------------------------
 ! sort face definitions
@@ -1125,17 +1125,17 @@ function IPneighborhood(elem)
       if(any(face(:c,s) /= face(:c,e))) then
         if(e-1/=s) call math_sort(face(:,s:e-1),sortDim=c)
         s = e
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   IPneighborhood = 0
   do c=1, size(face,2) - 1
     if(all(face(:n-1,c) == face(:n-1,c+1))) then
       IPneighborhood(:,face(n+2,c+1),face(n+1,c+1),face(n+0,c+1)) = face(n:n+3,c+0)
       IPneighborhood(:,face(n+2,c+0),face(n+1,c+0),face(n+0,c+0)) = face(n:n+3,c+1)
-    endif
-  enddo
+    end if
+  end do
 
 end function IPneighborhood
 
@@ -1171,8 +1171,8 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
         if (IO_stringValue(fileContent(l),chunkPos,1) == lookupName(i)) then                        ! found matching name
           continuousIntValues = lookupMap(:,i)                                                      ! return resp. entity list
           exit
-        endif
-      enddo
+        end if
+      end do
       exit
     elseif(containsRange(fileContent(l),chunkPos)) then
       first = IO_intValue(fileContent(l),chunkPos,1)
@@ -1180,20 +1180,20 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
       do i = first, last, sign(1,last-first)
         continuousIntValues(1) = continuousIntValues(1) + 1
         continuousIntValues(1+continuousIntValues(1)) = i
-      enddo
+      end do
       exit
     else
       do i = 1,chunkPos(1)-1                                                                        ! interpret up to second to last value
         continuousIntValues(1) = continuousIntValues(1) + 1
         continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,i)
-      enddo
+      end do
       if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,chunkPos(1))) /= 'c' ) then                 ! line finished, read last value
         continuousIntValues(1) = continuousIntValues(1) + 1
         continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,chunkPos(1))
         exit
-      endif
-    endif
-  enddo
+      end if
+    end if
+  end do
 
 end function continuousIntValues
 
@@ -1210,7 +1210,7 @@ logical function containsRange(str,chunkPos)
   containsRange = .False.
   if(chunkPos(1) == 3) then
     if(IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
-  endif
+  end if
 
 end function containsRange
 

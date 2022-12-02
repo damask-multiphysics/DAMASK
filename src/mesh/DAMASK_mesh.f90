@@ -311,7 +311,7 @@ program DAMASK_mesh
           write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                             solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
           flush(statUnit)
-        endif
+        end if
       end do subStepLooping
 
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc

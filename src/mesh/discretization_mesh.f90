@@ -140,7 +140,7 @@ subroutine discretization_mesh_init(restart)
     call DMClone(globalMesh,geomMesh,err_PETSc)
   else
     call DMPlexDistribute(globalMesh,0_pPETSCINT,sf,geomMesh,err_PETSc)
-  endif
+  end if
   CHKERRQ(err_PETSc)
 
   allocate(mesh_boundaries(mesh_Nboundaries), source = 0_pPETSCINT)
@@ -154,7 +154,7 @@ subroutine discretization_mesh_init(restart)
     mesh_boundaries(1:nFaceSets) = pFaceSets
     CHKERRQ(err_PETSc)
     call ISRestoreIndicesF90(faceSetIS,pFaceSets,err_PETSc)
-  endif
+  end if
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
@@ -182,7 +182,7 @@ subroutine discretization_mesh_init(restart)
   do j = 1, mesh_NcpElems
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo
+  end do
   materialAt = materialAt + 1_pPETSCINT
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
@@ -222,7 +222,7 @@ subroutine mesh_FEM_build_ipVolumes(dimPlex)
     call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,err_PETSc)
     CHKERRQ(err_PETSc)
     mesh_ipVolume(:,cell+1) = vol/real(mesh_maxNips,pReal)
-  enddo
+  end do
 
 end subroutine mesh_FEM_build_ipVolumes
 
@@ -258,11 +258,11 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
         do dirJ = 1_pPETSCINT, dimPlex
           mesh_ipCoordinates(dirI,qPt,cell+1) = mesh_ipCoordinates(dirI,qPt,cell+1) + &
                                                 pCellJ((dirI-1)*dimPlex+dirJ)*(qPoints(qOffset+dirJ) + 1.0_pReal)
-        enddo
-      enddo
+        end do
+      end do
       qOffset = qOffset + dimPlex
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine mesh_FEM_build_ipCoordinates
 
