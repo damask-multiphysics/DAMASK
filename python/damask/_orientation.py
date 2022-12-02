@@ -771,12 +771,24 @@ class Orientation(Rotation,Crystal):
 
         Examples
         --------
-        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
+        Inverse pole figure color of the e_3 direction for a crystal
+        in "Cube" orientation with cubic symmetry:
 
         >>> import damask
         >>> o = damask.Orientation(family='cubic')
         >>> o.IPF_color([0,0,1])
         array([1., 0., 0.])
+
+        Sample standard triangle for hexagonal symmetry:
+
+        >>> import damask
+        >>> from matplotlib import pyplot as plt
+        >>> o = damask.Orientation.from_random(shape=500000,family='hexagonal')
+        >>> coord = damask.util.project_equal_area(o.to_SST([0,0,1]))
+        >>> color = o.IPF_color([0,0,1])
+        >>> plt.scatter(coord[:,0],coord[:,1],color=color,s=.06)
+        >>> plt.axis('scaled')
+        >>> plt.show()
 
         """
         if np.array(vector).shape[-1] != 3:
@@ -807,7 +819,7 @@ class Orientation(Rotation,Crystal):
             in_SST_ = np.all(components >= 0.0,axis=-1)
 
         with np.errstate(invalid='ignore',divide='ignore'):
-            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5                # smoothen color ramps
+            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**(1./3.)            # smoothen color ramps
             rgb = np.clip(rgb,0.,1.)                                                                # clip intensity
             rgb /= np.max(rgb,axis=-1,keepdims=True)                                                # normalize to (HS)V = 1
         rgb[np.broadcast_to(~in_SST_[...,np.newaxis],rgb.shape)] = 0.0
