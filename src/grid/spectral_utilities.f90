@@ -1143,7 +1143,7 @@ subroutine selfTest()
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
     if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'tensor avg'
-  endif
+  end if
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) error stop 'FFT tensorField'
@@ -1157,7 +1157,7 @@ subroutine selfTest()
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
     if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'vector avg'
-  endif
+  end if
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) error stop 'FFT vectorField'
@@ -1171,7 +1171,7 @@ subroutine selfTest()
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
     if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) error stop 'scalar avg'
-  endif
+  end if
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) error stop 'FFT scalarField'
@@ -1218,6 +1218,7 @@ subroutine selfTest()
       integer, intent(in) :: n
       real(pReal), dimension(n) :: planeCosine
 
+
       planeCosine = cos(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
 
     end function planeCosine
@@ -1225,6 +1226,7 @@ subroutine selfTest()
     function planeSine(n)
       integer, intent(in) :: n
       real(pReal), dimension(n) :: planeSine
+
 
       planeSine = sin(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
 
