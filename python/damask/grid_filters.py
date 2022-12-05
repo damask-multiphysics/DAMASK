@@ -103,7 +103,7 @@ def divergence(size: _FloatSequence,
     k_s = _ks(size,f.shape[:3],True)
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    divergence_ = (_np.einsum('ijkl,ijkl ->ijk' if n==3 else
+    divergence_ = (_np.einsum('ijkl,ijkl ->ijk' if n == 3 else
                               'ijkm,ijklm->ijkl', k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->1, tensor 3x3->3
 
     return _np.fft.irfftn(divergence_,axes=(0,1,2),s=f.shape[:3])
@@ -131,7 +131,7 @@ def gradient(size: _FloatSequence,
     k_s = _ks(size,f.shape[:3],True)
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    gradient_ = (_np.einsum('ijkl,ijkm->ijkm' if n==1 else
+    gradient_ = (_np.einsum('ijkl,ijkm->ijkm' if n == 1 else
                             'ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                          # scalar 1->3, vector 3->3x3
 
     return _np.fft.irfftn(gradient_,axes=(0,1,2),s=f.shape[:3])
@@ -296,8 +296,8 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     origin    = mincorner - delta*.5
 
     # 1D/2D: size/origin combination undefined, set origin to 0.0
-    size  [_np.where(cells==1)] = origin[_np.where(cells==1)]*2.
-    origin[_np.where(cells==1)] = 0.0
+    size  [_np.where(cells == 1)] = origin[_np.where(cells == 1)]*2.
+    origin[_np.where(cells == 1)] = 0.0
 
     if cells.prod() != len(coordinates0):
         raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')
