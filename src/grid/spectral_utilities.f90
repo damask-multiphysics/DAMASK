@@ -1142,11 +1142,11 @@ subroutine selfTest()
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
-    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'tensor avg'
+    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'mismatch avg tensorField FFT <-> real'
   end if
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) error stop 'FFT tensorField'
+  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) error stop 'mismatch tensorField FFT/invFFT <-> real'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
@@ -1156,11 +1156,11 @@ subroutine selfTest()
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
-    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'vector avg'
+    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) error stop 'mismatch avg vectorField FFT <-> real'
   end if
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) error stop 'FFT vectorField'
+  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) error stop 'mismatch vectorField FFT/invFFT <-> real'
 
   call random_number(scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
@@ -1170,25 +1170,25 @@ subroutine selfTest()
                      MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   if (worldrank==0) then
-    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) error stop 'scalar avg'
+    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) error stop 'mismatch avg scalarField FFT <-> real'
   end if
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) error stop 'FFT scalarField'
+  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) error stop 'mismatch scalarField FFT/invFFT <-> real'
 
   call random_number(r)
   call MPI_Bcast(r,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   scalarField_real_ = r(1,1)
-  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pReal)   error stop 'grad constant'
+  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pReal)   error stop 'non-zero grad(const)'
 
   vectorField_real_ = spread(spread(spread(r(1,:),2,cells(1)),3,cells(2)),4,cells3)
-  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pReal) error stop 'div constant'
+  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pReal) error stop 'non-zero div(const)'
 
   tensorField_real_ = spread(spread(spread(r,3,cells(1)),4,cells(2)),5,cells3)
-  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pReal) error stop 'RMS div constant'
-  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pReal)       error stop 'RMS curl constant'
+  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pReal) error stop 'non-zero RMS div(const)'
+  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pReal)       error stop 'non-zero RMS curl(const)'
 
   if (cells(1) > 2 .and.  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID) then
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
