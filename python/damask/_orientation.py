@@ -627,7 +627,7 @@ class Orientation(Rotation,Crystal):
         weights : numpy.ndarray, shape (self.shape), optional
             Relative weights of orientations.
         return_cloud : bool, optional
-            Return the set of symmetrically equivalent orientations that was used in averaging.
+            Return the specific (symmetrically equivalent) orientations that were averaged.
             Defaults to False.
 
         Returns
@@ -635,7 +635,7 @@ class Orientation(Rotation,Crystal):
         average : Orientation
             Weighted average of original Orientation field.
         cloud : Orientations, conditional
-            Set of symmetrically equivalent orientations that were used in averaging.
+            Symmetrically equivalent version of each orientation that were actually used in averaging.
 
         References
         ----------
@@ -660,7 +660,7 @@ class Orientation(Rotation,Crystal):
                proper: bool = False,
                return_operators: bool = False) -> np.ndarray:
         """
-        Rotate vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
+        Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
         Parameters
         ----------
@@ -679,7 +679,7 @@ class Orientation(Rotation,Crystal):
         -------
         vector_SST : numpy.ndarray, shape (...,3)
             Rotated vector falling into SST.
-        operators : numpy.ndarray of int, shape (...), conditional
+        operator : numpy.ndarray of int, shape (...), conditional
             Index of symmetrically equivalent orientation that rotated vector to SST.
 
         """
@@ -749,12 +749,12 @@ class Orientation(Rotation,Crystal):
                   in_SST: bool = True,
                   proper: bool = False) -> np.ndarray:
         """
-        Map vector to RGB color within standard stereographic triangle of own symmetry.
+        Map lab frame vector to RGB color within standard stereographic triangle of own symmetry.
 
         Parameters
         ----------
         vector : numpy.ndarray, shape (...,3)
-            Vector to colorize.
+            Lab frame vector to colorize.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         in_SST : bool, optional
@@ -771,8 +771,8 @@ class Orientation(Rotation,Crystal):
 
         Examples
         --------
-        Inverse pole figure color of the e_3 direction for a crystal
-        in "Cube" orientation with cubic symmetry:
+        Inverse pole figure color of the e_3 lab direction for a
+        crystal in "Cube" orientation with cubic symmetry:
 
         >>> import damask
         >>> o = damask.Orientation(family='cubic')
@@ -783,9 +783,10 @@ class Orientation(Rotation,Crystal):
 
         >>> import damask
         >>> from matplotlib import pyplot as plt
+        >>> lab = [0,0,1]
         >>> o = damask.Orientation.from_random(shape=500000,family='hexagonal')
-        >>> coord = damask.util.project_equal_area(o.to_SST([0,0,1]))
-        >>> color = o.IPF_color([0,0,1])
+        >>> coord = damask.util.project_equal_area(o.to_SST(lab))
+        >>> color = o.IPF_color(lab)
         >>> plt.scatter(coord[:,0],coord[:,1],color=color,s=.06)
         >>> plt.axis('scaled')
         >>> plt.show()
