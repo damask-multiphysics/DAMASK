@@ -288,15 +288,13 @@ end subroutine grid_damage_spectral_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
+subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-    in
-  real(pReal), dimension( &
-    XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
+    residual_subdomain
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
-  real(pReal), dimension( &
-    X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(out) :: &
     r                                                                                               !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc

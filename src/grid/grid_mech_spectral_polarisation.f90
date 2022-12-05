@@ -558,14 +558,14 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in, FandF_tau, &
+subroutine formResidual(residual_subdomain, FandF_tau, &
                         r, dummy,err_PETSc)
 
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  real(pReal), dimension(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE), &
-    target, intent(in) :: FandF_tau
-  real(pReal), dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE),&
-    target, intent(out) :: r                                                                        !< residuum field
+  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: residual_subdomain                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+  real(pReal), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(in) :: &
+    FandF_tau                                                                                       !< deformation gradient field
+  real(pReal), dimension(3,3,2,cells(1),cells(2),cells3), target, intent(out) :: &
+    r                                                                                               !< residuum field
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
@@ -582,14 +582,10 @@ subroutine formResidual(in, FandF_tau, &
     i, j, k, e
 
 
-  F       => FandF_tau(1:3,1:3,1,&
-                       XG_RANGE,YG_RANGE,ZG_RANGE)
-  F_tau   => FandF_tau(1:3,1:3,2,&
-                       XG_RANGE,YG_RANGE,ZG_RANGE)
-  r_F     => r(1:3,1:3,1,&
-               X_RANGE, Y_RANGE, Z_RANGE)
-  r_F_tau => r(1:3,1:3,2,&
-               X_RANGE, Y_RANGE, Z_RANGE)
+  F       => FandF_tau(1:3,1:3,1,1:cells(1),1:cells(2),1:cells3)
+  F_tau   => FandF_tau(1:3,1:3,2,1:cells(1),1:cells(2),1:cells3)
+  r_F     => r(1:3,1:3,1,1:cells(1),1:cells(2),1:cells3)
+  r_F_tau => r(1:3,1:3,2,1:cells(1),1:cells(2),1:cells3)
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,F_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)

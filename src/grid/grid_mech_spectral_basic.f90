@@ -496,14 +496,15 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in, F, &
+subroutine formResidual(residual_subdomain, F, &
                         r, dummy, err_PETSc)
 
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  real(pReal), dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
-    intent(in) :: F                                                                                 !< deformation gradient field
-  real(pReal), dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
-    intent(out) :: r                                                                                !< residuum field
+  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+    residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
+    F                                                                                               !< deformation gradient field
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
+    r                                                                                               !< residuum field
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 
