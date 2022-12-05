@@ -1,6 +1,6 @@
-!----------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
-!----------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 submodule(phase) damage
 
   type :: tDamageParameters
@@ -308,6 +308,35 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
   end function damper
 
 end function integrateDamageState
+
+
+module subroutine damage_restartWrite(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  select case(phase_damage(ph))
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+      call HDF5_write(damageState(ph)%state,groupHandle,'omega_damage')
+  end select
+
+end subroutine damage_restartWrite
+
+
+module subroutine damage_restartRead(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  select case(phase_damage(ph))
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+  call HDF5_read(damageState(ph)%state0,groupHandle,'omega_damage')
+  end select
+
+
+end subroutine damage_restartRead
 
 
 !----------------------------------------------------------------------------------------------

@@ -281,7 +281,7 @@ end subroutine grid_thermal_spectral_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current solver and constitutive data for restart to file
+!> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_restartWrite
 
@@ -313,7 +313,7 @@ end subroutine grid_thermal_spectral_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the spectral thermal residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
 
@@ -356,7 +356,7 @@ end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief update reference viscosity and conductivity
+!> @brief Update reference viscosity and conductivity.
 !--------------------------------------------------------------------------------------------------
 subroutine updateReference()
 
