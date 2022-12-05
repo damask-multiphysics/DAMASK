@@ -80,11 +80,15 @@ module subroutine damage_partition(ce)
   integer, intent(in) :: ce
 
   real(pReal) :: phi
+  integer :: co
 
 
   if(damageState_h(material_homogenizationID(ce))%sizeState < 1) return
   phi = damagestate_h(material_homogenizationID(ce))%state(1,material_homogenizationEntry(ce))
-  call phase_set_phi(phi,1,ce)
+  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+    call phase_set_phi(phi,co,ce)
+  end do
+
 
 end subroutine damage_partition
 

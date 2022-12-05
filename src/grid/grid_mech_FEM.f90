@@ -111,10 +111,12 @@ subroutine grid_mechanical_FEM_init
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   real(pReal), dimension(3,3,3,3) :: devNull
+  real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
+  real(pReal), dimension(3,product(cells(1:2))*cells3) :: temp3n
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-    u_current,u_lastInc
+    u,u_lastInc
   PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
@@ -220,7 +222,7 @@ subroutine grid_mechanical_FEM_init
   CHKERRQ(err_PETSc)
   call VecSet(solution_rate   ,0.0_pReal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -260,22 +262,26 @@ subroutine grid_mechanical_FEM_init
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call HDF5_read(F,groupHandle,'F')
-    call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
-    call HDF5_read(u_current,groupHandle,'u')
-    call HDF5_read(u_lastInc,groupHandle,'u_lastInc')
+    call HDF5_read(temp33n,groupHandle,'F')
+    F = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
+    call HDF5_read(temp33n,groupHandle,'F_lastInc')
+    F_lastInc = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
+    call HDF5_read(temp3n,groupHandle,'u')
+    u = reshape(temp3n,[3,cells(1),cells(2),cells3])
+    call HDF5_read(temp3n,groupHandle,'u_lastInc')
+    u_lastInc = reshape(temp3n,[3,cells(1),cells(2),cells3])
 
   elseif (CLI_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
     F         = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)
-  endif restartRead
+  end if restartRead
 
   homogenization_F0 = reshape(F_lastInc, [3,3,product(cells(1:2))*cells3])                          ! set starting condition for homogenization_mechanical_response
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
                                       0.0_pReal)                                                    ! time increment
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -292,7 +298,7 @@ subroutine grid_mechanical_FEM_init
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
-  endif restartRead2
+  end if restartRead2
 
 end subroutine grid_mechanical_FEM_init
 
@@ -354,10 +360,10 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     rotation_BC
   PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-    u_current,u_lastInc
+    u,u_lastInc
 
 
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -381,7 +387,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
                + merge(.0_pReal,(deformation_BC%values - F_aim_lastInc)/t_remaining,deformation_BC%mask)
-    endif
+    end if
 
     if (guess) then
       call VecWAXPY(solution_rate,-1.0_pReal,solution_lastInc,solution_current,err_PETSc)
@@ -391,14 +397,14 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     else
       call VecSet(solution_rate,0.0_pReal,err_PETSc)
       CHKERRQ(err_PETSc)
-    endif
+    end if
     call VecCopy(solution_current,solution_lastInc,err_PETSc)
     CHKERRQ(err_PETSc)
 
     F_lastInc = F
 
     homogenization_F0 = reshape(F, [3,3,product(cells(1:2))*cells3])
-  endif
+  end if
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
@@ -410,7 +416,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
 
   call VecAXPY(solution_current,Delta_t,solution_rate,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -441,10 +447,10 @@ subroutine grid_mechanical_FEM_restartWrite
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:,:), pointer :: u_current,u_lastInc
+  PetscScalar, dimension(:,:,:,:), pointer :: u,u_lastInc
 
 
-  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecGetArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -453,10 +459,10 @@ subroutine grid_mechanical_FEM_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  call HDF5_write(F,groupHandle,'F')
-  call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
-  call HDF5_write(u_current,groupHandle,'u')
-  call HDF5_write(u_lastInc,groupHandle,'u_lastInc')
+  call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
+  call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
+  call HDF5_write(reshape(u,[3,product(cells(1:2))*cells3]),groupHandle,'u')
+  call HDF5_write(reshape(u_lastInc,[3,product(cells(1:2))*cells3]),groupHandle,'u_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
@@ -471,9 +477,9 @@ subroutine grid_mechanical_FEM_restartWrite
     call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
-  endif
+  end if
 
-  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u_current,err_PETSc)
+  call DMDAVecRestoreArrayF90(mechanical_grid,solution_current,u,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -511,7 +517,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,e
     reason = -1
   else
     reason = 0
-  endif
+  end if
 
   print'(/,1x,a)', '... reporting .............................................................'
   print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
@@ -561,7 +567,7 @@ subroutine formResidual(da_local,x_local, &
     print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
-  endif newIteration
+  end if newIteration
 
 !--------------------------------------------------------------------------------------------------
 ! get deformation gradient
@@ -572,9 +578,9 @@ subroutine formResidual(da_local,x_local, &
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
-    enddo; enddo; enddo
+    end do; end do; end do
     F(1:3,1:3,i,j,k-cells3Offset) = params%rotation_BC%rotate(F_aim,active=.true.) + transpose(matmul(BMat,x_elem))
-  enddo; enddo; enddo
+  end do; end do; end do
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -605,7 +611,7 @@ subroutine formResidual(da_local,x_local, &
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       x_elem(ctr,1:3) = x_scal(0:2,i+ii,j+jj,k+kk)
-    enddo; enddo; enddo
+    end do; end do; end do
     ele = ele + 1
     f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,i,j,k-cells3Offset)))*detJ + &
              matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
@@ -615,8 +621,8 @@ subroutine formResidual(da_local,x_local, &
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
       ctr = ctr + 1
       r(0:2,i+ii,j+jj,k+kk) = r(0:2,i+ii,j+jj,k+kk) + f_elem(ctr,1:3)
-    enddo; enddo; enddo
-  enddo; enddo; enddo
+    end do; end do; end do
+  end do; end do; end do
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
@@ -690,7 +696,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
       col(MatStencil_j,ctr+16) = j+jj
       col(MatStencil_k,ctr+16) = k+kk
       col(MatStencil_c,ctr+16) = 2
-    enddo; enddo; enddo
+    end do; end do; end do
     row = col
     ce = ce + 1
     K_ele = 0.0_pReal
@@ -709,7 +715,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
     call MatSetValuesStencil(Jac,24_pPETScInt,row,24_pPetscInt,col,K_ele,ADD_VALUES,err_PETSc)
     CHKERRQ(err_PETSc)
-  enddo; enddo; enddo
+  end do; end do; end do
   call MatAssemblyBegin(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY,err_PETSc)
@@ -733,7 +739,7 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
     x_scal(0:2,i-1,j-1,k-1) = discretization_IPcoords(1:3,ce)
-  enddo; enddo; enddo
+  end do; end do; end do
   call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)                                                                                ! initialize to undeformed coordinates (ToDo: use ip coordinates)
   call MatNullSpaceCreateRigidBody(coordinates,matnull,err_PETSc)

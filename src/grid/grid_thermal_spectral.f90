@@ -48,7 +48,7 @@ module grid_thermal_spectral
   SNES :: SNES_thermal
   Vec :: solution_vec
   real(pReal), dimension(:,:,:), allocatable :: &
-    T_current, &                                                                                    !< field of current temperature
+    T, &                                                                                            !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
     T_stagInc, &                                                                                    !< field of staggered temperature
     dotT_lastInc
@@ -78,6 +78,7 @@ subroutine grid_thermal_spectral_init()
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
+  real(pReal), dimension(1,product(cells(1:2))*cells3) :: tempN
   type(tDict), pointer :: &
     num_grid
 
@@ -107,10 +108,10 @@ subroutine grid_thermal_spectral_init()
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  T_current = discretization_grid_getInitialCondition('T')
-  T_lastInc = T_current
-  T_stagInc = T_current
-  dotT_lastInc = 0.0_pReal * T_current
+  T = discretization_grid_getInitialCondition('T')
+  T_lastInc = T
+  T_stagInc = T
+  dotT_lastInc = 0.0_pReal * T
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -151,20 +152,23 @@ subroutine grid_thermal_spectral_init()
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(T_current,groupHandle,'T',.false.)
-    call HDF5_read(T_lastInc,groupHandle,'T_lastInc',.false.)
-    call HDF5_read(dotT_lastInc,groupHandle,'dotT_lastInc',.false.)
+    call HDF5_read(tempN,groupHandle,'T',.false.)
+    T = reshape(tempN,[cells(1),cells(2),cells3])
+    call HDF5_read(tempN,groupHandle,'T_lastInc',.false.)
+    T_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
+    call HDF5_read(tempN,groupHandle,'dotT_lastInc',.false.)
+    dotT_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
   end if restartRead
 
   ce = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T_current(i,j,k),0.0_pReal,ce)
+    call homogenization_thermal_setField(T(i,j,k),0.0_pReal,ce)
   end do; end do; end do
 
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  T_PETSc = T_current
+  T_PETSc = T
   call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -207,20 +211,20 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
   end if
-  stagNorm = maxval(abs(T_current - T_stagInc))
+  stagNorm = maxval(abs(T - T_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*maxval(T_current))
+  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*maxval(T))
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  T_stagInc = T_current
+  T_stagInc = T
 
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
+    call homogenization_thermal_setField(T(i,j,k),(T(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
   end do; end do; end do
 
   call VecMin(solution_vec,devNull,T_min,err_PETSc)
@@ -250,7 +254,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
 
   if (cutBack) then
-    T_current = T_lastInc
+    T = T_lastInc
     T_stagInc = T_lastInc
 
 !--------------------------------------------------------------------------------------------------
@@ -259,17 +263,17 @@ subroutine grid_thermal_spectral_forward(cutBack)
     CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    T_PETSc = T_current
+    T_PETSc = T
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      call homogenization_thermal_setField(T_current(i,j,k),dotT_lastInc(i,j,k),ce)
+      call homogenization_thermal_setField(T(i,j,k),dotT_lastInc(i,j,k),ce)
     end do; end do; end do
   else
-    dotT_lastInc = (T_current - T_lastInc)/params%Delta_t
-    T_lastInc = T_current
+    dotT_lastInc = (T - T_lastInc)/params%Delta_t
+    T_lastInc = T
     call updateReference
   end if
 
@@ -277,7 +281,7 @@ end subroutine grid_thermal_spectral_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current solver and constitutive data for restart to file
+!> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_restartWrite
 
@@ -295,9 +299,9 @@ subroutine grid_thermal_spectral_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
-  call HDF5_write(T,groupHandle,'T')
-  call HDF5_write(T_lastInc,groupHandle,'T_lastInc')
-  call HDF5_write(dotT_lastInc,groupHandle,'dotT_lastInc')
+  call HDF5_write(reshape(T,[1,product(cells(1:2))*cells3]),groupHandle,'T')
+  call HDF5_write(reshape(T_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'T_lastInc')
+  call HDF5_write(reshape(dotT_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'dotT_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
@@ -320,7 +324,7 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
     x_scal
   PetscScalar, dimension( &
     X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-    r
+    r                                                                                               !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc
 
@@ -328,10 +332,8 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   real(pReal), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
-  T_current = x_scal
-!--------------------------------------------------------------------------------------------------
-! evaluate polarization field
-  vectorField = utilities_ScalarGradient(T_current)
+  T = x_scal
+  vectorField = utilities_ScalarGradient(T)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
@@ -342,13 +344,11 @@ subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
     r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_T(ce)) &
-             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
-             + mu_ref*T_current(i,j,k)
+             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T(i,j,k)) &
+             + mu_ref*T(i,j,k)
   end do; end do; end do
 
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  r = T_current &
+  r = T &
     - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
   err_PETSc = 0
 
@@ -356,7 +356,7 @@ end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief update reference viscosity and conductivity
+!> @brief Update reference viscosity and conductivity.
 !--------------------------------------------------------------------------------------------------
 subroutine updateReference()
 

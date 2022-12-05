@@ -574,7 +574,7 @@ def _docstringer(docstring: _Union[str, _Callable],
         shift = min([len(line)-len(line.lstrip(' '))-indent for line in content])
         extra = '\n'.join([(line[shift:] if shift > 0 else
                           f'{" "*-shift}{line}') for line in content])
-        docstring_ = _re.sub(fr'(^([ ]*){key}\s*\n\2{"-"*len(key)}[\n ]*[A-Za-z0-9 ]*: ([^\n]+\n)*)',
+        docstring_ = _re.sub(fr'(^([ ]*){key}\s*\n\2{"-"*len(key)}[\n ]*[A-Za-z0-9_ ]*: ([^\n]+\n)*)',
                              fr'\1{extra}\n',
                              docstring_,flags=_re.MULTILINE)
 
@@ -590,7 +590,7 @@ def _docstringer(docstring: _Union[str, _Callable],
                             +(return_class.__name__ if not isinstance(return_class,str) else return_class)
                            )
 
-        return _re.sub(r'(^([ ]*)Returns\s*\n\2-------\s*\n[ ]*[A-Za-z0-9 ]*: )(.*)\n',
+        return _re.sub(r'(^([ ]*)Returns\s*\n\2-------\s*\n[ ]*[A-Za-z0-9_ ]*: )(.*)\n',
                            fr'\1{return_type_}\n',
                            docstring_,flags=_re.MULTILINE)
 
@@ -793,7 +793,7 @@ def tail_repack(extended: _Union[str, _Sequence[str]],
 
     Parameters
     ----------
-    extended : (list of) str
+    extended : (sequence of) str
         Extended string list with potentially autosplitted tailing string relative to `existing`.
     existing : list of str
         Base string list.
@@ -811,9 +811,9 @@ def tail_repack(extended: _Union[str, _Sequence[str]],
         ['a','new','shiny','e','n','t','r','y']
 
     """
-    return [extended] if isinstance(extended,str) else existing + \
-         ([''.join(extended[len(existing):])] if _np.prod([len(i) for i in extended[len(existing):]]) == 1 else
-          list(extended[len(existing):]))
+    new = extended[len(existing):]
+    return [extended] if isinstance(extended,str) else \
+           existing + list([''.join(new)] if _np.prod([len(i) for i in new]) == 1 else new)
 
 
 def aslist(arg: _Union[_IntCollection, int, None]) -> _List:

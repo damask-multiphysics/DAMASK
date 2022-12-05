@@ -116,7 +116,10 @@ class VTK:
         """
         s = vtk.vtkStringArray()
         s.SetName('comments')
-        for c in util.tail_repack(comments,self.comments):
+        comments_ = util.tail_repack(comments,self.comments) if comments[:len(self.comments)] == self.comments else \
+                    [comments] if isinstance(comments,str) else \
+                    comments
+        for c in comments_:
             s.InsertNextValue(c)
         self.vtk_data.GetFieldData().AddArray(s)
 
@@ -547,9 +550,11 @@ class VTK:
 
         Notes
         -----
-            See http://compilatrix.com/article/vtk-1 for further ideas.
+        The first component is shown when visualizing vector datasets
+        (this includes tensor datasets because they are flattened).
 
         """
+        # See http://compilatrix.com/article/vtk-1 for possible improvements.
         try:
             import wx
             _ = wx.App(False)                                                                       # noqa

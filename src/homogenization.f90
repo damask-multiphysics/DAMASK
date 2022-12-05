@@ -406,6 +406,9 @@ subroutine homogenization_restartWrite(fileHandle)
 
     call HDF5_write(homogState(ho)%state,groupHandle(2),'omega_mechanical') ! ToDo: should be done by mech
 
+    if(damageState_h(ho)%sizeState > 0) &
+      call HDF5_write(damageState_h(ho)%state,groupHandle(2),'omega_damage') ! ToDo: should be done by mech
+
     call HDF5_closeGroup(groupHandle(2))
 
   end do
@@ -432,6 +435,9 @@ subroutine homogenization_restartRead(fileHandle)
     groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
 
     call HDF5_read(homogState(ho)%state0,groupHandle(2),'omega_mechanical') ! ToDo: should be done by mech
+
+    if(damageState_h(ho)%sizeState > 0) &
+      call HDF5_read(damageState_h(ho)%state0,groupHandle(2),'omega_damage') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
 

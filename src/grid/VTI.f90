@@ -222,7 +222,7 @@ subroutine cellsSizeOrigin(c,s,o,header)
   temp = getXMLValue(header,'Origin')
   o = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
 
-end subroutine
+end subroutine cellsSizeOrigin
 
 
 !--------------------------------------------------------------------------------------------------
@@ -421,7 +421,7 @@ pure function getXMLValue(line,key)
     end if
   end if
 
-end function
+end function getXMLValue
 
 
 !--------------------------------------------------------------------------------------------------

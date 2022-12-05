@@ -26,11 +26,8 @@ class Rotation:
     - Coordinate frames are right-handed.
     - A rotation angle ω is taken to be positive for a counterclockwise rotation
       when viewing from the end point of the rotation axis towards the origin.
-    - Rotations will be interpreted in the passive sense.
-    - Euler angle triplets are implemented using the Bunge convention,
-      with angular ranges of [0,2π], [0,π], [0,2π].
-    - The rotation angle ω is limited to the interval [0,π].
-    - The real part of a quaternion is positive, Re(q) ≥ 0
+    - Rotations will be interpreted in the passive sense, i.e. as rotation of
+      the coordinate frame.
     - P = -1 (as default).
 
     Examples
@@ -878,6 +875,10 @@ class Rotation:
             Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
         reciprocal : bool, optional
             Basis vectors are given in reciprocal (instead of real) space. Defaults to False.
+
+        Returns
+        -------
+        new : damask.Rotation
 
         """
         om = np.array(basis,dtype=float)
