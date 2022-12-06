@@ -113,7 +113,7 @@ pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
 
   associate(prm => param(ph))
 
-    mu = lattice_isotropic_mu(elastic_C66(ph,en),phase_lattice(ph),isotropic_bound)
+    mu = lattice_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 
@@ -134,7 +134,7 @@ pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
 
   associate(prm => param(ph))
 
-    nu = lattice_isotropic_nu(elastic_C66(ph,en),phase_lattice(ph),isotropic_bound)
+    nu = lattice_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
 
   end associate
 

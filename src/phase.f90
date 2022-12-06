@@ -347,7 +347,6 @@ module phase
     phase_K_T, &
     phase_mu_phi, &
     phase_mu_T, &
-    phase_lattice_structure, &
     phase_results, &
     phase_allocateState, &
     phase_forward, &
@@ -433,20 +432,6 @@ subroutine phase_init
   call crystallite_init()
 
 end subroutine phase_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Get lattice structure for a given phase
-!--------------------------------------------------------------------------------------------------
-function phase_lattice_structure(co,ce) result(lattice)
-
-  integer, intent(in) :: co, ce
-
-  character(len=:), allocatable :: lattice
-
-  lattice = phase_lattice(material_phaseID(co,ce))
-
-end function phase_lattice_structure
 
 
 !--------------------------------------------------------------------------------------------------
