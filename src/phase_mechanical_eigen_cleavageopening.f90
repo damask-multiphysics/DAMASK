@@ -19,7 +19,7 @@ module function damage_anisobrittle_init() result(myKinematics)
 
 
   myKinematics = kinematics_active2('anisobrittle')
-  if(count(myKinematics) == 0) return
+  if (count(myKinematics) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:cleavageopening init  -+>>>'
   print'(/,a,i2)', ' # phases: ',count(myKinematics); flush(IO_STDOUT)

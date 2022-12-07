@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
-!> @brief Polynomial representation for variable data
+!> @brief Polynomial representation for variable data.
 !--------------------------------------------------------------------------------------------------
 module polynomials
   use prec
@@ -19,8 +19,8 @@ module polynomials
   end type tPolynomial
 
   interface polynomial
-    module procedure polynomial_from_dict
     module procedure polynomial_from_coef
+    module procedure polynomial_from_dict
   end interface polynomial
 
   public :: &
@@ -43,7 +43,7 @@ end subroutine polynomials_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize a Polynomial from Coefficients.
+!> @brief Initialize a polynomial from coefficients.
 !--------------------------------------------------------------------------------------------------
 pure function polynomial_from_coef(coef,x_ref) result(p)
 
@@ -59,7 +59,7 @@ end function polynomial_from_coef
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize a Polynomial from a Dictionary with Coefficients.
+!> @brief Initialize a polynomial from a dictionary with coefficients.
 !--------------------------------------------------------------------------------------------------
 function polynomial_from_dict(dict,y,x) result(p)
 
@@ -93,7 +93,7 @@ end function polynomial_from_dict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Evaluate a Polynomial.
+!> @brief Evaluate a polynomial.
 !> @details https://nvlpubs.nist.gov/nistpubs/jres/71b/jresv71bn1p11_a1b.pdf (eq. 1.2)
 !--------------------------------------------------------------------------------------------------
 pure function eval(self,x) result(y)

@@ -179,7 +179,7 @@ subroutine grid_mechanical_FEM_init
   localK            = 0_pPetscInt
   localK(worldrank) = int(cells3,pPetscInt)
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)
-  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
@@ -252,16 +252,16 @@ subroutine grid_mechanical_FEM_init
 
     call HDF5_read(P_aim,groupHandle,'P_aim',.false.)
     call MPI_Bcast(P_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F_aim,groupHandle,'F_aim',.false.)
     call MPI_Bcast(F_aim,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F_aim_lastInc,groupHandle,'F_aim_lastInc',.false.)
     call MPI_Bcast(F_aim_lastInc,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(temp33n,groupHandle,'F')
     F = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
     call HDF5_read(temp33n,groupHandle,'F_lastInc')
@@ -290,10 +290,10 @@ subroutine grid_mechanical_FEM_init
     print'(1x,a,i0,a)', 'reading more restart data of increment ', CLI_restartInc, ' from file'
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
-    if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
@@ -590,7 +590,7 @@ subroutine formResidual(da_local,x_local, &
                                       P_av,C_volAvg,devNull, &
                                       F,params%Delta_t,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-  if(err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling

@@ -596,7 +596,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
     dotState_last(1:sizeDotState,1) = dotState
 
     broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
-    if(broken) exit iteration
+    if (broken) exit iteration
 
     dotState = plastic_dotState(Delta_t,ph,en)
     if (any(IEEE_is_NaN(dotState))) exit iteration
@@ -677,7 +677,7 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result
 #endif
 
   broken = plastic_deltaState(ph,en)
-  if(broken) return
+  if (broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
 
@@ -720,10 +720,10 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
 #endif
 
   broken = plastic_deltaState(ph,en)
-  if(broken) return
+  if (broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
-  if(broken) return
+  if (broken) return
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -852,13 +852,13 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
 #endif
 
     broken = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),subFp0,subFi0,Delta_t*C(stage), ph,en)
-    if(broken) exit
+    if (broken) exit
 
     dotState = plastic_dotState(Delta_t*C(stage), ph,en)
     if (any(IEEE_is_NaN(dotState))) exit
 
   end do
-  if(broken) return
+  if (broken) return
 
 
   plastic_RKdotState(1:sizeDotState,size(B)) = dotState
@@ -869,15 +869,15 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
   plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
 #endif
 
-  if(present(DB)) &
+  if (present(DB)) &
     broken = .not. converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
                              plasticState(ph)%state(1:sizeDotState,en), &
                              plasticState(ph)%atol(1:sizeDotState))
 
-  if(broken) return
+  if (broken) return
 
   broken = plastic_deltaState(ph,en)
-  if(broken) return
+  if (broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
 

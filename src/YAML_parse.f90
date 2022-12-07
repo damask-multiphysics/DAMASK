@@ -118,7 +118,7 @@ recursive function parse_flow(YAML_flow) result(node)
       d = s + scan(flow_string(s+1:),':')
       e = d + find_end(flow_string(d+1:),'}')
       key = trim(adjustl(flow_string(s+1:d-1)))
-      if(quotedString(key)) key = key(2:len(key)-1)
+      if (quotedString(key)) key = key(2:len(key)-1)
       myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
 
       select type (node)
@@ -143,7 +143,7 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          if(quotedString(flow_string)) then
+          if (quotedString(flow_string)) then
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
@@ -198,7 +198,7 @@ logical function quotedString(line)
 
   if (scan(line(:1),IO_QUOTES) == 1) then
     quotedString = .true.
-    if(line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
+    if (line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
   end if
 
 end function quotedString
@@ -245,7 +245,7 @@ integer function indentDepth(line,offset)
   integer, optional,intent(in) :: offset
 
   indentDepth = verify(line,IO_WHITESPACE) -1
-  if(present(offset)) indentDepth = indentDepth + offset
+  if (present(offset)) indentDepth = indentDepth + offset
 
 end function indentDepth
 
@@ -285,7 +285,7 @@ logical function isListItem(line)
   character(len=*), intent(in) :: line
 
   isListItem = .false.
-  if(len_trim(adjustl(line))> 2 .and. index(trim(adjustl(line)), '-') == 1) then
+  if (len_trim(adjustl(line))> 2 .and. index(trim(adjustl(line)), '-') == 1) then
     isListItem = scan(trim(adjustl(line)),' ') == 2
   else
     isListItem = trim(adjustl(line)) == '-'
@@ -302,8 +302,8 @@ logical function isKeyValue(line)
   character(len=*), intent(in) :: line
   isKeyValue = .false.
 
-  if( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
-    if(index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
+  if ( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
+    if (index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
   end if
 
 end function isKeyValue
@@ -317,7 +317,7 @@ logical function isKey(line)
 
   character(len=*), intent(in) :: line
 
-  if(len(IO_rmComment(line)) == 0) then
+  if (len(IO_rmComment(line)) == 0) then
     isKey = .false.
   else
     isKey = index(IO_rmComment(line),':',back=.false.) == len(IO_rmComment(line)) .and. &
@@ -354,7 +354,7 @@ subroutine skip_empty_lines(blck,s_blck)
   empty = .true.
   do while(empty .and. len_trim(blck(s_blck:)) /= 0)
     empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
-    if(empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    if (empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   end do
 
 end subroutine skip_empty_lines
@@ -372,10 +372,10 @@ subroutine skip_file_header(blck,s_blck)
   character(len=:), allocatable    :: line
 
   line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-  if(index(adjustl(line),'%YAML') == 1) then
+  if (index(adjustl(line),'%YAML') == 1) then
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call skip_empty_lines(blck,s_blck)
-    if(trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
+    if (trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
       s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     else
       call IO_error(708,ext_msg = line)
@@ -400,8 +400,8 @@ logical function flow_is_closed(str,e_char)
   flow_is_closed = .false.
   N_sq = 0
   N_cu = 0
-  if(e_char == ']') line = str(index(str(:),'[')+1:)
-  if(e_char == '}') line = str(index(str(:),'{')+1:)
+  if (e_char == ']') line = str(index(str(:),'[')+1:)
+  if (e_char == '}') line = str(index(str(:),'{')+1:)
 
   do i = 1, len_trim(line)
     flow_is_closed = (N_sq==0 .and. N_cu==0 .and. scan(line(i:i),e_char) == 1)
@@ -463,7 +463,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
     indent_next = indentDepth(blck(s_blck:))
   end do
 
-  if(scan(inline,",") > 0) inline = '"'//inline//'"'
+  if (scan(inline,",") > 0) inline = '"'//inline//'"'
 
 end subroutine list_item_inline
 
@@ -483,19 +483,19 @@ recursive subroutine line_isFlow(flow,s_flow,line)
     list_chunk, &
     dict_chunk
 
-  if(index(adjustl(line),'[') == 1) then
+  if (index(adjustl(line),'[') == 1) then
     s = index(line,'[')
     flow(s_flow:s_flow) = '['
     s_flow = s_flow +1
     do while(s < len_trim(line))
       list_chunk = s + find_end(line(s+1:),']')
-      if(iskeyValue(line(s+1:list_chunk-1))) then
+      if (iskeyValue(line(s+1:list_chunk-1))) then
         flow(s_flow:s_flow) = '{'
         s_flow = s_flow +1
         call keyValue_toFlow(flow,s_flow,line(s+1:list_chunk-1))
         flow(s_flow:s_flow) = '}'
         s_flow = s_flow +1
-      elseif(isFlow(line(s+1:list_chunk-1))) then
+      elseif (isFlow(line(s+1:list_chunk-1))) then
         call line_isFlow(flow,s_flow,line(s+1:list_chunk-1))
       else
         call line_toFlow(flow,s_flow,line(s+1:list_chunk-1))
@@ -509,20 +509,20 @@ recursive subroutine line_isFlow(flow,s_flow,line)
     flow(s_flow:s_flow) = ']'
     s_flow = s_flow+1
 
-  elseif(index(adjustl(line),'{') == 1) then
+  elseif (index(adjustl(line),'{') == 1) then
     s = index(line,'{')
     flow(s_flow:s_flow) = '{'
     s_flow = s_flow +1
     do while(s < len_trim(line))
       dict_chunk = s + find_end(line(s+1:),'}')
-      if( .not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
+      if ( .not. iskeyValue(line(s+1:dict_chunk-1))) call IO_error(705,ext_msg=line)
       call keyValue_toFlow(flow,s_flow,line(s+1:dict_chunk-1))
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow +2
       s = s + find_end(line(s+1:),'}')
     end do
     s_flow = s_flow -1
-    if(flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow -1
+    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow -1
     flow(s_flow:s_flow) = '}'
     s_flow = s_flow +1
   else
@@ -549,8 +549,8 @@ recursive subroutine keyValue_toFlow(flow,s_flow,line)
     offset_value
 
   col_pos = index(line,':')
-  if(line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
-  if(isFlow(line(col_pos+1:))) then
+  if (line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
+  if (isFlow(line(col_pos+1:))) then
     d_flow = len_trim(adjustl(line(:col_pos)))
     flow(s_flow:s_flow+d_flow+1) = trim(adjustl(line(:col_pos)))//' '
     s_flow = s_flow + d_flow+1
@@ -605,35 +605,35 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---' .or. trim(line) == '...') then
+    if (trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
       s_blck = e_blck + 2                                                                           ! forward to next line
       cycle
-    elseif(indentDepth(line,offset) > indent) then
+    elseif (indentDepth(line,offset) > indent) then
       call decide(blck,flow,s_blck,s_flow,offset)
       offset = 0
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow + 2
-    elseif(indentDepth(line,offset) < indent .or. .not. isListItem(line)) then
+    elseif (indentDepth(line,offset) < indent .or. .not. isListItem(line)) then
       offset = 0
       exit                                                                                          ! job done (lower level)
     else
-      if(trim(adjustl(line)) == '-') then                                                           ! list item in next line
+      if (trim(adjustl(line)) == '-') then                                                           ! list item in next line
         s_blck = e_blck + 2
         call skip_empty_lines(blck,s_blck)
         e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
         line = IO_rmComment(blck(s_blck:e_blck))
-        if(trim(line) == '---') call IO_error(707,ext_msg=line)
-        if(indentDepth(line) < indent .or. indentDepth(line) == indent) &
+        if (trim(line) == '---') call IO_error(707,ext_msg=line)
+        if (indentDepth(line) < indent .or. indentDepth(line) == indent) &
           call IO_error(701,ext_msg=line)
 
-        if(isScalar(line)) then
+        if (isScalar(line)) then
           call line_toFlow(flow,s_flow,line)
           s_blck = e_blck +2
           offset = 0
-        elseif(isFlow(line)) then
-          if(isFlowList(line)) then
+        elseif (isFlow(line)) then
+          if (isFlowList(line)) then
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
@@ -643,13 +643,13 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
         end if
       else                                                                                          ! list item in the same line
         line = line(indentDepth(line)+3:)
-        if(isScalar(line)) then
+        if (isScalar(line)) then
           call list_item_inline(blck,s_blck,inline,offset)
           offset = 0
           call line_toFlow(flow,s_flow,inline)
-        elseif(isFlow(line)) then
+        elseif (isFlow(line)) then
           s_blck = s_blck + index(blck(s_blck:),'-')
-          if(isFlowList(line)) then
+          if (isFlowList(line)) then
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
@@ -663,7 +663,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
       end if
     end if
 
-    if(isScalar(line) .or. isFlow(line)) then
+    if (isScalar(line) .or. isFlow(line)) then
       flow(s_flow:s_flow+1) = ', '
       s_flow = s_flow + 2
     end if
@@ -702,33 +702,33 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---' .or. trim(line) == '...') then
+    if (trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
       s_blck = e_blck + 2                                                                           ! forward to next line
       cycle
-    elseif(indentDepth(line,offset) < indent) then
-      if(isScalar(line) .or. isFlow(line) .and. previous_isKey) &
+    elseif (indentDepth(line,offset) < indent) then
+      if (isScalar(line) .or. isFlow(line) .and. previous_isKey) &
         call IO_error(701,ext_msg=line)
       offset = 0
       exit                                                                                          ! job done (lower level)
-    elseif(indentDepth(line,offset) > indent .or. isListItem(line)) then
+    elseif (indentDepth(line,offset) > indent .or. isListItem(line)) then
       offset = 0
       call decide(blck,flow,s_blck,s_flow,offset)
     else
-      if(isScalar(line)) call IO_error(701,ext_msg=line)
-      if(isFlow(line))   call IO_error(702,ext_msg=line)
+      if (isScalar(line)) call IO_error(701,ext_msg=line)
+      if (isFlow(line))   call IO_error(702,ext_msg=line)
 
       line = line(indentDepth(line)+1:)
-      if(previous_isKey) then
+      if (previous_isKey) then
         flow(s_flow-1:s_flow) = ', '
         s_flow = s_flow + 1
       end if
 
-      if(isKeyValue(line)) then
+      if (isKeyValue(line)) then
         col_pos = index(line,':')
-        if(isFlow(line(col_pos+1:))) then
-          if(isFlowList(line(col_pos+1:))) then
+        if (isFlow(line(col_pos+1:))) then
+          if (isFlowList(line(col_pos+1:))) then
             call remove_line_break(blck,s_blck,']',flow_line)
           else
             call remove_line_break(blck,s_blck,'}',flow_line)
@@ -744,7 +744,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
       end if
     end if
 
-    if(isScalar(line) .or. isKeyValue(line)) then
+    if (isScalar(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = ','
       s_flow = s_flow + 1
       previous_isKey = .false.
@@ -776,13 +776,13 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
   integer :: e_blck
   character(len=:), allocatable :: line,flow_line
 
-  if(s_blck <= len(blck)) then
+  if (s_blck <= len(blck)) then
     call skip_empty_lines(blck,s_blck)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---' .or. trim(line) == '...') then
+    if (trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
-    elseif(len_trim(line) == 0) then
+    elseif (len_trim(line) == 0) then
       s_blck = e_blck +2
       call decide(blck,flow,s_blck,s_flow,offset)
     elseif    (isListItem(line)) then
@@ -791,14 +791,14 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
       call lst(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = ']'
       s_flow = s_flow + 1
-    elseif(isKey(line) .or. isKeyValue(line)) then
+    elseif (isKey(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = '{'
       s_flow = s_flow + 1
       call dct(blck,flow,s_blck,s_flow,offset)
       flow(s_flow:s_flow) = '}'
       s_flow = s_flow + 1
-    elseif(isFlow(line)) then
-      if(isFlowList(line)) then
+    elseif (isFlow(line)) then
+      if (isFlowList(line)) then
         call remove_line_break(blck,s_blck,']',flow_line)
       else
         call remove_line_break(blck,s_blck,'}',flow_line)
@@ -833,18 +833,18 @@ function to_flow(blck)
   s_blck = 1
   offset = 0
 
-  if(len_trim(blck) /= 0) then
+  if (len_trim(blck) /= 0) then
     call skip_empty_lines(blck,s_blck)
     call skip_file_header(blck,s_blck)
     line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-    if(trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    if (trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call decide(blck,to_flow,s_blck,s_flow,offset)
   end if
   line = IO_rmComment(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
-  if(trim(line)== '---') call IO_warning(709,ext_msg=line)
+  if (trim(line)== '---') call IO_warning(709,ext_msg=line)
   to_flow = trim(to_flow(:s_flow-1))
   end_line = index(to_flow,IO_EOL)
-  if(end_line > 0) to_flow = to_flow(:end_line-1)
+  if (end_line > 0) to_flow = to_flow(:end_line-1)
 
 end function to_flow
 
@@ -852,7 +852,7 @@ end function to_flow
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some YAML functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   if (indentDepth(' a') /= 1)     error stop 'indentDepth'
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
@@ -880,122 +880,122 @@ subroutine selfTest
   if (.not. isKey(' a:'))         error stop 'isKey'
   if (.not. isKey(' a: #'))       error stop 'isKey'
 
-  if(       isScalar('a:  '))     error stop 'isScalar'
-  if(       isScalar('a: b'))     error stop 'isScalar'
-  if(       isScalar('{a:b}'))    error stop 'isScalar'
-  if(       isScalar('- a:'))     error stop 'isScalar'
-  if(.not.  isScalar('   a'))     error stop 'isScalar'
+  if (       isScalar('a:  '))     error stop 'isScalar'
+  if (       isScalar('a: b'))     error stop 'isScalar'
+  if (       isScalar('{a:b}'))    error stop 'isScalar'
+  if (       isScalar('- a:'))     error stop 'isScalar'
+  if (.not.  isScalar('   a'))     error stop 'isScalar'
 
   basic_list: block
-  character(len=*), parameter :: block_list = &
-    " - Casablanca"//IO_EOL//&
-    " - North by Northwest"//IO_EOL
-  character(len=*), parameter :: block_list_newline = &
-    " -"//IO_EOL//&
-    "   Casablanca"//IO_EOL//&
-    " -"//IO_EOL//&
-    "   North by Northwest"//IO_EOL
-  character(len=*), parameter :: flow_list = &
-    "[Casablanca, North by Northwest]"
+    character(len=*), parameter :: block_list = &
+      " - Casablanca"//IO_EOL//&
+      " - North by Northwest"//IO_EOL
+    character(len=*), parameter :: block_list_newline = &
+      " -"//IO_EOL//&
+      "   Casablanca"//IO_EOL//&
+      " -"//IO_EOL//&
+      "   North by Northwest"//IO_EOL
+    character(len=*), parameter :: flow_list = &
+      "[Casablanca, North by Northwest]"
 
-  if (.not. to_flow(block_list)         == flow_list) error stop 'to_flow'
-  if (.not. to_flow(block_list_newline) == flow_list) error stop 'to_flow'
+    if (.not. to_flow(block_list)         == flow_list) error stop 'to_flow'
+    if (.not. to_flow(block_list_newline) == flow_list) error stop 'to_flow'
   end block basic_list
 
   basic_dict: block
-  character(len=*), parameter :: block_dict = &
-    " aa: Casablanca"//IO_EOL//&
-    " bb: North by Northwest"//IO_EOL
-  character(len=*), parameter :: block_dict_newline = &
-    " aa:"//IO_EOL//&
-    "   Casablanca"//IO_EOL//&
-    " bb:"//IO_EOL//&
-    "   North by Northwest"//IO_EOL
-  character(len=*), parameter :: flow_dict = &
-    "{aa: Casablanca, bb: North by Northwest}"
+    character(len=*), parameter :: block_dict = &
+      " aa: Casablanca"//IO_EOL//&
+      " bb: North by Northwest"//IO_EOL
+    character(len=*), parameter :: block_dict_newline = &
+      " aa:"//IO_EOL//&
+      "   Casablanca"//IO_EOL//&
+      " bb:"//IO_EOL//&
+      "   North by Northwest"//IO_EOL
+    character(len=*), parameter :: flow_dict = &
+      "{aa: Casablanca, bb: North by Northwest}"
 
-  if (.not. to_flow(block_dict)         == flow_dict) error stop 'to_flow'
-  if (.not. to_flow(block_dict_newline) == flow_dict) error stop 'to_flow'
+    if (.not. to_flow(block_dict)         == flow_dict) error stop 'to_flow'
+    if (.not. to_flow(block_dict_newline) == flow_dict) error stop 'to_flow'
   end block basic_dict
 
   only_flow: block
-  character(len=*), parameter :: flow_dict = &
-    " {a: [b,c: {d: e}, f: g, e]}"//IO_EOL
-  character(len=*), parameter :: flow_list = &
-    " [a,b: c,    d,e: {f: g}]"//IO_EOL
-  character(len=*), parameter :: flow_1 = &
-    "{a: [b, {c: {d: e}}, {f: g}, e]}"
-  character(len=*), parameter :: flow_2 = &
-    "[a, {b: c}, d, {e: {f: g}}]"
+    character(len=*), parameter :: flow_dict = &
+      " {a: [b,c: {d: e}, f: g, e]}"//IO_EOL
+    character(len=*), parameter :: flow_list = &
+      " [a,b: c,    d,e: {f: g}]"//IO_EOL
+    character(len=*), parameter :: flow_1 = &
+      "{a: [b, {c: {d: e}}, {f: g}, e]}"
+    character(len=*), parameter :: flow_2 = &
+      "[a, {b: c}, d, {e: {f: g}}]"
 
-  if (.not. to_flow(flow_dict)        == flow_1) error stop 'to_flow'
-  if (.not. to_flow(flow_list)        == flow_2) error stop 'to_flow'
+    if (.not. to_flow(flow_dict)        == flow_1) error stop 'to_flow'
+    if (.not. to_flow(flow_list)        == flow_2) error stop 'to_flow'
   end block only_flow
 
   basic_flow: block
-  character(len=*), parameter :: flow_braces = &
-    " source: [{param: 1}, {param: 2}, {param: 3}, {param: 4}]"//IO_EOL
-  character(len=*), parameter :: flow_mixed_braces = &
-    " source: [param: 1, {param: 2}, param: 3, {param: 4}]"//IO_EOL
-  character(len=*), parameter :: flow = &
-    "{source: [{param: 1}, {param: 2}, {param: 3}, {param: 4}]}"
+    character(len=*), parameter :: flow_braces = &
+      " source: [{param: 1}, {param: 2}, {param: 3}, {param: 4}]"//IO_EOL
+    character(len=*), parameter :: flow_mixed_braces = &
+      " source: [param: 1, {param: 2}, param: 3, {param: 4}]"//IO_EOL
+    character(len=*), parameter :: flow = &
+      "{source: [{param: 1}, {param: 2}, {param: 3}, {param: 4}]}"
 
-  if (.not. to_flow(flow_braces)        == flow) error stop 'to_flow'
-  if (.not. to_flow(flow_mixed_braces)  == flow) error stop 'to_flow'
+    if (.not. to_flow(flow_braces)        == flow) error stop 'to_flow'
+    if (.not. to_flow(flow_mixed_braces)  == flow) error stop 'to_flow'
   end block basic_flow
 
   multi_line_flow1: block
-  character(len=*), parameter :: flow_multi = &
-    '%YAML 1.1'//IO_EOL//&
-    '---'//IO_EOL//&
-    'a:     ["b",'//IO_EOL//&
-    'c: '//IO_EOL//&
-    '"d",                               "e"]'//IO_EOL
+    character(len=*), parameter :: flow_multi = &
+      '%YAML 1.1'//IO_EOL//&
+      '---'//IO_EOL//&
+      'a:     ["b",'//IO_EOL//&
+      'c: '//IO_EOL//&
+      '"d",                               "e"]'//IO_EOL
 
-  character(len=*), parameter :: flow = &
-    '{a: ["b", {c: "d"}, "e"]}'
+    character(len=*), parameter :: flow = &
+      '{a: ["b", {c: "d"}, "e"]}'
 
-  if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
+    if ( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
   end block multi_line_flow1
 
   multi_line_flow2: block
-  character(len=*), parameter :: flow_multi = &
-    "%YAML 1.1"//IO_EOL//&
-    "---"//IO_EOL//&
-    "-"//IO_EOL//&
-    " a: {b:"//IO_EOL//&
-    "[c,"//IO_EOL//&
-    "d"//IO_EOL//&
-    "e, f]}"//IO_EOL
+    character(len=*), parameter :: flow_multi = &
+      "%YAML 1.1"//IO_EOL//&
+      "---"//IO_EOL//&
+      "-"//IO_EOL//&
+      " a: {b:"//IO_EOL//&
+      "[c,"//IO_EOL//&
+      "d"//IO_EOL//&
+      "e, f]}"//IO_EOL
 
-  character(len=*), parameter :: flow = &
-    "[{a: {b: [c, d e, f]}}]"
+    character(len=*), parameter :: flow = &
+      "[{a: {b: [c, d e, f]}}]"
 
-  if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
+    if ( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
   end block multi_line_flow2
 
   basic_mixed: block
-  character(len=*), parameter :: block_flow = &
-    "%YAML 1.1"//IO_EOL//&
-    " "//IO_EOL//&
-    " "//IO_EOL//&
-    "---"//IO_EOL//&
-    " aa:"//IO_EOL//&
-    " - "//IO_EOL//&
-    " "//IO_EOL//&
-    " "//IO_EOL//&
-    "                 param_1: [a:                   b, c, {d: {e: [f: g, h]}}]"//IO_EOL//&
-    " - c:d"//IO_EOL//&
-    "  e.f,"//IO_EOL//&
-    " bb:"//IO_EOL//&
-    " "//IO_EOL//&
-    "  - "//IO_EOL//&
-    "   {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL//&
-    "..."//IO_EOL
-  character(len=*), parameter :: mixed_flow = &
-    '{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, "c:d e.f,"], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}'
+    character(len=*), parameter :: block_flow = &
+      "%YAML 1.1"//IO_EOL//&
+      " "//IO_EOL//&
+      " "//IO_EOL//&
+      "---"//IO_EOL//&
+      " aa:"//IO_EOL//&
+      " - "//IO_EOL//&
+      " "//IO_EOL//&
+      " "//IO_EOL//&
+      "                 param_1: [a:                   b, c, {d: {e: [f: g, h]}}]"//IO_EOL//&
+      " - c:d"//IO_EOL//&
+      "  e.f,"//IO_EOL//&
+      " bb:"//IO_EOL//&
+      " "//IO_EOL//&
+      "  - "//IO_EOL//&
+      "   {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL//&
+      "..."//IO_EOL
+    character(len=*), parameter :: mixed_flow = &
+      '{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, "c:d e.f,"], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}'
 
-  if(.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
+    if (.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
   end block basic_mixed
 
 end subroutine selfTest

@@ -212,10 +212,10 @@ subroutine fromAxisAngle(self,ax,degrees,P)
     axis = ax(1:3)
   else
     axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,P == 1)
-    if(abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
+    if (abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
   end if
 
-  if(dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
+  if (dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
     call IO_error(402,ext_msg='fromAxisAngle')
 
   self%q = ax2qu([axis,angle])
@@ -513,11 +513,11 @@ pure function om2qu(om) result(qu)
   trace = math_trace33(om)
 
 
-  if(trace > 0.0_pReal) then
+  if (trace > 0.0_pReal) then
     s = 0.5_pReal / sqrt(trace+1.0_pReal)
     qu = [0.25_pReal/s, (om(3,2)-om(2,3))*s,(om(1,3)-om(3,1))*s,(om(2,1)-om(1,2))*s]
   else
-      if( om(1,1) > om(2,2) .and. om(1,1) > om(3,3) ) then
+      if ( om(1,1) > om(2,2) .and. om(1,1) > om(3,3) ) then
           s = 2.0_pReal * sqrt( 1.0_pReal + om(1,1) - om(2,2) - om(3,3))
           qu = [ (om(3,2) - om(2,3)) /s,0.25_pReal * s,(om(1,2) + om(2,1)) / s,(om(1,3) + om(3,1)) / s]
       elseif (om(2,2) > om(3,3)) then
@@ -528,7 +528,7 @@ pure function om2qu(om) result(qu)
           qu = [ (om(2,1) - om(1,2)) /s,(om(1,3) + om(3,1)) / s,(om(2,3) + om(3,2)) / s,0.25_pReal * s]
       end if
   end if
-  if(sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
+  if (sign(1.0_pReal,qu(1))<0.0_pReal) qu =-1.0_pReal * qu
   qu(2:4) = merge(qu(2:4),qu(2:4)*P,dEq0(qu(2:4)))
   qu = qu/norm2(qu)
 
@@ -619,7 +619,7 @@ pure function eu2qu(eu) result(qu)
         -P*sPhi*cos(ee(1)-ee(3)), &
         -P*sPhi*sin(ee(1)-ee(3)), &
         -P*cPhi*sin(ee(1)+ee(3))]
-  if(sign(1.0_pReal,qu(1)) < 0.0_pReal) qu = qu * (-1.0_pReal)
+  if (sign(1.0_pReal,qu(1)) < 0.0_pReal) qu = qu * (-1.0_pReal)
 
 end function eu2qu
 
@@ -807,15 +807,15 @@ subroutine selfTest()
 
   do i = 1, 20
 
-    if(i==1) then
+    if (i==1) then
       qu = [1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]
-    elseif(i==2) then
+    elseif (i==2) then
       qu = [1.0_pReal,-0.0_pReal,-0.0_pReal,-0.0_pReal]
-    elseif(i==3) then
+    elseif (i==3) then
       qu = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]
-    elseif(i==4) then
+    elseif (i==4) then
       qu = [0.0_pReal,0.0_pReal,1.0_pReal,0.0_pReal]
-    elseif(i==5) then
+    elseif (i==5) then
       qu = [0.0_pReal, 0.0_pReal, 0.0_pReal, 1.0_pReal]
     else
       call random_number(x)
@@ -825,20 +825,20 @@ subroutine selfTest()
             sin(TAU*x(2))*B,&
             cos(TAU*x(2))*B,&
             sin(TAU*x(1))*A]
-      if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
+      if (qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     end if
 
 
-    if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) error stop 'om2qu2om'
-    if(.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) error stop 'eu2qu2eu'
-    if(.not. quaternion_equal(ax2qu(qu2ax(qu)),qu)) error stop 'ax2qu2ax'
+    if (.not. quaternion_equal(om2qu(qu2om(qu)),qu)) error stop 'om2qu2om'
+    if (.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) error stop 'eu2qu2eu'
+    if (.not. quaternion_equal(ax2qu(qu2ax(qu)),qu)) error stop 'ax2qu2ax'
 
     om = qu2om(qu)
-    if(.not. quaternion_equal(om2qu(eu2om(om2eu(om))),qu)) error stop 'eu2om2eu'
-    if(.not. quaternion_equal(om2qu(ax2om(om2ax(om))),qu)) error stop 'ax2om2ax'
+    if (.not. quaternion_equal(om2qu(eu2om(om2eu(om))),qu)) error stop 'eu2om2eu'
+    if (.not. quaternion_equal(om2qu(ax2om(om2ax(om))),qu)) error stop 'ax2om2ax'
 
     eu = qu2eu(qu)
-    if(.not. quaternion_equal(eu2qu(ax2eu(eu2ax(eu))),qu)) error stop 'ax2eu2ax'
+    if (.not. quaternion_equal(eu2qu(ax2eu(eu2ax(eu))),qu)) error stop 'ax2eu2ax'
 
     call R%fromMatrix(om)
 
@@ -872,7 +872,7 @@ subroutine selfTest()
     logical :: ok
 
     ok = all(dEq(qu1,qu2,1.0e-7_pReal))
-    if(dEq0(qu1(1),1.0e-12_pReal)) &
+    if (dEq0(qu1(1),1.0e-12_pReal)) &
       ok = ok .or. all(dEq(-1.0_pReal*qu1,qu2,1.0e-7_pReal))
 
   end function quaternion_equal

@@ -245,8 +245,8 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
 
     call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-    if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
-    if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
+    if (homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
+    if (damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
     call damage_partition(ce)
 
     doneAndHappy = [.false.,.true.]
@@ -381,7 +381,7 @@ subroutine homogenization_forward
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
-    if(damageState_h(ho)%sizeState > 0) &
+    if (damageState_h(ho)%sizeState > 0) &
       damageState_h(ho)%state0 = damageState_h(ho)%state
   end do
 
@@ -406,7 +406,7 @@ subroutine homogenization_restartWrite(fileHandle)
 
     call HDF5_write(homogState(ho)%state,groupHandle(2),'omega_mechanical') ! ToDo: should be done by mech
 
-    if(damageState_h(ho)%sizeState > 0) &
+    if (damageState_h(ho)%sizeState > 0) &
       call HDF5_write(damageState_h(ho)%state,groupHandle(2),'omega_damage') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
@@ -436,7 +436,7 @@ subroutine homogenization_restartRead(fileHandle)
 
     call HDF5_read(homogState(ho)%state0,groupHandle(2),'omega_mechanical') ! ToDo: should be done by mech
 
-    if(damageState_h(ho)%sizeState > 0) &
+    if (damageState_h(ho)%sizeState > 0) &
       call HDF5_read(damageState_h(ho)%state0,groupHandle(2),'omega_damage') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))

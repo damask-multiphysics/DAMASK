@@ -72,26 +72,26 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize all modules.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_initAll
+subroutine materialpoint_initAll()
 
-  call DAMASK_interface_init
-  call prec_init
-  call IO_init
-  call YAML_types_init
-  call YAML_parse_init
-  call HDF5_utilities_init
+  call DAMASK_interface_init()
+  call prec_init()
+  call IO_init()
+  call YAML_types_init()
+  call YAML_parse_init()
+  call HDF5_utilities_init()
   call results_init(.false.)
-  call config_init
-  call math_init
-  call rotations_init
-  call polynomials_init
-  call lattice_init
-  call discretization_Marc_init
+  call config_init()
+  call math_init()
+  call rotations_init()
+  call polynomials_init()
+  call lattice_init()
+  call discretization_Marc_init()
   call material_init(.false.)
-  call phase_init
-  call homogenization_init
-  call materialpoint_init
-  call config_deallocate
+  call phase_init()
+  call homogenization_init()
+  call materialpoint_init()
+  call config_deallocate()
 
 end subroutine materialpoint_initAll
 
@@ -99,7 +99,7 @@ end subroutine materialpoint_initAll
 !--------------------------------------------------------------------------------------------------
 !> @brief allocate the arrays defined in module materialpoint and initialize them
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_init
+subroutine materialpoint_init()
 
   type(tList), pointer :: &
     debug_materialpoint
@@ -121,7 +121,7 @@ subroutine materialpoint_init
   debugmaterialpoint%element   = config_debug%get_asInt('element',defaultVal = 1)
   debugmaterialpoint%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
 
-  if(debugmaterialpoint%basic) then
+  if (debugmaterialpoint%basic) then
     print'(a32,1x,6(i8,1x))',   'materialpoint_cs:              ', shape(materialpoint_cs)
     print'(a32,1x,6(i8,1x))',   'materialpoint_dcsdE:           ', shape(materialpoint_dcsdE)
     print'(a32,1x,6(i8,1x),/)', 'materialpoint_dcsdE_knownGood: ', shape(materialpoint_dcsdE_knownGood)

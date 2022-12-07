@@ -105,7 +105,7 @@ logical function solverIsSymmetric()
        status='old', position='rewind', action='read',iostat=myStat)
   do
     read (fileUnit,'(A)',END=100) line
-    if(index(trim(lc(line)),'solver') == 1) then
+    if (index(trim(lc(line)),'solver') == 1) then
       read (fileUnit,'(A)',END=100) line                                                            ! next line
         s =     verify(line,      ' ')                                                              ! start of first chunk
         s = s + verify(line(s+1:),' ')                                                              ! start of second chunk
@@ -286,7 +286,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   type(tList), pointer :: &
     debug_Marc                                                                                      ! pointer to Marc debug options
 
-  if(debug_basic) then
+  if (debug_basic) then
     print'(a,/,i8,i8,i2)', ' MSC.Marc information on shape of element(2), IP:', m, nn
     print'(a,2(i1))',      ' Jacobian:                      ', ngens,ngens
     print'(a,i1)',         ' Direct stress:                 ', ndi
@@ -369,7 +369,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   d = ddsdde(1:ngens,1:ngens)
   s = stress(1:ndi+nshear)
   g = 0.0_pReal
-  if(symmetricSolver) d = 0.5_pReal*(d+transpose(d))
+  if (symmetricSolver) d = 0.5_pReal*(d+transpose(d))
 
   call omp_set_num_threads(defaultNumThreadsInt)                                                    ! reset number of threads to stored default value
 
@@ -428,7 +428,7 @@ subroutine uedinc(inc,incsub)
     do n = lbound(discretization_Marc_FEM2DAMASK_node,1), ubound(discretization_Marc_FEM2DAMASK_node,1)
       if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
         call nodvar(1,n,d_n(1:3,discretization_Marc_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
-        if(nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
+        if (nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
       end if
     end do
 

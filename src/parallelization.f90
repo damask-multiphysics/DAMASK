@@ -53,7 +53,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize shared memory (openMP) and distributed memory (MPI) parallelization.
 !--------------------------------------------------------------------------------------------------
-subroutine parallelization_init
+subroutine parallelization_init()
 
   integer(MPI_INTEGER_KIND) :: err_MPI, typeSize, version, subversion, devNull
   character(len=4) :: rank_str
@@ -136,7 +136,7 @@ subroutine parallelization_init
     error stop 'Mismatch between MPI_DOUBLE and DAMASK pReal'
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
-!$ if(got_env /= 0) then
+!$ if (got_env /= 0) then
 !$   print'(1x,a)', 'Could not get $OMP_NUM_THREADS, using default'
 !$   OMP_NUM_THREADS = 4_pI32
 !$ else
