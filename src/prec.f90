@@ -255,7 +255,7 @@ subroutine selfTest()
   real(pReal),   dimension(2) :: r
 
 #ifdef PETSC
-  if (pReal /= pPETSCSCALAR)                error stop 'PetSC and Fortran scalar datatypes do not match'
+  if (pReal /= pPETSCSCALAR)                error stop 'PetSc and Fortran scalar datatypes do not match'
 #endif
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'
