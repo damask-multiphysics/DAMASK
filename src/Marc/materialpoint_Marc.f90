@@ -15,6 +15,7 @@ module materialpoint_Marc
   use math
   use rotations
   use polynomials
+  use tables
   use lattice
   use material
   use phase
@@ -85,6 +86,7 @@ subroutine materialpoint_initAll()
   call math_init()
   call rotations_init()
   call polynomials_init()
+  call tables_init()
   call lattice_init()
   call discretization_Marc_init()
   call material_init(.false.)
