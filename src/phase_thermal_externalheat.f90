@@ -11,11 +11,7 @@ submodule(phase:thermal) externalheat
     source_thermal_externalheat_offset                                                              !< which source is my current thermal dissipation mechanism?
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal), dimension(:), allocatable :: &
-      t_n, &
-      f_T
-    integer :: &
-     nIntervals
+    type(tTable) :: f
   end type tParameters
 
   type(tParameters), dimension(:), allocatable  :: param                                            !< containers of constitutive parameters (len Ninstances)
@@ -64,10 +60,7 @@ module function externalheat_init(source_length) result(mySources)
         associate(prm  => param(ph))
           src => sources%get_dict(so)
 
-          prm%t_n = src%get_as1dFloat('t_n')
-          prm%nIntervals = size(prm%t_n) - 1
-
-          prm%f_T = src%get_as1dFloat('f_T',requiredSize = size(prm%t_n))
+          prm%f = table(src,'t_n','f_T')
 
           Nmembers = count(material_phaseID == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
@@ -111,23 +104,13 @@ module function externalheat_f_T(ph,en) result(f_T)
     f_T
 
   integer :: &
-    so, interval
-  real(pReal) :: &
-    frac_time
+    so
+
 
   so = source_thermal_externalheat_offset(ph)
 
   associate(prm => param(ph))
-    do interval = 1, prm%nIntervals                                                                 ! scan through all rate segments
-      frac_time = (thermalState(ph)%p(so)%state(1,en) - prm%t_n(interval)) &
-                / (prm%t_n(interval+1) - prm%t_n(interval))                                         ! fractional time within segment
-      if (     (frac_time <  0.0_pReal .and. interval == 1) &
-          .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
-          .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
-        f_T = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
-              prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
-                                                                                                   ! ...or extrapolate if outside of bounds
-    end do
+    f_T = prm%f%at(thermalState(ph)%p(so)%state(1,en))
   end associate
 
 end function externalheat_f_T

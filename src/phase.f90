@@ -9,6 +9,7 @@ module phase
   use math
   use rotations
   use polynomials
+  use tables
   use IO
   use config
   use material
