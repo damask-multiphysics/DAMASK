@@ -64,7 +64,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 
   myPlasticity = plastic_active('isotropic')
-  if(count(myPlasticity) == 0) return
+  if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
@@ -77,7 +77,7 @@ module function plastic_isotropic_init() result(myPlasticity)
   allocate(state(phases%length))
 
   do ph = 1, phases%length
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), stt => state(ph))
 

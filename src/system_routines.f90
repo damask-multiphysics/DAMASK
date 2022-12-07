@@ -119,7 +119,7 @@ function getCWD()
 
   call getCWD_C(getCWD_Cstring,stat)
 
-  if(stat == 0) then
+  if (stat == 0) then
     getCWD = c_f_string(getCWD_Cstring)
   else
     error stop 'invalid working directory'
@@ -141,7 +141,7 @@ function getHostName()
 
   call getHostName_C(getHostName_Cstring,stat)
 
-  if(stat == 0) then
+  if (stat == 0) then
     getHostName = c_f_string(getHostName_Cstring)
   else
     getHostName = 'n/a (Error!)'
@@ -163,7 +163,7 @@ function getUserName()
 
   call getUserName_C(getUserName_Cstring,stat)
 
-  if(stat == 0) then
+  if (stat == 0) then
     getUserName = c_f_string(getUserName_Cstring)
   else
     getUserName = 'n/a (Error!)'

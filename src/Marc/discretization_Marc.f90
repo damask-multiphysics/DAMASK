@@ -271,8 +271,8 @@ subroutine inputRead_fileFormat(fileFormat,fileContent)
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 2) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
+    if (chunkPos(1) < 2) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'version') then
       fileFormat = IO_intValue(fileContent(l),chunkPos,2)
       exit
     end if
@@ -297,8 +297,8 @@ subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 6) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'table') then
+    if (chunkPos(1) < 6) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'table') then
       initialcond = IO_intValue(fileContent(l),chunkPos,4)
       hypoelastic = IO_intValue(fileContent(l),chunkPos,5)
       exit
@@ -324,8 +324,8 @@ subroutine inputRead_matNumber(matNumber, &
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
       if (len_trim(fileContent(l+1))/=0) then
         chunkPos = IO_stringPos(fileContent(l+1))
         data_blocks = IO_intValue(fileContent(l+1),chunkPos,1)
@@ -362,10 +362,10 @@ subroutine inputRead_NnodesAndElements(nNodes,nElems,&
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
+    if (chunkPos(1) < 1) cycle
     if    (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'sizing') then
       nElems = IO_IntValue (fileContent(l),chunkPos,3)
-    elseif(IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    elseif (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = IO_stringPos(fileContent(l+1))
       nNodes = IO_IntValue (fileContent(l+1),chunkPos,2)
     end if
@@ -392,13 +392,13 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 2) cycle
-    if(IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+    if (chunkPos(1) < 2) cycle
+    if (IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
        IO_lc(IO_StringValue(fileContent(l),chunkPos,2)) == 'element') then
       nElemSets = nElemSets + 1
 
       chunkPos = IO_stringPos(fileContent(l+1))
-      if(containsRange(fileContent(l+1),chunkPos)) then
+      if (containsRange(fileContent(l+1),chunkPos)) then
         elemInCurrentSet = 1 + abs( IO_intValue(fileContent(l+1),chunkPos,3) &
                                    -IO_intValue(fileContent(l+1),chunkPos,1))
       else
@@ -408,7 +408,7 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
           i = i + 1
           chunkPos = IO_stringPos(fileContent(l+i))
           elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                     ! add line's count when assuming 'c'
-          if(IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then              ! line finished, read last value
+          if (IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then              ! line finished, read last value
             elemInCurrentSet = elemInCurrentSet + 1                                                 ! data ended
             exit
           end if
@@ -442,8 +442,8 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 2) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+    if (chunkPos(1) < 2) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
        IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'element') then
        elemSet = elemSet+1
        nameElemSet(elemSet)  = trim(IO_stringValue(fileContent(l),chunkPos,4))
@@ -473,8 +473,8 @@ subroutine inputRead_mapElems(FEM2DAMASK, &
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i = 1,nElems
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
@@ -517,8 +517,8 @@ subroutine inputRead_mapNodes(FEM2DAMASK, &
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [1,1,10]
       do i = 1,nNodes
         map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
@@ -554,8 +554,8 @@ subroutine inputRead_elemNodes(nodes, &
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
         m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
@@ -585,8 +585,8 @@ subroutine inputRead_elemType(elem, &
   t = -1
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i=1,nElem                                                                                  ! read all elements
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
@@ -676,8 +676,8 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 1) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
+    if (chunkPos(1) < 1) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
       do i = 1,nElem
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
@@ -733,8 +733,8 @@ subroutine inputRead_material(materialAt,&
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
-    if(chunkPos(1) < 2) cycle
-    if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'initial' .and. &
+    if (chunkPos(1) < 2) cycle
+    if (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'initial' .and. &
        IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'state') then
       k = merge(2,1,initialcondTableStyle == 2)
       chunkPos = IO_stringPos(fileContent(l+k))
@@ -756,7 +756,7 @@ subroutine inputRead_material(materialAt,&
     end if
   end do
 
-  if(any(materialAt < 1)) call IO_error(180)
+  if (any(materialAt < 1)) call IO_error(180)
 
 end subroutine inputRead_material
 
@@ -1122,8 +1122,8 @@ function IPneighborhood(elem)
     e = 1
     do while (e < size(face,2))
       e = e + 1
-      if(any(face(:c,s) /= face(:c,e))) then
-        if(e-1/=s) call math_sort(face(:,s:e-1),sortDim=c)
+      if (any(face(:c,s) /= face(:c,e))) then
+        if (e-1/=s) call math_sort(face(:,s:e-1),sortDim=c)
         s = e
       end if
     end do
@@ -1131,7 +1131,7 @@ function IPneighborhood(elem)
 
   IPneighborhood = 0
   do c=1, size(face,2) - 1
-    if(all(face(:n-1,c) == face(:n-1,c+1))) then
+    if (all(face(:n-1,c) == face(:n-1,c+1))) then
       IPneighborhood(:,face(n+2,c+1),face(n+1,c+1),face(n+0,c+1)) = face(n:n+3,c+0)
       IPneighborhood(:,face(n+2,c+0),face(n+1,c+0),face(n+0,c+0)) = face(n:n+3,c+1)
     end if
@@ -1174,7 +1174,7 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
         end if
       end do
       exit
-    elseif(containsRange(fileContent(l),chunkPos)) then
+    elseif (containsRange(fileContent(l),chunkPos)) then
       first = IO_intValue(fileContent(l),chunkPos,1)
       last  = IO_intValue(fileContent(l),chunkPos,3)
       do i = first, last, sign(1,last-first)
@@ -1208,8 +1208,8 @@ logical function containsRange(str,chunkPos)
 
 
   containsRange = .False.
-  if(chunkPos(1) == 3) then
-    if(IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
+  if (chunkPos(1) == 3) then
+    if (IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
   end if
 
 end function containsRange
