@@ -43,8 +43,10 @@ class NiceDumper(SafeDumper):
             return self.represent_data(data.tolist())
         if isinstance(data, Rotation):
             return self.represent_data(data.quaternion.tolist())
-        else:
-            return super().represent_data(data)
+        if hasattr(data, 'dtype'):
+            return self.represent_data(data.item())
+
+        return super().represent_data(data)
 
     def ignore_aliases(self,
                        data: Any) -> bool:
