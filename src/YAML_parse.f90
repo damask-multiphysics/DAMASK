@@ -55,6 +55,7 @@ end subroutine YAML_parse_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parse a YAML string with list as root into a a structure of nodes.
+!> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
 function YAML_parse_str_asList(str) result(list)
 
@@ -72,6 +73,7 @@ end function YAML_parse_str_asList
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parse a YAML string with dict as root into a a structure of nodes.
+!> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
 function YAML_parse_str_asDict(str) result(dict)
 
@@ -815,7 +817,8 @@ end subroutine decide
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief Convert all block style YAML parts to flow style.
+!> @brief Convert all block style YAML parts to flow style.
+!> @details The input needs to end with a newline.
 !--------------------------------------------------------------------------------------------------
 function to_flow(blck)
 
@@ -997,6 +1000,21 @@ subroutine selfTest()
 
     if (.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
   end block basic_mixed
+
+  parse: block
+
+    type(tDict), pointer :: dict
+    type(tList), pointer :: list
+    character(len=*), parameter :: &
+      lst = '[1, 2, 3, 4]', &
+      dct = '{a: 1, b: 2}'
+
+    list => YAML_parse_str_asList(lst//IO_EOL)
+    if (list%asFormattedString() /= lst) error stop 'str_asList'
+    dict => YAML_parse_str_asDict(dct//IO_EOL)
+    if (dict%asFormattedString() /= dct) error stop 'str_asDict'
+
+  end block parse
 
 end subroutine selfTest
 #endif
