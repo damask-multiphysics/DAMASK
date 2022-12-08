@@ -115,19 +115,19 @@ subroutine selfTest()
   integer :: i
   type(tDict), pointer :: dict
   type(tList), pointer :: l_x, l_y
-  real :: r
+  real(pReal) :: r
 
 
   call random_number(r)
   r = r-0.5_pReal
   t = table(x+r,y)
   do i = 1, size(x_eval)
-    if (dNeq(y_true(i),t%at(x_eval(i)+r))) error stop 'table eval/values'
+    if (dNeq(y_true(i),t%at(x_eval(i)+r),1.0e-9_pReal)) error stop 'table eval/values'
   end do
 
 
-  l_x => YAML_parse_str_asList('[1, 2, 3, 4]')
-  l_y => YAML_parse_str_asList('[1, 2, 2, 1]')
+  l_x => YAML_parse_str_asList('[1, 2, 3, 4]'//IO_EOL)
+  l_y => YAML_parse_str_asList('[1, 2, 2, 1]'//IO_EOL)
   allocate(dict)
   call dict%set('t',l_x)
   call dict%set('T',l_y)
