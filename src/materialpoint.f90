@@ -18,6 +18,7 @@ module materialpoint
   use math
   use rotations
   use polynomials
+  use tables
   use lattice
   use material
   use phase
@@ -60,6 +61,7 @@ subroutine materialpoint_initAll()
   call math_init()
   call rotations_init()
   call polynomials_init()
+  call tables_init()
   call lattice_init()
 #if   defined(MESH)
   call discretization_mesh_init(restart=CLI_restartInc>0)
