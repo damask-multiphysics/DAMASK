@@ -1,5 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
+!> @author Philip Eisenlohr, Michigan State University
 !> @brief Tabular representation of variable data.
 !--------------------------------------------------------------------------------------------------
 module tables
@@ -50,11 +51,12 @@ function table_from_values(x,y) result(t)
   type(tTable) :: t
 
 
-  if (min(size(x),size(y))< 1) call IO_error(603,ext_msg='no data specified')
-  if (size(x) /= size(y))      call IO_error(603,ext_msg='non-matching shape of tabulated data')
-  if (size(x) /=1) then
-    if (any(x(1:size(x)-1) -x(2:size(x)) > 0.0_pReal)) &
-                               call IO_error(603,ext_msg='ordinate data does not increase monotonically')
+  if (size(x) < 1)         call IO_error(603,ext_msg='missing tabulated x data')
+  if (size(y) < 1)         call IO_error(603,ext_msg='missing tabulated y data')
+  if (size(x) /= size(y))  call IO_error(603,ext_msg='shape mismatch in tabulated data')
+  if (size(x) /= 1) then
+    if (any(x(2:size(x))-x(1:size(x)-1) <= 0.0_pReal)) &
+                           call IO_error(603,ext_msg='ordinate data does not increase monotonically')
   end if
 
   t%x = x
@@ -79,7 +81,7 @@ end function table_from_dict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Evaluate a table.
+!> @brief Linearly interpolate/extrapolate tabular data.
 !--------------------------------------------------------------------------------------------------
 pure function eval(self,x) result(y)
 
@@ -91,11 +93,11 @@ pure function eval(self,x) result(y)
 
 
   if (size(self%x) == 1) then
-    y = self%x(1)
+    y = self%y(1)
   else
     i = max(1,min(findloc(self%x<x,.true.,dim=1,back=.true.),size(self%x)-1))
     y = self%y(i) &
-      + (self%y(i) - self%y(i+1))/(self%x(i) - self%x(i+1)) * (x - self%x(i))
+      + (x-self%x(i)) * (self%y(i+1)-self%y(i)) / (self%x(i+1)-self%x(i))
   end if
 
 end function eval
@@ -108,10 +110,10 @@ subroutine selfTest()
 
   type(tTable) :: t
   real(pReal), dimension(*), parameter :: &
-    x = real([1.,2.,3.,4.],pReal), &
-    y = real([1.,2.,2.,1.],pReal), &
-    x_eval = real([0.,.5,1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.],pReal), &
-    y_true = real([0.,.5,1.,1.5,2.,2. ,2.,1.5,1.,.5, 0.],pReal)
+    x = real([ 1., 2., 3., 4.],pReal), &
+    y = real([ 1., 3., 2.,-2.],pReal), &
+    x_eval = real([ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],pReal), &
+    y_true = real([-1.0, 0.0, 1.0, 2.0, 3.0, 2.5 ,2.0, 0.0,-2.0,-4.0,-6.0],pReal)
   integer :: i
   type(tDict), pointer :: dict
   type(tList), pointer :: l_x, l_y
@@ -119,15 +121,17 @@ subroutine selfTest()
 
 
   call random_number(r)
+  t = table(real([0.],pReal),real([r],pReal))
+  if (dNeq(r,t%at(r),1.0e-9_pReal)) error stop 'table eval/mono'
+
   r = r-0.5_pReal
   t = table(x+r,y)
   do i = 1, size(x_eval)
     if (dNeq(y_true(i),t%at(x_eval(i)+r),1.0e-9_pReal)) error stop 'table eval/values'
   end do
 
-
   l_x => YAML_parse_str_asList('[1, 2, 3, 4]'//IO_EOL)
-  l_y => YAML_parse_str_asList('[1, 2, 2, 1]'//IO_EOL)
+  l_y => YAML_parse_str_asList('[1, 3, 2,-2]'//IO_EOL)
   allocate(dict)
   call dict%set('t',l_x)
   call dict%set('T',l_y)
