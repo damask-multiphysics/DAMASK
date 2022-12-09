@@ -1,0 +1,49 @@
+---
++++
+@@ -6,18 +6,27 @@
+ DIR=$1
+ user=$3
+ program=$4
++usernoext=$user
++usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
++usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
++usernoext=`dirname $usernoext`/`$BASENAME $usernoext .for`
++usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f90`
++
++# add BLAS options for linking
++  BLAS="%BLAS%"
++
+ . $DIR/tools/include
+ DIRJOB=$2
+ cd $DIRJOB
+-echo "Compiling and linking user subroutine $user.f on host `hostname`"
++echo "Compiling and linking user subroutine $user on host `hostname`"
+ echo "program: $program"
+-        $FORTRAN $user.f || \
++        $DFORTHIGHMP $user || \
+ 		{
+-		echo "$0: compile failed for $user.f"
++		echo "$0: compile failed for $user"
+ 		exit 1
+ 		}
+         /bin/rm $program 2>/dev/null
+-        userobj=$user.o
++        userobj=$usernoext.o
+ 
+ 
+     $LOAD ${program}  $DIR/lib/main.o\
+@@ -33,9 +42,13 @@
+     $TKLIBS \
+     $MRCLIBS \
+     $METISLIBS \
++    $BLAS   \
+     $SYSLIBS          || \
+     {
+-    echo "$0: link failed for $user.o on host `hostname`"
++    echo "$0: link failed for $usernoext.o on host `hostname`"
+     exit 1
+     }
+     /bin/rm $userobj
++	/bin/rm $DIRJOB/*.mod
++	/bin/rm $DIRJOB/*.smod
++   /bin/rm $DIRJOB/*_genmod.f90
