@@ -19,6 +19,14 @@ from . import Rotation
 from . import Table
 from . import Colormap
 from ._typehints import FloatSequence, IntSequence, IntCollection, NumpyRngSeed
+try:
+    import numba as nb                                                          # type: ignore
+except ImportError:
+    nb = False
+
+def numba_njit_wrapper(**kwargs):
+    return (lambda function: nb.njit(function) if nb else function)
+
 
 class Grid:
     """
@@ -1129,7 +1137,7 @@ class Grid:
         """
         def most_frequent(stencil: np.ndarray,
                          selection: Union[None,set],
-                         rng):
+                         rng: np.random.Generator):
             me = stencil[stencil.size//2]
             if selection is None or me in selection:
                 unique, counts = np.unique(stencil,return_counts=True)
@@ -1289,19 +1297,27 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def tainted_neighborhood(stencil: np.ndarray, selection: Union[None,set]):
+        @numba_njit_wrapper()
+        def tainted_neighborhood(stencil: np.ndarray,
+                                 selection: Optional[np.ndarray] = None):
             me = stencil[stencil.size//2]
-            return np.any(stencil != me if selection is None else
-                          np.in1d(stencil,np.array(list(selection - {me}))))
-
+            if selection is None:
+                return np.any(stencil != me)
+            elif not len(selection)==0:
+                for stencil_item in stencil:
+                    for selection_item in selection:
+                        if stencil_item==selection_item and selection_item!=me:
+                            return True
+            return False
         d = np.floor(distance).astype(np.int64)
         ext = np.linspace(-d,d,1+2*d,dtype=float),
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
         selection_ = None if selection is None else \
-                     set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
-                     set(self.material.flatten()) & set(util.aslist(selection))
+                     np.array(list(set(self.material.flatten()) - set(util.aslist(selection)))) if invert_selection else \
+                     np.array(list(set(self.material.flatten()) & set(util.aslist(selection))))
+
         mask = ndimage.generic_filter(self.material,
                                       tainted_neighborhood,
                                       footprint=footprint,
