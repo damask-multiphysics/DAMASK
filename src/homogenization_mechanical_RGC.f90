@@ -668,7 +668,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
     real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
 
     real(pReal),   dimension(:,:),   intent(in)  :: avgF                                            !< averaged F
-    integer,                          intent(in)  :: &
+    integer,                         intent(in)  :: &
       ho, &
       en
 

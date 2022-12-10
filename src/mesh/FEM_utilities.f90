@@ -182,8 +182,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   PetscSection         :: section
   IS                   :: bcPointsIS
   PetscInt,    pointer :: bcPoints(:)
-  PetscScalar, pointer :: localArray(:)
-  PetscScalar          :: BCValue,BCDotValue,timeinc
+  real(pReal), pointer :: localArray(:)
+  real(pReal)          :: BCValue,BCDotValue,timeinc
   PetscErrorCode       :: err_PETSc
 
 

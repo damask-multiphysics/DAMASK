@@ -109,7 +109,7 @@ subroutine grid_mechanical_spectral_basic_init()
   real(pReal), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
-  PetscScalar, pointer, dimension(:,:,:,:) :: &
+  real(pReal), pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
   PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
@@ -332,7 +332,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
   type(tRotation),           intent(in) :: &
     rotation_BC
   PetscErrorCode :: err_PETSc
-  PetscScalar, pointer, dimension(:,:,:,:) :: F
+  real(pReal), pointer, dimension(:,:,:,:) :: F
 
 
   call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
@@ -397,7 +397,7 @@ end subroutine grid_mechanical_spectral_basic_forward
 subroutine grid_mechanical_spectral_basic_updateCoords
 
   PetscErrorCode :: err_PETSc
-  PetscScalar, dimension(:,:,:,:), pointer :: F
+  real(pReal), dimension(:,:,:,:), pointer :: F
 
   call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -415,7 +415,7 @@ subroutine grid_mechanical_spectral_basic_restartWrite
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:,:), pointer :: F
+  real(pReal), dimension(:,:,:,:), pointer :: F
 
   call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -496,14 +496,15 @@ end subroutine converged
 !--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in, F, &
+subroutine formResidual(residual_subdomain, F, &
                         r, dummy, err_PETSc)
 
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
-    intent(in) :: F                                                                                 !< deformation gradient field
-  PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
-    intent(out) :: r                                                                                !< residuum field
+  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+    residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
+    F                                                                                               !< deformation gradient field
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
+    r                                                                                               !< residuum field
   PetscObject :: dummy
   PetscErrorCode :: err_PETSc
 

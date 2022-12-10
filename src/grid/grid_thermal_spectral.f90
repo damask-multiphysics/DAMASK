@@ -74,7 +74,7 @@ subroutine grid_thermal_spectral_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: thermal_grid
-  PetscScalar, dimension(:,:,:), pointer :: T_PETSc
+  real(pReal), dimension(:,:,:), pointer :: T_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
@@ -249,7 +249,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
   integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer :: T_PETSc
+  real(pReal),  dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: err_PETSc
 
 
@@ -288,7 +288,7 @@ subroutine grid_thermal_spectral_restartWrite
   PetscErrorCode :: err_PETSc
   DM :: dm_local
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:), pointer :: T
+  real(pReal), dimension(:,:,:), pointer :: T
 
   call SNESGetDM(SNES_thermal,dm_local,err_PETSc);
   CHKERRQ(err_PETSc)
@@ -315,16 +315,14 @@ end subroutine grid_thermal_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
+subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-    in
-  PetscScalar, dimension( &
-    XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
+    residual_subdomain
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
-  PetscScalar, dimension( &
-    X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-    r                                                                                               !< residual
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(out) :: &
+    r                                                                                                     !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc
 

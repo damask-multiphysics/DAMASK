@@ -75,7 +75,7 @@ subroutine grid_damage_spectral_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: damage_grid
-  PetscScalar, dimension(:,:,:), pointer :: phi_PETSc
+  real(pReal), dimension(:,:,:), pointer :: phi_PETSc
   Vec :: uBound, lBound
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
@@ -273,7 +273,7 @@ subroutine grid_damage_spectral_forward(cutBack)
 
   integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer :: phi_PETSc
+  real(pReal),  dimension(:,:,:), pointer :: phi_PETSc
   PetscErrorCode :: err_PETSc
 
 
@@ -335,15 +335,13 @@ end subroutine grid_damage_spectral_restartWrite
 !--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
+subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-    in
-  PetscScalar, dimension( &
-    XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
+    residual_subdomain
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
-  PetscScalar, dimension( &
-    X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(out) :: &
     r                                                                                               !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc

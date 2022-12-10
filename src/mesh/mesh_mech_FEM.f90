@@ -120,8 +120,8 @@ subroutine FEM_mechanical_init(fieldBC)
   PetscReal                              :: detJ
   PetscReal,         allocatable, target :: cellJMat(:,:)
 
-  PetscScalar,                   pointer, dimension(:) :: px_scal
-  PetscScalar,       allocatable, target, dimension(:) ::  x_scal
+  real(pReal),                   pointer, dimension(:) :: px_scal
+  real(pReal),       allocatable, target, dimension(:) ::  x_scal
 
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: err_PETSc
@@ -369,8 +369,8 @@ subroutine FEM_mechanical_formResidual(dm_local,xx_local,f_local,dummy,err_PETSc
   PetscDS                            :: prob
   Vec                                :: x_local, f_local, xx_local
   PetscSection                       :: section
-  PetscScalar, dimension(:), pointer :: x_scal, pf_scal
-  PetscScalar, dimension(cellDof), target :: f_scal
+  real(pReal), dimension(:), pointer :: x_scal, pf_scal
+  real(pReal), dimension(cellDof), target :: f_scal
   PetscReal                          ::  IcellJMat(dimPlex,dimPlex)
   PetscReal,    dimension(:),pointer :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, field, face, &
@@ -517,10 +517,10 @@ subroutine FEM_mechanical_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,err_P
   PetscReal, dimension(:),   pointer :: basisField, basisFieldDer, &
                                           pV0, pCellJ, pInvcellJ
 
-  PetscScalar, dimension(:),   pointer :: pK_e, x_scal
+  real(pReal), dimension(:),   pointer :: pK_e, x_scal
 
-  PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e
-  PetscScalar,dimension(cellDOF,cellDOF) :: K_eA, K_eB
+  real(pReal),dimension(cellDOF,cellDOF),  target :: K_e
+  real(pReal),dimension(cellDOF,cellDOF) :: K_eA, K_eB
 
   PetscInt :: cellStart, cellEnd, cell, field, face, &
               qPt, basis, comp, cidx,bcSize, m, i
@@ -777,7 +777,7 @@ subroutine FEM_mechanical_updateCoords()
   PetscQuadrature :: mechQuad
   PetscReal, dimension(:), pointer :: basisField, basisFieldDer, &
     nodeCoords_linear                                                                               !< nodal coordinates (dimPlex*Nnodes)
-  PetscScalar, dimension(:), pointer :: x_scal
+  real(pReal), dimension(:), pointer :: x_scal
 
   call SNESGetDM(mechanical_snes,dm_local,err_PETSc)
   CHKERRQ(err_PETSc)

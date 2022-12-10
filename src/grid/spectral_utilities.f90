@@ -1005,7 +1005,7 @@ subroutine utilities_updateCoords(F)
 #endif
   real(pReal),   dimension(3)   :: step
   real(pReal),   dimension(3,3) :: Favg
-  integer,       dimension(3) :: me
+  integer,       dimension(3)   :: me
   integer, dimension(3,8) :: &
     neighbor = reshape([ &
                         0, 0, 0, &
