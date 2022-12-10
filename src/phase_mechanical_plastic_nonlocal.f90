@@ -251,7 +251,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
-        if(size(a) > 0) prm%nonSchmidActive = .true.
+        if (size(a) > 0) prm%nonSchmidActive = .true.
         prm%P_nS_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
       else
@@ -416,7 +416,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     allocate(geom(ph)%IPcoordinates(3,Nmembers))
     call storeGeometry(ph)
 
-    if(plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
+    if (plasticState(ph)%nonlocal .and. .not. allocated(IPneighborhood)) &
       call IO_error(212,ext_msg='IPneighborhood does not exist')
 
     st0%rho => plasticState(ph)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
@@ -485,7 +485,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-6_pReal)
-    if(any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
+    if (any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
 
     stt%rho_forest => plasticState(ph)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nmembers)
@@ -518,7 +518,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
   do ph = 1, phases%length
 
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     phase => phases%get_dict(ph)
     Nmembers = count(material_phaseID == ph)
@@ -1783,6 +1783,6 @@ subroutine storeGeometry(ph)
     end do
   end do
 
-end subroutine
+end subroutine storeGeometry
 
 end submodule nonlocal

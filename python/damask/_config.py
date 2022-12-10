@@ -8,8 +8,10 @@ import numpy as np
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader
+    from yaml import CSafeDumper as SafeDumper
 except ImportError:
     from yaml import SafeLoader                                                                     # type: ignore
+    from yaml import SafeDumper                                                                     # type: ignore
 
 from ._typehints import FileHandle
 from . import Rotation
@@ -17,20 +19,20 @@ from . import util
 
 MyType = TypeVar('MyType', bound='Config')
 
-class NiceDumper(yaml.SafeDumper):
+class NiceDumper(SafeDumper):
     """Make YAML readable for humans."""
 
     def write_line_break(self,
                          data: Optional[str] = None):
-        super().write_line_break(data)
+        super().write_line_break(data)                                                              # type: ignore
 
-        if len(self.indents) == 1:
-            super().write_line_break()
+        if len(self.indents) == 1:                                                                  # type: ignore
+            super().write_line_break()                                                              # type: ignore
 
     def increase_indent(self,
                         flow: bool = False,
                         indentless: bool = False):
-        return super().increase_indent(flow, False)
+        return super().increase_indent(flow, False)                                                 # type: ignore
 
     def represent_data(self,
                        data: Any):
@@ -41,8 +43,10 @@ class NiceDumper(yaml.SafeDumper):
             return self.represent_data(data.tolist())
         if isinstance(data, Rotation):
             return self.represent_data(data.quaternion.tolist())
-        else:
-            return super().represent_data(data)
+        if hasattr(data, 'dtype'):
+            return self.represent_data(data.item())
+
+        return super().represent_data(data)
 
     def ignore_aliases(self,
                        data: Any) -> bool:

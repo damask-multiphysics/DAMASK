@@ -9,6 +9,7 @@ module phase
   use math
   use rotations
   use polynomials
+  use tables
   use IO
   use config
   use material
@@ -160,6 +161,11 @@ module phase
       integer, intent(in) :: ph
     end subroutine thermal_restartWrite
 
+    module subroutine damage_restartWrite(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine damage_restartWrite
+
     module subroutine mechanical_restartRead(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
@@ -169,6 +175,11 @@ module phase
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
     end subroutine thermal_restartRead
+
+    module subroutine damage_restartRead(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine damage_restartRead
 
     module function mechanical_S(ph,en) result(S)
       integer, intent(in) :: ph,en
@@ -674,6 +685,7 @@ subroutine phase_restartWrite(fileHandle)
 
     call mechanical_restartWrite(groupHandle(2),ph)
     call thermal_restartWrite(groupHandle(2),ph)
+    call damage_restartWrite(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -703,6 +715,7 @@ subroutine phase_restartRead(fileHandle)
 
     call mechanical_restartRead(groupHandle(2),ph)
     call thermal_restartRead(groupHandle(2),ph)
+    call damage_restartRead(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 

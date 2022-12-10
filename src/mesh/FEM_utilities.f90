@@ -120,14 +120,14 @@ subroutine FEM_utilities_init
   debug_mesh => config_debug%get_dict('mesh',defaultVal=emptyDict)
   debugPETSc =  debug_mesh%contains('PETSc')
 
-  if(debugPETSc) print'(3(/,1x,a),/)', &
+  if (debugPETSc) print'(3(/,1x,a),/)', &
                  'Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
                  'add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
-  if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
+  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
                                &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &

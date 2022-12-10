@@ -209,7 +209,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
 
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
-  if(error) then
+  if (error) then
     print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   end if
@@ -324,7 +324,7 @@ function rectifyPath(path)
      end if
      i = j+index(rectifyPath(j+1:l),'../')
   end do
-  if(len_trim(rectifyPath) == 0) rectifyPath = '/'
+  if (len_trim(rectifyPath) == 0) rectifyPath = '/'
 
   rectifyPath = trim(rectifyPath)
 

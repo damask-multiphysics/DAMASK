@@ -26,7 +26,7 @@ module prec
   PetscInt,    private   :: dummy_int
   integer,     parameter :: pPETSCINT  = kind(dummy_int)
   PetscScalar, private   :: dummy_scalar
-  real(pReal), parameter :: pPETSCSCALAR = kind(dummy_scalar)
+  real(pReal), parameter, private :: pPETSCSCALAR = kind(dummy_scalar)
 #endif
   integer,     parameter :: pSTRINGLEN = 256                                                        !< default string length
   integer,     parameter :: pPATHLEN   = 4096                                                       !< maximum length of a path name on linux
@@ -254,8 +254,9 @@ subroutine selfTest()
   integer(pI64), dimension(1) :: i
   real(pReal),   dimension(2) :: r
 
+
 #ifdef PETSC
-  if (pReal /= pPETSCSCALAR)                error stop 'PetSc and Fortran scalar datatypes do not match'
+  if (pReal /= pPETSCSCALAR)                error stop 'PETSc and DAMASK scalar datatypes do not match'
 #endif
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))         error stop 'LHS allocation'

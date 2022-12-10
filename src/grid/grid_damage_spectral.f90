@@ -16,6 +16,9 @@ module grid_damage_spectral
   use prec
   use parallelization
   use IO
+  use CLI
+  use HDF5_utilities
+  use HDF5
   use spectral_utilities
   use discretization_grid
   use homogenization
@@ -59,13 +62,13 @@ module grid_damage_spectral
   public :: &
     grid_damage_spectral_init, &
     grid_damage_spectral_solution, &
+    grid_damage_spectral_restartWrite, &
     grid_damage_spectral_forward
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data
-! ToDo: Restart not implemented
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_init()
 
@@ -76,6 +79,8 @@ subroutine grid_damage_spectral_init()
   Vec :: uBound, lBound
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
+  integer(HID_T) :: fileHandle, groupHandle
+  real(pReal), dimension(1,product(cells(1:2))*cells3) :: tempN
   type(tDict), pointer :: &
     num_grid, &
     num_generic
@@ -166,6 +171,18 @@ subroutine grid_damage_spectral_init()
     call DMRestoreGlobalVector(damage_grid,uBound,err_PETSc)
     CHKERRQ(err_PETSc)
   end if
+
+  restartRead: if (CLI_restartInc > 0) then
+    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
+
+    fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
+    groupHandle = HDF5_openGroup(fileHandle,'solver')
+
+    call HDF5_read(tempN,groupHandle,'phi',.false.)
+    phi = reshape(tempN,[cells(1),cells(2),cells3])
+    call HDF5_read(tempN,groupHandle,'phi_lastInc',.false.)
+    phi_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
+  end if restartRead
 
   ce = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
@@ -286,6 +303,36 @@ end subroutine grid_damage_spectral_forward
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Write current solver and constitutive data for restart to file.
+!--------------------------------------------------------------------------------------------------
+subroutine grid_damage_spectral_restartWrite
+
+  PetscErrorCode :: err_PETSc
+  DM :: dm_local
+  integer(HID_T) :: fileHandle, groupHandle
+  PetscScalar, dimension(:,:,:), pointer :: phi
+
+  call SNESGetDM(SNES_damage,dm_local,err_PETSc);
+  CHKERRQ(err_PETSc)
+  call DMDAVecGetArrayF90(dm_local,solution_vec,phi,err_PETSc);
+  CHKERRQ(err_PETSc)
+
+  print'(1x,a)', 'writing damage solver data required for restart to file'; flush(IO_STDOUT)
+
+  fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
+  groupHandle = HDF5_openGroup(fileHandle,'solver')
+  call HDF5_write(reshape(phi,[1,product(cells(1:2))*cells3]),groupHandle,'phi')
+  call HDF5_write(reshape(phi_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'phi_lastInc')
+  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeFile(fileHandle)
+
+  call DMDAVecRestoreArrayF90(dm_local,solution_vec,phi,err_PETSc);
+  CHKERRQ(err_PETSc)
+
+end subroutine grid_damage_spectral_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
 subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
@@ -327,7 +374,7 @@ end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief update reference viscosity and conductivity
+!> @brief Update reference viscosity and conductivity.
 !--------------------------------------------------------------------------------------------------
 subroutine updateReference()
 

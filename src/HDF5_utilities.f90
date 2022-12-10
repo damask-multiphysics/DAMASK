@@ -183,7 +183,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   end if
 
   call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 #ifdef PETSC
   if (present(parallel)) then
@@ -197,24 +197,24 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
     call H5Pset_fapl_mpio_f(plist_id, PETSC_COMM_WORLD, MPI_INFO_NULL, hdferr)
 #endif
   end if
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 #endif
 
   if    (m == 'w') then
     call H5Fcreate_f(fileName,H5F_ACC_TRUNC_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
-  elseif(m == 'a') then
+    if (hdferr < 0) error stop 'HDF5 error'
+  elseif (m == 'a') then
     call H5Fopen_f(fileName,H5F_ACC_RDWR_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
-  elseif(m == 'r') then
+    if (hdferr < 0) error stop 'HDF5 error'
+  elseif (m == 'r') then
     call H5Fopen_f(fileName,H5F_ACC_RDONLY_F,HDF5_openFile,hdferr,access_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   else
     error stop 'unknown access mode'
   end if
 
   call H5Pclose_f(plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end function HDF5_openFile
 
@@ -229,7 +229,7 @@ subroutine HDF5_closeFile(fileHandle)
   integer     :: hdferr
 
   call H5Fclose_f(fileHandle,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_closeFile
 
@@ -248,19 +248,19 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for data access properties
   call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 !-------------------------------------------------------------------------------------------------
 ! setting I/O mode to collective
 #ifdef PETSC
   call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 #endif
 
 !-------------------------------------------------------------------------------------------------
 ! Create group
   call H5Gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Pclose_f(aplist_id,hdferr)
 
@@ -284,19 +284,19 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
  !-------------------------------------------------------------------------------------------------
  ! creating a property list for data access properties
   call H5Pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
  !-------------------------------------------------------------------------------------------------
  ! setting I/O mode to collective
 #ifdef PETSC
   call H5Pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 #endif
 
  !-------------------------------------------------------------------------------------------------
  ! opening the group
   call H5Gopen_f(fileHandle, trim(groupName), HDF5_openGroup, hdferr, gapl_id = aplist_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Pclose_f(aplist_id,hdferr)
 
@@ -313,7 +313,7 @@ subroutine HDF5_closeGroup(group_id)
   integer :: hdferr
 
   call H5Gclose_f(group_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_closeGroup
 
@@ -337,11 +337,11 @@ logical function HDF5_objectExists(loc_id,path)
   end if
 
   call H5Lexists_f(loc_id, p, HDF5_objectExists, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
-  if(HDF5_objectExists) then
+  if (HDF5_objectExists) then
     call H5Oexists_by_name_f(loc_id, p, HDF5_objectExists, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
 end function HDF5_objectExists
@@ -374,24 +374,24 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   ptr(1) = c_loc(attrValue_(1))
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_addAttribute_str
 
@@ -419,24 +419,24 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
   end if
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, int([1],HSIZE_T), hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_addAttribute_int
 
@@ -464,24 +464,24 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   end if
 
   call H5Screate_f(H5S_SCALAR_F,space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, int([1],HSIZE_T), hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_addAttribute_real
 
@@ -516,24 +516,24 @@ subroutine HDF5_addAttribute_str_array(loc_id,attrLabel,attrValue,path)
   end do
 
   call H5Screate_simple_f(1,shape(attrValue_,kind=HSIZE_T),space_id,hdferr,shape(attrValue_,kind=HSIZE_T))
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_STRING,space_id,attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Awrite_f(attr_id, H5T_STRING, c_loc(ptr), hdferr)                                          ! ptr instead of c_loc(ptr) works on gfortran, not on ifort
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_addAttribute_str_array
 
@@ -564,24 +564,24 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   array_size = size(attrValue,kind=HSIZE_T)
 
   call H5Screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_INTEGER,space_id,attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Awrite_f(attr_id, H5T_NATIVE_INTEGER, attrValue, array_size, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_addAttribute_int_array
 
@@ -612,24 +612,24 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   array_size = size(attrValue,kind=HSIZE_T)
 
   call H5Screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (attrExists) then
     call H5Adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call H5Acreate_by_name_f(loc_id,trim(p),trim(attrLabel),H5T_NATIVE_DOUBLE,space_id,attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Awrite_f(attr_id, H5T_NATIVE_DOUBLE, attrValue, array_size, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Aclose_f(attr_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id,hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_addAttribute_real_array
 
@@ -645,13 +645,13 @@ subroutine HDF5_setLink(loc_id,target_name,link_name)
   logical                      :: linkExists
 
   call H5Lexists_f(loc_id, link_name,linkExists, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   if (linkExists) then
     call H5Ldelete_f(loc_id,link_name, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
   call H5Lcreate_soft_f(target_name, loc_id, link_name, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_setLink
 
@@ -687,7 +687,7 @@ subroutine HDF5_read_real1(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -724,7 +724,7 @@ subroutine HDF5_read_real2(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -761,7 +761,7 @@ subroutine HDF5_read_real3(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -799,7 +799,7 @@ subroutine HDF5_read_real4(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -837,7 +837,7 @@ subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -875,7 +875,7 @@ subroutine HDF5_read_real6(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -913,7 +913,7 @@ subroutine HDF5_read_real7(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -951,7 +951,7 @@ subroutine HDF5_read_int1(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -989,7 +989,7 @@ subroutine HDF5_read_int2(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1026,7 +1026,7 @@ subroutine HDF5_read_int3(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1063,7 +1063,7 @@ subroutine HDF5_read_int4(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1100,7 +1100,7 @@ subroutine HDF5_read_int5(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1138,7 +1138,7 @@ subroutine HDF5_read_int6(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1176,7 +1176,7 @@ subroutine HDF5_read_int7(dataset,loc_id,datasetName,parallel)
 
   call H5Dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1218,7 +1218,7 @@ subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1259,7 +1259,7 @@ subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1300,7 +1300,7 @@ subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1341,7 +1341,7 @@ subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1383,7 +1383,7 @@ subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1424,7 +1424,7 @@ subroutine HDF5_write_real6(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1465,7 +1465,7 @@ subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1529,7 +1529,7 @@ subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                         file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1556,14 +1556,14 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
   dataset_ = trim(dataset)
 
   call H5Tcopy_f(H5T_C_S1, filetype_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Tset_size_f(filetype_id, int(len(dataset_)+1,HSIZE_T), hdferr)                            ! +1 for NULL
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Tcopy_f(H5T_FORTRAN_S1, memtype_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Tset_size_f(memtype_id, int(len(dataset_),HSIZE_T), hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
@@ -1579,23 +1579,23 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
   end if
 
   call H5Screate_simple_f(1, [1_HSIZE_T], space_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   CALL H5Dcreate_f(loc_id, datasetName, filetype_id, space_id, dataset_id, hdferr, dcpl)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Dwrite_f(dataset_id, memtype_id, c_loc(dataset_(1:1)), hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Pclose_f(dcpl, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Dclose_f(dataset_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(space_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Tclose_f(memtype_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Tclose_f(filetype_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine HDF5_write_str
 
@@ -1635,7 +1635,7 @@ subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1676,7 +1676,7 @@ subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1717,7 +1717,7 @@ subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1758,7 +1758,7 @@ subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1799,7 +1799,7 @@ subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-   if(hdferr < 0) error stop 'HDF5 error'
+   if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1840,7 +1840,7 @@ subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1881,7 +1881,7 @@ subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
   if (product(totalShape) /= 0) then
     call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1945,7 +1945,7 @@ subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
         call H5Dwrite_f(dset_id, H5T_NATIVE_INTEGER,dataset,int(totalShape,HSIZE_T), hdferr,&
                        file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     end select
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
@@ -1978,7 +1978,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
   readSize = 0_MPI_INTEGER_KIND
@@ -1986,7 +1986,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
     call MPI_Allreduce(MPI_IN_PLACE,readSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI) ! get total output size over each process
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if
@@ -1997,35 +1997,35 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 
   if (any(globalShape == 0)) then
     call H5Pclose_f(plist_id, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
     return
   end if
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape)
   call H5Screate_simple_f(size(localShape), localShape, memspace_id, hdferr, localShape)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! creating a property list for IO and set it to collective
   call H5Pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 #ifdef PETSC
   call H5Pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! open the dataset in the file and get the space ID
   call H5Dopen_f(loc_id,datasetName,dset_id,hdferr, dapl_id = aplist_id)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Dget_space_f(dset_id, filespace_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! select a hyperslab (the portion of the current process) in the file
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, localShape, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine initialize_read
 
@@ -2039,15 +2039,15 @@ subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer :: hdferr
 
   call H5Pclose_f(plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Pclose_f(aplist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Dclose_f(dset_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(filespace_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(memspace_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine finalize_read
 
@@ -2080,11 +2080,11 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective when writing in parallel)
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 #ifdef PETSC
   if (parallel) then
     call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+    if (hdferr < 0) error stop 'HDF5 error'
   end if
 #endif
 
@@ -2129,19 +2129,19 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
   call H5Screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Screate_simple_f(size(totalShape), totalShape, filespace_id, hdferr, totalShape)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
 ! create dataset in the file and select a hyperslab from it (the portion of the current process)
   call H5Dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr, dcpl)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Pclose_f(dcpl , hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
   contains
   !------------------------------------------------------------------------------------------------
@@ -2170,13 +2170,13 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
   integer :: hdferr
 
   call H5Pclose_f(plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Dclose_f(dset_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(filespace_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
   call H5Sclose_f(memspace_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
+  if (hdferr < 0) error stop 'HDF5 error'
 
 end subroutine finalize_write
 

@@ -75,8 +75,8 @@ def curl(size: _FloatSequence,
     e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,f_fourier)*2.0j*_np.pi if n == 3 else         # vector, 3   -> 3
-             _np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,f_fourier)*2.0j*_np.pi)                       # tensor, 3x3 -> 3x3
+    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks' if n == 3 else
+                        'slm,ijkl,ijknm->ijksn',e,k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->3, tensor 3x3->3x3
 
     return _np.fft.irfftn(curl_,axes=(0,1,2),s=f.shape[:3])
 
@@ -103,10 +103,10 @@ def divergence(size: _FloatSequence,
     k_s = _ks(size,f.shape[:3],True)
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    div_ = (_np.einsum('ijkl,ijkl ->ijk', k_s,f_fourier)*2.0j*_np.pi if n == 3 else                 # vector, 3   -> 1
-            _np.einsum('ijkm,ijklm->ijkl',k_s,f_fourier)*2.0j*_np.pi)                               # tensor, 3x3 -> 3
+    divergence_ = (_np.einsum('ijkl,ijkl ->ijk' if n == 3 else
+                              'ijkm,ijklm->ijkl', k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->1, tensor 3x3->3
 
-    return _np.fft.irfftn(div_,axes=(0,1,2),s=f.shape[:3])
+    return _np.fft.irfftn(divergence_,axes=(0,1,2),s=f.shape[:3])
 
 
 def gradient(size: _FloatSequence,
@@ -124,17 +124,17 @@ def gradient(size: _FloatSequence,
     Returns
     -------
     ∇ f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
-        Divergence of f.
+        Gradient of f.
 
     """
     n = _np.prod(f.shape[3:])
     k_s = _ks(size,f.shape[:3],True)
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    grad_ = (_np.einsum('ijkl,ijkm->ijkm', f_fourier,k_s)*2.0j*_np.pi if n == 1 else                # scalar, 1 -> 3
-             _np.einsum('ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                              # vector, 3 -> 3x3
+    gradient_ = (_np.einsum('ijkl,ijkm->ijkm' if n == 1 else
+                            'ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                          # scalar 1->3, vector 3->3x3
 
-    return _np.fft.irfftn(grad_,axes=(0,1,2),s=f.shape[:3])
+    return _np.fft.irfftn(gradient_,axes=(0,1,2),s=f.shape[:3])
 
 
 def coordinates0_point(cells: _IntSequence,
@@ -296,8 +296,8 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     origin    = mincorner - delta*.5
 
     # 1D/2D: size/origin combination undefined, set origin to 0.0
-    size  [_np.where(cells==1)] = origin[_np.where(cells==1)]*2.
-    origin[_np.where(cells==1)] = 0.0
+    size  [_np.where(cells == 1)] = origin[_np.where(cells == 1)]*2.
+    origin[_np.where(cells == 1)] = 0.0
 
     if cells.prod() != len(coordinates0):
         raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')

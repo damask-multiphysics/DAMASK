@@ -120,8 +120,8 @@ module spectral_utilities
     utilities_GreenConvolution, &
     utilities_divergenceRMS, &
     utilities_curlRMS, &
-    utilities_ScalarGradient, &
-    utilities_VectorDivergence, &
+    utilities_scalarGradient, &
+    utilities_vectorDivergence, &
     utilities_maskedCompliance, &
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
@@ -577,9 +577,6 @@ real(pReal) function utilities_divergenceRMS(tensorField)
   complex(pReal), dimension(3) :: rescaledGeom
 
 
-  print'(/,1x,a)', '... calculating divergence ................................................'
-  flush(IO_STDOUT)
-
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
@@ -627,9 +624,6 @@ real(pReal) function utilities_curlRMS(tensorField)
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
 
-
-  print'(/,1x,a)', '... calculating curl ......................................................'
-  flush(IO_STDOUT)
 
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,1:cells(2),1:cells3) = 0.0_pReal
   tensorField_real(1:3,1:3,1:cells(1),            1:cells(2),1:cells3) = tensorField
@@ -757,7 +751,7 @@ end function utilities_maskedCompliance
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate gradient of scalar field.
 !--------------------------------------------------------------------------------------------------
-function utilities_ScalarGradient(field) result(grad)
+function utilities_scalarGradient(field) result(grad)
 
   real(pReal), intent(in), dimension(  cells(1),cells(2),cells3) :: field
   real(pReal),             dimension(3,cells(1),cells(2),cells3) :: grad
@@ -769,18 +763,18 @@ function utilities_ScalarGradient(field) result(grad)
   scalarField_real(1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
   do j = 1, cells2;  do k = 1, cells(3);  do i = 1,cells1Red
-    vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)                    ! ToDo: no -conjg?
+    vectorField_fourier(1:3,i,k,j) = scalarField_fourier(i,k,j)*xi1st(1:3,i,k,j)
   end do; end do; end do
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   grad = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)*wgt
 
-end function utilities_ScalarGradient
+end function utilities_scalarGradient
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate divergence of vector field.
 !--------------------------------------------------------------------------------------------------
-function utilities_VectorDivergence(field) result(div)
+function utilities_vectorDivergence(field) result(div)
 
   real(pReal), intent(in), dimension(3,cells(1),cells(2),cells3) :: field
   real(pReal),             dimension(  cells(1),cells(2),cells3) :: div
@@ -790,11 +784,11 @@ function utilities_VectorDivergence(field) result(div)
   vectorField_real(1:3,1:cells(1),            1:cells(2),1:cells3) = field
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
   scalarField_fourier(1:cells1Red,1:cells(3),1:cells2) = sum(vectorField_fourier(1:3,1:cells1Red,1:cells(3),1:cells2) &
-                                                             *conjg(-xi1st),1)
+                                                             *conjg(-xi1st),1)                      ! ToDo: use "xi1st" instead of "conjg(-xi1st)"?
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   div = scalarField_real(1:cells(1),1:cells(2),1:cells3)*wgt
 
-end function utilities_VectorDivergence
+end function utilities_vectorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
@@ -936,7 +930,7 @@ end function utilities_forwardField
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates filter for fourier convolution depending on type given in numerics.config
+!> @brief Calculate Filter for Fourier convolution.
 !> @details this is the full operator to calculate derivatives, i.e. 2 \pi i k for the
 ! standard approach
 !--------------------------------------------------------------------------------------------------
@@ -1133,43 +1127,116 @@ subroutine selfTest()
   real(pReal), allocatable, dimension(:,:,:,:,:) :: tensorField_real_
   real(pReal), allocatable, dimension(:,:,:,:) :: vectorField_real_
   real(pReal), allocatable, dimension(:,:,:) :: scalarField_real_
+  real(pReal), dimension(3,3) :: tensorSum
+  real(pReal), dimension(3) :: vectorSum
+  real(pReal) :: scalarSum
+  real(pReal), dimension(3,3) :: r
+  integer(MPI_INTEGER_KIND) :: err_MPI
 
 
   call random_number(tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   tensorField_real_ = tensorField_real
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
-  if (worldsize==1) then
-    if (any(dNeq(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3)/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
-      error stop 'tensorField avg'
-  endif
+  call MPI_Allreduce(sum(sum(sum(tensorField_real_,dim=5),dim=4),dim=3),tensorSum,9_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (worldrank==0) then
+    if (any(dNeq(tensorSum/tensorField_fourier(:,:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
+      error stop 'mismatch avg tensorField FFT <-> real'
+  end if
   call fftw_mpi_execute_dft_c2r(planTensorBack,tensorField_fourier,tensorField_real)
   tensorField_real(1:3,1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) error stop 'tensorField'
+  if (maxval(abs(tensorField_real_ - tensorField_real*wgt))>5.0e-15_pReal) &
+    error stop 'mismatch tensorField FFT/invFFT <-> real'
 
   call random_number(vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   vectorField_real_ = vectorField_real
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
-  if (worldsize==1) then
-    if (any(dNeq(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2)/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
-      error stop 'vector avg'
-  endif
+  call MPI_Allreduce(sum(sum(sum(vectorField_real_,dim=4),dim=3),dim=2),vectorSum,3_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (worldrank==0) then
+    if (any(dNeq(vectorSum/vectorField_fourier(:,1,1,1)%re,1.0_pReal,1.0e-12_pReal))) &
+      error stop 'mismatch avg vectorField FFT <-> real'
+  end if
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
   vectorField_real(1:3,cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) error stop 'vectorField'
+  if (maxval(abs(vectorField_real_ - vectorField_real*wgt))>5.0e-15_pReal) &
+    error stop 'mismatch vectorField FFT/invFFT <-> real'
 
   call random_number(scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
   scalarField_real_ = scalarField_real
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
-  if (worldsize==1) then
-    if (dNeq(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1)/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
-      error stop 'scalar avg'
-  endif
+  call MPI_Allreduce(sum(sum(sum(scalarField_real_,dim=3),dim=2),dim=1),scalarSum,1_MPI_INTEGER_KIND, &
+                     MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  if (worldrank==0) then
+    if (dNeq(scalarSum/scalarField_fourier(1,1,1)%re,1.0_pReal,1.0e-12_pReal)) &
+      error stop 'mismatch avg scalarField FFT <-> real'
+  end if
   call fftw_mpi_execute_dft_c2r(planScalarBack,scalarField_fourier,scalarField_real)
   scalarField_real(cells(1)+1:cells1Red*2,:,:) = 0.0_pReal
-  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) error stop 'scalarField'
+  if (maxval(abs(scalarField_real_ - scalarField_real*wgt))>5.0e-15_pReal) &
+    error stop 'mismatch scalarField FFT/invFFT <-> real'
+
+  call random_number(r)
+  call MPI_Bcast(r,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+
+  scalarField_real_ = r(1,1)
+  if (maxval(abs(utilities_scalarGradient(scalarField_real_)))>5.0e-9_pReal)   error stop 'non-zero grad(const)'
+
+  vectorField_real_ = spread(spread(spread(r(1,:),2,cells(1)),3,cells(2)),4,cells3)
+  if (maxval(abs(utilities_vectorDivergence(vectorField_real_)))>5.0e-9_pReal) error stop 'non-zero div(const)'
+
+  tensorField_real_ = spread(spread(spread(r,3,cells(1)),4,cells(2)),5,cells3)
+  if (utilities_divergenceRMS(tensorField_real_)>5.0e-14_pReal) error stop 'non-zero RMS div(const)'
+  if (utilities_curlRMS(tensorField_real_)>5.0e-14_pReal)       error stop 'non-zero RMS curl(const)'
+
+  if (cells(1) > 2 .and.  spectral_derivative_ID == DERIVATIVE_CONTINUOUS_ID) then
+    scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
+    scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad cosine'
+    scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
+    vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
+    scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad sine'
+
+    vectorField_real_(2:3,:,:,:) = 0.0_pReal
+    vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
+    vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div cosine'
+    vectorField_real_(2:3,:,:,:) = 0.0_pReal
+    vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
+    scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
+    vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div sine'
+  end if
+
+  contains
+
+    function planeCosine(n)
+      integer, intent(in) :: n
+      real(pReal), dimension(n) :: planeCosine
+
+
+      planeCosine = cos(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
+
+    end function planeCosine
+
+    function planeSine(n)
+      integer, intent(in) :: n
+      real(pReal), dimension(n) :: planeSine
+
+
+      planeSine = sin(real(math_range(n),pReal)/real(n,pReal)*TAU-TAU/real(n*2,pReal))
+
+    end function planeSine
 
 end subroutine selfTest
 

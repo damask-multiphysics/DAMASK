@@ -7,8 +7,8 @@ from optparse import OptionParser
 
 import damask
 
-scriptName = os.path.splitext(os.path.basename(__file__))[0]
-scriptID   = ' '.join([scriptName,damask.version])
+script_name = os.path.splitext(os.path.basename(__file__))[0]
+script_id   = ' '.join([script_name,damask.version])
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
@@ -45,7 +45,7 @@ def output(cmds,locals,dest):
 #-------------------------------------------------------------------------------------------------
 def init():
   return [
-    "|"+' '.join([scriptID] + sys.argv[1:]),
+    "|"+' '.join([script_id] + sys.argv[1:]),
     "*draw_manual",              # prevent redrawing in Mentat, should be much faster
     "*new_model yes",
     "*reset",
@@ -170,7 +170,7 @@ def initial_conditions(material):
 parser = OptionParser(usage='%prog options [file[s]]', description = """
 Generate MSC.Marc FE hexahedral mesh from geom file.
 
-""", version = scriptID)
+""", version = script_id)
 
 parser.add_option('-p', '--port',
                   dest = 'port',
@@ -194,7 +194,7 @@ if options.port is not None:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-    print(scriptName+': '+name)
+    print(script_name+': '+name)
 
     geom = damask.Grid.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     material = geom.material.flatten(order='F')
@@ -211,11 +211,11 @@ for name in filenames:
       '*draw_automatic',
     ]
 
-    outputLocals = {}
+    output_locals = {}
     if options.port:
         py_mentat.py_connect('',options.port)
-        output(cmds,outputLocals,'Mentat')
+        output(cmds,output_locals,'Mentat')
         py_mentat.py_disconnect()
     else:
         with sys.stdout if name is None else open(os.path.splitext(name)[0]+'.proc','w') as f:
-            output(cmds,outputLocals,f)
+            output(cmds,output_locals,f)

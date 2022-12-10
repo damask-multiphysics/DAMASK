@@ -18,6 +18,7 @@ module materialpoint
   use math
   use rotations
   use polynomials
+  use tables
   use lattice
   use material
   use phase
@@ -40,37 +41,38 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize all modules.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_initAll
+subroutine materialpoint_initAll()
 
-  call parallelization_init
-  call CLI_init                                                                        ! Spectral and FEM interface to commandline
-  call signals_init
-  call prec_init
-  call IO_init
+  call parallelization_init()
+  call CLI_init()                                                                                   ! grid and mesh commandline interface
+  call signals_init()
+  call prec_init()
+  call IO_init()
 #if   defined(MESH)
-  call FEM_quadrature_init
+  call FEM_quadrature_init()
 #elif defined(GRID)
-   call base64_init
+   call base64_init()
 #endif
-  call YAML_types_init
-  call YAML_parse_init
-  call HDF5_utilities_init
+  call YAML_types_init()
+  call YAML_parse_init()
+  call HDF5_utilities_init()
   call results_init(restart=CLI_restartInc>0)
-  call config_init
-  call math_init
-  call rotations_init
-  call polynomials_init
-  call lattice_init
+  call config_init()
+  call math_init()
+  call rotations_init()
+  call polynomials_init()
+  call tables_init()
+  call lattice_init()
 #if   defined(MESH)
   call discretization_mesh_init(restart=CLI_restartInc>0)
 #elif defined(GRID)
   call discretization_grid_init(restart=CLI_restartInc>0)
 #endif
   call material_init(restart=CLI_restartInc>0)
-  call phase_init
-  call homogenization_init
-  call materialpoint_init
-  call config_deallocate
+  call phase_init()
+  call homogenization_init()
+  call materialpoint_init()
+  call config_deallocate()
 
 end subroutine materialpoint_initAll
 
@@ -78,7 +80,7 @@ end subroutine materialpoint_initAll
 !--------------------------------------------------------------------------------------------------
 !> @brief Read restart information if needed.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_init
+subroutine materialpoint_init()
 
   integer(HID_T) :: fileHandle
 
@@ -95,7 +97,7 @@ subroutine materialpoint_init
     call phase_restartRead(fileHandle)
 
     call HDF5_closeFile(fileHandle)
-  endif
+  end if
 
 end subroutine materialpoint_init
 
@@ -103,7 +105,7 @@ end subroutine materialpoint_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Write restart information.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_restartWrite
+subroutine materialpoint_restartWrite()
 
   integer(HID_T) :: fileHandle
 
@@ -123,10 +125,10 @@ end subroutine materialpoint_restartWrite
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data for new time increment.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_forward
+subroutine materialpoint_forward()
 
-  call homogenization_forward
-  call phase_forward
+  call homogenization_forward()
+  call phase_forward()
 
 end subroutine materialpoint_forward
 
@@ -139,13 +141,13 @@ subroutine materialpoint_results(inc,time)
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
 
-  call results_openJobFile
+  call results_openJobFile()
   call results_addIncrement(inc,time)
-  call phase_results
-  call homogenization_results
-  call discretization_results
-  call results_finalizeIncrement
-  call results_closeJobFile
+  call phase_results()
+  call homogenization_results()
+  call discretization_results()
+  call results_finalizeIncrement()
+  call results_closeJobFile()
 
 end subroutine materialpoint_results
 
