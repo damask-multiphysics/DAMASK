@@ -134,7 +134,7 @@ subroutine CLI_init
         print'(a)','            and "debug.yaml" in that directory.'
         print'(/,a)','   --restart N'
         print'(a)',  '        Reads in increment N and continues with calculating'
-        print'(a)',  '            increment N+1 based on this.'
+        print'(a)',  '            increment N+1, N+2, ... based on this.'
         print'(a)',  '        Appends to existing results file'
         print'(a)',  '            "NameOfGeom_NameOfLoadFile.hdf5".'
         print'(a)',  '        Works only if the restart information for increment N'
