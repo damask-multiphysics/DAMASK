@@ -630,7 +630,7 @@ class Rotation:
 
         Returns
         -------
-        axis_angle : numpy.ndarray, shape (...,4) or tuple ((...,3), (...)) if pair == True
+        n_omega : numpy.ndarray, shape (...,4) or tuple ((...,3), (...)) if pair == True
             Axis and angle [n_1, n_2, n_3, ω] with ǀnǀ = 1 and ω ∈ [0,π]
             or ω ∈ [0,180] if degrees == True.
 
@@ -820,7 +820,7 @@ class Rotation:
         return Rotation(Rotation._eu2qu(eu))
 
     @staticmethod
-    def from_axis_angle(axis_angle: np.ndarray,
+    def from_axis_angle(n_omega: np.ndarray,
                         degrees: bool = False,
                         normalize: bool = False,
                         P: Literal[1, -1] = -1) -> 'Rotation':
@@ -829,7 +829,7 @@ class Rotation:
 
         Parameters
         ----------
-        axis_angle : numpy.ndarray, shape (...,4)
+        n_omega : numpy.ndarray, shape (...,4)
             Axis and angle (n_1, n_2, n_3, ω) with ǀnǀ = 1 and ω ∈ [0,π]
             or ω ∈ [0,180] if degrees == True.
         degrees : bool, optional
@@ -844,7 +844,7 @@ class Rotation:
         new : damask.Rotation
 
         """
-        ax = np.array(axis_angle,dtype=float)
+        ax = np.array(n_omega,dtype=float)
         if ax.shape[:-2:-1] != (4,): raise ValueError('invalid shape')
         if abs(P) != 1: raise ValueError('P ∉ {-1,1}')
 

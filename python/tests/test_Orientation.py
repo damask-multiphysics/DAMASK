@@ -121,7 +121,7 @@ class TestOrientation:
                    == np.eye(3))
 
     def test_from_axis_angle(self):
-        assert np.all(Orientation.from_axis_angle(axis_angle=[1,0,0,0],family='triclinic').as_matrix()
+        assert np.all(Orientation.from_axis_angle(n_omega=[1,0,0,0],family='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_basis(self):
@@ -210,7 +210,7 @@ class TestOrientation:
     @pytest.mark.parametrize('family',crystal_families)
     @pytest.mark.parametrize('angle',[10,20,30,40])
     def test_average(self,angle,family):
-        o = Orientation.from_axis_angle(family=family,axis_angle=[[0,0,1,10],[0,0,1,angle]],degrees=True)
+        o = Orientation.from_axis_angle(family=family,n_omega=[[0,0,1,10],[0,0,1,angle]],degrees=True)
         avg_angle = o.average().as_axis_angle(degrees=True,pair=True)[1]
         assert np.isclose(avg_angle,10+(angle-10)/2.)
 
