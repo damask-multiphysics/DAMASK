@@ -29,8 +29,9 @@ class Table:
             Additional, human-readable information.
 
         """
-        comments_ = [comments] if isinstance(comments,str) else comments
-        self.comments = [] if comments_ is None else [str(c) for c in comments_]
+        self.comments = [] if comments is None else  \
+                        [comments] if isinstance(comments,str) else \
+                        [str(c) for c in comments]
         self.shapes = { k:(v,) if isinstance(v,(np.int64,np.int32,int)) else v for k,v in shapes.items() }
         self.data = pd.DataFrame(data=data)
         self._relabel('uniform')
@@ -183,16 +184,6 @@ class Table:
 
         """
         self.data.columns = self._label(self.shapes,how)                                            # type: ignore
-
-
-    def _add_comment(self,
-                     label: str,
-                     shape: Tuple[int, ...],
-                     info: Optional[str] = None):
-        if info is not None:
-            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
-            general  = util.execution_stamp('Table')
-            self.comments.append(f'{specific} / {general}')
 
 
     def isclose(self,
@@ -402,13 +393,15 @@ class Table:
             Updated table.
 
         """
-        dup = self.copy()
-        dup._add_comment(label, data.shape[1:], info)
+        def add_comment(label: str, shape: Tuple[int, ...],info: str) -> List[str]:
+            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=np.int64) > 1 else ""}: {info}'
+            general  = util.execution_stamp('Table')
+            return [f'{specific} / {general}']
 
-        if m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label):
-            key = m.group(1)
-        else:
-            key = label
+        dup = self.copy()
+        if info is not None: self.comments += add_comment(label,data.shape[1:],info)
+
+        key = m.group(1) if (m := re.match(r'(.*)\[((\d+,)*(\d+))\]',label)) else label
 
         if key in dup.shapes:
 

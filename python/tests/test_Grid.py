@@ -17,11 +17,13 @@ from damask import grid_filters
 @pytest.fixture
 def default():
     """Simple geometry."""
-    x=np.concatenate((np.ones(40,dtype=int),
-                      np.arange(2,42),
-                      np.ones(40,dtype=int)*2,
-                      np.arange(1,41))).reshape(8,5,4,order='F')
-    return Grid(x,[8e-6,5e-6,4e-6])
+    g = np.array([8,5,4])
+    l = np.prod(g[:2])
+    return Grid(np.concatenate((np.ones  (l,dtype=int),
+                                np.arange(l,dtype=int)+2,
+                                np.ones  (l,dtype=int)*2,
+                                np.arange(l,dtype=int)+1)).reshape(g,order='F'),
+                g*1e-6)
 
 @pytest.fixture
 def random():
@@ -166,15 +168,15 @@ class TestGrid:
     @pytest.mark.parametrize('periodic',[True,False])
     def test_clean_reference(self,default,update,ref_path,distance,selection,periodic):
         current = default.clean(distance,selection,periodic=periodic,rng_seed=0)
-        reference = ref_path/f'clean_{distance}_{"+".join(map(str,util.aslist(selection)))}_{periodic}.vti'
+        reference = ref_path/f'clean_{distance}_{util.srepr(selection,"+")}_{periodic}.vti'
         if update:
             current.save(reference)
         assert Grid.load(reference) == current
 
-    @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),set(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
+    @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
     @pytest.mark.parametrize('invert',[True,False])
     def test_clean_invert(self,default,selection,invert):
-        selection_inverse = set(default.material.flatten()) - set(selection)
+        selection_inverse = np.setdiff1d(default.material,selection)
         assert default.clean(selection=selection,invert_selection=invert,rng_seed=0) == \
                default.clean(selection=selection_inverse,invert_selection=not invert,rng_seed=0)
 
@@ -351,10 +353,10 @@ class TestGrid:
 
         assert np.all(m2==grid.material)
 
-    @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),set(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
+    @pytest.mark.parametrize('selection',[list(np.random.randint(1,20,6)),np.random.randint(1,20,6)])
     @pytest.mark.parametrize('invert',[True,False])
     def test_vicinity_offset_invert(self,random,selection,invert):
-        selection_inverse = set(random.material.flatten()) - set(selection)
+        selection_inverse = np.setdiff1d(random.material,selection)
         assert random.vicinity_offset(selection=selection        ,invert_selection=not invert) == \
                random.vicinity_offset(selection=selection_inverse,invert_selection=    invert)
 

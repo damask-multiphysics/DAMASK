@@ -4,7 +4,7 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Optional, Union, TextIO, List, Sequence, Dict
+from typing import Optional, Union, TextIO, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
@@ -18,9 +18,9 @@ from . import grid_filters
 from . import Rotation
 from . import Table
 from . import Colormap
-from ._typehints import FloatSequence, IntSequence, IntCollection, NumpyRngSeed
+from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
 try:
-    import numba as nb                                                          # type: ignore
+    import numba as nb                                                                              # type: ignore
 except ImportError:
     nb = False
 
@@ -63,11 +63,12 @@ class Grid:
 
         """
         self.material = material
-        self.size = size                                                        # type: ignore
-        self.origin = origin                                                    # type: ignore
+        self.size = size                                                                            # type: ignore
+        self.origin = origin                                                                        # type: ignore
         self.initial_conditions = {} if initial_conditions is None else initial_conditions
-        comments_ = [comments] if isinstance(comments,str) else comments
-        self.comments = [] if comments_ is None else [str(c) for c in comments_]
+        self.comments = [] if comments is None else \
+                        [comments] if isinstance(comments,str) else \
+                        [str(c) for c in comments]
 
     def __repr__(self) -> str:
         """
@@ -184,17 +185,6 @@ class Grid:
         self._ic = ic
 
     @property
-    def comments(self) -> List[str]:
-        """Comments, e.g. history of operations."""
-        return self._comments
-
-    @comments.setter
-    def comments(self,
-                 comments: Union[str, Sequence[str]]):
-        self._comments = [str(c) for c in comments] if isinstance(comments,Sequence) else [str(comments)]
-
-
-    @property
     def cells(self) -> np.ndarray:
         """Number of cells in x,y,z direction."""
         return np.asarray(self.material.shape)
@@ -226,14 +216,13 @@ class Grid:
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-        comments = v.comments
         ic = {label:v.get(label).reshape(cells,order='F') for label in set(v.labels['Cell Data']) - {'material'}}
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size     = bbox[1] - bbox[0],
                     origin   = bbox[0],
                     initial_conditions = ic,
-                    comments = comments,
+                    comments = v.comments,
                    )
 
 
@@ -1103,7 +1092,7 @@ class Grid:
 
     def clean(self,
               distance: float = np.sqrt(3),
-              selection: Optional[IntCollection] = None,
+              selection: Optional[IntSequence] = None,
               invert_selection: bool = False,
               periodic: bool = True,
               rng_seed: Optional[NumpyRngSeed] = None) -> 'Grid':
@@ -1115,7 +1104,7 @@ class Grid:
         distance : float, optional
             Voxel distance checked for presence of other materials.
             Defaults to sqrt(3).
-        selection : (collection of) int, optional
+        selection : (sequence of) int, optional
             Material IDs to consider. Defaults to all.
         invert_selection : bool, optional
             Consider all material IDs except those in selection. Defaults to False.
@@ -1136,8 +1125,8 @@ class Grid:
 
         """
         def most_frequent(stencil: np.ndarray,
-                         selection: Union[None,set],
-                         rng: np.random.Generator):
+                          selection: Union[None,np.ndarray],
+                          rng: np.random.Generator):
             me = stencil[stencil.size//2]
             if selection is None or me in selection:
                 unique, counts = np.unique(stencil,return_counts=True)
@@ -1152,8 +1141,8 @@ class Grid:
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
         selection_ = None if selection is None else \
-                     set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
-                     set(self.material.flatten()) & set(util.aslist(selection))
+                     np.setdiff1d(self.material,selection) if invert_selection else \
+                     np.intersect1d(self.material,selection)
         material = ndimage.generic_filter(
                                           self.material,
                                           most_frequent,
@@ -1265,7 +1254,7 @@ class Grid:
     def vicinity_offset(self,
                         distance: float = np.sqrt(3),
                         offset: Optional[int] = None,
-                        selection: Optional[IntCollection] = None,
+                        selection: Optional[IntSequence] = None,
                         invert_selection: bool = False,
                         periodic: bool = True) -> 'Grid':
         """
@@ -1282,7 +1271,7 @@ class Grid:
         offset : int, optional
             Offset (positive or negative) to tag material IDs.
             Defaults to material.max()+1.
-        selection : (collection of) int, optional
+        selection : (sequence of) int, optional
             Material IDs that trigger an offset.
             Defaults to any other than own material ID.
         invert_selection : bool, optional
@@ -1315,8 +1304,8 @@ class Grid:
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
         selection_ = None if selection is None else \
-                     np.array(list(set(self.material.flatten()) - set(util.aslist(selection)))) if invert_selection else \
-                     np.array(list(set(self.material.flatten()) & set(util.aslist(selection))))
+                     np.setdiff1d(self.material,selection) if invert_selection else \
+                     np.intersect1d(self.material,selection)
 
         mask = ndimage.generic_filter(self.material,
                                       tainted_neighborhood,

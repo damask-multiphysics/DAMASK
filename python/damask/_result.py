@@ -1874,7 +1874,7 @@ class Result:
             if self.version_minor >= 13:
                 creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
                 created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
-                v.comments += f'{creator} ({created})'
+                v.comments += [f'{creator} ({created})']
 
             for inc in util.show_progress(self.visible['increments']):
 

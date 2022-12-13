@@ -11,16 +11,15 @@ import fractions as _fractions
 from collections import abc as _abc
 from functools import reduce as _reduce, partial as _partial
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
-                   Sequence as _Sequence, Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
-                   Any as _Any, Collection as _Collection, TextIO as _TextIO
+                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
+                   Any as _Any, TextIO as _TextIO
 from pathlib import Path as _Path
 
 import numpy as _np
 import h5py as _h5py
 
 from . import version as _version
-from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, IntCollection as _IntCollection, \
-                        FileHandle as _FileHandle
+from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
@@ -784,54 +783,6 @@ def dict_flatten(d: _Dict) -> _Dict:
         new = {k: (dict_flatten(v) if isinstance(v, dict) else v) for k,v in d.items()}
 
     return new
-
-
-def tail_repack(extended: _Union[str, _Sequence[str]],
-                existing: _List[str] = []) -> _List[str]:
-    """
-    Repack tailing characters into single string if all are new.
-
-    Parameters
-    ----------
-    extended : (sequence of) str
-        Extended string list with potentially autosplitted tailing string relative to `existing`.
-    existing : list of str
-        Base string list.
-
-    Returns
-    -------
-    repacked : list of str
-        Repacked version of `extended`.
-
-    Examples
-    --------
-    >>> tail_repack(['a','new','e','n','t','r','y'],['a','new'])
-        ['a','new','entry']
-    >>> tail_repack(['a','new','shiny','e','n','t','r','y'],['a','new'])
-        ['a','new','shiny','e','n','t','r','y']
-
-    """
-    new = extended[len(existing):]
-    return [extended] if isinstance(extended,str) else \
-           existing + list([''.join(new)] if _np.prod([len(i) for i in new]) == 1 else new)
-
-
-def aslist(arg: _Union[_IntCollection, int, None]) -> _List:
-    """
-    Transform argument to list.
-
-    Parameters
-    ----------
-    arg : (collection of) int or None
-        Entity to transform into list.
-
-    Returns
-    -------
-    transformed : list
-        Entity transformed into list.
-
-    """
-    return [] if arg is None else list(arg) if isinstance(arg,(_np.ndarray,_Collection)) else [arg]
 
 
 ####################################################################################################

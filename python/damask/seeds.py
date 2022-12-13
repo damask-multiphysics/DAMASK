@@ -6,7 +6,7 @@ from scipy import spatial as _spatial
 import numpy as _np
 
 from ._typehints import FloatSequence as _FloatSequence, IntSequence as _IntSequence, \
-                        NumpyRngSeed as _NumpyRngSeed, IntCollection as _IntCollection
+                        NumpyRngSeed as _NumpyRngSeed
 from . import util as _util
 from . import grid_filters as _grid_filters
 
@@ -106,7 +106,7 @@ def from_Poisson_disc(size: _FloatSequence,
 
 
 def from_grid(grid,
-              selection: _Optional[_IntCollection] = None,
+              selection: _Optional[_IntSequence] = None,
               invert_selection: bool = False,
               average: bool = False,
               periodic: bool = True) -> _Tuple[_np.ndarray, _np.ndarray]:
@@ -117,7 +117,7 @@ def from_grid(grid,
     ----------
     grid : damask.Grid
         Grid from which the material IDs are used as seeds.
-    selection : (collection of) int, optional
+    selection : (sequence of) int, optional
         Material IDs to consider.
     invert_selection : bool, optional
         Consider all material IDs except those in selection. Defaults to False.
@@ -134,7 +134,7 @@ def from_grid(grid,
     """
     material = grid.material.reshape((-1,1),order='F')
     mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
-           _np.isin(material,_util.aslist(selection),invert=invert_selection).flatten()
+           _np.isin(material,selection,invert=invert_selection).flatten()
     coords = _grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:

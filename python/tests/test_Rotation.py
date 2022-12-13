@@ -6,7 +6,6 @@ from damask import Rotation
 from damask import Table
 from damask import _rotation
 from damask import grid_filters
-from damask import util
 from damask import tensor
 
 n = 1000
@@ -1151,19 +1150,22 @@ class TestRotation:
     @pytest.mark.parametrize('sigma',[5,10,15,20])
     @pytest.mark.parametrize('shape',[1000,10000,100000,(10,100)])
     def test_from_fiber_component(self,sigma,shape):
+
+        def astuple(a):
+            return tuple(a) if hasattr(a,'__len__') else (a,)
+
         p = []
-        for run in range(5):
+        for run in range(9):
             alpha = np.arccos(np.random.random()),np.random.random()*2*np.pi
             beta  = np.arccos(np.random.random()),np.random.random()*2*np.pi
 
             f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
             f_in_S = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
             ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
-            n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)           # rotation to align fiber axis in crystal and sample system
-
+            n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else -ax,normalize=True)           # rotation to align fiber axis in crystal and sample system
             o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),shape,False)
-            angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,tuple(util.aslist(shape))+(3,)),n@f_in_S),-1,1))
-            dist   = np.array(angles) * (np.random.randint(0,2,util.aslist(shape))*2-1)
+            angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,astuple(shape)+(3,)),n@f_in_S),-1,1))
+            dist   = np.array(angles) * (np.random.randint(0,2,shape)*2-1)
 
             p.append(stats.normaltest(dist)[1])
 
