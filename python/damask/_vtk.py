@@ -104,22 +104,19 @@ class VTK:
 
     @comments.setter
     def comments(self,
-                 comments: Union[str, Sequence[str]]):
+                 comments: Sequence[str]):
         """
         Set comments.
 
         Parameters
         ----------
-        comments : (sequence of) str
+        comments : sequence of str
             Comments.
 
         """
         s = vtk.vtkStringArray()
         s.SetName('comments')
-        comments_ = util.tail_repack(comments,self.comments) if comments[:len(self.comments)] == self.comments else \
-                    [comments] if isinstance(comments,str) else \
-                    comments
-        for c in comments_:
+        for c in comments:
             s.InsertNextValue(c)
         self.vtk_data.GetFieldData().AddArray(s)
 
@@ -478,13 +475,13 @@ class VTK:
                 _add_array(dup.vtk_data,
                            label,
                            np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data)
-                if info is not None: dup.comments += f'{label}: {info}'
+                if info is not None: dup.comments += [f'{label}: {info}']
             else:
                 raise ValueError('no label defined for data')
         elif isinstance(table,Table):
             for l in table.labels:
                 _add_array(dup.vtk_data,l,table.get(l))
-                if info is not None: dup.comments += f'{l}: {info}'
+                if info is not None: dup.comments += [f'{l}: {info}']
         else:
             raise TypeError
 

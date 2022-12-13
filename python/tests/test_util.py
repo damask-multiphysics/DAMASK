@@ -25,6 +25,17 @@ class TestUtil:
         with pytest.raises(RuntimeError):
             util.run('false')
 
+    @pytest.mark.parametrize('input,glue,quote,output',
+                            [
+                            (None,'',False,'None'),
+                            ([None,None],'\n',False,'None\nNone'),
+                            ([-0.5,0.5],'=',False,'-0.5=0.5'),
+                            ([1,2,3],'_',False,'1_2_3'),
+                            ([1,2,3],'/',True,'"1"/"2"/"3"'),
+                            ])
+    def test_srepr(self,input,glue,quote,output):
+        assert output == util.srepr(input,glue,quote)
+
     @pytest.mark.parametrize('input,output',
                             [
                             ([0,-2],[0,-1]),
@@ -32,7 +43,6 @@ class TestUtil:
                             ([1./2.,1./3.],[3,2]),
                             ([2./3.,1./2.,1./3.],[4,3,2]),
                             ])
-
     def test_scale2coprime(self,input,output):
         assert np.allclose(util.scale_to_coprime(np.array(input)),
                                                  np.array(output).astype(int))
@@ -133,10 +143,6 @@ class TestUtil:
     @pytest.mark.parametrize('style',[util.emph,util.deemph,util.warn,util.strikeout])
     def test_decorate(self,style):
         assert 'DAMASK' in style('DAMASK')
-
-    @pytest.mark.parametrize('lst',[1,[1,2],set([1,2,3]),np.arange(4)])
-    def test_aslist(self,lst):
-        assert len(util.aslist(lst)) > 0
 
     @pytest.mark.parametrize('complete',[True,False])
     def test_D3D_base_group(self,tmp_path,complete):
