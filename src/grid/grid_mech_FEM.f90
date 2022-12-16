@@ -358,6 +358,7 @@ subroutine grid_mechanical_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remai
     deformation_BC
   type(tRotation),          intent(in) :: &
     rotation_BC
+
   PetscErrorCode :: err_PETSc
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     u,u_lastInc
@@ -537,16 +538,17 @@ end subroutine converged
 subroutine formResidual(da_local,x_local, &
                         f_local,dummy,err_PETSc)
 
-  DM                   :: da_local
-  Vec                  :: x_local, f_local
+  DM          :: da_local
+  Vec         :: x_local, f_local
+  PetscObject :: dummy
+  PetscErrorCode :: err_PETSc
+
   real(pReal), pointer,dimension(:,:,:,:) :: x_scal, r
   real(pReal), dimension(8,3) :: x_elem,  f_elem
   PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
   PetscInt :: &
     PETScIter, &
     nfuncs
-  PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   real(pReal), dimension(3,3,3,3) :: devNull
 
@@ -554,6 +556,7 @@ subroutine formResidual(da_local,x_local, &
   CHKERRQ(err_PETSc)
   call SNESGetIterationNumber(SNES_mechanical,PETScIter,err_PETSc)
   CHKERRQ(err_PETSc)
+
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
@@ -651,13 +654,16 @@ end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the FEM stiffness matrix
+!> @brief Form the FEM stiffness matrix.
 !--------------------------------------------------------------------------------------------------
 subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
 
   DM                                   :: da_local
-  Vec                                  :: x_local, coordinates
+  Vec                                  :: x_local
   Mat                                  :: Jac_pre, Jac
+  PetscObject                          :: dummy
+  PetscErrorCode                       :: err_PETSc
+
   MatStencil,dimension(4,24)           :: row, col
   real(pReal),pointer,dimension(:,:,:,:) :: x_scal
   real(pReal),dimension(24,24)         :: K_ele
@@ -665,9 +671,9 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   PetscInt                             :: i, ii, j, jj, k, kk, ctr, ce
   PetscInt,dimension(3),parameter      :: rows = [0, 1, 2]
   real(pReal)                          :: diag
-  PetscObject                          :: dummy
   MatNullSpace                         :: matnull
-  PetscErrorCode                       :: err_PETSc
+  Vec                                  :: coordinates
+
 
   BMatFull = 0.0_pReal
   BMatFull(1:3,1 :8 ) = BMat
@@ -735,15 +741,11 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,coordinates,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  ce = 0
-  do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
-    ce = ce + 1
-    x_scal(0:2,i-1,j-1,k-1) = discretization_IPcoords(1:3,ce)
-  end do; end do; end do
-  call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)
-  CHKERRQ(err_PETSc)                                                                                ! initialize to undeformed coordinates (ToDo: use ip coordinates)
-  call MatNullSpaceCreateRigidBody(coordinates,matnull,err_PETSc)
-  CHKERRQ(err_PETSc)                                                                                ! get rigid body deformation modes
+  x_scal = reshape(discretization_IPcoords,[3,cells(1),cells(2),cells3])
+  call DMDAVecRestoreArrayF90(da_local,coordinates,x_scal,err_PETSc)                                ! ToDo: use undeformed or deformed configuration?
+  CHKERRQ(err_PETSc)
+  call MatNullSpaceCreateRigidBody(coordinates,matnull,err_PETSc)                                   ! get rigid body deformation modes
+  CHKERRQ(err_PETSc)
   call DMRestoreGlobalVector(da_local,coordinates,err_PETSc)
   CHKERRQ(err_PETSc)
   call MatSetNullSpace(Jac,matnull,err_PETSc)
