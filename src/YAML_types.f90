@@ -172,33 +172,46 @@ end subroutine YAML_types_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some type bound procedures.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest
+subroutine selfTest()
 
   scalar: block
-    type(tScalar) :: s
+    type(tScalar), target :: s
+    type(tScalar), pointer :: s_pointer
 
+
+    s_pointer => s%asScalar()
     s = '1'
     if (s%asInt() /= 1)                   error stop 'tScalar_asInt'
+    if (s_pointer%asInt() /= 1)           error stop 'tScalar_asInt(pointer)'
     if (dNeq(s%asFloat(),1.0_pReal))      error stop 'tScalar_asFloat'
     s = 'true'
     if (.not. s%asBool())                 error stop 'tScalar_asBool'
+    if (.not. s_pointer%asBool())         error stop 'tScalar_asBool(pointer)'
     if (s%asString() /= 'true')           error stop 'tScalar_asString'
     if (s%asFormattedString() /= 'true')  error stop 'tScalar_asFormattedString'
+
 
   end block scalar
 
   list: block
-    type(tList),   pointer :: l
+    type(tList),   pointer :: l, l_pointer
     type(tScalar), pointer :: s1,s2
+
 
     allocate(s1)
     allocate(s2)
     s1 = '1'
     s2 = '2'
     allocate(l)
+    l_pointer => l%asList()
     if (l%contains('1'))                                 error stop 'empty tList_contains'
+    if (l_pointer%contains('1'))                         error stop 'empty tList_contains(pointer)'
     call l%append(s1)
     call l%append(s2)
+    if (l%length /= 2)                                   error stop 'tList%len'
+    if (dNeq(l%get_asFloat(1),1.0_pReal))                error stop 'tList_get_asFloat'
+    if (l%get_asInt(1) /= 1)                             error stop 'tList_get_asInt'
+    if (l%get_asString(2) /= '2')                        error stop 'tList_get_asString'
     if (any(l%as1dInt() /= [1,2]))                       error stop 'tList_as1dInt'
     if (any(dNeq(l%as1dFloat(),real([1.0,2.0],pReal))))  error stop 'tList_as1dFloat'
     s1 = 'true'
@@ -212,9 +225,10 @@ subroutine selfTest
   end block list
 
   dict: block
-    type(tDict),   pointer :: d
+    type(tDict),   pointer :: d, d_pointer
     type(tList),   pointer :: l
     type(tScalar), pointer :: s1,s2,s3,s4
+
 
     allocate(s1)
     allocate(s2)
@@ -229,7 +243,9 @@ subroutine selfTest
     s3 = '3'
     s4 = '4'
     allocate(d)
+    d_pointer => d%asDict()
     if (d%contains('one-two'))                           error stop 'empty tDict_contains'
+    if (d_pointer%contains('one-two'))                   error stop 'empty tDict_contains(pointer)'
     if (d%get_asInt('one-two',defaultVal=-1) /= -1)      error stop 'empty tDict_get'
     call d%set('one-two',l)
     call d%set('three',s3)
@@ -237,6 +253,8 @@ subroutine selfTest
     if (d%asFormattedString() /= '{one-two: [1, 2], three: 3, four: 4}') &
                                                          error stop 'tDict_asFormattedString'
     if (d%get_asInt('three') /= 3)                       error stop 'tDict_get_asInt'
+    if (dNeq(d%get_asFloat('three'),3.0_pReal))          error stop 'tDict_get_asFloat'
+    if (d%get_asString('three') /= '3')                  error stop 'tDict_get_asString'
     if (any(d%get_as1dInt('one-two') /= [1,2]))          error stop 'tDict_get_as1dInt'
     call d%set('one-two',s4)
     if (d%asFormattedString() /= '{one-two: 4, three: 3, four: 4}') &
@@ -258,6 +276,7 @@ type(tScalar) pure function tScalar_init__(value)
 
   character(len=*), intent(in) ::  value
 
+
   tScalar_init__%value = value
 
 end function tScalar_init__
@@ -270,6 +289,7 @@ elemental pure subroutine tScalar_assign__(self,value)
 
   type(tScalar),    intent(out) :: self
   character(len=*), intent(in)  :: value
+
 
   self%value = value
 
@@ -557,18 +577,21 @@ end function tList_as1dBool
 function tList_as1dString(self)
 
   class(tList), intent(in), target :: self
-#ifndef __GFORTRAN__
-  character(len=:), allocatable, dimension(:) :: tList_as1dString
-#else
+#ifdef __GFORTRAN__
   character(len=pStringLen), allocatable, dimension(:) :: tList_as1dString
+#else
+  character(len=:), allocatable, dimension(:) :: tList_as1dString
 #endif
 
-  integer :: j,len_max
+  integer :: j
   type(tItem),   pointer :: item
   type(tScalar), pointer :: scalar
 
 
-#ifndef __GFORTRAN__
+#ifdef __GFORTRAN__
+  allocate(tList_as1dString(self%length))
+#else
+  integer :: len_max
   len_max = 0
   item => self%first
   do j = 1, self%length
@@ -578,8 +601,6 @@ function tList_as1dString(self)
   end do
 
   allocate(character(len=len_max) :: tList_as1dString(self%length))
-#else
-  allocate(tList_as1dString(self%length))
 #endif
   item => self%first
   do j = 1, self%length
