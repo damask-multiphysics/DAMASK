@@ -5,7 +5,6 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
-#define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
 #define PETSC_MINOR_MAX 18
 
