@@ -652,9 +652,9 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
     real(pReal), dimension(6,6) :: C
 
-
     C = phase_homogenizedC66(material_phaseID(co,ce),material_phaseEntry(co,ce))                    ! damage not included!
-    equivalentMu = lattice_equivalent_mu(C,'voigt')
+
+    equivalentMu = lattice_isotropic_mu(C,'isostrain')
 
   end function equivalentMu
 

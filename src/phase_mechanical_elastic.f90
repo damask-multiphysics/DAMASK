@@ -102,16 +102,21 @@ end function elastic_C66
 !--------------------------------------------------------------------------------------------------
 !> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_mu(ph,en) result(mu)
+pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
 
   integer, intent(in) :: &
     ph, &
     en
+  character(len=*), intent(in) :: isotropic_bound
   real(pReal) :: &
     mu
 
 
-  mu = lattice_equivalent_mu(elastic_C66(ph,en),'voigt')
+  associate(prm => param(ph))
+
+    mu = lattice_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+
+  end associate
 
 end function elastic_mu
 
@@ -119,16 +124,21 @@ end function elastic_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_nu(ph,en) result(nu)
+pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
 
   integer, intent(in) :: &
     ph, &
     en
+  character(len=*), intent(in) :: isotropic_bound
   real(pReal) :: &
     nu
 
 
-  nu = lattice_equivalent_nu(elastic_C66(ph,en),'voigt')
+  associate(prm => param(ph))
+
+    nu = lattice_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+
+  end associate
 
 end function elastic_nu
 

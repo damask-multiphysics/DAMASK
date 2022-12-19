@@ -73,8 +73,9 @@ submodule(phase:plastic) dislotwin
     integer,                   allocatable, dimension(:,:) :: &
       fcc_twinNucleationSlipPair                                                                    ! ToDo: Better name? Is also use for trans
     character(len=:),          allocatable                 :: &
-      lattice_tr
-    character(len=pStringLen), allocatable, dimension(:) :: &
+      lattice_tr, &
+      isotropic_bound
+    character(len=pStringLen), allocatable, dimension(:)   :: &
       output
     logical :: &
       extendedDislocations, &                                                                       !< consider split into partials for climb calculation
@@ -185,6 +186,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+
+   prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -644,8 +647,8 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
             dot_f_tw => dotState(indexDotState(ph)%f_tw(1):indexDotState(ph)%f_tw(2)), &
             dot_f_tr => dotState(indexDotState(ph)%f_tr(1):indexDotState(ph)%f_tr(2)))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
+    nu = elastic_nu(ph,en,prm%isotropic_bound)
     T = thermal_T(ph,en)
 
     f_matrix = 1.0_pReal &
@@ -732,7 +735,7 @@ module subroutine dislotwin_dependentState(ph,en)
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
     sumf_tw = sum(stt%f_tw(1:prm%sum_N_tw,en))
     sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
 
@@ -930,8 +933,8 @@ pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
+    nu = elastic_nu(ph,en,prm%isotropic_bound)
     Gamma_sf = prm%Gamma_sf%at(T)
 
     tau_hat = 3.0_pReal*prm%b_tw(1)*mu/prm%L_tw &
@@ -1006,8 +1009,8 @@ pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
+    nu = elastic_nu(ph,en,prm%isotropic_bound)
     Gamma_sf = prm%Gamma_sf%at(T)
 
     tau_hat = 3.0_pReal*prm%b_tr(1)*mu/prm%L_tr &
