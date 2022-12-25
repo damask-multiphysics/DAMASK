@@ -134,7 +134,7 @@ subroutine parse()
   allocate(ph_of(materials%length,homogenization_maxNconstituents),source=-1)
   allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
 
-  ! parse YAML structure
+  ! Parse YAML structure. Manual loop over linked list to have O(n) instead of O(n^2) complexity
   item => materials%first
   do ma = 1, materials%length
     material => item%node%asDict()
