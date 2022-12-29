@@ -78,8 +78,19 @@ module subroutine thermal_init()
     end associate
   end do
 
-
 end subroutine thermal_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check if thermal homogemization description is present in the configuration file
+!--------------------------------------------------------------------------------------------------
+module function homogenization_thermal_active() result(active)
+
+  logical :: active
+
+  active = any(thermal_active(:))
+
+end function homogenization_thermal_active
 
 
 !--------------------------------------------------------------------------------------------------

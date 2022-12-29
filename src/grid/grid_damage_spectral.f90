@@ -92,6 +92,8 @@ subroutine grid_damage_spectral_init()
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
+  if (.not. homogenization_damage_active()) call IO_error(501,ext_msg='damage')
+
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)

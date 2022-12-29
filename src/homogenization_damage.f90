@@ -73,6 +73,18 @@ end subroutine damage_init
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Check if damage homogemization description is present in the configuration file
+!--------------------------------------------------------------------------------------------------
+module function homogenization_damage_active() result(active)
+
+  logical :: active
+
+  active = any(damage_active(:))
+
+end function homogenization_damage_active
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Partition temperature onto the individual constituents.
 !--------------------------------------------------------------------------------------------------
 module subroutine damage_partition(ce)
