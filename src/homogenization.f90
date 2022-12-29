@@ -126,6 +126,10 @@ module homogenization
       logical, dimension(2) :: doneAndHappy
     end function mechanical_updateState
 
+    module function homogenization_thermal_active() result(active)
+      logical :: active
+    end function homogenization_thermal_active
+
     module function homogenization_mu_T(ce) result(mu)
       integer, intent(in) :: ce
       real(pReal) :: mu
@@ -145,6 +149,10 @@ module homogenization
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
+
+    module function homogenization_damage_active() result(active)
+      logical :: active
+    end function homogenization_damage_active
 
     module function homogenization_mu_phi(ce) result(mu)
       integer, intent(in) :: ce
@@ -175,10 +183,12 @@ module homogenization
     homogenization_mechanical_response, &
     homogenization_mechanical_response2, &
     homogenization_thermal_response, &
+    homogenization_thermal_active, &
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
     homogenization_thermal_setfield, &
+    homogenization_damage_active, &
     homogenization_mu_phi, &
     homogenization_K_phi, &
     homogenization_f_phi, &

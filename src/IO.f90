@@ -479,6 +479,8 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 ! homogenization errors
     case (500)
       msg = 'unknown homogenization specified'
+    case (501)
+      msg = 'homogenization description absent'
 
 !--------------------------------------------------------------------------------------------------
 ! user errors
