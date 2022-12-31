@@ -1,0 +1,38 @@
+---
++++
+@@ -63,10 +63,10 @@
+ if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
+   slv="-iam sfm"
+ fi
+-if [ "$slv" == "marc" ]; then
++if [ "$slv" = "marc" ]; then
+   slv=""
+ fi
+-if [ "$slv" == "datfit" ]; then
++if [ "$slv" = "datfit" ]; then
+   slv="-iam datfit"
+ fi
+ 
+@@ -91,6 +91,7 @@
+       srcfile="-u $srcfile -save y"
+       ;;
+     runsaved)
++      srcfile=${srcfile%.*}".marc"
+       srcfile="-prog $srcfile"
+       ;;
+   esac
+@@ -189,12 +190,12 @@
+ unset PYTHONPATH
+ 
+ if [ "$doe_first" = "-" ]; then # submit of regular Marc job
+-  "${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd \
++  "${DIR}/tools/run_damask_lmp" $slv -j $job -v n -b y $nprocds $nprocd \
+                           $srcfile $restart $postfile $viewfactorsfile $hostfile \
+                           $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
+                           $assem_recov_nthread $nthread $nsolver $mode $gpu > /dev/null 2>&1
+ else                            # submit of a DoE Marc job
+-  "${DIR}/tools/run_marc" $slv -j $job -v n -b n $nprocds $nprocd \
++  "${DIR}/tools/run_damask_lmp" $slv -j $job -v n -b n $nprocds $nprocd \
+                           $srcfile $restart $postfile $viewfactorsfile $hostfile \
+                           $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
+                           $assem_recov_nthread $nthread $nsolver $mode $gpu
