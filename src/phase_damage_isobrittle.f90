@@ -38,8 +38,6 @@ module function isobrittle_init() result(mySources)
     phases, &
     phase, &
     src
-  type(tList), pointer :: &
-    sources
   integer :: Nmembers,ph
   character(len=pStringLen) :: extmsg = ''
 
@@ -59,10 +57,9 @@ module function isobrittle_init() result(mySources)
   do ph = 1, phases%length
     if (mySources(ph)) then
       phase => phases%get_dict(ph)
-      sources => phase%get_list('damage')
+      src => phase%get_dict('damage')
 
       associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
-        src => sources%get_dict(1)
 
         prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
 

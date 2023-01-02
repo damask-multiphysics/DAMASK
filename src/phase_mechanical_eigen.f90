@@ -73,7 +73,7 @@ end subroutine eigen_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief checks if a kinematic mechanism is active or not
+!> @brief Check if an eigen kinematic mechanism is active.
 !--------------------------------------------------------------------------------------------------
 function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
 
@@ -108,7 +108,7 @@ end function kinematics_active
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief checks if a kinematic mechanism is active or not
+!> @brief Checks if a damage kinematic mechanism is active.
 !--------------------------------------------------------------------------------------------------
 function kinematics_active2(kinematics_label)  result(active_kinematics)
 
@@ -123,14 +123,12 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
     kinematics
   integer :: ph
 
+
   phases => config_material%get_dict('phase')
   allocate(active_kinematics(phases%length), source = .false.)
   do ph = 1, phases%length
     phase => phases%get_dict(ph)
-    kinematics => phase%get_list('damage',defaultVal=emptyList)
-    if (kinematics%length < 1) return
-    kinematics_type => kinematics%get_dict(1)
-    if (.not. kinematics_type%contains('type')) continue
+    kinematics_type => phase%get_dict('damage',defaultVal=emptyDict)
     active_kinematics(ph) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
   end do
 

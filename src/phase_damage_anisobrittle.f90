@@ -39,8 +39,6 @@ module function anisobrittle_init() result(mySources)
     phases, &
     phase, &
     src
-  type(tList), pointer :: &
-    sources
   integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
@@ -60,10 +58,9 @@ module function anisobrittle_init() result(mySources)
   do ph = 1, phases%length
     if (mySources(ph)) then
       phase => phases%get_dict(ph)
-      sources => phase%get_list('damage')
+      src => phase%get_dict('damage')
 
       associate(prm  => param(ph))
-        src => sources%get_dict(1)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))

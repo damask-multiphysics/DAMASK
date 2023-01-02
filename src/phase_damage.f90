@@ -55,6 +55,7 @@ submodule(phase) damage
         S
     end subroutine anisobrittle_dotState
 
+
     module subroutine anisobrittle_results(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
@@ -70,9 +71,9 @@ submodule(phase) damage
 contains
 
 !----------------------------------------------------------------------------------------------
-!< @brief initialize damage sources and kinematics mechanism
+!< @brief Initialize damage mechanisms.
 !----------------------------------------------------------------------------------------------
-module subroutine damage_init
+module subroutine damage_init()
 
   integer :: &
     ph, &
@@ -81,8 +82,6 @@ module subroutine damage_init
    phases, &
    phase, &
    source
-  type(tList), pointer :: &
-   sources
   logical:: damage_active
 
   print'(/,1x,a)', '<<<+-  phase:damage init  -+>>>'
@@ -101,11 +100,9 @@ module subroutine damage_init
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
 
     phase => phases%get_dict(ph)
-    sources => phase%get_list('damage',defaultVal=emptyList)
-    if (sources%length > 1) error stop
-    if (sources%length == 1) then
+    source => phase%get_dict('damage',defaultVal=emptyDict)
+    if (source%length > 0) then
       damage_active = .true.
-      source => sources%get_dict(1)
       param(ph)%mu = source%get_asFloat('mu')
       param(ph)%l_c = source%get_asFloat('l_c')
     end if
@@ -287,7 +284,7 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
 
   contains
   !--------------------------------------------------------------------------------------------------
-  !> @brief calculate the damping for correction of state and dot state
+  !> @brief Calculate the damping for correction of state and dot state.
   !--------------------------------------------------------------------------------------------------
   real(pReal) pure function damper(omega_0,omega_1,omega_2)
 
@@ -463,7 +460,7 @@ end function phase_damage_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief checks if a source mechanism is active or not
+!> @brief Check if a source mechanism is active or not.
 !--------------------------------------------------------------------------------------------------
 function source_active(source_label)  result(active_source)
 
@@ -478,12 +475,12 @@ function source_active(source_label)  result(active_source)
     sources
   integer :: ph
 
+
   phases => config_material%get_dict('phase')
   allocate(active_source(phases%length))
   do ph = 1, phases%length
     phase => phases%get_dict(ph)
-    sources => phase%get_list('damage',defaultVal=emptyList)
-    src => sources%get_dict(1)
+    src => phase%get_dict('damage',defaultVal=emptyDict)
     active_source(ph) = src%get_asString('type',defaultVal = 'x') == source_label
   end do
 
