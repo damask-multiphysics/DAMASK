@@ -1194,12 +1194,14 @@ class Result:
 
     @staticmethod
     def _add_strain(F: Dict[str, Any], t: Literal['V', 'U'], m: float) -> Dict[str, Any]:
+        side = 'left' if t == 'V' else 'right'
         return {
                 'data':  mechanics.strain(F['data'],t,m),
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'unit':        F['meta']['unit'],
-                          'description': f"strain tensor of {F['label']} ({F['meta']['description']})",
+                          'description': f'strain tensor of order {m} based on {side} stretch tensor '+\
+                                         f"of {F['label']} ({F['meta']['description']})",
                           'creator':     'add_strain'
                           }
                  }
@@ -1224,18 +1226,24 @@ class Result:
 
         Examples
         --------
-        Add the Biot strain based on the deformation gradient 'F':
+        Add the Euler-Almansi strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain(t='U',m=0.5)
+        >>> r.add_strain(t='V',m=-1.0)
 
-        Add the plastic Euler-Almansi strain based on the
-        plastic deformation gradient 'F_p':
+        Add the plastic Biot strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain('F_p','V',-1)
+        >>> r.add_strain('F_p','U',0.5)
+
+        Notes
+        -----
+        The incoporation of rotational parts into the elastic and plastic
+        deformation gradient requires it to use material/Lagragian strain measures
+        (based on 'U') for plastic strains and spatial/Eulerian strain measures
+        (based on 'V') for elastic strains when calculating averages.
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
