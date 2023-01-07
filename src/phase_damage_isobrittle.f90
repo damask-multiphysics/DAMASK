@@ -93,7 +93,7 @@ end function isobrittle_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
+!> @brief
 !--------------------------------------------------------------------------------------------------
 module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
@@ -109,11 +109,11 @@ module subroutine isobrittle_deltaState(C, Fe, ph,en)
     r_W
 
 
-  epsilon = math_33toVoigt6_strain(matmul(transpose(Fe),Fe)-math_I3)
+  epsilon = math_33toVoigt6_strain(0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3))
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = (0.5_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
+    r_W = (2.0_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
     dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
 
   end associate
@@ -122,7 +122,7 @@ end subroutine isobrittle_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
+!> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
 module subroutine isobrittle_results(phase,group)
 
