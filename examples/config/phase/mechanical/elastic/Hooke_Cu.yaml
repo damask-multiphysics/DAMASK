@@ -1,21 +1,25 @@
 type: Hooke
 
 references:
-  - W.C. Overton, Jr. and J. Gaffney,
+  - W.C. Overton Jr. and J. Gaffney,
     Physical Review 98(4):969-977, 1955,
     https://doi.org/10.1103/PhysRev.98.969,
     fit to Tab. I (T_min=100K, T_max=300K)
+  - Y.A. Chang and L. Himmel,
+    Journal of Applied Physics 37:3567-3572, 1966,
+    https://doi.org/10.1063/1.1708903,
+    fit to Tab. II (T_min=300K, T_max=800K)
 
-C_11: 168.6e+9
-C_11,T: -3.779e+7
-C_11,T^2: -2.536e+4
+C_11: 168.9e+9
+C_11,T: -3.332e+7
+C_11,T^2: -1.074e+4
 
-C_12: 121.5e+9
-C_12,T: -1.632e+7
-C_12,T^2: -1.116e+4
+C_12: 121.8e+9
+C_12,T: -1.402e+7
+C_12,T^2: -9.003e+3
 
-C_44: 75.59e+9
-C_44,T: -2.912e+7
-C_44,T^2: -1.669e+4
+C_44: 75.8e+9
+C_44,T: -2.555e+7
+C_44,T^2: -2.188e+3
 
 T_ref: 293.15

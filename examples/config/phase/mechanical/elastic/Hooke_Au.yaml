@@ -1,11 +1,25 @@
 type: Hooke
 
 references:
-  - J.P. Hirth and J. Lothe,
-    Theory of Dislocations, 1982,
-    John Wiley & Sons,
-    page 837
+  - J.R. Neighbours and G.A. Alers,
+    Physical Review 111:707-712, 1958,
+    https://doi.org/10.1103/PhysRev.111.707,
+    fit to Tab. II (T_min=100K, T_max=300K)
+  - Y.A. Chang and L. Himmel,
+    Journal of Applied Physics 37:3567-3572, 1966,
+    https://doi.org/10.1063/1.1708903,
+    fit to Tab. III (T_min=300K, T_max=800K)
 
-C_11: 186.e+9
-C_12: 157.e+9
-C_44: 42.e+9
+C_11: 192.7e+9
+C_11,T: -3.472e+7
+C_11,T^2: 1.102e+3
+
+C_12: 163.2e+9
+C_12,T: -2.607e+7
+C_12,T^2: 2.397e+3
+
+C_44: 42.2e+9
+C_44,T: -1.172e+7
+C_44,T^2: -3.078e+3
+
+T_ref: 293.15

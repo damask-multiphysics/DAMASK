@@ -3,21 +3,23 @@ type: Hooke
 references:
   - J.R. Neighbours and G.A. Alers,
     Physical Review 111:707-712, 1958,
-    https://doi.org/10.1103/PhysRev.111.707
+    https://doi.org/10.1103/PhysRev.111.707,
+    fit to Tab. I (T_min=100K, T_max=300K)
   - Y.A. Chang and L. Himmel,
     Journal of Applied Physics 37:3567-3572, 1966,
-    https://doi.org/10.1063/1.1708903
+    https://doi.org/10.1063/1.1708903,
+    fit to Tab. II (T_min=300K, T_max=800K)
 
-C_11: 122.9e+9
-C_11,T: -313.5e+5
-C_11,T^2: -107.3e+2
+C_11: 124.1e+9
+C_11,T: -3.148e+7
+C_11,T^2: -6.594e+3
 
-C_12: 91.55e+9
-C_12,T: -164.1e+5
-C_12,T^2: -681.6e+1
+C_12: 93.7e+9
+C_12,T: -1.657e+7
+C_12,T^2: -4.220e+3
 
-C_44: 42.63e+9
-C_44,T: -180.5e+5
-C_44,T^2: -353.8e+1
+C_44: 46.4e+9
+C_44,T: -1.775e+7
+C_44,T^2: -1.973e+3
 
-T_ref: 300
+T_ref: 293.15
