@@ -1,0 +1,16 @@
+type: thermalexpansion
+
+references:
+  - Z. Li and R.C. Bradt,
+    Journal of the American Ceramic Society 69(12):863-866, 1986,
+    https://doi.org/10.1111/j.1151-2916.1986.tb07385.x
+
+Alpha_11: 3.27e-6
+Alpha_11,T: 3.25e-9
+Alpha_11,T^2: -1.36e-12
+
+Alpha_33: 3.18e-6
+Alpha_33,T: 2.48e-9
+Alpha_33,T^2: -8.51e-13
+
+T_ref: 273.15

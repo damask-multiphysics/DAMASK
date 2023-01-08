@@ -1,0 +1,12 @@
+type: thermalexpansion
+
+references:
+  - Z. Li and R.C. Bradt,
+    Journal of Materials Science 21:4366-4368, 1986,
+    https://doi.org/10.1007/BF01106557
+
+Alpha_11: 3.19e-6
+Alpha_11,T: 3.60e-9
+Alpha_11,T^2: -1.68e-12
+
+T_ref: 273.15
