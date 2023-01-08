@@ -2,14 +2,16 @@ references:
   - J.G. Hust and A.B. Lankford,
     Thermal Conductivity of Aluminum, Copper, Iron, and Tungsten from 1K to the Melting Point,
     US Department of Commerce, Boulder, Colorado, 1984,
-    fit to Tab. 2.4.1 (RRR=1000, T_min=200K, T_max=1000K)
+    fit to Tab. 2.4.1 (RRR=300, T_min=150K, T_max=1000K)
   - https://www.mit.edu/~6.777/matprops/copper.htm
 
 output: [T]
 
-K_11: 4.039e+2
-K_11,T: -8.119e-2
-K_11,T^2: 1.454e-5
+K_11: 4.005e+2
+K_11,T: -1.075e-1
+K_11,T^2: 3.293e-4
+K_11,T^3: -7.533e-7
+K_11,T^4: 5.223e-10
 
 T_ref: 293.15
 
