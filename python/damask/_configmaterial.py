@@ -415,22 +415,38 @@ class ConfigMaterial(Config):
         return dup
 
 
-    def material_add(self,
-                     **kwargs: Any) -> 'ConfigMaterial':
+    def material_add(self,*,
+                     homogenization: Any = None,
+                     phase: Any = None,
+                     v: Any = None,
+                     O: Any = None,
+                     V_e: Any = None) -> 'ConfigMaterial':
         """
         Add material entries.
 
         Parameters
         ----------
-        **kwargs
-            Key-value pairs.
-            First index of array-like values runs over materials,
-            whereas second index runs over constituents.
+        homogenization: (array-like) of str, optional
+            Homogenization label.
+        phase: (array-like) of str, optional
+            Phase label (per constituent).
+        v: (array-like) of float, optional
+            Constituent volume fraction (per constituent).
+        O: (array-like) of damask.Rotation or np.array/list of shape(4), optional
+            Orientation as unit quaternion (per constituent).
+        V_e: (array-like) of np.array/list of shape(3,3), optional
+            Left elastic stretch (per constituent).
 
         Returns
         -------
         updated : damask.ConfigMaterial
             Updated material configuration.
+
+        Notes
+        -----
+            First index of array-like values that are defined per
+            consituent runs over materials, whereas second index runs
+            over constituents.
 
         Examples
         --------
@@ -509,6 +525,10 @@ class ConfigMaterial(Config):
         phase: {Austenite: null, Ferrite: null}
 
         """
+        kwargs = {}
+        for keyword,value in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
+            if value is not None: kwargs[keyword] = value
+
         _constituent_properties = ['phase','O','v','V_e']
         _dim = {'O':(4,),'V_e':(3,3,)}
         _ex = dict((k, -len(v)) for k, v in _dim.items())
