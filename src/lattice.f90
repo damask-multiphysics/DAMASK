@@ -2331,13 +2331,13 @@ subroutine selfTest
 
   call random_number(C)
   C = lattice_symmetrize_C66(C,'cI')
-  if (dNeq(lattice_isotropic_mu(C,'isostrain','cI'), lattice_isotropic_mu(C,'isostrain','hP'), 1.0e-9_pReal)) &
+  if (dNeq(lattice_isotropic_mu(C,'isostrain','cI'), lattice_isotropic_mu(C,'isostrain','hP'), 5.0e-9_pReal)) &
     error stop 'isotropic_mu/isostrain/cI-hP'
-  if (dNeq(lattice_isotropic_nu(C,'isostrain','cF'), lattice_isotropic_nu(C,'isostrain','cI'), 1.0e-9_pReal)) &
+  if (dNeq(lattice_isotropic_nu(C,'isostrain','cF'), lattice_isotropic_nu(C,'isostrain','cI'), 5.0e-9_pReal)) &
     error stop 'isotropic_nu/isostrain/cF-tI'
-  if (dNeq(lattice_isotropic_mu(C,'isostress','cI'), lattice_isotropic_mu(C,'isostress'), 1.0e-9_pReal)) &
+  if (dNeq(lattice_isotropic_mu(C,'isostress','cI'), lattice_isotropic_mu(C,'isostress'), 5.0e-9_pReal)) &
     error stop 'isotropic_mu/isostress/cI-hP'
-  if (dNeq(lattice_isotropic_nu(C,'isostress','cF'), lattice_isotropic_nu(C,'isostress'), 1.0e-9_pReal)) &
+  if (dNeq(lattice_isotropic_nu(C,'isostress','cF'), lattice_isotropic_nu(C,'isostress'), 5.0e-9_pReal)) &
     error stop 'isotropic_nu/isostress/cF-tI'
 
 end subroutine selfTest

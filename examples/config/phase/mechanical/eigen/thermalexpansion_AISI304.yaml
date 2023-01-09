@@ -4,10 +4,11 @@ references:
   - R.H. Bogaard et al.,
     Thermochimica Acta 218:373-393, 1993,
     https://doi.org/10.1016/0040-6031(93)80437-F,
-    fit to Fig. 6 (T_min=100K, T_max=1400K)
+    fit to Fig. 6 (T_min=100K, T_max=1200K)
 
-Alpha_11: 2.068e-08
-Alpha_11,T: 1.579e-09
-Alpha_11,T^2: 3.449e-13
+Alpha_11: 14.9e-6
+Alpha_11,T: 1.838e-08
+Alpha_11,T^2: -2.028e-11
+Alpha_11,T^3: 9.173e-15
 
 T_ref: 293.15

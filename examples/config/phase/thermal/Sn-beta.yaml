@@ -2,18 +2,22 @@ references:
   - Y.S. Touloukian et al.,
     TPRC Data Series Volume 1. Thermal conductivity - metallic elements and alloys,
     IFI/Plenum, 1970,
-    fit to Tab. 61R (T_min=100K, T_max=400K)
+    fit to Tab. 61R (T_min=80K, T_max=500K)
   - https://www.engineeringtoolbox.com/specific-heat-metals-d_152.html
 
 output: [T]
 
-K_11: 7.414e+1
-K_11,T: -6.465e-2
-K_11,T^2: 2.066e-4
+K_11: 7.495e+1
+K_11,T: -5.646e-2
+K_11,T^2: 1.420e-5
+K_11,T^3: -5.390e-7
+K_11,T^4: 4.012e-9
 
-K_33: 5.147e+1
-K_33,T: -4.506e-2
-K_33,T^2: 1.435e-4
+K_33: 5.204e+1
+K_33,T: -3.940e-2
+K_33,T^2: 7.037e-6
+K_33,T^3: -3.738e-7
+K_33,T^4: 2.873e-9
 
 T_ref: 293.15
 

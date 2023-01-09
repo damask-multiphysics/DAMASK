@@ -2,9 +2,9 @@ type: thermalexpansion
 
 references:
   - https://commons.wikimedia.org/wiki/File:Coefficient_dilatation_lineique_aciers.svg,
-    fit to image description (Scilab code)
+    fit to Scilab code for generating the image (T_min=100ºC, T_max=400ºC)
 
-Alpha_11: 11.365e-6
-Alpha_11,T: 5.0e-9
+Alpha_11: 10.1e-6
+Alpha_11,T: 5.000e-09
 
-T_ref: 273.0
+T_ref: 293.15
