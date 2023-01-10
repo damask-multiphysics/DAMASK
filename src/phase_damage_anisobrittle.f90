@@ -41,7 +41,7 @@ module function anisobrittle_init() result(mySources)
     src
   integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
-  character(len=pStringLen) :: extmsg = ''
+  character(len=:), allocatable :: extmsg
 
 
   mySources = source_active('anisobrittle')
@@ -53,7 +53,7 @@ module function anisobrittle_init() result(mySources)
 
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
-
+  extmsg = ''
 
   do ph = 1, phases%length
     if (mySources(ph)) then
@@ -83,7 +83,7 @@ module function anisobrittle_init() result(mySources)
         prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-          ! sanity checks
+        ! sanity checks
         if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
         if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'

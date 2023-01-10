@@ -54,8 +54,8 @@ module function plastic_isotropic_init() result(myPlasticity)
     sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -75,6 +75,7 @@ module function plastic_isotropic_init() result(myPlasticity)
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(state(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle

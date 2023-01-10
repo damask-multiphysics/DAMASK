@@ -140,8 +140,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
   real(pReal), allocatable, dimension(:) :: &
     rho_mob_0, &                                                                                    !< initial unipolar dislocation density per slip system
     rho_dip_0                                                                                       !< initial dipole dislocation density per slip system
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -170,6 +170,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle

@@ -93,8 +93,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -116,6 +116,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle

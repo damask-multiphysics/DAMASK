@@ -77,8 +77,8 @@ module function plastic_kinehardening_init() result(myPlasticity)
   real(pReal), dimension(:), allocatable :: &
     xi_0, &                                                                                         !< initial resistance against plastic flow
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -99,7 +99,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(deltaState(phases%length))
-
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
