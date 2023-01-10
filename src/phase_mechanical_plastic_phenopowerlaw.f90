@@ -90,8 +90,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     xi_0_sl, &                                                                                      !< initial critical shear stress for slip
     xi_0_tw, &                                                                                      !< initial critical shear stress for twin
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -110,6 +110,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle

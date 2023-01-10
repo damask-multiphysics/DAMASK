@@ -188,8 +188,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
     s, t, l
   real(pReal), dimension(:), allocatable :: &
     a
-  character(len=pStringLen) :: &
-    extmsg  = ''
+  character(len=:), allocatable :: &
+    extmsg
   type(tInitialParameters) :: &
     ini
   type(tDict), pointer :: &
@@ -225,6 +225,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(dotState(phases%length))
   allocate(deltaState(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
