@@ -85,6 +85,7 @@ module grid_mechanical_spectral_polarisation
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     C_minMaxAvg = 0.0_pReal, &                                                                      !< current (min+max)/2 stiffness
     C_minMaxAvgLastInc = 0.0_pReal, &                                                               !< previous (min+max)/2 stiffness
+    C_minMaxAvgRestart = 0.0_pReal, &                                                              !< (min+max)/2 stiffnes (restart)
     S = 0.0_pReal, &                                                                                !< current compliance (filled up with zeros)
     C_scale = 0.0_pReal, &
     S_scale = 0.0_pReal
@@ -283,21 +284,17 @@ subroutine grid_mechanical_spectral_polarisation_init()
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call HDF5_read(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
+    call MPI_Bcast(C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
-    call MPI_File_open(MPI_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
-                       MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,status,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call MPI_File_close(fileUnit,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if restartRead2
 
   call utilities_updateGamma(C_minMaxAvg)
-  call utilities_saveReferenceStiffness
+  C_minMaxAvgRestart = C_minMaxAvg
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
 
@@ -477,6 +474,8 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
+  if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
+
   print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
@@ -497,11 +496,10 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
     call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
     call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
     call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
+    call HDF5_write(C_minMaxAvgRestart,groupHandle,'C_minMaxAvg',.false.)
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
   end if
-
-  if (num%update_gamma) call utilities_saveReferenceStiffness
 
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,err_PETSc)
   CHKERRQ(err_PETSc)
