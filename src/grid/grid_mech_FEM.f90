@@ -602,13 +602,12 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  call VecSet(f_local,0.0_pReal,err_PETSc)
-  CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
   CHKERRQ(err_PETSc)
   call DMDAVecGetArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
   ele = 0
+  r = 0.0_pReal
   do k = cells3Offset+1, cells3Offset+cells3; do j = 1, cells(2); do i = 1, cells(1)
     ctr = 0
     do kk = -1, 0; do jj = -1, 0; do ii = -1, 0
@@ -628,13 +627,9 @@ subroutine formResidual(da_local,x_local, &
   end do; end do; end do
   call DMDAVecRestoreArrayF90(da_local,x_local,x_scal,err_PETSc)
   CHKERRQ(err_PETSc)
-  call DMDAVecRestoreArrayF90(da_local,f_local,r,err_PETSc)
-  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
 ! applying boundary conditions
-  call DMDAVecGetArrayF90(da_local,f_local,r,err_PETSc)
-  CHKERRQ(err_PETSc)
   if (cells3Offset == 0) then
     r(0:2,0,       0,       0) = 0.0_pReal
     r(0:2,cells(1),0,       0) = 0.0_pReal
