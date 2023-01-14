@@ -1,7 +1,7 @@
 type: Hooke
 
 references:
-  - Wang et al.,
+  - Z. Wang et al.,
     Materials Science and Engineering:A 674:406-412, 2016,
     https://doi.org/10.1016/j.msea.2016.08.010,
     fit to Tab. 2 (last 3 rows)

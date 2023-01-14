@@ -1,0 +1,19 @@
+type: phenopowerlaw
+
+references:
+  - T.J. Barrett and M. Knezevic,
+    Computer Methods in Applied Mechanics and Engineering 354:245-270, 2019,
+    https://doi.org/10.1016/j.cma.2019.05.035,
+    fitted to data shown in Fig 1 and Fig. 2a
+
+output: [xi_sl, gamma_sl]
+
+N_sl: [12]
+
+n_sl: 20
+a_sl: 3.7
+h_0_sl-sl: 1.02e+9
+xi_0_sl: [76.e+6]
+xi_inf_sl: [266.e+6]
+h_sl-sl: [1, 1, 5.123, 0.574, 1.123, 1.123, 1]
+dot_gamma_0_sl: 0.001
