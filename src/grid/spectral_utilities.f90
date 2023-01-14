@@ -987,7 +987,7 @@ subroutine utilities_updateCoords(F)
   real(pReal),   dimension(3,3,cells(1),cells(2),cells3), intent(in) :: F
 
   real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: IPcoords
-  real(pReal),   dimension(3,  cells(1),cells(2),cells3+2)           :: IPfluct_padded              ! Fluctuations of cell center displacement (padded along z for MPI)
+  real(pReal),   dimension(3,  cells(1),cells(2),0:cells3+1)         :: IPfluct_padded              ! Fluctuations of cell center displacement (padded along z for MPI)
   real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: nodeCoords
   integer :: &
     i,j,k,n, &
@@ -1047,21 +1047,21 @@ subroutine utilities_updateCoords(F)
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
-  IPfluct_padded(1:3,1:cells(1),1:cells(2),2:cells3+1) = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)
+  IPfluct_padded(1:3,1:cells(1),1:cells(2),1:cells3) = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)
   c = product(shape(IPfluct_padded(:,:,:,1)))                                                       !< amount of data to transfer
   rank_t = modulo(worldrank+1_MPI_INTEGER_KIND,worldsize)
   rank_b = modulo(worldrank-1_MPI_INTEGER_KIND,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,2),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
+  call MPI_Isend(IPfluct_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,cells3+2),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
+  call MPI_Irecv(IPfluct_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   ! send top layer to process above
-  call MPI_Isend(IPfluct_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
+  call MPI_Isend(IPfluct_padded(:,:,:,cells3)  ,c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
+  call MPI_Irecv(IPfluct_padded(:,:,:,0),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call MPI_Waitall(4,request,status,err_MPI)
@@ -1080,7 +1080,7 @@ subroutine utilities_updateCoords(F)
     averageFluct: do n = 1,8
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
       nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
-                                  + IPfluct_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3)+1)*0.125_pReal
+                                  + IPfluct_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3))*0.125_pReal
     end do averageFluct
   end do; end do; end do
 
