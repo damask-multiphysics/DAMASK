@@ -986,9 +986,9 @@ subroutine utilities_updateCoords(F)
 
   real(pReal),   dimension(3,3,cells(1),cells(2),cells3), intent(in) :: F
 
-  real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: IPcoords
-  real(pReal),   dimension(3,  cells(1),cells(2),0:cells3+1)         :: IPfluct_padded              ! Fluctuations of cell center displacement (padded along z for MPI)
-  real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: nodeCoords
+  real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: x_p                         !< Point/cell center coordinates
+  real(pReal),   dimension(3,  cells(1),cells(2),0:cells3+1)         :: u_tilde_p_padded            !< Fluctuation of cell center displacement (padded along z for MPI)
+  real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: x_n                         !< Node coordinates
   integer :: &
     i,j,k,n, &
     c
@@ -1030,7 +1030,7 @@ subroutine utilities_updateCoords(F)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
- ! integration in Fourier space to get fluctuations of cell center discplacements
+ ! integration in Fourier space to get fluctuations of cell center displacements
   !$OMP PARALLEL DO
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then
@@ -1043,25 +1043,24 @@ subroutine utilities_updateCoords(F)
   !$OMP END PARALLEL DO
 
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
+  u_tilde_p_padded(1:3,1:cells(1),1:cells(2),1:cells3) = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3) * wgt
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
-  IPfluct_padded(1:3,1:cells(1),1:cells(2),1:cells3) = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)
-  c = product(shape(IPfluct_padded(:,:,:,1)))                                                       !< amount of data to transfer
+  c = product(shape(u_tilde_p_padded(:,:,:,1)))                                                       !< amount of data to transfer
   rank_t = modulo(worldrank+1_MPI_INTEGER_KIND,worldsize)
   rank_b = modulo(worldrank-1_MPI_INTEGER_KIND,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
+  call MPI_Isend(u_tilde_p_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
+  call MPI_Irecv(u_tilde_p_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   ! send top layer to process above
-  call MPI_Isend(IPfluct_padded(:,:,:,cells3)  ,c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
+  call MPI_Isend(u_tilde_p_padded(:,:,:,cells3)  ,c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,0),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
+  call MPI_Irecv(u_tilde_p_padded(:,:,:,0),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call MPI_Waitall(4,request,status,err_MPI)
@@ -1073,26 +1072,26 @@ subroutine utilities_updateCoords(F)
 #endif
 
  !--------------------------------------------------------------------------------------------------
- ! calculate nodal displacements
-  nodeCoords = 0.0_pReal
+ ! calculate nodal positions
+  x_n = 0.0_pReal
   do j = 0,cells(2); do k = 0,cells3; do i = 0,cells(1)
-    nodeCoords(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)))
+    x_n(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)))
     averageFluct: do n = 1,8
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
-      nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
-                                  + IPfluct_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3))*0.125_pReal
+      x_n(1:3,i+1,j+1,k+1) = x_n(1:3,i+1,j+1,k+1) &
+                           + u_tilde_p_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3))*0.125_pReal
     end do averageFluct
   end do; end do; end do
 
  !--------------------------------------------------------------------------------------------------
- ! calculate cell center displacements
+ ! calculate cell center/point positions
   do k = 1,cells3; do j = 1,cells(2); do i = 1,cells(1)
-    IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)-0.5_pReal))
+    x_p(1:3,i,j,k) = u_tilde_p_padded(1:3,i,j,k) &
+                   + matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)-0.5_pReal))
   end do; end do; end do
 
-  call discretization_setNodeCoords(reshape(NodeCoords,[3,(cells(1)+1)*(cells(2)+1)*(cells3+1)]))
-  call discretization_setIPcoords  (reshape(IPcoords,  [3,cells(1)*cells(2)*cells3]))
+  call discretization_setNodeCoords(reshape(x_n,[3,(cells(1)+1)*(cells(2)+1)*(cells3+1)]))
+  call discretization_setIPcoords  (reshape(x_p,[3,cells(1)*cells(2)*cells3]))
 
 end subroutine utilities_updateCoords
 
