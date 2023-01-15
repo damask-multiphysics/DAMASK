@@ -88,12 +88,24 @@ class TestGridFilters:
 
     @pytest.mark.parametrize('function',[grid_filters.displacement_fluct_point,
                                          grid_filters.displacement_fluct_node])
-    def test_displacement_fluct_vanishes(self,function):
+    def test_displacement_fluct_vanishes_avg(self,function):
          """Ensure that constant F does not result in fluctuating displacement."""                  # noqa
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
          F    = np.broadcast_to(np.random.random((3,3)), tuple(cells)+(3,3))
          assert np.allclose(function(size,F),0.0)
+
+    def test_displacement_fluct_vanishes_plus_minus(self):
+        F = np.eye(3)
+        F_c = F.copy()
+        F_t = F.copy()
+
+        F_c[0,0] = 0.8
+        F_t[0,0] = 1.2
+
+        F_no_avg = np.concatenate([np.broadcast_to(_,(10,20,20,3,3)) for _ in [F_t,F_c]])
+        assert np.allclose(grid_filters.displacement_point([1,1,1],F_no_avg),
+                           grid_filters.displacement_fluct_point([1,1,1],F_no_avg))
 
     @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_point,
                                          grid_filters.cellsSizeOrigin_coordinates0_node])
