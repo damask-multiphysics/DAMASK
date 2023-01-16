@@ -106,7 +106,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     prm%c_2         = pl%get_asFloat('c_2',  defaultVal=0.0_pReal)
     prm%a           = pl%get_asFloat('a')
 
-    prm%dilatation  = pl%get_AsBool('dilatation',defaultVal = .false.)
+    prm%dilatation  = pl%get_asBool('dilatation',defaultVal = .false.)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks

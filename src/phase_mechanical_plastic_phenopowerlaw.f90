@@ -85,7 +85,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
-    N_sl, N_tw
+    N_sl, &                                                                                         !< number of slip-systems for a given slip family
+    N_tw                                                                                            !< number of twin-systems for a given twin family
   real(pReal), dimension(:), allocatable :: &
     xi_0_sl, &                                                                                      !< initial critical shear stress for slip
     xi_0_tw, &                                                                                      !< initial critical shear stress for twin
