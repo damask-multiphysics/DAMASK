@@ -286,18 +286,6 @@ p2 : str, optional
 
             Remaining description
         """
-        invalid_docstring = """
-            Function description
-
-            Parameters ----------
-            p0 : numpy.ndarray, shape (...,4)
-                p0 description 1
-                p0 description 2
-            p1 : int, optional
-                p1 description
-
-            Remaining description
-        """
         expected = """
             Function description
 
