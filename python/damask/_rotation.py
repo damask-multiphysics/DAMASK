@@ -902,7 +902,8 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(R: np.ndarray) -> 'Rotation':
+    def from_matrix(R: np.ndarray,
+                    normalize: bool = False) -> 'Rotation':
         """
         Initialize from rotation matrix.
 
@@ -910,13 +911,17 @@ class Rotation:
         ----------
         R : numpy.ndarray, shape (...,3,3)
             Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        normalize : bool, optional
+            Rescales rotation matrix to unit determinant. Defaults to False.
 
         Returns
         -------
         new : damask.Rotation
 
         """
-        return Rotation.from_basis(R)
+        return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
+                                   if normalize else
+                                   R)
 
     @staticmethod
     def from_parallel(a: np.ndarray,
