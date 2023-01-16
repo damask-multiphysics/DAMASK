@@ -774,9 +774,11 @@ class TestRotation:
                             ).all()
 
 
-    def test_matrix(self,multidim_rotations):
+    @pytest.mark.parametrize('normalize',[True,False])
+    def test_matrix(self,multidim_rotations,normalize):
         m = multidim_rotations
-        o = Rotation.from_matrix(m.as_matrix())
+        o = Rotation.from_matrix(m.as_matrix()*(0.9 if normalize else 1.0),
+                                 normalize=normalize)
         f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
         assert np.logical_or(m.isclose(o,atol=atol),
                              m.isclose(f,atol=atol)
