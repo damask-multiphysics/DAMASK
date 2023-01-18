@@ -188,8 +188,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     s, t, l
   real(pReal), dimension(:), allocatable :: &
     a
-  character(len=:), allocatable :: &
-    extmsg
+  character(len=:), allocatable :: extmsg
   type(tInitialParameters) :: &
     ini
   type(tDict), pointer :: &
@@ -216,9 +215,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 
   phases => config_material%get_dict('phase')
-
   allocate(geom(phases%length))
-
   allocate(param(phases%length))
   allocate(state(phases%length))
   allocate(state0(phases%length))

@@ -140,8 +140,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   real(pReal), allocatable, dimension(:) :: &
     rho_mob_0, &                                                                                    !< initial unipolar dislocation density per slip system
     rho_dip_0                                                                                       !< initial dipole dislocation density per slip system
-  character(len=:), allocatable :: &
-    extmsg
+  character(len=:), allocatable :: extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &

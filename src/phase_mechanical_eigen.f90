@@ -45,7 +45,9 @@ module subroutine eigen_init(phases)
   type(tList), pointer :: &
     kinematics
 
+
   print'(/,1x,a)', '<<<+-  phase:mechanical:eigen init  -+>>>'
+
 
 !--------------------------------------------------------------------------------------------------
 ! explicit eigen mechanisms
