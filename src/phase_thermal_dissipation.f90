@@ -38,6 +38,7 @@ module function dissipation_init(source_length) result(mySources)
 
   mySources = thermal_active('dissipation',source_length)
   if (count(mySources) == 0) return
+
   print'(/,1x,a)', '<<<+-  phase:thermal:dissipation init  -+>>>'
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 

@@ -35,6 +35,7 @@ module subroutine elastic_init(phases)
 
   print'(/,a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
+
   allocate(param(phases%length))
 
   do ph = 1, phases%length

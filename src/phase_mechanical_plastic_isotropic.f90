@@ -54,8 +54,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
-  character(len=:), allocatable :: &
-    extmsg
+  character(len=:), allocatable :: extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -71,6 +70,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
   print'(/,1x,a)', 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print'(  1x,a)', 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
+
 
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
