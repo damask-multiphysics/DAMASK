@@ -4,7 +4,7 @@
 !> @author Jennifer Nastola, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
-module results
+module result
   use prec
   use parallelization
   use IO
@@ -28,46 +28,46 @@ module results
 #endif
   private
 
-  integer(HID_T) :: resultsFile
+  integer(HID_T) :: resultFile
 
-  interface results_writeDataset
-    module procedure results_writeTensorDataset_real
-    module procedure results_writeVectorDataset_real
-    module procedure results_writeScalarDataset_real
+  interface result_writeDataset
+    module procedure result_writeTensorDataset_real
+    module procedure result_writeVectorDataset_real
+    module procedure result_writeScalarDataset_real
 
-    module procedure results_writeTensorDataset_int
-    module procedure results_writeVectorDataset_int
-  end interface results_writeDataset
+    module procedure result_writeTensorDataset_int
+    module procedure result_writeVectorDataset_int
+  end interface result_writeDataset
 
-  interface results_addAttribute
-    module procedure results_addAttribute_str
-    module procedure results_addAttribute_int
-    module procedure results_addAttribute_real
+  interface result_addAttribute
+    module procedure result_addAttribute_str
+    module procedure result_addAttribute_int
+    module procedure result_addAttribute_real
 
-    module procedure results_addAttribute_str_array
-    module procedure results_addAttribute_int_array
-    module procedure results_addAttribute_real_array
-  end interface results_addAttribute
+    module procedure result_addAttribute_str_array
+    module procedure result_addAttribute_int_array
+    module procedure result_addAttribute_real_array
+  end interface result_addAttribute
 
   public :: &
-    results_init, &
-    results_openJobFile, &
-    results_closeJobFile, &
-    results_addIncrement, &
-    results_finalizeIncrement, &
-    results_addGroup, &
-    results_openGroup, &
-    results_closeGroup, &
-    results_writeDataset, &
-    results_writeDataset_str, &
-    results_setLink, &
-    results_addAttribute, &
-    results_removeLink, &
-    results_mapping_phase, &
-    results_mapping_homogenization
+    result_init, &
+    result_openJobFile, &
+    result_closeJobFile, &
+    result_addIncrement, &
+    result_finalizeIncrement, &
+    result_addGroup, &
+    result_openGroup, &
+    result_closeGroup, &
+    result_writeDataset, &
+    result_writeDataset_str, &
+    result_setLink, &
+    result_addAttribute, &
+    result_removeLink, &
+    result_mapping_phase, &
+    result_mapping_homogenization
 contains
 
-subroutine results_init(restart)
+subroutine result_init(restart)
 
   logical, intent(in) :: restart
 
@@ -76,68 +76,68 @@ subroutine results_init(restart)
   character(len=:), allocatable :: date
 
 
-  print'(/,1x,a)', '<<<+-  results init  -+>>>'; flush(IO_STDOUT)
+  print'(/,1x,a)', '<<<+-  result init  -+>>>'; flush(IO_STDOUT)
 
   print'(/,1x,a)', 'M. Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   print'(  1x,a)', 'https://doi.org/10.1007/s40192-017-0084-5'
 
   if (.not. restart) then
-    resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
-    call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',14)
+    resultFile = HDF5_openFile(getSolverJobName()//'.hdf5','w')
+    call result_addAttribute('DADF5_version_major',0)
+    call result_addAttribute('DADF5_version_minor',14)
     call get_command_argument(0,commandLine)
-    call results_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
-    call results_addAttribute('created',now())
+    call result_addAttribute('creator',trim(commandLine)//' '//DAMASKVERSION)
+    call result_addAttribute('created',now())
     call get_command(commandLine)
-    call results_addAttribute('call',trim(commandLine))
-    call results_closeGroup(results_addGroup('cell_to'))
-    call results_addAttribute('description','mappings to place data in space','cell_to')
-    call results_closeGroup(results_addGroup('setup'))
-    call results_addAttribute('description','input data used to run the simulation','setup')
+    call result_addAttribute('call',trim(commandLine))
+    call result_closeGroup(result_addGroup('cell_to'))
+    call result_addAttribute('description','mappings to place data in space','cell_to')
+    call result_closeGroup(result_addGroup('setup'))
+    call result_addAttribute('description','input data used to run the simulation','setup')
   else
     date = now()
-    call results_openJobFile
+    call result_openJobFile
     call get_command(commandLine)
-    call results_addAttribute('call (restart at '//date//')',trim(commandLine))
-    call H5Gmove_f(resultsFile,'setup','tmp',hdferr)
-    call results_addAttribute('description','input data used to run the simulation up to restart at '//date,'tmp')
-    call results_closeGroup(results_addGroup('setup'))
-    call results_addAttribute('description','input data used to run the simulation','setup')
-    call H5Gmove_f(resultsFile,'tmp','setup/previous',hdferr)
+    call result_addAttribute('call (restart at '//date//')',trim(commandLine))
+    call H5Gmove_f(resultFile,'setup','tmp',hdferr)
+    call result_addAttribute('description','input data used to run the simulation up to restart at '//date,'tmp')
+    call result_closeGroup(result_addGroup('setup'))
+    call result_addAttribute('description','input data used to run the simulation','setup')
+    call H5Gmove_f(resultFile,'tmp','setup/previous',hdferr)
   end if
 
-  call results_closeJobFile
+  call result_closeJobFile
 
-end subroutine results_init
+end subroutine result_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens the results file to append data
+!> @brief opens the result file to append data
 !--------------------------------------------------------------------------------------------------
-subroutine results_openJobFile(parallel)
+subroutine result_openJobFile(parallel)
 
   logical, intent(in), optional :: parallel
 
 
-  resultsFile = HDF5_openFile(getSolverJobName()//'.hdf5','a',parallel)
+  resultFile = HDF5_openFile(getSolverJobName()//'.hdf5','a',parallel)
 
-end subroutine results_openJobFile
+end subroutine result_openJobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes the results file
+!> @brief closes the result file
 !--------------------------------------------------------------------------------------------------
-subroutine results_closeJobFile
+subroutine result_closeJobFile
 
-  call HDF5_closeFile(resultsFile)
+  call HDF5_closeFile(resultFile)
 
-end subroutine results_closeJobFile
+end subroutine result_closeJobFile
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief creates the group of increment and adds time as attribute to the file
 !--------------------------------------------------------------------------------------------------
-subroutine results_addIncrement(inc,time)
+subroutine result_addIncrement(inc,time)
 
   integer,       intent(in) :: inc
   real(pReal),   intent(in) :: time
@@ -146,97 +146,97 @@ subroutine results_addIncrement(inc,time)
 
 
   write(incChar,'(i10)') inc
-  call results_closeGroup(results_addGroup(trim('increment_'//trim(adjustl(incChar)))))
-  call results_setLink(trim('increment_'//trim(adjustl(incChar))),'current')
-  call results_addAttribute('t/s',time,trim('increment_'//trim(adjustl(incChar))))
+  call result_closeGroup(result_addGroup(trim('increment_'//trim(adjustl(incChar)))))
+  call result_setLink(trim('increment_'//trim(adjustl(incChar))),'current')
+  call result_addAttribute('t/s',time,trim('increment_'//trim(adjustl(incChar))))
 
-end subroutine results_addIncrement
+end subroutine result_addIncrement
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief finalize increment
 !> @details remove soft link
 !--------------------------------------------------------------------------------------------------
-subroutine results_finalizeIncrement
+subroutine result_finalizeIncrement
 
-  call results_removeLink('current')
+  call result_removeLink('current')
 
-end subroutine results_finalizeIncrement
+end subroutine result_finalizeIncrement
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open a group from the results file
+!> @brief open a group from the result file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function results_openGroup(groupName)
+integer(HID_T) function result_openGroup(groupName)
 
   character(len=*), intent(in) :: groupName
 
 
-  results_openGroup = HDF5_openGroup(resultsFile,groupName)
+  result_openGroup = HDF5_openGroup(resultFile,groupName)
 
-end function results_openGroup
+end function result_openGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
+!> @brief adds a new group to the result file
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function results_addGroup(groupName)
+integer(HID_T) function result_addGroup(groupName)
 
   character(len=*), intent(in) :: groupName
 
 
-  results_addGroup = HDF5_addGroup(resultsFile,groupName)
+  result_addGroup = HDF5_addGroup(resultFile,groupName)
 
-end function results_addGroup
+end function result_addGroup
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief close a group
 !--------------------------------------------------------------------------------------------------
-subroutine results_closeGroup(group_id)
+subroutine result_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
 
 
   call HDF5_closeGroup(group_id)
 
-end subroutine results_closeGroup
+end subroutine result_closeGroup
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief set link to object in results file
+!> @brief set link to object in result file
 !--------------------------------------------------------------------------------------------------
-subroutine results_setLink(path,link)
+subroutine result_setLink(path,link)
 
   character(len=*), intent(in) :: path, link
 
 
-  call HDF5_setLink(resultsFile,path,link)
+  call HDF5_setLink(resultFile,path,link)
 
-end subroutine results_setLink
+end subroutine result_setLink
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a string attribute to an object in the results file.
+!> @brief Add a string attribute to an object in the result file.
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute_str(attrLabel,attrValue,path)
+subroutine result_addAttribute_str(attrLabel,attrValue,path)
 
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
 
 
   if (present(path)) then
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
   else
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
   end if
 
-end subroutine results_addAttribute_str
+end subroutine result_addAttribute_str
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add an integer attribute an object in the results file.
+!> @brief Add an integer attribute an object in the result file.
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute_int(attrLabel,attrValue,path)
+subroutine result_addAttribute_int(attrLabel,attrValue,path)
 
   character(len=*), intent(in)           :: attrLabel
   integer,          intent(in)           :: attrValue
@@ -244,18 +244,18 @@ subroutine results_addAttribute_int(attrLabel,attrValue,path)
 
 
   if (present(path)) then
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
   else
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
   end if
 
-end subroutine results_addAttribute_int
+end subroutine result_addAttribute_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a real attribute an object in the results file.
+!> @brief Add a real attribute an object in the result file.
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute_real(attrLabel,attrValue,path)
+subroutine result_addAttribute_real(attrLabel,attrValue,path)
 
   character(len=*), intent(in)           :: attrLabel
   real(pReal),      intent(in)           :: attrValue
@@ -263,18 +263,18 @@ subroutine results_addAttribute_real(attrLabel,attrValue,path)
 
 
   if (present(path)) then
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
   else
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
   end if
 
-end subroutine results_addAttribute_real
+end subroutine result_addAttribute_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a string array attribute an object in the results file.
+!> @brief Add a string array attribute an object in the result file.
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute_str_array(attrLabel,attrValue,path)
+subroutine result_addAttribute_str_array(attrLabel,attrValue,path)
 
   character(len=*), intent(in)               :: attrLabel
   character(len=*), intent(in), dimension(:) :: attrValue
@@ -282,18 +282,18 @@ subroutine results_addAttribute_str_array(attrLabel,attrValue,path)
 
 
   if (present(path)) then
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
   else
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
   end if
 
-end subroutine results_addAttribute_str_array
+end subroutine result_addAttribute_str_array
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add an integer array attribute an object in the results file.
+!> @brief Add an integer array attribute an object in the result file.
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
+subroutine result_addAttribute_int_array(attrLabel,attrValue,path)
 
   character(len=*), intent(in)               :: attrLabel
   integer,          intent(in), dimension(:) :: attrValue
@@ -301,18 +301,18 @@ subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
 
 
   if (present(path)) then
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
   else
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
   end if
 
-end subroutine results_addAttribute_int_array
+end subroutine result_addAttribute_int_array
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a real array attribute an object in the results file.
+!> @brief Add a real array attribute an object in the result file.
 !--------------------------------------------------------------------------------------------------
-subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
+subroutine result_addAttribute_real_array(attrLabel,attrValue,path)
 
   character(len=*), intent(in)               :: attrLabel
   real(pReal),      intent(in), dimension(:) :: attrValue
@@ -320,51 +320,51 @@ subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
 
 
   if (present(path)) then
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
   else
-    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
   end if
 
-end subroutine results_addAttribute_real_array
+end subroutine result_addAttribute_real_array
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief remove link to an object
 !--------------------------------------------------------------------------------------------------
-subroutine results_removeLink(link)
+subroutine result_removeLink(link)
 
   character(len=*), intent(in) :: link
   integer                      :: hdferr
 
 
-  call H5Ldelete_f(resultsFile,link, hdferr)
-  if (hdferr < 0) call IO_error(1,ext_msg = 'results_removeLink: H5Ldelete_soft_f ('//trim(link)//')')
+  call H5Ldelete_f(resultFile,link, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg = 'result_removeLink: H5Ldelete_soft_f ('//trim(link)//')')
 
-end subroutine results_removeLink
+end subroutine result_removeLink
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store string dataset.
 !> @details Not collective, must be called by one process at at time.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeDataset_str(dataset,group,label,description)
+subroutine result_writeDataset_str(dataset,group,label,description)
 
   character(len=*), intent(in) :: label,group,description,dataset
 
   integer(HID_T) :: groupHandle
 
 
-  groupHandle = results_openGroup(group)
+  groupHandle = result_openGroup(group)
   call HDF5_write_str(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description)
   call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writeDataset_str
+end subroutine result_writeDataset_str
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real scalar dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeScalarDataset_real(dataset,group,label,description,SIunit)
+subroutine result_writeScalarDataset_real(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
@@ -373,18 +373,18 @@ subroutine results_writeScalarDataset_real(dataset,group,label,description,SIuni
   integer(HID_T) :: groupHandle
 
 
-  groupHandle = results_openGroup(group)
+  groupHandle = result_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writeScalarDataset_real
+end subroutine result_writeScalarDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_real(dataset,group,label,description,SIunit,systems)
+subroutine result_writeVectorDataset_real(dataset,group,label,description,SIunit,systems)
 
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
@@ -394,21 +394,21 @@ subroutine results_writeVectorDataset_real(dataset,group,label,description,SIuni
   integer(HID_T) :: groupHandle
 
 
-  groupHandle = results_openGroup(group)
+  groupHandle = result_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   if (present(systems) .and. HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
+    call HDF5_addAttribute(resultFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writeVectorDataset_real
+end subroutine result_writeVectorDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store real tensor dataset with associated metadata.
 !> @details Data is transposed to compenstate transposed storage order.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_real(dataset,group,label,description,SIunit,transposed)
+subroutine result_writeTensorDataset_real(dataset,group,label,description,SIunit,transposed)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
@@ -427,7 +427,7 @@ subroutine results_writeTensorDataset_real(dataset,group,label,description,SIuni
     transposed_ = .true.
   end if
 
-  groupHandle = results_openGroup(group)
+  groupHandle = result_openGroup(group)
   if (transposed_) then
     if (size(dataset,1) /= size(dataset,2)) error stop 'transpose non-symmetric tensor'
     allocate(dataset_transposed,mold=dataset)
@@ -441,13 +441,13 @@ subroutine results_writeTensorDataset_real(dataset,group,label,description,SIuni
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writeTensorDataset_real
+end subroutine result_writeTensorDataset_real
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer vector dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit,systems)
+subroutine result_writeVectorDataset_int(dataset,group,label,description,SIunit,systems)
 
   character(len=*), intent(in)                 :: label,group,description
   character(len=*), intent(in), optional       :: SIunit
@@ -457,20 +457,20 @@ subroutine results_writeVectorDataset_int(dataset,group,label,description,SIunit
   integer(HID_T) :: groupHandle
 
 
-  groupHandle = results_openGroup(group)
+  groupHandle = result_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   if (present(systems) .and. HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(resultsFile,'systems',systems,group//'/'//label)
+    call HDF5_addAttribute(resultFile,'systems',systems,group//'/'//label)
   call HDF5_closeGroup(groupHandle)
 
-end subroutine results_writeVectorDataset_int
+end subroutine result_writeVectorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Store integer tensor dataset with associated metadata.
 !--------------------------------------------------------------------------------------------------
-subroutine results_writeTensorDataset_int(dataset,group,label,description,SIunit)
+subroutine result_writeTensorDataset_int(dataset,group,label,description,SIunit)
 
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
@@ -479,19 +479,19 @@ subroutine results_writeTensorDataset_int(dataset,group,label,description,SIunit
   integer(HID_T) :: groupHandle
 
 
-  groupHandle = results_openGroup(group)
+  groupHandle = result_openGroup(group)
   call HDF5_write(dataset,groupHandle,label)
   call executionStamp(group//'/'//label,description,SIunit)
   call HDF5_closeGroup(groupHandle)
 
 
-end subroutine results_writeTensorDataset_int
+end subroutine result_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_phase(ID,entry,label)
+subroutine result_mapping_phase(ID,entry,label)
 
   integer,          dimension(:,:), intent(in) :: ID                                                !< phase ID at (co,ce)
   integer,          dimension(:,:), intent(in) :: entry                                             !< phase entry at (co,ce)
@@ -611,7 +611,7 @@ subroutine results_mapping_phase(ID,entry,label)
   call H5Pset_preserve_f(plist_id, .true., hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
 
-  loc_id = results_openGroup('/cell_to')
+  loc_id = result_openGroup('/cell_to')
   call H5Dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
 
@@ -641,13 +641,13 @@ subroutine results_mapping_phase(ID,entry,label)
 
   call executionStamp('cell_to/phase','cell ID and constituent ID to phase results')
 
-end subroutine results_mapping_phase
+end subroutine result_mapping_phase
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_homogenization(ID,entry,label)
+subroutine result_mapping_homogenization(ID,entry,label)
 
   integer,          dimension(:), intent(in) :: ID                                                  !< homogenization ID at (ce)
   integer,          dimension(:), intent(in) :: entry                                               !< homogenization entry at (ce)
@@ -763,7 +763,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
   call H5Pset_preserve_f(plist_id, .true., hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
 
-  loc_id = results_openGroup('/cell_to')
+  loc_id = result_openGroup('/cell_to')
   call H5Dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
 
@@ -794,7 +794,7 @@ subroutine results_mapping_homogenization(ID,entry,label)
 
   call executionStamp('cell_to/homogenization','cell ID to homogenization results')
 
-end subroutine results_mapping_homogenization
+end subroutine result_mapping_homogenization
 
 
 !--------------------------------------------------------------------------------------------------
@@ -806,14 +806,14 @@ subroutine executionStamp(path,description,SIunit)
   character(len=*), intent(in), optional :: SIunit
 
 
-  if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'creator','DAMASK '//DAMASKVERSION,path)
-  if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'created',now(),path)
-  if (HDF5_objectExists(resultsFile,path)) &
-    call HDF5_addAttribute(resultsFile,'description',description,path)
-  if (HDF5_objectExists(resultsFile,path) .and. present(SIunit)) &
-    call HDF5_addAttribute(resultsFile,'unit',SIunit,path)
+  if (HDF5_objectExists(resultFile,path)) &
+    call HDF5_addAttribute(resultFile,'creator','DAMASK '//DAMASKVERSION,path)
+  if (HDF5_objectExists(resultFile,path)) &
+    call HDF5_addAttribute(resultFile,'created',now(),path)
+  if (HDF5_objectExists(resultFile,path)) &
+    call HDF5_addAttribute(resultFile,'description',description,path)
+  if (HDF5_objectExists(resultFile,path) .and. present(SIunit)) &
+    call HDF5_addAttribute(resultFile,'unit',SIunit,path)
 
 end subroutine executionStamp
 
@@ -834,4 +834,4 @@ character(len=24) function now()
 end function now
 
 
-end module results
+end module result

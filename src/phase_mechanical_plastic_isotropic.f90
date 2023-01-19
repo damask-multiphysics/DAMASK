@@ -286,7 +286,7 @@ end function isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_results(ph,group)
+module subroutine plastic_isotropic_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -297,13 +297,13 @@ module subroutine plastic_isotropic_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('xi')
-        call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
-                                    'resistance against plastic flow','Pa')
+        call result_writeDataset(stt%xi,group,trim(prm%output(o)), &
+                                 'resistance against plastic flow','Pa')
     end select
   end do outputsLoop
   end associate
 
-end subroutine plastic_isotropic_results
+end subroutine plastic_isotropic_result
 
 
 end submodule isotropic
