@@ -39,7 +39,7 @@ module function isobrittle_init() result(mySources)
     phase, &
     src
   integer :: Nmembers,ph
-  character(len=pStringLen) :: extmsg = ''
+  character(len=:), allocatable :: extmsg
 
 
   mySources = source_active('isobrittle')
@@ -53,6 +53,7 @@ module function isobrittle_init() result(mySources)
   allocate(param(phases%length))
   allocate(state(phases%length))
   allocate(deltaState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (mySources(ph)) then

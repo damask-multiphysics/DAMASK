@@ -84,10 +84,11 @@ module subroutine damage_init()
    source
   logical:: damage_active
 
+
   print'(/,1x,a)', '<<<+-  phase:damage init  -+>>>'
 
-  phases => config_material%get_dict('phase')
 
+  phases => config_material%get_dict('phase')
   allocate(current(phases%length))
   allocate(damageState(phases%length))
   allocate(param(phases%length))

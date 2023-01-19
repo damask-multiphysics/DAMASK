@@ -92,8 +92,8 @@ module subroutine thermal_init(phases)
 
   print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
 
-  allocate(current(phases%length))
 
+  allocate(current(phases%length))
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
   allocate(param(phases%length))

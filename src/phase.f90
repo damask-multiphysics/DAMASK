@@ -406,7 +406,6 @@ subroutine phase_init
 
 
   phases => config_material%get_dict('phase')
-
   allocate(phase_lattice(phases%length))
   allocate(phase_cOverA(phases%length),source=-1.0_pReal)
   allocate(phase_rho(phases%length))
@@ -549,8 +548,8 @@ subroutine crystallite_init()
   type(tDict), pointer :: &
     num_crystallite, &
     phases
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: extmsg
+
 
   num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
@@ -566,6 +565,7 @@ subroutine crystallite_init()
   num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
   num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
+  extmsg = ''
   if (num%subStepMinCryst   <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepMinCryst'
   if (num%subStepSizeCryst  <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepSizeCryst'
   if (num%stepIncreaseCryst <= 0.0_pReal)      extmsg = trim(extmsg)//' stepIncreaseCryst'

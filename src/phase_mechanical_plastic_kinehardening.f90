@@ -77,8 +77,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
   real(pReal), dimension(:), allocatable :: &
     xi_0, &                                                                                         !< initial resistance against plastic flow
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -94,12 +93,13 @@ module function plastic_kinehardening_init() result(myPlasticity)
   print'(/,1x,a)', 'J.A. Wollmershauser et al., International Journal of Fatigue 36:181–193, 2012'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijfatigue.2011.07.008'
 
+
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(deltaState(phases%length))
-
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
