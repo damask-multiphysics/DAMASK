@@ -13,7 +13,7 @@ module phase
   use IO
   use config
   use material
-  use results
+  use result
   use lattice
   use discretization
   use parallelization
@@ -108,20 +108,20 @@ module phase
     end subroutine thermal_init
 
 
-    module subroutine mechanical_results(group,ph)
+    module subroutine mechanical_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine mechanical_results
+    end subroutine mechanical_result
 
-    module subroutine damage_results(group,ph)
+    module subroutine damage_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine damage_results
+    end subroutine damage_result
 
-    module subroutine thermal_results(group,ph)
+    module subroutine thermal_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine thermal_results
+    end subroutine thermal_result
 
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
@@ -343,7 +343,7 @@ module phase
     IO, &
     config, &
     material, &
-    results, &
+    result, &
     lattice, &
     discretization, &
     HDF5_utilities
@@ -358,7 +358,7 @@ module phase
     phase_K_T, &
     phase_mu_phi, &
     phase_mu_T, &
-    phase_results, &
+    phase_result, &
     phase_allocateState, &
     phase_forward, &
     phase_restore, &
@@ -513,26 +513,26 @@ end subroutine phase_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine phase_results()
+subroutine phase_result()
 
   integer :: ph
   character(len=:), allocatable :: group
 
 
-  call results_closeGroup(results_addGroup('/current/phase/'))
+  call result_closeGroup(result_addGroup('/current/phase/'))
 
   do ph = 1, size(material_name_phase)
 
     group = '/current/phase/'//trim(material_name_phase(ph))//'/'
-    call results_closeGroup(results_addGroup(group))
+    call result_closeGroup(result_addGroup(group))
 
-    call mechanical_results(group,ph)
-    call damage_results(group,ph)
-    call thermal_results(group,ph)
+    call mechanical_result(group,ph)
+    call damage_result(group,ph)
+    call thermal_result(group,ph)
 
   end do
 
-end subroutine phase_results
+end subroutine phase_result
 
 
 !--------------------------------------------------------------------------------------------------

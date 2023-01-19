@@ -768,7 +768,7 @@ end subroutine dislotwin_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_results(ph,group)
+module subroutine plastic_dislotwin_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -783,30 +783,30 @@ module subroutine plastic_dislotwin_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
-                                       'mobile dislocation density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                   'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
-                                       'dislocation dipole density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                   'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                       'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
-                                       'mean free path for slip','m',prm%systems_sl)
+          call result_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                   'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                       'passing stress for slip','Pa',prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'passing stress for slip','Pa',prm%systems_sl)
 
         case('f_tw')
-          call results_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
-                                       'twinned volume fraction','m³/m³',prm%systems_tw)
+          call result_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
+                                   'twinned volume fraction','m³/m³',prm%systems_tw)
         case('Lambda_tw')
-          call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
-                                       'mean free path for twinning','m',prm%systems_tw)
+          call result_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
+                                   'mean free path for twinning','m',prm%systems_tw)
 
         case('f_tr')
-          if (prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
+          if (prm%sum_N_tr>0) call result_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
                                                        'martensite volume fraction','m³/m³')
 
       end select
@@ -815,7 +815,7 @@ module subroutine plastic_dislotwin_results(ph,group)
 
   end associate
 
-end subroutine plastic_dislotwin_results
+end subroutine plastic_dislotwin_result
 
 
 !--------------------------------------------------------------------------------------------------

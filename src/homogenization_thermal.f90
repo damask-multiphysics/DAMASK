@@ -189,7 +189,7 @@ end subroutine homogenization_thermal_setField
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_results(ho,group)
+module subroutine thermal_result(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -201,11 +201,11 @@ module subroutine thermal_results(ho,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case('T')
-          call results_writeDataset(current(ho)%T,group,'T','temperature','K')
+          call result_writeDataset(current(ho)%T,group,'T','temperature','K')
       end select
     end do outputsLoop
   end associate
 
-end subroutine thermal_results
+end subroutine thermal_result
 
 end submodule thermal
