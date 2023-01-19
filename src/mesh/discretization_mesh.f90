@@ -56,11 +56,10 @@ module discretization_mesh
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-  external :: &
 #ifdef PETSC_USE_64BIT_INDICES
-    DMDestroy, &
+  external :: &
+    DMDestroy
 #endif
-    DMView                                                                                          ! ToDo: write interface
   public :: &
     discretization_mesh_init, &
     mesh_FEM_build_ipVolumes, &
@@ -120,8 +119,6 @@ subroutine discretization_mesh_init(restart)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,NelemsGlobal,err_PETSc)
   CHKERRQ(err_PETSc)
   mesh_NcpElemsGlobal = int(NelemsGlobal)
-  call DMView(globalMesh, PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   ! get number of IDs in face sets (for boundary conditions?)
   call DMGetLabelSize(globalMesh,'Face Sets',Nboundaries,err_PETSc)
