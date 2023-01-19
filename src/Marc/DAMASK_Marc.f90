@@ -147,7 +147,7 @@ end module DAMASK_interface
 #include "../YAML_types.f90"
 #include "../YAML_parse.f90"
 #include "../HDF5_utilities.f90"
-#include "../results.f90"
+#include "../result.f90"
 #include "../config.f90"
 #include "../LAPACK_interface.f90"
 #include "../math.f90"
@@ -434,7 +434,7 @@ subroutine uedinc(inc,incsub)
     end do
 
     call discretization_Marc_UpdateNodeAndIpCoords(d_n)
-    call materialpoint_results(int(inc),cptim)
+    call materialpoint_result(int(inc),cptim)
 
     inc_written = int(inc)
   end if

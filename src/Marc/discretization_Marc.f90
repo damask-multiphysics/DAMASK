@@ -15,7 +15,7 @@ module discretization_Marc
   use element
   use discretization
   use geometry_plastic_nonlocal
-  use results
+  use result
 
   implicit none(type,external)
   private
@@ -110,7 +110,7 @@ subroutine discretization_Marc_init
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem))
-  call geometry_plastic_nonlocal_results
+  call geometry_plastic_nonlocal_result
 
 end subroutine discretization_Marc_init
 
@@ -167,23 +167,23 @@ subroutine writeGeometry(elem, &
     coordinates_points
 
 
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
+  call result_openJobFile
+  call result_closeGroup(result_addGroup('geometry'))
 
-  call results_writeDataset(connectivity_elem,'geometry','T_e',&
-                            'connectivity of the elements','-')
+  call result_writeDataset(connectivity_elem,'geometry','T_e',&
+                           'connectivity of the elements','-')
 
-  call results_writeDataset(connectivity_cell_reshaped,'geometry','T_c', &
-                            'connectivity of the cells','-')
-  call results_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
+  call result_writeDataset(connectivity_cell_reshaped,'geometry','T_c', &
+                           'connectivity of the cells','-')
+  call result_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
 
-  call results_writeDataset(coordinates_nodes,'geometry','x_n', &
-                            'initial coordinates of the nodes','m')
+  call result_writeDataset(coordinates_nodes,'geometry','x_n', &
+                           'initial coordinates of the nodes','m')
 
-  call results_writeDataset(coordinates_points,'geometry','x_p', &
-                            'initial coordinates of the materialpoints (cell centers)','m')
+  call result_writeDataset(coordinates_points,'geometry','x_p', &
+                           'initial coordinates of the materialpoints (cell centers)','m')
 
-  call results_closeJobFile
+  call result_closeJobFile
 
 end subroutine writeGeometry
 
@@ -216,11 +216,11 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
     mapElemSet                                                                                      !< list of elements in elementSet
 
 
-  call results_openJobFile
-  call results_writeDataset_str(IO_read(trim(getSolverJobName())//InputFileExtension), 'setup', &
+  call result_openJobFile
+  call result_writeDataset_str(IO_read(trim(getSolverJobName())//InputFileExtension), 'setup', &
                                         trim(getSolverJobName())//InputFileExtension, &
                                         'MSC.Marc input deck')
-  call results_closeJobFile
+  call result_closeJobFile
 
   inputFile = IO_readlines(trim(getSolverJobName())//InputFileExtension)
   call inputRead_fileFormat(fileFormatVersion, &

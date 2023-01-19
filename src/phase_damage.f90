@@ -56,15 +56,15 @@ submodule(phase) damage
     end subroutine anisobrittle_dotState
 
 
-    module subroutine anisobrittle_results(phase,group)
+    module subroutine anisobrittle_result(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
-    end subroutine anisobrittle_results
+    end subroutine anisobrittle_result
 
-    module subroutine isobrittle_results(phase,group)
+    module subroutine isobrittle_result(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
-    end subroutine isobrittle_results
+    end subroutine isobrittle_result
 
  end interface
 
@@ -340,26 +340,26 @@ end subroutine damage_restartRead
 !----------------------------------------------------------------------------------------------
 !< @brief writes damage sources results to HDF5 output file
 !----------------------------------------------------------------------------------------------
-module subroutine damage_results(group,ph)
+module subroutine damage_result(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
 
   if (phase_damage(ph) /= DAMAGE_UNDEFINED_ID) &
-    call results_closeGroup(results_addGroup(group//'damage'))
+    call result_closeGroup(result_addGroup(group//'damage'))
 
   sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
-      call isobrittle_results(ph,group//'damage/')
+      call isobrittle_result(ph,group//'damage/')
 
     case (DAMAGE_ANISOBRITTLE_ID) sourceType
-      call anisobrittle_results(ph,group//'damage/')
+      call anisobrittle_result(ph,group//'damage/')
 
   end select sourceType
 
-end subroutine damage_results
+end subroutine damage_result
 
 
 !--------------------------------------------------------------------------------------------------

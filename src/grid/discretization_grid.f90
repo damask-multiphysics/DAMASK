@@ -19,7 +19,7 @@ module discretization_grid
   use CLI
   use IO
   use config
-  use results
+  use result
   use discretization
   use geometry_plastic_nonlocal
 
@@ -89,9 +89,9 @@ subroutine discretization_grid_init(restart)
       call IO_error(180,ext_msg='mismatch in # of material IDs and cells')
     fname = CLI_geomFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
-    call results_openJobFile(parallel=.false.)
-    call results_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
-    call results_closeJobFile
+    call result_openJobFile(parallel=.false.)
+    call result_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
+    call result_closeJobFile
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
   end if
@@ -147,12 +147,12 @@ subroutine discretization_grid_init(restart)
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
   if (.not. restart) then
-    call results_openJobFile
-    call results_closeGroup(results_addGroup('geometry'))
-    call results_addAttribute('cells', cells,   '/geometry')
-    call results_addAttribute('size',  geomSize,'/geometry')
-    call results_addAttribute('origin',origin,  '/geometry')
-    call results_closeJobFile
+    call result_openJobFile
+    call result_closeGroup(result_addGroup('geometry'))
+    call result_addAttribute('cells', cells,   '/geometry')
+    call result_addAttribute('size',  geomSize,'/geometry')
+    call result_addAttribute('origin',origin,  '/geometry')
+    call result_closeJobFile
   end if
 
 !--------------------------------------------------------------------------------------------------

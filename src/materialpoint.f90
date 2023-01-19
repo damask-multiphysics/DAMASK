@@ -5,7 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module materialpoint
   use parallelization
-  use signals
+  use signal
   use CLI
   use prec
   use IO
@@ -13,7 +13,7 @@ module materialpoint
   use YAML_parse
   use HDF5
   use HDF5_utilities
-  use results
+  use result
   use config
   use math
   use rotations
@@ -45,7 +45,7 @@ subroutine materialpoint_initAll()
 
   call parallelization_init()
   call CLI_init()                                                                                   ! grid and mesh commandline interface
-  call signals_init()
+  call signal_init()
   call prec_init()
   call IO_init()
 #if   defined(MESH)
@@ -56,7 +56,7 @@ subroutine materialpoint_initAll()
   call YAML_types_init()
   call YAML_parse_init()
   call HDF5_utilities_init()
-  call results_init(restart=CLI_restartInc>0)
+  call result_init(restart=CLI_restartInc>0)
   call config_init()
   call math_init()
   call rotations_init()
@@ -136,19 +136,19 @@ end subroutine materialpoint_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_results(inc,time)
+subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
 
-  call results_openJobFile()
-  call results_addIncrement(inc,time)
-  call phase_results()
-  call homogenization_results()
-  call discretization_results()
-  call results_finalizeIncrement()
-  call results_closeJobFile()
+  call result_openJobFile()
+  call result_addIncrement(inc,time)
+  call phase_result()
+  call homogenization_result()
+  call discretization_result()
+  call result_finalizeIncrement()
+  call result_closeJobFile()
 
-end subroutine materialpoint_results
+end subroutine materialpoint_result
 
 end module materialpoint

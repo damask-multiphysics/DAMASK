@@ -380,7 +380,7 @@ end function phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_phenopowerlaw_results(ph,group)
+module subroutine plastic_phenopowerlaw_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -395,18 +395,18 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('xi_sl')
-          call results_writeDataset(stt%xi_sl,group,trim(prm%output(ou)), &
-                                    'resistance against plastic slip','Pa',prm%systems_sl)
+          call result_writeDataset(stt%xi_sl,group,trim(prm%output(ou)), &
+                                   'resistance against plastic slip','Pa',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                    'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
 
         case('xi_tw')
-          call results_writeDataset(stt%xi_tw,group,trim(prm%output(ou)), &
-                                    'resistance against twinning','Pa',prm%systems_tw)
+          call result_writeDataset(stt%xi_tw,group,trim(prm%output(ou)), &
+                                   'resistance against twinning','Pa',prm%systems_tw)
         case('gamma_tw')
-          call results_writeDataset(stt%gamma_tw,group,trim(prm%output(ou)), &
-                                    'twinning shear','1',prm%systems_tw)
+          call result_writeDataset(stt%gamma_tw,group,trim(prm%output(ou)), &
+                                   'twinning shear','1',prm%systems_tw)
 
       end select
 
@@ -414,7 +414,7 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
 
   end associate
 
-end subroutine plastic_phenopowerlaw_results
+end subroutine plastic_phenopowerlaw_result
 
 
 !--------------------------------------------------------------------------------------------------

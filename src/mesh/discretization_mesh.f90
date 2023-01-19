@@ -20,7 +20,7 @@ module discretization_mesh
   use IO
   use config
   use discretization
-  use results
+  use result
   use FEM_quadrature
   use YAML_types
   use prec
@@ -275,16 +275,16 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   coordinates_nodes, &
   coordinates_points
 
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
+  call result_openJobFile
+  call result_closeGroup(result_addGroup('geometry'))
 
-  call results_writeDataset(coordinates_nodes,'geometry','x_n', &
-        'initial coordinates of the nodes','m')
+  call result_writeDataset(coordinates_nodes,'geometry','x_n', &
+                           'initial coordinates of the nodes','m')
 
-  call results_writeDataset(coordinates_points,'geometry','x_p', &
-        'initial coordinates of the materialpoints (cell centers)','m')
+  call result_writeDataset(coordinates_points,'geometry','x_p', &
+                           'initial coordinates of the materialpoints (cell centers)','m')
 
-  call results_closeJobFile
+  call result_closeJobFile
 
   end subroutine writeGeometry
 

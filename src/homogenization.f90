@@ -15,7 +15,7 @@ module homogenization
   use discretization
   use HDF5
   use HDF5_utilities
-  use results
+  use result
   use lattice
 
   implicit none(type,external)
@@ -101,20 +101,20 @@ module homogenization
        ce                                                                                           !< cell
     end subroutine mechanical_homogenize
 
-    module subroutine mechanical_results(group_base,ho)
+    module subroutine mechanical_result(group_base,ho)
       character(len=*), intent(in) :: group_base
       integer, intent(in)          :: ho
-    end subroutine mechanical_results
+    end subroutine mechanical_result
 
-    module subroutine damage_results(ho,group)
+    module subroutine damage_result(ho,group)
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-    end subroutine damage_results
+    end subroutine damage_result
 
-    module subroutine thermal_results(ho,group)
+    module subroutine thermal_result(ho,group)
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-    end subroutine thermal_results
+    end subroutine thermal_result
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
       real(pReal), intent(in) :: &
@@ -194,7 +194,7 @@ module homogenization
     homogenization_f_phi, &
     homogenization_set_phi, &
     homogenization_forward, &
-    homogenization_results, &
+    homogenization_result, &
     homogenization_restartRead, &
     homogenization_restartWrite
 
@@ -349,35 +349,35 @@ end subroutine homogenization_mechanical_response2
 !--------------------------------------------------------------------------------------------------
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_results
+subroutine homogenization_result
 
   integer :: ho
   character(len=:), allocatable :: group_base,group
 
 
-  call results_closeGroup(results_addGroup('current/homogenization/'))
+  call result_closeGroup(result_addGroup('current/homogenization/'))
 
   do ho=1,size(material_name_homogenization)
     group_base = 'current/homogenization/'//trim(material_name_homogenization(ho))
-    call results_closeGroup(results_addGroup(group_base))
+    call result_closeGroup(result_addGroup(group_base))
 
-    call mechanical_results(group_base,ho)
+    call mechanical_result(group_base,ho)
 
     if (damage_active(ho)) then
       group = trim(group_base)//'/damage'
-      call results_closeGroup(results_addGroup(group))
-      call damage_results(ho,group)
+      call result_closeGroup(result_addGroup(group))
+      call damage_result(ho,group)
     end if
 
     if (thermal_active(ho)) then
       group = trim(group_base)//'/thermal'
-      call results_closeGroup(results_addGroup(group))
-      call thermal_results(ho,group)
+      call result_closeGroup(result_addGroup(group))
+      call thermal_result(ho,group)
     end if
 
  end do
 
-end subroutine homogenization_results
+end subroutine homogenization_result
 
 
 !--------------------------------------------------------------------------------------------------

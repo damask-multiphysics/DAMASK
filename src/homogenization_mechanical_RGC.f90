@@ -705,7 +705,7 @@ end function RGC_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine RGC_results(ho,group)
+module subroutine RGC_result(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -713,25 +713,25 @@ module subroutine RGC_results(ho,group)
   integer :: o
 
   associate(stt => state(ho), dst => dependentState(ho), prm => param(ho))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case('M')
-        call results_writeDataset(dst%mismatch,group,trim(prm%output(o)), &
-                                  'average mismatch tensor','1')
-      case('Delta_V')
-        call results_writeDataset(dst%volumeDiscrepancy,group,trim(prm%output(o)), &
-                                  'volume discrepancy','m³')
-      case('max_dot_a')
-        call results_writeDataset(dst%relaxationrate_max,group,trim(prm%output(o)), &
-                                  'maximum relaxation rate','m/s')
-      case('avg_dot_a')
-        call results_writeDataset(dst%relaxationrate_avg,group,trim(prm%output(o)), &
-                                  'average relaxation rate','m/s')
-    end select
-  end do outputsLoop
+    outputsLoop: do o = 1,size(prm%output)
+      select case(trim(prm%output(o)))
+        case('M')
+          call result_writeDataset(dst%mismatch,group,trim(prm%output(o)), &
+                                   'average mismatch tensor','1')
+        case('Delta_V')
+          call result_writeDataset(dst%volumeDiscrepancy,group,trim(prm%output(o)), &
+                                 'volume discrepancy','m³')
+        case('max_dot_a')
+          call result_writeDataset(dst%relaxationrate_max,group,trim(prm%output(o)), &
+                                 'maximum relaxation rate','m/s')
+        case('avg_dot_a')
+          call result_writeDataset(dst%relaxationrate_avg,group,trim(prm%output(o)), &
+                                   'average relaxation rate','m/s')
+      end select
+    end do outputsLoop
   end associate
 
-end subroutine RGC_results
+end subroutine RGC_result
 
 
 !--------------------------------------------------------------------------------------------------

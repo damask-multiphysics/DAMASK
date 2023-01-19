@@ -172,7 +172,7 @@ end subroutine homogenization_set_phi
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine damage_results(ho,group)
+module subroutine damage_result(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -184,12 +184,12 @@ module subroutine damage_results(ho,group)
       outputsLoop: do o = 1,size(prm%output)
         select case(prm%output(o))
           case ('phi')
-            call results_writeDataset(current(ho)%phi,group,prm%output(o),&
-                                      'damage indicator','-')
+            call result_writeDataset(current(ho)%phi,group,prm%output(o),&
+                                     'damage indicator','-')
         end select
       end do outputsLoop
   end associate
 
-end subroutine damage_results
+end subroutine damage_result
 
 end submodule damage
