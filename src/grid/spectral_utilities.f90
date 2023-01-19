@@ -126,8 +126,7 @@ module spectral_utilities
     utilities_constitutiveResponse, &
     utilities_calculateRate, &
     utilities_forwardField, &
-    utilities_updateCoords, &
-    utilities_saveReferenceStiffness
+    utilities_updateCoords
 
 contains
 
@@ -1096,27 +1095,6 @@ subroutine utilities_updateCoords(F)
   call discretization_setIPcoords  (reshape(IPcoords,  [3,cells(1)*cells(2)*cells3]))
 
 end subroutine utilities_updateCoords
-
-
-!---------------------------------------------------------------------------------------------------
-!> @brief Write out the current reference stiffness for restart.
-!---------------------------------------------------------------------------------------------------
-subroutine utilities_saveReferenceStiffness()
-
-  integer :: &
-    fileUnit,ierr
-
-
-  if (worldrank == 0) then
-    print'(/,1x,a)', '... writing reference stiffness data required for restart to file .........'; flush(IO_STDOUT)
-    open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
-         status='replace',access='stream',action='write',iostat=ierr)
-    if (ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
-    write(fileUnit) C_ref*wgt
-    close(fileUnit)
-  end if
-
-end subroutine utilities_saveReferenceStiffness
 
 
 !--------------------------------------------------------------------------------------------------
