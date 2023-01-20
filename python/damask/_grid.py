@@ -4,13 +4,13 @@ import warnings
 import multiprocessing as mp
 from functools import partial
 import typing
-from typing import Union, Optional, TextIO, List, Sequence, Dict
+from typing import Optional, Union, TextIO, Sequence, Dict
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import h5py
-from scipy import ndimage, spatial
+from scipy import ndimage, spatial, interpolate
 
 from . import VTK
 from . import util
@@ -18,7 +18,15 @@ from . import grid_filters
 from . import Rotation
 from . import Table
 from . import Colormap
-from ._typehints import FloatSequence, IntSequence, IntCollection, NumpyRngSeed
+from ._typehints import FloatSequence, IntSequence, NumpyRngSeed
+try:
+    import numba as nb                                                                              # type: ignore
+except ImportError:
+    nb = False
+
+def numba_njit_wrapper(**kwargs):
+    return (lambda function: nb.njit(function) if nb else function)
+
 
 class Grid:
     """
@@ -34,14 +42,14 @@ class Grid:
                  material: np.ndarray,
                  size: FloatSequence,
                  origin: FloatSequence = np.zeros(3),
-                 initial_conditions: Dict[str,np.ndarray] = None,
-                 comments: Union[str, Sequence[str]] = None):
+                 initial_conditions: Optional[Dict[str,np.ndarray]] = None,
+                 comments: Union[None, str, Sequence[str]] = None):
         """
         New geometry definition for grid solvers.
 
         Parameters
         ----------
-        material : numpy.ndarray, shape (:,:,:)
+        material : numpy.ndarray of int, shape (:,:,:)
             Material indices. The shape of the material array defines
             the number of cells.
         size : sequence of float, len (3)
@@ -50,16 +58,17 @@ class Grid:
             Coordinates of grid origin in meter. Defaults to [0.0,0.0,0.0].
         initial_conditions : dictionary, optional
             Labels and values of the inital conditions at each material point.
-        comments : str or iterable of str, optional
+        comments : (sequence of) str, optional
             Additional, human-readable information, e.g. history of operations.
 
         """
         self.material = material
-        self.size = size                                                        # type: ignore
-        self.origin = origin                                                    # type: ignore
+        self.size = size                                                                            # type: ignore
+        self.origin = origin                                                                        # type: ignore
         self.initial_conditions = {} if initial_conditions is None else initial_conditions
-        comments_ = [comments] if isinstance(comments,str) else comments
-        self.comments = [] if comments_ is None else [str(c) for c in comments_]
+        self.comments = [] if comments is None else \
+                        [comments] if isinstance(comments,str) else \
+                        [str(c) for c in comments]
 
     def __repr__(self) -> str:
         """
@@ -176,17 +185,6 @@ class Grid:
         self._ic = ic
 
     @property
-    def comments(self) -> List[str]:
-        """Comments, e.g. history of operations."""
-        return self._comments
-
-    @comments.setter
-    def comments(self,
-                 comments: Union[str, Sequence[str]]):
-        self._comments = [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
-
-
-    @property
     def cells(self) -> np.ndarray:
         """Number of cells in x,y,z direction."""
         return np.asarray(self.material.shape)
@@ -218,14 +216,13 @@ class Grid:
         v = VTK.load(fname if str(fname).endswith('.vti') else str(fname)+'.vti')
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-        comments = v.comments
         ic = {label:v.get(label).reshape(cells,order='F') for label in set(v.labels['Cell Data']) - {'material'}}
 
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size     = bbox[1] - bbox[0],
                     origin   = bbox[0],
                     initial_conditions = ic,
-                    comments = comments,
+                    comments = v.comments,
                    )
 
 
@@ -348,9 +345,11 @@ class Grid:
 
     @staticmethod
     def load_DREAM3D(fname: Union[str, Path],
-                     feature_IDs: str = None, cell_data: str = None,
-                     phases: str = 'Phases', Euler_angles: str = 'EulerAngles',
-                     base_group: str = None) -> 'Grid':
+                     feature_IDs: Optional[str] = None,
+                     cell_data: Optional[str] = None,
+                     phases: str = 'Phases',
+                     Euler_angles: str = 'EulerAngles',
+                     base_group: Optional[str] = None) -> 'Grid':
         """
         Load DREAM.3D (HDF5) file.
 
@@ -427,7 +426,7 @@ class Grid:
         coordinates : str
             Label of the vector column containing the spatial coordinates.
             Need to be ordered (1./x fast, 3./z slow).
-        labels : (list of) str
+        labels : (sequence of) str
             Label(s) of the columns containing the material definition.
             Each unique combination of values results in one material ID.
 
@@ -463,7 +462,7 @@ class Grid:
                                    size: FloatSequence,
                                    seeds: np.ndarray,
                                    weights: FloatSequence,
-                                   material: IntSequence = None,
+                                   material: Optional[IntSequence] = None,
                                    periodic: bool = True):
         """
         Create grid from Laguerre tessellation.
@@ -474,7 +473,7 @@ class Grid:
             Number of cells in x,y,z direction.
         size : sequence of float, len (3)
             Physical size of the grid in meter.
-        seeds : numpy.ndarray, shape (:,3)
+        seeds : numpy.ndarray of float, shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         weights : sequence of float, len (seeds.shape[0])
             Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
@@ -520,7 +519,7 @@ class Grid:
     def from_Voronoi_tessellation(cells: IntSequence,
                                   size: FloatSequence,
                                   seeds: np.ndarray,
-                                  material: IntSequence = None,
+                                  material: Optional[IntSequence] = None,
                                   periodic: bool = True) -> 'Grid':
         """
         Create grid from Voronoi tessellation.
@@ -531,7 +530,7 @@ class Grid:
             Number of cells in x,y,z direction.
         size : sequence of float, len (3)
             Physical size of the grid in meter.
-        seeds : numpy.ndarray, shape (:,3)
+        seeds : numpy.ndarray of float, shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         material : sequence of int, len (seeds.shape[0]), optional
             Material ID of the seeds.
@@ -763,9 +762,9 @@ class Grid:
 
 
     def canvas(self,
-               cells: IntSequence = None,
-               offset: IntSequence = None,
-               fill: int = None) -> 'Grid':
+               cells: Optional[IntSequence] = None,
+               offset: Optional[IntSequence] = None,
+               fill: Optional[int] = None) -> 'Grid':
         """
         Crop or enlarge/pad grid.
 
@@ -901,7 +900,7 @@ class Grid:
 
     def rotate(self,
                R: Rotation,
-               fill: int = None) -> 'Grid':
+               fill: Optional[int] = None) -> 'Grid':
         """
         Rotate grid (and pad if required).
 
@@ -940,17 +939,14 @@ class Grid:
 
 
     def scale(self,
-              cells: IntSequence,
-              periodic: bool = True) -> 'Grid':
+              cells: IntSequence) -> 'Grid':
         """
-        Scale grid to new cells.
+        Scale grid to new cell count.
 
         Parameters
         ----------
         cells : sequence of int, len (3)
             Number of cells in x,y,z direction.
-        periodic : bool, optional
-            Assume grid to be periodic. Defaults to True.
 
         Returns
         -------
@@ -963,7 +959,11 @@ class Grid:
 
         >>> import numpy as np
         >>> import damask
-        >>> g = damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4)
+        >>> (g := damask.Grid(np.zeros([32]*3,int),np.ones(3)*1e-4))
+        cells:  32 × 32 × 32
+        size:   0.0001 × 0.0001 × 0.0001 m³
+        origin: 0.0   0.0   0.0 m
+        # materials: 1
         >>> g.scale(g.cells*2)
         cells : 64 x 64 x 64
         size  : 0.0001 x 0.0001 x 0.0001 m³
@@ -971,17 +971,47 @@ class Grid:
         # materials: 1
 
         """
-        return Grid(material = ndimage.interpolation.zoom(
-                                                          self.material,
-                                                          cells/self.cells,
-                                                          output=self.material.dtype,
-                                                          order=0,
-                                                          mode='wrap' if periodic else 'nearest',
-                                                          prefilter=False
-                                                         ),
+        orig = tuple(map(np.linspace,self.origin             + self.size/self.cells*.5,
+                                     self.origin + self.size - self.size/self.cells*.5,self.cells))
+        interpolator = partial(interpolate.RegularGridInterpolator,
+                               points=orig,method='nearest',bounds_error=False,fill_value=None)
+        new = grid_filters.coordinates0_point(cells,self.size,self.origin)
+
+        return Grid(material = interpolator(values=self.material)(new).astype(int),
                     size     = self.size,
                     origin   = self.origin,
+                    initial_conditions = {k: interpolator(values=v)(new)
+                                          for k,v in self.initial_conditions.items()},
                     comments = self.comments+[util.execution_stamp('Grid','scale')],
+                   )
+
+
+    def assemble(self,
+                 idx: np.ndarray) -> 'Grid':
+        """
+        Assemble new grid from index map.
+
+        Parameters
+        ----------
+        idx : numpy.ndarray of int, shape (:,:,:) or (:,:,:,3)
+          Grid of flat indices or coordinate indices.
+
+        Returns
+        -------
+        updated : damask.Grid
+            Updated grid-based geometry.
+            Cell count of resulting grid matches shape of index map.
+
+        """
+        cells = idx.shape[:3]
+        flat = (idx if len(idx.shape)==3 else grid_filters.ravel_index(idx)).flatten(order='F')
+        ic = {k: v.flatten(order='F')[flat].reshape(cells,order='F') for k,v in self.initial_conditions.items()}
+
+        return Grid(material = self.material.flatten(order='F')[flat].reshape(cells,order='F'),
+                    size     = self.size,
+                    origin   = self.origin,
+                    initial_conditions = ic,
+                    comments = self.comments+[util.execution_stamp('Grid','assemble')],
                    )
 
 
@@ -1013,9 +1043,9 @@ class Grid:
 
         Parameters
         ----------
-        from_material : int or sequence of int
+        from_material : (sequence of) int
             Material indices to be substituted.
-        to_material : int or sequence of int
+        to_material : (sequence of) int
             New material indices.
 
         Returns
@@ -1062,10 +1092,10 @@ class Grid:
 
     def clean(self,
               distance: float = np.sqrt(3),
-              selection: IntCollection = None,
+              selection: Optional[IntSequence] = None,
               invert_selection: bool = False,
               periodic: bool = True,
-              rng_seed: NumpyRngSeed = None) -> 'Grid':
+              rng_seed: Optional[NumpyRngSeed] = None) -> 'Grid':
         """
         Smooth grid by selecting most frequent material ID within given stencil at each location.
 
@@ -1074,7 +1104,7 @@ class Grid:
         distance : float, optional
             Voxel distance checked for presence of other materials.
             Defaults to sqrt(3).
-        selection : int or collection of int, optional
+        selection : (sequence of) int, optional
             Material IDs to consider. Defaults to all.
         invert_selection : bool, optional
             Consider all material IDs except those in selection. Defaults to False.
@@ -1095,8 +1125,8 @@ class Grid:
 
         """
         def most_frequent(stencil: np.ndarray,
-                         selection: Union[None,set],
-                         rng):
+                          selection: Union[None,np.ndarray],
+                          rng: np.random.Generator):
             me = stencil[stencil.size//2]
             if selection is None or me in selection:
                 unique, counts = np.unique(stencil,return_counts=True)
@@ -1111,15 +1141,15 @@ class Grid:
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
         selection_ = None if selection is None else \
-                     set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
-                     set(self.material.flatten()) & set(util.aslist(selection))
-        material = ndimage.filters.generic_filter(
-                                                  self.material,
-                                                  most_frequent,
-                                                  footprint=footprint,
-                                                  mode='wrap' if periodic else 'nearest',
-                                                  extra_keywords=dict(selection=selection_,rng=rng),
-                                                 ).astype(self.material.dtype)
+                     np.setdiff1d(self.material,selection) if invert_selection else \
+                     np.intersect1d(self.material,selection)
+        material = ndimage.generic_filter(
+                                          self.material,
+                                          most_frequent,
+                                          footprint=footprint,
+                                          mode='wrap' if periodic else 'nearest',
+                                          extra_keywords=dict(selection=selection_,rng=rng),
+                                         ).astype(self.material.dtype)
         return Grid(material = material,
                     size     = self.size,
                     origin   = self.origin,
@@ -1132,7 +1162,7 @@ class Grid:
                       dimension: Union[FloatSequence, IntSequence],
                       center: Union[FloatSequence, IntSequence],
                       exponent: Union[FloatSequence, float],
-                      fill: int = None,
+                      fill: Optional[int] = None,
                       R: Rotation = Rotation(),
                       inverse: bool = False,
                       periodic: bool = True) -> 'Grid':
@@ -1149,7 +1179,7 @@ class Grid:
             Center of the primitive.
             If given as integers, cell centers are addressed.
             If given as floats, physical coordinates are addressed.
-        exponent : float or sequence of float, len (3)
+        exponent : (sequence of) float, len (3)
             Exponents for the three axes.
             0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
             1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
@@ -1223,8 +1253,8 @@ class Grid:
 
     def vicinity_offset(self,
                         distance: float = np.sqrt(3),
-                        offset: int = None,
-                        selection: IntCollection = None,
+                        offset: Optional[int] = None,
+                        selection: Optional[IntSequence] = None,
                         invert_selection: bool = False,
                         periodic: bool = True) -> 'Grid':
         """
@@ -1241,7 +1271,7 @@ class Grid:
         offset : int, optional
             Offset (positive or negative) to tag material IDs.
             Defaults to material.max()+1.
-        selection : int or collection of int, optional
+        selection : (sequence of) int, optional
             Material IDs that trigger an offset.
             Defaults to any other than own material ID.
         invert_selection : bool, optional
@@ -1256,25 +1286,33 @@ class Grid:
             Updated grid-based geometry.
 
         """
-        def tainted_neighborhood(stencil: np.ndarray, selection: Union[None,set]):
+        @numba_njit_wrapper()
+        def tainted_neighborhood(stencil: np.ndarray,
+                                 selection: Optional[np.ndarray] = None):
             me = stencil[stencil.size//2]
-            return np.any(stencil != me if selection is None else
-                          np.in1d(stencil,np.array(list(selection - {me}))))
-
+            if selection is None:
+                return np.any(stencil != me)
+            elif not len(selection)==0:
+                for stencil_item in stencil:
+                    for selection_item in selection:
+                        if stencil_item==selection_item and selection_item!=me:
+                            return True
+            return False
         d = np.floor(distance).astype(np.int64)
         ext = np.linspace(-d,d,1+2*d,dtype=float),
         xx,yy,zz = np.meshgrid(ext,ext,ext)
         footprint = xx**2+yy**2+zz**2 <= distance**2+distance*1e-8
         offset_ = np.nanmax(self.material)+1 if offset is None else offset
         selection_ = None if selection is None else \
-                     set(self.material.flatten()) - set(util.aslist(selection)) if invert_selection else \
-                     set(self.material.flatten()) & set(util.aslist(selection))
-        mask = ndimage.filters.generic_filter(self.material,
-                                              tainted_neighborhood,
-                                              footprint=footprint,
-                                              mode='wrap' if periodic else 'nearest',
-                                              extra_keywords=dict(selection=selection_),
-                                             )
+                     np.setdiff1d(self.material,selection) if invert_selection else \
+                     np.intersect1d(self.material,selection)
+
+        mask = ndimage.generic_filter(self.material,
+                                      tainted_neighborhood,
+                                      footprint=footprint,
+                                      mode='wrap' if periodic else 'nearest',
+                                      extra_keywords=dict(selection=selection_),
+                                     )
 
         return Grid(material = np.where(mask, self.material + offset_,self.material),
                     size     = self.size,

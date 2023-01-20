@@ -6,7 +6,7 @@ from damask import Rotation
 from damask import Table
 from damask import _rotation
 from damask import grid_filters
-from damask import util
+from damask import tensor
 
 n = 1000
 atol=1.e-4
@@ -19,6 +19,16 @@ def ref_path(ref_path_base):
 @pytest.fixture
 def set_of_rotations(set_of_quaternions):
     return [Rotation.from_quaternion(s) for s in set_of_quaternions]
+
+@pytest.fixture
+def multidim_rotations(set_of_quaternions):
+    L = len(set_of_quaternions)
+    i = 0
+    while L%(f:=np.random.randint(2,np.sqrt(L).astype(int))) > 0 and i<L:
+        i += 1
+
+    f = i if i == L else f
+    return Rotation.from_quaternion(set_of_quaternions.reshape((L//f,f,-1)))
 
 
 ####################################################################################################
@@ -691,101 +701,158 @@ class TestRotation:
 
     def test_to_numpy(self):
         r = Rotation.from_random(np.random.randint(0,10,4))
-        assert np.all(r.as_quaternion() == np.array(r))
+        assert (r.as_quaternion() == np.array(r)).all()
 
-    @pytest.mark.parametrize('degrees',[True,False])
-    def test_Eulers(self,set_of_rotations,degrees):
-        for rot in set_of_rotations:
-            m = rot.as_quaternion()
-            o = Rotation.from_Euler_angles(rot.as_Euler_angles(degrees),degrees).as_quaternion()
-            ok = np.allclose(m,o,atol=atol)
-            if np.isclose(rot.as_quaternion()[0],0.0,atol=atol):
-                ok |= np.allclose(m*-1.,o,atol=atol)
-            assert ok and np.isclose(np.linalg.norm(o),1.0), f'{m},{o},{rot.as_quaternion()}'
+    def test_bounds(self,multidim_rotations):
+        m = multidim_rotations
 
-    @pytest.mark.parametrize('P',[1,-1])
-    @pytest.mark.parametrize('normalize',[True,False])
-    @pytest.mark.parametrize('degrees',[True,False])
-    def test_axis_angle(self,set_of_rotations,degrees,normalize,P):
-        c = np.array([P*-1,P*-1,P*-1,1.])
-        for rot in set_of_rotations:
-            m = rot.as_Euler_angles()
-            o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalize,P).as_Euler_angles()
-            u = np.array([np.pi*2,np.pi,np.pi*2])
-            ok = np.allclose(m,o,atol=atol)
-            ok |= np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
-            if np.isclose(m[1],0.0,atol=atol) or np.isclose(m[1],np.pi,atol=atol):
-                sum_phi = np.unwrap([m[0]+m[2],o[0]+o[2]])
-                ok |= np.isclose(sum_phi[0],sum_phi[1],atol=atol)
-            assert ok and (np.zeros(3)-1.e-9 <= o).all() \
-                      and (o <= np.array([np.pi*2.,np.pi,np.pi*2.])+1.e-9).all(), f'{m},{o},{rot.as_quaternion()}'
+        q = m.as_quaternion()
+        assert np.allclose(1.,np.linalg.norm(q,axis=-1))
 
-    def test_matrix(self,set_of_rotations):
-        for rot in set_of_rotations:
-            m = rot.as_axis_angle()
-            o = Rotation.from_axis_angle(rot.as_axis_angle()).as_axis_angle()
-            ok = np.allclose(m,o,atol=atol)
-            if np.isclose(m[3],np.pi,atol=atol):
-                ok |= np.allclose(m*np.array([-1.,-1.,-1.,1.]),o,atol=atol)
-            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) \
-                      and o[3]<=np.pi+1.e-9, f'{m},{o},{rot.as_quaternion()}'
+        v = m.as_Rodrigues_vector(compact=False)
+        assert np.allclose(1.,np.linalg.norm(v[...,:3],axis=-1))
 
-    @pytest.mark.parametrize('P',[1,-1])
-    @pytest.mark.parametrize('normalize',[True,False])
-    def test_Rodrigues(self,set_of_rotations,normalize,P):
-        c = np.array([P*-1,P*-1,P*-1,1.])
-        for rot in set_of_rotations:
-            m = rot.as_matrix()
-            o = Rotation.from_Rodrigues_vector(rot.as_Rodrigues_vector()*c,normalize,P).as_matrix()
-            ok = np.allclose(m,o,atol=atol)
-            assert ok and np.isclose(np.linalg.det(o),1.0), f'{m},{o}'
+        v = m.as_axis_angle(degrees=False)
+        assert np.allclose(1.,np.linalg.norm(v[...,:3],axis=-1))
+        assert (v[...,3] >= 0.).all and (v < np.pi+1.e-9).all()
 
-    @pytest.mark.parametrize('P',[1,-1])
-    def test_homochoric(self,set_of_rotations,P):
-        cutoff = np.tan(np.pi*.5*(1.-1e-4))
-        for rot in set_of_rotations:
-            m = rot.as_Rodrigues_vector()
-            o = Rotation.from_homochoric(rot.as_homochoric()*P*-1,P).as_Rodrigues_vector()
-            ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
-            ok |= np.isclose(m[3],0.0,atol=atol)
-            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0), f'{m},{o},{rot.as_quaternion()}'
+        r = m.as_matrix()
+        assert np.allclose(1.,np.linalg.det(r))
 
-    @pytest.mark.parametrize('P',[1,-1])
-    def test_cubochoric(self,set_of_rotations,P):
-        for rot in set_of_rotations:
-            m = rot.as_homochoric()
-            o = Rotation.from_cubochoric(rot.as_cubochoric()*P*-1,P).as_homochoric()
-            ok = np.allclose(m,o,atol=atol)
-            assert ok and np.linalg.norm(o) < (3.*np.pi/4.)**(1./3.) + 1.e-9, f'{m},{o},{rot.as_quaternion()}'
+        e = m.as_Euler_angles(degrees=False)
+        assert (e >= 0.).all and (e < np.pi*np.array([2.,1.,2.])+1.e-9).all()
 
-    @pytest.mark.parametrize('P',[1,-1])
+        c = m.as_cubochoric()
+        assert (np.linalg.norm(c,ord=np.inf,axis=-1) < np.pi**(2./3.)*0.5+1.e-9).all()
+
+        h = m.as_homochoric()
+        assert (np.linalg.norm(h,axis=-1) < (3.*np.pi/4.)**(1./3.) + 1.e-9).all()
+
+
     @pytest.mark.parametrize('accept_homomorph',[True,False])
-    def test_quaternion(self,set_of_rotations,P,accept_homomorph):
-        c = np.array([1,P*-1,P*-1,P*-1]) * (-1 if accept_homomorph else 1)
-        for rot in set_of_rotations:
-            m = rot.as_cubochoric()
-            o = Rotation.from_quaternion(rot.as_quaternion()*c,accept_homomorph,P).as_cubochoric()
-            ok = np.allclose(m,o,atol=atol)
-            if np.count_nonzero(np.isclose(np.abs(o),np.pi**(2./3.)*.5)):
-                ok |= np.allclose(m*-1.,o,atol=atol)
-            assert ok and o.max() < np.pi**(2./3.)*0.5+1.e-9, f'{m},{o},{rot.as_quaternion()}'
+    @pytest.mark.parametrize('normalize',[True,False])
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_quaternion(self,multidim_rotations,accept_homomorph,normalize,P):
+        c = np.array([1,-P,-P,-P]) * (-1 if accept_homomorph else 1) * (0.9 if normalize else 1.0)
+        m = multidim_rotations
+        o = Rotation.from_quaternion(m.as_quaternion()*c,
+                                     accept_homomorph=accept_homomorph,
+                                     normalize=normalize,
+                                     P=P)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
+
+    @pytest.mark.parametrize('degrees',[True,False])
+    def test_Eulers(self,multidim_rotations,degrees):
+        m = multidim_rotations
+        o = Rotation.from_Euler_angles(m.as_Euler_angles(degrees),
+                                       degrees=degrees)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
+
+    @pytest.mark.parametrize('degrees',[True,False])
+    @pytest.mark.parametrize('normalize',[True,False])
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_axis_angle(self,multidim_rotations,degrees,normalize,P):
+        c = np.array([-P,-P,-P,1.])
+        c[:3] *= 0.9 if normalize else 1.0
+
+        m = multidim_rotations
+        o = Rotation.from_axis_angle(m.as_axis_angle(degrees)*c,
+                                     degrees=degrees,
+                                     normalize=normalize,
+                                     P=P)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
+
+    @pytest.mark.parametrize('normalize',[True,False])
+    def test_matrix(self,multidim_rotations,normalize):
+        m = multidim_rotations
+        o = Rotation.from_matrix(m.as_matrix()*(0.9 if normalize else 1.0),
+                                 normalize=normalize)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
+
+    def test_parallel(self,multidim_rotations):
+        m = multidim_rotations
+        a = np.broadcast_to(np.array([[1.0,0.0,0.0],
+                                      [0.0,1.0,0.0]]),m.shape+(2,3))
+        assert m.allclose(Rotation.from_parallel(a,m.broadcast_to(m.shape+(2,))@a))
+
+
+    @pytest.mark.parametrize('normalize',[True,False])
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_Rodrigues(self,multidim_rotations,normalize,P):
+        c = np.array([-P,-P,-P,1.])
+        c[:3] *= 0.9 if normalize else 1.0
+        m = multidim_rotations
+        o = Rotation.from_Rodrigues_vector(m.as_Rodrigues_vector()*c,
+                                           normalize=normalize,
+                                           P=P)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
+
+    def test_Rodrigues_compact(self,multidim_rotations):
+        m = multidim_rotations
+        c = m.as_Rodrigues_vector(compact=True)
+        r = m.as_Rodrigues_vector(compact=False)
+        assert np.allclose(r[...,:3]*r[...,3:], c, equal_nan=True)
+
+
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_homochoric(self,multidim_rotations,P):
+        m = multidim_rotations
+        o = Rotation.from_homochoric(m.as_homochoric()*-P,
+                                     P=P)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
+
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_cubochoric(self,multidim_rotations,P):
+        m = multidim_rotations
+        o = Rotation.from_cubochoric(m.as_cubochoric()*-P,
+                                     P=P)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
 
     @pytest.mark.parametrize('reciprocal',[True,False])
-    def test_basis(self,set_of_rotations,reciprocal):
-        for rot in set_of_rotations:
-            om = rot.as_matrix() + 0.1*np.eye(3)
-            rot = Rotation.from_basis(om,False,reciprocal=reciprocal)
-            assert np.isclose(np.linalg.det(rot.as_matrix()),1.0)
+    def test_basis(self,multidim_rotations,reciprocal):
+        m = multidim_rotations
+        r = m.as_matrix()
+        r = np.linalg.inv(tensor.transpose(r)/np.pi) if reciprocal else r
+        o = Rotation.from_basis(r,
+                                reciprocal=reciprocal)
+        f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
+        assert np.logical_or(m.isclose(o,atol=atol),
+                             m.isclose(f,atol=atol)
+                            ).all()
+
 
     @pytest.mark.parametrize('shape',[None,1,(4,4)])
     def test_random(self,shape):
         r = Rotation.from_random(shape)
-        if shape is None:
-            assert r.shape == ()
-        elif shape == 1:
-            assert r.shape == (1,)
-        else:
-            assert r.shape == shape
+        assert r.shape == () if shape is None else (1,) if shape == 1 else shape
 
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_equal(self,shape):
@@ -806,7 +873,7 @@ class TestRotation:
     def test_equal_ambiguous(self):
         qu = np.random.rand(10,4)
         qu[:,0] = 0.
-        qu/=np.linalg.norm(qu,axis=1,keepdims=True)
+        qu /= np.linalg.norm(qu,axis=1,keepdims=True)
         assert (Rotation(qu) == Rotation(-qu)).all()
 
     def test_inversion(self):
@@ -889,6 +956,15 @@ class TestRotation:
         with pytest.raises(ValueError):
             fr(eval(f'R.{to}()'),P=-30)
 
+
+    def test_invalid_multiplication(self):
+        rot = Rotation.from_random()
+        with pytest.raises(TypeError):
+            rot@Rotation.from_random()
+        with pytest.raises(TypeError):
+            rot@[1,2,3,4]
+
+
     @pytest.mark.parametrize('shape',[None,(3,),(4,2)])
     def test_broadcast(self,shape):
         rot = Rotation.from_random(shape)
@@ -899,9 +975,10 @@ class TestRotation:
             assert np.allclose(rot_broadcast.quaternion[...,i,:], rot.quaternion)
 
 
-    @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion, np.array([-1,0,0,0])),
+    @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion,        np.array([-1,0,0,0])),
                                                  (Rotation.from_quaternion,        np.array([1,1,1,0])),
                                                  (Rotation.from_Euler_angles,      np.array([1,4,0])),
+                                                 (Rotation.from_Euler_angles,      np.array([-1,0,0])),
                                                  (Rotation.from_axis_angle,        np.array([1,0,0,4])),
                                                  (Rotation.from_axis_angle,        np.array([1,1,0,1])),
                                                  (Rotation.from_matrix,            np.random.rand(3,3)),
@@ -909,7 +986,8 @@ class TestRotation:
                                                  (Rotation.from_Rodrigues_vector,  np.array([1,0,0,-1])),
                                                  (Rotation.from_Rodrigues_vector,  np.array([1,1,0,1])),
                                                  (Rotation.from_homochoric,        np.array([2,2,2])),
-                                                 (Rotation.from_cubochoric,        np.array([1.1,0,0]))  ])
+                                                 (Rotation.from_cubochoric,        np.array([1.1,0,0])),
+                                                ])
     def test_invalid_value(self,function,invalid):
         with pytest.raises(ValueError):
             function(invalid)
@@ -920,13 +998,13 @@ class TestRotation:
         p = np.random.rand(n,3)
         o = Rotation._get_pyramid_order(p,direction)
         for i,o_i in enumerate(o):
-            assert np.all(o_i==Rotation._get_pyramid_order(p[i],direction))
+            assert (o_i==Rotation._get_pyramid_order(p[i],direction)).all()
 
     def test_pyramid_invariant(self):
         a = np.random.rand(n,3)
         f = Rotation._get_pyramid_order(a,'forward')
         b = Rotation._get_pyramid_order(a,'backward')
-        assert np.all(np.take_along_axis(np.take_along_axis(a,f,-1),b,-1) == a)
+        assert (np.take_along_axis(np.take_along_axis(a,f,-1),b,-1) == a).all()
 
 
     @pytest.mark.parametrize('data',[np.random.rand(5,3),
@@ -1074,19 +1152,22 @@ class TestRotation:
     @pytest.mark.parametrize('sigma',[5,10,15,20])
     @pytest.mark.parametrize('shape',[1000,10000,100000,(10,100)])
     def test_from_fiber_component(self,sigma,shape):
+
+        def astuple(a):
+            return tuple(a) if hasattr(a,'__len__') else (a,)
+
         p = []
-        for run in range(5):
+        for run in range(9):
             alpha = np.arccos(np.random.random()),np.random.random()*2*np.pi
             beta  = np.arccos(np.random.random()),np.random.random()*2*np.pi
 
             f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
             f_in_S = np.array([np.sin( beta[0])*np.cos( beta[1]), np.sin( beta[0])*np.sin( beta[1]), np.cos( beta[0])])
             ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
-            n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)           # rotation to align fiber axis in crystal and sample system
-
+            n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else -ax,normalize=True)           # rotation to align fiber axis in crystal and sample system
             o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),shape,False)
-            angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,tuple(util.aslist(shape))+(3,)),n@f_in_S),-1,1))
-            dist   = np.array(angles) * (np.random.randint(0,2,util.aslist(shape))*2-1)
+            angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,astuple(shape)+(3,)),n@f_in_S),-1,1))
+            dist   = np.array(angles) * (np.random.randint(0,2,shape)*2-1)
 
             p.append(stats.normaltest(dist)[1])
 

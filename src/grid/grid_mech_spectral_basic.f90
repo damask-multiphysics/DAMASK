@@ -77,6 +77,7 @@ module grid_mechanical_spectral_basic
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     C_minMaxAvg = 0.0_pReal, &                                                                      !< current (min+max)/2 stiffness
     C_minMaxAvgLastInc = 0.0_pReal, &                                                               !< previous (min+max)/2 stiffness
+    C_minMaxAvgRestart = 0.0_pReal, &                                                               !< (min+max)/2 stiffnes (restart)
     S = 0.0_pReal                                                                                   !< current compliance (filled up with zeros)
 
   real(pReal) :: &
@@ -104,25 +105,28 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mechanical_spectral_basic_init
+subroutine grid_mechanical_spectral_basic_init()
 
   real(pReal), dimension(3,3,cells(1),cells(2),cells3) :: P
   PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
-  PetscScalar, pointer, dimension(:,:,:,:) :: &
+  real(pReal), pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
   PetscInt, dimension(0:worldsize-1) :: localK
+  real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   type(MPI_File) :: fileUnit
 #else
   integer :: fileUnit
 #endif
-  class (tNode), pointer :: &
-    num_grid, &
+  type(tDict), pointer :: &
+    num_grid
+  type(tList), pointer :: &
     debug_grid
   character(len=pStringLen) :: &
     extmsg = ''
+
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_basic init  -+>>>'; flush(IO_STDOUT)
 
@@ -134,12 +138,12 @@ subroutine grid_mechanical_spectral_basic_init
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
-  debug_grid => config_debug%get('grid',defaultVal=emptyList)
+  debug_grid => config_debug%get_list('grid',defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
   num%update_gamma    = num_grid%get_asBool ('update_gamma',   defaultVal=.false.)
   num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
@@ -227,8 +231,10 @@ subroutine grid_mechanical_spectral_basic_init
     call HDF5_read(F_aimDot,groupHandle,'F_aimDot',.false.)
     call MPI_Bcast(F_aimDot,9_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call HDF5_read(F,groupHandle,'F')
-    call HDF5_read(F_lastInc,groupHandle,'F_lastInc')
+    call HDF5_read(temp33n,groupHandle,'F')
+    F = reshape(temp33n,[9,cells(1),cells(2),cells3])
+    call HDF5_read(temp33n,groupHandle,'F_lastInc')
+    F_lastInc = reshape(temp33n,[3,3,cells(1),cells(2),cells3])
 
   elseif (CLI_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,cells(1)),4,cells(2)),5,cells3)                      ! initialize to identity
@@ -251,21 +257,17 @@ subroutine grid_mechanical_spectral_basic_init
     call HDF5_read(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
     call MPI_Bcast(C_volAvgLastInc,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    call HDF5_read(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
+    call MPI_Bcast(C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
 
-    call MPI_File_open(MPI_COMM_WORLD, trim(getSolverJobName())//'.C_ref', &
-                       MPI_MODE_RDONLY,MPI_INFO_NULL,fileUnit,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call MPI_File_read(fileUnit,C_minMaxAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,status,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-    call MPI_File_close(fileUnit,err_MPI)
-    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
   end if restartRead2
 
   call utilities_updateGamma(C_minMaxAvg)
-  call utilities_saveReferenceStiffness
+  C_minMaxAvgRestart = C_minMaxAvg
 
 end subroutine grid_mechanical_spectral_basic_init
 
@@ -327,7 +329,7 @@ subroutine grid_mechanical_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_
   type(tRotation),           intent(in) :: &
     rotation_BC
   PetscErrorCode :: err_PETSc
-  PetscScalar, pointer, dimension(:,:,:,:) :: F
+  real(pReal), pointer, dimension(:,:,:,:) :: F
 
 
   call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
@@ -392,7 +394,7 @@ end subroutine grid_mechanical_spectral_basic_forward
 subroutine grid_mechanical_spectral_basic_updateCoords
 
   PetscErrorCode :: err_PETSc
-  PetscScalar, dimension(:,:,:,:), pointer :: F
+  real(pReal), dimension(:,:,:,:), pointer :: F
 
   call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -410,17 +412,19 @@ subroutine grid_mechanical_spectral_basic_restartWrite
 
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:,:), pointer :: F
+  real(pReal), dimension(:,:,:,:), pointer :: F
 
   call DMDAVecGetArrayF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
+
+  if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
 
   print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  call HDF5_write(F,groupHandle,'F')
-  call HDF5_write(F_lastInc,groupHandle,'F_lastInc')
+  call HDF5_write(reshape(F,[3,3,product(cells(1:2))*cells3]),groupHandle,'F')
+  call HDF5_write(reshape(F_lastInc,[3,3,product(cells(1:2))*cells3]),groupHandle,'F_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
@@ -433,12 +437,10 @@ subroutine grid_mechanical_spectral_basic_restartWrite
     call HDF5_write(F_aimDot,groupHandle,'F_aimDot',.false.)
     call HDF5_write(C_volAvg,groupHandle,'C_volAvg',.false.)
     call HDF5_write(C_volAvgLastInc,groupHandle,'C_volAvgLastInc',.false.)
-    call HDF5_write(C_minMaxAvg,groupHandle,'C_minMaxAvg',.false.)
+    call HDF5_write(C_minMaxAvgRestart,groupHandle,'C_minMaxAvg',.false.)
     call HDF5_closeGroup(groupHandle)
     call HDF5_closeFile(fileHandle)
   end if
-
-  if (num%update_gamma) call utilities_saveReferenceStiffness
 
   call DMDAVecRestoreArrayF90(da,solution_vec,F,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -489,24 +491,27 @@ end subroutine converged
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in, F, &
+subroutine formResidual(residual_subdomain, F, &
                         r, dummy, err_PETSc)
 
-  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
-  PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE), &
-    intent(in) :: F                                                                                 !< deformation gradient field
-  PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE), &
-    intent(out) :: r                                                                                !< residuum field
+  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+    residual_subdomain                                                                              !< DMDA info (needs to be named "in" for macros like XRANGE to work)
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(in) :: &
+    F                                                                                               !< deformation gradient field
+  real(pReal), dimension(3,3,cells(1),cells(2),cells3), intent(out) :: &
+    r                                                                                               !< residuum field
+  PetscObject :: dummy
+  PetscErrorCode :: err_PETSc
+
   real(pReal),  dimension(3,3) :: &
     deltaF_aim
   PetscInt :: &
     PETScIter, &
     nfuncs
-  PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
+
 
   call SNESGetNumberFunctionEvals(SNES_mechanical,nfuncs,err_PETSc)
   CHKERRQ(err_PETSc)
@@ -515,8 +520,6 @@ subroutine formResidual(in, F, &
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
-!--------------------------------------------------------------------------------------------------
-! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
@@ -527,32 +530,20 @@ subroutine formResidual(in, F, &
     flush(IO_STDOUT)
   end if newIteration
 
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
-  call utilities_constitutiveResponse(r, &                                                          ! residuum gets field of first PK stress (to save memory)
-                                      P_av,C_volAvg,C_minMaxAvg, &
-                                      F,params%Delta_t,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  associate (P => r)
+    call utilities_constitutiveResponse(P, &
+                                        P_av,C_volAvg,C_minMaxAvg, &
+                                        F,params%Delta_t,params%rotation_BC)
+    call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+    if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+    err_div = utilities_divergenceRMS(P)
+  end associate
 
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
   deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
   F_aim = F_aim - deltaF_aim
   err_BC = maxval(abs(merge(.0_pReal,P_av - P_aim,params%stress_mask)))
 
-!--------------------------------------------------------------------------------------------------
-! updated deformation gradient using fix point algorithm of basic scheme
-  tensorField_real = 0.0_pReal
-  tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3) = r                                      ! store fPK field for subsequent FFT forward transform
-  call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
-  err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
-  call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
-
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  r = tensorField_real(1:3,1:3,1:cells(1),1:cells(2),1:cells3)                                      ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+  r = utilities_GammaConvolution(r,params%rotation_BC%rotate(deltaF_aim,active=.true.))
 
 end subroutine formResidual
 

@@ -93,7 +93,7 @@ contains
 subroutine FEM_utilities_init
 
   character(len=pStringLen) :: petsc_optionsOrder
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_mesh, &
     debug_mesh                                                                                      ! pointer to mesh debug options
   integer :: &
@@ -107,7 +107,7 @@ subroutine FEM_utilities_init
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
 
-  num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
+  num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
 
   p_s = num_mesh%get_asInt('p_s',defaultVal = 2)
   p_i = num_mesh%get_asInt('p_i',defaultVal = p_s)
@@ -117,17 +117,17 @@ subroutine FEM_utilities_init
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
-  debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
-  debugPETSc  =  debug_mesh%contains('PETSc')
+  debug_mesh => config_debug%get_dict('mesh',defaultVal=emptyDict)
+  debugPETSc =  debug_mesh%contains('PETSc')
 
-  if(debugPETSc) print'(3(/,1x,a),/)', &
+  if (debugPETSc) print'(3(/,1x,a),/)', &
                  'Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
                  'add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
-  if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
+  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
                                &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &
@@ -182,8 +182,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   PetscSection         :: section
   IS                   :: bcPointsIS
   PetscInt,    pointer :: bcPoints(:)
-  PetscScalar, pointer :: localArray(:)
-  PetscScalar          :: BCValue,BCDotValue,timeinc
+  real(pReal), pointer :: localArray(:)
+  real(pReal)          :: BCValue,BCDotValue,timeinc
   PetscErrorCode       :: err_PETSc
 
 
@@ -192,7 +192,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   call ISGetSize(bcPointsIS,nBcPoints,err_PETSc)
   CHKERRQ(err_PETSc)
   if (nBcPoints > 0) call ISGetIndicesF90(bcPointsIS,bcPoints,err_PETSc)
-  call VecGetArrayF90(localVec,localArray,err_PETSc); CHKERRQ(err_PETSc)
+  call VecGetArrayF90(localVec,localArray,err_PETSc)
+  CHKERRQ(err_PETSc)
   do point = 1, nBcPoints
     call PetscSectionGetFieldDof(section,bcPoints(point),field,numDof,err_PETSc)
     CHKERRQ(err_PETSc)
@@ -202,9 +203,12 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
       localArray(dof) = localArray(dof) + BCValue + BCDotValue*timeinc
     end do
   end do
-  call VecRestoreArrayF90(localVec,localArray,err_PETSc); CHKERRQ(err_PETSc)
-  call VecAssemblyBegin(localVec, err_PETSc); CHKERRQ(err_PETSc)
-  call VecAssemblyEnd  (localVec, err_PETSc); CHKERRQ(err_PETSc)
+  call VecRestoreArrayF90(localVec,localArray,err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecAssemblyBegin(localVec, err_PETSc)
+  CHKERRQ(err_PETSc)
+  call VecAssemblyEnd  (localVec, err_PETSc)
+  CHKERRQ(err_PETSc)
   if (nBcPoints > 0) call ISRestoreIndicesF90(bcPointsIS,bcPoints,err_PETSc)
   CHKERRQ(err_PETSc)
 

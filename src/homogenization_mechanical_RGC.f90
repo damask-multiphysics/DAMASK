@@ -78,7 +78,7 @@ module subroutine RGC_init()
     Nmembers, &
     sizeState, nIntFaceTot
 
-  class (tNode), pointer :: &
+  class(tDict), pointer :: &
     num_homogenization, &
     num_mechanical, &
     num_RGC, &                                                                                      ! pointer to RGC numerics data
@@ -98,15 +98,15 @@ module subroutine RGC_init()
   print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/18/1/015006'//IO_EOL
 
 
-  material_homogenization => config_material%get('homogenization')
+  material_homogenization => config_material%get_dict('homogenization')
   allocate(param(material_homogenization%length))
   allocate(state(material_homogenization%length))
   allocate(state0(material_homogenization%length))
   allocate(dependentState(material_homogenization%length))
 
-  num_homogenization => config_numerics%get('homogenization',defaultVal=emptyDict)
-  num_mechanical => num_homogenization%get('mechanical',defaultVal=emptyDict)
-  num_RGC => num_mechanical%get('RGC',defaultVal=emptyDict)
+  num_homogenization => config_numerics%get_dict('homogenization',defaultVal=emptyDict)
+  num_mechanical => num_homogenization%get_dict('mechanical',defaultVal=emptyDict)
+  num_RGC => num_mechanical%get_dict('RGC',defaultVal=emptyDict)
 
   num%atol         =  num_RGC%get_asFloat('atol',              defaultVal=1.0e+4_pReal)
   num%rtol         =  num_RGC%get_asFloat('rtol',              defaultVal=1.0e-3_pReal)
@@ -139,8 +139,8 @@ module subroutine RGC_init()
 
   do ho = 1, size(mechanical_type)
     if (mechanical_type(ho) /= MECHANICAL_RGC_ID) cycle
-    homog => material_homogenization%get(ho)
-    homogMech => homog%get('mechanical')
+    homog => material_homogenization%get_dict(ho)
+    homogMech => homog%get_dict('mechanical')
     associate(prm => param(ho), &
               stt => state(ho), &
               st0 => state0(ho), &
@@ -652,9 +652,9 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
     real(pReal), dimension(6,6) :: C
 
-
     C = phase_homogenizedC66(material_phaseID(co,ce),material_phaseEntry(co,ce))                    ! damage not included!
-    equivalentMu = lattice_equivalent_mu(C,'voigt')
+
+    equivalentMu = lattice_isotropic_mu(C,'isostrain')
 
   end function equivalentMu
 
@@ -668,7 +668,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
     real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
 
     real(pReal),   dimension(:,:),   intent(in)  :: avgF                                            !< averaged F
-    integer,                          intent(in)  :: &
+    integer,                         intent(in)  :: &
       ho, &
       en
 
@@ -705,7 +705,7 @@ end function RGC_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine RGC_results(ho,group)
+module subroutine RGC_result(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -713,25 +713,25 @@ module subroutine RGC_results(ho,group)
   integer :: o
 
   associate(stt => state(ho), dst => dependentState(ho), prm => param(ho))
-  outputsLoop: do o = 1,size(prm%output)
-    select case(trim(prm%output(o)))
-      case('M')
-        call results_writeDataset(dst%mismatch,group,trim(prm%output(o)), &
-                                  'average mismatch tensor','1')
-      case('Delta_V')
-        call results_writeDataset(dst%volumeDiscrepancy,group,trim(prm%output(o)), &
-                                  'volume discrepancy','m³')
-      case('max_dot_a')
-        call results_writeDataset(dst%relaxationrate_max,group,trim(prm%output(o)), &
-                                  'maximum relaxation rate','m/s')
-      case('avg_dot_a')
-        call results_writeDataset(dst%relaxationrate_avg,group,trim(prm%output(o)), &
-                                  'average relaxation rate','m/s')
-    end select
-  end do outputsLoop
+    outputsLoop: do o = 1,size(prm%output)
+      select case(trim(prm%output(o)))
+        case('M')
+          call result_writeDataset(dst%mismatch,group,trim(prm%output(o)), &
+                                   'average mismatch tensor','1')
+        case('Delta_V')
+          call result_writeDataset(dst%volumeDiscrepancy,group,trim(prm%output(o)), &
+                                 'volume discrepancy','m³')
+        case('max_dot_a')
+          call result_writeDataset(dst%relaxationrate_max,group,trim(prm%output(o)), &
+                                 'maximum relaxation rate','m/s')
+        case('avg_dot_a')
+          call result_writeDataset(dst%relaxationrate_avg,group,trim(prm%output(o)), &
+                                   'average relaxation rate','m/s')
+      end select
+    end do outputsLoop
   end associate
 
-end subroutine RGC_results
+end subroutine RGC_result
 
 
 !--------------------------------------------------------------------------------------------------

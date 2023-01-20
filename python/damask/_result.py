@@ -11,7 +11,7 @@ from pathlib import Path
 from functools import partial
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
+from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List, Tuple
 
 import h5py
 import numpy as np
@@ -109,7 +109,7 @@ class Result:
             if self.version_major != 0 or not 12 <= self.version_minor <= 14:
                 raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
             if self.version_major == 0 and self.version_minor < 14:
-                self.export_setup = None                                                            # type: ignore
+                self.export_simulation_setup = None                                                 # type: ignore
 
             self.structured = 'cells' in f['geometry'].attrs.keys()
 
@@ -122,7 +122,7 @@ class Result:
 
             r = re.compile(rf'{prefix_inc}([0-9]+)')
             self.increments = sorted([i for i in f.keys() if r.match(i)],key=util.natural_sort)
-            self.times = [round(f[i].attrs['t/s'],12) for i in self.increments]
+            self.times = np.around([f[i].attrs['t/s'] for i in self.increments],12)
             if len(self.increments) == 0:
                 raise ValueError('incomplete DADF5 file')
 
@@ -189,11 +189,11 @@ class Result:
 
     def _manage_view(self,
                      action: Literal['set', 'add', 'del'],
-                     increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-                     times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-                     phases: Union[str, Sequence[str], bool] = None,
-                     homogenizations: Union[str, Sequence[str], bool] = None,
-                     fields: Union[str, Sequence[str], bool] = None) -> "Result":
+                     increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+                     times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+                     phases: Union[None, str, Sequence[str], bool] = None,
+                     homogenizations: Union[None, str, Sequence[str], bool] = None,
+                     fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
         Manages the visibility of the groups.
 
@@ -228,19 +228,19 @@ class Result:
                           self.increments[c] if isinstance(c,int) and c<0 else
                           f'{prefix_inc}{c}' for c in choice]
             elif what == 'times':
+                atol = 1e-2 * np.min(np.diff(self.times))
                 what = 'increments'
                 if choice == ['*']:
                     choice = self.increments
                 else:
-                    iterator = map(float,choice)                                                    # type: ignore
+                    iterator = np.array(choice).astype(float)
                     choice = []
                     for c in iterator:
-                        idx = np.searchsorted(self.times,c)
-                        if idx >= len(self.times): continue
-                        if   np.isclose(c,self.times[idx]):
+                        idx = np.searchsorted(self.times,c,side='left')
+                        if  idx<len(self.times) and np.isclose(c,self.times[idx],rtol=0,atol=atol):
                             choice.append(self.increments[idx])
-                        elif np.isclose(c,self.times[idx+1]):
-                            choice.append(self.increments[idx+1])                                   # type: ignore
+                        elif idx>0 and np.isclose(c,self.times[idx-1],rtol=0,atol=atol):
+                            choice.append(self.increments[idx-1])
 
             valid = _match(choice,getattr(self,what))
             existing = set(self.visible[what])
@@ -248,18 +248,16 @@ class Result:
             if   action == 'set':
                 dup.visible[what] = sorted(set(valid), key=util.natural_sort)
             elif action == 'add':
-                add = existing.union(valid)
-                dup.visible[what] = sorted(add, key=util.natural_sort)
+                dup.visible[what] = sorted(existing.union(valid), key=util.natural_sort)
             elif action == 'del':
-                diff = existing.difference(valid)
-                dup.visible[what] = sorted(diff, key=util.natural_sort)
+                dup.visible[what] = sorted(existing.difference(valid), key=util.natural_sort)
 
         return dup
 
 
     def increments_in_range(self,
-                            start: Union[str, int] = None,
-                            end: Union[str, int] = None) -> Sequence[int]:
+                            start: Union[None, str, int] = None,
+                            end: Union[None, str, int] = None) -> Sequence[int]:
         """
         Get all increments within a given range.
 
@@ -276,23 +274,23 @@ class Result:
             Increment number of all increments within the given bounds.
 
         """
-        s,e = map(lambda x: int(x[10:] if isinstance(x,str) and x.startswith(prefix_inc) else x),
+        s,e = map(lambda x: int(x.split(prefix_inc)[-1] if isinstance(x,str) and x.startswith(prefix_inc) else x),
                   (self.incs[ 0] if start is None else start,
                    self.incs[-1] if  end  is None else  end))
         return [i for i in self.incs if s <= i <= e]
 
     def times_in_range(self,
-                       start: float = None,
-                       end: float = None) -> Sequence[int]:
+                       start: Optional[float] = None,
+                       end: Optional[float] = None) -> Sequence[float]:
         """
-        Get all increments within a given time range.
+        Get times of all increments within a given time range.
 
         Parameters
         ----------
         start : float, optional
-            Time of start increment. Defaults to first.
+            Time of start increment. Defaults to time of first.
         end : float, optional
-            Time of end increment. Defaults to last.
+            Time of end increment. Defaults to time of last.
 
         Returns
         -------
@@ -306,12 +304,12 @@ class Result:
 
 
     def view(self,*,
-             increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-             times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-             phases: Union[str, Sequence[str], bool] = None,
-             homogenizations: Union[str, Sequence[str], bool] = None,
-             fields: Union[str, Sequence[str], bool] = None,
-             protected: bool = None) -> "Result":
+             increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+             times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+             phases: Union[None, str, Sequence[str], bool] = None,
+             homogenizations: Union[None, str, Sequence[str], bool] = None,
+             fields: Union[None, str, Sequence[str], bool] = None,
+             protected: Optional[bool] = None) -> "Result":
         """
         Set view.
 
@@ -363,11 +361,11 @@ class Result:
 
 
     def view_more(self,*,
-                  increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-                  times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-                  phases: Union[str, Sequence[str], bool] = None,
-                  homogenizations: Union[str, Sequence[str], bool] = None,
-                  fields: Union[str, Sequence[str], bool] = None) -> "Result":
+                  increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+                  times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+                  phases: Union[None, str, Sequence[str], bool] = None,
+                  homogenizations: Union[None, str, Sequence[str], bool] = None,
+                  fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
         Add to view.
 
@@ -406,11 +404,11 @@ class Result:
 
 
     def view_less(self,*,
-                  increments: Union[int, Sequence[int], str, Sequence[str], bool] = None,
-                  times: Union[float, Sequence[float], str, Sequence[str], bool] = None,
-                  phases: Union[str, Sequence[str], bool] = None,
-                  homogenizations: Union[str, Sequence[str], bool] = None,
-                  fields: Union[str, Sequence[str], bool] = None) -> "Result":
+                  increments: Union[None, int, Sequence[int], str, Sequence[str], bool] = None,
+                  times: Union[None, float, Sequence[float], str, Sequence[str], bool] = None,
+                  phases: Union[None, str, Sequence[str], bool] = None,
+                  homogenizations: Union[None, str, Sequence[str], bool] = None,
+                  fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
         Remove from view.
 
@@ -562,6 +560,14 @@ class Result:
 
 
     @property
+    def simulation_setup_files(self):
+        """Simulation setup files used to generate the Result object."""
+        files = []
+        with h5py.File(self.fname,'r') as f_in:
+            f_in['setup'].visititems(lambda name,obj: files.append(name) if isinstance(obj,h5py.Dataset) else None)
+        return files
+
+    @property
     def incs(self):
         return [int(i.split(prefix_inc)[-1]) for i in self.increments]
 
@@ -644,7 +650,7 @@ class Result:
                         formula: str,
                         name: str,
                         unit: str = 'n/a',
-                        description: str = None):
+                        description: Optional[str] = None):
         """
         Add result of a general formula.
 
@@ -817,7 +823,7 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-        eigenvalue : {'max', 'mid', 'min'}
+        eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue. Defaults to 'max'.
 
         Examples
@@ -863,7 +869,7 @@ class Result:
         ----------
         T_sym : str
             Name of symmetric tensor dataset.
-        eigenvalue : {'max', 'mid', 'min'}
+        eigenvalue : {'max', 'mid', 'min'}, optional
             Eigenvalue to which the eigenvector corresponds.
             Defaults to 'max'.
 
@@ -897,7 +903,7 @@ class Result:
         ----------
         l : numpy.array of shape (3)
             Lab frame direction for inverse pole figure.
-        q : str
+        q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
 
@@ -960,7 +966,7 @@ class Result:
                 }
     def add_equivalent_Mises(self,
                              T_sym: str,
-                             kind: str = None):
+                             kind: Optional[str] = None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -1015,7 +1021,7 @@ class Result:
                  }
     def add_norm(self,
                  x: str,
-                 ord: Union[int, float, Literal['fro', 'nuc']] = None):
+                 ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
         """
         Add the norm of vector or tensor.
 
@@ -1095,8 +1101,8 @@ class Result:
     def add_pole(self,
                  q: str = 'O',
                  *,
-                 uvw: FloatSequence = None,
-                 hkl: FloatSequence = None,
+                 uvw: Optional[FloatSequence] = None,
+                 hkl: Optional[FloatSequence] = None,
                  with_symmetry: bool = False,
                  normalize: bool = True):
         """
@@ -1104,7 +1110,7 @@ class Result:
 
         Parameters
         ----------
-        q : str
+        q : str, optional
             Name of the dataset containing the crystallographic orientation as quaternions.
             Defaults to 'O'.
         uvw|hkl : numpy.ndarray of shape (3)
@@ -1188,12 +1194,14 @@ class Result:
 
     @staticmethod
     def _add_strain(F: Dict[str, Any], t: Literal['V', 'U'], m: float) -> Dict[str, Any]:
+        side = 'left' if t == 'V' else 'right'
         return {
                 'data':  mechanics.strain(F['data'],t,m),
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'unit':        F['meta']['unit'],
-                          'description': f"strain tensor of {F['label']} ({F['meta']['description']})",
+                          'description': f'strain tensor of order {m} based on {side} stretch tensor '+\
+                                         f"of {F['label']} ({F['meta']['description']})",
                           'creator':     'add_strain'
                           }
                  }
@@ -1218,18 +1226,24 @@ class Result:
 
         Examples
         --------
-        Add the Biot strain based on the deformation gradient 'F':
+        Add the Euler-Almansi strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain(t='U',m=0.5)
+        >>> r.add_strain(t='V',m=-1.0)
 
-        Add the plastic Euler-Almansi strain based on the
-        plastic deformation gradient 'F_p':
+        Add the plastic Biot strain:
 
         >>> import damask
         >>> r = damask.Result('my_file.hdf5')
-        >>> r.add_strain('F_p','V',-1)
+        >>> r.add_strain('F_p','U',0.5)
+
+        Notes
+        -----
+        The incoporation of rotational parts into the elastic and plastic
+        deformation gradient requires it to use material/Lagragian strain measures
+        (based on 'U') for plastic strains and spatial/Eulerian strain measures
+        (based on 'V') for elastic strains when calculating averages.
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
@@ -1515,121 +1529,6 @@ class Result:
         pool.join()
 
 
-    def export_XDMF(self,
-                    output: Union[str, List[str]] = '*'):
-        """
-        Write XDMF file to directly visualize data from DADF5 file.
-
-        The XDMF format is only supported for structured grids
-        with single phase and single constituent.
-        For other cases use `export_VTK`.
-
-        Parameters
-        ----------
-        output : (list of) str
-            Names of the datasets included in the XDMF file.
-            Defaults to '*', in which case all datasets are considered.
-
-        """
-        if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
-            raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
-
-
-        attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
-
-        def number_type_map(dtype):
-            if dtype in np.sctypes['int']:   return 'Int'
-            if dtype in np.sctypes['uint']:  return 'UInt'
-            if dtype in np.sctypes['float']: return 'Float'
-
-
-        xdmf = ET.Element('Xdmf')
-        xdmf.attrib={'Version':  '2.0',
-                     'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
-
-        domain = ET.SubElement(xdmf, 'Domain')
-
-        collection = ET.SubElement(domain, 'Grid')
-        collection.attrib={'GridType':       'Collection',
-                           'CollectionType': 'Temporal',
-                           'Name':           'Increments'}
-
-        time = ET.SubElement(collection, 'Time')
-        time.attrib={'TimeType': 'List'}
-
-        time_data = ET.SubElement(time, 'DataItem')
-        times = [self.times[self.increments.index(i)] for i in self.visible['increments']]
-        time_data.attrib={'Format':     'XML',
-                          'NumberType': 'Float',
-                          'Dimensions': f'{len(times)}'}
-        time_data.text = ' '.join(map(str,times))
-
-        attributes = []
-        data_items = []
-
-        with h5py.File(self.fname,'r') as f:
-            for inc in self.visible['increments']:
-
-                grid = ET.SubElement(collection,'Grid')
-                grid.attrib = {'GridType': 'Uniform',
-                               'Name':      inc}
-
-                topology = ET.SubElement(grid, 'Topology')
-                topology.attrib = {'TopologyType': '3DCoRectMesh',
-                                   'Dimensions':   '{} {} {}'.format(*(self.cells[::-1]+1))}
-
-                geometry = ET.SubElement(grid, 'Geometry')
-                geometry.attrib = {'GeometryType':'Origin_DxDyDz'}
-
-                origin = ET.SubElement(geometry, 'DataItem')
-                origin.attrib = {'Format':     'XML',
-                                 'NumberType': 'Float',
-                                 'Dimensions': '3'}
-                origin.text = "{} {} {}".format(*self.origin[::-1])
-
-                delta = ET.SubElement(geometry, 'DataItem')
-                delta.attrib = {'Format':     'XML',
-                                'NumberType': 'Float',
-                                'Dimensions': '3'}
-                delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
-
-                attributes.append(ET.SubElement(grid, 'Attribute'))
-                attributes[-1].attrib = {'Name':          'u / m',
-                                         'Center':        'Node',
-                                         'AttributeType': 'Vector'}
-                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
-                data_items[-1].attrib = {'Format':     'HDF',
-                                         'Precision':  '8',
-                                         'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
-                data_items[-1].text = f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
-
-                for ty in ['phase','homogenization']:
-                    for label in self.visible[ty+'s']:
-                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
-                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
-                                name = '/'.join([inc,ty,label,field,out])
-                                shape = f[name].shape[1:]
-                                dtype = f[name].dtype
-
-                                unit = f[name].attrs['unit'] if h5py3 else \
-                                       f[name].attrs['unit'].decode()
-
-                                attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib = {'Name':          '/'.join([ty,field,out])+f' / {unit}',
-                                                         'Center':       'Cell',
-                                                         'AttributeType': attribute_type_map[shape]}
-                                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
-                                data_items[-1].attrib = {'Format':     'HDF',
-                                                         'NumberType': number_type_map(dtype),
-                                                         'Precision':  f'{dtype.itemsize}',
-                                                         'Dimensions': '{} {} {} {}'.format(*self.cells[::-1],1 if shape == () else
-                                                                                                        np.prod(shape))}
-                                data_items[-1].text = f'{os.path.split(self.fname)[1]}:{name}'
-
-        with util.open_text(self.fname.with_suffix('.xdmf').name,'w') as f:
-            f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
-
-
     def _mappings(self):
         """Mappings to place data spatially."""
         with h5py.File(self.fname,'r') as f:
@@ -1650,120 +1549,23 @@ class Result:
         return at_cell_ph,in_data_ph,at_cell_ho,in_data_ho
 
 
-    def export_VTK(self,
-                   output: Union[str,list] = '*',
-                   mode: str = 'cell',
-                   constituents: IntSequence = None,
-                   fill_float: float = np.nan,
-                   fill_int: int = 0,
-                   parallel: bool = True):
-        """
-        Export to VTK cell/point data.
-
-        One VTK file per visible increment is created.
-        For point data, the VTK format is poly data (.vtp).
-        For cell data, either an image (.vti) or unstructured (.vtu) dataset
-        is written for grid-based or mesh-based simulations, respectively.
-
-        Parameters
-        ----------
-        output : (list of) str, optional
-            Names of the datasets to export to the VTK file.
-            Defaults to '*', in which case all datasets are exported.
-        mode : {'cell', 'point'}
-            Export in cell format or point format.
-            Defaults to 'cell'.
-        constituents : (list of) int, optional
-            Constituents to consider.
-            Defaults to None, in which case all constituents are considered.
-        fill_float : float
-            Fill value for non-existent entries of floating point type.
-            Defaults to NaN.
-        fill_int : int
-            Fill value for non-existent entries of integer type.
-            Defaults to 0.
-        parallel : bool
-            Write VTK files in parallel in a separate background process.
-            Defaults to True.
-
-        """
-        if mode.lower()=='cell':
-            v = self.geometry0
-        elif mode.lower()=='point':
-            v = VTK.from_poly_data(self.coordinates0_point)
-        else:
-            raise ValueError(f'invalid mode "{mode}"')
-
-        v.comments = [util.execution_stamp('Result','export_VTK')]
-
-        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
-
-        constituents_ = constituents if isinstance(constituents,Iterable) else \
-                        (range(self.N_constituents) if constituents is None else [constituents])    # type: ignore
-
-        suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
-                   [f'#{c}' for c in constituents_]
-
-        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
-
-        with h5py.File(self.fname,'r') as f:
-            if self.version_minor >= 13:
-                creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
-                created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
-                v.comments += f'{creator} ({created})'
-
-            for inc in util.show_progress(self.visible['increments']):
-
-                u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
-                v = v.set('u',u)
-
-                for ty in ['phase','homogenization']:
-                    for field in self.visible['fields']:
-                        outs: Dict[str, np.ma.core.MaskedArray] = {}
-                        for label in self.visible[ty+'s']:
-                            if field not in f['/'.join([inc,ty,label])].keys(): continue
-
-                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
-                                data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
-
-                                if ty == 'phase':
-                                    if out+suffixes[0] not in outs.keys():
-                                        for c,suffix in zip(constituents_,suffixes):
-                                            outs[out+suffix] = \
-                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
-
-                                    for c,suffix in zip(constituents_,suffixes):
-                                        outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
-
-                                if ty == 'homogenization':
-                                    if out not in outs.keys():
-                                        outs[out] = _empty_like(data,self.N_materialpoints,fill_float,fill_int)
-
-                                    outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
-
-                        for label,dataset in outs.items():
-                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
-
-                v.save(f'{self.fname.stem}_inc{inc[10:].zfill(N_digits)}',parallel=parallel)
-
-
     def get(self,
             output: Union[str, List[str]] = '*',
             flatten: bool = True,
-            prune: bool = True):
+            prune: bool = True) -> Optional[Dict[str,Any]]:
         """
         Collect data per phase/homogenization reflecting the group/folder structure in the DADF5 file.
 
         Parameters
         ----------
-        output : (list of) str
+        output : (list of) str, optional
             Names of the datasets to read.
             Defaults to '*', in which case all datasets are read.
-        flatten : bool
+        flatten : bool, optional
             Remove singular levels of the folder hierarchy.
             This might be beneficial in case of single increment,
             phase/homogenization, or field. Defaults to True.
-        prune : bool
+        prune : bool, optional
             Remove branches with no data. Defaults to True.
 
         Returns
@@ -1772,7 +1574,7 @@ class Result:
             Datasets structured by phase/homogenization and according to selected view.
 
         """
-        r = {}                                                                                      # type: ignore
+        r: Dict[str,Any] = {}
 
         with h5py.File(self.fname,'r') as f:
             for inc in util.show_progress(self.visible['increments']):
@@ -1799,14 +1601,13 @@ class Result:
               output: Union[str, List[str]] = '*',
               flatten: bool = True,
               prune: bool = True,
-              constituents: IntSequence = None,
+              constituents: Optional[IntSequence] = None,
               fill_float: float = np.nan,
-              fill_int: int = 0):
+              fill_int: int = 0) -> Optional[Dict[str,Any]]:
         """
         Merge data into spatial order that is compatible with the damask.VTK geometry representation.
 
-        The returned data structure reflects the group/folder structure
-        in the DADF5 file.
+        The returned data structure reflects the group/folder structure in the DADF5 file.
 
         Multi-phase data is fused into a single output.
         `place` is equivalent to `get` if only one phase/homogenization
@@ -1816,20 +1617,20 @@ class Result:
         ----------
         output : (list of) str, optional
             Names of the datasets to read.
-            Defaults to '*', in which case all datasets are placed.
-        flatten : bool
+            Defaults to '*', in which case all visible datasets are placed.
+        flatten : bool, optional
             Remove singular levels of the folder hierarchy.
             This might be beneficial in case of single increment or field.
             Defaults to True.
-        prune : bool
+        prune : bool, optional
             Remove branches with no data. Defaults to True.
         constituents : (list of) int, optional
             Constituents to consider.
             Defaults to None, in which case all constituents are considered.
-        fill_float : float
+        fill_float : float, optional
             Fill value for non-existent entries of floating point type.
             Defaults to NaN.
-        fill_int : int
+        fill_int : int, optional
             Fill value for non-existent entries of integer type.
             Defaults to 0.
 
@@ -1839,9 +1640,9 @@ class Result:
             Datasets structured by spatial position and according to selected view.
 
         """
-        r = {}                                                                                      # type: ignore
+        r: Dict[str,Any] = {}
 
-        constituents_ = list(map(int,constituents)) if isinstance(constituents,Iterable) else \
+        constituents_ = map(int,constituents) if isinstance(constituents,Iterable) else \
                       (range(self.N_constituents) if constituents is None else [constituents])      # type: ignore
 
         suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
@@ -1888,32 +1689,319 @@ class Result:
         return None if (type(r) == dict and r == {}) else r
 
 
-    def export_setup(self,
-                     output: Union[str, List[str]] = '*',
-                     overwrite: bool = False):
+    def export_XDMF(self,
+                    output: Union[str, List[str]] = '*',
+                    target_dir: Union[None, str, Path] = None,
+                    absolute_path: bool = False):
         """
-        Export configuration files.
+        Write XDMF file to directly visualize data from DADF5 file.
+
+        The XDMF format is only supported for structured grids
+        with single phase and single constituent.
+        For other cases use `export_VTK`.
+
+        Parameters
+        ----------
+        output : (list of) str, optional
+            Names of the datasets included in the XDMF file.
+            Defaults to '*', in which case all datasets are considered.
+        target_dir : str or pathlib.Path, optional
+            Directory to save XDMF file. Will be created if non-existent.
+        absolute_path : bool, optional
+            Store absolute (instead of relative) path to DADF5 file.
+            Defaults to False, i.e. the XDMF file expects the
+            DADF5 file at a stable relative path.
+
+        """
+        if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
+            raise TypeError('XDMF output requires structured grid with single phase and single constituent.')
+
+        attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
+
+        def number_type_map(dtype):
+            if dtype in np.sctypes['int']:   return 'Int'
+            if dtype in np.sctypes['uint']:  return 'UInt'
+            if dtype in np.sctypes['float']: return 'Float'
+
+
+        xdmf = ET.Element('Xdmf')
+        xdmf.attrib = {'Version':  '2.0',
+                       'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
+
+        domain = ET.SubElement(xdmf, 'Domain')
+
+        collection = ET.SubElement(domain, 'Grid')
+        collection.attrib = {'GridType':       'Collection',
+                             'CollectionType': 'Temporal',
+                             'Name':           'Increments'}
+
+        time = ET.SubElement(collection, 'Time')
+        time.attrib = {'TimeType': 'List'}
+
+        time_data = ET.SubElement(time, 'DataItem')
+        times = [self.times[self.increments.index(i)] for i in self.visible['increments']]
+        time_data.attrib = {'Format':     'XML',
+                            'NumberType': 'Float',
+                            'Dimensions': f'{len(times)}'}
+        time_data.text = ' '.join(map(str,times))
+
+        attributes = []
+        data_items = []
+
+        hdf5_name = self.fname.name
+        hdf5_dir  = self.fname.parent
+        xdmf_dir  = Path.cwd() if target_dir is None else Path(target_dir)
+        hdf5_link = (hdf5_dir if absolute_path else Path(os.path.relpath(hdf5_dir,xdmf_dir.resolve())))/hdf5_name
+
+        with h5py.File(self.fname,'r') as f:
+            for inc in self.visible['increments']:
+
+                grid = ET.SubElement(collection,'Grid')
+                grid.attrib = {'GridType': 'Uniform',
+                               'Name':      inc}
+
+                topology = ET.SubElement(grid, 'Topology')
+                topology.attrib = {'TopologyType': '3DCoRectMesh',
+                                   'Dimensions':   '{} {} {}'.format(*(self.cells[::-1]+1))}
+
+                geometry = ET.SubElement(grid, 'Geometry')
+                geometry.attrib = {'GeometryType':'Origin_DxDyDz'}
+
+                origin = ET.SubElement(geometry, 'DataItem')
+                origin.attrib = {'Format':     'XML',
+                                 'NumberType': 'Float',
+                                 'Dimensions': '3'}
+                origin.text = "{} {} {}".format(*self.origin[::-1])
+
+                delta = ET.SubElement(geometry, 'DataItem')
+                delta.attrib = {'Format':     'XML',
+                                'NumberType': 'Float',
+                                'Dimensions': '3'}
+                delta.text="{} {} {}".format(*(self.size/self.cells)[::-1])
+
+                attributes.append(ET.SubElement(grid, 'Attribute'))
+                attributes[-1].attrib = {'Name':          'u / m',
+                                         'Center':        'Node',
+                                         'AttributeType': 'Vector'}
+                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                data_items[-1].attrib = {'Format':     'HDF',
+                                         'Precision':  '8',
+                                         'Dimensions': '{} {} {} 3'.format(*(self.cells[::-1]+1))}
+                data_items[-1].text = f'{hdf5_link}:/{inc}/geometry/u_n'
+                for ty in ['phase','homogenization']:
+                    for label in self.visible[ty+'s']:
+                        for field in _match(self.visible['fields'],f['/'.join([inc,ty,label])].keys()):
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                name = '/'.join([inc,ty,label,field,out])
+                                shape = f[name].shape[1:]
+                                dtype = f[name].dtype
+
+                                unit = f[name].attrs['unit'] if h5py3 else \
+                                       f[name].attrs['unit'].decode()
+
+                                attributes.append(ET.SubElement(grid, 'Attribute'))
+                                attributes[-1].attrib = {'Name':          '/'.join([ty,field,out])+f' / {unit}',
+                                                         'Center':       'Cell',
+                                                         'AttributeType': attribute_type_map[shape]}
+                                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                                data_items[-1].attrib = {'Format':     'HDF',
+                                                         'NumberType': number_type_map(dtype),
+                                                         'Precision':  f'{dtype.itemsize}',
+                                                         'Dimensions': '{} {} {} {}'.format(*self.cells[::-1],1 if shape == () else
+                                                                                                        np.prod(shape))}
+                                data_items[-1].text = f'{hdf5_link}:{name}'
+
+        xdmf_dir.mkdir(parents=True,exist_ok=True)
+        with util.open_text((xdmf_dir/hdf5_name).with_suffix('.xdmf'),'w') as f:
+            f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
+
+
+    def export_VTK(self,
+                   output: Union[str,List[str]] = '*',
+                   mode: str = 'cell',
+                   constituents: Optional[IntSequence] = None,
+                   target_dir: Union[None, str, Path] = None,
+                   fill_float: float = np.nan,
+                   fill_int: int = 0,
+                   parallel: bool = True):
+        """
+        Export to VTK cell/point data.
+
+        One VTK file per visible increment is created.
+        For point data, the VTK format is poly data (.vtp).
+        For cell data, either an image (.vti) or unstructured (.vtu) dataset
+        is written for grid-based or mesh-based simulations, respectively.
+
+        Parameters
+        ----------
+        output : (list of) str, optional
+            Names of the datasets to export to the VTK file.
+            Defaults to '*', in which case all visible datasets are exported.
+        mode : {'cell', 'point'}, optional
+            Export in cell format or point format.
+            Defaults to 'cell'.
+        constituents : (list of) int, optional
+            Constituents to consider.
+            Defaults to None, in which case all constituents are considered.
+        target_dir : str or pathlib.Path, optional
+            Directory to save VTK files. Will be created if non-existent.
+        fill_float : float, optional
+            Fill value for non-existent entries of floating point type.
+            Defaults to NaN.
+        fill_int : int, optional
+            Fill value for non-existent entries of integer type.
+            Defaults to 0.
+        parallel : bool, optional
+            Write VTK files in parallel in a separate background process.
+            Defaults to True.
+
+        """
+        if mode.lower()=='cell':
+            v = self.geometry0
+        elif mode.lower()=='point':
+            v = VTK.from_poly_data(self.coordinates0_point)
+        else:
+            raise ValueError(f'invalid mode "{mode}"')
+
+        v.comments = [util.execution_stamp('Result','export_VTK')]
+
+        N_digits = int(np.floor(np.log10(max(1,self.incs[-1]))))+1
+
+        constituents_ = constituents if isinstance(constituents,Iterable) else \
+                        (range(self.N_constituents) if constituents is None else [constituents])    # type: ignore
+
+        suffixes = [''] if self.N_constituents == 1 or isinstance(constituents,int) else \
+                   [f'#{c}' for c in constituents_]
+
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
+
+        vtk_dir = Path.cwd() if target_dir is None else Path(target_dir)
+        vtk_dir.mkdir(parents=True,exist_ok=True)
+
+        with h5py.File(self.fname,'r') as f:
+            if self.version_minor >= 13:
+                creator = f.attrs['creator'] if h5py3 else f.attrs['creator'].decode()
+                created = f.attrs['created'] if h5py3 else f.attrs['created'].decode()
+                v.comments += [f'{creator} ({created})']
+
+            for inc in util.show_progress(self.visible['increments']):
+
+                u = _read(f['/'.join([inc,'geometry','u_n' if mode.lower() == 'cell' else 'u_p'])])
+                v = v.set('u',u)
+
+                for ty in ['phase','homogenization']:
+                    for field in self.visible['fields']:
+                        outs: Dict[str, np.ma.core.MaskedArray] = {}
+                        for label in self.visible[ty+'s']:
+                            if field not in f['/'.join([inc,ty,label])].keys(): continue
+
+                            for out in _match(output,f['/'.join([inc,ty,label,field])].keys()):
+                                data = ma.array(_read(f['/'.join([inc,ty,label,field,out])]))
+
+                                if ty == 'phase':
+                                    if out+suffixes[0] not in outs.keys():
+                                        for c,suffix in zip(constituents_,suffixes):
+                                            outs[out+suffix] = \
+                                                _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+
+                                    for c,suffix in zip(constituents_,suffixes):
+                                        outs[out+suffix][at_cell_ph[c][label]] = data[in_data_ph[c][label]]
+
+                                if ty == 'homogenization':
+                                    if out not in outs.keys():
+                                        outs[out] = _empty_like(data,self.N_materialpoints,fill_float,fill_int)
+
+                                    outs[out][at_cell_ho[label]] = data[in_data_ho[label]]
+
+                        for label,dataset in outs.items():
+                            v = v.set(' / '.join(['/'.join([ty,field,label]),dataset.dtype.metadata['unit']]),dataset)
+
+
+                v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
+                       parallel=parallel)
+
+    def export_DADF5(self,
+                     fname,
+                     output: Union[str, List[str]] = '*'):
+        """
+        Export visible components into a new DADF5 file.
+
+        A DADF5 (DAMASK HDF5) file contains DAMASK results.
+        Its group/folder structure reflects the layout in material.yaml.
+
+        Parameters
+        ----------
+        fname : str or pathlib.Path
+            Name of the DADF5 file to be created.
+        output : (list of) str, optional
+            Names of the datasets to export.
+            Defaults to '*', in which case all visible datasets are exported.
+
+        """
+        if Path(fname).expanduser().absolute() == self.fname:
+            raise PermissionError(f'cannot overwrite {self.fname}')
+        with h5py.File(self.fname,'r') as f_in, h5py.File(fname,'w') as f_out:
+            for k,v in f_in.attrs.items():
+                f_out.attrs.create(k,v)
+            for g in ['setup','geometry','cell_to']:
+                f_in.copy(g,f_out)
+
+            for inc in util.show_progress(self.visible['increments']):
+                f_in.copy(inc,f_out,shallow=True)
+                for out in _match(output,f_in['/'.join([inc,'geometry'])].keys()):
+                    f_in[inc]['geometry'].copy(out,f_out[inc]['geometry'])
+
+                for label in self.homogenizations:
+                    f_in[inc]['homogenization'].copy(label,f_out[inc]['homogenization'],shallow=True)
+                for label in self.phases:
+                    f_in[inc]['phase'].copy(label,f_out[inc]['phase'],shallow=True)
+
+                for ty in ['phase','homogenization']:
+                    for label in self.visible[ty+'s']:
+                        for field in _match(self.visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
+                            p = '/'.join([inc,ty,label,field])
+                            for out in _match(output,f_in[p].keys()):
+                               f_in[p].copy(out,f_out[p])
+
+
+    def export_simulation_setup(self,
+                     output: Union[str, List[str]] = '*',
+                     target_dir: Union[None, str, Path] = None,
+                     overwrite: bool = False,
+                     ):
+        """
+        Export original simulation setup of the Result object.
 
         Parameters
         ----------
         output : (list of) str, optional
             Names of the datasets to export to the file.
-            Defaults to '*', in which case all datasets are exported.
+            Defaults to '*', in which case all setup files are exported.
+        target_dir : str or pathlib.Path, optional
+            Directory to save setup files. Will be created if non-existent.
         overwrite : bool, optional
-            Overwrite existing configuration files.
+            Overwrite any existing setup files.
             Defaults to False.
 
         """
-        def export(name: str, obj: Union[h5py.Dataset,h5py.Group], output: Union[str,List[str]], overwrite: bool):
-            if type(obj) == h5py.Dataset and  _match(output,[name]):
-                d = obj.attrs['description'] if h5py3 else obj.attrs['description'].decode()
-                if not Path(name).exists() or overwrite:
-                    with util.open_text(name,'w') as f_out: f_out.write(obj[0].decode())
-                    print(f'Exported {d} to "{name}".')
-                else:
-                    print(f'"{name}" exists, {d} not exported.')
-            elif type(obj) == h5py.Group:
-                os.makedirs(name, exist_ok=True)
+        def export(name: str,
+                   obj: Union[h5py.Dataset,h5py.Group],
+                   output: Union[str,List[str]],
+                   cfg_dir: Path,
+                   overwrite: bool):
 
+            cfg = cfg_dir/name
+
+            if type(obj) == h5py.Dataset and _match(output,[name]):
+                if cfg.exists() and not overwrite:
+                    raise PermissionError(f'"{cfg}" exists')
+                else:
+                    cfg.parent.mkdir(parents=True,exist_ok=True)
+                    with util.open_text(cfg,'w') as f_out: f_out.write(obj[0].decode())
+
+        cfg_dir = (Path.cwd() if target_dir is None else Path(target_dir))
         with h5py.File(self.fname,'r') as f_in:
-            f_in['setup'].visititems(partial(export,output=output,overwrite=overwrite))
+            f_in['setup'].visititems(partial(export,
+                                             output=output,
+                                             cfg_dir=cfg_dir,
+                                             overwrite=overwrite))

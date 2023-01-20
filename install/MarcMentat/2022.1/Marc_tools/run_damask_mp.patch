@@ -1,8 +1,6 @@
-diff --git "a/C:\\Users\\f.roters\\Documents\\Forschung\\FEM\\Kristallplastizit\303\244t\\Programme\\Userroutinen\\Marc\\Marc_mods\\2022.1\\Marc_tools\\run_marc.original" "b/C:\\Users\\f.roters\\Documents\\Forschung\\FEM\\Kristallplastizit\303\244t\\Programme\\Userroutinen\\Marc\\Marc_mods\\2022.1\\Marc_tools\\run_damask_mp"
-index 88a3027..85beabe 100644
---- "a/C:\\Users\\f.roters\\Documents\\Forschung\\FEM\\Kristallplastizit\303\244t\\Programme\\Userroutinen\\Marc\\Marc_mods\\2022.1\\Marc_tools\\run_marc.original"
-+++ "b/C:\\Users\\f.roters\\Documents\\Forschung\\FEM\\Kristallplastizit\303\244t\\Programme\\Userroutinen\\Marc\\Marc_mods\\2022.1\\Marc_tools\\run_damask_mp"
-@@ -302,7 +302,23 @@ fi
+---
++++
+@@ -302,7 +302,23 @@
  
  . "$DIR/getarch"
  
@@ -26,7 +24,7 @@ index 88a3027..85beabe 100644
  #
  
  #
-@@ -405,7 +421,7 @@ sid=
+@@ -405,7 +421,7 @@
  did=
  vid=
  user=
@@ -35,16 +33,7 @@ index 88a3027..85beabe 100644
  objs=
  qid=background
  cpu=
-@@ -573,7 +589,7 @@ do
- 		    justlist=yes
- 		;;
-                 -fe* | -FE*)
--                    feature=$value
-+		    feature=$value
- 
- 		;;
- 		-pr* | -PR*)
-@@ -676,50 +692,19 @@ do
+@@ -676,50 +692,19 @@
                          esac        
                  ;;
  		-u* | -U*)
@@ -101,39 +90,7 @@ index 88a3027..85beabe 100644
  		;;
  		-obj | -OBJ)
  			objs="$value"
-@@ -739,19 +724,19 @@ do
- 				;;
- 			esac
- 		;;
--                -dl | -DL)
--                        case $value in
--                                y* | Y*)
--                                deletelog=yes
--                                ;;
--                                n* | N*)
--                                deletelog=no
--                                ;;
--                                *)
--                                ;;
--                        esac
-+        -dl | -DL)
-+            case $value in
-+                    y* | Y*)
-+                    deletelog=yes
-+                    ;;
-+                    n* | N*)
-+                    deletelog=no
-+                    ;;
-+                    *)
-+                    ;;
-+            esac
- 
--                ;;
-+        ;;
- 		-at | -AT)
- 			att=$value
- 		;;
-@@ -1207,12 +1192,12 @@ post file $DIRPID/$pid.t16 or $DIRPID/$pid.t19 or $DIRPID/$pid.h5 not accessible
+@@ -1207,12 +1192,12 @@
  				fi
  			fi
  		fi
@@ -149,16 +106,7 @@ index 88a3027..85beabe 100644
  			fi
  		fi
  		if test "$objs"
-@@ -1386,7 +1371,7 @@ else
-     else
- 	error="$error
- job id required"
--    fi
-+fi
- fi
- 
- case $qid in
-@@ -1531,7 +1516,7 @@ Program name         : $prog
+@@ -1531,7 +1516,7 @@
  Marc shared lib      : $progdll
  Version type         : $mode
  Job ID               : $DIRJID/$jid$extra_job_info
@@ -167,16 +115,7 @@ index 88a3027..85beabe 100644
  User objects/libs    : $objs
  Restart file job ID  : $rid
  Substructure file ID : $sid
-@@ -1548,8 +1533,6 @@ GPGPU option         : $gpuids
- Host file name       : $host" > $jid.log
- if test "$iprintsimufact" = true ; then
-  echo "DDM with ARC Mapper  : $ddm_arc" >> $jid.log
-- echo "Mapper directory     : $MESHERDIR" >> $jid.log
-- echo "Meshing directory    : $MESHERDIR" >> $jid.log
- fi
- echo \
- "Message passing type : $itree
-@@ -1564,7 +1547,7 @@ Program name         : $prog
+@@ -1564,7 +1549,7 @@
  Marc shared lib      : $progdll
  Version type         : $mode
  Job ID               : $DIRJID/$jid$extra_job_info
@@ -185,16 +124,7 @@ index 88a3027..85beabe 100644
  User objects/libs    : $objs
  Restart file job ID  : $rid
  Substructure file ID : $sid
-@@ -1579,6 +1562,8 @@ Solver processes     : $nsolverprint
- Solver threads       : $ntsprint"
- if test "$iprintsimufact" = true ; then
-  echo "DDM with ARC Mapper  : $ddm_arc"
-+ echo "Mapper directory     : $MESHERDIR" >> $jid.log
-+ echo "Meshing directory    : $MESHERDIR" >> $jid.log
- fi
- echo \
- "GPGPU option         : $gpuids
-@@ -1687,7 +1672,7 @@ Program name ($prog)? $ECHOTXT"
+@@ -1687,7 +1672,7 @@
                      ;;
                    esac        
                  fi
@@ -203,7 +133,7 @@ index 88a3027..85beabe 100644
  		read value
  		if test "$value"
  		then
-@@ -1696,50 +1681,19 @@ Program name ($prog)? $ECHOTXT"
+@@ -1696,50 +1681,19 @@
                        user=
                      ;;
                      *)
@@ -229,16 +159,13 @@ index 88a3027..85beabe 100644
 -                      fi
 +                      user=$value
                        case $user in
--                         \/*)
--                           ;;
--                         *)
-+                        \/*)
-+                        ;;
-+                        *)
+                          \/*)
+                            ;;
+                          *)
                            user=`pwd`/$user
 -                          usersubname=`pwd`/$usersubname
--                           ;;
--                      esac
+                            ;;
+                       esac
 -                      if test ! -f $usersubname
 -                      then
 -                       if test -f $usersubname.f 
@@ -255,8 +182,6 @@ index 88a3027..85beabe 100644
 -                        usersubname=$usersubname.F90
 -                       fi
 -                      fi
-+                        ;;
-+                      esac        
 +					  usernoext=$user
 +					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
 +					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
@@ -265,7 +190,7 @@ index 88a3027..85beabe 100644
                      ;;
                    esac
  		fi
-@@ -2274,11 +2228,12 @@ fi
+@@ -2274,11 +2228,12 @@
  #
  # user subroutine used
  #
@@ -280,7 +205,7 @@ index 88a3027..85beabe 100644
      case $program in
        \/* | \.\/*)
          bd=
-@@ -2391,7 +2346,7 @@ fi
+@@ -2391,7 +2346,7 @@
      fi
      if test "$user"
      then
@@ -289,7 +214,7 @@ index 88a3027..85beabe 100644
       usersub=1
      fi
      export execpath      
-@@ -3274,44 +3229,27 @@ then
+@@ -3274,44 +3229,27 @@
      echo
      if test "$user"
      then
@@ -303,7 +228,7 @@ index 88a3027..85beabe 100644
 -         usersub=$usersubname
 -        fi
 -
-+        userobj=$usermoext.o
++        userobj=$usernoext.o
      fi
      cat > $jid.runmarcscript << END4
      if test "$user"
@@ -315,7 +240,7 @@ index 88a3027..85beabe 100644
          if test $MACHINENAME = "CRAY"
          then
 -            $FORTRAN $usersub || \
-+            $DFORTRANMP $user || \
++            $DFORTHIGHMP $user || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -324,7 +249,7 @@ index 88a3027..85beabe 100644
              /bin/rm $program 2>/dev/null
          else
 -            $FORTRAN $usersub -o $userobj || \
-+            $DFORTRANMP $user -o $userobj || \
++            $DFORTHIGHMP $user -o $userobj || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -339,21 +264,15 @@ index 88a3027..85beabe 100644
      fi
  
  
-@@ -3331,10 +3269,11 @@ then
+@@ -3331,6 +3269,7 @@
      $TKLIBS  \
      $MRCLIBS     \
      $METISLIBS \
--    $SFLIB \
 +    $DAMASK   \
-+    $SFLIB  \
+     $SFLIB \
      $OPENSSL_LIB \
      $SYSLIBS  \
--    $SECLIBS  || \
-+    $SECLIBS      || \
-     {
-     echo "$0: link failed for ${user:+$userobj }$objs"
-     exit 1
-@@ -3344,6 +3283,9 @@ else
+@@ -3344,6 +3283,9 @@
  	prgsav=yes
  fi
  /bin/rm $userobj 2>/dev/null
@@ -363,7 +282,7 @@ index 88a3027..85beabe 100644
  
  #
  # run marc
-@@ -3390,7 +3332,7 @@ if test $dllrun -eq 0; then
+@@ -3390,7 +3332,7 @@
    fi
  else
    if test $cpdll = yes; then
@@ -372,7 +291,7 @@ index 88a3027..85beabe 100644
       /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
    fi
    if test $rmdll = yes
-@@ -3556,7 +3498,7 @@ then
+@@ -3556,7 +3498,7 @@
                # first copy over the user sub if local directories
                if test ${dirstatus[$counter]} = "local"
                then
@@ -381,12 +300,12 @@ index 88a3027..85beabe 100644
                fi
                # do the compilation on the other machine
                if test ${dirstatus[$counter]} = "shared"
-@@ -3569,21 +3511,21 @@ then
+@@ -3569,21 +3511,21 @@
                remoteuser=$DIR1/`$BASENAME $user`
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
 -              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
-+              $RSH $i $DIR2/tools/comp_damask_mp $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
                # check if successful, the new executable should be there
                line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
                if test "$line"
@@ -406,7 +325,7 @@ index 88a3027..85beabe 100644
                fi
              fi
            fi
-@@ -3593,39 +3535,27 @@ then
+@@ -3593,39 +3535,27 @@
      if test "$userhost"
      then
        echo
@@ -426,7 +345,7 @@ index 88a3027..85beabe 100644
          if test $MACHINENAME = "CRAY"
          then
 -            $FORTRAN $usersub || \
-+            $DFORTRANMP $user || \
++            $DFORTHIGHMP $user || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -436,7 +355,7 @@ index 88a3027..85beabe 100644
              /bin/rm $program 2>/dev/null
          else
 -            $FORTRAN $usersub -o $userobj || \
-+            $DFORTRANMP $user -o $userobj || \
++            $DFORTHIGHMP $user -o $userobj || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -452,21 +371,15 @@ index 88a3027..85beabe 100644
    fi # if test $user
  
  
-@@ -3645,10 +3575,11 @@ then
+@@ -3645,6 +3575,7 @@
    $TKLIBS  \
    $MRCLIBS     \
    $METISLIBS \
--  $SFLIB \
 +  $DAMASK \
-+  $SFLIB  \
+   $SFLIB \
    $OPENSSL_LIB \
    $SYSLIBS  \
--  $SECLIBS  || \
-+  $SECLIBS    || \
-   {
-     echo "$0: link failed for ${user:+$userobj }$objs"
-     echo "         $PRODUCT Exit number 3"
-@@ -3686,6 +3617,9 @@ else # if test $link
+@@ -3686,6 +3617,9 @@
  	prgsav=yes
  fi   # if test $link
  /bin/rm $userobj 2>/dev/null
@@ -476,69 +389,7 @@ index 88a3027..85beabe 100644
  
  #
  # run marc
-@@ -3744,42 +3678,42 @@ then
-       counter=0
-       if test -f "$host_filt"
-       then
--        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
--        do
--          ibase=${i%%.*}
--          if test $ibase != $thishost
-+      for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
-+      do
-+        ibase=${i%%.*}
-+        if test $ibase != $thishost
-+        then
-+          counter=$((counter+1))
-+          DIR1=$DIRJOB
-+          line=`grep -v '^#' $userhost | grep "^$ibase "`
-+          workdir=`echo $line | $AWK '{print $3}'`
-+          if test -n "$workdir"
-           then
--            counter=$((counter+1))
--            DIR1=$DIRJOB
--            line=`grep -v '^#' $userhost | grep "^$ibase "`
--            workdir=`echo $line | $AWK '{print $3}'`
--            if test -n "$workdir"
--            then
--              DIR1=$workdir
--            fi
--            #  if an incompatible host uses shared directory,
--            #  then the root machine deletes the executable
--            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
--            then
--              hname=_$ibase
--              /bin/rm ${execname}$hname
--            fi
--            # if local directory used, the remote machine
--            # deletes the executable
--            if test ${dirstatus[$counter]} = "local"
--            then
--              $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
--            fi
-+            DIR1=$workdir
-           fi
--        done
--      fi
-+          #  if an incompatible host uses shared directory,
-+          #  then the root machine deletes the executable
-+          if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
-+          then
-+            hname=_$ibase
-+            /bin/rm ${execname}$hname
-+          fi
-+          # if local directory used, the remote machine
-+          # deletes the executable
-+          if test ${dirstatus[$counter]} = "local"
-+          then
-+            $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
-+          fi
-+        fi
-+      done
-     fi
-   fi
- fi
-+fi
+@@ -3779,7 +3713,7 @@
  else
  #dllrun >0
    if test $cpdll = yes; then
@@ -547,7 +398,7 @@ index 88a3027..85beabe 100644
       /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
    fi
    if test $rmdll = yes;then
-@@ -3904,7 +3838,7 @@ then
+@@ -3904,7 +3838,7 @@
                # first copy over the user sub if local directories
                if test ${dirstatus[$counter]} = "local"
                then
@@ -556,12 +407,12 @@ index 88a3027..85beabe 100644
                fi
                # do the compilation on the other machine
                if test ${dirstatus[$counter]} = "shared"
-@@ -3917,20 +3851,20 @@ then
+@@ -3917,20 +3851,20 @@
                remoteuser=$DIR1/`$BASENAME $user`
                $RSH $i /bin/rm $remoteprog 2> /dev/null
                echo
 -              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
-+              $RSH $i $DIR2/tools/comp_damask_mp $DIR2 $DIR1 $remoteuser $remoteprog
++              $RSH $i $DIR2/tools/comp_damask_hmp $DIR2 $DIR1 $remoteuser $remoteprog
                # check if successful, the new executable should be there
                line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
                if test "$line"
@@ -580,7 +431,7 @@ index 88a3027..85beabe 100644
                fi
              fi
            fi
-@@ -3940,37 +3874,25 @@ then
+@@ -3940,37 +3874,25 @@
      if test "$userhost"
      then
        echo
@@ -600,7 +451,7 @@ index 88a3027..85beabe 100644
          if test $MACHINENAME = "CRAY"
          then
 -            $FORTRAN $usersub || \
-+            $DFORTRANMP $user || \
++            $DFORTHIGHMP $user || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -609,7 +460,7 @@ index 88a3027..85beabe 100644
              /bin/rm $program 2>/dev/null
          else
 -            $FORTRAN $usersub -o $userobj || \
-+            $DFORTRANMP $user -o $userobj || \
++            $DFORTHIGHMP $user -o $userobj || \
                  {
 -                echo "$0: compile failed for $user.f"
 +                echo "$0: compile failed for $user"
@@ -624,7 +475,7 @@ index 88a3027..85beabe 100644
    fi # if test $user
  
  
-@@ -3990,10 +3912,11 @@ then
+@@ -3990,6 +3912,7 @@
    $TKLIBS  \
    $MRCLIBS     \
    $METISLIBS \
@@ -632,12 +483,7 @@ index 88a3027..85beabe 100644
    $SFLIB \
    $OPENSSL_LIB \
    $SYSLIBS \
--  $SECLIBS  || \
-+  $SECLIBS         || \
-   {
-     echo "$0: link failed for ${user:+$userobj }$objs"
-     exit 1
-@@ -4030,7 +3953,9 @@ else # if test $link
+@@ -4030,7 +3953,9 @@
  	prgsav=yes
  fi   # if test $link
  /bin/rm $userobj 2>/dev/null
@@ -648,78 +494,7 @@ index 88a3027..85beabe 100644
  # done if no job id given
  if test -z "$jid"
  then
-@@ -4070,7 +3995,7 @@ if test $ddm_arc -gt 0; then
-   RUN_JOB="$BINDIR/exeddm $RUN_JOB -ddm $ddm_arc "
- fi
- 
--$RUN_JOB 
-+    $RUN_JOB 
- 
- if test $nprocd -gt 1
- then
-@@ -4114,42 +4039,42 @@ then
-       counter=0
-       if test -f "$host_filt"
-       then
--        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
--        do
--          ibase=${i%%.*}
--          if test $ibase != $thishost
-+      for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
-+      do
-+        ibase=${i%%.*}
-+        if test $ibase != $thishost
-+        then
-+          counter=$((counter+1))
-+          DIR1=$DIRJOB
-+          line=`grep -v '^#' $userhost | grep "^$ibase "`
-+          workdir=`echo $line | $AWK '{print $3}'`
-+          if test -n "$workdir"
-           then
--            counter=$((counter+1))
--            DIR1=$DIRJOB
--            line=`grep -v '^#' $userhost | grep "^$ibase "`
--            workdir=`echo $line | $AWK '{print $3}'`
--            if test -n "$workdir"
--            then
--              DIR1=$workdir
--            fi
--            #  if an incompatible host uses shared directory,
--            #  then the root machine deletes the executable
--            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
--            then
--              hname=_$ibase
--              /bin/rm ${execname}$hname
--            fi
--            # if local directory used, the remote machine
--            # deletes the executable
--            if test ${dirstatus[$counter]} = "local"
--            then
--              $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
--            fi
-+            DIR1=$workdir
-           fi
--        done
--      fi
-+          #  if an incompatible host uses shared directory,
-+          #  then the root machine deletes the executable
-+          if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
-+          then
-+            hname=_$ibase
-+            /bin/rm ${execname}$hname
-+          fi
-+          # if local directory used, the remote machine
-+          # deletes the executable
-+          if test ${dirstatus[$counter]} = "local"
-+          then
-+            $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
-+          fi
-+        fi
-+      done
-     fi
-   fi
- fi
-+fi
+@@ -4149,7 +4074,7 @@
  else
  #dllrun >0
    if test $cpdll = yes; then

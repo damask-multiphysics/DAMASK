@@ -1,6 +1,6 @@
 ---
 +++
-@@ -166,6 +166,11 @@ if test -n "$MSCCOSIM_HOME"; then
+@@ -166,6 +166,15 @@
   MARC_COSIM_LIB="$MSCCOSIM_HOME/Cosim$MSCCOSIM_VERSION/Dcosim$MSCCOSIM_VERSION/lib"
  fi
  
@@ -16,17 +16,7 @@
  # AEM
  if test "$MARCDLLOUTDIR" = ""; then
   DLLOUTDIR="$MARC_LIB"
-@@ -477,8 +486,8 @@ if test "$MARC_INTEGER_SIZE" = "i4" ; then
-   I8DEFINES=
-   I8CDEFINES=
- else
--  I8FFLAGS="-i8"
-+  I8FFLAGS="-i8 -integer-size 64"
-   I8DEFINES="-DI64"
-   I8CDEFINES="-U_DOUBLE -D_SINGLE"
- fi
- 
-@@ -594,7 +605,7 @@ then
+@@ -594,7 +603,7 @@
  PROFILE=" $PROFILE -pg"
  fi
  
@@ -35,7 +25,7 @@
  if test "$MTHREAD" = "OPENMP"
  then
    FORT_OPT=" $FORT_OPT -qopenmp"
-@@ -607,7 +616,7 @@ else
+@@ -607,7 +616,7 @@
    FORT_OPT=" $FORT_OPT -save -zero"
  fi
  if test "$MARCHDF_HDF" = "HDF"; then
@@ -44,13 +34,13 @@
  fi
  
  FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -621,6 +630,29 @@ FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+@@ -621,6 +630,29 @@
  #  for compiling free form f90 files. high opt, integer(4)
  FORTF90="$FCOMP -c -O3"
-
+ 
 +# determine DAMASK version
 +if test -n "$DAMASK_USER"; then
-+  DAMASKROOT=`dirname $DAMASK_USER`/..
++  DAMASKROOT=`dirname $DAMASK_USER`/../..
 +  read DAMASKVERSION < $DAMASKROOT/VERSION
 +  DAMASKVERSION="'"$DAMASKVERSION"'"
 +else
@@ -74,30 +64,12 @@
  if test "$MARCDEBUG" = "ON"
  then
    FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
-@@ -778,7 +806,7 @@ SECLIBS="-L$MARC_LIB -llapi"
-
+@@ -778,7 +810,7 @@
+ 
  SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
    -L$MARC_MKL \
 -  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -lmeshgems -lmg-tetra -lmeshgems_stubs $HDF_LIBS $SOLVER2LIBS"
 +  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $MARC_LIB/libtetmeshinterface.a   $MARC_LIB/libcaefatigueinterface.a -L$MARC_LIB -lmkl_blacs_intelmpi_ilp64 -lmkl_scalapack_ilp64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -ltetmesh -lmeshgems -lmg-tetra -lmeshgems_stubs $HDF5_LIB $SOLVER2LIBS"
-
+ 
  SOLVERLIBS_DLL=${SOLVERLIBS}
  if test "$AEM_DLL" -eq 1
-@@ -802,7 +830,7 @@ then
-  OPENSSL=NONE
- fi
- 
--SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib $MARC_RPC_LIB"
-+SYSLIBS=" $OPENMP -lpthread -cxxlib $MARC_RPC_LIB"
-
- # Uncomment the following lines to turn on the trace and comment out the next 4 lines
- # if test $MPITYPE = intelmpi
-@@ -812,7 +840,7 @@ SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib $MARC_RPC_LIB"
- # fi
- if test $MPITYPE = intelmpi
- then
-- SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -shared-intel -cxxlib $MARC_RPC_LIB"
-+ SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -cxxlib $MARC_RPC_LIB"
- fi
- 
- if test "$ZLIB" = "ZLIB"; then

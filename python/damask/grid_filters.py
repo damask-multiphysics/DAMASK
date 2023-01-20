@@ -75,8 +75,8 @@ def curl(size: _FloatSequence,
     e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,f_fourier)*2.0j*_np.pi if n == 3 else         # vector, 3   -> 3
-             _np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,f_fourier)*2.0j*_np.pi)                       # tensor, 3x3 -> 3x3
+    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks' if n == 3 else
+                        'slm,ijkl,ijknm->ijksn',e,k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->3, tensor 3x3->3x3
 
     return _np.fft.irfftn(curl_,axes=(0,1,2),s=f.shape[:3])
 
@@ -103,10 +103,10 @@ def divergence(size: _FloatSequence,
     k_s = _ks(size,f.shape[:3],True)
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    div_ = (_np.einsum('ijkl,ijkl ->ijk', k_s,f_fourier)*2.0j*_np.pi if n == 3 else                 # vector, 3   -> 1
-            _np.einsum('ijkm,ijklm->ijkl',k_s,f_fourier)*2.0j*_np.pi)                               # tensor, 3x3 -> 3
+    divergence_ = (_np.einsum('ijkl,ijkl ->ijk' if n == 3 else
+                              'ijkm,ijklm->ijkl', k_s,f_fourier)*2.0j*_np.pi)                       # vector 3->1, tensor 3x3->3
 
-    return _np.fft.irfftn(div_,axes=(0,1,2),s=f.shape[:3])
+    return _np.fft.irfftn(divergence_,axes=(0,1,2),s=f.shape[:3])
 
 
 def gradient(size: _FloatSequence,
@@ -124,17 +124,17 @@ def gradient(size: _FloatSequence,
     Returns
     -------
     ∇ f : numpy.ndarray, shape (:,:,:,3) or (:,:,:,3,3)
-        Divergence of f.
+        Gradient of f.
 
     """
     n = _np.prod(f.shape[3:])
     k_s = _ks(size,f.shape[:3],True)
 
     f_fourier = _np.fft.rfftn(f,axes=(0,1,2))
-    grad_ = (_np.einsum('ijkl,ijkm->ijkm', f_fourier,k_s)*2.0j*_np.pi if n == 1 else                # scalar, 1 -> 3
-             _np.einsum('ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                              # vector, 3 -> 3x3
+    gradient_ = (_np.einsum('ijkl,ijkm->ijkm' if n == 1 else
+                            'ijkl,ijkm->ijklm',f_fourier,k_s)*2.0j*_np.pi)                          # scalar 1->3, vector 3->3x3
 
-    return _np.fft.irfftn(grad_,axes=(0,1,2),s=f.shape[:3])
+    return _np.fft.irfftn(gradient_,axes=(0,1,2),s=f.shape[:3])
 
 
 def coordinates0_point(cells: _IntSequence,
@@ -296,8 +296,8 @@ def cellsSizeOrigin_coordinates0_point(coordinates0: _np.ndarray,
     origin    = mincorner - delta*.5
 
     # 1D/2D: size/origin combination undefined, set origin to 0.0
-    size  [_np.where(cells==1)] = origin[_np.where(cells==1)]*2.
-    origin[_np.where(cells==1)] = 0.0
+    size  [_np.where(cells == 1)] = origin[_np.where(cells == 1)]*2.
+    origin[_np.where(cells == 1)] = 0.0
 
     if cells.prod() != len(coordinates0):
         raise ValueError(f'data count {len(coordinates0)} does not match cells {cells}')
@@ -541,28 +541,118 @@ def coordinates0_valid(coordinates0: _np.ndarray) -> bool:
         return False
 
 
+def unravel_index(idx: _np.ndarray) -> _np.ndarray:
+    """
+    Convert flat indices to coordinate indices.
+
+    Parameters
+    ----------
+    idx : numpy.ndarray, shape (:,:,:)
+        Grid of flat indices.
+
+    Returns
+    -------
+    unravelled : numpy.ndarray, shape (:,:,:,3)
+        Grid of coordinate indices.
+
+    Examples
+    --------
+    Unravel a linearly increasing sequence of material indices on a 3 × 2 × 1 grid.
+
+    >>> import numpy as np
+    >>> import damask
+    >>> seq = np.arange(6).reshape((3,2,1),order='F')
+    >>> (coord_idx := damask.grid_filters.unravel_index(seq))
+    array([[[[0, 0, 0]],
+
+            [[0, 1, 0]]],
+
+
+           [[[1, 0, 0]],
+
+            [[1, 1, 0]]],
+
+
+           [[[2, 0, 0]],
+
+            [[2, 1, 0]]]])
+    >>> coord_idx[1,1,0]
+    array([1, 1, 0])
+
+    """
+    cells = idx.shape
+    idx_ = _np.expand_dims(idx,3)
+    return _np.block([  idx_ %cells[0],
+                       (idx_//cells[0]) %cells[1],
+                      ((idx_//cells[0])//cells[1])%cells[2]])
+
+def ravel_index(idx: _np.ndarray) -> _np.ndarray:
+    """
+    Convert coordinate indices to flat indices.
+
+    Parameters
+    ----------
+    idx : numpy.ndarray, shape (:,:,:,3)
+        Grid of coordinate indices.
+
+    Returns
+    -------
+    ravelled : numpy.ndarray, shape (:,:,:)
+        Grid of flat indices.
+
+    Examples
+    --------
+    Ravel a reversed sequence of coordinate indices on a 2 × 2 × 1 grid.
+
+    >>> import numpy as np
+    >>> import damask
+    >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
+    array([[[[1, 1, 0]],
+
+            [[0, 1, 0]]],
+
+
+           [[[1, 0, 0]],
+
+            [[0, 0, 0]]]])
+    >>> (flat_idx := damask.grid_filters.ravel_index(rev))
+    array([[[3],
+            [2]],
+
+           [[1],
+            [0]]])
+
+    """
+    cells = idx.shape[:3]
+    return   idx[:,:,:,0] \
+           + idx[:,:,:,1]*cells[0] \
+           + idx[:,:,:,2]*cells[0]*cells[1]
+
+
 def regrid(size: _FloatSequence,
            F: _np.ndarray,
            cells: _IntSequence) -> _np.ndarray:
     """
-    Return mapping from coordinates in deformed configuration to a regular grid.
+    Map a deformed grid A back to a rectilinear grid B.
+
+    The size of grid B is chosen as the average deformed size of grid A.
 
     Parameters
     ----------
     size : sequence of float, len (3)
-        Physical size.
-    F : numpy.ndarray, shape (:,:,:,3,3), shape (:,:,:,3,3)
-        Deformation gradient field.
+        Physical size of grid A.
+    F : numpy.ndarray, shape (:,:,:,3,3)
+        Deformation gradient field on grid A.
     cells : sequence of int, len (3)
-        Cell count along x,y,z of remapping grid.
+        Cell count along x,y,z of grid B.
+
+    Returns
+    -------
+    idx : numpy.ndarray of int, shape (cells)
+        Flat index of closest point on deformed grid A for each point on grid B.
 
     """
-    c = coordinates_point(size,F)
-
-    outer = _np.dot(_np.average(F,axis=(0,1,2)),size)
-    for d in range(3):
-        c[_np.where(c[:,:,:,d]<0)]        += outer[d]
-        c[_np.where(c[:,:,:,d]>outer[d])] -= outer[d]
-
-    tree = _spatial.cKDTree(c.reshape(-1,3),boxsize=outer)
-    return tree.query(coordinates0_point(cells,outer))[1].flatten()
+    box = _np.dot(_np.average(F,axis=(0,1,2)),size)
+    c = coordinates_point(size,F)%box
+    tree = _spatial.cKDTree(c.reshape((-1,3),order='F'),boxsize=box)
+    return tree.query(coordinates0_point(cells,box))[1]

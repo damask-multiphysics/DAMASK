@@ -8,7 +8,6 @@ import h5py
 
 from damask import util
 
-
 class TestUtil:
 
     @pytest.mark.xfail(sys.platform == 'win32', reason='echo is not a Windows command')
@@ -26,6 +25,17 @@ class TestUtil:
         with pytest.raises(RuntimeError):
             util.run('false')
 
+    @pytest.mark.parametrize('input,glue,quote,output',
+                            [
+                            (None,'',False,'None'),
+                            ([None,None],'\n',False,'None\nNone'),
+                            ([-0.5,0.5],'=',False,'-0.5=0.5'),
+                            ([1,2,3],'_',False,'1_2_3'),
+                            ([1,2,3],'/',True,'"1"/"2"/"3"'),
+                            ])
+    def test_srepr(self,input,glue,quote,output):
+        assert output == util.srepr(input,glue,quote)
+
     @pytest.mark.parametrize('input,output',
                             [
                             ([0,-2],[0,-1]),
@@ -33,7 +43,6 @@ class TestUtil:
                             ([1./2.,1./3.],[3,2]),
                             ([2./3.,1./2.,1./3.],[4,3,2]),
                             ])
-
     def test_scale2coprime(self,input,output):
         assert np.allclose(util.scale_to_coprime(np.array(input)),
                                                  np.array(output).astype(int))
@@ -44,7 +53,7 @@ class TestUtil:
 
 
     @pytest.mark.parametrize('rv',[stats.rayleigh(),stats.weibull_min(1.2),stats.halfnorm(),stats.pareto(2.62)])
-    def test_hybridIA(self,rv):
+    def test_hybridIA_distribution(self,rv):
         bins = np.linspace(0,10,100000)
         centers = (bins[1:]+bins[:-1])/2
         N_samples = bins.shape[0]-1000
@@ -52,6 +61,21 @@ class TestUtil:
         selected = util.hybrid_IA(dist,N_samples)
         dist_sampled = np.histogram(centers[selected],bins)[0]/N_samples*np.sum(dist)
         assert np.sqrt(((dist - dist_sampled) ** 2).mean()) < .025 and selected.shape[0]==N_samples
+
+    def test_hybridIA_constant(self):
+       N_bins = np.random.randint(20,400)
+       m = np.random.randint(1,20)
+       N_samples = m * N_bins
+       dist = np.ones(N_bins)*np.random.rand()
+       assert np.all(np.sort(util.hybrid_IA(dist,N_samples))==np.arange(N_samples).astype(int)//m)
+
+    def test_hybridIA_linear(self):
+       N_points = np.random.randint(10,200)
+       m = np.random.randint(1,20)
+       dist = np.arange(N_points)
+       N_samples = m * np.sum(dist)
+       assert np.all(np.bincount(util.hybrid_IA(dist*np.random.rand(),N_samples)) == dist*m)
+
 
     @pytest.mark.parametrize('point,direction,normalize,keepdims,answer',
                              [
@@ -119,10 +143,6 @@ class TestUtil:
     @pytest.mark.parametrize('style',[util.emph,util.deemph,util.warn,util.strikeout])
     def test_decorate(self,style):
         assert 'DAMASK' in style('DAMASK')
-
-    @pytest.mark.parametrize('lst',[1,[1,2],set([1,2,3]),np.arange(4)])
-    def test_aslist(self,lst):
-        assert len(util.aslist(lst)) > 0
 
     @pytest.mark.parametrize('complete',[True,False])
     def test_D3D_base_group(self,tmp_path,complete):
@@ -208,3 +228,116 @@ class TestUtil:
     @pytest.mark.parametrize('kw_Miller,kw_Bravais',[('uvw','uvtw'),('hkl','hkil')])
     def test_Bravais_Miller_Bravais(self,vector,kw_Miller,kw_Bravais):
         assert np.all(vector == util.Miller_to_Bravais(**{kw_Miller:util.Bravais_to_Miller(**{kw_Bravais:vector})}))
+
+
+    @pytest.mark.parametrize('extra_parameters',["""
+            p2 : str, optional
+                p2 description 1
+                p2 description 2
+            """,
+            """
+
+                        p2 : str, optional
+                            p2 description 1
+                            p2 description 2
+
+            """,
+            """
+p2 : str, optional
+    p2 description 1
+    p2 description 2
+            """])
+    @pytest.mark.parametrize('invalid_docstring',["""
+                        Function description
+
+                        Parameters ----------
+                        p0 : numpy.ndarray, shape (...,4)
+                            p0 description 1
+                            p0 description 2
+                        p1 : int, optional
+                            p1 description
+
+                        Remaining description
+                    """,
+                    """
+                        Function description
+
+                        Parameters
+                         ----------
+                        p0 : numpy.ndarray, shape (...,4)
+                            p0 description 1
+                            p0 description 2
+                        p1 : int, optional
+                            p1 description
+
+                        Remaining description
+                    """,])
+    def test_extend_docstring_parameters(self,extra_parameters,invalid_docstring):
+        test_docstring = """
+            Function description
+
+            Parameters
+            ----------
+            p0 : numpy.ndarray, shape (...,4)
+                p0 description 1
+                p0 description 2
+            p1 : int, optional
+                p1 description
+
+            Remaining description
+        """
+        expected = """
+            Function description
+
+            Parameters
+            ----------
+            p0 : numpy.ndarray, shape (...,4)
+                p0 description 1
+                p0 description 2
+            p1 : int, optional
+                p1 description
+            p2 : str, optional
+                p2 description 1
+                p2 description 2
+
+            Remaining description
+        """.split("\n")
+        assert expected == util._docstringer(test_docstring,extra_parameters).split('\n')
+        with pytest.raises(RuntimeError):
+            util._docstringer(invalid_docstring,extra_parameters)
+
+    def test_replace_docstring_return_type(self):
+        class TestClassOriginal:
+            pass
+
+        def original_func() -> TestClassOriginal:
+            pass
+
+        class TestClassDecorated:
+            def decorated_func_bound(self) -> 'TestClassDecorated':
+                pass
+
+        def decorated_func() -> TestClassDecorated:
+            pass
+
+        original_func.__doc__ = """
+            Function description/Parameters
+
+            Returns
+            -------
+            Return value : test_util.TestClassOriginal
+
+            Remaining description
+        """
+
+        expected = """
+            Function description/Parameters
+
+            Returns
+            -------
+            Return value : test_util.TestClassDecorated
+
+            Remaining description
+        """
+        assert expected == util._docstringer(original_func,return_type=decorated_func)
+        assert expected == util._docstringer(original_func,return_type=TestClassDecorated.decorated_func_bound)

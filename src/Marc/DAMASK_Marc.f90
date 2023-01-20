@@ -70,7 +70,7 @@ subroutine DAMASK_interface_init
   if (ierr /= 0) then
     print*, 'working directory "'//trim(wd)//'" does not exist'
     call quit(1)
-  endif
+  end if
   symmetricSolver = solverIsSymmetric()
 
 end subroutine DAMASK_interface_init
@@ -105,14 +105,14 @@ logical function solverIsSymmetric()
        status='old', position='rewind', action='read',iostat=myStat)
   do
     read (fileUnit,'(A)',END=100) line
-    if(index(trim(lc(line)),'solver') == 1) then
+    if (index(trim(lc(line)),'solver') == 1) then
       read (fileUnit,'(A)',END=100) line                                                            ! next line
         s =     verify(line,      ' ')                                                              ! start of first chunk
         s = s + verify(line(s+1:),' ')                                                              ! start of second chunk
         e = s + scan  (line(s+1:),' ')                                                              ! end of second chunk
       solverIsSymmetric = line(s:e) /= '1'
-    endif
-  enddo
+    end if
+  end do
 100 close(fileUnit)
   contains
 
@@ -134,7 +134,7 @@ logical function solverIsSymmetric()
       lc(i:i) = string(i:i)
       n = index(UPPER,lc(i:i))
       if (n/=0) lc(i:i) = LOWER(n:n)
-    enddo
+    end do
   end function lc
 
 end function solverIsSymmetric
@@ -147,12 +147,13 @@ end module DAMASK_interface
 #include "../YAML_types.f90"
 #include "../YAML_parse.f90"
 #include "../HDF5_utilities.f90"
-#include "../results.f90"
+#include "../result.f90"
 #include "../config.f90"
 #include "../LAPACK_interface.f90"
 #include "../math.f90"
 #include "../rotations.f90"
 #include "../polynomials.f90"
+#include "../tables.f90"
 #include "../lattice.f90"
 #include "element.f90"
 #include "../geometry_plastic_nonlocal.f90"
@@ -283,10 +284,10 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     outdatedByNewInc  = .false., &                                                                  !< needs description
     materialpoint_init_done   = .false., &                                                          !< remember whether init has been done already
     debug_basic       = .true.
-  class(tNode), pointer :: &
+  type(tList), pointer :: &
     debug_Marc                                                                                      ! pointer to Marc debug options
 
-  if(debug_basic) then
+  if (debug_basic) then
     print'(a,/,i8,i8,i2)', ' MSC.Marc information on shape of element(2), IP:', m, nn
     print'(a,2(i1))',      ' Jacobian:                      ', ngens,ngens
     print'(a,i1)',         ' Direct stress:                 ', ndi
@@ -299,7 +300,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                                   transpose(ffn)
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
                                   transpose(ffn1)
-  endif
+  end if
 
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1_pI32)                                                                  ! no openMP
@@ -307,9 +308,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   if (.not. materialpoint_init_done) then
     materialpoint_init_done = .true.
     call materialpoint_initAll
-    debug_Marc => config_debug%get('Marc',defaultVal=emptyList)
+    debug_Marc => config_debug%get_list('Marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
-  endif
+  end if
 
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
   if (lovl == 4 ) then                                                                              ! jacobian requested by marc
@@ -333,35 +334,35 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
         lastIncConverged = .true.
         outdatedByNewInc = .true.
         print'(a,i6,1x,i2)', '<< HYPELA2 >> new increment..! ',m(1),nn
-      endif
+      end if
     else if ( timinc < theDelta ) then                                                              ! >> cutBack <<
       lastIncConverged = .false.
       outdatedByNewInc = .false.
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
       print'(a,i6,1x,i2)', '<< HYPELA2 >> cutback detected..! ',m(1),nn
-    endif                                                                                           ! convergence treatment end
+    end if                                                                                          ! convergence treatment end
     flush(6)
 
     if (lastLovl /= lovl) then
       cycleCounter  = cycleCounter + 1
       !mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates
       !call mesh_build_ipCoordinates()                                                              ! update ip coordinates
-    endif
+    end if
     if (outdatedByNewInc) then
       computationMode = ior(computationMode,materialpoint_AGERESULTS)
       outdatedByNewInc = .false.
-    endif
+    end if
     if (lastIncConverged) then
       computationMode = ior(computationMode,materialpoint_BACKUPJACOBIAN)
       lastIncConverged = .false.
-    endif
+    end if
 
     theTime  = cptim
     theDelta = timinc
     theInc   = inc
 
-  endif
+  end if
   lastLovl = lovl
 
   call materialpoint_general(computationMode,ffn,ffn1,t(1),timinc,int(m(1)),int(nn),stress,ddsdde)
@@ -369,7 +370,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   d = ddsdde(1:ngens,1:ngens)
   s = stress(1:ndi+nshear)
   g = 0.0_pReal
-  if(symmetricSolver) d = 0.5_pReal*(d+transpose(d))
+  if (symmetricSolver) d = 0.5_pReal*(d+transpose(d))
 
   call omp_set_num_threads(defaultNumThreadsInt)                                                    ! reset number of threads to stored default value
 
@@ -413,6 +414,8 @@ subroutine uedinc(inc,incsub)
   use discretization_Marc
 
   implicit none(type,external)
+
+  external :: nodvar
   integer(pI64), intent(in) :: inc, incsub
 
   integer :: n, nqncomp, nqdatatype
@@ -426,14 +429,14 @@ subroutine uedinc(inc,incsub)
     do n = lbound(discretization_Marc_FEM2DAMASK_node,1), ubound(discretization_Marc_FEM2DAMASK_node,1)
       if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
         call nodvar(1,n,d_n(1:3,discretization_Marc_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
-        if(nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
-      endif
-    enddo
+        if (nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
+      end if
+    end do
 
     call discretization_Marc_UpdateNodeAndIpCoords(d_n)
-    call materialpoint_results(int(inc),cptim)
+    call materialpoint_result(int(inc),cptim)
 
     inc_written = int(inc)
-  endif
+  end if
 
 end subroutine uedinc

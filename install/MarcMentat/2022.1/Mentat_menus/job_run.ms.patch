@@ -1,6 +1,6 @@
 ---
 +++
-@@ -261,11 +261,18 @@ popmenu job_run_popmenu {
+@@ -261,12 +261,19 @@
        }
        button {
         position +25 =
@@ -10,21 +10,21 @@
         help "job_run#Job Submission And Control"
         popmenu job_submit_adv_pm
        }
-+      button {
+       button {
 +       position +18 =
 +       size 7 4
 +       text "DAMASK"
 +       help "damask_run#Job Submission And Control"
 +       popmenu damask
 +      }
-       button {
++      button {
         position 0 +4
         size 12 4
-@@ -1189,6 +1196,135 @@ popmenu job_submit_adv_pm {
- }
+        text "UPDATE"
+@@ -1190,6 +1197,135 @@
  
  
-+#--------------------------------------------------------------------------------------------------
+ #--------------------------------------------------------------------------------------------------
 +popmenu damask {
 +
 +#ifdef QT_MENTAT
@@ -67,7 +67,7 @@
 +  label {
 +   position -32 +6
 +   size 12 6
-+   text "O2 / OpenMP"
++   text "O3 / OpenMP"
 +   border_width 1
 +   border_color black
 +  }
@@ -153,6 +153,7 @@
 + mode permanent
 +}
 +
- #--------------------------------------------------------------------------------------------------
++#--------------------------------------------------------------------------------------------------
  popmenu job_exit_msg_pm {
  
+  text "EXIT MESSAGE"

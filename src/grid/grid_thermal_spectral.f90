@@ -48,10 +48,10 @@ module grid_thermal_spectral
   SNES :: SNES_thermal
   Vec :: solution_vec
   real(pReal), dimension(:,:,:), allocatable :: &
-    T_current, &                                                                                    !< field of current temperature
+    T, &                                                                                            !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
-    T_stagInc                                                                                       !< field of staggered temperature
-
+    T_stagInc, &                                                                                    !< field of staggered temperature
+    dotT_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
@@ -74,11 +74,12 @@ subroutine grid_thermal_spectral_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: thermal_grid
-  PetscScalar, dimension(:,:,:), pointer :: T_PETSc
+  real(pReal), dimension(:,:,:), pointer :: T_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  class(tNode), pointer :: &
+  real(pReal), dimension(1,product(cells(1:2))*cells3) :: tempN
+  type(tDict), pointer :: &
     num_grid
 
   print'(/,1x,a)', '<<<+-  grid_thermal_spectral init  -+>>>'
@@ -86,9 +87,11 @@ subroutine grid_thermal_spectral_init()
   print'(/,1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
+  if (.not. homogenization_thermal_active()) call IO_error(501,ext_msg='thermal')
+
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
   num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
   num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
@@ -107,9 +110,10 @@ subroutine grid_thermal_spectral_init()
 
 !--------------------------------------------------------------------------------------------------
 ! init fields
-  T_current = discretization_grid_getInitialCondition('T')
-  T_lastInc = T_current
-  T_stagInc = T_current
+  T = discretization_grid_getInitialCondition('T')
+  T_lastInc = T
+  T_stagInc = T
+  dotT_lastInc = 0.0_pReal * T
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -150,19 +154,23 @@ subroutine grid_thermal_spectral_init()
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
-    call HDF5_read(T_current,groupHandle,'T',.false.)
-    call HDF5_read(T_lastInc,groupHandle,'T_lastInc',.false.)
+    call HDF5_read(tempN,groupHandle,'T',.false.)
+    T = reshape(tempN,[cells(1),cells(2),cells3])
+    call HDF5_read(tempN,groupHandle,'T_lastInc',.false.)
+    T_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
+    call HDF5_read(tempN,groupHandle,'dotT_lastInc',.false.)
+    dotT_lastInc = reshape(tempN,[cells(1),cells(2),cells3])
   end if restartRead
 
   ce = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T_current(i,j,k),0.0_pReal,ce)
+    call homogenization_thermal_setField(T(i,j,k),0.0_pReal,ce)
   end do; end do; end do
 
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
-  T_PETSc = T_current
+  T_PETSc = T
   call DMDAVecRestoreArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
   CHKERRQ(err_PETSc)
 
@@ -205,20 +213,20 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
   end if
-  stagNorm = maxval(abs(T_current - T_stagInc))
+  stagNorm = maxval(abs(T - T_stagInc))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*maxval(T_current))
+  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*maxval(T))
   call MPI_Allreduce(MPI_IN_PLACE,solution%stagConverged,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LAND,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  T_stagInc = T_current
+  T_stagInc = T
 
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
+    call homogenization_thermal_setField(T(i,j,k),(T(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
   end do; end do; end do
 
   call VecMin(solution_vec,devNull,T_min,err_PETSc)
@@ -240,13 +248,15 @@ end function grid_thermal_spectral_solution
 subroutine grid_thermal_spectral_forward(cutBack)
 
   logical, intent(in) :: cutBack
+
   integer :: i, j, k, ce
   DM :: dm_local
-  PetscScalar,  dimension(:,:,:), pointer :: T_PETSc
+  real(pReal),  dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: err_PETSc
 
+
   if (cutBack) then
-    T_current = T_lastInc
+    T = T_lastInc
     T_stagInc = T_lastInc
 
 !--------------------------------------------------------------------------------------------------
@@ -255,16 +265,17 @@ subroutine grid_thermal_spectral_forward(cutBack)
     CHKERRQ(err_PETSc)
     call DMDAVecGetArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)                                 !< get the data out of PETSc to work with
     CHKERRQ(err_PETSc)
-    T_PETSc = T_current
+    T_PETSc = T
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,T_PETSc,err_PETSc)
     CHKERRQ(err_PETSc)
     ce = 0
     do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
       ce = ce + 1
-      call homogenization_thermal_setField(T_current(i,j,k),(T_current(i,j,k)-T_lastInc(i,j,k))/params%Delta_t,ce)
+      call homogenization_thermal_setField(T(i,j,k),dotT_lastInc(i,j,k),ce)
     end do; end do; end do
   else
-    T_lastInc = T_current
+    dotT_lastInc = (T - T_lastInc)/params%Delta_t
+    T_lastInc = T
     call updateReference
   end if
 
@@ -272,14 +283,14 @@ end subroutine grid_thermal_spectral_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Write current solver and constitutive data for restart to file
+!> @brief Write current solver and constitutive data for restart to file.
 !--------------------------------------------------------------------------------------------------
 subroutine grid_thermal_spectral_restartWrite
 
   PetscErrorCode :: err_PETSc
   DM :: dm_local
   integer(HID_T) :: fileHandle, groupHandle
-  PetscScalar, dimension(:,:,:), pointer :: T
+  real(pReal), dimension(:,:,:), pointer :: T
 
   call SNESGetDM(SNES_thermal,dm_local,err_PETSc);
   CHKERRQ(err_PETSc)
@@ -290,8 +301,9 @@ subroutine grid_thermal_spectral_restartWrite
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')
-  call HDF5_write(T,groupHandle,'T')
-  call HDF5_write(T_lastInc,groupHandle,'T_lastInc')
+  call HDF5_write(reshape(T,[1,product(cells(1:2))*cells3]),groupHandle,'T')
+  call HDF5_write(reshape(T_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'T_lastInc')
+  call HDF5_write(reshape(dotT_lastInc,[1,product(cells(1:2))*cells3]),groupHandle,'dotT_lastInc')
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
 
@@ -303,62 +315,48 @@ end subroutine grid_thermal_spectral_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forms the spectral thermal residual vector
+!> @brief Construct the residual vector.
 !--------------------------------------------------------------------------------------------------
-subroutine formResidual(in,x_scal,r,dummy,err_PETSc)
+subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
-    in
-  PetscScalar, dimension( &
-    XG_RANGE,YG_RANGE,ZG_RANGE), intent(in) :: &
+    residual_subdomain
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
-  PetscScalar, dimension( &
-    X_RANGE,Y_RANGE,Z_RANGE), intent(out) :: &
-    r
+  real(pReal), dimension(cells(1),cells(2),cells3), intent(out) :: &
+    r                                                                                                     !< residual
   PetscObject :: dummy
-  PetscErrorCode :: err_PETSc
+  PetscErrorCode, intent(out) :: err_PETSc
+
   integer :: i, j, k, ce
+  real(pReal), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
-  T_current = x_scal
-!--------------------------------------------------------------------------------------------------
-! evaluate polarization field
-  scalarField_real = 0.0_pReal
-  scalarField_real(1:cells(1),1:cells(2),1:cells3) = T_current
-  call utilities_FFTscalarForward
-  call utilities_fourierScalarGradient                                                              !< calculate gradient of temperature field
-  call utilities_FFTvectorBackward
+
+  T = x_scal
+  vectorField = utilities_ScalarGradient(T)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    vectorField_real(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField_real(1:3,i,j,k))
+    vectorField(1:3,i,j,k) = matmul(homogenization_K_T(ce) - K_ref, vectorField(1:3,i,j,k))
   end do; end do; end do
-  call utilities_FFTvectorForward
-  call utilities_fourierVectorDivergence                                                            !< calculate temperature divergence in fourier field
-  call utilities_FFTscalarBackward
+  r = utilities_VectorDivergence(vectorField)
   ce = 0
   do k = 1, cells3;  do j = 1, cells(2);  do i = 1,cells(1)
     ce = ce + 1
-    scalarField_real(i,j,k) = params%Delta_t*(scalarField_real(i,j,k) + homogenization_f_T(ce)) &
-                            + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T_current(i,j,k)) &
-                            + mu_ref*T_current(i,j,k)
+    r(i,j,k) = params%Delta_t*(r(i,j,k) + homogenization_f_T(ce)) &
+             + homogenization_mu_T(ce) * (T_lastInc(i,j,k) - T(i,j,k)) &
+             + mu_ref*T(i,j,k)
   end do; end do; end do
 
-!--------------------------------------------------------------------------------------------------
-! convolution of temperature field with green operator
-  call utilities_FFTscalarForward
-  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%Delta_t)
-  call utilities_FFTscalarBackward
-
-!--------------------------------------------------------------------------------------------------
-! constructing residual
-  r = T_current - scalarField_real(1:cells(1),1:cells(2),1:cells3)
+  r = T &
+    - utilities_GreenConvolution(r, K_ref, mu_ref, params%Delta_t)
   err_PETSc = 0
 
 end subroutine formResidual
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief update reference viscosity and conductivity
+!> @brief Update reference viscosity and conductivity.
 !--------------------------------------------------------------------------------------------------
 subroutine updateReference()
 

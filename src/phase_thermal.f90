@@ -76,11 +76,14 @@ contains
 !----------------------------------------------------------------------------------------------
 module subroutine thermal_init(phases)
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
-  class(tNode), pointer :: &
-    phase, thermal, sources
+  type(tDict), pointer :: &
+    phase, &
+    thermal
+  type(tList), pointer :: &
+    sources
 
   integer :: &
     ph, so, &
@@ -89,8 +92,8 @@ module subroutine thermal_init(phases)
 
   print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
 
-  allocate(current(phases%length))
 
+  allocate(current(phases%length))
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
   allocate(param(phases%length))
@@ -99,8 +102,8 @@ module subroutine thermal_init(phases)
     Nmembers = count(material_phaseID == ph)
     allocate(current(ph)%T(Nmembers),source=T_ROOM)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
-    phase => phases%get(ph)
-    thermal => phase%get('thermal',defaultVal=emptyDict)
+    phase => phases%get_dict(ph)
+    thermal => phase%get_dict('thermal',defaultVal=emptyDict)
 
     ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
@@ -114,7 +117,7 @@ module subroutine thermal_init(phases)
 #else
       param(ph)%output = thermal%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
-      sources => thermal%get('source',defaultVal=emptyList)
+      sources => thermal%get_list('source',defaultVal=emptyList)
       thermal_Nsources(ph) = sources%length
     else
       thermal_Nsources(ph) = 0
@@ -365,21 +368,23 @@ function thermal_active(source_label,src_length)  result(active_source)
   integer,          intent(in)         :: src_length                                                !< max. number of sources in system
   logical, dimension(:,:), allocatable :: active_source
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, thermal, &
+    thermal, &
     src
+  type(tList), pointer :: &
+    sources
   integer :: p,s
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(active_source(src_length,phases%length), source = .false. )
   do p = 1, phases%length
-    phase => phases%get(p)
-    thermal =>  phase%get('thermal',defaultVal=emptyDict)
-    sources =>  thermal%get('source',defaultVal=emptyList)
+    phase => phases%get_dict(p)
+    thermal => phase%get_dict('thermal',defaultVal=emptyDict)
+    sources => thermal%get_list('source',defaultVal=emptyList)
     do s = 1, sources%length
-      src => sources%get(s)
+      src => sources%get_dict(s)
       active_source(s,p) = src%get_asString('type') == source_label
     end do
   end do
@@ -389,9 +394,9 @@ end function thermal_active
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief writes thermal sources results to HDF5 output file
+!< @brief Write thermal sources results to HDF5 output file.
 !----------------------------------------------------------------------------------------------
-module subroutine thermal_results(group,ph)
+module subroutine thermal_result(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
@@ -401,20 +406,20 @@ module subroutine thermal_results(group,ph)
 
   if (.not. allocated(param(ph)%output)) return
 
-  call results_closeGroup(results_addGroup(group//'thermal'))
+  call result_closeGroup(result_addGroup(group//'thermal'))
 
   do ou = 1, size(param(ph)%output)
 
     select case(trim(param(ph)%output(ou)))
 
       case ('T')
-        call results_writeDataset(current(ph)%T,group//'thermal','T', 'temperature','K')
+        call result_writeDataset(current(ph)%T,group//'thermal','T', 'temperature','K')
 
     end select
 
   end do
 
-end subroutine thermal_results
+end subroutine thermal_result
 
 
 end submodule thermal

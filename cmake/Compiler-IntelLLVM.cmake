@@ -14,8 +14,8 @@ if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
 elseif (OPTIMIZATION STREQUAL "DEFENSIVE")
   set (OPTIMIZATION_FLAGS    "-O2")
 elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
-  set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost")
-  # -fast = -ipo, -O3, -no-prec-div, -static, -fp-model fast=2, and -xHost"
+  #set (OPTIMIZATION_FLAGS    "-ipo -O3 -fp-model fast=2 -xHost") # ifx 2022.0 has problems with YAML types and IPO
+  set (OPTIMIZATION_FLAGS    "-O3 -fp-model fast=2 -xHost")
 endif ()
 
 # -assume std_mod_proc_name (included in -standard-semantics) causes problems if other modules
@@ -29,8 +29,8 @@ set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fpp")
 # preprocessor
 
-set (COMPILE_FLAGS "${COMPILE_FLAGS} -ftz")
-# flush underflow to zero, automatically set if -O[1,2,3]
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -no-ftz")
+# disable flush underflow to zero, will be set if -O[1,2,3]
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -diag-disable")
 # disables warnings ...
@@ -95,8 +95,8 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS},uninit")
 #   ... for uninitialized variables.
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
 #   ... initializes stack local variables to an unusual value to aid error detection
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
-#   ... capture all floating-point exceptions, sets -ftz automatically
+set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0 -ftz")
+#   ... capture all floating-point exceptions, need to overwrite -no-ftz
 
 # disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
 #set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")

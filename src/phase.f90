@@ -9,10 +9,11 @@ module phase
   use math
   use rotations
   use polynomials
+  use tables
   use IO
   use config
   use material
-  use results
+  use result
   use lattice
   use discretization
   use parallelization
@@ -96,31 +97,31 @@ module phase
 
 ! == cleaned:begin =================================================================================
     module subroutine mechanical_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine mechanical_init
 
     module subroutine damage_init
     end subroutine damage_init
 
     module subroutine thermal_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine thermal_init
 
 
-    module subroutine mechanical_results(group,ph)
+    module subroutine mechanical_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine mechanical_results
+    end subroutine mechanical_result
 
-    module subroutine damage_results(group,ph)
+    module subroutine damage_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine damage_results
+    end subroutine damage_result
 
-    module subroutine thermal_results(group,ph)
+    module subroutine thermal_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine thermal_results
+    end subroutine thermal_result
 
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
@@ -160,6 +161,11 @@ module phase
       integer, intent(in) :: ph
     end subroutine thermal_restartWrite
 
+    module subroutine damage_restartWrite(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine damage_restartWrite
+
     module subroutine mechanical_restartRead(groupHandle,ph)
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
@@ -169,6 +175,11 @@ module phase
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
     end subroutine thermal_restartRead
+
+    module subroutine damage_restartRead(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine damage_restartRead
 
     module function mechanical_S(ph,en) result(S)
       integer, intent(in) :: ph,en
@@ -332,7 +343,7 @@ module phase
     IO, &
     config, &
     material, &
-    results, &
+    result, &
     lattice, &
     discretization, &
     HDF5_utilities
@@ -347,7 +358,7 @@ module phase
     phase_K_T, &
     phase_mu_phi, &
     phase_mu_T, &
-    phase_results, &
+    phase_result, &
     phase_allocateState, &
     phase_forward, &
     phase_restore, &
@@ -376,16 +387,16 @@ subroutine phase_init
 
   integer :: &
     ph, ce, co, ma
-  class (tNode), pointer :: &
-    debug_constitutive, &
-    materials, &
+  type(tDict), pointer :: &
     phases, &
     phase
+  type(tList), pointer :: &
+    debug_constitutive
 
 
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
-  debug_constitutive => config_debug%get('phase', defaultVal=emptyList)
+  debug_constitutive => config_debug%get_list('phase', defaultVal=emptyList)
   debugConstitutive%basic     = debug_constitutive%contains('basic')
   debugConstitutive%extensive = debug_constitutive%contains('extensive')
   debugConstitutive%selective = debug_constitutive%contains('selective')
@@ -394,16 +405,14 @@ subroutine phase_init
   debugConstitutive%grain     = config_debug%get_asInt('constituent',     defaultVal = 1)
 
 
-  materials => config_material%get('material')
-  phases    => config_material%get('phase')
-
+  phases => config_material%get_dict('phase')
   allocate(phase_lattice(phases%length))
   allocate(phase_cOverA(phases%length),source=-1.0_pReal)
   allocate(phase_rho(phases%length))
   allocate(phase_O_0(phases%length))
 
   do ph = 1,phases%length
-    phase => phases%get(ph)
+    phase => phases%get_dict(ph)
     phase_lattice(ph) = phase%get_asString('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
       call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
@@ -503,26 +512,26 @@ end subroutine phase_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine phase_results()
+subroutine phase_result()
 
   integer :: ph
   character(len=:), allocatable :: group
 
 
-  call results_closeGroup(results_addGroup('/current/phase/'))
+  call result_closeGroup(result_addGroup('/current/phase/'))
 
   do ph = 1, size(material_name_phase)
 
     group = '/current/phase/'//trim(material_name_phase(ph))//'/'
-    call results_closeGroup(results_addGroup(group))
+    call result_closeGroup(result_addGroup(group))
 
-    call mechanical_results(group,ph)
-    call damage_results(group,ph)
-    call thermal_results(group,ph)
+    call mechanical_result(group,ph)
+    call damage_result(group,ph)
+    call thermal_result(group,ph)
 
   end do
 
-end subroutine phase_results
+end subroutine phase_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -536,13 +545,13 @@ subroutine crystallite_init()
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
     en, ph
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_crystallite, &
     phases
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: extmsg
 
-  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
+
+  num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
   num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
   num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
@@ -556,6 +565,7 @@ subroutine crystallite_init()
   num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
   num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
+  extmsg = ''
   if (num%subStepMinCryst   <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepMinCryst'
   if (num%subStepSizeCryst  <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepSizeCryst'
   if (num%stepIncreaseCryst <= 0.0_pReal)      extmsg = trim(extmsg)//' stepIncreaseCryst'
@@ -570,7 +580,7 @@ subroutine crystallite_init()
 
   if (extmsg /= '') call IO_error(301,ext_msg=trim(extmsg))
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
 
   !$OMP PARALLEL DO PRIVATE(ce,ph,en)
   do el = 1, discretization_Nelems
@@ -675,6 +685,7 @@ subroutine phase_restartWrite(fileHandle)
 
     call mechanical_restartWrite(groupHandle(2),ph)
     call thermal_restartWrite(groupHandle(2),ph)
+    call damage_restartWrite(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -704,6 +715,7 @@ subroutine phase_restartRead(fileHandle)
 
     call mechanical_restartRead(groupHandle(2),ph)
     call thermal_restartRead(groupHandle(2),ph)
+    call damage_restartRead(groupHandle(2),ph)
 
     call HDF5_closeGroup(groupHandle(2))
 

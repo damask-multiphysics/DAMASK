@@ -5,7 +5,7 @@
 module discretization
 
   use prec
-  use results
+  use result
 
   implicit none(type,external)
   private
@@ -29,7 +29,7 @@ module discretization
 
   public :: &
     discretization_init, &
-    discretization_results, &
+    discretization_result, &
     discretization_setIPcoords, &
     discretization_setNodeCoords
 
@@ -64,7 +64,7 @@ subroutine discretization_init(materialAt,&
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
 
-  if(present(sharedNodesBegin)) then
+  if (present(sharedNodesBegin)) then
     discretization_sharedNodesBegin = sharedNodesBegin
   else
     discretization_sharedNodesBegin = size(discretization_NodeCoords0,2)
@@ -76,21 +76,21 @@ end subroutine discretization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief write the displacements
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_results
+subroutine discretization_result()
 
   real(pReal), dimension(:,:), allocatable :: u
 
-  call results_closeGroup(results_addGroup('current/geometry'))
+  call result_closeGroup(result_addGroup('current/geometry'))
 
   u = discretization_NodeCoords (:,:discretization_sharedNodesBegin) &
     - discretization_NodeCoords0(:,:discretization_sharedNodesBegin)
-  call results_writeDataset(u,'current/geometry','u_n','displacements of the nodes','m')
+  call result_writeDataset(u,'current/geometry','u_n','displacements of the nodes','m')
 
   u = discretization_IPcoords &
     - discretization_IPcoords0
-  call results_writeDataset(u,'current/geometry','u_p','displacements of the materialpoints (cell centers)','m')
+  call result_writeDataset(u,'current/geometry','u_p','displacements of the materialpoints (cell centers)','m')
 
-end subroutine discretization_results
+end subroutine discretization_result
 
 
 !--------------------------------------------------------------------------------------------------

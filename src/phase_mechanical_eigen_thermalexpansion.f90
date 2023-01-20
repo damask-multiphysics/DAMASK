@@ -9,8 +9,8 @@ submodule(phase:eigen) thermalexpansion
 
   type :: tParameters
     type(tPolynomial) :: &
-      A_11, &
-      A_33
+      Alpha_11, &
+      Alpha_33
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param
@@ -28,40 +28,39 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances, p, k
-  class(tNode), pointer :: &
+  type(tList), pointer :: &
+    kinematics
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    mech, &
-    kinematics, &
-    myConfig
+    mech
 
-  print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
 
   myKinematics = kinematics_active('thermalexpansion',kinematics_length)
   Ninstances = count(myKinematics)
   print'(/,a,i2)', ' # phases: ',Ninstances; flush(IO_STDOUT)
   if (Ninstances == 0) return
 
-  phases => config_material%get('phase')
+  print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
+
+
+  phases => config_material%get_dict('phase')
   allocate(param(Ninstances))
   allocate(kinematics_thermal_expansion_instance(phases%length), source=0)
 
   do p = 1, phases%length
     if (any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p)
+    phase => phases%get_dict(p)
     if (count(myKinematics(:,p)) == 0) cycle
-    mech => phase%get('mechanical')
-    kinematics => mech%get('eigen')
+    mech => phase%get_dict('mechanical')
+    kinematics => mech%get_list('eigen')
     do k = 1, kinematics%length
       if (myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
 
-          myConfig => kinematics%get(k)
-
-          prm%A_11 = polynomial(myConfig%asDict(),'A_11','T')
+          prm%Alpha_11 = polynomial(kinematics%get_dict(k),'Alpha_11','T')
           if (any(phase_lattice(p) == ['hP','tI'])) &
-            prm%A_33 = polynomial(myConfig%asDict(),'A_33','T')
-
+            prm%Alpha_33 = polynomial(kinematics%get_dict(k),'Alpha_33','T')
         end associate
       end if
     end do
@@ -82,7 +81,7 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
 
   real(pReal) :: T, dot_T
-  real(pReal), dimension(3,3) :: A
+  real(pReal), dimension(3,3) :: Alpha
 
 
   T     = thermal_T(ph,me)
@@ -90,11 +89,11 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
 
-    A = 0.0_pReal
-    A(1,1) = prm%A_11%at(T)
-    if (any(phase_lattice(ph) == ['hP','tI'])) A(3,3) = prm%A_33%at(T)
-    A = lattice_symmetrize_33(A,phase_lattice(ph))
-    Li = dot_T * A
+    Alpha = 0.0_pReal
+    Alpha(1,1) = prm%Alpha_11%at(T)
+    if (any(phase_lattice(ph) == ['hP','tI'])) Alpha(3,3) = prm%Alpha_33%at(T)
+    Alpha = lattice_symmetrize_33(Alpha,phase_lattice(ph))
+    Li = dot_T * Alpha
 
   end associate
   dLi_dTstar = 0.0_pReal

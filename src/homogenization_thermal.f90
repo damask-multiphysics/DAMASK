@@ -35,7 +35,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine thermal_init()
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     configHomogenizations, &
     configHomogenization, &
     configHomogenizationThermal
@@ -45,18 +45,18 @@ module subroutine thermal_init()
   print'(/,1x,a)', '<<<+-  homogenization:thermal init  -+>>>'
 
 
-  configHomogenizations => config_material%get('homogenization')
+  configHomogenizations => config_material%get_dict('homogenization')
   allocate(param(configHomogenizations%length))
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
     allocate(current(ho)%T(count(material_homogenizationID==ho)), source=T_ROOM)
     allocate(current(ho)%dot_T(count(material_homogenizationID==ho)), source=0.0_pReal)
-    configHomogenization => configHomogenizations%get(ho)
+    configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
 
       if (configHomogenization%contains('thermal')) then
-        configHomogenizationThermal => configHomogenization%get('thermal')
+        configHomogenizationThermal => configHomogenization%get_dict('thermal')
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(configHomogenizationThermal)
 #else
@@ -78,8 +78,19 @@ module subroutine thermal_init()
     end associate
   end do
 
-
 end subroutine thermal_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check if thermal homogemization description is present in the configuration file
+!--------------------------------------------------------------------------------------------------
+module function homogenization_thermal_active() result(active)
+
+  logical :: active
+
+  active = any(thermal_active(:))
+
+end function homogenization_thermal_active
 
 
 !--------------------------------------------------------------------------------------------------
@@ -178,7 +189,7 @@ end subroutine homogenization_thermal_setField
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_results(ho,group)
+module subroutine thermal_result(ho,group)
 
   integer,          intent(in) :: ho
   character(len=*), intent(in) :: group
@@ -190,11 +201,11 @@ module subroutine thermal_results(ho,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case('T')
-          call results_writeDataset(current(ho)%T,group,'T','temperature','K')
+          call result_writeDataset(current(ho)%T,group,'T','temperature','K')
       end select
     end do outputsLoop
   end associate
 
-end subroutine thermal_results
+end subroutine thermal_result
 
 end submodule thermal

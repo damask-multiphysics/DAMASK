@@ -1,7 +1,7 @@
 import os
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Literal, List, Sequence
+from typing import Optional, Union, Literal, List, Sequence
 
 import numpy as np
 import vtk
@@ -104,19 +104,19 @@ class VTK:
 
     @comments.setter
     def comments(self,
-                 comments: Union[str, Sequence[str]]):
+                 comments: Sequence[str]):
         """
         Set comments.
 
         Parameters
         ----------
-        comments : str or sequence of str
+        comments : sequence of str
             Comments.
 
         """
         s = vtk.vtkStringArray()
         s.SetName('comments')
-        for c in util.tail_repack(comments,self.comments):
+        for c in comments:
             s.InsertNextValue(c)
         self.vtk_data.GetFieldData().AddArray(s)
 
@@ -286,7 +286,7 @@ class VTK:
 
     @staticmethod
     def load(fname: Union[str, Path],
-             dataset_type: Literal['ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
+             dataset_type: Literal[None, 'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'] = None) -> 'VTK':
         """
         Load from VTK file.
 
@@ -409,11 +409,11 @@ class VTK:
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     def set(self,
-            label: str = None,
-            data: Union[np.ndarray, np.ma.MaskedArray] = None,
-            info: str = None,
+            label: Optional[str] = None,
+            data: Union[None, np.ndarray, np.ma.MaskedArray] = None,
+            info: Optional[str] = None,
             *,
-            table: 'Table' = None):
+            table: Optional['Table'] = None):
         """
         Add new or replace existing point or cell data.
 
@@ -475,13 +475,13 @@ class VTK:
                 _add_array(dup.vtk_data,
                            label,
                            np.where(data.mask,data.fill_value,data) if isinstance(data,np.ma.MaskedArray) else data)
-                if info is not None: dup.comments += f'{label}: {info}'
+                if info is not None: dup.comments += [f'{label}: {info}']
             else:
                 raise ValueError('no label defined for data')
         elif isinstance(table,Table):
             for l in table.labels:
                 _add_array(dup.vtk_data,l,table.get(l))
-                if info is not None: dup.comments += f'{l}: {info}'
+                if info is not None: dup.comments += [f'{l}: {info}']
         else:
             raise TypeError
 
@@ -533,7 +533,7 @@ class VTK:
 
 
     def show(self,
-             label: str = None,
+             label: Optional[str] = None,
              colormap: Union[Colormap, str] = 'cividis'):
         """
         Render.
@@ -547,9 +547,11 @@ class VTK:
 
         Notes
         -----
-            See http://compilatrix.com/article/vtk-1 for further ideas.
+        The first component is shown when visualizing vector datasets
+        (this includes tensor datasets because they are flattened).
 
         """
+        # See http://compilatrix.com/article/vtk-1 for possible improvements.
         try:
             import wx
             _ = wx.App(False)                                                                       # noqa

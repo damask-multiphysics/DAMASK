@@ -1,4 +1,4 @@
-from typing import Union, Dict, List, Tuple
+from typing import Optional, Union, Dict, List, Tuple
 
 import numpy as np
 
@@ -324,10 +324,10 @@ class Crystal():
     """
 
     def __init__(self, *,
-                 family: CrystalFamily = None,
-                 lattice: CrystalLattice = None,
-                 a: float = None, b: float = None, c: float = None,
-                 alpha: float = None, beta: float = None, gamma: float = None,
+                 family: Optional[CrystalFamily] = None,
+                 lattice: Optional[CrystalLattice] = None,
+                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
                  degrees: bool = False):
         """
         New representation of a crystal.
@@ -690,8 +690,8 @@ class Crystal():
                                               self.lattice[-1],None),dtype=float)
 
     def to_lattice(self, *,
-                   direction: FloatSequence = None,
-                   plane: FloatSequence = None) -> np.ndarray:
+                   direction: Optional[FloatSequence] = None,
+                   plane: Optional[FloatSequence] = None) -> np.ndarray:
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -717,8 +717,8 @@ class Crystal():
 
 
     def to_frame(self, *,
-                 uvw: FloatSequence = None,
-                 hkl: FloatSequence = None) -> np.ndarray:
+                 uvw: Optional[FloatSequence] = None,
+                 hkl: Optional[FloatSequence] = None) -> np.ndarray:
         """
         Calculate crystal frame vector corresponding to lattice direction [uvw] or plane normal (hkl).
 

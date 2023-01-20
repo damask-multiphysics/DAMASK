@@ -1,0 +1,158 @@
+---
++++
+@@ -261,11 +261,18 @@
+       }
+       button {
+        position +25 =
+-       size 25 4
++       size 18 4
+        text "ADVANCED JOB SUBMISSION"
+        help "job_run#Job Submission And Control"
+        popmenu job_submit_adv_pm
+       }
++      button {
++       position +18 =
++       size 7 4
++       text "DAMASK"
++       help "damask_run#Job Submission And Control"
++       popmenu damask
++      }
+       button {
+        position 0 +4
+        size 16 4
+@@ -1202,6 +1209,135 @@
+ }
+ 
+ 
++#--------------------------------------------------------------------------------------------------
++popmenu damask {
++
++#ifdef QT_MENTAT
++ text "DAMASK.MPIE.DE"
++#endif
++
++ group {
++#ifndef QT_MENTAT
++  label {
++   position 0 0
++   size 50 4
++   text "DAMASK.MPIE.DE"
++  }
++#endif
++
++  label {
++   position 1 6
++   size 13   6
++   text "Optimzation"
++   border_width 1
++   border_color black
++  }
++
++  label {
++   position +13 =
++   size 20 6
++   text "write Input"
++   border_width 1
++   border_color black
++  }
++
++  label {
++   position +18 =
++   size 30 6
++   text "do not write Inp."
++   border_width 1
++   border_color black
++  }
++
++  label {
++   position -32 +6
++   size 12 6
++   text "O3 / OpenMP"
++   border_width 1
++   border_color black
++  }
++
++  popdown {
++   position +12 =
++   size 20 6
++   text "Submit"
++   command "*submit_job 4 *monitor_job"
++  }
++
++  popdown {
++   position +20 =
++   size 20 6
++   text "Execute"
++   command "*execute_job 4 *monitor_job"
++  }
++
++  label {
++   position -32 +6
++   size 12 6
++   text "O1 / OpenMP"
++   border_width 1
++   border_color black
++  }
++
++  popdown {
++   position +12 =
++   size 20 6
++   text "Submit"
++   command "*submit_job 5 *monitor_job"
++  }
++
++  popdown {
++   position +20 =
++   size 20 6
++   text "Execute"
++   command "*execute_job 5 *monitor_job"
++  }
++
++  label {
++   position -32 +6
++   size 12 6
++   text "O0 / OpenMP"
++   border_width 1
++   border_color black
++  }
++
++  popdown {
++   position +12 =
++   size 20 6
++   text "Submit"
++   command "*submit_job 6 *monitor_job"
++  }
++
++  popdown {
++   position +20 =
++   size 20 6
++   text "Execute"
++   command "*execute_job 6 *monitor_job"
++  }
++
++  popdown {
++   position 19 +8
++   size 12 8
++   text "CANCEL"
++  }
++}
++
++ window {
++  parent mentat
++  origin 38 8
++#ifdef DCOM
++  size 50 100
++#else
++  size 50 94
++#endif
++  background_color body
++  border_width 1
++  border_color border
++  buffering single
++ }
++ mode permanent
++}
++
+ #--------------------------------------------------------------------------------------------------
+ popmenu job_exit_msg_pm {
+ 

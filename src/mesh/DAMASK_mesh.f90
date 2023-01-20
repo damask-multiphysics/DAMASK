@@ -65,7 +65,7 @@ program DAMASK_mesh
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
     component
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_mesh
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
@@ -90,7 +90,7 @@ program DAMASK_mesh
 
 !---------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
-  num_mesh => config_numerics%get('mesh', defaultVal=emptyDict)
+  num_mesh => config_numerics%get_dict('mesh', defaultVal=emptyDict)
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
@@ -239,7 +239,7 @@ program DAMASK_mesh
 
   print'(/,1x,a)', '... writing initial configuration to file .................................'
   flush(IO_STDOUT)
-  call materialpoint_results(0,0.0_pReal)
+  call materialpoint_result(0,0.0_pReal)
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
@@ -311,7 +311,7 @@ program DAMASK_mesh
           write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                             solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
           flush(statUnit)
-        endif
+        end if
       end do subStepLooping
 
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
@@ -325,7 +325,7 @@ program DAMASK_mesh
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
         print'(/,1x,a)', '... writing results to file ...............................................'
         call FEM_mechanical_updateCoords
-        call materialpoint_results(totalIncsCounter,time)
+        call materialpoint_result(totalIncsCounter,time)
       end if
 
 

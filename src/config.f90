@@ -6,13 +6,13 @@ module config
   use IO
   use YAML_parse
   use YAML_types
-  use results
+  use result
   use parallelization
 
   implicit none(type,external)
   private
 
-  class(tNode), pointer, public :: &
+  type(tDict), pointer, public :: &
     config_material, &
     config_numerics, &
     config_debug
@@ -52,13 +52,13 @@ subroutine parse_material()
   if (worldrank == 0) then
     print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
     fileContent = IO_read('material.yaml')
-    call results_openJobFile(parallel=.false.)
-    call results_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
-    call results_closeJobFile
+    call result_openJobFile(parallel=.false.)
+    call result_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
+    call result_closeJobFile
   end if
   call parallelization_bcast_str(fileContent)
 
-  config_material => YAML_parse_str(fileContent)
+  config_material => YAML_parse_str_asDict(fileContent)
 
 end subroutine parse_material
 
@@ -81,14 +81,14 @@ subroutine parse_numerics()
       print'(1x,a)', 'reading numerics.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('numerics.yaml')
       if (len(fileContent) > 0) then
-        call results_openJobFile(parallel=.false.)
-        call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
-        call results_closeJobFile
+        call result_openJobFile(parallel=.false.)
+        call result_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
+        call result_closeJobFile
       end if
     end if
     call parallelization_bcast_str(fileContent)
 
-    config_numerics => YAML_parse_str(fileContent)
+    config_numerics => YAML_parse_str_asDict(fileContent)
 
   end if
 
@@ -113,14 +113,14 @@ subroutine parse_debug()
       print'(1x,a)', 'reading debug.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('debug.yaml')
       if (len(fileContent) > 0) then
-        call results_openJobFile(parallel=.false.)
-        call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
-        call results_closeJobFile
+        call result_openJobFile(parallel=.false.)
+        call result_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
+        call result_closeJobFile
       end if
     end if
     call parallelization_bcast_str(fileContent)
 
-    config_debug => YAML_parse_str(fileContent)
+    config_debug => YAML_parse_str_asDict(fileContent)
 
   end if
 

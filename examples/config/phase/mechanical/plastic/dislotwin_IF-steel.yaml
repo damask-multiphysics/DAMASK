@@ -13,7 +13,7 @@ output: [rho_dip, rho_mob]
 N_sl: [12, 12]
 
 b_sl: [2.49e-10, 2.49e-10]
-rho_mob_0: [2.81e12, 2.8e+12]
+rho_mob_0: [2.81e+12, 2.8e+12]
 rho_dip_0: [1.0, 1.0] # not given
 v_0: [1.4e+3, 1.4e+3]
 Q_sl: [1.57e-19, 1.57e-19] # Delta_F

@@ -19,12 +19,12 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine elastic_init(phases)
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
   integer :: &
     ph
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phase, &
     mech, &
     elastic
@@ -35,27 +35,28 @@ module subroutine elastic_init(phases)
 
   print'(/,a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
+
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    phase   => phases%get(ph)
-    mech    => phase%get('mechanical')
-    elastic => mech%get('elastic')
+    phase   => phases%get_dict(ph)
+    mech    => phase%get_dict('mechanical')
+    elastic => mech%get_dict('elastic')
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
 
     associate(prm => param(ph))
 
-      prm%C_11 = polynomial(elastic%asDict(),'C_11','T')
-      prm%C_12 = polynomial(elastic%asDict(),'C_12','T')
-      prm%C_44 = polynomial(elastic%asDict(),'C_44','T')
+      prm%C_11 = polynomial(elastic,'C_11','T')
+      prm%C_12 = polynomial(elastic,'C_12','T')
+      prm%C_44 = polynomial(elastic,'C_44','T')
 
       if (any(phase_lattice(ph) == ['hP','tI'])) then
-        prm%C_13 = polynomial(elastic%asDict(),'C_13','T')
-        prm%C_33 = polynomial(elastic%asDict(),'C_33','T')
+        prm%C_13 = polynomial(elastic,'C_13','T')
+        prm%C_33 = polynomial(elastic,'C_33','T')
       end if
 
       if (phase_lattice(ph) == 'tI') &
-        prm%C_66 = polynomial(elastic%asDict(),'C_66','T')
+        prm%C_66 = polynomial(elastic,'C_66','T')
 
     end associate
   end do
@@ -102,16 +103,21 @@ end function elastic_C66
 !--------------------------------------------------------------------------------------------------
 !> @brief return shear modulus
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_mu(ph,en) result(mu)
+pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
 
   integer, intent(in) :: &
     ph, &
     en
+  character(len=*), intent(in) :: isotropic_bound
   real(pReal) :: &
     mu
 
 
-  mu = lattice_equivalent_mu(elastic_C66(ph,en),'voigt')
+  associate(prm => param(ph))
+
+    mu = lattice_isotropic_mu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+
+  end associate
 
 end function elastic_mu
 
@@ -119,16 +125,21 @@ end function elastic_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief return Poisson ratio
 !--------------------------------------------------------------------------------------------------
-pure module function elastic_nu(ph,en) result(nu)
+pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
 
   integer, intent(in) :: &
     ph, &
     en
+  character(len=*), intent(in) :: isotropic_bound
   real(pReal) :: &
     nu
 
 
-  nu = lattice_equivalent_nu(elastic_C66(ph,en),'voigt')
+  associate(prm => param(ph))
+
+    nu = lattice_isotropic_nu(elastic_C66(ph,en),isotropic_bound,phase_lattice(ph))
+
+  end associate
 
 end function elastic_nu
 

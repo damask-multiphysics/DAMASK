@@ -35,14 +35,13 @@ module function anisobrittle_init() result(mySources)
 
   logical, dimension(:), allocatable :: mySources
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, &
     src
   integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
-  character(len=pStringLen) :: extmsg = ''
+  character(len=:), allocatable :: extmsg
 
 
   mySources = source_active('anisobrittle')
@@ -52,17 +51,16 @@ module function anisobrittle_init() result(mySources)
   print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
-
+  extmsg = ''
 
   do ph = 1, phases%length
     if (mySources(ph)) then
-      phase => phases%get(ph)
-      sources => phase%get('damage')
+      phase => phases%get_dict(ph)
+      src => phase%get_dict('damage')
 
       associate(prm  => param(ph))
-        src => sources%get(1)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
@@ -85,7 +83,7 @@ module function anisobrittle_init() result(mySources)
         prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-          ! sanity checks
+        ! sanity checks
         if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
         if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
@@ -143,9 +141,9 @@ end subroutine anisobrittle_dotState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
+!> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_results(phase,group)
+module subroutine anisobrittle_result(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -157,12 +155,12 @@ module subroutine anisobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
       end select
     end do outputsLoop
   end associate
 
-end subroutine anisobrittle_results
+end subroutine anisobrittle_result
 
 
 !--------------------------------------------------------------------------------------------------

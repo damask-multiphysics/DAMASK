@@ -47,9 +47,9 @@ variables:
   PETSC_INTELLLVM: "Libraries/PETSc/3.16.3/oneAPI-2022.0.1-IntelMPI-2021.5.0"
   PETSC_INTEL: "Libraries/PETSc/3.16.5/Intel-2022.0.1-IntelMPI-2021.5.0"
   # ++++++++++++ MSC Marc +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC: "FEM/MSC/2022.1"
+  MSC: "FEM/MSC/2022.4"
   IntelMarc: "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
-  HDF5Marc: "HDF5/1.12.1/Intel-19.1.2"
+  HDF5Marc: "HDF5/1.12.2/Intel-19.1.2"
 
 
 ###################################################################################################
@@ -63,12 +63,19 @@ create_testroot:
 
 
 ###################################################################################################
+setuptools:
+  stage: python
+  script:
+    - sed -i 's/-[[:digit:]]*-.*//' VERSION
+    - cd python
+    - python3 -m build --wheel --no-isolation
+
 pytest:
   stage: python
   script:
     - cd python
-    - pytest --basetemp ${TESTROOT}/python -v --cov --cov-report=term
-    - coverage report --fail-under=90
+    - pytest --basetemp ${TESTROOT}/python -v --cov
+    - coverage report --fail-under=90 --show-missing
 
 mypy:
   stage: python

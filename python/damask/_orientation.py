@@ -1,6 +1,6 @@
 import inspect
 import copy
-from typing import Union, Callable, Dict, Any, Tuple, TypeVar
+from typing import Optional, Union, Callable, Dict, Any, Tuple, TypeVar
 
 import numpy as np
 
@@ -94,14 +94,14 @@ class Orientation(Rotation,Crystal):
 
     """
 
-    @util.extend_docstring(_parameter_doc)
+    @util.extend_docstring(extra_parameters=_parameter_doc)
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
-                 family: CrystalFamily = None,
-                 lattice: CrystalLattice = None,
-                 a: float = None, b: float = None, c: float = None,
-                 alpha: float = None, beta: float = None, gamma: float = None,
+                 family: Optional[CrystalFamily] = None,
+                 lattice: Optional[CrystalLattice] = None,
+                 a: Optional[float] = None, b: Optional[float] = None, c: Optional[float] = None,
+                 alpha: Optional[float] = None, beta: Optional[float] = None, gamma: Optional[float] = None,
                  degrees: bool = False):
         """
         New orientation.
@@ -131,7 +131,7 @@ class Orientation(Rotation,Crystal):
 
 
     def __copy__(self: MyType,
-                 rotation: Union[FloatSequence, Rotation] = None) -> MyType:
+                 rotation: Union[None, FloatSequence, Rotation] = None) -> MyType:
         """
         Return deepcopy(self).
 
@@ -300,84 +300,95 @@ class Orientation(Rotation,Crystal):
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_random, _parameter_doc)
+    @util.extend_docstring(Rotation.from_random,
+                           extra_parameters=_parameter_doc)
     def from_random(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
         return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
+    @util.extend_docstring(Rotation.from_quaternion,
+                           extra_parameters=_parameter_doc)
     def from_quaternion(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
         return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
+    @util.extend_docstring(Rotation.from_Euler_angles,
+                           extra_parameters=_parameter_doc)
     def from_Euler_angles(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
         return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
+    @util.extend_docstring(Rotation.from_axis_angle,
+                           extra_parameters=_parameter_doc)
     def from_axis_angle(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
         return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_basis,_parameter_doc)
+    @util.extend_docstring(Rotation.from_basis,
+                           extra_parameters=_parameter_doc)
     def from_basis(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
         return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
+    @util.extend_docstring(Rotation.from_matrix,
+                           extra_parameters=_parameter_doc)
     def from_matrix(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
         return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
+    @util.extend_docstring(Rotation.from_Rodrigues_vector,
+                           extra_parameters=_parameter_doc)
     def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
         return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
+    @util.extend_docstring(Rotation.from_homochoric,
+                           extra_parameters=_parameter_doc)
     def from_homochoric(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
         return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
+    @util.extend_docstring(Rotation.from_cubochoric,
+                           extra_parameters=_parameter_doc)
     def from_cubochoric(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
         return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
+    @util.extend_docstring(Rotation.from_spherical_component,
+                           extra_parameters=_parameter_doc)
     def from_spherical_component(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
         return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
+    @util.extend_docstring(Rotation.from_fiber_component,
+                           extra_parameters=_parameter_doc)
     def from_fiber_component(cls, **kwargs) -> 'Orientation':
         kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
         return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
 
 
     @classmethod
-    @util.extend_docstring(_parameter_doc)
+    @util.extend_docstring(extra_parameters=_parameter_doc)
     def from_directions(cls,
                         uvw: FloatSequence,
                         hkl: FloatSequence,
@@ -391,6 +402,10 @@ class Orientation(Rotation,Crystal):
             Lattice direction aligned with lab frame x-direction.
         hkl : numpy.ndarray, shape (...,3)
             Lattice plane normal aligned with lab frame z-direction.
+
+        Returns
+        -------
+        new : damask.Orientation
 
         """
         o = cls(**kwargs)
@@ -538,8 +553,7 @@ class Orientation(Rotation,Crystal):
 
         Notes
         -----
-        Currently requires same crystal family for both orientations.
-        For extension to cases with differing symmetry see A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
+        Requires same crystal family for both orientations.
 
         Examples
         --------
@@ -569,6 +583,8 @@ class Orientation(Rotation,Crystal):
         >>> plt.show()
 
         """
+        # For extension to cases with differing symmetry see
+        # https://doi.org/10.1107/S0021889808016373 and https://doi.org/10.1107/S0108767391006864
         if self.family != other.family:
             raise NotImplementedError('disorientation between different crystal families')
 
@@ -601,7 +617,7 @@ class Orientation(Rotation,Crystal):
 
 
     def average(self,
-                weights: FloatSequence = None,
+                weights: Optional[FloatSequence] = None,
                 return_cloud: bool = False):
         """
         Return orientation average over last dimension.
@@ -611,7 +627,7 @@ class Orientation(Rotation,Crystal):
         weights : numpy.ndarray, shape (self.shape), optional
             Relative weights of orientations.
         return_cloud : bool, optional
-            Return the set of symmetrically equivalent orientations that was used in averaging.
+            Return the specific (symmetrically equivalent) orientations that were averaged.
             Defaults to False.
 
         Returns
@@ -619,7 +635,7 @@ class Orientation(Rotation,Crystal):
         average : Orientation
             Weighted average of original Orientation field.
         cloud : Orientations, conditional
-            Set of symmetrically equivalent orientations that were used in averaging.
+            Symmetrically equivalent version of each orientation that were actually used in averaging.
 
         References
         ----------
@@ -644,7 +660,7 @@ class Orientation(Rotation,Crystal):
                proper: bool = False,
                return_operators: bool = False) -> np.ndarray:
         """
-        Rotate vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
+        Rotate lab frame vector to ensure it falls into (improper or proper) standard stereographic triangle of crystal symmetry.
 
         Parameters
         ----------
@@ -663,7 +679,7 @@ class Orientation(Rotation,Crystal):
         -------
         vector_SST : numpy.ndarray, shape (...,3)
             Rotated vector falling into SST.
-        operators : numpy.ndarray of int, shape (...), conditional
+        operator : numpy.ndarray of int, shape (...), conditional
             Index of symmetrically equivalent orientation that rotated vector to SST.
 
         """
@@ -733,12 +749,12 @@ class Orientation(Rotation,Crystal):
                   in_SST: bool = True,
                   proper: bool = False) -> np.ndarray:
         """
-        Map vector to RGB color within standard stereographic triangle of own symmetry.
+        Map lab frame vector to RGB color within standard stereographic triangle of own symmetry.
 
         Parameters
         ----------
         vector : numpy.ndarray, shape (...,3)
-            Vector to colorize.
+            Lab frame vector to colorize.
             Shape of vector blends with shape of own rotation array.
             For example, a rotation array of shape (3,2) and a vector array of shape (2,4) result in (3,2,4) outputs.
         in_SST : bool, optional
@@ -755,12 +771,25 @@ class Orientation(Rotation,Crystal):
 
         Examples
         --------
-        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
+        Inverse pole figure color of the e_3 lab direction for a
+        crystal in "Cube" orientation with cubic symmetry:
 
         >>> import damask
         >>> o = damask.Orientation(family='cubic')
         >>> o.IPF_color([0,0,1])
         array([1., 0., 0.])
+
+        Sample standard triangle for hexagonal symmetry:
+
+        >>> import damask
+        >>> from matplotlib import pyplot as plt
+        >>> lab = [0,0,1]
+        >>> o = damask.Orientation.from_random(shape=500000,family='hexagonal')
+        >>> coord = damask.util.project_equal_area(o.to_SST(lab))
+        >>> color = o.IPF_color(lab)
+        >>> plt.scatter(coord[:,0],coord[:,1],color=color,s=.06)
+        >>> plt.axis('scaled')
+        >>> plt.show()
 
         """
         if np.array(vector).shape[-1] != 3:
@@ -791,7 +820,7 @@ class Orientation(Rotation,Crystal):
             in_SST_ = np.all(components >= 0.0,axis=-1)
 
         with np.errstate(invalid='ignore',divide='ignore'):
-            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**0.5                # smoothen color ramps
+            rgb = (components/np.linalg.norm(components,axis=-1,keepdims=True))**(1./3.)            # smoothen color ramps
             rgb = np.clip(rgb,0.,1.)                                                                # clip intensity
             rgb /= np.max(rgb,axis=-1,keepdims=True)                                                # normalize to (HS)V = 1
         rgb[np.broadcast_to(~in_SST_[...,np.newaxis],rgb.shape)] = 0.0
@@ -803,8 +832,8 @@ class Orientation(Rotation,Crystal):
     # functions that require lattice, not just family
 
     def to_pole(self, *,
-                uvw: FloatSequence = None,
-                hkl: FloatSequence = None,
+                uvw: Optional[FloatSequence] = None,
+                hkl: Optional[FloatSequence] = None,
                 with_symmetry: bool = False,
                 normalize: bool = True) -> np.ndarray:
         """
@@ -845,8 +874,8 @@ class Orientation(Rotation,Crystal):
 
 
     def Schmid(self, *,
-               N_slip: IntSequence = None,
-               N_twin: IntSequence = None) -> np.ndarray:
+               N_slip: Optional[IntSequence] = None,
+               N_twin: Optional[IntSequence] = None) -> np.ndarray:
         u"""
         Calculate Schmid matrix P = d ⨂ n in the lab frame for selected deformation systems.
 

@@ -15,7 +15,7 @@ module homogenization
   use discretization
   use HDF5
   use HDF5_utilities
-  use results
+  use result
   use lattice
 
   implicit none(type,external)
@@ -101,20 +101,20 @@ module homogenization
        ce                                                                                           !< cell
     end subroutine mechanical_homogenize
 
-    module subroutine mechanical_results(group_base,ho)
+    module subroutine mechanical_result(group_base,ho)
       character(len=*), intent(in) :: group_base
       integer, intent(in)          :: ho
-    end subroutine mechanical_results
+    end subroutine mechanical_result
 
-    module subroutine damage_results(ho,group)
+    module subroutine damage_result(ho,group)
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-    end subroutine damage_results
+    end subroutine damage_result
 
-    module subroutine thermal_results(ho,group)
+    module subroutine thermal_result(ho,group)
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-    end subroutine thermal_results
+    end subroutine thermal_result
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
       real(pReal), intent(in) :: &
@@ -125,6 +125,10 @@ module homogenization
         ce                                                                                          !< cell
       logical, dimension(2) :: doneAndHappy
     end function mechanical_updateState
+
+    module function homogenization_thermal_active() result(active)
+      logical :: active
+    end function homogenization_thermal_active
 
     module function homogenization_mu_T(ce) result(mu)
       integer, intent(in) :: ce
@@ -145,6 +149,10 @@ module homogenization
       integer, intent(in) :: ce
       real(pReal),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
+
+    module function homogenization_damage_active() result(active)
+      logical :: active
+    end function homogenization_damage_active
 
     module function homogenization_mu_phi(ce) result(mu)
       integer, intent(in) :: ce
@@ -175,16 +183,18 @@ module homogenization
     homogenization_mechanical_response, &
     homogenization_mechanical_response2, &
     homogenization_thermal_response, &
+    homogenization_thermal_active, &
     homogenization_mu_T, &
     homogenization_K_T, &
     homogenization_f_T, &
     homogenization_thermal_setfield, &
+    homogenization_damage_active, &
     homogenization_mu_phi, &
     homogenization_K_phi, &
     homogenization_f_phi, &
     homogenization_set_phi, &
     homogenization_forward, &
-    homogenization_results, &
+    homogenization_result, &
     homogenization_restartRead, &
     homogenization_restartWrite
 
@@ -196,7 +206,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init()
 
-  class (tNode) , pointer :: &
+  type(tDict) , pointer :: &
     num_homog, &
     num_homogGeneric
 
@@ -207,8 +217,8 @@ subroutine homogenization_init()
   allocate(damageState_h   (size(material_name_homogenization)))
   call parseHomogenization()
 
-  num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
-  num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
+  num_homog        => config_numerics%get_dict('homogenization',defaultVal=emptyDict)
+  num_homogGeneric => num_homog%get_dict('generic',defaultVal=emptyDict)
 
   num%nMPstate = num_homogGeneric%get_asInt('nMPstate',defaultVal=10)
   if (num%nMPstate < 1) call IO_error(301,ext_msg='nMPstate')
@@ -245,8 +255,8 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
 
     call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
-    if(homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
-    if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
+    if (homogState(ho)%sizeState > 0)  homogState(ho)%state(:,en) = homogState(ho)%state0(:,en)
+    if (damageState_h(ho)%sizeState > 0) damageState_h(ho)%state(:,en) = damageState_h(ho)%state0(:,en)
     call damage_partition(ce)
 
     doneAndHappy = [.false.,.true.]
@@ -339,35 +349,35 @@ end subroutine homogenization_mechanical_response2
 !--------------------------------------------------------------------------------------------------
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_results
+subroutine homogenization_result
 
   integer :: ho
   character(len=:), allocatable :: group_base,group
 
 
-  call results_closeGroup(results_addGroup('current/homogenization/'))
+  call result_closeGroup(result_addGroup('current/homogenization/'))
 
   do ho=1,size(material_name_homogenization)
     group_base = 'current/homogenization/'//trim(material_name_homogenization(ho))
-    call results_closeGroup(results_addGroup(group_base))
+    call result_closeGroup(result_addGroup(group_base))
 
-    call mechanical_results(group_base,ho)
+    call mechanical_result(group_base,ho)
 
     if (damage_active(ho)) then
       group = trim(group_base)//'/damage'
-      call results_closeGroup(results_addGroup(group))
-      call damage_results(ho,group)
+      call result_closeGroup(result_addGroup(group))
+      call damage_result(ho,group)
     end if
 
     if (thermal_active(ho)) then
       group = trim(group_base)//'/thermal'
-      call results_closeGroup(results_addGroup(group))
-      call thermal_results(ho,group)
+      call result_closeGroup(result_addGroup(group))
+      call thermal_result(ho,group)
     end if
 
  end do
 
-end subroutine homogenization_results
+end subroutine homogenization_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -381,7 +391,7 @@ subroutine homogenization_forward
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
-    if(damageState_h(ho)%sizeState > 0) &
+    if (damageState_h(ho)%sizeState > 0) &
       damageState_h(ho)%state0 = damageState_h(ho)%state
   end do
 
@@ -405,6 +415,9 @@ subroutine homogenization_restartWrite(fileHandle)
     groupHandle(2) = HDF5_addGroup(groupHandle(1),material_name_homogenization(ho))
 
     call HDF5_write(homogState(ho)%state,groupHandle(2),'omega_mechanical') ! ToDo: should be done by mech
+
+    if (damageState_h(ho)%sizeState > 0) &
+      call HDF5_write(damageState_h(ho)%state,groupHandle(2),'omega_damage') ! ToDo: should be done by mech
 
     call HDF5_closeGroup(groupHandle(2))
 
@@ -433,6 +446,9 @@ subroutine homogenization_restartRead(fileHandle)
 
     call HDF5_read(homogState(ho)%state0,groupHandle(2),'omega_mechanical') ! ToDo: should be done by mech
 
+    if (damageState_h(ho)%sizeState > 0) &
+      call HDF5_read(damageState_h(ho)%state0,groupHandle(2),'omega_damage') ! ToDo: should be done by mech
+
     call HDF5_closeGroup(groupHandle(2))
 
   end do
@@ -447,7 +463,7 @@ end subroutine homogenization_restartRead
 !--------------------------------------------------------------------------------------------------
 subroutine parseHomogenization
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     material_homogenization, &
     homog, &
     homogThermal, &
@@ -455,17 +471,17 @@ subroutine parseHomogenization
 
   integer :: h
 
-  material_homogenization => config_material%get('homogenization')
+  material_homogenization => config_material%get_dict('homogenization')
 
   allocate(thermal_type(size(material_name_homogenization)),source=THERMAL_UNDEFINED_ID)
   allocate(thermal_active(size(material_name_homogenization)),source=.false.)
   allocate(damage_active(size(material_name_homogenization)),source=.false.)
 
   do h=1, size(material_name_homogenization)
-    homog => material_homogenization%get(h)
+    homog => material_homogenization%get_dict(h)
 
     if (homog%contains('thermal')) then
-      homogThermal => homog%get('thermal')
+      homogThermal => homog%get_dict('thermal')
         select case (homogThermal%get_asString('type'))
           case('pass')
             thermal_type(h) = THERMAL_PASS_ID
@@ -479,7 +495,7 @@ subroutine parseHomogenization
     end if
 
     if (homog%contains('damage')) then
-      homogDamage => homog%get('damage')
+      homogDamage => homog%get_dict('damage')
         select case (homogDamage%get_asString('type'))
           case('pass')
             damage_active(h) = .true.

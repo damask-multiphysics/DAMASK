@@ -1,0 +1,21 @@
+type: Hooke
+
+references:
+  - F.H. Featherston and J.R. Neighbours,
+    Physical Review 130(4):1324-1333, 1963,
+    https://doi.org/10.1103/PhysRev.130.1324,
+    fit to Tab. II (T_min=100K, T_max=300K)
+
+C_11: 523.6e+9
+C_11,T: -7.704e+7
+C_11,T^2: -1.562e+5
+
+C_12: 204.6e+9
+C_12,T: -2.485e+7
+C_12,T^2: -1.182e+5
+
+C_44: 160.7e+9
+C_44,T: -1.028e+7
+C_44,T^2: 1.291e+4
+
+T_ref: 293.15

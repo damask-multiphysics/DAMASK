@@ -43,11 +43,11 @@ submodule(phase) mechanical
   interface
 
     module subroutine eigen_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine eigen_init
 
     module subroutine elastic_init(phases)
-      class(tNode), pointer :: phases
+      type(tDict), pointer :: phases
     end subroutine elastic_init
 
     module subroutine plastic_init
@@ -129,35 +129,35 @@ submodule(phase) mechanical
     end subroutine plastic_LpAndItsTangents
 
 
-    module subroutine plastic_isotropic_results(ph,group)
+    module subroutine plastic_isotropic_result(ph,group)
       integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
-    end subroutine plastic_isotropic_results
+    end subroutine plastic_isotropic_result
 
-    module subroutine plastic_phenopowerlaw_results(ph,group)
+    module subroutine plastic_phenopowerlaw_result(ph,group)
       integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
-    end subroutine plastic_phenopowerlaw_results
+    end subroutine plastic_phenopowerlaw_result
 
-    module subroutine plastic_kinehardening_results(ph,group)
+    module subroutine plastic_kinehardening_result(ph,group)
       integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
-    end subroutine plastic_kinehardening_results
+    end subroutine plastic_kinehardening_result
 
-    module subroutine plastic_dislotwin_results(ph,group)
+    module subroutine plastic_dislotwin_result(ph,group)
       integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
-    end subroutine plastic_dislotwin_results
+    end subroutine plastic_dislotwin_result
 
-    module subroutine plastic_dislotungsten_results(ph,group)
+    module subroutine plastic_dislotungsten_result(ph,group)
       integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
-    end subroutine plastic_dislotungsten_results
+    end subroutine plastic_dislotungsten_result
 
-    module subroutine plastic_nonlocal_results(ph,group)
+    module subroutine plastic_nonlocal_result(ph,group)
       integer,          intent(in) :: ph
       character(len=*), intent(in) :: group
-    end subroutine plastic_nonlocal_results
+    end subroutine plastic_nonlocal_result
 
     module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
       real(pReal), dimension(6,6) :: homogenizedC
@@ -169,14 +169,16 @@ submodule(phase) mechanical
       integer,     intent(in) :: ph, en
     end function elastic_C66
 
-    pure module function elastic_mu(ph,en) result(mu)
+    pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
       real(pReal) :: mu
       integer, intent(in) :: ph, en
+      character(len=*), intent(in) :: isotropic_bound
     end function elastic_mu
 
-    pure module function elastic_nu(ph,en) result(nu)
+    pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
       real(pReal) :: nu
       integer, intent(in) :: ph, en
+      character(len=*), intent(in) :: isotropic_bound
     end function elastic_nu
 
   end interface
@@ -198,7 +200,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module subroutine mechanical_init(phases)
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases
 
   integer :: &
@@ -208,10 +210,11 @@ module subroutine mechanical_init(phases)
     ph, &
     en, &
     Nmembers
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_crystallite, &
     phase, &
     mech
+
 
   print'(/,1x,a)', '<<<+-  phase:mechanical init  -+>>>'
 
@@ -248,8 +251,8 @@ module subroutine mechanical_init(phases)
     allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
     allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
 
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
+    phase => phases%get_dict(ph)
+    mech  => phase%get_dict('mechanical')
 #if defined(__GFORTRAN__)
     output_mechanical(ph)%label = output_as1dString(mech)
 #else
@@ -286,7 +289,7 @@ module subroutine mechanical_init(phases)
     plasticState(ph)%state0 = plasticState(ph)%state
   end do
 
-  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
+  num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
   select case(num_crystallite%get_asString('integrator',defaultVal='FPI'))
 
@@ -316,7 +319,7 @@ module subroutine mechanical_init(phases)
 end subroutine mechanical_init
 
 
-module subroutine mechanical_results(group,ph)
+module subroutine mechanical_result(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
@@ -327,27 +330,27 @@ module subroutine mechanical_results(group,ph)
   select case(phase_plasticity(ph))
 
     case(PLASTIC_ISOTROPIC_ID)
-      call plastic_isotropic_results(ph,group//'mechanical/')
+      call plastic_isotropic_result(ph,group//'mechanical/')
 
     case(PLASTIC_PHENOPOWERLAW_ID)
-      call plastic_phenopowerlaw_results(ph,group//'mechanical/')
+      call plastic_phenopowerlaw_result(ph,group//'mechanical/')
 
     case(PLASTIC_KINEHARDENING_ID)
-      call plastic_kinehardening_results(ph,group//'mechanical/')
+      call plastic_kinehardening_result(ph,group//'mechanical/')
 
     case(PLASTIC_DISLOTWIN_ID)
-      call plastic_dislotwin_results(ph,group//'mechanical/')
+      call plastic_dislotwin_result(ph,group//'mechanical/')
 
     case(PLASTIC_DISLOTUNGSTEN_ID)
-      call plastic_dislotungsten_results(ph,group//'mechanical/')
+      call plastic_dislotungsten_result(ph,group//'mechanical/')
 
     case(PLASTIC_NONLOCAL_ID)
-      call plastic_nonlocal_results(ph,group//'mechanical/')
+      call plastic_nonlocal_result(ph,group//'mechanical/')
 
   end select
 
 
-end subroutine mechanical_results
+end subroutine mechanical_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -596,7 +599,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
     dotState_last(1:sizeDotState,1) = dotState
 
     broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
-    if(broken) exit iteration
+    if (broken) exit iteration
 
     dotState = plastic_dotState(Delta_t,ph,en)
     if (any(IEEE_is_NaN(dotState))) exit iteration
@@ -677,7 +680,7 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result
 #endif
 
   broken = plastic_deltaState(ph,en)
-  if(broken) return
+  if (broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
 
@@ -720,10 +723,10 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
 #endif
 
   broken = plastic_deltaState(ph,en)
-  if(broken) return
+  if (broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
-  if(broken) return
+  if (broken) return
 
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
@@ -852,13 +855,13 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
 #endif
 
     broken = integrateStress(F_0+(F-F_0)*Delta_t*C(stage),subFp0,subFi0,Delta_t*C(stage), ph,en)
-    if(broken) exit
+    if (broken) exit
 
     dotState = plastic_dotState(Delta_t*C(stage), ph,en)
     if (any(IEEE_is_NaN(dotState))) exit
 
   end do
-  if(broken) return
+  if (broken) return
 
 
   plastic_RKdotState(1:sizeDotState,size(B)) = dotState
@@ -869,15 +872,15 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
   plasticState(ph)%state(1:sizeDotState,en) = IEEE_FMA(dotState,Delta_t,subState0)
 #endif
 
-  if(present(DB)) &
+  if (present(DB)) &
     broken = .not. converged(matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) * Delta_t, &
                              plasticState(ph)%state(1:sizeDotState,en), &
                              plasticState(ph)%atol(1:sizeDotState))
 
-  if(broken) return
+  if (broken) return
 
   broken = plastic_deltaState(ph,en)
-  if(broken) return
+  if (broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
 
@@ -895,41 +898,41 @@ subroutine results(group,ph)
   integer :: ou
 
 
-  call results_closeGroup(results_addGroup(group//'/mechanical'))
+  call result_closeGroup(result_addGroup(group//'/mechanical'))
 
   do ou = 1, size(output_mechanical(ph)%label)
 
     select case (output_mechanical(ph)%label(ou))
       case('F')
-        call results_writeDataset(phase_mechanical_F(ph)%data,group//'/mechanical/','F',&
+        call result_writeDataset(phase_mechanical_F(ph)%data,group//'/mechanical/','F',&
                                  'deformation gradient','1')
       case('F_e')
-        call results_writeDataset(phase_mechanical_Fe(ph)%data,group//'/mechanical/','F_e',&
+        call result_writeDataset(phase_mechanical_Fe(ph)%data,group//'/mechanical/','F_e',&
                                  'elastic deformation gradient','1')
       case('F_p')
-        call results_writeDataset(phase_mechanical_Fp(ph)%data,group//'/mechanical/','F_p', &
+        call result_writeDataset(phase_mechanical_Fp(ph)%data,group//'/mechanical/','F_p', &
                                  'plastic deformation gradient','1')
       case('F_i')
-        call results_writeDataset(phase_mechanical_Fi(ph)%data,group//'/mechanical/','F_i', &
+        call result_writeDataset(phase_mechanical_Fi(ph)%data,group//'/mechanical/','F_i', &
                                  'inelastic deformation gradient','1')
       case('L_p')
-        call results_writeDataset(phase_mechanical_Lp(ph)%data,group//'/mechanical/','L_p', &
+        call result_writeDataset(phase_mechanical_Lp(ph)%data,group//'/mechanical/','L_p', &
                                  'plastic velocity gradient','1/s')
       case('L_i')
-        call results_writeDataset(phase_mechanical_Li(ph)%data,group//'/mechanical/','L_i', &
+        call result_writeDataset(phase_mechanical_Li(ph)%data,group//'/mechanical/','L_i', &
                                  'inelastic velocity gradient','1/s')
       case('P')
-        call results_writeDataset(phase_mechanical_P(ph)%data,group//'/mechanical/','P', &
+        call result_writeDataset(phase_mechanical_P(ph)%data,group//'/mechanical/','P', &
                                  'first Piola-Kirchhoff stress','Pa')
       case('S')
-        call results_writeDataset(phase_mechanical_S(ph)%data,group//'/mechanical/','S', &
+        call result_writeDataset(phase_mechanical_S(ph)%data,group//'/mechanical/','S', &
                                  'second Piola-Kirchhoff stress','Pa')
       case('O')
-        call results_writeDataset(to_quaternion(phase_O(ph)%data),group//'/mechanical','O', &
-                                 'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
-        call results_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/O')
+        call result_writeDataset(to_quaternion(phase_O(ph)%data),group//'/mechanical','O', &
+                                 'crystal orientation as quaternion q_0 (q_1 q_2 q_3)','1')
+        call result_addAttribute('lattice',phase_lattice(ph),group//'/mechanical/O')
         if (any(phase_lattice(ph) == ['hP', 'tI'])) &
-          call results_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/O')
+          call result_addAttribute('c/a',phase_cOverA(ph),group//'/mechanical/O')
     end select
   end do
 
@@ -1275,7 +1278,7 @@ end subroutine mechanical_restartRead
 
 
 !--------------------------------------------------------------------------------------------------
-!< @brief Get first Piola-Kichhoff stress (for use by non-mech physics).
+!< @brief Get first Piola-Kirchhoff stress (for use by non-mech physics).
 !--------------------------------------------------------------------------------------------------
 module function mechanical_S(ph,en) result(S)
 
@@ -1317,7 +1320,7 @@ end function mechanical_F_e
 
 
 !--------------------------------------------------------------------------------------------------
-!< @brief Get second Piola-Kichhoff stress (for use by homogenization).
+!< @brief Get second Piola-Kirchhoff stress (for use by homogenization).
 !--------------------------------------------------------------------------------------------------
 module function phase_P(co,ce) result(P)
 

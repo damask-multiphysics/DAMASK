@@ -43,10 +43,10 @@ submodule(homogenization) mechanical
     end function RGC_updateState
 
 
-    module subroutine RGC_results(ho,group)
+    module subroutine RGC_result(ho,group)
       integer,          intent(in) :: ho                                                            !< homogenization type
       character(len=*), intent(in) :: group                                                         !< group name in HDF5 file
-    end subroutine RGC_results
+    end subroutine RGC_result
 
   end interface
 
@@ -183,7 +183,7 @@ end function mechanical_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to file.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_results(group_base,ho)
+module subroutine mechanical_result(group_base,ho)
 
   character(len=*), intent(in) :: group_base
   integer, intent(in)          :: ho
@@ -193,12 +193,12 @@ module subroutine mechanical_results(group_base,ho)
 
 
   group = trim(group_base)//'/mechanical'
-  call results_closeGroup(results_addGroup(group))
+  call result_closeGroup(result_addGroup(group))
 
   select case(mechanical_type(ho))
 
     case(MECHANICAL_RGC_ID)
-      call RGC_results(ho,group)
+      call RGC_result(ho,group)
 
   end select
 
@@ -206,15 +206,15 @@ module subroutine mechanical_results(group_base,ho)
 
     select case (output_mechanical(ho)%label(ou))
       case('F')
-        call results_writeDataset(reshape(homogenization_F,[3,3,discretization_nCells]),group,'F', &
-                                  'deformation gradient','1')
+        call result_writeDataset(reshape(homogenization_F,[3,3,discretization_nCells]),group,'F', &
+                                 'deformation gradient','1')
       case('P')
-        call results_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
-                                  'first Piola-Kirchhoff stress','Pa')
+        call result_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
+                                 'first Piola-Kirchhoff stress','Pa')
     end select
   end do
 
-end subroutine mechanical_results
+end subroutine mechanical_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ end subroutine mechanical_results
 !--------------------------------------------------------------------------------------------------
 subroutine parseMechanical()
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     material_homogenization, &
     homog, &
     mechanical
@@ -230,14 +230,14 @@ subroutine parseMechanical()
   integer :: ho
 
 
-  material_homogenization => config_material%get('homogenization')
+  material_homogenization => config_material%get_dict('homogenization')
 
   allocate(mechanical_type(size(material_name_homogenization)), source=MECHANICAL_UNDEFINED_ID)
   allocate(output_mechanical(size(material_name_homogenization)))
 
   do ho=1, size(material_name_homogenization)
-    homog => material_homogenization%get(ho)
-    mechanical => homog%get('mechanical')
+    homog => material_homogenization%get_dict(ho)
+    mechanical => homog%get_dict('mechanical')
 #if defined(__GFORTRAN__)
     output_mechanical(ho)%label = output_as1dString(mechanical)
 #else

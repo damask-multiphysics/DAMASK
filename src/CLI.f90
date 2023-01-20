@@ -5,9 +5,8 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
-#define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 17
+#define PETSC_MINOR_MAX 18
 
 module CLI
   use, intrinsic :: ISO_fortran_env
@@ -134,7 +133,7 @@ subroutine CLI_init
         print'(a)','            and "debug.yaml" in that directory.'
         print'(/,a)','   --restart N'
         print'(a)',  '        Reads in increment N and continues with calculating'
-        print'(a)',  '            increment N+1 based on this.'
+        print'(a)',  '            increment N+1, N+2, ... based on this.'
         print'(a)',  '        Appends to existing results file'
         print'(a)',  '            "NameOfGeom_NameOfLoadFile.hdf5".'
         print'(a)',  '        Works only if the restart information for increment N'
@@ -209,7 +208,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
 
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
-  if(error) then
+  if (error) then
     print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   end if
@@ -324,7 +323,7 @@ function rectifyPath(path)
      end if
      i = j+index(rectifyPath(j+1:l),'../')
   end do
-  if(len_trim(rectifyPath) == 0) rectifyPath = '/'
+  if (len_trim(rectifyPath) == 0) rectifyPath = '/'
 
   rectifyPath = trim(rectifyPath)
 

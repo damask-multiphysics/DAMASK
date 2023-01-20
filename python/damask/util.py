@@ -10,16 +10,16 @@ import signal as _signal
 import fractions as _fractions
 from collections import abc as _abc
 from functools import reduce as _reduce, partial as _partial
-from typing import Callable as _Callable, Union as _Union, Iterable as _Iterable, Sequence as _Sequence, Dict as _Dict,  \
-                   List as _List, Tuple as _Tuple, Literal as _Literal, Any as _Any, Collection as _Collection, TextIO as _TextIO
+from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
+                   Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
+                   Any as _Any, TextIO as _TextIO
 from pathlib import Path as _Path
 
 import numpy as _np
 import h5py as _h5py
 
 from . import version as _version
-from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, IntCollection as _IntCollection, \
-                        FileHandle as _FileHandle
+from ._typehints import FloatSequence as _FloatSequence, NumpyRngSeed as _NumpyRngSeed, FileHandle as _FileHandle
 
 # https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
 # https://stackoverflow.com/questions/287871
@@ -40,29 +40,33 @@ _colors = {
 # Functions
 ####################################################################################################
 def srepr(msg,
-          glue: str = '\n') -> str:
+          glue: str = '\n',
+          quote: bool = False) -> str:
     r"""
-    Join items with glue string.
+    Join (quoted) items with glue string.
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Items to join.
     glue : str, optional
         Glue used for joining operation. Defaults to '\n'.
+    quote : bool, optional
+        Quote items. Defaults to False.
 
     Returns
     -------
     joined : str
-        String representation of the joined items.
+        String representation of the joined and quoted items.
 
     """
+    q = '"' if quote else ''
     if (not hasattr(msg, 'strip') and
            (hasattr(msg, '__getitem__') or
             hasattr(msg, '__iter__'))):
-        return glue.join(str(x) for x in msg)
+        return glue.join(q+str(x)+q for x in msg)
     else:
-        return msg if isinstance(msg,str) else repr(msg)
+        return q+(msg if isinstance(msg,str) else repr(msg))+q
 
 
 def emph(msg) -> str:
@@ -71,7 +75,7 @@ def emph(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Message to format.
 
     Returns
@@ -88,7 +92,7 @@ def deemph(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Message to format.
 
     Returns
@@ -105,7 +109,7 @@ def warn(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or sequence of objects with __repr__
+    msg : (sequence of) object with __repr__
         Message to format.
 
     Returns
@@ -122,7 +126,7 @@ def strikeout(msg) -> str:
 
     Parameters
     ----------
-    msg : object with __repr__ or iterable of objects with __repr__
+    msg : (iterable of) object with __repr__
         Message to format.
 
     Returns
@@ -136,8 +140,8 @@ def strikeout(msg) -> str:
 
 def run(cmd: str,
         wd: str = './',
-        env: _Dict[str, str] = None,
-        timeout: int = None) -> _Tuple[str, str]:
+        env: _Optional[_Dict[str, str]] = None,
+        timeout: _Optional[int] = None) -> _Tuple[str, str]:
     """
     Run a command.
 
@@ -210,6 +214,14 @@ def open_text(fname: _FileHandle,
            open(_Path(fname).expanduser(),mode,newline=('\n' if mode == 'w' else None))
 
 
+def execution_stamp(class_name: str,
+                    function_name: _Optional[str] = None) -> str:
+    """Timestamp the execution of a (function within a) class."""
+    now = _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
+    _function_name = '' if function_name is None else f'.{function_name}'
+    return f'damask.{class_name}{_function_name} v{_version} ({now})'
+
+
 def natural_sort(key: str) -> _List[_Union[int, str]]:
     """
     Natural sort.
@@ -226,7 +238,7 @@ def natural_sort(key: str) -> _List[_Union[int, str]]:
 
 
 def show_progress(iterable: _Iterable,
-                  N_iter: int = None,
+                  N_iter: _Optional[int] = None,
                   prefix: str = '',
                   bar_length: int = 50) -> _Any:
     """
@@ -403,36 +415,35 @@ def project_equal_area(vector: _np.ndarray,
     return _np.roll(_np.block([v[...,:2]/_np.sqrt(1.0+_np.abs(v[...,2:3])),_np.zeros_like(v[...,2:3])]),
                     -shift if keepdims else 0,axis=-1)[...,:3 if keepdims else 2]
 
-def execution_stamp(class_name: str,
-                    function_name: str = None) -> str:
-    """Timestamp the execution of a (function within a) class."""
-    now = _datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
-    _function_name = '' if function_name is None else f'.{function_name}'
-    return f'damask.{class_name}{_function_name} v{_version} ({now})'
 
-
-def hybrid_IA(dist: _np.ndarray,
+def hybrid_IA(dist: _FloatSequence,
               N: int,
-              rng_seed: _NumpyRngSeed = None) -> _np.ndarray:
+              rng_seed: _Optional[_NumpyRngSeed] = None) -> _np.ndarray:
     """
     Hybrid integer approximation.
 
     Parameters
     ----------
     dist : numpy.ndarray
-        Distribution to be approximated
+        Distribution to be approximated.
     N : int
         Number of samples to draw.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
+    Returns
+    -------
+    hist : numpy.ndarray, shape (N)
+        Integer approximation of the distribution.
+
     """
-    N_opt_samples,N_inv_samples = (max(_np.count_nonzero(dist),N),0)                                 # random subsampling if too little samples requested
+    N_opt_samples = max(_np.count_nonzero(dist),N)                                                  # random subsampling if too little samples requested
+    N_inv_samples = 0
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
     while (not _np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
-        repeats = _np.rint(scale*dist).astype(_np.int64)
+        repeats = _np.rint(scale*_np.array(dist)).astype(_np.int64)
         N_inv_samples = _np.sum(repeats)
         scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
                                    if N_inv_samples < N_opt_samples else \
@@ -486,18 +497,18 @@ def shapeshifter(fro: _Tuple[int, ...],
     final_shape: _List[int] = []
     index = 0
     for i,item in enumerate(_to):
-        if item==_fro[index]:
+        if item == _fro[index]:
             final_shape.append(item)
             index+=1
         else:
             final_shape.append(1)
-            if _fro[index]==1 and not keep_ones:
+            if _fro[index] == 1 and not keep_ones:
                 index+=1
-        if index==len(_fro):
+        if index == len(_fro):
             final_shape = final_shape+[1]*(len(_to)-i-1)
             break
-    if index!=len(_fro): raise ValueError(f'shapes cannot be shifted {fro} --> {to}')
-    return tuple(final_shape[::-1] if mode=='left' else final_shape)
+    if index != len(_fro): raise ValueError(f'shapes cannot be shifted {fro} --> {to}')
+    return tuple(final_shape[::-1] if mode == 'left' else final_shape)
 
 def shapeblender(a: _Tuple[int, ...],
                  b: _Tuple[int, ...]) -> _Tuple[int, ...]:
@@ -528,37 +539,82 @@ def shapeblender(a: _Tuple[int, ...],
     return a + b[i:]
 
 
-def extend_docstring(extra_docstring: str) -> _Callable:
+def _docstringer(docstring: _Union[str, _Callable],
+                 extra_parameters: _Optional[str] = None,
+                 # extra_examples: _Optional[str] = None,
+                 # extra_notes: _Optional[str] = None,
+                 return_type: _Union[None, str, _Callable] = None) -> str:
     """
-    Decorator: Append to function's docstring.
+    Extend a docstring.
 
     Parameters
     ----------
-    extra_docstring : str
-       Docstring to append.
+    docstring : str or callable, optional
+       Docstring (of callable) to extend.
+    extra_parameters : str, optional
+       Additional information to append to Parameters section.
+    return_type : str or callable, optional
+       Type of return variable.
 
     """
-    def _decorator(func):
-        func.__doc__ += extra_docstring
-        return func
-    return _decorator
+    docstring_ = str(     docstring if isinstance(docstring,str)
+                     else docstring.__doc__ if hasattr(docstring,'__doc__')
+                     else '')
+    d = dict(Parameters=extra_parameters,
+             # Examples=extra_examples,
+             # Notes=extra_notes,
+             )
+    for key,extra in [(k,v) for (k,v) in d.items() if v is not None]:
+        if not (heading := _re.search(fr'^([ ]*){key}\s*\n\1{"-"*len(key)}',
+                                      docstring_,flags=_re.MULTILINE)):
+            raise RuntimeError(f"Docstring {docstring_} lacks a correctly formatted {key} section to insert values into")
+        content = [line for line in extra.split('\n') if line.strip()]
+        indent = len(heading.group(1))
+        shift = min([len(line)-len(line.lstrip(' '))-indent for line in content])
+        extra = '\n'.join([(line[shift:] if shift > 0 else
+                          f'{" "*-shift}{line}') for line in content])
+        docstring_ = _re.sub(fr'(^([ ]*){key}\s*\n\2{"-"*len(key)}[\n ]*[A-Za-z0-9_ ]*: ([^\n]+\n)*)',
+                             fr'\1{extra}\n',
+                             docstring_,flags=_re.MULTILINE)
 
+    if return_type is None:
+        return docstring_
+    else:
+        if isinstance(return_type,str):
+            return_type_ = return_type
+        else:
+            return_class = return_type.__annotations__.get('return','')
+            return_type_ = (_sys.modules[return_type.__module__].__name__.split('.')[0]
+                            +'.'
+                            +(return_class.__name__ if not isinstance(return_class,str) else return_class)
+                           )
 
-def extended_docstring(f: _Callable,
-                       extra_docstring: str) -> _Callable:
+        return _re.sub(r'(^([ ]*)Returns\s*\n\2-------\s*\n[ ]*[A-Za-z0-9_ ]*: )(.*)\n',
+                           fr'\1{return_type_}\n',
+                           docstring_,flags=_re.MULTILINE)
+
+def extend_docstring(docstring: _Union[None, str, _Callable] = None,
+                     extra_parameters: _Optional[str] = None) -> _Callable:
     """
-    Decorator: Combine another function's docstring with a given docstring.
+    Decorator: Extend the function's docstring.
 
     Parameters
     ----------
-    f : function
-       Function of which the docstring is taken.
-    extra_docstring : str
-       Docstring to append.
+    docstring : str or callable, optional
+       Docstring to extend. Defaults to that of decorated function.
+    extra_parameters : str, optional
+       Additional information to append to Parameters section.
+
+    Notes
+    -----
+    Return type will become own type if docstring is callable.
 
     """
     def _decorator(func):
-        func.__doc__ = f.__doc__ + extra_docstring
+        func.__doc__ = _docstringer(func.__doc__ if docstring is None else docstring,
+                                    extra_parameters,
+                                    func if isinstance(docstring,_Callable) else None,
+                                   )
         return func
     return _decorator
 
@@ -622,8 +678,8 @@ def DREAM3D_cell_data_group(fname: _Union[str, _Path]) -> str:
 
 
 def Bravais_to_Miller(*,
-                      uvtw: _np.ndarray = None,
-                      hkil: _np.ndarray = None) -> _np.ndarray:
+                      uvtw: _Optional[_np.ndarray] = None,
+                      hkil: _Optional[_np.ndarray] = None) -> _np.ndarray:
     """
     Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -649,10 +705,9 @@ def Bravais_to_Miller(*,
                                               [0,0,0,1]]))
     return _np.einsum('il,...l',basis,axis)
 
-
 def Miller_to_Bravais(*,
-                      uvw: _np.ndarray = None,
-                      hkl: _np.ndarray = None) -> _np.ndarray:
+                      uvw: _Optional[_np.ndarray] = None,
+                      hkl: _Optional[_np.ndarray] = None) -> _np.ndarray:
     """
     Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
@@ -706,7 +761,6 @@ def dict_prune(d: _Dict) -> _Dict:
 
     return new
 
-
 def dict_flatten(d: _Dict) -> _Dict:
     """
     Recursively remove keys of single-entry dictionaries.
@@ -729,54 +783,6 @@ def dict_flatten(d: _Dict) -> _Dict:
         new = {k: (dict_flatten(v) if isinstance(v, dict) else v) for k,v in d.items()}
 
     return new
-
-
-def tail_repack(extended: _Union[str, _Sequence[str]],
-                existing: _List[str] = []) -> _List[str]:
-    """
-    Repack tailing characters into single string if all are new.
-
-    Parameters
-    ----------
-    extended : str or list of str
-        Extended string list with potentially autosplitted tailing string relative to `existing`.
-    existing : list of str
-        Base string list.
-
-    Returns
-    -------
-    repacked : list of str
-        Repacked version of `extended`.
-
-    Examples
-    --------
-    >>> tail_repack(['a','new','e','n','t','r','y'],['a','new'])
-        ['a','new','entry']
-    >>> tail_repack(['a','new','shiny','e','n','t','r','y'],['a','new'])
-        ['a','new','shiny','e','n','t','r','y']
-
-    """
-    return [extended] if isinstance(extended,str) else existing + \
-         ([''.join(extended[len(existing):])] if _np.prod([len(i) for i in extended[len(existing):]]) == 1 else
-          list(extended[len(existing):]))
-
-
-def aslist(arg: _Union[_IntCollection, int, None]) -> _List:
-    """
-    Transform argument to list.
-
-    Parameters
-    ----------
-    arg : int or collection of int or None
-        Entity to transform into list.
-
-    Returns
-    -------
-    transformed : list
-        Entity transformed into list.
-
-    """
-    return [] if arg is None else list(arg) if isinstance(arg,(_np.ndarray,_Collection)) else [arg]
 
 
 ####################################################################################################

@@ -11,11 +11,7 @@ submodule(phase:thermal) externalheat
     source_thermal_externalheat_offset                                                              !< which source is my current thermal dissipation mechanism?
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal), dimension(:), allocatable :: &
-      t_n, &
-      f_T
-    integer :: &
-     nIntervals
+    type(tTable) :: f
   end type tParameters
 
   type(tParameters), dimension(:), allocatable  :: param                                            !< containers of constitutive parameters (len Ninstances)
@@ -33,39 +29,39 @@ module function externalheat_init(source_length) result(mySources)
   integer, intent(in)                  :: source_length
   logical, dimension(:,:), allocatable :: mySources
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, thermal, &
+    thermal, &
     src
+  type(tList), pointer :: &
+    sources
   integer :: so,Nmembers,ph
 
 
   mySources = thermal_active('externalheat',source_length)
-  if(count(mySources) == 0) return
+  if (count(mySources) == 0) return
+
   print'(/,1x,a)', '<<<+-  phase:thermal:externalheat init  -+>>>'
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(source_thermal_externalheat_offset  (phases%length), source=0)
 
   do ph = 1, phases%length
-    phase => phases%get(ph)
+    phase => phases%get_dict(ph)
     if (count(mySources(:,ph)) == 0) cycle
-    thermal => phase%get('thermal')
-    sources => thermal%get('source')
+    thermal => phase%get_dict('thermal')
+    sources => thermal%get_list('source')
     do so = 1, sources%length
       if (mySources(so,ph)) then
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
-          src => sources%get(so)
+          src => sources%get_dict(so)
 
-          prm%t_n = src%get_as1dFloat('t_n')
-          prm%nIntervals = size(prm%t_n) - 1
-
-          prm%f_T = src%get_as1dFloat('f_T',requiredSize = size(prm%t_n))
+          prm%f = table(src,'t','f')
 
           Nmembers = count(material_phaseID == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
@@ -109,23 +105,13 @@ module function externalheat_f_T(ph,en) result(f_T)
     f_T
 
   integer :: &
-    so, interval
-  real(pReal) :: &
-    frac_time
+    so
+
 
   so = source_thermal_externalheat_offset(ph)
 
   associate(prm => param(ph))
-    do interval = 1, prm%nIntervals                                                                 ! scan through all rate segments
-      frac_time = (thermalState(ph)%p(so)%state(1,en) - prm%t_n(interval)) &
-                / (prm%t_n(interval+1) - prm%t_n(interval))                                         ! fractional time within segment
-      if (     (frac_time <  0.0_pReal .and. interval == 1) &
-          .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
-          .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
-        f_T = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
-              prm%f_T(interval+1) * frac_time                                                      ! interpolate heat rate between segment boundaries...
-                                                                                                   ! ...or extrapolate if outside of bounds
-    end do
+    f_T = prm%f%at(thermalState(ph)%p(so)%state(1,en))
   end associate
 
 end function externalheat_f_T

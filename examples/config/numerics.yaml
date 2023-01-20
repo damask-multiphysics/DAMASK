@@ -80,4 +80,4 @@ commercialFEM:
 
 generic:
   random_seed:                 0            # fixed seeding for pseudo-random number generator, Default 0: use random seed.
-  residualStiffness:           1.0e-6       # non-zero residual damage.
+  phi_min:                     1.0e-6       # non-zero residual damage.

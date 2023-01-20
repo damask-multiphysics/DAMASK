@@ -46,7 +46,8 @@ class TestConfig:
         assert Config.load(tmp_path/'config.yaml') == config
 
     def test_numpy(self,tmp_path):
-        assert Config({'A':np.ones(3,'i')}).__repr__() == Config({'A':[1,1,1]}).__repr__()
+        assert Config({'A':np.ones(3,'i'), 'B':np.ones(1)[0]}).__repr__() == \
+               Config({'A':[1,1,1],        'B':1.0}).__repr__()
 
     def test_abstract_is_valid(self):
         with pytest.raises(NotImplementedError):

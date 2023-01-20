@@ -36,6 +36,7 @@ module IO
     IO_floatValue, &
     IO_lc, &
     IO_rmComment, &
+    IO_intAsString, &
     IO_stringAsInt, &
     IO_stringAsFloat, &
     IO_stringAsBool, &
@@ -251,12 +252,12 @@ pure function IO_lc(string)
   integer :: i,n
 
 
-  do i=1,len(string)
+  do i = 1,len(string)
     n = index(UPPER,string(i:i))
-    if (n/=0) then
-      IO_lc(i:i) = LOWER(n:n)
-    else
+    if (n==0) then
       IO_lc(i:i) = string(i:i)
+    else
+      IO_lc(i:i) = LOWER(n:n)
     end if
   end do
 
@@ -283,6 +284,21 @@ function IO_rmComment(line)
   end if
 
 end function IO_rmComment
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return given int value as string.
+!--------------------------------------------------------------------------------------------------
+function IO_intAsString(i)
+
+  integer, intent(in)            :: i
+
+  character(len=:), allocatable  :: IO_intAsString
+
+  allocate(character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0))))))::IO_intAsString)
+  write(IO_intAsString,'(i0)') i
+
+end function IO_intAsString
 
 
 !--------------------------------------------------------------------------------------------------
@@ -463,11 +479,15 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 ! homogenization errors
     case (500)
       msg = 'unknown homogenization specified'
+    case (501)
+      msg = 'homogenization description absent'
 
 !--------------------------------------------------------------------------------------------------
 ! user errors
     case (602)
       msg = 'invalid selection for debug'
+    case (603)
+      msg = 'invalid data for table'
 
 !------------------------------------------------------------------------------------------------
 ! errors related to YAML data
@@ -527,7 +547,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
       msg = 'MPI error'
 
     case (950)
-      msg = 'max number of cut back exceeded, terminating'
+      msg = 'max number of cutbacks exceeded, terminating'
 
     case default
       error stop 'invalid error number'
@@ -665,66 +685,69 @@ end subroutine panel
 subroutine selfTest()
 
   integer, dimension(:), allocatable :: chunkPos
-  character(len=:),      allocatable :: str
+  character(len=:),      allocatable :: str,out
 
 
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
-  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
-  if(dNeq(0.1_pReal, IO_stringAsFloat('1.0e-1')))   error stop 'IO_stringAsFloat'
-  if(dNeq(0.1_pReal, IO_stringAsFloat('1.00e-1')))  error stop 'IO_stringAsFloat'
-  if(dNeq(10._pReal, IO_stringAsFloat(' 1.0e+1 '))) error stop 'IO_stringAsFloat'
+  if (dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
+  if (dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
+  if (dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
+  if (dNeq(0.1_pReal, IO_stringAsFloat('1.0e-1')))   error stop 'IO_stringAsFloat'
+  if (dNeq(0.1_pReal, IO_stringAsFloat('1.00e-1')))  error stop 'IO_stringAsFloat'
+  if (dNeq(10._pReal, IO_stringAsFloat(' 1.0e+1 '))) error stop 'IO_stringAsFloat'
 
-  if(3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
-  if(3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
-  if(-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
-  if(3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
-  if(3112019  /= IO_stringAsInt('03112019 '))       error stop 'IO_stringAsInt'
-  if(3112019  /= IO_stringAsInt('+03112019'))       error stop 'IO_stringAsInt'
+  if (3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
+  if (3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
+  if (-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
+  if (3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
+  if (3112019  /= IO_stringAsInt('03112019 '))       error stop 'IO_stringAsInt'
+  if (3112019  /= IO_stringAsInt('+03112019'))       error stop 'IO_stringAsInt'
 
-  if(.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
-  if(.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
-  if(      IO_stringAsBool(' false'))               error stop 'IO_stringAsBool'
-  if(      IO_stringAsBool('False'))                error stop 'IO_stringAsBool'
+  if (.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
+  if (.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
+  if (      IO_stringAsBool(' false'))               error stop 'IO_stringAsBool'
+  if (      IO_stringAsBool('False'))                error stop 'IO_stringAsBool'
 
-  if(any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
-  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
+  if ('1234' /= IO_intAsString(1234))                error stop 'IO_intAsString'
+  if ('-12'  /= IO_intAsString(-0012))               error stop 'IO_intAsString'
+
+  if (any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
+  if (any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
 
   str = ' 1.0 xxx'
   chunkPos = IO_stringPos(str)
-  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
+  if (dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
 
-  str='M 3112019 F'
+  str = 'M 3112019 F'
   chunkPos = IO_stringPos(str)
-  if(3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
+  if (3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
 
-  if (CRLF2LF('') /= '')                            error stop 'CRLF2LF/0'
-  if (CRLF2LF(LF)     /= LF)                        error stop 'CRLF2LF/1a'
-  if (CRLF2LF(CR//LF) /= LF)                        error stop 'CRLF2LF/1b'
-  if (CRLF2LF(' '//LF)     /= ' '//LF)              error stop 'CRLF2LF/2a'
-  if (CRLF2LF(' '//CR//LF) /= ' '//LF)              error stop 'CRLF2LF/2b'
-  if (CRLF2LF('A'//CR//LF//'B') /= 'A'//LF//'B')    error stop 'CRLF2LF/3'
+  if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
+  if (CRLF2LF(LF)     /= LF)                         error stop 'CRLF2LF/1a'
+  if (CRLF2LF(CR//LF) /= LF)                         error stop 'CRLF2LF/1b'
+  if (CRLF2LF(' '//LF)     /= ' '//LF)               error stop 'CRLF2LF/2a'
+  if (CRLF2LF(' '//CR//LF) /= ' '//LF)               error stop 'CRLF2LF/2b'
+  if (CRLF2LF('A'//CR//LF//'B') /= 'A'//LF//'B')     error stop 'CRLF2LF/3'
   if (CRLF2LF('A'//CR//LF//'B'//CR//LF) /= &
-              'A'//LF//'B'//LF)                     error stop 'CRLF2LF/4'
+              'A'//LF//'B'//LF)                      error stop 'CRLF2LF/4'
 
-  if(.not. IO_isBlank('  '))                        error stop 'IO_isBlank/1'
-  if(.not. IO_isBlank('  #isBlank'))                error stop 'IO_isBlank/2'
-  if(      IO_isBlank('  i#s'))                     error stop 'IO_isBlank/3'
+  str='  ';        if (.not. IO_isBlank(str))        error stop 'IO_isBlank/1'
+  str='  #isBlank';if (.not. IO_isBlank(str))        error stop 'IO_isBlank/2'
+  str='  i#s';     if (      IO_isBlank(str))        error stop 'IO_isBlank/3'
 
-  str = IO_rmComment('#')
-  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/1'
-  str = IO_rmComment(' #')
-  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/2'
-  str = IO_rmComment(' # ')
-  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/3'
-  str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/4'
-  str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/5'
-  str = IO_rmComment(' a#')
-  if (str /= ' a' .or. len(str) /= 2)               error stop 'IO_rmComment/6'
-  str = IO_rmComment(' ab #')
-  if (str /= ' ab'.or. len(str) /= 3)               error stop 'IO_rmComment/7'
+  str='*(HiU!)3';if ('*(hiu!)3' /= IO_lc(str))       error stop 'IO_lc'
+
+  str='#';out=IO_rmComment(str)
+  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/1'
+  str=' #';out=IO_rmComment(str)
+  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/2'
+  str=' # ';out=IO_rmComment(str)
+  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/3'
+  str=' # a';out=IO_rmComment(str)
+  if (out /= ''   .or. len(out) /= 0)                error stop 'IO_rmComment/4'
+  str=' a#';out=IO_rmComment(str)
+  if (out /= ' a' .or. len(out) /= 2)                error stop 'IO_rmComment/5'
+  str=' ab #';out=IO_rmComment(str)
+  if (out /= ' ab'.or. len(out) /= 3)                error stop 'IO_rmComment/6'
 
 end subroutine selfTest
 

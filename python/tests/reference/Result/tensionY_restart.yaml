@@ -1,0 +1,18 @@
+---
+solver:
+  mechanical: spectral_basic
+
+loadstep:
+  - boundary_conditions:
+      mechanical:
+        dot_F: [[x, 0,      0],
+                [0, 1.0e-3, 0],
+                [0, 0,      x]]
+        P: [[0, x, x],
+            [x, x, x],
+            [x, x, 0]]
+    discretization:
+      t: 10
+      N: 20
+    f_out: 4
+    f_restart: 20

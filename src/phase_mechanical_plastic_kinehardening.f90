@@ -77,16 +77,15 @@ module function plastic_kinehardening_init() result(myPlasticity)
   real(pReal), dimension(:), allocatable :: &
     xi_0, &                                                                                         !< initial resistance against plastic flow
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
-  class(tNode), pointer :: &
+  character(len=:), allocatable :: extmsg
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
     pl
 
   myPlasticity = plastic_active('kinehardening')
-  if(count(myPlasticity) == 0) return
+  if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:kinehardening init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
@@ -94,12 +93,13 @@ module function plastic_kinehardening_init() result(myPlasticity)
   print'(/,1x,a)', 'J.A. Wollmershauser et al., International Journal of Fatigue 36:181–193, 2012'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijfatigue.2011.07.008'
 
-  phases => config_material%get('phase')
+
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(deltaState(phases%length))
-
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -107,9 +107,9 @@ module function plastic_kinehardening_init() result(myPlasticity)
     associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph), &
               idx_dot => indexDotState(ph))
 
-    phase => phases%get(ph)
-    mech => phase%get('mechanical')
-    pl => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech => phase%get_dict('mechanical')
+    pl => mech%get_dict('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -127,7 +127,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
       if (phase_lattice(ph) == 'cI') then
         a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
-        if(size(a) > 0) prm%nonSchmidActive = .true.
+        if (size(a) > 0) prm%nonSchmidActive = .true.
         prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -189,7 +189,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     stt%xi => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi = spread(xi_0, 2, Nmembers)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
@@ -202,7 +202,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     idx_dot%gamma = [startIndex,endIndex]
     stt%gamma => plasticState(ph)%state(startIndex:endIndex,:)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     o = plasticState(ph)%offsetDeltaState
     startIndex = endIndex + 1
@@ -362,7 +362,7 @@ end subroutine plastic_kinehardening_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_kinehardening_results(ph,group)
+module subroutine plastic_kinehardening_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -377,30 +377,30 @@ module subroutine plastic_kinehardening_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case ('xi')
-          call results_writeDataset(stt%xi,group,trim(prm%output(ou)), &
-                                    'resistance against plastic slip','Pa',prm%systems_sl)
+          call result_writeDataset(stt%xi,group,trim(prm%output(ou)), &
+                                   'resistance against plastic slip','Pa',prm%systems_sl)
         case ('chi')
-          call results_writeDataset(stt%chi,group,trim(prm%output(ou)), &
-                                    'back stress','Pa',prm%systems_sl)
+          call result_writeDataset(stt%chi,group,trim(prm%output(ou)), &
+                                   'back stress','Pa',prm%systems_sl)
         case ('sgn(gamma)')
-          call results_writeDataset(int(stt%sgn_gamma),group,trim(prm%output(ou)), &
-                                    'sense of shear','1',prm%systems_sl)
+          call result_writeDataset(int(stt%sgn_gamma),group,trim(prm%output(ou)), &
+                                   'sense of shear','1',prm%systems_sl)
         case ('chi_0')
-          call results_writeDataset(stt%chi_0,group,trim(prm%output(ou)), &
-                                    'back stress at last switch of stress sense','Pa',prm%systems_sl)
+          call result_writeDataset(stt%chi_0,group,trim(prm%output(ou)), &
+                                   'back stress at last switch of stress sense','Pa',prm%systems_sl)
         case ('gamma_0')
-          call results_writeDataset(stt%gamma_0,group,trim(prm%output(ou)), &
-                                    'plastic shear at last switch of stress sense','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_0,group,trim(prm%output(ou)), &
+                                   'plastic shear at last switch of stress sense','1',prm%systems_sl)
         case ('gamma')
-          call results_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
-                                    'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
       end select
 
     end do
 
   end associate
 
-end subroutine plastic_kinehardening_results
+end subroutine plastic_kinehardening_result
 
 
 !--------------------------------------------------------------------------------------------------

@@ -217,7 +217,7 @@ class TestVTK:
 
 
     def test_comments(self,tmp_path,default):
-        default.comments += 'this is a comment'
+        default.comments += ['this is a comment']
         default.save(tmp_path/'with_comments',parallel=False)
         new = VTK.load(tmp_path/'with_comments.vti')
         assert new.comments == ['this is a comment']

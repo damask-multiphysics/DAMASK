@@ -648,7 +648,7 @@ phase:
         atol_xi: 1.0
         dot_gamma_0_sl: 0.001
         h_0_sl-sl: 75e6
-        h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4]
+        h_sl-sl: [1, 1, 1.4, 1.4, 1.4, 1.4, 1.4]
         n_sl: 20
         output: [xi_sl]
         type: phenopowerlaw

@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, KU Leuven
-!> @brief Polynomial representation for variable data
+!> @brief Polynomial representation for variable data.
 !--------------------------------------------------------------------------------------------------
 module polynomials
   use prec
@@ -19,8 +19,8 @@ module polynomials
   end type tPolynomial
 
   interface polynomial
-    module procedure polynomial_from_dict
     module procedure polynomial_from_coef
+    module procedure polynomial_from_dict
   end interface polynomial
 
   public :: &
@@ -43,7 +43,7 @@ end subroutine polynomials_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize a Polynomial from Coefficients.
+!> @brief Initialize a polynomial from coefficients.
 !--------------------------------------------------------------------------------------------------
 pure function polynomial_from_coef(coef,x_ref) result(p)
 
@@ -59,7 +59,7 @@ end function polynomial_from_coef
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize a Polynomial from a Dictionary with Coefficients.
+!> @brief Initialize a polynomial from a dictionary with coefficients.
 !--------------------------------------------------------------------------------------------------
 function polynomial_from_dict(dict,y,x) result(p)
 
@@ -93,7 +93,7 @@ end function polynomial_from_dict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Evaluate a Polynomial.
+!> @brief Evaluate a polynomial.
 !> @details https://nvlpubs.nist.gov/nistpubs/jres/71b/jresv71bn1p11_a1b.pdf (eq. 1.2)
 !--------------------------------------------------------------------------------------------------
 pure function eval(self,x) result(y)
@@ -126,7 +126,7 @@ subroutine selfTest()
   real(pReal), dimension(5) :: coef
   integer :: i
   real(pReal) :: x_ref, x, y
-  class(tNode), pointer :: dict
+  type(tDict), pointer :: dict
   character(len=pStringLen), dimension(size(coef)) :: coef_s
   character(len=pStringLen) :: x_ref_s, x_s, YAML_s
 
@@ -156,8 +156,8 @@ subroutine selfTest()
            'C,T^3: '//trim(adjustl(coef_s(4)))//IO_EOL//&
            'C,T^4: '//trim(adjustl(coef_s(5)))//IO_EOL//&
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  Dict => YAML_parse_str(trim(YAML_s))
-  p2 = polynomial(dict%asDict(),'C','T')
+  dict => YAML_parse_str_asDict(trim(YAML_s))
+  p2 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x),p2%at(x),1.0e-6_pReal))                      error stop 'polynomials: init'
   y = coef(1)+coef(2)*(x-x_ref)+coef(3)*(x-x_ref)**2+coef(4)*(x-x_ref)**3+coef(5)*(x-x_ref)**4
   if (dNeq(p1%at(x),y,1.0e-6_pReal))                             error stop 'polynomials: eval(full)'
@@ -165,29 +165,29 @@ subroutine selfTest()
   YAML_s = 'C: 0.0'//IO_EOL//&
            'C,T: '//trim(adjustl(coef_s(2)))//IO_EOL//&
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  Dict => YAML_parse_str(trim(YAML_s))
-  p1 = polynomial(dict%asDict(),'C','T')
+  dict => YAML_parse_str_asDict(trim(YAML_s))
+  p1 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x_ref+x),-p1%at(x_ref-x),1.0e-10_pReal))         error stop 'polynomials: eval(linear)'
 
   YAML_s = 'C: 0.0'//IO_EOL//&
            'C,T^2: '//trim(adjustl(coef_s(3)))//IO_EOL//&
            'T_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  Dict => YAML_parse_str(trim(YAML_s))
-  p1 = polynomial(dict%asDict(),'C','T')
+  dict => YAML_parse_str_asDict(trim(YAML_s))
+  p1 = polynomial(dict,'C','T')
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1e-10_pReal))            error stop 'polynomials: eval(quadratic)'
 
   YAML_s = 'Y: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'Y,X^3: '//trim(adjustl(coef_s(2)))//IO_EOL//&
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  Dict => YAML_parse_str(trim(YAML_s))
-  p1 = polynomial(dict%asDict(),'Y','X')
+  dict => YAML_parse_str_asDict(trim(YAML_s))
+  p1 = polynomial(dict,'Y','X')
   if (dNeq(p1%at(x_ref+x)-coef(1),-(p1%at(x_ref-x)-coef(1)),1.0e-8_pReal)) error stop 'polynomials: eval(cubic)'
 
   YAML_s = 'Y: '//trim(adjustl(coef_s(1)))//IO_EOL//&
            'Y,X^4: '//trim(adjustl(coef_s(2)))//IO_EOL//&
            'X_ref: '//trim(adjustl(x_ref_s))//IO_EOL
-  Dict => YAML_parse_str(trim(YAML_s))
-  p1 = polynomial(dict%asDict(),'Y','X')
+  dict => YAML_parse_str_asDict(trim(YAML_s))
+  p1 = polynomial(dict,'Y','X')
   if (dNeq(p1%at(x_ref+x),p1%at(x_ref-x),1.0e-6_pReal))           error stop 'polynomials: eval(quartic)'
 
 

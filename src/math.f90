@@ -10,7 +10,16 @@ module math
   use IO
   use config
   use YAML_types
+  use parallelization
   use LAPACK_interface
+
+#ifdef PETSC
+#include <petsc/finclude/petscsys.h>
+  use PETScSys
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
+  use MPI_f08
+#endif
+#endif
 
   implicit none(type,external)
   public
@@ -87,13 +96,13 @@ subroutine math_init()
   real(pReal), dimension(4) :: randTest
   integer :: randSize
   integer, dimension(:), allocatable :: seed
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     num_generic
 
 
   print'(/,1x,a)', '<<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
-  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
 
   call random_seed(size=randSize)
   allocate(seed(randSize))
@@ -105,7 +114,7 @@ subroutine math_init()
     call random_seed(get = seed)
   end if
 
-  call random_seed(put = seed)
+  call random_seed(put = seed + worldrank*42_MPI_INTEGER_KIND)
   call random_number(randTest)
 
   print'(/,a,i2)',              ' size  of random seed:     ', randSize

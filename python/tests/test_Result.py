@@ -5,10 +5,13 @@ import shutil
 import os
 import sys
 import hashlib
+import fnmatch
+import random
 from datetime import datetime
 
 import pytest
 import vtk
+import h5py
 import numpy as np
 
 from damask import Result
@@ -96,6 +99,16 @@ class TestResult:
 
         assert n0.get('F') is n1.get('F') is None and \
                len(n0.visible[label]) == len(n1.visible[label]) == 0
+
+    def test_view_invalid_incstimes(self,default):
+        with pytest.raises(ValueError):
+            default.view(increments=0,times=0)
+
+    @pytest.mark.parametrize('inc',[0,10])
+    @pytest.mark.parametrize('sign',[+1,-1])
+    def test_view_approxtimes(self,default,inc,sign):
+        eps = sign*1e-3
+        assert [default.increments[inc]] == default.view(times=default.times[inc]+eps).visible['increments']
 
     def test_add_invalid(self,default):
         default.add_absolute('xxxx')
@@ -291,7 +304,7 @@ class TestResult:
         default.add_curl('x')
         in_file   = default.place('curl(x)')
         in_memory = grid_filters.curl(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
-        assert (in_file==in_memory).all()
+        assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('shape',['vector','tensor'])
     def test_add_divergence(self,default,shape):
@@ -301,7 +314,7 @@ class TestResult:
         default.add_divergence('x')
         in_file   = default.place('divergence(x)')
         in_memory = grid_filters.divergence(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
-        assert (in_file==in_memory).all()
+        assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('shape',['scalar','pseudo_scalar','vector'])
     def test_add_gradient(self,default,shape):
@@ -312,7 +325,7 @@ class TestResult:
         default.add_gradient('x')
         in_file   = default.place('gradient(x)')
         in_memory = grid_filters.gradient(default.size,x.reshape(tuple(default.cells)+x.shape[1:])).reshape(in_file.shape)
-        assert (in_file==in_memory).all()
+        assert (in_file == in_memory).all()
 
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
@@ -323,12 +336,9 @@ class TestResult:
         created_first = last.place('sigma').dtype.metadata['created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
-        if overwrite == 'on':
-            last = last.view(protected=False)
-        else:
-            last = last.view(protected=True)
+        last = last.view(protected=overwrite != 'on')
 
-        time.sleep(2.)
+        time.sleep(2)
         try:
             last.add_calculation('#sigma#*0.0+311.','sigma','not the Cauchy stress')
         except ValueError:
@@ -338,7 +348,7 @@ class TestResult:
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            assert created_first < created_second and np.allclose(last.place('sigma'),311.)
+            assert created_first  < created_second and     np.allclose(last.place('sigma'),311.)
         else:
             assert created_first == created_second and not np.allclose(last.place('sigma'),311.)
 
@@ -378,15 +388,14 @@ class TestResult:
     @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
-    def test_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
+    def test_export_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view(increments=inc)
-        os.chdir(tmp_path)
-        result.export_VTK(output,parallel=False)
+        result.export_VTK(output,target_dir=tmp_path,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
         v = VTK.load(tmp_path/fname)
-        v.comments = 'n/a'
+        v.comments = ['n/a']
         v.save(tmp_path/fname,parallel=False)
-        with open(fname) as f:
+        with open(tmp_path/fname) as f:
             cur = hashlib.md5(f.read().encode()).hexdigest()
         if update:
             with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
@@ -396,7 +405,7 @@ class TestResult:
 
     @pytest.mark.parametrize('mode',['point','cell'])
     @pytest.mark.parametrize('output',[False,True])
-    def test_vtk_marc(self,tmp_path,ref_path,mode,output):
+    def test_export_vtk_marc(self,tmp_path,ref_path,mode,output):
         os.chdir(tmp_path)
         result = Result(ref_path/'check_compile_job1.hdf5')
         result.export_VTK(output,mode)
@@ -416,34 +425,34 @@ class TestResult:
         with pytest.raises(ValueError):
             single_phase.export_VTK(mode='invalid')
 
+    def test_vtk_custom_path(self,tmp_path,single_phase):
+        export_dir = tmp_path/'export_dir'
+        single_phase.export_VTK(mode='point',target_dir=export_dir,parallel=False)
+        assert set(os.listdir(export_dir)) == set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
-        for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
+        for what,shape in {'scalar':(),'vector':(3,),'tensor':(3,3),'matrix':(12,)}.items():
             for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
-                single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')",f'{shape[0]}_{dtype}')
-        fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
-        os.chdir(tmp_path)
-        single_phase.export_XDMF()
+                single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape},'{dtype}')",f'{what}_{dtype}')
+        xdmf_path = tmp_path/single_phase.fname.with_suffix('.xdmf').name
+        single_phase.export_XDMF(target_dir=tmp_path)
         if update:
-            shutil.copy(tmp_path/fname,ref_path/fname)
-
-        assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
+            shutil.copy(xdmf_path,ref_path/xdmf_path.name)
+        assert sorted(open(xdmf_path).read()) == sorted(open(ref_path/xdmf_path.name).read())
 
     @pytest.mark.skipif(not (hasattr(vtk,'vtkXdmfReader') and hasattr(vtk.vtkXdmfReader(),'GetOutput')),
                         reason='https://discourse.vtk.org/t/2450')
     def test_XDMF_shape(self,tmp_path,single_phase):
-        os.chdir(tmp_path)
-
-        single_phase.export_XDMF()
-        fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
+        single_phase.export_XDMF(target_dir=single_phase.fname.parent)
+        fname = single_phase.fname.with_suffix('.xdmf')
         reader_xdmf = vtk.vtkXdmfReader()
         reader_xdmf.SetFileName(fname)
         reader_xdmf.Update()
         dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
         bounds_xdmf = reader_xdmf.GetOutput().GetBounds()
 
-        single_phase.view(increments=0).export_VTK(parallel=False)
-        fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'_inc00.vti'
+        single_phase.view(increments=0).export_VTK(target_dir=single_phase.fname.parent,parallel=False)
+        fname = single_phase.fname.with_name(single_phase.fname.stem+'_inc00.vti')
         reader_vti = vtk.vtkXMLImageDataReader()
         reader_vti.SetFileName(fname)
         reader_vti.Update()
@@ -454,6 +463,40 @@ class TestResult:
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
             default.export_XDMF()
+
+    def test_XDMF_custom_path(self,single_phase,tmp_path):
+        os.chdir(tmp_path)
+        single_phase.export_XDMF()
+        assert single_phase.fname.with_suffix('.xdmf').name in os.listdir(tmp_path)
+        export_dir = tmp_path/'export_dir'
+        single_phase.export_XDMF(target_dir=export_dir)
+        assert single_phase.fname.with_suffix('.xdmf').name in os.listdir(export_dir)
+
+    @pytest.mark.skipif(not (hasattr(vtk,'vtkXdmfReader') and hasattr(vtk.vtkXdmfReader(),'GetOutput')),
+                        reason='https://discourse.vtk.org/t/2450')
+    def test_XDMF_relabs_path(self,single_phase,tmp_path):
+        def dims(xdmf):
+            reader_xdmf = vtk.vtkXdmfReader()
+            reader_xdmf.SetFileName(xdmf)
+            reader_xdmf.Update()
+            return reader_xdmf.GetOutput().GetDimensions()
+
+        single_phase.export_XDMF(target_dir=tmp_path)
+        xdmfname = single_phase.fname.with_suffix('.xdmf').name
+        ref_dims = dims(tmp_path/xdmfname)
+
+        for (d,info) in {
+             'A': dict(absolute_path=True,
+                       mv='..',
+                       ),
+             'B': dict(absolute_path=False,
+                       mv='../A',
+                       ),
+            }.items():
+            sub = tmp_path/d; sub.mkdir(exist_ok=True)
+            single_phase.export_XDMF(target_dir=sub,absolute_path=info['absolute_path'])
+            os.replace(sub/xdmfname,sub/info['mv']/xdmfname)
+            assert ref_dims == dims(sub/info['mv']/xdmfname)
 
     @pytest.mark.parametrize('view,output,flatten,prune',
             [({},['F','P','F','L_p','F_e','F_p'],True,True),
@@ -505,13 +548,69 @@ class TestResult:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
 
+    def test_simulation_setup_files(self,default):
+        assert set(default.simulation_setup_files) == set(['12grains6x7x8.vti',
+                                                            'material.yaml',
+                                                            'tensionY.yaml',
+                                                            'previous/12grains6x7x8.vti',
+                                                            'previous/material.yaml',
+                                                            'previous/tensionY.yaml'])
+
+    def test_export_simulation_setup_files(self,tmp_path,default):
+        sub = 'deep/down'
+        default.export_simulation_setup(target_dir=tmp_path/sub,overwrite=True)
+        for f in default.simulation_setup_files:
+            assert (tmp_path/sub/f).exists()
+
+    def test_export_simulation_setup_overwrite(self,tmp_path,default):
+        os.chdir(tmp_path)
+        default.export_simulation_setup('material.yaml',overwrite=True)
+        with pytest.raises(PermissionError):
+            default.export_simulation_setup('material.yaml',overwrite=False)
+
+    @pytest.mark.parametrize('output',['12grains6x7x8.vti',
+                                       'tensionY.yaml',
+                                      ])
+    def test_export_simulation_setup_content(self,ref_path,tmp_path,default,output):
+        default.export_simulation_setup(output,target_dir=tmp_path,overwrite=True)
+        assert open(tmp_path/output).read() == open(ref_path/output).read()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
     @pytest.mark.parametrize('output',['material.yaml','*'])
-    @pytest.mark.parametrize('overwrite',[True,False])
-    def test_export_setup(self,ref_path,tmp_path,fname,output,overwrite):
-        os.chdir(tmp_path)
+    def test_export_simulation_setup_consistency(self,ref_path,tmp_path,fname,output):
         r = Result(ref_path/fname)
-        r.export_setup(output,overwrite)
-        r.export_setup(output,overwrite)
+        r.export_simulation_setup(output,target_dir=tmp_path)
+        with h5py.File(ref_path/fname,'r') as f_hdf5:
+            for file in fnmatch.filter(f_hdf5['setup'].keys(),output):
+                with open(tmp_path/file) as f:
+                    assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
+
+    def test_export_simulation_setup_custom_path(self,ref_path,tmp_path):
+        subdir = 'export_dir'
+        absdir = tmp_path/subdir
+        absdir.mkdir(exist_ok=True)
+
+        r = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        for t,cwd in zip([absdir,subdir,None],[tmp_path,tmp_path,absdir]):
+            os.chdir(cwd)
+            r.export_simulation_setup('material.yaml',target_dir=t)
+            assert 'material.yaml' in os.listdir(absdir); (absdir/'material.yaml').unlink()
+
+    @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+    def test_export_DADF5(self,ref_path,tmp_path,fname):
+        r = Result(ref_path/fname)
+        r = r.view(phases = random.sample(r.phases,1))
+        r = r.view(increments = random.sample(r.increments,np.random.randint(2,len(r.increments))))
+        r.export_DADF5(tmp_path/fname)
+        r_exp = Result(tmp_path/fname)
+        assert str(r.get()) == str(r_exp.get())
+        assert str(r.place()) == str(r_exp.place())
+
+    @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'])
+    def test_export_DADF5_name_clash(self,ref_path,tmp_path,fname):
+        r = Result(ref_path/fname)
+        with pytest.raises(PermissionError):
+            r.export_DADF5(r.fname)

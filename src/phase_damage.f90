@@ -1,6 +1,6 @@
-!----------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
-!----------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 submodule(phase) damage
 
   type :: tDamageParameters
@@ -55,41 +55,42 @@ submodule(phase) damage
         S
     end subroutine anisobrittle_dotState
 
-    module subroutine anisobrittle_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine anisobrittle_results
 
-    module subroutine isobrittle_results(phase,group)
+    module subroutine anisobrittle_result(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
-    end subroutine isobrittle_results
+    end subroutine anisobrittle_result
+
+    module subroutine isobrittle_result(phase,group)
+      integer,          intent(in) :: phase
+      character(len=*), intent(in) :: group
+    end subroutine isobrittle_result
 
  end interface
 
 contains
 
 !----------------------------------------------------------------------------------------------
-!< @brief initialize damage sources and kinematics mechanism
+!< @brief Initialize damage mechanisms.
 !----------------------------------------------------------------------------------------------
-module subroutine damage_init
+module subroutine damage_init()
 
   integer :: &
     ph, &
     Nmembers
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
    phases, &
    phase, &
-   sources, &
    source
   logical:: damage_active
 
+
   print'(/,1x,a)', '<<<+-  phase:damage init  -+>>>'
 
-  phases => config_material%get('phase')
 
+  phases => config_material%get_dict('phase')
   allocate(current(phases%length))
-  allocate(damageState (phases%length))
+  allocate(damageState(phases%length))
   allocate(param(phases%length))
 
   damage_active = .false.
@@ -99,12 +100,10 @@ module subroutine damage_init
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
 
-    phase => phases%get(ph)
-    sources => phase%get('damage',defaultVal=emptyList)
-    if (sources%length > 1) error stop
-    if (sources%length == 1) then
+    phase => phases%get_dict(ph)
+    source => phase%get_dict('damage',defaultVal=emptyDict)
+    if (source%length > 0) then
       damage_active = .true.
-      source => sources%get(1)
       param(ph)%mu = source%get_asFloat('mu')
       param(ph)%l_c = source%get_asFloat('l_c')
     end if
@@ -286,7 +285,7 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
 
   contains
   !--------------------------------------------------------------------------------------------------
-  !> @brief calculate the damping for correction of state and dot state
+  !> @brief Calculate the damping for correction of state and dot state.
   !--------------------------------------------------------------------------------------------------
   real(pReal) pure function damper(omega_0,omega_1,omega_2)
 
@@ -309,29 +308,58 @@ function integrateDamageState(Delta_t,ph,en) result(broken)
 end function integrateDamageState
 
 
+module subroutine damage_restartWrite(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  select case(phase_damage(ph))
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+      call HDF5_write(damageState(ph)%state,groupHandle,'omega_damage')
+  end select
+
+end subroutine damage_restartWrite
+
+
+module subroutine damage_restartRead(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  select case(phase_damage(ph))
+    case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
+  call HDF5_read(damageState(ph)%state0,groupHandle,'omega_damage')
+  end select
+
+
+end subroutine damage_restartRead
+
+
 !----------------------------------------------------------------------------------------------
 !< @brief writes damage sources results to HDF5 output file
 !----------------------------------------------------------------------------------------------
-module subroutine damage_results(group,ph)
+module subroutine damage_result(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
 
   if (phase_damage(ph) /= DAMAGE_UNDEFINED_ID) &
-    call results_closeGroup(results_addGroup(group//'damage'))
+    call result_closeGroup(result_addGroup(group//'damage'))
 
   sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
-      call isobrittle_results(ph,group//'damage/')
+      call isobrittle_result(ph,group//'damage/')
 
     case (DAMAGE_ANISOBRITTLE_ID) sourceType
-      call anisobrittle_results(ph,group//'damage/')
+      call anisobrittle_result(ph,group//'damage/')
 
   end select sourceType
 
-end subroutine damage_results
+end subroutine damage_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -433,26 +461,27 @@ end function phase_damage_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief checks if a source mechanism is active or not
+!> @brief Check if a source mechanism is active or not.
 !--------------------------------------------------------------------------------------------------
 function source_active(source_label)  result(active_source)
 
   character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
   logical, dimension(:), allocatable  :: active_source
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, &
     src
+  type(tList), pointer :: &
+    sources
   integer :: ph
 
-  phases => config_material%get('phase')
+
+  phases => config_material%get_dict('phase')
   allocate(active_source(phases%length))
   do ph = 1, phases%length
-    phase => phases%get(ph)
-    sources => phase%get('damage',defaultVal=emptyList)
-    src => sources%get(1)
+    phase => phases%get_dict(ph)
+    src => phase%get_dict('damage',defaultVal=emptyDict)
     active_source(ph) = src%get_asString('type',defaultVal = 'x') == source_label
   end do
 

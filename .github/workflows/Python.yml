@@ -9,22 +9,22 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.8', '3.9'] #, '3.10']
+        python-version: ['3.8', '3.9', '3.10']
         os: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pandas scipy h5py vtk matplotlib pyyaml
+          pip install pytest pandas scipy h5py vtk matplotlib pyyaml build
 
       - name: Strip git hash (Unix)
         if: runner.os != 'Windows'
@@ -38,6 +38,13 @@ jobs:
           $VERSION = Get-Content VERSION -first 1
           $VERSION,$_ = $VERSION -Split '-g',2,"simplematch"
           $VERSION | Out-File VERSION
+
+      - name: Build and Install
+        run: |
+          cd python
+          python -m build
+          python -m pip install dist/*.whl
+          python -c 'import damask;print(damask.__version__)'
 
       - name: Install and run unit tests (Unix)
         if: runner.os != 'Windows'
@@ -56,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install pytest
         run: |

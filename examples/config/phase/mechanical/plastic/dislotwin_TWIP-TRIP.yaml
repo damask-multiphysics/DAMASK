@@ -1,0 +1,72 @@
+type: dislotwin
+
+references:
+  - S.L. Wong et al.,
+    Acta Materialia 118:140-151, 2016,
+    https://doi.org/10.1016/j.actamat.2016.07.032
+  - K. Sedighiani et al.,
+    Mechanics of Materials, 164:104117, 2022,
+    https://doi.org/10.1016/j.mechmat.2021.104117
+  - L. Kubin et al.,
+    Acta Materialia 56:6040-6049,
+    https://doi.org/10.1016/j.actamat.2008.08.012
+
+output: [rho_mob, rho_dip, gamma_sl, Lambda_sl, tau_pass, f_tw, Lambda_tw, f_tr]
+
+# Glide
+N_sl: [12]
+b_sl: [2.56e-10] # a/sqrt(2)
+Q_sl: [3.5e-19]
+p_sl: [0.325]
+q_sl: [1.55]
+B: [0.001]
+i_sl: [30.0]
+v_0: [1.4e+3]
+tau_0: [5.5e+8] # adjusted
+D_a: 2.0
+Q_cl: 3.0e-19
+
+rho_mob_0: [5.0e+10]
+rho_dip_0: [5.0e+10]
+
+h_sl-sl: [0.122, 0.122, 0.625, 0.07, 0.137, 0.137, 0.122]
+
+# Twin
+N_tw: [12]
+b_tw: [1.47e-10] # a_cF/sqrt(6)
+L_tw: 1.91e-7 # 1300 *b_tw
+i_tw: 10.0
+t_tw: [5.0e-8]
+p_tw: [7] # A, adjusted
+
+h_tw-tw: [1.0, 1.0]
+h_sl-tw: [1.0, 1.0, 1.0]
+
+# Transformation
+N_tr: [12]
+b_tr: [1.47e-10] # a_cF/sqrt(6)
+L_tr: 2.21e-7 # 1500 *b_tr
+i_tr: 10.0 # adjusted
+t_tr: [1.0e-7]
+p_tr: [4] # B, adjusted
+V_mol: 7.09e-6
+c/a_hP: 1.633
+
+Delta_G: 1.2055e+2
+Delta_G,T: 2.5515
+Delta_G,T^2: 1.4952e-3
+
+h_tr-tr: [1.0, 1.0]
+h_sl-tr: [1.5, 1.5, 1.5]
+
+# Twin & Transformation
+T_ref: 293.15
+Gamma_sf: 2.833e-2
+Gamma_sf,T: 1.214e-4
+Gamma_sf,T^2: 1.473e-7
+
+x_c: 1.0e-9
+V_cs: 1.67e-29
+
+# Slip & Twin & Transformation
+D: 5.0e-5

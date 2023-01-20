@@ -35,6 +35,8 @@ submodule(phase:plastic) dislotungsten
       P_nS_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
+    character(len=:),          allocatable               :: &
+      isotropic_bound
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
     logical :: &
@@ -91,9 +93,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
-  class(tNode), pointer :: &
+  character(len=:), allocatable :: extmsg
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
@@ -109,11 +110,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   print'(/,1x,a)', 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
-  phases => config_material%get('phase')
+
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -121,15 +124,17 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
               idx_dot => indexDotState(ph))
 
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech  => phase%get_dict('mechanical')
+    pl  => mech%get_dict('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+
+    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -333,7 +338,7 @@ module function dislotungsten_dotState(Mp,ph,en) result(dotState)
             dot_rho_dip => dotState(indexDotState(ph)%rho_dip(1):indexDotState(ph)%rho_dip(2)), &
             dot_gamma_sl => dotState(indexDotState(ph)%gamma_sl(1):indexDotState(ph)%gamma_sl(2)))
 
-    mu = elastic_mu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
     T = thermal_T(ph,en)
 
     call kinetics(Mp,T,ph,en,&
@@ -384,7 +389,7 @@ module subroutine dislotungsten_dependentState(ph,en)
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    dst%tau_pass(:,en) = elastic_mu(ph,en)*prm%b_sl &
+    dst%tau_pass(:,en) = elastic_mu(ph,en,prm%isotropic_bound)*prm%b_sl &
                        * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,en)+stt%rho_dip(:,en)))
 
     Lambda_sl_inv = 1.0_pReal/prm%D &
@@ -399,7 +404,7 @@ end subroutine dislotungsten_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotungsten_results(ph,group)
+module subroutine plastic_dislotungsten_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -414,27 +419,27 @@ module subroutine plastic_dislotungsten_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
-                                    'mobile dislocation density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                   'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
-                                    'dislocation dipole density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                   'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                    'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
-                                    'mean free path for slip','m',prm%systems_sl)
+          call result_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                   'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                    'threshold stress for slip','Pa',prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'threshold stress for slip','Pa',prm%systems_sl)
       end select
 
     end do
 
   end associate
 
-end subroutine plastic_dislotungsten_results
+end subroutine plastic_dislotungsten_result
 
 
 !--------------------------------------------------------------------------------------------------

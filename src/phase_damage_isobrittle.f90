@@ -34,13 +34,12 @@ module function isobrittle_init() result(mySources)
 
   logical, dimension(:), allocatable :: mySources
 
-  class(tNode), pointer :: &
+  type(tDict), pointer :: &
     phases, &
     phase, &
-    sources, &
     src
   integer :: Nmembers,ph
-  character(len=pStringLen) :: extmsg = ''
+  character(len=:), allocatable :: extmsg
 
 
   mySources = source_active('isobrittle')
@@ -50,18 +49,18 @@ module function isobrittle_init() result(mySources)
   print'(/,a,i0)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(state(phases%length))
   allocate(deltaState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (mySources(ph)) then
-      phase => phases%get(ph)
-      sources => phase%get('damage')
+      phase => phases%get_dict(ph)
+      src => phase%get_dict('damage')
 
       associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
-        src => sources%get(1)
 
         prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
 
@@ -95,7 +94,7 @@ end function isobrittle_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
+!> @brief
 !--------------------------------------------------------------------------------------------------
 module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
@@ -111,11 +110,11 @@ module subroutine isobrittle_deltaState(C, Fe, ph,en)
     r_W
 
 
-  epsilon = math_33toVoigt6_strain(matmul(transpose(Fe),Fe)-math_I3)
+  epsilon = math_33toVoigt6_strain(0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3))
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = (0.5_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
+    r_W = (2.0_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
     dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
 
   end associate
@@ -124,9 +123,9 @@ end subroutine isobrittle_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
+!> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine isobrittle_results(phase,group)
+module subroutine isobrittle_result(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -139,12 +138,12 @@ module subroutine isobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
       end select
     end do outputsLoop
 
   end associate
 
-end subroutine isobrittle_results
+end subroutine isobrittle_result
 
 end submodule isobrittle

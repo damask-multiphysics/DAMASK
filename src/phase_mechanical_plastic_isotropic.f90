@@ -54,9 +54,8 @@ module function plastic_isotropic_init() result(myPlasticity)
     sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
-  character(len=pStringLen) :: &
-    extmsg = ''
-  class(tNode), pointer :: &
+  character(len=:), allocatable :: extmsg
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
@@ -64,7 +63,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 
   myPlasticity = plastic_active('isotropic')
-  if(count(myPlasticity) == 0) return
+  if (count(myPlasticity) == 0) return
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:isotropic init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
@@ -72,18 +71,20 @@ module function plastic_isotropic_init() result(myPlasticity)
   print'(/,1x,a)', 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print'(  1x,a)', 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
-  phases => config_material%get('phase')
+
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(state(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
-    if(.not. myPlasticity(ph)) cycle
+    if (.not. myPlasticity(ph)) cycle
 
     associate(prm => param(ph), stt => state(ph))
 
-    phase => phases%get(ph)
-    mech => phase%get('mechanical')
-    pl => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech => phase%get_dict('mechanical')
+    pl => mech%get_dict('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -285,7 +286,7 @@ end function isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_results(ph,group)
+module subroutine plastic_isotropic_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -296,13 +297,13 @@ module subroutine plastic_isotropic_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('xi')
-        call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
-                                    'resistance against plastic flow','Pa')
+        call result_writeDataset(stt%xi,group,trim(prm%output(o)), &
+                                 'resistance against plastic flow','Pa')
     end select
   end do outputsLoop
   end associate
 
-end subroutine plastic_isotropic_results
+end subroutine plastic_isotropic_result
 
 
 end submodule isotropic

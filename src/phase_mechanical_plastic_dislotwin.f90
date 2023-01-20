@@ -27,7 +27,6 @@ submodule(phase:plastic) dislotwin
       gamma_0_sb = 1.0_pReal, &                                                                     !< value for shearband velocity_0
       E_sb       = 1.0_pReal, &                                                                     !< activation energy for shear bands
       h          = 1.0_pReal, &                                                                     !< stack height of hex nucleus
-      a_cF       = 1.0_pReal, &
       cOverA_hP  = 1.0_pReal, &
       V_mol      = 1.0_pReal, &
       rho        = 1.0_pReal
@@ -55,8 +54,8 @@ submodule(phase:plastic) dislotwin
     real(pReal),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< components of slip-slip interaction matrix
       h_sl_tw, &                                                                                    !< components of slip-twin interaction matrix
-      h_tw_tw, &                                                                                    !< components of twin-twin interaction matrix
       h_sl_tr, &                                                                                    !< components of slip-trans interaction matrix
+      h_tw_tw, &                                                                                    !< components of twin-twin interaction matrix
       h_tr_tr, &                                                                                    !< components of trans-trans interaction matrix
       n0_sl, &                                                                                      !< slip system normal
       forestProjection
@@ -74,8 +73,9 @@ submodule(phase:plastic) dislotwin
     integer,                   allocatable, dimension(:,:) :: &
       fcc_twinNucleationSlipPair                                                                    ! ToDo: Better name? Is also use for trans
     character(len=:),          allocatable                 :: &
-      lattice_tr
-    character(len=pStringLen), allocatable, dimension(:) :: &
+      lattice_tr, &
+      isotropic_bound
+    character(len=pStringLen), allocatable, dimension(:)   :: &
       output
     logical :: &
       extendedDislocations, &                                                                       !< consider split into partials for climb calculation
@@ -140,9 +140,8 @@ module function plastic_dislotwin_init() result(myPlasticity)
   real(pReal), allocatable, dimension(:) :: &
     rho_mob_0, &                                                                                    !< initial unipolar dislocation density per slip system
     rho_dip_0                                                                                       !< initial dipole dislocation density per slip system
-  character(len=pStringLen) :: &
-    extmsg = ''
-  class(tNode), pointer :: &
+  character(len=:), allocatable :: extmsg
+  type(tDict), pointer :: &
     phases, &
     phase, &
     mech, &
@@ -165,11 +164,12 @@ module function plastic_dislotwin_init() result(myPlasticity)
   print'(  1x,a)', 'https://doi.org/10.1016/j.actamat.2016.07.032'
 
 
-  phases => config_material%get('phase')
+  phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -177,15 +177,17 @@ module function plastic_dislotwin_init() result(myPlasticity)
     associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
               idx_dot => indexDotState(ph))
 
-    phase => phases%get(ph)
-    mech  => phase%get('mechanical')
-    pl  => mech%get('plastic')
+    phase => phases%get_dict(ph)
+    mech  => phase%get_dict('mechanical')
+    pl  => mech%get_dict('plastic')
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
+
+   prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -300,9 +302,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
       prm%i_tr       = pl%get_asFloat('i_tr')
-      prm%Delta_G    = polynomial(pl%asDict(),'Delta_G','T')
+      prm%Delta_G    = polynomial(pl,'Delta_G','T')
       prm%L_tr       = pl%get_asFloat('L_tr')
-      a_cF           = pl%get_asFloat('a_cF')
+      a_cF           = prm%b_tr(1)*sqrt(6.0_pReal)                                                  ! b_tr is Shockley partial
       prm%h          = 5.0_pReal * a_cF/sqrt(3.0_pReal)
       prm%cOverA_hP  = pl%get_asFloat('c/a_hP')
       prm%rho        = 4.0_pReal/(sqrt(3.0_pReal)*a_cF**2)/N_A
@@ -358,7 +360,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     end if
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0 .or. prm%extendedDislocations) &
-      prm%Gamma_sf = polynomial(pl%asDict(),'Gamma_sf','T')
+      prm%Gamma_sf = polynomial(pl,'Gamma_sf','T')
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
       prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,prm%N_tw,pl%get_as1dFloat('h_sl-tw'), &
@@ -371,6 +373,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
                                                     phase_lattice(ph))
       if (prm%fccTwinTransNucleation .and. size(prm%N_tr) /= 1) extmsg = trim(extmsg)//' N_tr: nucleation'
     end if slipAndTransActive
+
+    twinAndTransActive: if (prm%sum_N_tw * prm%sum_N_tr > 0) then
+      if (dNeq(prm%b_tw(1),prm%b_tr(1))) extmsg = trim(extmsg)//' b_tw != b_tr'
+    end if twinAndTransActive
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -641,8 +647,8 @@ module function dislotwin_dotState(Mp,ph,en) result(dotState)
             dot_f_tw => dotState(indexDotState(ph)%f_tw(1):indexDotState(ph)%f_tw(2)), &
             dot_f_tr => dotState(indexDotState(ph)%f_tr(1):indexDotState(ph)%f_tr(2)))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
+    nu = elastic_nu(ph,en,prm%isotropic_bound)
     T = thermal_T(ph,en)
 
     f_matrix = 1.0_pReal &
@@ -729,7 +735,7 @@ module subroutine dislotwin_dependentState(ph,en)
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
     sumf_tw = sum(stt%f_tw(1:prm%sum_N_tw,en))
     sumf_tr = sum(stt%f_tr(1:prm%sum_N_tr,en))
 
@@ -762,7 +768,7 @@ end subroutine dislotwin_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_results(ph,group)
+module subroutine plastic_dislotwin_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -777,30 +783,30 @@ module subroutine plastic_dislotwin_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
-                                       'mobile dislocation density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                   'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
-                                       'dislocation dipole density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                   'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                       'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
-                                       'mean free path for slip','m',prm%systems_sl)
+          call result_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                   'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                       'passing stress for slip','Pa',prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'passing stress for slip','Pa',prm%systems_sl)
 
         case('f_tw')
-          call results_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
-                                       'twinned volume fraction','m³/m³',prm%systems_tw)
+          call result_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
+                                   'twinned volume fraction','m³/m³',prm%systems_tw)
         case('Lambda_tw')
-          call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
-                                       'mean free path for twinning','m',prm%systems_tw)
+          call result_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
+                                   'mean free path for twinning','m',prm%systems_tw)
 
         case('f_tr')
-          if (prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
+          if (prm%sum_N_tr>0) call result_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
                                                        'martensite volume fraction','m³/m³')
 
       end select
@@ -809,7 +815,7 @@ module subroutine plastic_dislotwin_results(ph,group)
 
   end associate
 
-end subroutine plastic_dislotwin_results
+end subroutine plastic_dislotwin_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -927,8 +933,8 @@ pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
+    nu = elastic_nu(ph,en,prm%isotropic_bound)
     Gamma_sf = prm%Gamma_sf%at(T)
 
     tau_hat = 3.0_pReal*prm%b_tw(1)*mu/prm%L_tw &
@@ -1003,8 +1009,8 @@ pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
 
   associate(prm => param(ph), stt => state(ph), dst => dependentState(ph))
 
-    mu = elastic_mu(ph,en)
-    nu = elastic_nu(ph,en)
+    mu = elastic_mu(ph,en,prm%isotropic_bound)
+    nu = elastic_nu(ph,en,prm%isotropic_bound)
     Gamma_sf = prm%Gamma_sf%at(T)
 
     tau_hat = 3.0_pReal*prm%b_tr(1)*mu/prm%L_tr &
