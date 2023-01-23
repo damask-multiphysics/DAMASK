@@ -5,6 +5,7 @@
 !> everything is fine. Exit code 1 signals an error, message according to IO_error.
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
+  use, intrinsic :: ISO_fortran_env, only: ERROR_UNIT
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
@@ -27,9 +28,9 @@ subroutine quit(stop_id)
 
 
   call h5open_f(err_HDF5)                                                                           ! prevents error if not opened yet
-  if (err_HDF5 /= 0) write(6,'(a,i5)') ' Error in h5open_f ',err_HDF5
+  if (err_HDF5 /= 0) write(ERROR_UNIT,'(a,i5)') ' Error in h5open_f ',err_HDF5
   call h5close_f(err_HDF5)
-  if (err_HDF5 /= 0) write(6,'(a,i5)') ' Error in h5close_f ',err_HDF5
+  if (err_HDF5 /= 0) write(ERROR_UNIT,'(a,i5)') ' Error in h5close_f ',err_HDF5
 
   call PetscFinalize(err_PETSc)
 
