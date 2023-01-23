@@ -114,7 +114,7 @@ module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = (2.0_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
+    r_W = (0.5_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
     dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
 
   end associate
