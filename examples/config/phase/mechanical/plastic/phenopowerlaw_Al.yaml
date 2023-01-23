@@ -4,7 +4,7 @@ references:
   - W.F. Hosford et al.,
     Acta Metallurgica 8(3):187-199, 1960,
     https://doi.org/10.1016/0001-6160(60)90127-9,
-    fitted from Fig. 5 ([111] and [001])
+    fitted to Fig. 5 ([111] and [001])
 
 output: [xi_sl, gamma_sl]
 

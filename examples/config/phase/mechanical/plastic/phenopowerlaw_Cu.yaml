@@ -4,7 +4,7 @@ references:
   - T. Takeuchi,
     Transactions of the Japan Institute of Metals 16(10):629-640, 1975,
     https://doi.org/10.2320/matertrans1960.16.629,
-    fitted from Fig. 3b ([111] and [001])
+    fitted to Fig. 3b ([111] and [001])
 
 output: [xi_sl, gamma_sl]
 
