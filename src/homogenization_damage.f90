@@ -47,7 +47,7 @@ module subroutine damage_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    Nmembers = count(material_homogenizationID == ho)
+    Nmembers = count(material_ID_homogenization == ho)
     allocate(current(ho)%phi(Nmembers), source=1.0_pReal)
     configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
@@ -95,9 +95,9 @@ module subroutine damage_partition(ce)
   integer :: co
 
 
-  if (damageState_h(material_homogenizationID(ce))%sizeState < 1) return
-  phi = damagestate_h(material_homogenizationID(ce))%state(1,material_homogenizationEntry(ce))
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+  if (damageState_h(material_ID_homogenization(ce))%sizeState < 1) return
+  phi = damagestate_h(material_ID_homogenization(ce))%state(1,material_entry_homogenization(ce))
+  do co = 1, homogenization_Nconstituents(material_ID_homogenization(ce))
     call phase_set_phi(phi,co,ce)
   end do
 
@@ -161,8 +161,8 @@ module subroutine homogenization_set_phi(phi,ce)
     en
 
 
-  ho = material_homogenizationID(ce)
-  en = material_homogenizationEntry(ce)
+  ho = material_ID_homogenization(ce)
+  en = material_entry_homogenization(ce)
   damagestate_h(ho)%state(1,en) = phi
   current(ho)%phi(en) = phi
 

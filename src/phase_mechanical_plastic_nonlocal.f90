@@ -394,7 +394,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers  = count(material_phaseID == ph)
+    Nmembers  = count(material_ID_phase == ph)
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -522,7 +522,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if (.not. myPlasticity(ph)) cycle
 
     phase => phases%get_dict(ph)
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
     l = 0
     do t = 1,4
       do s = 1,param(ph)%sum_N_sl
@@ -662,8 +662,8 @@ module subroutine nonlocal_dependentState(ph, en)
       neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
 
       if (neighbor_el > 0 .and. neighbor_ip > 0) then
-        if (material_phaseID(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip) == ph) then
-            no = material_phaseEntry(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+        if (material_ID_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip) == ph) then
+            no = material_entry_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
             nRealNeighbors = nRealNeighbors + 1.0_pReal
             rho_neighbor0 = getRho0(ph,no)
 
@@ -1251,8 +1251,8 @@ function rhoDotFlux(timestep,ph,en)
       neighbor_el = geom(ph)%IPneighborhood(1,n,en)
       neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
       neighbor_n  = geom(ph)%IPneighborhood(3,n,en)
-      np = material_phaseID(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
-      no = material_phaseEntry(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      np = material_ID_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      no = material_entry_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
 
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
       opposite_el = geom(ph)%IPneighborhood(1,opposite_neighbor,en)
@@ -1399,7 +1399,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
   associate(prm => param(ph))
     ns = prm%sum_N_sl
 
-    en = material_phaseEntry(1,(el-1)*discretization_nIPs + ip)
+    en = material_entry_phase(1,(el-1)*discretization_nIPs + ip)
     !*** start out fully compatible
     my_compatibility = 0.0_pReal
     forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
@@ -1407,8 +1407,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
     neighbors: do n = 1,nIPneighbors
       neighbor_e = IPneighborhood(1,n,ip,el)
       neighbor_i = IPneighborhood(2,n,ip,el)
-      neighbor_me = material_phaseEntry(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
-      neighbor_phase = material_phaseID(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
+      neighbor_me = material_entry_phase(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
+      neighbor_phase = material_ID_phase(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
 
       if (neighbor_e <= 0 .or. neighbor_i <= 0) then
         !* FREE SURFACE
@@ -1467,7 +1467,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
 
     end do neighbors
 
-    dependentState(ph)%compatibility(:,:,:,:,material_phaseEntry(1,(el-1)*discretization_nIPs + ip)) = my_compatibility
+    dependentState(ph)%compatibility(:,:,:,:,material_entry_phase(1,(el-1)*discretization_nIPs + ip)) = my_compatibility
 
   end associate
 
@@ -1772,14 +1772,14 @@ subroutine storeGeometry(ph)
   areaNormal = reshape(IPareaNormal,[3,nIPneighbors,nCell])
   coords = reshape(discretization_IPcoords,[3,nCell])
 
-  do ce = 1, size(material_homogenizationEntry,1)
+  do ce = 1, size(material_entry_homogenization,1)
     do co = 1, homogenization_maxNconstituents
-      if (material_phaseID(co,ce) == ph) then
-        geom(ph)%V_0(material_phaseEntry(co,ce)) = V(ce)
-        geom(ph)%IPneighborhood(:,:,material_phaseEntry(co,ce)) = neighborhood(:,:,ce)
-        geom(ph)%IParea(:,material_phaseEntry(co,ce)) = area(:,ce)
-        geom(ph)%IPareaNormal(:,:,material_phaseEntry(co,ce)) = areaNormal(:,:,ce)
-        geom(ph)%IPcoordinates(:,material_phaseEntry(co,ce)) = coords(:,ce)
+      if (material_ID_phase(co,ce) == ph) then
+        geom(ph)%V_0(material_entry_phase(co,ce)) = V(ce)
+        geom(ph)%IPneighborhood(:,:,material_entry_phase(co,ce)) = neighborhood(:,:,ce)
+        geom(ph)%IParea(:,material_entry_phase(co,ce)) = area(:,ce)
+        geom(ph)%IPareaNormal(:,:,material_entry_phase(co,ce)) = areaNormal(:,:,ce)
+        geom(ph)%IPcoordinates(:,material_entry_phase(co,ce)) = coords(:,ce)
       end if
     end do
   end do

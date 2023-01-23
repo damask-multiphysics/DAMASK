@@ -250,8 +250,8 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
   !$OMP PARALLEL DO PRIVATE(en,ho,co,NiterationMPstate,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
-    en = material_homogenizationEntry(ce)
-    ho = material_homogenizationID(ce)
+    en = material_entry_homogenization(ce)
+    ho = material_ID_homogenization(ce)
 
     call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
@@ -303,9 +303,9 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
     if (terminallyIll) continue
-    ho = material_homogenizationID(ce)
+    ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
-      if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
+      if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
         if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
         terminallyIll = .true.
       end if
@@ -333,7 +333,7 @@ subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolvin
   elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
     IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
-      ho = material_homogenizationID(ce)
+      ho = material_ID_homogenization(ce)
       do co = 1, homogenization_Nconstituents(ho)
         call crystallite_orientations(co,ip,el)
       end do

@@ -39,11 +39,11 @@ module material
     material_name_homogenization                                                                    !< name of each homogenization
 
   integer, dimension(:),   allocatable, public, protected :: &                                      ! (cell)
-    material_homogenizationID, &                                                                    ! TODO: rename to material_ID_homogenization
-    material_homogenizationEntry                                                                    ! TODO: rename to material_entry_homogenization
+    material_ID_homogenization, &                                                                   !< Number of the homogenization
+    material_entry_homogenization                                                                   !< Position in array of used homogenization
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,cell)
-    material_phaseID, &                                                                             ! TODO: rename to material_ID_phase
-    material_phaseEntry                                                                             ! TODO: rename to material_entry_phase
+    material_ID_phase, &                                                                            !< Number of the phase
+    material_entry_phase                                                                            !< Position in array of used phase
 
   real(pReal), dimension(:,:), allocatable, public, protected :: &
     material_v                                                                                      ! fraction
@@ -70,8 +70,8 @@ subroutine material_init(restart)
 
   if (.not. restart) then
     call result_openJobFile
-    call result_mapping_phase(material_phaseID,material_phaseEntry,material_name_phase)
-    call result_mapping_homogenization(material_homogenizationID,material_homogenizationEntry,material_name_homogenization)
+    call result_mapping_phase(material_ID_phase,material_entry_phase,material_name_phase)
+    call result_mapping_homogenization(material_ID_homogenization,material_entry_homogenization,material_name_homogenization)
     call result_closeJobFile
   end if
 
@@ -166,11 +166,11 @@ subroutine parse()
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  allocate(material_homogenizationID(discretization_Ncells),source=0)
-  allocate(material_homogenizationEntry(discretization_Ncells),source=0)
+  allocate(material_ID_homogenization(discretization_Ncells),source=0)
+  allocate(material_entry_homogenization(discretization_Ncells),source=0)
 
-  allocate(material_phaseID(homogenization_maxNconstituents,discretization_Ncells),source=0)
-  allocate(material_phaseEntry(homogenization_maxNconstituents,discretization_Ncells),source=0)
+  allocate(material_ID_phase(homogenization_maxNconstituents,discretization_Ncells),source=0)
+  allocate(material_entry_phase(homogenization_maxNconstituents,discretization_Ncells),source=0)
 
 
   ! build mappings
@@ -181,9 +181,9 @@ subroutine parse()
 
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
-      material_homogenizationID(ce) = ho
+      material_ID_homogenization(ce) = ho
       counterHomogenization(ho) = counterHomogenization(ho) + 1
-      material_homogenizationEntry(ce) = counterHomogenization(ho)
+      material_entry_homogenization(ce) = counterHomogenization(ho)
     end do
 
     do co = 1, size(ph_of(ma,:)>0)
@@ -193,9 +193,9 @@ subroutine parse()
 
       do ip = 1, discretization_nIPs
         ce = (el-1)*discretization_nIPs + ip
-        material_phaseID(co,ce) = ph
+        material_ID_phase(co,ce) = ph
         counterPhase(ph) = counterPhase(ph) + 1
-        material_phaseEntry(co,ce) = counterPhase(ph)
+        material_entry_phase(co,ce) = counterPhase(ph)
         material_v(co,ce) = v
       end do
 

@@ -89,7 +89,7 @@ module function anisobrittle_init() result(mySources)
         if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
         if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
-        Nmembers = count(material_phaseID==ph)
+        Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,0)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'

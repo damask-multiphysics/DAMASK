@@ -57,7 +57,7 @@ module function dissipation_init(source_length) result(mySources)
           src => sources%get_dict(so)
 
           prm%kappa = src%get_asFloat('kappa')
-          Nmembers = count(material_phaseID == ph)
+          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
         end associate
