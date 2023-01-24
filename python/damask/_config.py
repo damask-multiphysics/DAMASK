@@ -43,7 +43,7 @@ class NiceDumper(SafeDumper):
             return self.represent_data(data.tolist())
         if isinstance(data, Rotation):
             return self.represent_data(data.quaternion.tolist())
-        if hasattr(data, 'dtype'):
+        if isinstance(data, np.generic):
             return self.represent_data(data.item())
 
         return super().represent_data(data)
@@ -57,13 +57,23 @@ class Config(dict):
     """YAML-based configuration."""
 
     def __init__(self,
-                 yml: Union[None, str, Dict[str, Any]] = None,
+                 config: Optional[Union[str, Dict[str, Any]]] = None,
                  **kwargs):
-        """Initialize from YAML, dict, or key=value pairs."""
-        if isinstance(yml,str):
-            kwargs.update(yaml.load(yml, Loader=SafeLoader))
-        elif isinstance(yml,dict):
-            kwargs.update(yml)
+        """
+        New YAML-based configuration.
+
+        Parameters
+        ----------
+        config : dict or str, optional
+            Configuration. String needs to be valid YAML.
+        **kwargs: arbitray keyword-value pairs, optional
+            Top level entries of the configuration.
+
+        """
+        if isinstance(config,str):
+            kwargs.update(yaml.load(config, Loader=SafeLoader))
+        elif isinstance(config,dict):
+            kwargs.update(config)
 
         super().__init__(**kwargs)
 

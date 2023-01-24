@@ -1,8 +1,9 @@
-import numpy as np
-import h5py
 from typing import Optional, Union, Sequence, Dict, Any, Collection
 
-from ._typehints import FileHandle
+import numpy as np
+import h5py
+
+from ._typehints import FileHandle, FloatSequence, StrSequence
 from . import Config
 from . import Rotation
 from . import Orientation
@@ -22,33 +23,34 @@ class ConfigMaterial(Config):
     """
 
     def __init__(self,
-                 d: Optional[Dict[str, Any]] = None,
+                 config: Optional[Dict[str, Any]] = None,
                  **kwargs):
         """
         New material configuration.
 
         Parameters
         ----------
-        d : dictionary or YAML string, optional
-            Initial content. Defaults to None, in which case empty entries for
+        config : dict or str, optional
+            Material configuration. String needs to be valid YAML.
+            Defaults to None, in which case empty entries for
             any missing material, homogenization, and phase entry are created.
         kwargs : key=value pairs, optional
             Initial content specified as pairs of key=value.
 
         """
         default: Collection
-        if d is None:
+        if config is None:
             for section, default in {'material':[],'homogenization':{},'phase':{}}.items():
                 if section not in kwargs: kwargs.update({section:default})
 
-        super().__init__(d,**kwargs)
+        super().__init__(config,**kwargs)
 
 
     def save(self,
              fname: FileHandle = 'material.yaml',
              **kwargs):
         """
-        Save to yaml file.
+        Save to YAML file.
 
         Parameters
         ----------
@@ -65,7 +67,7 @@ class ConfigMaterial(Config):
     def load(cls,
              fname: FileHandle = 'material.yaml') -> 'ConfigMaterial':
         """
-        Load from yaml file.
+        Load from YAML file.
 
         Parameters
         ----------
@@ -361,7 +363,7 @@ class ConfigMaterial(Config):
 
         Parameters
         ----------
-        mapping: dictionary
+        mapping: dict
             Mapping from old name to new name
         ID: list of ints, optional
             Limit renaming to selected material IDs.
@@ -394,7 +396,7 @@ class ConfigMaterial(Config):
 
         Parameters
         ----------
-        mapping: dictionary
+        mapping: dict
             Mapping from old name to new name
         ID: list of ints, optional
             Limit renaming to selected homogenization IDs.
@@ -416,11 +418,11 @@ class ConfigMaterial(Config):
 
 
     def material_add(self,*,
-                     homogenization: Any = None,
-                     phase: Any = None,
-                     v: Any = None,
-                     O: Any = None,
-                     V_e: Any = None) -> 'ConfigMaterial':
+                     homogenization: Optional[Union[str,StrSequence]] = None,
+                     phase: Optional[Union[str,StrSequence]] = None,
+                     v: Optional[Union[float,FloatSequence]] = None,
+                     O: Optional[Union[float,FloatSequence]] = None,
+                     V_e: Optional[Union[float,FloatSequence]] = None) -> 'ConfigMaterial':
         """
         Add material entries.
 
@@ -432,6 +434,7 @@ class ConfigMaterial(Config):
             Phase label (per constituent).
         v: (array-like) of float, optional
             Constituent volume fraction (per constituent).
+            Defaults to 1/N_constituents
         O: (array-like) of damask.Rotation or np.array/list of shape(4), optional
             Orientation as unit quaternion (per constituent).
         V_e: (array-like) of np.array/list of shape(3,3), optional
@@ -444,9 +447,8 @@ class ConfigMaterial(Config):
 
         Notes
         -----
-            First index of array-like values that are defined per
-            consituent runs over materials, whereas second index runs
-            over constituents.
+        First index of array-like values that are defined per constituent
+        runs over materials, whereas second index runs over constituents.
 
         Examples
         --------
@@ -533,32 +535,32 @@ class ConfigMaterial(Config):
         _dim = {'O':(4,),'V_e':(3,3,)}
         _ex = dict((k, -len(v)) for k, v in _dim.items())
 
-        N,n = 1,1
+        N_materials,N_constituents = 1,1
         shaped : Dict[str, Union[None,np.ndarray]] = \
                  {'v': None,
                   'phase': None,
                   'homogenization': None,
                   }
 
-        for k,v in kwargs.items():
-            shaped[k] = np.array(v)
-            s = shaped[k].shape[:_ex.get(k,None)]                               # type: ignore
-            N = max(N,s[0]) if len(s)>0 else N
-            n = max(n,s[1]) if len(s)>1 else n
+        for arg,value in kwargs.items():
+            shaped[arg] = np.array(value)
+            s = shaped[arg].shape[:_ex.get(arg,None)]                                               # type: ignore
+            N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
+            N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
-        shaped['v'] = np.array(1./n) if shaped['v'] is None else shaped['v']
+        shaped['v'] = np.array(1./N_constituents) if shaped['v'] is None else shaped['v']
 
-        mat: Sequence[dict] = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
+        mat: Sequence[dict] = [{'constituents':[{} for _ in range(N_constituents)]} for _ in range(N_materials)]
 
         for k,v in shaped.items():
-            target = (N,n) + _dim.get(k,())
+            target = (N_materials,N_constituents) + _dim.get(k,())
             obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(() if v is None else v.shape,
                                                                         target,
                                                                         mode = 'right')),
                                   target)
-            for i in range(N):
+            for i in range(N_materials):
                 if k in _constituent_properties:
-                    for j in range(n):
+                    for j in range(N_constituents):
                         mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
                 else:
                     mat[i][k] = obj[i,0].item() if isinstance(obj[i,0],np.generic) else obj[i,0]
