@@ -20,7 +20,7 @@ module discretization_mesh
   use IO
   use config
   use discretization
-  use results
+  use result
   use FEM_quadrature
   use YAML_types
   use prec
@@ -56,11 +56,10 @@ module discretization_mesh
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-  external :: &
 #ifdef PETSC_USE_64BIT_INDICES
-    DMDestroy, &
+  external :: &
+    DMDestroy
 #endif
-    DMView                                                                                          ! ToDo: write interface
   public :: &
     discretization_mesh_init, &
     mesh_FEM_build_ipVolumes, &
@@ -120,8 +119,6 @@ subroutine discretization_mesh_init(restart)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,NelemsGlobal,err_PETSc)
   CHKERRQ(err_PETSc)
   mesh_NcpElemsGlobal = int(NelemsGlobal)
-  call DMView(globalMesh, PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   ! get number of IDs in face sets (for boundary conditions?)
   call DMGetLabelSize(globalMesh,'Face Sets',Nboundaries,err_PETSc)
@@ -275,16 +272,16 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   coordinates_nodes, &
   coordinates_points
 
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
+  call result_openJobFile
+  call result_closeGroup(result_addGroup('geometry'))
 
-  call results_writeDataset(coordinates_nodes,'geometry','x_n', &
-        'initial coordinates of the nodes','m')
+  call result_writeDataset(coordinates_nodes,'geometry','x_n', &
+                           'initial coordinates of the nodes','m')
 
-  call results_writeDataset(coordinates_points,'geometry','x_p', &
-        'initial coordinates of the materialpoints (cell centers)','m')
+  call result_writeDataset(coordinates_points,'geometry','x_p', &
+                           'initial coordinates of the materialpoints (cell centers)','m')
 
-  call results_closeJobFile
+  call result_closeJobFile
 
   end subroutine writeGeometry
 

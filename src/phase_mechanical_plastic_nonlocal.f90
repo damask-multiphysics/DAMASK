@@ -1477,7 +1477,7 @@ end subroutine plastic_nonlocal_updateCompatibility
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_results(ph,group)
+module subroutine plastic_nonlocal_result(ph,group)
 
   integer,         intent(in) :: ph
   character(len=*),intent(in) :: group
@@ -1491,63 +1491,63 @@ module subroutine plastic_nonlocal_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_u_ed_pos')
-          call results_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), &
-                                    'positive mobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), &
+                                   'positive mobile edge density','1/m²', prm%systems_sl)
         case('rho_b_ed_pos')
-          call results_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), &
-                                    'positive immobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), &
+                                   'positive immobile edge density','1/m²', prm%systems_sl)
         case('rho_u_ed_neg')
-          call results_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), &
-                                    'negative mobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), &
+                                   'negative mobile edge density','1/m²', prm%systems_sl)
         case('rho_b_ed_neg')
-          call results_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), &
-                                    'negative immobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), &
+                                   'negative immobile edge density','1/m²', prm%systems_sl)
         case('rho_d_ed')
-          call results_writeDataset(stt%rho_dip_edg,group,trim(prm%output(ou)), &
-                                    'edge dipole density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_dip_edg,group,trim(prm%output(ou)), &
+                                   'edge dipole density','1/m²', prm%systems_sl)
         case('rho_u_sc_pos')
-          call results_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), &
-                                    'positive mobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), &
+                                   'positive mobile screw density','1/m²', prm%systems_sl)
         case('rho_b_sc_pos')
-          call results_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), &
-                                    'positive immobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), &
+                                   'positive immobile screw density','1/m²', prm%systems_sl)
         case('rho_u_sc_neg')
-          call results_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), &
-                                    'negative mobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), &
+                                   'negative mobile screw density','1/m²', prm%systems_sl)
         case('rho_b_sc_neg')
-          call results_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), &
-                                    'negative immobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), &
+                                   'negative immobile screw density','1/m²', prm%systems_sl)
         case('rho_d_sc')
-          call results_writeDataset(stt%rho_dip_scr,group,trim(prm%output(ou)), &
-                                    'screw dipole density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_dip_scr,group,trim(prm%output(ou)), &
+                                   'screw dipole density','1/m²', prm%systems_sl)
         case('rho_f')
-          call results_writeDataset(stt%rho_forest,group,trim(prm%output(ou)), &
-                                    'forest density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_forest,group,trim(prm%output(ou)), &
+                                   'forest density','1/m²', prm%systems_sl)
         case('v_ed_pos')
-          call results_writeDataset(stt%v_edg_pos,group,trim(prm%output(ou)), &
-                                    'positive edge velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_edg_pos,group,trim(prm%output(ou)), &
+                                   'positive edge velocity','m/s', prm%systems_sl)
         case('v_ed_neg')
-          call results_writeDataset(stt%v_edg_neg,group,trim(prm%output(ou)), &
-                                    'negative edge velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_edg_neg,group,trim(prm%output(ou)), &
+                                   'negative edge velocity','m/s', prm%systems_sl)
         case('v_sc_pos')
-          call results_writeDataset(stt%v_scr_pos,group,trim(prm%output(ou)), &
-                                    'positive srew velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_scr_pos,group,trim(prm%output(ou)), &
+                                   'positive srew velocity','m/s', prm%systems_sl)
         case('v_sc_neg')
-          call results_writeDataset(stt%v_scr_neg,group,trim(prm%output(ou)), &
-                                    'negative screw velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_scr_neg,group,trim(prm%output(ou)), &
+                                   'negative screw velocity','m/s', prm%systems_sl)
         case('gamma')
-          call results_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
-                                    'plastic shear','1', prm%systems_sl)
+          call result_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
+                                   'plastic shear','1', prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                    'passing stress for slip','Pa', prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'passing stress for slip','Pa', prm%systems_sl)
       end select
 
     end do
 
   end associate
 
-end subroutine plastic_nonlocal_results
+end subroutine plastic_nonlocal_result
 
 
 !--------------------------------------------------------------------------------------------------

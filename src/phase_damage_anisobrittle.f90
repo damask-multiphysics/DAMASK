@@ -141,9 +141,9 @@ end subroutine anisobrittle_dotState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes results to HDF5 output file
+!> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine anisobrittle_results(phase,group)
+module subroutine anisobrittle_result(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -155,12 +155,12 @@ module subroutine anisobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
       end select
     end do outputsLoop
   end associate
 
-end subroutine anisobrittle_results
+end subroutine anisobrittle_result
 
 
 !--------------------------------------------------------------------------------------------------

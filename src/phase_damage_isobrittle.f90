@@ -125,7 +125,7 @@ end subroutine isobrittle_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine isobrittle_results(phase,group)
+module subroutine isobrittle_result(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -138,12 +138,12 @@ module subroutine isobrittle_results(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
       end select
     end do outputsLoop
 
   end associate
 
-end subroutine isobrittle_results
+end subroutine isobrittle_result
 
 end submodule isobrittle

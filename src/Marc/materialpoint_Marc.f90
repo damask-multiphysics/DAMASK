@@ -10,7 +10,7 @@ module materialpoint_Marc
   use YAML_types
   use YAML_parse
   use HDF5_utilities
-  use results
+  use result
   use config
   use math
   use rotations
@@ -65,7 +65,7 @@ module materialpoint_Marc
   public :: &
     materialpoint_general, &
     materialpoint_initAll, &
-    materialpoint_results
+    materialpoint_result
 
 contains
 
@@ -81,7 +81,7 @@ subroutine materialpoint_initAll()
   call YAML_types_init()
   call YAML_parse_init()
   call HDF5_utilities_init()
-  call results_init(.false.)
+  call result_init(.false.)
   call config_init()
   call math_init()
   call rotations_init()
@@ -266,19 +266,19 @@ end subroutine materialpoint_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_results(inc,time)
+subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
 
-  call results_openJobFile
-  call results_addIncrement(inc,time)
-  call phase_results
-  call homogenization_results
-  call discretization_results
-  call results_finalizeIncrement
-  call results_closeJobFile
+  call result_openJobFile
+  call result_addIncrement(inc,time)
+  call phase_result
+  call homogenization_result
+  call discretization_result
+  call result_finalizeIncrement
+  call result_closeJobFile
 
-end subroutine materialpoint_results
+end subroutine materialpoint_result
 
 end module materialpoint_Marc

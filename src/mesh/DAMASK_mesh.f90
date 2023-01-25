@@ -239,7 +239,7 @@ program DAMASK_mesh
 
   print'(/,1x,a)', '... writing initial configuration to file .................................'
   flush(IO_STDOUT)
-  call materialpoint_results(0,0.0_pReal)
+  call materialpoint_result(0,0.0_pReal)
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
@@ -325,7 +325,7 @@ program DAMASK_mesh
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
         print'(/,1x,a)', '... writing results to file ...............................................'
         call FEM_mechanical_updateCoords
-        call materialpoint_results(totalIncsCounter,time)
+        call materialpoint_result(totalIncsCounter,time)
       end if
 
 
