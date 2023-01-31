@@ -800,7 +800,7 @@ class ProgressBar:
                  prefix: str,
                  bar_length: int):
         """
-        Set current time as basis for ETA estimation.
+        New progress bar.
 
         Parameters
         ----------
