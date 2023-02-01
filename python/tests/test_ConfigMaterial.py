@@ -16,6 +16,27 @@ def ref_path(ref_path_base):
 
 class TestConfigMaterial:
 
+    def test_init_empty(self):
+        c = ConfigMaterial()
+        assert len(c) == 3
+        assert c['homogenization'] == {}
+        assert c['phase'] == {}
+        assert c['material'] == []
+
+    def test_init_d(self):
+        c = ConfigMaterial(config={'phase':4})
+        assert len(c) == 1
+        assert c['phase'] == 4
+
+    @pytest.mark.parametrize('kwargs',[{'homogenization':{'SX':{}}},
+                                       {'phase':{'Aluminum':{}}},
+                                       {'material':[{'A':1},{'B':2}]}])
+    def test_init_some(self,kwargs):
+        c = ConfigMaterial(**kwargs)
+        assert len(c) == 3
+        for k,v in kwargs.items():
+            if k in kwargs: assert v == kwargs[k]
+
     @pytest.mark.parametrize('fname',[None,'test.yaml'])
     def test_load_save(self,ref_path,tmp_path,fname):
         reference = ConfigMaterial.load(ref_path/'material.yaml')
@@ -88,14 +109,14 @@ class TestConfigMaterial:
     def test_from_table(self):
         N = np.random.randint(3,10)
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
-                       np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2),
+                       np.zeros(N*2),np.ones(N*2),np.zeros(N*2),np.zeros(N*2),
                        np.ones(N*2),
                       )).T
         t = Table({'varying':1,'constant':4,'ones':1},a)
         c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':'ones'})
         assert len(c['material']) == N
         for i,m in enumerate(c['material']):
-            assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
+            assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [0,1,0,0]).all()
 
     def test_updated_dicts(self,ref_path):
         m1 = ConfigMaterial().material_add(phase=['Aluminum'],O=[1.0,0.0,0.0,0.0],homogenization='SX')
@@ -109,14 +130,14 @@ class TestConfigMaterial:
     def test_from_table_with_constant(self):
         N = np.random.randint(3,10)
         a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),
-                       np.ones(N*2),np.zeros(N*2),np.ones(N*2),np.ones(N*2),
+                       np.zeros(N*2),np.ones(N*2),np.zeros(N*2),np.zeros(N*2),
                        np.ones(N*2),
                       )).T
         t = Table({'varying':1,'constant':4,'ones':1},a)
         c = ConfigMaterial.from_table(t,**{'phase':'varying','O':'constant','homogenization':1})
         assert len(c['material']) == N
         for i,m in enumerate(c['material']):
-            assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [1,0,1,1]).all()
+            assert m['homogenization'] == 1 and (m['constituents'][0]['O'] == [0,1,0,0]).all()
 
     @pytest.mark.parametrize('N,n,kw',[
                                         (1,1,{'phase':'Gold',
@@ -137,6 +158,14 @@ class TestConfigMaterial:
         assert len(m['material']) == N
         assert len(m['material'][0]['constituents']) == n
 
+    @pytest.mark.parametrize('shape',[(),(4,),(5,2)])
+    @pytest.mark.parametrize('kw',[{'V_e':np.random.rand(3,3)},
+                                   {'O':np.random.rand(4)},
+                                   {'v':np.array(2)}])
+    def test_material_add_invalid(self,kw,shape):
+        kw = {arg:np.broadcast_to(val,shape+val.shape) for arg,val in kw.items()}
+        with pytest.raises(ValueError):
+            ConfigMaterial().material_add(**kw)
 
     @pytest.mark.parametrize('cell_ensemble_data',[None,'CellEnsembleData'])
     def test_load_DREAM3D(self,ref_path,cell_ensemble_data):

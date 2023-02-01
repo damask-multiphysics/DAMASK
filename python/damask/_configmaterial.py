@@ -8,6 +8,7 @@ from . import Config
 from . import Rotation
 from . import Orientation
 from . import util
+from . import tensor
 from . import Table
 
 
@@ -443,7 +444,7 @@ class ConfigMaterial(Config):
             Phase label (per constituent).
         v: (array-like) of float, optional
             Constituent volume fraction (per constituent).
-            Defaults to 1/N_constituents
+            Defaults to 1/N_constituent.
         O: (array-like) of damask.Rotation or np.array/list of shape(4), optional
             Orientation as unit quaternion (per constituent).
         V_e: (array-like) of np.array/list of shape(3,3), optional
@@ -536,48 +537,44 @@ class ConfigMaterial(Config):
         phase: {Austenite: null, Ferrite: null}
 
         """
-        kwargs = {}
-        for keyword,value in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
-            if value is not None: kwargs[keyword] = value
-
-        _constituent_properties = ['phase','O','v','V_e']
-        _dim = {'O':(4,),'V_e':(3,3,)}
-        _ex = dict((k, -len(v)) for k, v in _dim.items())
+        dim = {'O':(4,),'V_e':(3,3,)}
+        ex = dict((keyword, -len(val)) for keyword,val in dim.items())
 
         N_materials,N_constituents = 1,1
-        shaped : Dict[str, Union[None,np.ndarray]] = \
-                 {'v': None,
-                  'phase': None,
-                  'homogenization': None,
-                  }
-
-        for arg,value in kwargs.items():
-            shaped[arg] = np.array(value)
-            s = shaped[arg].shape[:_ex.get(arg,None)]                                               # type: ignore
+        shaped = {}
+        for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
+            if val is None: continue
+            shaped[arg] = np.array(val)
+            s = shaped[arg].shape[:ex.get(arg,None)]                                                # type: ignore
             N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
             N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
-        shaped['v'] = np.array(1./N_constituents) if shaped['v'] is None else shaped['v']
+        shaped['v'] = np.array(shaped.get('v',1./N_constituents),float)
 
         mat: Sequence[dict] = [{'constituents':[{} for _ in range(N_constituents)]} for _ in range(N_materials)]
 
         for k,v in shaped.items():
-            target = (N_materials,N_constituents) + _dim.get(k,())
-            obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(() if v is None else v.shape,
-                                                                        target,
-                                                                        mode = 'right')),
-                                  target)
+            target = (N_materials,N_constituents) + dim.get(k,())
+            obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(np.array(v).shape,target,'right')),target)
+            if k == 'v':
+                total = obj if len(np.atleast_1d(obj)) == 1 else np.sum(obj,axis=-1)
+                if np.min(obj) < 0 or np.min(total) < 0 or np.max(total) > 1:
+                    raise ValueError('volume fraction "v" out of range')
+            if k == 'O' and not np.allclose(1.0,np.linalg.norm(obj,axis=-1)):
+                raise ValueError('orientation "O" is not a unit quaterion')
+            elif k == 'V_e' and not np.allclose(obj,tensor.symmetric(obj)):
+                raise ValueError('elastic stretch "V_e" is not symmetric')
             for i in range(N_materials):
-                if k in _constituent_properties:
-                    for j in range(N_constituents):
-                        mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
+                if k == 'homogenization':
+                    mat[i][k] = obj[i,0]
                 else:
-                    mat[i][k] = obj[i,0].item() if isinstance(obj[i,0],np.generic) else obj[i,0]
+                    for j in range(N_constituents):
+                        mat[i]['constituents'][j][k] = obj[i,j]
 
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
-        for what in [item for item in ['phase','homogenization'] if shaped[item] is not None]:
+        for what in [item for item in ['phase','homogenization'] if item in shaped]:
             for k in np.unique(shaped[what]):                                   # type: ignore
                 if k not in dup[what]: dup[what][str(k)] = None
 
