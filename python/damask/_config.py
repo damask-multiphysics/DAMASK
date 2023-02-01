@@ -2,6 +2,7 @@ import copy
 from io import StringIO
 from collections.abc import Iterable
 import abc
+import platform
 from typing import Optional, Union, Dict, Any, Type, TypeVar
 
 import numpy as np
@@ -69,13 +70,30 @@ class Config(dict):
         **kwargs: arbitray keyword-value pairs, optional
             Top level entries of the configuration.
 
-        """
-        if isinstance(config,str):
-            kwargs.update(yaml.load(config, Loader=SafeLoader))
-        elif isinstance(config,dict):
-            kwargs.update(config)
+        Notes
+        -----
+        Values given as keyword-value pairs take precedence
+        over entries with the same keyword in 'config'.
 
-        super().__init__(**kwargs)
+        """
+        if int(platform.python_version_tuple()[1]) >= 9:
+            if isinstance(config,str):
+                kwargs = yaml.load(config, Loader=SafeLoader) | kwargs
+            elif isinstance(config,dict):
+                kwargs = config | kwargs                                                            # type: ignore
+
+            super().__init__(**kwargs)
+        else:
+            if isinstance(config,str):
+                c = yaml.load(config, Loader=SafeLoader)
+            elif isinstance(config,dict):
+                c = config.copy()
+            else:
+                c = {}
+            c.update(kwargs)
+
+            super().__init__(**c)
+
 
     def __repr__(self) -> str:
         """
