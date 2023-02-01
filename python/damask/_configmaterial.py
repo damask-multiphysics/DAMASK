@@ -1,4 +1,4 @@
-from typing import Optional, Union, Sequence, Dict, Any, Collection
+from typing import Optional, Union, Sequence, Dict, Any, List
 
 import numpy as np
 import h5py
@@ -23,8 +23,10 @@ class ConfigMaterial(Config):
     """
 
     def __init__(self,
-                 config: Optional[Dict[str, Any]] = None,
-                 **kwargs):
+                 config: Optional[Union[str,Dict[str,Any]]] = None,*,
+                 homogenization: Optional[Dict[str,Dict]] = None,
+                 phase: Optional[Dict[str,Dict]] = None,
+                 material: Optional[List[Dict[str,Any]]] = None):
         """
         New material configuration.
 
@@ -32,16 +34,23 @@ class ConfigMaterial(Config):
         ----------
         config : dict or str, optional
             Material configuration. String needs to be valid YAML.
-            Defaults to None, in which case empty entries for
-            any missing material, homogenization, and phase entry are created.
-        kwargs : key=value pairs, optional
-            Initial content specified as pairs of key=value.
+        homogenization : dict, optional
+            Homogenization configuration.
+            Defaults to an empty dict if 'config' is not given.
+        phase : dict, optional
+            Phase configuration.
+            Defaults to an empty dict if 'config' is not given.
+        material : dict, optional
+            Materialpoint configuration.
+            Defaults to an empty list if 'config' is not given.
 
         """
-        default: Collection
-        if config is None:
-            for section, default in {'material':[],'homogenization':{},'phase':{}}.items():
-                if section not in kwargs: kwargs.update({section:default})
+        kwargs: Dict[str,Union[Dict[str,Dict],List[Dict[str,Any]]]] = {}
+        for arg,value in zip(['homogenization','phase','material'],[homogenization,phase,material]):
+            if value is None and config is None:
+                kwargs[arg] = [] if arg == 'material' else {}
+            elif value is not None:
+                kwargs[arg] = value
 
         super().__init__(config,**kwargs)
 
