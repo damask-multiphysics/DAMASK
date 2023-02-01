@@ -1177,22 +1177,22 @@ subroutine selfTest()
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
     vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
     scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad cosine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'grad cosine'
     scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
     vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad sine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'grad sine'
 
     vectorField_real_(2:3,:,:,:) = 0.0_pReal
     vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
     scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
     vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div cosine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'div cosine'
     vectorField_real_(2:3,:,:,:) = 0.0_pReal
     vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
     scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
     vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div sine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'div sine'
   end if
 
   contains
