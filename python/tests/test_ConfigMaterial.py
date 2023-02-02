@@ -167,6 +167,11 @@ class TestConfigMaterial:
         with pytest.raises(ValueError):
             ConfigMaterial().material_add(**kw)
 
+    @pytest.mark.parametrize('v',[2,np.ones(3)*2,np.ones((2,2))])
+    def test_material_add_invalid_v(self,v):
+        with pytest.raises(ValueError):
+            ConfigMaterial().material_add(v=v)
+
     @pytest.mark.parametrize('cell_ensemble_data',[None,'CellEnsembleData'])
     def test_load_DREAM3D(self,ref_path,cell_ensemble_data):
         grain_c = ConfigMaterial.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','Grain Data',
