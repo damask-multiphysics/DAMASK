@@ -541,25 +541,28 @@ class ConfigMaterial(Config):
         ex = dict((keyword, -len(val)) for keyword,val in dim.items())
 
         N_materials,N_constituents = 1,1
-        shaped = {}
+        shape = {}
         for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
             if val is None: continue
-            shaped[arg] = np.array(val)
-            s = shaped[arg].shape[:ex.get(arg,None)]                                                # type: ignore
+            shape[arg] = np.array(val)
+            s = shape[arg].shape[:ex.get(arg,None)]                                                # type: ignore
             N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
             N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
-        shaped['v'] = np.array(shaped.get('v',1./N_constituents),float)
+        shape['v'] = np.array(shape.get('v',1./N_constituents),float)
 
         mat: Sequence[dict] = [{'constituents':[{} for _ in range(N_constituents)]} for _ in range(N_materials)]
 
-        for k,v in shaped.items():
+        for k,v in shape.items():
             target = (N_materials,N_constituents) + dim.get(k,())
             obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(np.array(v).shape,target,'right')),target)
             if k == 'v':
-                total = obj if len(np.atleast_1d(obj)) == 1 else np.sum(obj,axis=-1)
-                if np.min(obj) < 0 or np.min(total) < 0 or np.max(total) > 1:
+                if np.min(obj) < 0 or np.max(obj) > 1:
                     raise ValueError('volume fraction "v" out of range')
+                if len(np.atleast_1d(obj)) > 1:
+                    total = np.sum(obj,axis=-1)
+                    if np.min(total) < 0 or np.max(total) > 1:
+                        raise ValueError('volume fraction "v" out of range')
             if k == 'O' and not np.allclose(1.0,np.linalg.norm(obj,axis=-1)):
                 raise ValueError('orientation "O" is not a unit quaterion')
             elif k == 'V_e' and not np.allclose(obj,tensor.symmetric(obj)):
@@ -574,8 +577,8 @@ class ConfigMaterial(Config):
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
-        for what in [item for item in ['phase','homogenization'] if item in shaped]:
-            for k in np.unique(shaped[what]):                                   # type: ignore
+        for what in [item for item in ['phase','homogenization'] if item in shape]:
+            for k in np.unique(shape[what]):                                                        # type: ignore
                 if k not in dup[what]: dup[what][str(k)] = None
 
         return dup
