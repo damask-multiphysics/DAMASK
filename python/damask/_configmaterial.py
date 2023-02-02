@@ -180,8 +180,12 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table: Table,
-                   **kwargs) -> 'ConfigMaterial':
+    def from_table(table: Table,*,
+                   homogenization: Optional[Union[str,StrSequence]] = None,
+                   phase: Optional[Union[str,StrSequence]] = None,
+                   v: Optional[Union[str,FloatSequence]] = None,
+                   O: Optional[Union[str,FloatSequence]] = None,
+                   V_e: Optional[Union[str,FloatSequence]] = None) -> 'ConfigMaterial':
         """
         Generate from an ASCII table.
 
@@ -189,15 +193,32 @@ class ConfigMaterial(Config):
         ----------
         table : damask.Table
             Table that contains material information.
-        **kwargs
-            Keyword arguments where the key is the property name and
-            the value specifies either the label of the data column in the table
-            or a constant value.
+        homogenization: (array-like) of str, optional
+            Homogenization label.
+        phase: (array-like) of str, optional
+            Phase label (per constituent).
+        v: (array-like) of float or str, optional
+            Constituent volume fraction (per constituent).
+            Defaults to 1/N_constituent.
+        O: (array-like) of damask.Rotation or np.array/list of shape(4) or str, optional
+            Orientation as unit quaternion (per constituent).
+        V_e: (array-like) of np.array/list of shape(3,3) or str, optional
+            Left elastic stretch (per constituent).
+
 
         Returns
         -------
         new : damask.ConfigMaterial
             Material configuration from values in table.
+
+        Notes
+        -----
+        If the value of an argument is a string that is a column label,
+        data from the table is used to fill the corresponding entry in
+        the material configuration. Otherwise, the value is used directly.
+
+        First index of array-like values that are defined per constituent
+        runs over materials, whereas second index runs over constituents.
 
         Examples
         --------
@@ -240,15 +261,16 @@ class ConfigMaterial(Config):
         phase: {Aluminum: null, Steel: null}
 
         """
-        kwargs_ = {k:table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T for k,v in kwargs.items()}
+        kwargs = {}
+        for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
+            if val is not None:
+                kwargs[arg] = table.get(val) if val in table.labels else np.atleast_2d([val]*len(table)).T # type: ignore
 
-        _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
+        _,idx = np.unique(np.hstack(list(kwargs.values())),return_index=True,axis=0)
         idx = np.sort(idx)
-        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
-        for what in ['phase','homogenization']:
-            if what not in kwargs_: kwargs_[what] = what+'_label'
+        kwargs = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs.items()}
 
-        return ConfigMaterial().material_add(**kwargs_)
+        return ConfigMaterial().material_add(**kwargs)
 
 
     @property
