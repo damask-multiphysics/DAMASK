@@ -567,7 +567,7 @@ class ConfigMaterial(Config):
         for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
             if val is None: continue
             shape[arg] = np.array(val)
-            s = shape[arg].shape[:ex.get(arg,None)]                                                # type: ignore
+            s = shape[arg].shape[:ex.get(arg,None)]                                                 # type: ignore
             N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
             N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
@@ -577,24 +577,24 @@ class ConfigMaterial(Config):
 
         for k,v in shape.items():
             target = (N_materials,N_constituents) + dim.get(k,())
-            obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(np.array(v).shape,target,'right')),target)
+            broadcasted = np.broadcast_to(np.array(v).reshape(util.shapeshifter(np.array(v).shape,target,'right')),target)
             if k == 'v':
-                if np.min(obj) < 0 or np.max(obj) > 1:
+                if np.min(broadcasted) < 0 or np.max(broadcasted) > 1:
                     raise ValueError('volume fraction "v" out of range')
-                if len(np.atleast_1d(obj)) > 1:
-                    total = np.sum(obj,axis=-1)
+                if len(np.atleast_1d(broadcasted)) > 1:
+                    total = np.sum(broadcasted,axis=-1)
                     if np.min(total) < 0 or np.max(total) > 1:
                         raise ValueError('volume fraction "v" out of range')
-            if k == 'O' and not np.allclose(1.0,np.linalg.norm(obj,axis=-1)):
+            if k == 'O' and not np.allclose(1.0,np.linalg.norm(broadcasted,axis=-1)):
                 raise ValueError('orientation "O" is not a unit quaterion')
-            elif k == 'V_e' and not np.allclose(obj,tensor.symmetric(obj)):
+            elif k == 'V_e' and not np.allclose(broadcasted,tensor.symmetric(broadcasted)):
                 raise ValueError('elastic stretch "V_e" is not symmetric')
             for i in range(N_materials):
                 if k == 'homogenization':
-                    mat[i][k] = obj[i,0]
+                    mat[i][k] = broadcasted[i,0]
                 else:
                     for j in range(N_constituents):
-                        mat[i]['constituents'][j][k] = obj[i,j]
+                        mat[i]['constituents'][j][k] = broadcasted[i,j]
 
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
