@@ -63,7 +63,7 @@ module function externalheat_init(source_length) result(mySources)
 
           prm%f = table(src,'t','f')
 
-          Nmembers = count(material_phaseID == ph)
+          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
         end associate
       end if

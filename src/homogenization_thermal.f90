@@ -50,8 +50,8 @@ module subroutine thermal_init()
   allocate(current(configHomogenizations%length))
 
   do ho = 1, configHomogenizations%length
-    allocate(current(ho)%T(count(material_homogenizationID==ho)), source=T_ROOM)
-    allocate(current(ho)%dot_T(count(material_homogenizationID==ho)), source=0.0_pReal)
+    allocate(current(ho)%T(count(material_ID_homogenization==ho)), source=T_ROOM)
+    allocate(current(ho)%dot_T(count(material_ID_homogenization==ho)), source=0.0_pReal)
     configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
 
@@ -104,9 +104,9 @@ module subroutine thermal_partition(ce)
   integer :: co
 
 
-  T     = current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce))
-  dot_T = current(material_homogenizationID(ce))%dot_T(material_homogenizationEntry(ce))
-  do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+  T     = current(material_ID_homogenization(ce))%T(material_entry_homogenization(ce))
+  dot_T = current(material_ID_homogenization(ce))%dot_T(material_entry_homogenization(ce))
+  do co = 1, homogenization_Nconstituents(material_ID_homogenization(ce))
     call phase_thermal_setField(T,dot_T,co,ce)
   end do
 
@@ -125,7 +125,7 @@ module function homogenization_mu_T(ce) result(mu)
 
 
   mu = phase_mu_T(1,ce)*material_v(1,ce)
-  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+  do co = 2, homogenization_Nconstituents(material_ID_homogenization(ce))
     mu = mu + phase_mu_T(co,ce)*material_v(co,ce)
   end do
 
@@ -144,7 +144,7 @@ module function homogenization_K_T(ce) result(K)
 
 
   K = phase_K_T(1,ce)*material_v(1,ce)
-  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+  do co = 2, homogenization_Nconstituents(material_ID_homogenization(ce))
     K = K + phase_K_T(co,ce)*material_v(co,ce)
   end do
 
@@ -162,9 +162,9 @@ module function homogenization_f_T(ce) result(f)
   integer :: co
 
 
-  f = phase_f_T(material_phaseID(1,ce),material_phaseEntry(1,ce))*material_v(1,ce)
-  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
-    f = f + phase_f_T(material_phaseID(co,ce),material_phaseEntry(co,ce))*material_v(co,ce)
+  f = phase_f_T(material_ID_phase(1,ce),material_entry_phase(1,ce))*material_v(1,ce)
+  do co = 2, homogenization_Nconstituents(material_ID_homogenization(ce))
+    f = f + phase_f_T(material_ID_phase(co,ce),material_entry_phase(co,ce))*material_v(co,ce)
   end do
 
 end function homogenization_f_T
@@ -179,8 +179,8 @@ module subroutine homogenization_thermal_setField(T,dot_T, ce)
   real(pReal), intent(in) :: T, dot_T
 
 
-  current(material_homogenizationID(ce))%T(material_homogenizationEntry(ce)) = T
-  current(material_homogenizationID(ce))%dot_T(material_homogenizationEntry(ce)) = dot_T
+  current(material_ID_homogenization(ce))%T(material_entry_homogenization(ce)) = T
+  current(material_ID_homogenization(ce))%dot_T(material_entry_homogenization(ce)) = dot_T
   call thermal_partition(ce)
 
 end subroutine homogenization_thermal_setField

@@ -28,7 +28,7 @@ module subroutine pass_init()
     if (homogenization_Nconstituents(ho) /= 1) &
       call IO_error(211,ext_msg='(pass) with N_constituents !=1')
 
-    Nmembers = count(material_homogenizationID == ho)
+    Nmembers = count(material_ID_homogenization == ho)
     homogState(ho)%sizeState = 0
     allocate(homogState(ho)%state0(0,Nmembers))
     allocate(homogState(ho)%state (0,Nmembers))

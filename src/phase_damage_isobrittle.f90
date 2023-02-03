@@ -73,7 +73,7 @@ module function isobrittle_init() result(mySources)
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        Nmembers = count(material_phaseID==ph)
+        Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,0,1)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'

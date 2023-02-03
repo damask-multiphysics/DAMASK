@@ -96,7 +96,7 @@ module subroutine damage_init()
   damage_active = .false.
   do ph = 1,phases%length
 
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
 
@@ -137,8 +137,8 @@ module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
     ph, en
 
 
-  ph = material_phaseID(co,ce)
-  en = material_phaseEntry(co,ce)
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
 
   converged_ = .not. integrateDamageState(Delta_t,ph,en)
 
@@ -176,10 +176,10 @@ module subroutine damage_restore(ce)
     co
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
-    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
-      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
+  do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
+    if (damageState(material_ID_phase(co,ce))%sizeState > 0) &
+    damageState(material_ID_phase(co,ce))%state( :,material_entry_phase(co,ce)) = &
+      damageState(material_ID_phase(co,ce))%state0(:,material_entry_phase(co,ce))
   end do
 
 end subroutine damage_restore
@@ -200,8 +200,8 @@ module function phase_f_phi(phi,co,ce) result(f)
     ph, &
     en
 
-  ph = material_phaseID(co,ce)
-  en = material_phaseEntry(co,ce)
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
 
   select case(phase_damage(ph))
     case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
@@ -400,7 +400,7 @@ module function phase_mu_phi(co,ce) result(mu)
   real(pReal) :: mu
 
 
-  mu = param(material_phaseID(co,ce))%mu
+  mu = param(material_ID_phase(co,ce))%mu
 
 end function phase_mu_phi
 
@@ -414,7 +414,7 @@ module function phase_K_phi(co,ce) result(K)
   real(pReal), dimension(3,3) :: K
 
 
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%l_c**2*math_I3)
+  K = crystallite_push33ToRef(co,ce,param(material_ID_phase(co,ce))%l_c**2*math_I3)
 
 end function phase_K_phi
 
@@ -498,7 +498,7 @@ module subroutine phase_set_phi(phi,co,ce)
   integer, intent(in) :: ce, co
 
 
-  current(material_phaseID(co,ce))%phi(material_phaseEntry(co,ce)) = phi
+  current(material_ID_phase(co,ce))%phi(material_entry_phase(co,ce)) = phi
 
 end subroutine phase_set_phi
 
