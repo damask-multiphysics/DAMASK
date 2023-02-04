@@ -397,8 +397,8 @@ class TestResult:
         v = VTK.load(tmp_path/fname)
         v.comments = ['n/a']
         v.save(tmp_path/fname,parallel=False)
-        with open(tmp_path/fname) as f:
-            cur = hashlib.md5(f.read().encode()).hexdigest()
+        with open(tmp_path/fname,'rb') as f:
+            cur = hashlib.md5(f.read()).hexdigest()
         if update:
             with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur+'\n')
