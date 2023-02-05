@@ -1114,12 +1114,6 @@ module subroutine nonlocal_dotState(Mp,timestep, &
 
   if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
      .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
-#ifdef DEBUG
-    if (debugConstitutive%extensive) then
-      print'(a,i5,a,i2)', '<< CONST >> evolution rate leads to negative density at ph ',ph,' en ',en
-      print'(a)', '<< CONST >> enforcing cutback !!!'
-    end if
-#endif
     plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   else
     dot%rho(:,en) = pack(rhoDot,.true.)
@@ -1219,17 +1213,6 @@ function rhoDotFlux(timestep,ph,en)
     if (any( abs(dot_gamma) > 0.0_pReal &                                                           ! any active slip system ...
             .and. prm%C_CFL * abs(v0) * timestep &
                 > geom(ph)%V_0(en)/ maxval(geom(ph)%IParea(:,en)))) then                            ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
-#ifdef DEBUG
-    if (debugConstitutive%extensive) then
-      print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at ph ',ph,' en ',en
-      print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
-        maxval(abs(v0), abs(dot_gamma) > 0.0_pReal &
-                       .and.  prm%C_CFL * abs(v0) * timestep &
-                             > geom(ph)%V_0(en) / maxval(geom(ph)%IParea(:,en))), &
-        ' at a timestep of ',timestep
-      print*, '<< CONST >> enforcing cutback !!!'
-    end if
-#endif
       rhoDotFlux = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                                             ! enforce cutback
       return
     end if
