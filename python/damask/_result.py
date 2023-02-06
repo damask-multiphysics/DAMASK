@@ -106,7 +106,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 12 <= self.version_minor <= 14:
+            if (self.version_major != 0 or not 12 <= self.version_minor <= 14) and self.version_major != 1:
                 raise TypeError(f'unsupported DADF5 version "{self.version_major}.{self.version_minor}"')
             if self.version_major == 0 and self.version_minor < 14:
                 self.export_simulation_setup = None                                                 # type: ignore

@@ -128,17 +128,13 @@ subroutine grid_mechanical_spectral_polarisation_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-  type(MPI_File) :: fileUnit
-#else
-  integer :: fileUnit
-#endif
   type(tDict), pointer :: &
     num_grid
   type(tList), pointer :: &
     debug_grid
   character(len=pStringLen) :: &
     extmsg = ''
+
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 

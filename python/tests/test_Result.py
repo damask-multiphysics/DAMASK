@@ -385,7 +385,9 @@ class TestResult:
         assert np.allclose(a,b)
 
     @pytest.mark.parametrize('output',['F','*',['P'],['P','F']],ids=range(4))
-    @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5'],ids=range(1))
+    @pytest.mark.parametrize('fname',['12grains6x7x8_tensionY.hdf5',
+                                      '4grains2x4x3_compressionY.hdf5',
+                                      '6grains6x7x8_single_phase_tensionY.hdf5'],ids=range(3))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
     def test_export_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
@@ -395,8 +397,8 @@ class TestResult:
         v = VTK.load(tmp_path/fname)
         v.comments = ['n/a']
         v.save(tmp_path/fname,parallel=False)
-        with open(tmp_path/fname) as f:
-            cur = hashlib.md5(f.read().encode()).hexdigest()
+        with open(tmp_path/fname,'rb') as f:
+            cur = hashlib.md5(f.read()).hexdigest()
         if update:
             with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur+'\n')
