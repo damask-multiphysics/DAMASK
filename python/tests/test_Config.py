@@ -7,6 +7,17 @@ from damask import Orientation
 
 class TestConfig:
 
+    def test_init_keyword(self):
+        assert Config(p=4)['p'] == 4
+
+    @pytest.mark.parametrize('config',[{'p':1},'{p: 1}'])
+    def test_init_config(self,config):
+        assert Config(config)['p'] == 1
+
+    @pytest.mark.parametrize('config',[{'p':1},'{p: 1}'])
+    def test_init_both(self,config):
+        assert Config(config,p=2)['p'] == 2
+
     @pytest.mark.parametrize('flow_style',[None,True,False])
     def test_load_save_str(self,tmp_path,flow_style):
         config = Config()
@@ -35,7 +46,6 @@ class TestConfig:
         assert (config |        dummy ).delete([       'hello',  'foo'   ]) == config
         assert (config | Config(dummy)).delete({       'hello':1,'foo':2 }) == config
         assert (config | Config(dummy)).delete(Config({'hello':1        })) == config | {'foo':'bar'}
-
 
     def test_repr(self,tmp_path):
         config = Config()
