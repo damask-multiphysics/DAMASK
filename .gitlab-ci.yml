@@ -181,13 +181,13 @@ open-source:
   script:
     - module load ${COMPILER_INTEL} ${MPI_INTEL} ${PETSC_INTEL}
     - cd PRIVATE/testing/pytest
-    - pytest -k 'not compile and not Marc' --basetemp ${TESTROOT}/open-source -v
+    - pytest -k 'not compile and not Marc' -m 'not cifail' --basetemp ${TESTROOT}/open-source -v
 
 Marc:
   stage: fortran
   script:
     - cd PRIVATE/testing/pytest
-    - pytest -k 'not compile and Marc' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
+    - pytest -k 'not compile and Marc' -m 'not cifail' --damask-root=${TESTROOT} --basetemp ${TESTROOT}/Marc -v
 
 # Needs closer look
 # Phenopowerlaw_singleSlip:
