@@ -95,33 +95,34 @@ end function YAML_parse_str_asDict
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(YAML_flow) result(node)
 
-  character(len=*), intent(in)    :: YAML_flow                                                      !< YAML file in flow style
-  class(tNode), pointer          :: node
+  character(len=*), intent(in) :: YAML_flow                                                      !< YAML file in flow style
+  class(tNode), pointer        :: node
 
-  class(tNode),    pointer       :: &
+  class(tNode), pointer :: &
     myVal
-  character(len=:), allocatable   :: &
+  character(len=:), allocatable :: &
     flow_string, &
     key
-  integer :: &
+  integer(pI64) :: &
     e, &                                                                                            ! end position of dictionary or list
     s, &                                                                                            ! start position of dictionary or list
     d                                                                                               ! position of key: value separator (':')
 
+
   flow_string = trim(adjustl(YAML_flow))
-  if (len_trim(flow_string) == 0) then
+  if (len_trim(flow_string,pI64) == 0_pI64) then
     node => emptyDict
     return
   elseif (flow_string(1:1) == '{') then                                                             ! start of a dictionary
-    e = 1
+    e = 1_pI64
     allocate(tDict::node)
-    do while (e < len_trim(flow_string))
+    do while (e < len_trim(flow_string,pI64))
       s = e
-      d = s + scan(flow_string(s+1:),':')
-      e = d + find_end(flow_string(d+1:),'}')
-      key = trim(adjustl(flow_string(s+1:d-1)))
+      d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
+      e = d + find_end(flow_string(d+1_pI64:),'}')
+      key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
       if (quotedString(key)) key = key(2:len(key)-1)
-      myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
+      myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                                     ! parse items (recursively)
 
       select type (node)
         class is (tDict)
@@ -129,12 +130,12 @@ recursive function parse_flow(YAML_flow) result(node)
       end select
     end do
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
-    e = 1
+    e = 1_pI64
     allocate(tList::node)
-    do while (e < len_trim(flow_string))
+    do while (e < len_trim(flow_string,pI64))
       s = e
-      e = s + find_end(flow_string(s+1:),']')
-      myVal => parse_flow(flow_string(s+1:e-1))                                                     ! parse items (recursively)
+      e = s + find_end(flow_string(s+1_pI64:),']')
+      myVal => parse_flow(flow_string(s+1_pI64:e-1_pI64))                                                     ! parse items (recursively)
 
       select type (node)
         class is (tList)
@@ -165,21 +166,21 @@ integer function find_end(str,e_char)
   character(len=*), intent(in) :: str                                                               !< chunk of YAML flow string
   character,        intent(in) :: e_char                                                            !< end of list/dict  ( '}' or ']')
 
-  integer                      :: N_sq, &                                                           !< number of open square brackets
-                                  N_cu, &                                                           !< number of open curly brackets
-                                  i
+  integer(pI64) :: N_sq, &                                                                          !< number of open square brackets
+                   N_cu, &                                                                          !< number of open curly brackets
+                   i
 
-  N_sq = 0
-  N_cu = 0
-  i = 1
-  do while(i<=len_trim(str))
-    if (scan(str(i:i),IO_QUOTES) == 1)  i = i + scan(str(i+1:),str(i:i))
-    if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',') == 1) exit
-    N_sq = N_sq + merge(1,0,str(i:i) == '[')
-    N_cu = N_cu + merge(1,0,str(i:i) == '{')
-    N_sq = N_sq - merge(1,0,str(i:i) == ']')
-    N_cu = N_cu - merge(1,0,str(i:i) == '}')
-    i = i + 1
+  N_sq = 0_pI64
+  N_cu = 0_pI64
+  i = 1_pI64
+  do while(i<=len_trim(str,pI64))
+    if (scan(str(i:i),IO_QUOTES,kind=pI64) == 1_pI64)  i = i + scan(str(i+1:),str(i:i),kind=pI64)
+    if (N_sq==0 .and. N_cu==0 .and. scan(str(i:i),e_char//',',kind=pI64) == 1_pI64) exit
+    N_sq = N_sq + merge(1_pI64,0_pI64,str(i:i) == '[')
+    N_cu = N_cu + merge(1_pI64,0_pI64,str(i:i) == '{')
+    N_sq = N_sq - merge(1_pI64,0_pI64,str(i:i) == ']')
+    N_cu = N_cu - merge(1_pI64,0_pI64,str(i:i) == '}')
+    i = i + 1_pI64
   end do
   find_end = i
 
