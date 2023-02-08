@@ -24,11 +24,11 @@ module YAML_parse
   interface
 
     subroutine to_flow_C(flow,length_flow,mixed) bind(C)
-      use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR, C_PTR
+      use, intrinsic :: ISO_C_Binding, only: C_LONG, C_CHAR, C_PTR
       implicit none(type,external)
 
       type(C_PTR), intent(out) :: flow
-      integer(C_INT), intent(out) :: length_flow
+      integer(C_LONG), intent(out) :: length_flow
       character(kind=C_CHAR), dimension(*), intent(in) :: mixed
     end subroutine to_flow_C
 
@@ -216,7 +216,7 @@ function to_flow(mixed) result(flow)
   character(:,C_CHAR), allocatable :: flow
 
   type(C_PTR) :: str_ptr
-  integer(C_INT) :: strlen
+  integer(C_LONG) :: strlen
 
 
   call to_flow_C(str_ptr,strlen,f_c_string(mixed))
@@ -226,7 +226,7 @@ function to_flow(mixed) result(flow)
   block
     character(len=strlen,kind=c_char), pointer :: s
     call c_f_pointer(str_ptr,s)
-    flow = s(:len(s)-1)
+    flow = s(:len(s,pI64)-1_pI64)
   end block
 
   call free_C(str_ptr)
