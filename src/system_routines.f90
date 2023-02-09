@@ -181,15 +181,15 @@ pure function c_f_string(c_string) result(f_string)
   character(kind=C_CHAR), dimension(:), intent(in) :: c_string
   character(len=:),       allocatable              :: f_string
 
-  integer :: i
+  integer(pI64) :: i
 
 
-  allocate(character(len=size(c_string))::f_string)
-  arrayToString: do i=1,len(f_string)
+  allocate(character(len=size(c_string,kind=pI64))::f_string)
+  arrayToString: do i=1_pI64,len(f_string,pI64)
     if (c_string(i) /= C_NULL_CHAR) then
       f_string(i:i)=c_string(i)
     else
-      f_string = f_string(:i-1)
+      f_string = f_string(:i-1_pI64)
       exit
     end if
   end do arrayToString
@@ -203,11 +203,11 @@ end function c_f_string
 !--------------------------------------------------------------------------------------------------
 pure function f_c_string(f_string) result(c_string)
 
-  character(len=*), intent(in)                            :: f_string
-  character(kind=C_CHAR), dimension(len_trim(f_string)+1) :: c_string
+  character(len=*), intent(in) :: f_string
+  character(kind=C_CHAR), dimension(len_trim(f_string,pI64)+1_pI64) :: c_string
 
 
-  c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string))
+  c_string = transfer(trim(f_string)//C_NULL_CHAR,c_string,size=size(c_string,kind=pI64))
 
 end function f_c_string
 

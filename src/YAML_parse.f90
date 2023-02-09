@@ -221,7 +221,7 @@ function to_flow(mixed) result(flow)
 
 
   call to_flow_C(str_ptr,strlen,f_c_string(mixed))
-  if (strlen < 1) call IO_error(703,ext_msg='libyfaml')
+  if (strlen < 1_C_LONG) call IO_error(703,ext_msg='libyfaml')
   allocate(character(len=strlen,kind=c_char) :: flow)
 
   block
