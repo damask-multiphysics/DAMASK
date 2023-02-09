@@ -136,8 +136,8 @@ function IO_read(fileName) result(fileContent)
   if (myStat /= 0) call IO_error(102,trim(fileName))
   close(fileUnit)
 
-  if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
-  if (fileContent(fileLength:fileLength) /= IO_EOL)          fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
+  if (index(fileContent,CR//LF) /= 0)               fileContent = CRLF2LF(fileContent)
+  if (fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL               ! ensure EOL@EOF
 
 end function IO_read
 
