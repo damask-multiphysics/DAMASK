@@ -1550,19 +1550,19 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
 
   integer(HID_T)  :: filetype_id, memtype_id, space_id, dataset_id, dcpl
   integer :: hdferr
-  character(len=len_trim(dataset),kind=C_CHAR), target :: dataset_
+  character(len=len_trim(dataset,pI64),kind=C_CHAR), target :: dataset_
 
 
   dataset_ = trim(dataset)
 
   call H5Tcopy_f(H5T_C_S1, filetype_id, hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  call H5Tset_size_f(filetype_id, int(len(dataset_)+1,HSIZE_T), hdferr)                            ! +1 for NULL
+  call H5Tset_size_f(filetype_id, len(dataset_,SIZE_T)+1_SIZE_T, hdferr)                            ! +1 for NULL
   if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Tcopy_f(H5T_FORTRAN_S1, memtype_id, hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  call H5Tset_size_f(memtype_id, int(len(dataset_),HSIZE_T), hdferr)
+  call H5Tset_size_f(memtype_id, len(dataset_,SIZE_T), hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
 
   call H5Pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
@@ -1571,7 +1571,7 @@ subroutine HDF5_write_str(dataset,loc_id,datasetName)
   if (hdferr < 0) error stop 'HDF5 error'
   call H5Pset_Fletcher32_f(dcpl,hdferr)
   if (hdferr < 0) error stop 'HDF5 error'
-  if (compression_possible .and. len(dataset) > 1024*256) then
+  if (compression_possible .and. len(dataset,pI64) > 1024_pI64*256_pI64) then
     call H5Pset_shuffle_f(dcpl, hdferr)
     if (hdferr < 0) error stop 'HDF5 error'
     call H5Pset_deflate_f(dcpl, 6, hdferr)
