@@ -279,7 +279,7 @@ end function plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
-!> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
+!> @details assumes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
 pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
@@ -422,8 +422,8 @@ end subroutine plastic_phenopowerlaw_result
 !> @brief Calculate shear rates on slip systems and their derivatives with respect to resolved
 !         stress.
 !> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,ph,en, &
                             dot_gamma_sl_pos,dot_gamma_sl_neg,ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg)
@@ -490,10 +490,10 @@ end subroutine kinetics_sl
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate shear rates on twin systems and their derivatives with respect to resolved
-!         stress. Twinning is assumed to take place only in untwinned volume.
-!> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+!         stress. Twinning is assumed to take place only in an untwinned volume.
+!> @details Derivatives are calculated and returned if corresponding output variables are present in the argument list.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tw(Mp,ph,en,&
                             dot_gamma_tw,ddot_gamma_dtau_tw)

@@ -416,8 +416,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   broken = .true.
   call plastic_dependentState(ph,en)
 
-  Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                              ! take as first guess
-  Liguess = phase_mechanical_Li(ph)%data(1:3,1:3,en)                                              ! take as first guess
+  Lpguess = phase_mechanical_Lp(ph)%data(1:3,1:3,en)                                                ! take as first guess
+  Liguess = phase_mechanical_Li(ph)%data(1:3,1:3,en)                                                ! take as first guess
 
   call math_invert33(invFp_current,error=error,A=subFp0)
   if (error) return ! error

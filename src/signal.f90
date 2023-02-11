@@ -37,7 +37,7 @@ end subroutine signal_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set global variable signal_SIGINT to .true.
-!> @details This function can be registered to catch signals send to the executable.
+!> @details This function can be registered to catch signals sent to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGINT(sig) bind(C)
 
@@ -52,7 +52,7 @@ end subroutine catchSIGINT
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set global variable signal_SIGUSR1 to .true.
-!> @details This function can be registered to catch signals send to the executable.
+!> @details This function can be registered to catch signals sent to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR1(sig) bind(C)
 
@@ -67,7 +67,7 @@ end subroutine catchSIGUSR1
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Set global variable signal_SIGUSR2 to .true.
-!> @details This function can be registered to catch signals send to the executable.
+!> @details This function can be registered to catch signals sent to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR2(sig) bind(C)
 
