@@ -446,8 +446,8 @@ end subroutine plastic_dislotungsten_result
 !> @brief Calculate shear rates on slip systems, their derivatives with respect to resolved
 !         stress, and the resolved stress.
 !> @details Derivatives and resolved stress are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,T,ph,en, &
                  dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg,tau_pos_out,tau_neg_out)
