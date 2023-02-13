@@ -1320,6 +1320,20 @@ end function mechanical_F_e
 
 
 !--------------------------------------------------------------------------------------------------
+!< @brief Get eigen deformation gradient (for use by non-mech physics).
+!--------------------------------------------------------------------------------------------------
+module function mechanical_F_i(ph,en) result(F_i)
+
+  integer, intent(in) :: ph,en
+  real(pReal), dimension(3,3) :: F_i
+
+
+  F_i = phase_mechanical_Fi(ph)%data(1:3,1:3,en)
+
+end function mechanical_F_i
+
+
+!--------------------------------------------------------------------------------------------------
 !< @brief Get second Piola-Kirchhoff stress (for use by homogenization).
 !--------------------------------------------------------------------------------------------------
 module function phase_P(co,ce) result(P)

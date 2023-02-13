@@ -196,6 +196,10 @@ module phase
       real(pReal), dimension(3,3) :: F_e
     end function mechanical_F_e
 
+    module function mechanical_F_i(ph,en) result(F_i)
+      integer, intent(in) :: ph,en
+      real(pReal), dimension(3,3) :: F_i
+    end function mechanical_F_i
 
     module function phase_F(co,ce) result(F)
       integer, intent(in) :: co, ce
