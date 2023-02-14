@@ -260,6 +260,11 @@ def _polar_decomposition(T: _np.ndarray,
         Requested outputs: ‘R’ for the rotation tensor,
         ‘V’ for left stretch tensor, and ‘U’ for right stretch tensor.
 
+    Returns
+    -------
+    VRU : tuple of numpy.ndarray, shape (...,3,3)
+       Requested components of the singular value decomposition.
+
     """
     u, _, vh = _np.linalg.svd(T)
     R = _np.einsum('...ij,...jk',u,vh)
@@ -289,6 +294,11 @@ def _equivalent_Mises(T_sym: _np.ndarray,
         Symmetric tensor of which the von Mises equivalent is computed.
     s : float
         Scaling factor (2/3 for strain, 3/2 for stress).
+
+    Returns
+    -------
+    eq : numpy.ndarray, shape (...)
+        Scaled second invariant of the deviatoric part of T_sym.
 
     """
     d = _tensor.deviatoric(T_sym)
