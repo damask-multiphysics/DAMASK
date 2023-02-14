@@ -484,8 +484,6 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
 
 !--------------------------------------------------------------------------------------------------
 ! user errors
-    case (602)
-      msg = 'invalid selection for debug'
     case (603)
       msg = 'invalid data for table'
 

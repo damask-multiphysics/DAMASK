@@ -130,7 +130,7 @@ subroutine CLI_init
         print'(a)',  '        Make sure the file "material.yaml" exists in the working'
         print'(a)',  '            directory.'
         print'(a)',  '        For further configuration place "numerics.yaml"'
-        print'(a)','            and "debug.yaml" in that directory.'
+        print'(a)','              in that directory.'
         print'(/,a)','   --restart N'
         print'(a)',  '        Reads in increment N and continues with calculating'
         print'(a)',  '            increment N+1, N+2, ... based on this.'

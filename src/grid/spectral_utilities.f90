@@ -65,13 +65,6 @@ module spectral_utilities
     planScalarBack                                                                                  !< FFTW MPI plan s(k) to s(x)
 
 !--------------------------------------------------------------------------------------------------
-! variables controlling debugging
-  logical :: &
-    debugGeneral, &                                                                                 !< general debugging of spectral solver
-    debugRotation, &                                                                                !< also printing out results in lab frame
-    debugPETSc                                                                                      !< use some in debug defined options for more verbose PETSc solution
-
-!--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from spectral solver variants
     integer :: &
@@ -131,12 +124,7 @@ module spectral_utilities
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, sets debug flags, create plans for FFTW
-!> @details Sets the debug levels for general, divergence, restart, and FFTW from the bitwise coding
-!> provided by the debug module to logicals.
-!> Allocate all fields used by FFTW and create the corresponding plans depending on the debug
-!> level chosen.
-!> Initializes FFTW.
+!> @brief Allocate all neccessary fields and create plans for FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_utilities_init()
 
@@ -157,12 +145,8 @@ subroutine spectral_utilities_init()
   integer(C_INTPTR_T), parameter :: &
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
-  character(len=*), parameter :: &
-    PETSCDEBUG = ' -snes_view -snes_monitor '
   type(tDict) , pointer :: &
     num_grid
-  type(tList) , pointer :: &
-    debug_grid
 
 
   print'(/,1x,a)', '<<<+-  spectral_utilities init  -+>>>'
@@ -179,24 +163,9 @@ subroutine spectral_utilities_init()
   print'(  1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
-!--------------------------------------------------------------------------------------------------
-! set debugging parameters
-  num_grid        => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
-  debug_grid      => config_debug%get_List('grid',defaultVal=emptyList)
-  debugGeneral    =  debug_grid%contains('basic')
-  debugRotation   =  debug_grid%contains('rotation')
-  debugPETSc      =  debug_grid%contains('PETSc')
-
-  if (debugPETSc) print'(3(/,1x,a),/)', &
-                 'Initializing PETSc with debug options: ', &
-                 trim(PETScDebug), &
-                 'add more using the "PETSc_options" keyword in numerics.yaml'
-  flush(IO_STDOUT)
-
+  num_grid  => config_numerics%get_dict('grid',defaultVal=emptyDict)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
                                 num_grid%get_asString('PETSc_options',defaultVal=''),err_PETSc)
@@ -704,13 +673,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   if (size_reduced > 0) then
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
-    if (debugGeneral) then
-      print'(/,1x,a)', '... updating masked compliance ............................................'
-      print'(/,1x,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
-        'Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
-      flush(IO_STDOUT)
-    end if
-
     do i = 1,9; do j = 1,9
       mask(i,j) = mask_stressVector(i) .and. mask_stressVector(j)
     end do; end do
@@ -724,7 +686,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 ! check if inversion was successful
     sTimesC = matmul(c_reduced,s_reduced)
     errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pReal))
-    if (debugGeneral .or. errmatinv) then
+    if (errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,1x,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
       print trim(formatString), 'C * S (load) ', transpose(matmul(c_reduced,s_reduced))
@@ -737,12 +699,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   end if
 
   utilities_maskedCompliance = math_99to3333(temp99_Real)
-
-  if (debugGeneral) then
-    print'(/,1x,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
-      'Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
-    flush(IO_STDOUT)
-  end if
 
 end function utilities_maskedCompliance
 
@@ -825,9 +781,12 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  if (debugRotation) print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
-  if (present(rotation_BC)) P_av = rotation_BC%rotate(P_av)
+  if (present(rotation_BC)) then
+    if (any(dNeq(rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pReal)))) &
+      print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+      'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
+    P_av = rotation_BC%rotate(P_av)
+  end if
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
     'Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
