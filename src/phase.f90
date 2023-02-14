@@ -76,17 +76,6 @@ module phase
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  type :: tDebugOptions
-    logical :: &
-      basic, &
-      extensive, &
-      selective
-    integer :: &
-      element, &
-      ip, &
-      grain
-  end type tDebugOptions
-
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tState),  allocatable, dimension(:), public :: &
@@ -334,7 +323,6 @@ module phase
   end interface
 
 
-  type(tDebugOptions) :: debugConstitutive
 #if __INTEL_COMPILER >= 1900
   public :: &
     prec, &
@@ -390,20 +378,9 @@ subroutine phase_init
   type(tDict), pointer :: &
     phases, &
     phase
-  type(tList), pointer :: &
-    debug_constitutive
 
 
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
-
-  debug_constitutive => config_debug%get_list('phase', defaultVal=emptyList)
-  debugConstitutive%basic     = debug_constitutive%contains('basic')
-  debugConstitutive%extensive = debug_constitutive%contains('extensive')
-  debugConstitutive%selective = debug_constitutive%contains('selective')
-  debugConstitutive%element   = config_debug%get_asInt('element',         defaultVal = 1)
-  debugConstitutive%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
-  debugConstitutive%grain     = config_debug%get_asInt('constituent',     defaultVal = 1)
-
 
   phases => config_material%get_dict('phase')
   allocate(phase_lattice(phases%length))

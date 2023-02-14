@@ -234,7 +234,7 @@ end subroutine result_addAttribute_str
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add an integer attribute an object in the result file.
+!> @brief Add an integer attribute to an object in the result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_addAttribute_int(attrLabel,attrValue,path)
 
@@ -253,7 +253,7 @@ end subroutine result_addAttribute_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a real attribute an object in the result file.
+!> @brief Add a real (float) attribute to an object in the result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_addAttribute_real(attrLabel,attrValue,path)
 
@@ -272,7 +272,7 @@ end subroutine result_addAttribute_real
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a string array attribute an object in the result file.
+!> @brief Add a string array attribute to an object in the result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_addAttribute_str_array(attrLabel,attrValue,path)
 
@@ -291,7 +291,7 @@ end subroutine result_addAttribute_str_array
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add an integer array attribute an object in the result file.
+!> @brief Add an integer array attribute to an object in the result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_addAttribute_int_array(attrLabel,attrValue,path)
 
@@ -310,7 +310,7 @@ end subroutine result_addAttribute_int_array
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Add a real array attribute an object in the result file.
+!> @brief Add a real (float) array attribute to an object in the result file.
 !--------------------------------------------------------------------------------------------------
 subroutine result_addAttribute_real_array(attrLabel,attrValue,path)
 

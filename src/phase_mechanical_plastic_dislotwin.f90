@@ -64,9 +64,9 @@ submodule(phase:plastic) dislotwin
       P_tw, &
       P_tr
     integer :: &
-      sum_N_sl, &                                                                                   !< total number of active slip system
-      sum_N_tw, &                                                                                   !< total number of active twin system
-      sum_N_tr                                                                                      !< total number of active transformation system
+      sum_N_sl, &                                                                                   !< total number of active slip systems
+      sum_N_tw, &                                                                                   !< total number of active twin systems
+      sum_N_tr                                                                                      !< total number of active transformation systems
     integer,                   allocatable, dimension(:)   :: &
       N_tw, &
       N_tr
@@ -822,8 +822,8 @@ end subroutine plastic_dislotwin_result
 !> @brief Calculate shear rates on slip systems, their derivatives with respect to resolved
 !         stress, and the resolved stress.
 !> @details Derivatives and resolved stress are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,T,ph,en, &
                             dot_gamma_sl,ddot_gamma_dtau_sl,tau_sl)
@@ -898,8 +898,8 @@ end subroutine kinetics_sl
 !> @brief Calculate shear rates on twin systems and their derivatives with respect to resolved
 !         stress.
 !> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
                             dot_gamma_tw,ddot_gamma_dtau_tw)
@@ -974,8 +974,8 @@ end subroutine kinetics_tw
 !> @brief Calculate shear rates on transformation systems and their derivatives with respect to
 !         resolved stress.
 !> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
                             dot_gamma_tr,ddot_gamma_dtau_tr)

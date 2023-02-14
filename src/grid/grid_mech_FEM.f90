@@ -50,8 +50,6 @@ module grid_mechanical_FEM
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  logical :: debugRotation
-
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM   :: mechanical_grid
@@ -121,18 +119,11 @@ subroutine grid_mechanical_FEM_init
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
     num_grid
-  type(tList), pointer :: &
-    debug_grid
   character(len=pStringLen) :: &
     extmsg = ''
 
 
   print'(/,1x,a)', '<<<+-  grid_mechanical_FEM init  -+>>>'; flush(IO_STDOUT)
-
-!-------------------------------------------------------------------------------------------------
-! debugging options
-  debug_grid => config_debug%get_list('grid',defaultVal=emptyList)
-  debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
@@ -565,7 +556,8 @@ subroutine formResidual(da_local,x_local, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
-    if (debugRotation) print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    if (any(dNeq(params%rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pReal)))) &
+      print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim       =', transpose(F_aim)

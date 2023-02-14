@@ -88,21 +88,17 @@ contains
 
 !ToDo: use functions in variable call
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, sets debug flags
+!> @brief Allocate all neccessary fields.
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_utilities_init
 
   character(len=pStringLen) :: petsc_optionsOrder
   type(tDict), pointer :: &
-    num_mesh, &
-    debug_mesh                                                                                      ! pointer to mesh debug options
+    num_mesh
   integer :: &
     p_s, &                                                                                          !< order of shape functions
     p_i                                                                                             !< integration order (quadrature rule)
-  character(len=*), parameter :: &
-    PETSCDEBUG = ' -snes_view -snes_monitor '
   PetscErrorCode :: err_PETSc
-  logical :: debugPETSc                                                                             !< use some in debug defined options for more verbose PETSc solution
 
 
   print'(/,1x,a)',   '<<<+-  FEM_utilities init  -+>>>'
@@ -117,17 +113,9 @@ subroutine FEM_utilities_init
   if (p_i < max(1,p_s-1) .or. p_i > p_s) &
     call IO_error(821,ext_msg='integration order (p_i) out of bounds')
 
-  debug_mesh => config_debug%get_dict('mesh',defaultVal=emptyDict)
-  debugPETSc =  debug_mesh%contains('PETSc')
-
-  if (debugPETSc) print'(3(/,1x,a),/)', &
-                 'Initializing PETSc with debug options: ', &
-                 trim(PETScDebug), &
-                 'add more using the "PETSc_options" keyword in numerics.yaml'
   flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
-  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mechanical_snes_type newtonls &
                                &-mechanical_snes_linesearch_type cp -mechanical_snes_ksp_ew &

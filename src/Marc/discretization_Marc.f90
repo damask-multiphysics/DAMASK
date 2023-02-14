@@ -59,8 +59,7 @@ subroutine discretization_Marc_init
   integer,     dimension(:),       allocatable :: &
     materialAt
   integer:: &
-    Nelems, &                                                                                       !< total number of elements in the mesh
-    debug_e, debug_i
+    Nelems                                                                                          !< total number of elements in the mesh
 
   real(pReal), dimension(:,:),     allocatable :: &
     IP_reshaped
@@ -75,18 +74,12 @@ subroutine discretization_Marc_init
 
   print'(/,a)', ' <<<+-  discretization_Marc init  -+>>>'; flush(6)
 
-  debug_e = config_debug%get_asInt('element',defaultVal=1)
-  debug_i = config_debug%get_asInt('integrationpoint',defaultVal=1)
-
   num_commercialFEM => config_numerics%get_dict('commercialFEM',defaultVal = emptyDict)
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,'unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,materialAt)
   nElems = size(connectivity_elem,2)
-
-  if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,'element')
-  if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,'IP')
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))

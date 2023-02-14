@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Read in the configuration of material, numerics, and debug from their respective file
+!> @brief Read in the material and numerics configuration from their respective file.
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
@@ -14,8 +14,7 @@ module config
 
   type(tDict), pointer, public :: &
     config_material, &
-    config_numerics, &
-    config_debug
+    config_numerics
 
   public :: &
     config_init, &
@@ -24,7 +23,7 @@ module config
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Real *.yaml configuration files.
+!> @brief Read *.yaml configuration files.
 !--------------------------------------------------------------------------------------------------
 subroutine config_init()
 
@@ -32,7 +31,6 @@ subroutine config_init()
 
   call parse_material()
   call parse_numerics()
-  call parse_debug()
 
 end subroutine config_init
 
@@ -96,40 +94,8 @@ end subroutine parse_numerics
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read debug.yaml.
-!--------------------------------------------------------------------------------------------------
-subroutine parse_debug()
-
-  logical :: fileExists
-  character(len=:), allocatable :: fileContent
-
-
-  config_debug => emptyDict
-
-  inquire(file='debug.yaml', exist=fileExists)
-  if (fileExists) then
-
-    if (worldrank == 0) then
-      print'(1x,a)', 'reading debug.yaml'; flush(IO_STDOUT)
-      fileContent = IO_read('debug.yaml')
-      if (len(fileContent) > 0) then
-        call result_openJobFile(parallel=.false.)
-        call result_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
-        call result_closeJobFile
-      end if
-    end if
-    call parallelization_bcast_str(fileContent)
-
-    config_debug => YAML_parse_str_asDict(fileContent)
-
-  end if
-
-end subroutine parse_debug
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Deallocate config_material.
-!ToDo: deallocation of numerics and debug (optional)
+!ToDo: deallocation of numerics (optional)
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate
 

@@ -37,7 +37,7 @@ program DAMASK_grid
 #endif
 
   type :: tLoadCase
-    type(tRotation)          :: rot                                                                !< rotation of BC
+    type(tRotation)          :: rot                                                                 !< rotation of BC
     type(tBoundaryCondition) :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
     real(pReal) ::              t, &                                                                !< length of increment
@@ -133,7 +133,7 @@ program DAMASK_grid
 
 
 !-------------------------------------------------------------------------------------------------
-! reading field paramters from numerics file and do sanity checks
+! read (and check) field parameters from numerics file
   num_grid => config_numerics%get_dict('grid', defaultVal=emptyDict)
   stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
@@ -376,7 +376,7 @@ program DAMASK_grid
           stepFraction = stepFraction + 1                                                           ! count step
 
 !--------------------------------------------------------------------------------------------------
-! report begin of new step
+! report beginning of new step
           print'(/,1x,a)', '###########################################################################'
           print'(1x,a,1x,es12.5,6(a,i0))', &
                   'Time', t, &
@@ -430,7 +430,7 @@ program DAMASK_grid
           end do
 
 !--------------------------------------------------------------------------------------------------
-! check solution for either advance or retry
+! check solution and either advance or retry with smaller timestep
 
           if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
                .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found

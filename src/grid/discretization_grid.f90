@@ -65,8 +65,7 @@ subroutine discretization_grid_init(restart)
     materialAt, materialAt_global
 
   integer :: &
-    j, &
-    debug_element, debug_ip
+    j
   integer(MPI_INTEGER_KIND) :: err_MPI
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
@@ -162,13 +161,6 @@ subroutine discretization_grid_init(restart)
   call geometry_plastic_nonlocal_setIParea        (cellSurfaceArea(mySize,myGrid))
   call geometry_plastic_nonlocal_setIPareaNormal  (cellSurfaceNormal(product(myGrid)))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(myGrid))
-
-!-------------------------------------------------------------------------------------------------
-! debug parameters
-  debug_element = config_debug%get_asInt('element',defaultVal=1)
-  if (debug_element < 1 .or. debug_element > product(myGrid)) call IO_error(602,ext_msg='element')
-  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
-  if (debug_ip /= 1)                                          call IO_error(602,ext_msg='IP')
 
 end subroutine discretization_grid_init
 

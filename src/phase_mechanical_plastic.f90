@@ -226,7 +226,7 @@ module subroutine plastic_init
 end subroutine plastic_init
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the velocity gradient
+!> @brief constitutive equation for calculating the velocity gradient
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
@@ -366,7 +366,7 @@ end subroutine plastic_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief for constitutive models having an instantaneous change of state
+!> @brief for constitutive models that have an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
 module function plastic_deltaState(ph, en) result(broken)

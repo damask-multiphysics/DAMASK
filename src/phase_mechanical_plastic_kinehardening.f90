@@ -407,8 +407,8 @@ end subroutine plastic_kinehardening_result
 !> @brief Calculate shear rates on slip systems and their derivatives with respect to resolved
 !         stress.
 !> @details: Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,ph,en, &
                          dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)

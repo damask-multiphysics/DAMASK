@@ -473,7 +473,7 @@ end subroutine list_item_inline
 
 !--------------------------------------------------------------------------------------------------
 ! @brief reads a line of YAML block which is already in flow style
-! @details Dicts should be enlcosed within '{}' for it to be consistent with DAMASK YAML parser
+! @details A dict should be enclosed within '{}' for it to be consistent with the DAMASK YAML parser
 !--------------------------------------------------------------------------------------------------
 recursive subroutine line_isFlow(flow,s_flow,line)
 
@@ -591,7 +591,7 @@ end subroutine line_toFlow
 ! @details enters the function when encountered with the list indicator '- '
 ! reads each scalar list item and separates each other with a ','
 ! If list item is non scalar, it stores the offset for that list item block
-! Increase in the indentation level or when list item is not scalar -> 'decide' function is called.
+! Call the 'decide' function if there is an increase in the indentation level or the list item is not a scalar
 ! decrease in indentation level indicates the end of an indentation block
 !-------------------------------------------------------------------------------------------------
 recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
