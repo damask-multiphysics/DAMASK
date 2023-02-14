@@ -90,7 +90,7 @@ end function YAML_parse_str_asDict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
+!> @brief Read the flow style string and store it in the form of dictionaries, lists and scalars.
 !> @details A node type pointer can either point to a dictionary, list or scalar type entities.
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(YAML_flow) result(node)
@@ -122,7 +122,7 @@ recursive function parse_flow(YAML_flow) result(node)
       e = d + find_end(flow_string(d+1_pI64:),'}')
       key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
       if (quotedString(key)) key = key(2:len(key)-1)
-      myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                                     ! parse items (recursively)
+      myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
         class is (tDict)
@@ -135,7 +135,7 @@ recursive function parse_flow(YAML_flow) result(node)
     do while (e < len_trim(flow_string,pI64))
       s = e
       e = s + find_end(flow_string(s+1_pI64:),']')
-      myVal => parse_flow(flow_string(s+1_pI64:e-1_pI64))                                                     ! parse items (recursively)
+      myVal => parse_flow(flow_string(s+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
         class is (tList)
@@ -158,7 +158,7 @@ end function parse_flow
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief finds location of chunk end: ',' or '}' or  ']'
+!> @brief Find location of chunk end: ',' or '}' or  ']'.
 !> @details leaves nested lists ( '[...]' and dicts '{...}') intact
 !--------------------------------------------------------------------------------------------------
 integer function find_end(str,e_char)
@@ -188,7 +188,7 @@ end function find_end
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is enclosed with single or double quotes
+! @brief Check whether a string is enclosed with single or double quotes.
 !--------------------------------------------------------------------------------------------------
 logical function quotedString(line)
 
@@ -254,7 +254,7 @@ end function indentDepth
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is in flow style, i.e. starts with '{' or '['
+! @brief Check whether a string is in flow style, i.e. starts with '{' or '['
 !--------------------------------------------------------------------------------------------------
 logical function isFlow(line)
 
