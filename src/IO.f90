@@ -729,6 +729,7 @@ subroutine selfTest()
   if (CRLF2LF('A'//CR//LF//'B') /= 'A'//LF//'B')     error stop 'CRLF2LF/3'
   if (CRLF2LF('A'//CR//LF//'B'//CR//LF) /= &
               'A'//LF//'B'//LF)                      error stop 'CRLF2LF/4'
+  if (CRLF2LF('A'//LF//CR//'B') /= 'A'//LF//CR//'B') error stop 'CRLF2LF/5'
 
   str='  ';        if (.not. IO_isBlank(str))        error stop 'IO_isBlank/1'
   str='  #isBlank';if (.not. IO_isBlank(str))        error stop 'IO_isBlank/2'
