@@ -14,7 +14,7 @@ from . import _rotation
 
 
 def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate left Cauchy-Green deformation tensor (Finger deformation tensor).
 
     Parameters
@@ -27,12 +27,18 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
     B : numpy.ndarray, shape (...,3,3)
         Left Cauchy-Green deformation tensor.
 
+    Notes
+    -----
+    .. math::
+
+       \vb{B} = \vb{F} \vb{F}^{T}
+
     """
     return _np.matmul(F,_tensor.transpose(F))
 
 
 def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate right Cauchy-Green deformation tensor.
 
     Parameters
@@ -44,6 +50,12 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     -------
     C : numpy.ndarray, shape (...,3,3)
         Right Cauchy-Green deformation tensor.
+
+    Notes
+    -----
+    .. math::
+
+       \vb{C} = \vb{F}^{T} \vb{F}
 
     """
     return _np.matmul(_tensor.transpose(F),F)
@@ -65,11 +77,14 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
-    The von Mises equivalent of a deviatoric strain tensor is defined as:
+    The von Mises equivalent of a strain tensor is defined as:
 
     .. math::
 
        \epsilon_\text{vM} = \sqrt{2/3 \epsilon^\prime_{ij} \epsilon^\prime_{ij}}
+
+    where :math:`\vb{\epsilon}^\prime` is the deviatoric part
+    of the strain tensor.
 
     """
     return _equivalent_Mises(epsilon,2.0/3.0)
@@ -91,11 +106,14 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
-    The von Mises equivalent of a deviatoric stress tensor is defined as:
+    The von Mises equivalent of a stress tensor is defined as:
 
     .. math::
 
        \sigma_\text{vM} = \sqrt{3/2 \sigma^\prime_{ij} \sigma^\prime_{ij}}
+
+    where :math:`\vb{\sigma}^\prime` is the deviatoric part
+    of stress tensor.
 
     """
     return _equivalent_Mises(sigma,3.0/2.0)
