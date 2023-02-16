@@ -31,7 +31,7 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
     -----
     .. math::
 
-       \vb{B} = \vb{F} \vb{F}^{T}
+       \vb{B} = \vb{F} \vb{F}^\text{T}
 
     """
     return _np.matmul(F,_tensor.transpose(F))
@@ -55,7 +55,7 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     -----
     .. math::
 
-       \vb{C} = \vb{F}^{T} \vb{F}
+       \vb{C} = \vb{F}^\text{T} \vb{F}
 
     """
     return _np.matmul(_tensor.transpose(F),F)
@@ -83,7 +83,7 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
        \epsilon_\text{vM} = \sqrt{2/3 \epsilon^\prime_{ij} \epsilon^\prime_{ij}}
 
-    where :math:`\vb{\epsilon}^\prime` is the deviatoric part
+    where :math:`\vb*{\epsilon}^\prime` is the deviatoric part
     of the strain tensor.
 
     """
@@ -112,8 +112,8 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
 
        \sigma_\text{vM} = \sqrt{3/2 \sigma^\prime_{ij} \sigma^\prime_{ij}}
 
-    where :math:`\vb{\sigma}^\prime` is the deviatoric part
-    of stress tensor.
+    where :math:`\vb*{\sigma}^\prime` is the deviatoric part
+    of the stress tensor.
 
     """
     return _equivalent_Mises(sigma,3.0/2.0)
@@ -160,7 +160,7 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
 
        \vb{R} = \vb{T} \vb{U}^{-1} = \vb{V}^{-1} \vb{T}
 
-    where :math:`\vb{V}` and :math:`\vb{U}` are left
+    where :math:`\vb{V}` and :math:`\vb{U}` are the left
     and right stretch tensor, respectively.
 
     """
