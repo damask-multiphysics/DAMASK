@@ -65,11 +65,11 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
-    The von Mises equivalent of a strain tensor is defined as:
+    The von Mises equivalent of a deviatoric strain tensor is defined as:
 
     .. math::
 
-       \epsilon_{\mathrm{vM}} = \sqrt{2/3 \epsilon_{ij}' \epsilon_{ij}'}
+       \epsilon_\text{vM} = \sqrt{2/3 \epsilon^\prime_{ij} \epsilon^\prime_{ij}}
 
     """
     return _equivalent_Mises(epsilon,2.0/3.0)
@@ -91,11 +91,11 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
 
     Notes
     -----
-    The von Mises equivalent of a stress tensor is defined as:
+    The von Mises equivalent of a deviatoric stress tensor is defined as:
 
     .. math::
 
-       \sigma_{\mathrm{vM}} = \sqrt{3/2 \sigma_{ij}' \sigma_{ij}'}
+       \sigma_\text{vM} = \sqrt{3/2 \sigma^\prime_{ij} \sigma^\prime_{ij}}
 
     """
     return _equivalent_Mises(sigma,3.0/2.0)
@@ -140,9 +140,9 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
 
     .. math::
 
-       \mathbf{R} = \mathbf{T} \mathbf{U}^{-1} = \mathbf{V}^{-1} \mathbf{T}
+       \vb{R} = \vb{T} \vb{U}^{-1} = \vb{V}^{-1} \vb{T}
 
-    where :math:`\mathbf{V}` and :math:`\mathbf{U}` are left
+    where :math:`\vb{V}` and :math:`\vb{U}` are left
     and right stretch tensor, respectively.
 
     """
@@ -259,9 +259,9 @@ def stretch_left(T: _np.ndarray) -> _np.ndarray:
 
     .. math::
 
-       \mathbf{V} = \mathbf{T} \mathbf{R}^\mathrm{T}
+       \vb{V} = \vb{T} \vb{R}^\text{T}
 
-    where :math:`\mathbf{R}` is a rotation.
+    where :math:`\vb{R}` is a rotation.
 
     """
     return _polar_decomposition(T,'V')[0]
@@ -288,9 +288,9 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
 
     .. math::
 
-       \mathbf{U} = \mathbf{R}^\mathrm{T} \mathbf{T}
+       \vb{U} = \vb{R}^\text{T} \vb{T}
 
-    where :math:`\mathbf{R}` is a rotation.
+    where :math:`\vb{R}` is a rotation.
 
     """
     return _polar_decomposition(T,'U')[0]
