@@ -7,6 +7,7 @@
 !--------------------------------------------------------------------------------------------------
 module math
   use prec
+  use misc
   use IO
   use config
   use YAML_types
@@ -140,23 +141,9 @@ pure recursive subroutine math_sort(a, istart, iend, sortDim)
   integer :: ipivot,s,e,d
 
 
-  if (present(istart)) then
-    s = istart
-  else
-    s = lbound(a,2)
-  end if
-
-  if (present(iend)) then
-    e = iend
-  else
-    e = ubound(a,2)
-  end if
-
-  if (present(sortDim)) then
-    d = sortDim
-  else
-    d = 1
-  end if
+  s = misc_optional(istart,lbound(a,2))
+  e = misc_optional(iend,ubound(a,2))
+  d = misc_optional(sortDim,1)
 
   if (s < e) then
     call qsort_partition(a,ipivot, s,e, d)
@@ -448,20 +435,14 @@ pure function math_exp33(A,n)
   real(pReal), dimension(3,3) :: B, math_exp33
 
   real(pReal) :: invFac
-  integer     :: n_,i
+  integer     :: i
 
-
-  if (present(n)) then
-    n_ = n
-  else
-    n_ = 5
-  end if
 
   invFac     = 1.0_pReal                                                                            ! 0!
   B          = math_I3
   math_exp33 = math_I3                                                                              ! A^0 = I
 
-  do i = 1, n_
+  do i = 1, misc_optional(n,5)
     invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/(i!)
     B = matmul(B,A)
     math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/(i!)
@@ -729,12 +710,7 @@ pure function math_sym33to6(m33,weighted)
   real(pReal), dimension(6) :: w
   integer :: i
 
-
-  if (present(weighted)) then
-    w = merge(NRMMANDEL,1.0_pReal,weighted)
-  else
-    w = NRMMANDEL
-  end if
+  w = merge(NRMMANDEL,1.0_pReal,misc_optional(weighted,.true.))
 
   math_sym33to6 = [(w(i)*m33(MAPNYE(1,i),MAPNYE(2,i)),i=1,6)]
 
@@ -757,11 +733,7 @@ pure function math_6toSym33(v6,weighted)
   integer :: i
 
 
-  if (present(weighted)) then
-    w = merge(INVNRMMANDEL,1.0_pReal,weighted)
-  else
-    w = INVNRMMANDEL
-  end if
+  w = merge(INVNRMMANDEL,1.0_pReal,misc_optional(weighted,.true.))
 
   do i=1,6
     math_6toSym33(MAPNYE(1,i),MAPNYE(2,i)) = w(i)*v6(i)
@@ -831,11 +803,7 @@ pure function math_sym3333to66(m3333,weighted)
   integer :: i,j
 
 
-  if (present(weighted)) then
-    w = merge(NRMMANDEL,1.0_pReal,weighted)
-  else
-    w = NRMMANDEL
-  end if
+  w = merge(NRMMANDEL,1.0_pReal,misc_optional(weighted,.true.))
 
 #ifndef __INTEL_COMPILER
   do concurrent(i=1:6, j=1:6)
@@ -864,11 +832,7 @@ pure function math_66toSym3333(m66,weighted)
   integer :: i,j
 
 
-  if (present(weighted)) then
-    w = merge(INVNRMMANDEL,1.0_pReal,weighted)
-  else
-    w = INVNRMMANDEL
-  end if
+  w = merge(INVNRMMANDEL,1.0_pReal,misc_optional(weighted,.true.))
 
   do i=1,6; do j=1,6
     math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
@@ -996,24 +960,12 @@ impure elemental subroutine math_normal(x,mu,sigma)
   real(pReal), intent(out) :: x
   real(pReal), intent(in), optional :: mu, sigma
 
-  real(pReal) :: sigma_, mu_
   real(pReal), dimension(2) :: rnd
 
 
-  if (present(mu)) then
-    mu_ = mu
-  else
-    mu_ = 0.0_pReal
-  end if
-
-  if (present(sigma)) then
-    sigma_ = sigma
-  else
-    sigma_ = 1.0_pReal
-  end if
-
   call random_number(rnd)
-  x = mu_ + sigma_ * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(TAU*(1.0_pReal - rnd(2)))
+  x = misc_optional(mu,0.0_pReal) &
+    + misc_optional(sigma,1.0_pReal) * sqrt(-2.0_pReal*log(1.0_pReal-rnd(1)))*cos(TAU*(1.0_pReal - rnd(2)))
 
 end subroutine math_normal
 
