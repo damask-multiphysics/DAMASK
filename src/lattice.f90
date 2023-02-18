@@ -8,6 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 module lattice
   use prec
+  use misc
   use IO
   use config
   use math
@@ -2159,11 +2160,7 @@ pure function lattice_isotropic_nu(C,assumption,lattice) result(nu)
   real(pReal) :: K, mu
   logical                       :: error
   real(pReal), dimension(6,6)   :: S
-  character(len=:), allocatable :: lattice_
 
-
-  lattice_ = IO_WHITESPACE
-  if (present(lattice)) lattice_ = lattice
 
   if     (IO_lc(assumption) == 'isostrain') then
     K = sum(C(1:3,1:3)) / 9.0_pReal
@@ -2175,7 +2172,7 @@ pure function lattice_isotropic_nu(C,assumption,lattice) result(nu)
     error stop 'invalid assumption'
   end if
 
-  mu = lattice_isotropic_mu(C,assumption,lattice_)
+  mu = lattice_isotropic_mu(C,assumption,misc_optional(lattice,''))
   nu = (1.5_pReal*K-mu)/(3.0_pReal*K+mu)
 
 end function lattice_isotropic_nu
@@ -2195,14 +2192,10 @@ pure function lattice_isotropic_mu(C,assumption,lattice) result(mu)
 
   logical                       :: error
   real(pReal), dimension(6,6)   :: S
-  character(len=:), allocatable :: lattice_
 
-
-  lattice_ = IO_WHITESPACE
-  if (present(lattice)) lattice_ = lattice
 
   if     (IO_lc(assumption) == 'isostrain') then
-      select case(lattice_)
+      select case(misc_optional(lattice,''))
         case('cF','cI')
           mu = ( C(1,1) - C(1,2) + C(4,4)*3.0_pReal) / 5.0_pReal
         case default
@@ -2213,7 +2206,7 @@ pure function lattice_isotropic_mu(C,assumption,lattice) result(mu)
       end select
 
   elseif (IO_lc(assumption) == 'isostress') then
-      select case(lattice_)
+      select case(misc_optional(lattice,''))
         case('cF','cI')
           mu = 5.0_pReal &
                / (4.0_pReal/(C(1,1)-C(1,2)) + 3.0_pReal/C(4,4))

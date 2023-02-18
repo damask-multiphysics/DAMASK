@@ -1,11 +1,12 @@
 !----------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Parser for YAML files
-!> @details module converts a YAML input file to an equivalent YAML flow style which is then parsed.
+!> @brief Parser for YAML files.
+!> @details Module converts a YAML input file to an equivalent YAML flow style which is then parsed.
 !----------------------------------------------------------------------------------------------------
 module YAML_parse
   use prec
+  use misc
   use IO
   use YAML_types
 #ifdef FYAML
@@ -54,7 +55,7 @@ end subroutine YAML_parse_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse a YAML string with list as root into a a structure of nodes.
+!> @brief Parse a YAML string with list at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
 function YAML_parse_str_asList(str) result(list)
@@ -72,7 +73,7 @@ end function YAML_parse_str_asList
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse a YAML string with dict as root into a a structure of nodes.
+!> @brief Parse a YAML string with dict at root into a structure of nodes.
 !> @details The string needs to end with a newline (unless using libfyaml).
 !--------------------------------------------------------------------------------------------------
 function YAML_parse_str_asDict(str) result(dict)
@@ -90,8 +91,8 @@ end function YAML_parse_str_asDict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
-!> @details A node type pointer can either point to a dictionary, list or scalar type entities.
+!> @brief Read a string in flow style and store it in the form of dictionaries, lists, and scalars.
+!> @details A node-type pointer can either point to a dictionary, list, or scalar type entities.
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(YAML_flow) result(node)
 
@@ -157,7 +158,7 @@ end function parse_flow
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief finds location of chunk end: ',' or '}' or  ']'
+!> @brief Find location of chunk end: ',' '}', or ']'.
 !> @details leaves nested lists ( '[...]' and dicts '{...}') intact
 !--------------------------------------------------------------------------------------------------
 integer function find_end(str,e_char)
@@ -187,7 +188,7 @@ end function find_end
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is enclosed with single or double quotes
+! @brief Check whether a string is enclosed with single or double quotes.
 !--------------------------------------------------------------------------------------------------
 logical function quotedString(line)
 
@@ -208,7 +209,7 @@ end function quotedString
 
 #ifdef FYAML
 !--------------------------------------------------------------------------------------------------
-! @brief Convert all block style YAML parts to flow style.
+! @brief Convert all block-style YAML parts to flow style.
 !--------------------------------------------------------------------------------------------------
 function to_flow(mixed) result(flow)
 
@@ -236,28 +237,29 @@ end function to_flow
 
 #else
 !--------------------------------------------------------------------------------------------------
-! @brief Determine Indentation.
-! @details It determines the indentation level for a given block/line.
-! In cases for nested lists, an offset is added to determine the indent of the item block (skip
-! leading dashes)
+! @brief Determine indentation depth.
+! @details Indentation level is determined for a given block/line.
+! In case of nested lists, an offset is added to determine the indent of the item block (skip
+! leading dashes).
 !--------------------------------------------------------------------------------------------------
 integer function indentDepth(line,offset)
 
   character(len=*), intent(in) :: line
   integer, optional,intent(in) :: offset
 
-  indentDepth = verify(line,IO_WHITESPACE) -1
-  if (present(offset)) indentDepth = indentDepth + offset
+
+  indentDepth = verify(line,IO_WHITESPACE) - 1 + misc_optional(offset,0)
 
 end function indentDepth
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is in flow style, i.e. starts with '{' or '['
+! @brief Check whether a string is in flow style, i.e. starts with '{' or '['.
 !--------------------------------------------------------------------------------------------------
 logical function isFlow(line)
 
   character(len=*), intent(in) :: line
+
 
   isFlow = index(adjustl(line),'[') == 1 .or. index(adjustl(line),'{') == 1
 
@@ -265,11 +267,12 @@ end function isFlow
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is a scalar item, i.e. starts without any special symbols
+! @brief Check whether a string is a scalar item, i.e. starts without any special symbols.
 !--------------------------------------------------------------------------------------------------
 logical function isScalar(line)
 
   character(len=*), intent(in) :: line
+
 
   isScalar = (.not. isKeyValue(line) .and. &
               .not. isKey(line) .and. &
@@ -280,11 +283,12 @@ end function isScalar
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is a list item, i.e. starts with '-'
+! @brief Check whether a string is a list item, i.e. starts with '-'.
 !--------------------------------------------------------------------------------------------------
 logical function isListItem(line)
 
   character(len=*), intent(in) :: line
+
 
   isListItem = .false.
   if (len_trim(adjustl(line))> 2 .and. index(trim(adjustl(line)), '-') == 1) then
@@ -297,12 +301,13 @@ end function isListItem
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string contains a key value pair of the for '<key>: <value>'
+! @brief Check whether a string contains a key-value pair of the form '<key>: <value>'.
 !--------------------------------------------------------------------------------------------------
 logical function isKeyValue(line)
 
   character(len=*), intent(in) :: line
   isKeyValue = .false.
+
 
   if ( .not. isKey(line) .and. index(IO_rmComment(line),':') > 0 .and. .not. isFlow(line)) then
     if (index(IO_rmComment(line),': ') > 0) isKeyValue = .true.
@@ -312,12 +317,13 @@ end function isKeyValue
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string contains a key without a value, i.e. it ends with ':'
-! ToDo: check whether this is safe for trailing spaces followed by a new line character
+! @brief Check whether a string contains a key without a value, i.e. it ends in ':'.
+! ToDo: check whether this is safe for trailing spaces followed by a newline character
 !--------------------------------------------------------------------------------------------------
 logical function isKey(line)
 
   character(len=*), intent(in) :: line
+
 
   if (len(IO_rmComment(line)) == 0) then
     isKey = .false.
@@ -331,11 +337,12 @@ end function isKey
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief check whether a string is a list in flow style
+! @brief Check whether a string is a list in flow style.
 !--------------------------------------------------------------------------------------------------
 logical function isFlowList(line)
 
   character(len=*), intent(in) :: line
+
 
   isFlowList = index(adjustl(line),'[') == 1
 
@@ -343,8 +350,8 @@ end function isFlowList
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief skip empty lines
-! @details update start position in the block by skipping empty lines if present.
+! @brief Skip empty lines.
+! @details Update start position in the block by skipping empty lines if present.
 !--------------------------------------------------------------------------------------------------
 subroutine skip_empty_lines(blck,s_blck)
 
@@ -352,6 +359,7 @@ subroutine skip_empty_lines(blck,s_blck)
   integer,          intent(inout)  :: s_blck
 
   logical :: empty
+
 
   empty = .true.
   do while(empty .and. len_trim(blck(s_blck:)) /= 0)
@@ -363,8 +371,8 @@ end subroutine skip_empty_lines
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief skip file header
-! @details update start position in the block by skipping file header if present.
+! @brief Skip file header.
+! @details Update start position in the block by skipping file header if present.
 !--------------------------------------------------------------------------------------------------
 subroutine skip_file_header(blck,s_blck)
 
@@ -372,6 +380,7 @@ subroutine skip_file_header(blck,s_blck)
   integer,          intent(inout)  :: s_blck
 
   character(len=:), allocatable    :: line
+
 
   line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
   if (index(adjustl(line),'%YAML') == 1) then
@@ -388,7 +397,7 @@ end subroutine skip_file_header
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check if a line in flow YAML starts and ends in the same line
+!> @brief Check whether a line in flow style starts and ends on the same line.
 !--------------------------------------------------------------------------------------------------
 logical function flow_is_closed(str,e_char)
 
@@ -398,6 +407,7 @@ logical function flow_is_closed(str,e_char)
                                   N_cu, &                                                           !< number of open curly brackets
                                   i
   character(len=:), allocatable:: line
+
 
   flow_is_closed = .false.
   N_sq = 0
@@ -417,7 +427,7 @@ end function flow_is_closed
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return the flow YAML line without line break
+!> @brief Return a flow-style line without line break.
 !--------------------------------------------------------------------------------------------------
 subroutine remove_line_break(blck,s_blck,e_char,flow_line)
 
@@ -426,6 +436,7 @@ subroutine remove_line_break(blck,s_blck,e_char,flow_line)
   character,        intent(in)               :: e_char                                              !< end of list/dict  ( '}' or ']')
   character(len=:), allocatable, intent(out) :: flow_line
   logical :: line_end
+
 
   line_end =.false.
   flow_line = ''
@@ -440,7 +451,7 @@ end subroutine remove_line_break
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return the scalar list item without line break
+!> @brief Return a scalar list item without line break.
 !--------------------------------------------------------------------------------------------------
 subroutine list_item_inline(blck,s_blck,inline,offset)
 
@@ -451,6 +462,7 @@ subroutine list_item_inline(blck,s_blck,inline,offset)
 
   character(len=:), allocatable :: line
   integer :: indent,indent_next
+
 
   indent = indentDepth(blck(s_blck:),offset)
   line   = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
@@ -471,8 +483,8 @@ end subroutine list_item_inline
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief reads a line of YAML block which is already in flow style
-! @details A dict should be enclosed within '{}' for it to be consistent with the DAMASK YAML parser
+! @brief Read a line of YAML block that is already in flow style.
+! @details A dict should be enclosed within '{}' for it to be consistent with the DAMASK YAML parser.
 !--------------------------------------------------------------------------------------------------
 recursive subroutine line_isFlow(flow,s_flow,line)
 
@@ -484,6 +496,7 @@ recursive subroutine line_isFlow(flow,s_flow,line)
     s, &
     list_chunk, &
     dict_chunk
+
 
   if (index(adjustl(line),'[') == 1) then
     s = index(line,'[')
@@ -535,8 +548,8 @@ end subroutine line_isFlow
 
 
 !-------------------------------------------------------------------------------------------------
-! @brief reads a line of YAML block of type <key>: <value> and places it in the YAML flow style structure
-! @details Makes sure that the <value> is consistent with the input required in DAMASK YAML parser
+! @brief Transform a line of YAML of type <key>: <value> to flow style.
+! @details Ensures that the <value> is consistent with the input required in the DAMASK YAML parser.
 !-------------------------------------------------------------------------------------------------
 recursive subroutine keyValue_toFlow(flow,s_flow,line)
 
@@ -549,6 +562,7 @@ recursive subroutine keyValue_toFlow(flow,s_flow,line)
     d_flow, &
     col_pos, &
     offset_value
+
 
   col_pos = index(line,':')
   if (line(col_pos+1:col_pos+1) /= ' ') call IO_error(704,ext_msg=line)
@@ -567,7 +581,7 @@ end subroutine keyValue_toFlow
 
 
 !-------------------------------------------------------------------------------------------------
-! @brief reads a line of YAML block and places it in the YAML flow style structure
+! @brief Transform a line of YAML to flow style.
 !-------------------------------------------------------------------------------------------------
 subroutine line_toFlow(flow,s_flow,line)
 
@@ -586,7 +600,7 @@ end subroutine line_toFlow
 
 
 !-------------------------------------------------------------------------------------------------
-! @brief convert a yaml list in block style to a yaml list in flow style
+! @brief Transform a block-style list to flow style.
 ! @details enters the function when encountered with the list indicator '- '
 ! reads each scalar list item and separates each other with a ','
 ! If list item is non scalar, it stores the offset for that list item block
@@ -679,7 +693,7 @@ end subroutine lst
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief convert a yaml dict in block style to a yaml dict in flow style
+! @brief Transform a block-style dict to flow style.
 ! @details enters the function when encountered with the dictionary indicator ':'
 ! parses each line in the block and compares indentation of a line with the preceding line
 ! upon increase in indentation level -> 'decide' function decides if the line is a list or dict
@@ -817,7 +831,7 @@ end subroutine decide
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert all block style YAML parts to flow style.
+!> @brief Convert all block-style parts to flow style.
 !> @details The input needs to end with a newline.
 !--------------------------------------------------------------------------------------------------
 function to_flow(blck)

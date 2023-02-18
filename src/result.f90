@@ -6,6 +6,7 @@
 !--------------------------------------------------------------------------------------------------
 module result
   use prec
+  use misc
   use parallelization
   use IO
   use HDF5_utilities
@@ -224,11 +225,7 @@ subroutine result_addAttribute_str(attrLabel,attrValue,path)
   character(len=*), intent(in), optional :: path
 
 
-  if (present(path)) then
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
-  else
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
-  end if
+  call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
 
 end subroutine result_addAttribute_str
 
@@ -243,11 +240,7 @@ subroutine result_addAttribute_int(attrLabel,attrValue,path)
   character(len=*), intent(in), optional :: path
 
 
-  if (present(path)) then
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
-  else
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
-  end if
+  call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
 
 end subroutine result_addAttribute_int
 
@@ -262,11 +255,7 @@ subroutine result_addAttribute_real(attrLabel,attrValue,path)
   character(len=*), intent(in), optional :: path
 
 
-  if (present(path)) then
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
-  else
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
-  end if
+  call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
 
 end subroutine result_addAttribute_real
 
@@ -281,11 +270,7 @@ subroutine result_addAttribute_str_array(attrLabel,attrValue,path)
   character(len=*), intent(in), optional     :: path
 
 
-  if (present(path)) then
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
-  else
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
-  end if
+  call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
 
 end subroutine result_addAttribute_str_array
 
@@ -300,11 +285,7 @@ subroutine result_addAttribute_int_array(attrLabel,attrValue,path)
   character(len=*), intent(in), optional     :: path
 
 
-  if (present(path)) then
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
-  else
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
-  end if
+  call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
 
 end subroutine result_addAttribute_int_array
 
@@ -319,11 +300,7 @@ subroutine result_addAttribute_real_array(attrLabel,attrValue,path)
   character(len=*), intent(in), optional     :: path
 
 
-  if (present(path)) then
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
-  else
-    call HDF5_addAttribute(resultFile,attrLabel, attrValue)
-  end if
+  call HDF5_addAttribute(resultFile,attrLabel, attrValue, path)
 
 end subroutine result_addAttribute_real_array
 
@@ -416,19 +393,12 @@ subroutine result_writeTensorDataset_real(dataset,group,label,description,SIunit
   real(pReal),      intent(in), dimension(:,:,:) :: dataset
 
   integer :: i
-  logical :: transposed_
   integer(HID_T) :: groupHandle
   real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
 
 
-  if (present(transposed)) then
-    transposed_ = transposed
-  else
-    transposed_ = .true.
-  end if
-
   groupHandle = result_openGroup(group)
-  if (transposed_) then
+  if (misc_optional(transposed,.true.)) then
     if (size(dataset,1) /= size(dataset,2)) error stop 'transpose non-symmetric tensor'
     allocate(dataset_transposed,mold=dataset)
     do i=1,size(dataset_transposed,3)
