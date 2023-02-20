@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
@@ -77,10 +78,13 @@ module function dissipation_f_T(ph,en) result(f_T)
   integer, intent(in) :: ph, en
   real(pReal) :: &
     f_T
+  real(pReal), dimension(3,3) :: &
+    Mp                                                                                              !< Mandel stress work conjugate with Lp
 
+  Mp = matmul(matmul(transpose(mechanical_F_i(ph,en)),mechanical_F_i(ph,en)),mechanical_S(ph,en))
 
   associate(prm => param(ph))
-    f_T = prm%kappa*sum(abs(mechanical_S(ph,en)*mechanical_L_p(ph,en)))
+    f_T = prm%kappa*sum(abs(Mp*mechanical_L_p(ph,en)))
   end associate
 
 end function dissipation_f_T
