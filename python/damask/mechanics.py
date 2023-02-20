@@ -177,9 +177,9 @@ def strain(F: _np.ndarray,
     ----------
     F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
-    t : {‘V’, ‘U’}
-        Type of the polar decomposition, ‘V’ for left stretch tensor
-        and ‘U’ for right stretch tensor.
+    t : {'V', 'U'}
+        Type of the polar decomposition, 'V' for left stretch tensor
+        or 'U' for right stretch tensor.
     m : float
         Order of the strain.
 
@@ -194,19 +194,10 @@ def strain(F: _np.ndarray,
     https://de.wikipedia.org/wiki/Verzerrungstensor
 
     """
-    if   t == 'V':
-        w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F))
-    elif t == 'U':
-        w,n = _np.linalg.eigh(deformation_Cauchy_Green_right(F))
-
-    if   m > 0.0:
-        eps = 1.0/(2.0*abs(m)) * (+ _np.einsum('...j,...kj,...lj',w**m,n,n) - _np.eye(3))
-    elif m < 0.0:
-        eps = 1.0/(2.0*abs(m)) * (- _np.einsum('...j,...kj,...lj',w**m,n,n) + _np.eye(3))
-    else:
-        eps = _np.einsum('...j,...kj,...lj',0.5*_np.log(w),n,n)
-
-    return eps
+    if t not in ['V', 'U']: raise ValueError('polar decomposition type not in {V, U}')
+    w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F) if t=='V' else deformation_Cauchy_Green_right(F))
+    return    0.5   *  _np.einsum('...j,...kj,...lj',_np.log(w),n,n) if m == 0.0 \
+        else  0.5/m * (_np.einsum('...j,...kj,...lj',      w**m,n,n) - _np.eye(3))
 
 
 def stress_Cauchy(P: _np.ndarray,
