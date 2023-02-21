@@ -147,7 +147,7 @@ program DAMASK_grid
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
     call result_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
-    call result_closeJobFile
+    call result_closeJobFile()
   end if
 
   call parallelization_bcast_str(fileContent)
@@ -313,7 +313,7 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call spectral_Utilities_init
+  call spectral_Utilities_init()
   do field = 2, nActiveFields
     select case (ID(field))
 
@@ -434,7 +434,7 @@ program DAMASK_grid
 
           if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
                .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
-            call mechanical_updateCoords
+            call mechanical_updateCoords()
             Delta_t_prev = Delta_t
             cutBack = .false.
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
@@ -479,14 +479,14 @@ program DAMASK_grid
           do field = 1, nActiveFields
             select case (ID(field))
               case(FIELD_MECH_ID)
-                call mechanical_restartWrite
+                call mechanical_restartWrite()
               case(FIELD_THERMAL_ID)
-                call grid_thermal_spectral_restartWrite
+                call grid_thermal_spectral_restartWrite()
               case(FIELD_DAMAGE_ID)
-                call grid_damage_spectral_restartWrite
+                call grid_damage_spectral_restartWrite()
             end select
           end do
-          call materialpoint_restartWrite
+          call materialpoint_restartWrite()
         end if
         if (sig) call signal_setSIGUSR2(.false.)
         call MPI_Allreduce(signal_SIGINT,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)

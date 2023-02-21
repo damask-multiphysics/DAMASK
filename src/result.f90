@@ -97,7 +97,7 @@ subroutine result_init(restart)
     call result_addAttribute('description','input data used to run the simulation','setup')
   else
     date = now()
-    call result_openJobFile
+    call result_openJobFile()
     call get_command(commandLine)
     call result_addAttribute('call (restart at '//date//')',trim(commandLine))
     call H5Gmove_f(resultFile,'setup','tmp',hdferr)
@@ -107,7 +107,7 @@ subroutine result_init(restart)
     call H5Gmove_f(resultFile,'tmp','setup/previous',hdferr)
   end if
 
-  call result_closeJobFile
+  call result_closeJobFile()
 
 end subroutine result_init
 

@@ -52,7 +52,7 @@ subroutine parse_material()
     fileContent = IO_read('material.yaml')
     call result_openJobFile(parallel=.false.)
     call result_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
-    call result_closeJobFile
+    call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)
 
@@ -81,7 +81,7 @@ subroutine parse_numerics()
       if (len(fileContent) > 0) then
         call result_openJobFile(parallel=.false.)
         call result_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
-        call result_closeJobFile
+        call result_closeJobFile()
       end if
     end if
     call parallelization_bcast_str(fileContent)

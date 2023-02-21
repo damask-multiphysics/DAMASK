@@ -417,7 +417,7 @@ subroutine phase_init
   end do
 
   call mechanical_init(phases)
-  call damage_init
+  call damage_init()
   call thermal_init(phases)
 
   call crystallite_init()

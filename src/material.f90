@@ -69,10 +69,10 @@ subroutine material_init(restart)
 
 
   if (.not. restart) then
-    call result_openJobFile
+    call result_openJobFile()
     call result_mapping_phase(material_ID_phase,material_entry_phase,material_name_phase)
     call result_mapping_homogenization(material_ID_homogenization,material_entry_homogenization,material_name_homogenization)
-    call result_closeJobFile
+    call result_closeJobFile()
   end if
 
 end subroutine material_init
