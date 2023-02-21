@@ -103,7 +103,7 @@ subroutine discretization_Marc_init
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(elem))
-  call geometry_plastic_nonlocal_result
+  call geometry_plastic_nonlocal_result()
 
 end subroutine discretization_Marc_init
 
@@ -160,7 +160,7 @@ subroutine writeGeometry(elem, &
     coordinates_points
 
 
-  call result_openJobFile
+  call result_openJobFile()
   call result_closeGroup(result_addGroup('geometry'))
 
   call result_writeDataset(connectivity_elem,'geometry','T_e',&
@@ -176,7 +176,7 @@ subroutine writeGeometry(elem, &
   call result_writeDataset(coordinates_points,'geometry','x_p', &
                            'initial coordinates of the materialpoints (cell centers)','m')
 
-  call result_closeJobFile
+  call result_closeJobFile()
 
 end subroutine writeGeometry
 
@@ -209,11 +209,11 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
     mapElemSet                                                                                      !< list of elements in elementSet
 
 
-  call result_openJobFile
+  call result_openJobFile()
   call result_writeDataset_str(IO_read(trim(getSolverJobName())//InputFileExtension), 'setup', &
                                         trim(getSolverJobName())//InputFileExtension, &
                                         'MSC.Marc input deck')
-  call result_closeJobFile
+  call result_closeJobFile()
 
   inputFile = IO_readlines(trim(getSolverJobName())//InputFileExtension)
   call inputRead_fileFormat(fileFormatVersion, &

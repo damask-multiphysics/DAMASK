@@ -114,7 +114,7 @@ subroutine geometry_plastic_nonlocal_result()
 
   integer,     dimension(:),   allocatable :: shp
 
-  call result_openJobFile
+  call result_openJobFile()
 
   writeVolume: block
     real(pReal), dimension(:), allocatable :: temp
@@ -140,8 +140,7 @@ subroutine geometry_plastic_nonlocal_result()
                              'initial cell face normals','-',transposed=.false.)
   end block writeNormals
 
-
-  call result_closeJobFile
+  call result_closeJobFile()
 
 end subroutine geometry_plastic_nonlocal_result
 

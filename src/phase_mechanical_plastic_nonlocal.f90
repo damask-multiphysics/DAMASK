@@ -200,7 +200,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   myPlasticity = plastic_active('nonlocal')
   Ninstances = count(myPlasticity)
   if (Ninstances == 0) then
-    call geometry_plastic_nonlocal_disable
+    call geometry_plastic_nonlocal_disable()
     return
   end if
 

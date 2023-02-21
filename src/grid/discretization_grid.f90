@@ -90,7 +90,7 @@ subroutine discretization_grid_init(restart)
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
     call result_writeDataset_str(fileContent,'setup',fname,'geometry definition (grid solver)')
-    call result_closeJobFile
+    call result_closeJobFile()
   else
     allocate(materialAt_global(0))                                                                  ! needed for IntelMPI
   end if
@@ -146,12 +146,12 @@ subroutine discretization_grid_init(restart)
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
   if (.not. restart) then
-    call result_openJobFile
+    call result_openJobFile()
     call result_closeGroup(result_addGroup('geometry'))
     call result_addAttribute('cells', cells,   '/geometry')
     call result_addAttribute('size',  geomSize,'/geometry')
     call result_addAttribute('origin',origin,  '/geometry')
-    call result_closeJobFile
+    call result_closeJobFile()
   end if
 
 !--------------------------------------------------------------------------------------------------

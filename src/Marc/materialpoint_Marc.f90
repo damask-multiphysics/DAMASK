@@ -205,8 +205,8 @@ end subroutine materialpoint_general
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_forward
 
-  call homogenization_forward
-  call phase_forward
+  call homogenization_forward()
+  call phase_forward()
 
 end subroutine materialpoint_forward
 
@@ -219,13 +219,13 @@ subroutine materialpoint_result(inc,time)
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
 
-  call result_openJobFile
+  call result_openJobFile()
   call result_addIncrement(inc,time)
-  call phase_result
-  call homogenization_result
-  call discretization_result
-  call result_finalizeIncrement
-  call result_closeJobFile
+  call phase_result()
+  call homogenization_result()
+  call discretization_result()
+  call result_finalizeIncrement()
+  call result_closeJobFile()
 
 end subroutine materialpoint_result
 

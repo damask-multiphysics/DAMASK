@@ -29,7 +29,7 @@ subroutine base64_init
 
   print'(/,1x,a)', '<<<+-  base64 init  -+>>>'; flush(IO_STDOUT)
 
-  call selfTest
+  call selfTest()
 
 end subroutine base64_init
 
