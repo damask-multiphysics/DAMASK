@@ -5,7 +5,7 @@ All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 
-from typing import Sequence as _Sequence
+from typing import Sequence as _Sequence#, Literal as _Literal
 
 import numpy as _np
 
@@ -81,7 +81,7 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
 
     .. math::
 
-       \epsilon_\text{vM} = \sqrt{2/3 \epsilon^\prime_{ij} \epsilon^\prime_{ij}}
+       \epsilon_\text{vM} = \sqrt{\frac{2}{3}\,\epsilon^\prime_{ij} \epsilon^\prime_{ij}}
 
     where :math:`\vb*{\epsilon}^\prime` is the deviatoric part
     of the strain tensor.
@@ -110,7 +110,7 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
 
     .. math::
 
-       \sigma_\text{vM} = \sqrt{3/2 \sigma^\prime_{ij} \sigma^\prime_{ij}}
+       \sigma_\text{vM} = \sqrt{\frac{3}{2}\,\sigma^\prime_{ij} \sigma^\prime_{ij}}
 
     where :math:`\vb*{\sigma}^\prime` is the deviatoric part
     of the stress tensor.
@@ -168,9 +168,10 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
 
 
 def strain(F: _np.ndarray,
+           #t: _Literal['V', 'U'],   should work, but rejected by SC
            t: str,
            m: float) -> _np.ndarray:
-    """
+    r"""
     Calculate strain tensor (Seth–Hill family).
 
     Parameters
@@ -188,10 +189,19 @@ def strain(F: _np.ndarray,
     epsilon : numpy.ndarray, shape (...,3,3)
         Strain of F.
 
+    Notes
+    -----
+    The strain is defined as:
+
+    .. math::
+
+        \vb*{\epsilon}_V^{(m)} = \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \\\\
+        \vb*{\epsilon}_U^{(m)} = \frac{1}{2m} (\vb{U}^{2m} - \vb{I})
+
     References
     ----------
-    https://en.wikipedia.org/wiki/Finite_strain_theory
-    https://de.wikipedia.org/wiki/Verzerrungstensor
+    | https://en.wikipedia.org/wiki/Finite_strain_theory
+    | https://de.wikipedia.org/wiki/Verzerrungstensor
 
     """
     if t not in ['V', 'U']: raise ValueError('polar decomposition type not in {V, U}')
@@ -315,8 +325,8 @@ def _polar_decomposition(T: _np.ndarray,
     T : numpy.ndarray, shape (...,3,3)
         Tensor of which the singular values are computed.
     requested : sequence of {'R', 'U', 'V'}
-        Requested outputs: ‘R’ for the rotation tensor,
-        ‘V’ for left stretch tensor, and ‘U’ for right stretch tensor.
+        Requested outputs: 'R' for the rotation tensor,
+        'V' for left stretch tensor, and 'U' for right stretch tensor.
 
     Returns
     -------

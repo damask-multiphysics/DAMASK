@@ -42,7 +42,7 @@ class VTK:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         info = [self.vtk_data.__vtkname__]
@@ -163,7 +163,7 @@ class VTK:
         cells : sequence of int, len (3)
             Number of cells along each dimension.
         size : sequence of float, len (3)
-            Physical length along each dimension.
+            Edge length along each dimension.
         origin : sequence of float, len (3), optional
             Coordinates of grid origin.
 
@@ -293,7 +293,7 @@ class VTK:
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename for reading.
+            Filename to read.
             Valid extensions are .vti, .vtu, .vtp, .vtr, and .vtk.
         dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'}, optional
             Name of the vtk.vtkDataSet subclass when opening a .vtk file.
@@ -370,7 +370,7 @@ class VTK:
         Parameters
         ----------
         fname : str or pathlib.Path
-            Filename for writing.
+            Filename to write.
         parallel : bool, optional
             Write data in parallel background process. Defaults to True.
         compress : bool, optional
@@ -432,6 +432,11 @@ class VTK:
         table: damask.Table, optional
             Data to add or replace. Each table label is individually considered.
             Number of rows needs to match either number of cells or number of points.
+
+        Returns
+        -------
+        updated : damask.VTK
+            Updated VTK-based geometry.
 
         Notes
         -----
@@ -548,7 +553,7 @@ class VTK:
         Notes
         -----
         The first component is shown when visualizing vector datasets
-        (this includes tensor datasets because they are flattened).
+        (this includes tensor datasets as they are flattened).
 
         """
         # See http://compilatrix.com/article/vtk-1 for possible improvements.

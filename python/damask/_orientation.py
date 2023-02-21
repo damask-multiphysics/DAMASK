@@ -108,7 +108,7 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        rotation : list, numpy.ndarray, Rotation, optional
+        rotation : list, numpy.ndarray, or Rotation, optional
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
@@ -123,7 +123,7 @@ class Orientation(Rotation,Crystal):
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         return util.srepr([Crystal.__repr__(self),
@@ -467,24 +467,24 @@ class Orientation(Rotation,Crystal):
             if   self.family == 'cubic':
                 return (np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
                                    (1. >= np.sum(rho_abs,axis=-1))).astype(bool)
-            elif self.family == 'hexagonal':
+            if self.family == 'hexagonal':
                 return (np.prod(1.  >= rho_abs,axis=-1) *
                                 (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
                                 (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
                                 (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(bool)
-            elif self.family == 'tetragonal':
+            if self.family == 'tetragonal':
                 return (np.prod(1.  >= rho_abs[...,:2],axis=-1) *
                         (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
                         (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(bool)
-            elif self.family == 'orthorhombic':
+            if self.family == 'orthorhombic':
                 return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
-            elif self.family == 'monoclinic':
+            if self.family == 'monoclinic':
                 return np.logical_or(   1. >= rho_abs[...,1],
                                      np.isnan(rho_abs[...,1]))
-            elif self.family == 'triclinic':
+            if self.family == 'triclinic':
                 return np.ones(rho_abs.shape[:-1]).astype(bool)
-            else:
-                raise TypeError(f'unknown symmetry "{self.family}"')
+
+            raise TypeError(f'unknown symmetry "{self.family}"')
 
 
     @property
@@ -510,38 +510,40 @@ class Orientation(Rotation,Crystal):
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= rho[...,2]) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'hexagonal':
+            if self.family == 'hexagonal':
                 return ((rho[...,0] >= rho[...,1]*np.sqrt(3)) &
                         (rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'tetragonal':
+            if self.family == 'tetragonal':
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'orthorhombic':
+            if self.family == 'orthorhombic':
                 return ((rho[...,0] >= 0) &
                         (rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'monoclinic':
+            if self.family == 'monoclinic':
                 return ((rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            else:
-                return np.ones_like(rho[...,0],dtype=bool)
+
+            return np.ones_like(rho[...,0],dtype=bool)
 
     def disorientation(self,
                        other: 'Orientation',
                        return_operators: bool = False) -> object:
         """
-        Calculate disorientation between myself and given other orientation.
+        Calculate disorientation between self and given other orientation.
 
         Parameters
         ----------
         other : Orientation
             Orientation to calculate disorientation for.
             Shape of other blends with shape of own rotation array.
-            For example, shapes of (2,3) for own rotations and (3,2) for other's result in (2,3,2) disorientations.
+            For example, shapes of (2,3) for own rotations
+            and (3,2) for other's result in (2,3,2) disorientations.
         return_operators : bool, optional
-            Return index pair of symmetrically equivalent orientations that result in disorientation axis falling into FZ.
+            Return index pair of symmetrically equivalent orientations
+            that result in disorientation axis falling into FZ.
             Defaults to False.
 
         Returns
@@ -578,8 +580,8 @@ class Orientation(Rotation,Crystal):
         >>> N = 10000
         >>> a = damask.Orientation.from_random(shape=N,family='cubic')
         >>> b = damask.Orientation.from_random(shape=N,family='cubic')
-        >>> d = a.disorientation(b).as_axis_angle(degrees=True,pair=True)[1]
-        >>> plt.hist(d,25)
+        >>> n,omega = a.disorientation(b).as_axis_angle(degrees=True,pair=True)
+        >>> plt.hist(omega,25)
         >>> plt.show()
 
         """
@@ -626,6 +628,7 @@ class Orientation(Rotation,Crystal):
         ----------
         weights : numpy.ndarray, shape (self.shape), optional
             Relative weights of orientations.
+            Defaults to equal weights.
         return_cloud : bool, optional
             Return the specific (symmetrically equivalent) orientations that were averaged.
             Defaults to False.
@@ -895,8 +898,8 @@ class Orientation(Rotation,Crystal):
         Schmid matrix (in lab frame) of first octahedral slip system of a face-centered
         cubic crystal in "Goss" orientation.
 
-        >>> import damask
         >>> import numpy as np
+        >>> import damask
         >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
         >>> O.Schmid(N_slip=[1])
@@ -936,8 +939,9 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        Orientations related to self following the selected
-        model for the orientation relationship.
+        rel : Orientation, shape (:,self.shape)
+            Orientations related to self according to the selected
+            model for the orientation relationship.
 
         Examples
         --------

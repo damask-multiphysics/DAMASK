@@ -28,10 +28,10 @@ _REF_WHITE = np.array([.95047, 1.00000, 1.08883])                               
 
 class Colormap(mpl.colors.ListedColormap):
     """
-    Enhance matplotlib colormap functionality to be used within DAMASK.
+    Enhance matplotlib colormap functionality for use within DAMASK.
 
     Colors are internally stored as R(ed) G(green) B(lue) values.
-    The colormap can be used in matplotlib, seaborn, etc., or can
+    A colormap can be used in matplotlib, seaborn, etc., or can be
     exported to file for external use.
 
     References
@@ -153,12 +153,12 @@ class Colormap(mpl.colors.ListedColormap):
             - 'hsl': Hue Saturation Luminance.
             - 'xyz': CIE Xyz.
             - 'lab': CIE Lab.
-            - 'msh': Msh (for perceptual uniform interpolation).
+            - 'msh': Msh (for perceptually uniform interpolation).
 
         Returns
         -------
         new : damask.Colormap
-            Colormap within given bounds.
+            Colormap spanning given bounds.
 
         Examples
         --------
@@ -288,6 +288,7 @@ class Colormap(mpl.colors.ListedColormap):
             Value range (left,right) spanned by colormap.
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
+            Defaults to None.
 
         Returns
         -------
@@ -334,6 +335,7 @@ class Colormap(mpl.colors.ListedColormap):
         --------
         >>> import damask
         >>> damask.Colormap.from_predefined('stress').reversed()
+        Colormap: stress_r
 
         """
         rev = super().reversed(name)
@@ -353,6 +355,7 @@ class Colormap(mpl.colors.ListedColormap):
             If None, colormap name + suffix.
         suffix: str, optional
             Extension to use for colormap file.
+            Defaults to empty.
 
         Returns
         -------
@@ -452,8 +455,8 @@ class Colormap(mpl.colors.ListedColormap):
 
         References
         ----------
-        https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
-        https://www.kennethmoreland.com/color-maps/diverging_map.py
+        | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+        | https://www.kennethmoreland.com/color-maps/diverging_map.py
 
         """
         def rad_diff(a,b):
@@ -735,8 +738,8 @@ class Colormap(mpl.colors.ListedColormap):
 
         References
         ----------
-        https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
-        https://www.kennethmoreland.com/color-maps/diverging_map.py
+        | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+        | https://www.kennethmoreland.com/color-maps/diverging_map.py
 
         """
         M = np.linalg.norm(lab)
@@ -763,8 +766,8 @@ class Colormap(mpl.colors.ListedColormap):
 
         References
         ----------
-        https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
-        https://www.kennethmoreland.com/color-maps/diverging_map.py
+        | https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+        | https://www.kennethmoreland.com/color-maps/diverging_map.py
 
         """
         return np.array([

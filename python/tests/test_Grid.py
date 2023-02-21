@@ -98,19 +98,16 @@ class TestGrid:
                  size=np.ones(3),
                  origin=np.ones(4))
 
-
     def test_invalid_materials_shape(self,default):
         material = np.ones((3,3))
         with pytest.raises(ValueError):
             Grid(material,
                  size=np.ones(3))
 
-
     def test_invalid_materials_type(self,default):
         material = np.random.randint(1,300,(3,4,5))==1
         with pytest.raises(TypeError):
             Grid(material)
-
 
     @pytest.mark.parametrize('directions,reflect',[
                                                    (['x'],        False),
@@ -126,12 +123,16 @@ class TestGrid:
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
 
-
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
     def test_mirror_invalid(self,default,directions):
         with pytest.raises(ValueError):
             default.mirror(directions)
 
+    @pytest.mark.parametrize('reflect',[True,False])
+    def test_mirror_order_invariant(self,default,reflect):
+        direction = np.array(['x','y','z'])
+        assert default.mirror(np.random.permutation(direction),reflect=reflect) \
+            == default.mirror(np.random.permutation(direction),reflect=reflect)
 
     @pytest.mark.parametrize('directions',[
                                            ['x'],
@@ -147,21 +148,29 @@ class TestGrid:
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
 
+    def test_flip_order_invariant(self,default):
+        direction = np.array(['x','y','z'])
+        assert default.flip(np.random.permutation(direction)) \
+            == default.flip(np.random.permutation(direction))
 
-    def test_flip_invariant(self,default):
-        assert default == default.flip([])
+    def test_flip_mirrored_invariant(self,default):
+        direction = np.random.permutation(['x','y','z'])
+        assert default.mirror(direction,True) == default.mirror(direction,True).flip(direction)
 
+    def test_flip_equal_halfspin(self,default):
+        direction = ['x','y','z']
+        i = np.random.choice(3)
+        assert default.rotate(Rotation.from_axis_angle(np.hstack((np.identity(3)[i],180)),degrees=True)) \
+            == default.flip(direction[:i]+direction[i+1:])
 
     @pytest.mark.parametrize('direction',[['x'],['x','y']])
     def test_flip_double(self,default,direction):
         assert default == default.flip(direction).flip(direction)
 
-
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
     def test_flip_invalid(self,default,directions):
         with pytest.raises(ValueError):
             default.flip(directions)
-
 
     @pytest.mark.parametrize('distance',[1.,np.sqrt(3)])
     @pytest.mark.parametrize('selection',[None,1,[1],[1,2,3]])
@@ -184,7 +193,6 @@ class TestGrid:
         assert random.clean(selection=None,invert_selection=True,rng_seed=0) == random.clean(rng_seed=0) and \
                random.clean(selection=None,invert_selection=False,rng_seed=0) == random.clean(rng_seed=0)
 
-
     @pytest.mark.parametrize('cells',[
                                      (10,11,10),
                                      [10,13,10],
@@ -201,7 +209,6 @@ class TestGrid:
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
 
-
     def test_renumber(self,default):
         material = default.material.copy()
         for m in np.unique(material):
@@ -213,14 +220,12 @@ class TestGrid:
         assert not default == modified
         assert     default == modified.renumber()
 
-
     def test_assemble(self):
         cells = np.random.randint(8,16,3)
         N = cells.prod()
         g = Grid(np.arange(N).reshape(cells),np.ones(3))
         idx = np.random.randint(0,N,N).reshape(cells)
         assert (idx == g.assemble(idx).material).all
-
 
     def test_substitute(self,default):
         offset = np.random.randint(1,500)
@@ -257,7 +262,6 @@ class TestGrid:
             modified.rotate(Rotation.from_axis_angle(axis_angle,degrees=True))
         assert default == modified
 
-
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
     def test_rotate(self,default,update,ref_path,Eulers):
@@ -266,7 +270,6 @@ class TestGrid:
         reference = ref_path/f'rotate_{tag}.vti'
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
-
 
     def test_canvas_extend(self,default):
         cells = default.cells
@@ -364,13 +367,11 @@ class TestGrid:
         assert random.vicinity_offset(selection=None,invert_selection=False) == random.vicinity_offset() and \
                random.vicinity_offset(selection=None,invert_selection=True ) == random.vicinity_offset()
 
-
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
         offset = default.vicinity_offset(selection=[default.material.max()+1,
                                                     default.material.min()-1])
         assert np.all(offset.material==default.material)
-
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):
@@ -382,7 +383,6 @@ class TestGrid:
         Laguerre = Grid.from_Laguerre_tessellation(cells,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
         assert Laguerre == Voronoi
 
-
     def test_Laguerre_weights(self):
         cells  = np.random.randint(10,20,3)
         size   = np.random.random(3) + 1.0
@@ -393,7 +393,6 @@ class TestGrid:
         weights[ms] = np.random.random()
         Laguerre = Grid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.material == ms)
-
 
     @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
     def test_tessellate_bicrystal(self,approach):
@@ -407,7 +406,6 @@ class TestGrid:
         elif approach == 'Voronoi':
             grid = Grid.from_Voronoi_tessellation(cells,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(grid.material == material)
-
 
     @pytest.mark.parametrize('surface',['Schwarz P',
                                         'Double Primitive',
@@ -450,7 +448,6 @@ class TestGrid:
         grid = Grid.from_minimal_surface(cells,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(grid.material==1)/np.prod(grid.cells),.5,rtol=1e-3)
 
-
     def test_from_table(self):
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
@@ -462,7 +459,6 @@ class TestGrid:
         g = Grid.from_table(t,'coords',['indicator','z'])
         assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
 
-
     def test_from_table_recover(self,tmp_path):
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
@@ -471,7 +467,6 @@ class TestGrid:
         coords = grid_filters.coordinates0_point(cells,size)
         t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))))
         assert grid.sort().renumber() == Grid.from_table(t,'c',['m'])
-
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
@@ -496,7 +491,6 @@ class TestGrid:
         assert np.allclose(grain.origin,point.origin) and \
                np.allclose(grain.size,point.size) and \
                (grain.sort().material == point.material+1).all()
-
 
     def test_load_DREAM3D_reference(self,ref_path,update):
         current   = Grid.load_DREAM3D(ref_path/'measured.dream3d')

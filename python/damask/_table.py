@@ -41,7 +41,7 @@ class Table:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         self._relabel('shapes')
@@ -255,8 +255,8 @@ class Table:
         """
         Load from ASCII table file.
 
-        Initial comments are marked by '#', the first non-comment line
-        containing the column labels.
+        Initial comments are marked by '#'.
+        The first non-comment line contains the column labels.
 
         - Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
         - Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
@@ -264,7 +264,7 @@ class Table:
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file to read.
 
         Returns
         -------
@@ -458,9 +458,9 @@ class Table:
         Parameters
         ----------
         label_old : (iterable of) str
-            Old column label(s).
+            Old column labels.
         label_new : (iterable of) str
-            New column label(s).
+            New column labels.
 
         Returns
         -------
@@ -488,7 +488,7 @@ class Table:
         label : str or list
             Column labels for sorting.
         ascending : bool or list, optional
-            Set sort order.
+            Set sort order. Defaults to True.
 
         Returns
         -------
@@ -574,7 +574,7 @@ class Table:
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for writing.
+            Filename or file to write.
         with_labels : bool, optional
             Write column labels. Defaults to True.
 
