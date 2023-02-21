@@ -402,7 +402,7 @@ def displacement_node(size: _FloatSequence,
 
     Returns
     -------
-    u_p : numpy.ndarray, shape (:,:,:,3)
+    u_n : numpy.ndarray, shape (:,:,:,3)
         Nodal displacements.
 
     """

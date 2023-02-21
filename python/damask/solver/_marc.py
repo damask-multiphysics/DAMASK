@@ -2,6 +2,7 @@ import subprocess
 import shlex
 import re
 from pathlib import Path
+from typing import Literal
 
 _marc_version = '2022.4'
 _marc_root = '/opt/msc'
@@ -54,7 +55,7 @@ class Marc:
 
     def submit_job(self, model: str, job: str,
                    compile: bool = False,
-                   optimization: str = '',
+                   optimization: Literal['', 'l', 'h'] = '',
                    env = None):
         """
         Assemble command line arguments and call Marc executable.
@@ -68,8 +69,8 @@ class Marc:
         compile : bool, optional
             Compile DAMASK_Marc user subroutine (and save for future use).
             Defaults to False.
-        optimization : str, optional
-            Optimization level '' (-O0), 'l' (-O1), or 'h' (-O3).
+        optimization : {'', 'l', 'h'}, optional
+            Optimization level '': -O0, 'l': -O1, or 'h': -O3.
             Defaults to ''.
         env : dict, optional
             Environment for execution.

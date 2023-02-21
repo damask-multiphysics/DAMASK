@@ -65,9 +65,9 @@ def _empty_like(dataset: np.ma.core.MaskedArray,
 
 class Result:
     """
-    Add data to and export data from a DADF5 file.
+    Add data to and export data from a DADF5 (DAMASK HDF5) file.
 
-    A DADF5 (DAMASK HDF5) file contains DAMASK results.
+    A DADF5 file contains DAMASK results.
     Its group/folder structure reflects the layout in material.yaml.
 
     This class provides a customizable view on the DADF5 file.
@@ -93,7 +93,7 @@ class Result:
 
     def __init__(self, fname: Union[str, Path]):
         """
-        New result view bound to a HDF5 file.
+        New result view bound to a DADF5 file.
 
         Parameters
         ----------
@@ -167,7 +167,7 @@ class Result:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         with h5py.File(self.fname,'r') as f:
@@ -195,7 +195,7 @@ class Result:
                      homogenizations: Union[None, str, Sequence[str], bool] = None,
                      fields: Union[None, str, Sequence[str], bool] = None) -> "Result":
         """
-        Manages the visibility of the groups.
+        Manage the visibility of the groups.
 
         Parameters
         ----------
@@ -319,15 +319,15 @@ class Result:
         Parameters
         ----------
         increments: (list of) int, (list of) str, or bool, optional.
-            Number(s) of increments to select.
+            Numbers of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
-            Simulation time(s) of increments to select.
+            Simulation times of increments to select.
         phases: (list of) str, or bool, optional.
-            Name(s) of phases to select.
+            Names of phases to select.
         homogenizations: (list of) str, or bool, optional.
-            Name(s) of homogenizations to select.
+            Names of homogenizations to select.
         fields: (list of) str, or bool, optional.
-            Name(s) of fields to select.
+            Names of fields to select.
         protected: bool, optional.
             Protection status of existing data.
 
@@ -375,15 +375,15 @@ class Result:
         Parameters
         ----------
         increments: (list of) int, (list of) str, or bool, optional.
-            Number(s) of increments to select.
+            Numbers of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
-            Simulation time(s) of increments to select.
+            Simulation times of increments to select.
         phases: (list of) str, or bool, optional.
-            Name(s) of phases to select.
+            Names of phases to select.
         homogenizations: (list of) str, or bool, optional.
-            Name(s) of homogenizations to select.
+            Names of homogenizations to select.
         fields: (list of) str, or bool, optional.
-            Name(s) of fields to select.
+            Names of fields to select.
 
         Returns
         -------
@@ -418,15 +418,15 @@ class Result:
         Parameters
         ----------
         increments: (list of) int, (list of) str, or bool, optional.
-            Number(s) of increments to select.
+            Numbers of increments to select.
         times: (list of) float, (list of) str, or bool, optional.
-            Simulation time(s) of increments to select.
+            Simulation times of increments to select.
         phases: (list of) str, or bool, optional.
-            Name(s) of phases to select.
+            Names of phases to select.
         homogenizations: (list of) str, or bool, optional.
-            Name(s) of homogenizations to select.
+            Names of homogenizations to select.
         fields: (list of) str, or bool, optional.
-            Name(s) of fields to select.
+            Names of fields to select.
 
         Returns
         -------
@@ -721,9 +721,11 @@ class Result:
         Parameters
         ----------
         P : str, optional
-            Name of the dataset containing the first Piola-Kirchhoff stress. Defaults to 'P'.
+            Name of the dataset containing the first Piola-Kirchhoff stress.
+            Defaults to 'P'.
         F : str, optional
-            Name of the dataset containing the deformation gradient. Defaults to 'F'.
+            Name of the dataset containing the deformation gradient.
+            Defaults to 'F'.
 
         """
         self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
@@ -1023,14 +1025,14 @@ class Result:
                  x: str,
                  ord: Union[None, int, float, Literal['fro', 'nuc']] = None):
         """
-        Add the norm of vector or tensor.
+        Add the norm of a vector or tensor.
 
         Parameters
         ----------
         x : str
             Name of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, 'fro', 'nuc'}, optional
-            Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
+            Order of the norm. inf means NumPy's inf object. For details refer to numpy.linalg.norm.
 
         """
         self._add_generic_pointwise(self._add_norm,{'x':x},{'ord':ord})
@@ -1052,7 +1054,7 @@ class Result:
     def add_stress_second_Piola_Kirchhoff(self,
                                           P: str = 'P',
                                           F: str = 'F'):
-        """
+        r"""
         Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
@@ -1064,9 +1066,10 @@ class Result:
 
         Notes
         -----
-        The definition of the second Piola-Kirchhoff stress (S = [F^-1 P]_sym)
+        The definition of the second Piola-Kirchhoff stress
+        :math:`\vb{S} = \left(\vb{F}^{-1} \vb{P}\right)_\text{sym}`
         follows the standard definition in nonlinear continuum mechanics.
-        As such, no intermediate configuration, for instance that reached by F_p,
+        As such, no intermediate configuration, for instance that reached by :math:`\vb{F}_\text{p}`,
         is taken into account.
 
         """
@@ -1240,10 +1243,11 @@ class Result:
 
         Notes
         -----
-        The incoporation of rotational parts into the elastic and plastic
-        deformation gradient requires it to use material/Lagragian strain measures
-        (based on 'U') for plastic strains and spatial/Eulerian strain measures
-        (based on 'V') for elastic strains when calculating averages.
+        The presence of rotational parts in the elastic and plastic deformation gradient
+        calls for the use of
+        material/Lagragian strain measures (based on 'U') for plastic strains and
+        spatial/Eulerian strain measures (based on 'V') for elastic strains
+        when calculating averages.
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
@@ -1302,7 +1306,7 @@ class Result:
         Notes
         -----
         This function is only available for structured grids,
-        i.e. results from the grid solver.
+        i.e. fields resulting from the grid solver.
 
         """
         self._add_generic_grid(self._add_curl,{'f':f},{'size':self.size})
@@ -1331,7 +1335,7 @@ class Result:
         Notes
         -----
         This function is only available for structured grids,
-        i.e. results from the grid solver.
+        i.e. fields resulting from the grid solver.
 
         """
         self._add_generic_grid(self._add_divergence,{'f':f},{'size':self.size})
@@ -1361,7 +1365,7 @@ class Result:
         Notes
         -----
         This function is only available for structured grids,
-        i.e. results from the grid solver.
+        i.e. fields resulting from the grid solver.
 
         """
         self._add_generic_grid(self._add_gradient,{'f':f},{'size':self.size})
@@ -1379,10 +1383,10 @@ class Result:
         ----------
         func : function
             Callback function that calculates a new dataset from one or
-            more datasets per HDF5 group.
+            more datasets per DADF5 group.
         datasets : dictionary
             Details of the datasets to be used:
-            {arg (name to which the data is passed in func): label (in HDF5 file)}.
+            {arg (name to which the data is passed in func): label (in DADF5 file)}.
         args : dictionary, optional
             Arguments parsed to func.
 
@@ -1462,10 +1466,10 @@ class Result:
         ----------
         callback : function
             Callback function that calculates a new dataset from one or
-            more datasets per HDF5 group.
+            more datasets per DADF5 group.
         datasets : dictionary
             Details of the datasets to be used:
-            {arg (name to which the data is passed in func): label (in HDF5 file)}.
+            {arg (name to which the data is passed in func): label (in DADF5 file)}.
         args : dictionary, optional
             Arguments parsed to func.
 
@@ -1500,7 +1504,7 @@ class Result:
                         dataset.attrs['overwritten'] = True
                     else:
                         shape = result['data'].shape
-                        if compress := (result['data'].size >= chunk_size*2):
+                        if compress := result['data'].size >= chunk_size*2:
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
                         else:
                             chunks = shape
@@ -1828,9 +1832,10 @@ class Result:
         Export to VTK cell/point data.
 
         One VTK file per visible increment is created.
-        For point data, the VTK format is poly data (.vtp).
-        For cell data, either an image (.vti) or unstructured (.vtu) dataset
-        is written for grid-based or mesh-based simulations, respectively.
+        For point data, the VTK format is PolyData (.vtp).
+        For cell data, the file format is either ImageData (.vti)
+        or UnstructuredGrid (.vtu) for grid-based or mesh-based simulations,
+        respectively.
 
         Parameters
         ----------
@@ -1961,7 +1966,7 @@ class Result:
                         for field in _match(self.visible['fields'],f_in['/'.join([inc,ty,label])].keys()):
                             p = '/'.join([inc,ty,label,field])
                             for out in _match(output,f_in[p].keys()):
-                               f_in[p].copy(out,f_out[p])
+                                f_in[p].copy(out,f_out[p])
 
 
     def export_simulation_setup(self,
