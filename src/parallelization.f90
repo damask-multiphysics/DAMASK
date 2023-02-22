@@ -46,6 +46,7 @@ end subroutine parallelization_bcast_str
 #else
   public :: &
     parallelization_init, &
+    parallelization_chkerr, &
     parallelization_bcast_str
 
 contains
@@ -152,6 +153,19 @@ subroutine parallelization_init()
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check for MPI error.
+!--------------------------------------------------------------------------------------------------
+subroutine parallelization_chkerr(e)
+
+  integer(MPI_INTEGER_KIND), intent(in) :: e
+
+
+  if (e/=0_MPI_INTEGER_KIND) error stop 'MPI error'
+
+end subroutine parallelization_chkerr
 
 
 !--------------------------------------------------------------------------------------------------

@@ -497,7 +497,7 @@ subroutine result_mapping_phase(ID,entry,label)
   writeSize(worldrank) = size(entry(1,:))                                                           ! total number of entries of this process
 
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 #ifndef PETSC
   entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
@@ -505,10 +505,10 @@ subroutine result_mapping_phase(ID,entry,label)
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
   call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   entryOffset = 0_pI64
   do co = 1, size(ID,1)
@@ -517,7 +517,7 @@ subroutine result_mapping_phase(ID,entry,label)
     end do
   end do
   call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do co = 1, size(ID,1)
     do ce = 1, size(ID,2)
@@ -533,80 +533,80 @@ subroutine result_mapping_phase(ID,entry,label)
 !---------------------------------------------------------------------------------------------------
 ! compound type: label(ID) + entry
   call H5Tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tget_size_f(dt_id, type_size_string, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
   call H5Tget_size_f(pI64_t, type_size_int, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
   call H5Tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(entry_id, 'entry', 0_SIZE_T, pI64_t, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tclose_f(dt_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call H5Screate_simple_f(2,myShape,memspace_id,hdferr,myShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Screate_simple_f(2,totalShape,filespace_id,hdferr,totalShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
   call H5Pset_preserve_f(plist_id, .true., hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   loc_id = result_openGroup('/cell_to')
   call H5Dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Dwrite_f(dset_id, label_id, reshape(label(pack(ID,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dwrite_f(dset_id, entry_id, reshape(pack(entryGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! close all
   call HDF5_closeGroup(loc_id)
   call H5Pclose_f(plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(filespace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(memspace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dclose_f(dset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(dtype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(label_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(entry_id, hdferr)
 
   call executionStamp('cell_to/phase','cell ID and constituent ID to phase results')
@@ -653,7 +653,7 @@ subroutine result_mapping_homogenization(ID,entry,label)
   writeSize(worldrank) = size(entry)                                                                ! total number of entries of this process
 
   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 #ifndef PETSC
   entryGlobal = int(entry -1,pI64)                                                                  ! 0-based
@@ -661,17 +661,17 @@ subroutine result_mapping_homogenization(ID,entry,label)
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
   call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call MPI_Allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,err_MPI)   ! get output at each process
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
 
   entryOffset = 0_pI64
   do ce = 1, size(ID,1)
     entryOffset(ID(ce),worldrank) = entryOffset(ID(ce),worldrank) +1_pI64
   end do
   call MPI_Allreduce(MPI_IN_PLACE,entryOffset,size(entryOffset),MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,err_MPI)! get offset at each process
-  if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
+  call parallelization_chkerr(err_MPI)
   entryOffset(:,worldrank) = sum(entryOffset(:,0:worldrank-1),2)
   do ce = 1, size(ID,1)
     entryGlobal(ce) = int(entry(ce),pI64) -1_pI64 + entryOffset(ID(ce),worldrank)
@@ -685,82 +685,82 @@ subroutine result_mapping_homogenization(ID,entry,label)
 !---------------------------------------------------------------------------------------------------
 ! compound type: label(ID) + entry
   call H5Tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tget_size_f(dt_id, type_size_string, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
   call H5Tget_size_f(pI64_t, type_size_int, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
   call H5Tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tcreate_f(H5T_COMPOUND_F, type_size_int, entry_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tinsert_f(entry_id, 'entry', 0_SIZE_T, pI64_t, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Tclose_f(dt_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call H5Screate_simple_f(1,myShape,memspace_id,hdferr,myShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Screate_simple_f(1,totalShape,filespace_id,hdferr,totalShape)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
   call H5Pset_preserve_f(plist_id, .true., hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   loc_id = result_openGroup('/cell_to')
   call H5Dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call H5Dwrite_f(dset_id, label_id, reshape(label(pack(ID,.true.)),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dwrite_f(dset_id, entry_id, reshape(pack(entryGlobal,.true.),myShape), &
                   myShape, hdferr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! close all
   call HDF5_closeGroup(loc_id)
   call H5Pclose_f(plist_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(filespace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Sclose_f(memspace_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Dclose_f(dset_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(dtype_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(label_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
   call H5Tclose_f(entry_id, hdferr)
-  if (hdferr < 0) error stop 'HDF5 error'
+  call HDF5_chkerr(hdferr)
 
   call executionStamp('cell_to/homogenization','cell ID to homogenization results')
 
