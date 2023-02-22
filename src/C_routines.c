@@ -86,7 +86,7 @@ void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte defl
 }
 
 #ifdef FYAML
-void to_flow_c(char **flow, int* length_flow, const char *mixed){
+void to_flow_c(char **flow, long* length_flow, const char *mixed){
   struct fy_document *fyd = NULL;
   enum fy_emitter_cfg_flags emit_flags = FYECF_MODE_FLOW_ONELINE | FYECF_STRIP_LABELS | FYECF_STRIP_TAGS |FYECF_STRIP_DOC;
 
@@ -102,7 +102,7 @@ void to_flow_c(char **flow, int* length_flow, const char *mixed){
   }
 
   *flow = fy_emit_document_to_string(fyd,emit_flags);
-  *length_flow = strlen(*flow);
+  *length_flow = (long) strlen(*flow);
 
   fy_document_destroy(fyd);
 }

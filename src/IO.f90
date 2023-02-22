@@ -136,8 +136,8 @@ function IO_read(fileName) result(fileContent)
   if (myStat /= 0) call IO_error(102,trim(fileName))
   close(fileUnit)
 
-  if (scan(fileContent(:index(fileContent,LF)),CR//LF) /= 0) fileContent = CRLF2LF(fileContent)
-  if (fileContent(fileLength:fileLength) /= IO_EOL)          fileContent = fileContent//IO_EOL      ! ensure EOL@EOF
+  if (index(fileContent,CR//LF,kind=pI64) /= 0)     fileContent = CRLF2LF(fileContent)
+  if (fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL               ! ensure EOL@EOF
 
 end function IO_read
 
@@ -605,17 +605,17 @@ pure function CRLF2LF(string)
   character(len=*), intent(in)  :: string
   character(len=:), allocatable :: CRLF2LF
 
-  integer :: c,n
+  integer(pI64) :: c,n
 
 
-  allocate(character(len=len_trim(string))::CRLF2LF)
-  if (len(CRLF2LF) == 0) return
+  allocate(character(len=len_trim(string,pI64))::CRLF2LF)
+  if (len(CRLF2LF,pI64) == 0) return
 
-  n = 0
-  do c=1, len_trim(string)
+  n = 0_pI64
+  do c=1_pI64, len_trim(string,pI64)
     CRLF2LF(c-n:c-n) = string(c:c)
-    if (c == len_trim(string)) exit
-    if (string(c:c+1) == CR//LF) n = n + 1
+    if (c == len_trim(string,pI64)) exit
+    if (string(c:c+1_pI64) == CR//LF) n = n + 1_pI64
   end do
 
   CRLF2LF = CRLF2LF(:c-n)
