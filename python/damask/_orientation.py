@@ -1,6 +1,5 @@
-import inspect
 import copy
-from typing import Optional, Union, Callable, Dict, Any, Tuple, TypeVar
+from typing import Optional, Union, TypeVar
 
 import numpy as np
 
@@ -261,130 +260,87 @@ class Orientation(Rotation,Crystal):
             Compound rotation self*other, i.e. first other then self rotation.
 
         """
-        if isinstance(other, (Orientation,Rotation)):
-            return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
-        else:
+        if not isinstance(other, (Orientation,Rotation)):
             raise TypeError('use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
-
-
-    @staticmethod
-    def _split_kwargs(kwargs: Dict[str, Any],
-                      target: Callable) -> Tuple[Dict[str, Any], ...]:
-        """
-        Separate keyword arguments in 'kwargs' targeted at 'target' from general keyword arguments of Orientation objects.
-
-        Parameters
-        ----------
-        kwargs : dictionary
-            Contains all **kwargs.
-        target: method
-            Function to scan for kwarg signature.
-
-        Returns
-        -------
-        rot_kwargs: dictionary
-            Valid keyword arguments of 'target' function of Rotation class.
-        ori_kwargs: dictionary
-            Valid keyword arguments of Orientation object.
-
-        """
-        kws: Tuple[Dict[str, Any], ...] = ()
-        for t in (target,Orientation.__init__):
-            kws += ({key: kwargs[key] for key in set(inspect.signature(t).parameters) & set(kwargs)},)
-
-        invalid_keys = set(kwargs)-(set(kws[0])|set(kws[1]))
-        if invalid_keys:
-            raise TypeError(f"{inspect.stack()[1][3]}() got an unexpected keyword argument '{invalid_keys.pop()}'")
-
-        return kws
+        return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
 
 
     @classmethod
     @util.extend_docstring(Rotation.from_random,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_random, wrapped=__init__)
     def from_random(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
-        return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_quaternion,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_quaternion, wrapped=__init__)
     def from_quaternion(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
-        return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_Euler_angles,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_Euler_angles, wrapped=__init__)
     def from_Euler_angles(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
-        return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_axis_angle,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_axis_angle, wrapped=__init__)
     def from_axis_angle(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
-        return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_basis,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_basis, wrapped=__init__)
     def from_basis(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
-        return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_matrix,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_matrix, wrapped=__init__)
     def from_matrix(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
-        return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_Rodrigues_vector,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_Rodrigues_vector, wrapped=__init__)
     def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
-        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_homochoric,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_homochoric, wrapped=__init__)
     def from_homochoric(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
-        return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_cubochoric,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_cubochoric, wrapped=__init__)
     def from_cubochoric(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
-        return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_spherical_component,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_spherical_component, wrapped=__init__)
     def from_spherical_component(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
-        return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_fiber_component,
                            extra_parameters=_parameter_doc)
+    @util.pass_on('rotation', Rotation.from_fiber_component, wrapped=__init__)
     def from_fiber_component(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
-        return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
+        return cls(**kwargs)
 
 
     @classmethod

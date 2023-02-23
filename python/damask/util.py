@@ -9,7 +9,8 @@ import re as _re
 import signal as _signal
 import fractions as _fractions
 from collections import abc as _abc
-from functools import reduce as _reduce, partial as _partial
+from functools import reduce as _reduce, partial as _partial, wraps as _wraps
+import inspect
 from typing import Optional as _Optional, Callable as _Callable, Union as _Union, Iterable as _Iterable, \
                    Dict as _Dict, List as _List, Tuple as _Tuple, Literal as _Literal, \
                    Any as _Any, TextIO as _TextIO
@@ -618,6 +619,48 @@ def extend_docstring(docstring: _Union[None, str, _Callable] = None,
         return func
     return _decorator
 
+def pass_on(keyword: str,
+            target: _Callable,
+            wrapped: _Callable = None) -> _Callable: # type: ignore
+    """
+    Decorator: Combine signatures of 'wrapped' and 'target' functions and pass on output of 'target' as 'keyword' argument.
+
+    Parameters
+    ----------
+    keyword : str
+       Keyword added to **kwargs of the decorated function
+       passing on the result of 'target'.
+    target : callable
+       The output of this function is passed to the
+       decorated function as 'keyword' argument.
+    wrapped: callable, optional
+        Signature of 'wrapped' function combined with
+        that of 'target' yields the overall signature of decorated function.
+
+    Notes
+    -----
+    The keywords used by 'target' will be prioritized
+    if they overlap with those of the decorated function.
+    Functions 'target' and 'wrapped' are assumed to only have keyword arguments.
+
+    """
+
+    def decorator(func):
+        @_wraps(func)
+        def wrapper(*args, **kwargs):
+            kw_wrapped     = set(kwargs.keys()) - set(inspect.getfullargspec(target).args)
+            kwargs_wrapped = {kw: kwargs.pop(kw) for kw in kw_wrapped}
+            kwargs_wrapped[keyword] = target(**kwargs)
+            return func(*args, **kwargs_wrapped)
+        args_ = [] if wrapped is None or 'self' not in inspect.signature(wrapped).parameters \
+                else [inspect.signature(wrapped).parameters['self']]
+        for f in [target] if wrapped is None else [target,wrapped]:
+            for param in inspect.signature(f).parameters.values():
+                if      param.name != keyword \
+                    and param.name not in [p.name for p in args_]+['self','cls', 'args', 'kwargs']: args_.append(param)
+        wrapper.__signature__ = inspect.Signature(parameters=args_,return_annotation=inspect.signature(func).return_annotation)
+        return wrapper
+    return decorator
 
 def DREAM3D_base_group(fname: _Union[str, _Path]) -> str:
     """
