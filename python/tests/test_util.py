@@ -1,5 +1,6 @@
 import sys
 import random
+import pydoc
 
 import pytest
 import numpy as np
@@ -341,3 +342,39 @@ p2 : str, optional
         """
         assert expected == util._docstringer(original_func,return_type=decorated_func)
         assert expected == util._docstringer(original_func,return_type=TestClassDecorated.decorated_func_bound)
+
+    def test_passon_result(self):
+        def testfunction_inner(a=None,b=None):
+            return a+b
+
+        @util.pass_on('inner_result',testfunction_inner)
+        def testfunction_outer(**kwargs):
+            return kwargs['inner_result']+";"+kwargs['c']+kwargs['d']
+        assert testfunction_outer(a='1',b='2',c='3',d='4',e='5') == '12;34'
+
+    def test_passon_signature(self):
+        def testfunction_inner(a='1',b='2'):
+            return a+b
+
+        def testfunction_extra(e='5',f='6'):
+            return e+f
+
+        @util.pass_on('inner_result', testfunction_inner, wrapped=testfunction_extra)
+        def testfunction_outer(**kwargs):
+            return kwargs['inner_result']+";"+kwargs['c']+kwargs['d']
+        assert [(param.name, param.default) for param in testfunction_outer.__signature__.parameters.values()] == \
+               [('a', '1'), ('b', '2'), ('e', '5'), ('f', '6')]
+
+    def test_passon_help(self):
+        def testfunction_inner(a=None,b=None):
+            return a+b
+
+        def testfunction_extra(*,c=None,d=None):
+            return c+d
+
+        @util.pass_on('inner_result', testfunction_inner, wrapped=testfunction_extra)
+        def testfunction_outer(**kwargs) -> int:
+            return kwargs['inner_result']+kwargs['c']+kwargs['d']
+
+        assert pydoc.render_doc(testfunction_outer, renderer=pydoc.plaintext).split("\n")[-2] ==\
+              'testfunction_outer(a=None, b=None, *, c=None, d=None) -> int'
