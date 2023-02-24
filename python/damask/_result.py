@@ -678,7 +678,7 @@ class Result:
         ...                    '1/m²','total mobile dislocation density')
         >>> r.add_calculation('np.sum(#rho_dip#,axis=1)','rho_dip_total',
         ...                    '1/m²','total dislocation dipole density')
-        >>> r.add_calculation('#rho_dip_total#+#rho_mob_total','rho_total',
+        >>> r.add_calculation('#rho_dip_total#+#rho_mob_total#','rho_total',
         ...                    '1/m²','total dislocation density')
 
         Add Mises equivalent of the Cauchy stress without storage of
