@@ -41,8 +41,6 @@ module prec
   real(pReal),               dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
   character(len=pStringLen), dimension(0), parameter :: emptyStringArray = [character(len=pStringLen)::]
 
-  private :: &
-    selfTest
 
 contains
 
@@ -62,7 +60,7 @@ subroutine prec_init()
   print'(  a,e10.3)', '   epsilon value:      ',PREAL_EPSILON
   print'(  a,i3)',    '   decimal precision:  ',precision(0.0_pReal)
 
-  call selfTest()
+  call prec_selfTest()
 
 end subroutine prec_init
 
@@ -247,7 +245,7 @@ end function prec_bytesToC_INT64_T
 !--------------------------------------------------------------------------------------------------
 !> @brief Check correctness of some prec functions.
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+subroutine prec_selfTest()
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
   real(pReal),   dimension(1) :: f
@@ -281,6 +279,6 @@ subroutine selfTest()
   i = int(prec_bytesToC_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pI64)
   if (i(1) /= 20191102_pI64)                 error stop 'prec_bytesToC_INT64_T'
 
-end subroutine selfTest
+end subroutine prec_selfTest
 
 end module prec
