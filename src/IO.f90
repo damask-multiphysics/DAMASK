@@ -11,6 +11,7 @@ module IO
     IO_STDERR => ERROR_UNIT
 
   use prec
+  use misc
 
   implicit none(type,external)
   private
@@ -30,6 +31,7 @@ module IO
     IO_read, &
     IO_readlines, &
     IO_isBlank, &
+    IO_insertEOL, &
     IO_stringPos, &
     IO_stringValue, &
     IO_intValue, &
@@ -156,6 +158,53 @@ logical pure function IO_isBlank(string)
   IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(string,IO_COMMENT)
 
 end function IO_isBlank
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Insert EOL at separator trying to keep line length below limit.
+!--------------------------------------------------------------------------------------------------
+function IO_insertEOL(string,separator,length)
+
+  character(len=*),    intent(in) :: string                                                         !< string to split
+  character, optional, intent(in) :: separator                                                      !< possible splitting positions
+  integer,   optional, intent(in) :: length                                                         !< (soft) line limit
+  character(len=:), allocatable :: IO_insertEOL
+
+  integer, dimension(:), allocatable :: pos_sep, pos_split
+  integer :: i,s,e
+  character :: sep
+
+
+  sep = misc_optional(separator,',')
+
+  i = index(string,sep)
+  if (i == 0) then
+    IO_insertEOL = string
+  else
+    pos_sep = [0]
+    s = i
+    do while (i /= 0 .and. s < len(string))
+      pos_sep = [pos_sep,s]
+      i = index(string(s+1:),sep)
+      s = s + i
+    end do
+    pos_sep = [pos_sep,len(string)]
+
+    pos_split = [integer::]
+    s = 1
+    e = 2
+    IO_insertEOL= ''
+    do while (e < size(pos_sep))
+      if (pos_sep(e+1) - pos_sep(s) >= misc_optional(length,80)) then
+        IO_insertEOL = IO_insertEOL//string(pos_sep(s)+1:pos_sep(e))//IO_EOL
+        s = e
+      end if
+      e = e + 1
+    end do
+    IO_insertEOL = IO_insertEOL//string(pos_sep(s)+1:)
+  end if
+
+end function IO_insertEOL
 
 
 !--------------------------------------------------------------------------------------------------
@@ -747,6 +796,19 @@ subroutine selfTest()
   if (out /= ' a' .or. len(out) /= 2)                error stop 'IO_rmComment/5'
   str=' ab #';out=IO_rmComment(str)
   if (out /= ' ab'.or. len(out) /= 3)                error stop 'IO_rmComment/6'
+
+  if ('abc, def' /= IO_insertEOL('abc, def')) &
+                                                     error stop 'IO_insertEOL/1'
+  if ('abc,'//IO_EOL//'def' /= IO_insertEOL('abc,def',length=3)) &
+                                                     error stop 'IO_insertEOL/2'
+  if ('abc,'//IO_EOL//'def' /= IO_insertEOL('abc,def',length=5)) &
+                                                     error stop 'IO_insertEOL/3'
+  if ('abc, def' /= IO_insertEOL('abc, def',length=3,separator='.')) &
+                                                     error stop 'IO_insertEOL/4'
+  if ('abc.'//IO_EOL//' def' /= IO_insertEOL('abc. def',length=3,separator='.')) &
+                                                     error stop 'IO_insertEOL/5'
+  if ('abc,'//IO_EOL//'defg,'//IO_EOL//'hij' /= IO_insertEOL('abc,defg,hij',length=4)) &
+                                                     error stop 'IO_insertEOL/6'
 
 end subroutine selfTest
 
