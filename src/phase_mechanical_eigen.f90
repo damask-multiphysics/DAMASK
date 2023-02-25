@@ -121,8 +121,6 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
     phases, &
     phase, &
     kinematics_type
-  type(tList), pointer :: &
-    kinematics
   integer :: ph
 
 

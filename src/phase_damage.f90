@@ -472,8 +472,6 @@ function source_active(source_label)  result(active_source)
     phases, &
     phase, &
     src
-  type(tList), pointer :: &
-    sources
   integer :: ph
 
 

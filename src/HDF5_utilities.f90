@@ -115,14 +115,14 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Initialize HDF5 libary and perform sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine HDF5_utilities_init
+subroutine HDF5_utilities_init()
 
   integer :: hdferr, HDF5_major, HDF5_minor, HDF5_release, configFlags
   logical :: avail
   integer(SIZE_T) :: typeSize
 
 
-  print'(/,1x,a)', '<<<+-  HDF5_Utilities init  -+>>>'
+  print'(/,1x,a)', '<<<+-  HDF5_utilities init  -+>>>'
 
 
   call H5Open_f(hdferr)
@@ -1507,7 +1507,7 @@ end subroutine HDF5_write_str
 #if defined(__GFORTRAN__)
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 1 dimension
+!> @brief Write dataset of type integer with 1 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
 
@@ -1544,7 +1544,7 @@ subroutine HDF5_write_int1(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int1
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 2 dimensions
+!> @brief Write dataset of type integer with 2 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
 
@@ -1581,7 +1581,7 @@ subroutine HDF5_write_int2(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int2
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 3 dimensions
+!> @brief Write dataset of type integer with 3 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
 
@@ -1618,7 +1618,7 @@ subroutine HDF5_write_int3(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int3
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 4 dimensions
+!> @brief Write dataset of type integer with 4 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
 
@@ -1655,7 +1655,7 @@ subroutine HDF5_write_int4(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int4
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 5 dimensions
+!> @brief Write dataset of type integer with 5 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
 
@@ -1692,7 +1692,7 @@ subroutine HDF5_write_int5(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int5
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 6 dimensions
+!> @brief Write dataset of type integer with 6 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
 
@@ -1729,7 +1729,7 @@ subroutine HDF5_write_int6(dataset,loc_id,datasetName,parallel)
 end subroutine HDF5_write_int6
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 7 dimensions
+!> @brief Write dataset of type integer with 7 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int7(dataset,loc_id,datasetName,parallel)
 
@@ -1768,7 +1768,7 @@ end subroutine HDF5_write_int7
 #else
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write dataset of type integer with 1-7 dimension
+!> @brief Write dataset of type integer with 1-7 dimensions.
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int(dataset,loc_id,datasetName,parallel)
 
@@ -1827,7 +1827,7 @@ end subroutine HDF5_write_int
 #endif
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initialize HDF5 handles, determines global shape and start for parallel read
+!> @brief Initialize read handles and determine global shape in case of parallel IO.
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                            myStart, globalShape, &
@@ -1904,7 +1904,7 @@ end subroutine initialize_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes HDF5 handles
+!> @brief Close read handles.
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
@@ -1926,7 +1926,7 @@ end subroutine finalize_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initialize HDF5 handles, determines global shape and start for parallel write
+!> @brief Initialize write handles and determine global shape in case of parallel IO.
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                             myStart, totalShape, &
@@ -2018,7 +2018,7 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 
   contains
   !------------------------------------------------------------------------------------------------
-  !> @brief determine chunk layout
+  !> @brief Determine chunk layout.
   !------------------------------------------------------------------------------------------------
   pure function getChunks(totalShape,chunkSize)
 
@@ -2035,7 +2035,7 @@ end subroutine initialize_write
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief closes HDF5 handles
+!> @brief Closes write handles.
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
