@@ -84,6 +84,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
     mech, &
     pl
 
+
   myPlasticity = plastic_active('kinehardening')
   if (count(myPlasticity) == 0) return
 
@@ -110,6 +111,8 @@ module function plastic_kinehardening_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
+
+    print'(a,i0,a)', ' phase ',ph,' '//material_references(pl)
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)

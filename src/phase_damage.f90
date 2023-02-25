@@ -103,6 +103,7 @@ module subroutine damage_init()
     phase => phases%get_dict(ph)
     source => phase%get_dict('damage',defaultVal=emptyDict)
     if (source%length > 0) then
+      print'(a,i0,a)', ' phase ',ph,' '//material_references(source)
       damage_active = .true.
       param(ph)%mu = source%get_asFloat('mu')
       param(ph)%l_c = source%get_asFloat('l_c')

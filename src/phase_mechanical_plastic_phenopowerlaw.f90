@@ -122,6 +122,14 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
+    print'(a,i0,a)', ' phase ',ph,' '//material_references(pl)
+
+#if defined (__GFORTRAN__)
+    prm%output = output_as1dString(pl)
+#else
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+#endif
+
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
@@ -216,15 +224,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       allocate(prm%h_tw_sl(prm%sum_N_tw,prm%sum_N_sl))                                              ! at least one dimension is 0
       prm%h_0_tw_sl = 0.0_pReal
     end if slipAndTwinActive
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-
-#if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
-#else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays

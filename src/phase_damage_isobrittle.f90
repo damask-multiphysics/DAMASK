@@ -64,6 +64,8 @@ module function isobrittle_init() result(mySources)
 
         prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
 
+        print'(a,i0,a)', ' phase ',ph,' '//material_references(src)
+
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(src)
 #else

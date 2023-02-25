@@ -234,13 +234,15 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
-    plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
+    print'(a,i0,a)', ' phase ',ph,' '//material_references(pl)
+
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
+    plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
     prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
     prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 

@@ -86,6 +86,8 @@ module function plastic_isotropic_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
+    print'(a,i0,a)', ' phase ',ph,' '//material_references(pl)
+
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else

@@ -60,6 +60,7 @@ module function externalheat_init(source_length) result(mySources)
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
           src => sources%get_dict(so)
+          print'(a,i0,a,i0,a)', ' phase ',ph,' source ',so,' '//material_references(src)
 
           prm%f = table(src,'t','f')
 
