@@ -231,6 +231,7 @@ program DAMASK_mesh
 ! doing initialization depending on active solvers
   call FEM_Utilities_init()
   call FEM_mechanical_init(loadCases(1)%fieldBC(1))
+  call config_numerics_deallocate()
 
   if (worldrank == 0) then
     open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')

@@ -314,6 +314,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call spectral_Utilities_init()
+
   do field = 2, nActiveFields
     select case (ID(field))
 
@@ -327,6 +328,7 @@ program DAMASK_grid
   end do
 
   call mechanical_init()
+  call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------
 ! write header of output file

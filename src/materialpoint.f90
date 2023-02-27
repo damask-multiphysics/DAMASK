@@ -72,7 +72,7 @@ subroutine materialpoint_initAll()
   call phase_init()
   call homogenization_init()
   call materialpoint_init()
-  call config_deallocate()
+  call config_material_deallocate()
 
 end subroutine materialpoint_initAll
 
