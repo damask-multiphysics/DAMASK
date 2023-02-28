@@ -18,7 +18,8 @@ module config
 
   public :: &
     config_init, &
-    config_deallocate
+    config_material_deallocate,&
+    config_numerics_deallocate
 
 contains
 
@@ -95,12 +96,24 @@ end subroutine parse_numerics
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Deallocate config_material.
-!ToDo: deallocation of numerics (optional)
 !--------------------------------------------------------------------------------------------------
-subroutine config_deallocate
+subroutine config_material_deallocate()
 
+  print'(/,1x,a)', 'deallocating material configuration'; flush(IO_STDOUT)
   deallocate(config_material)
 
-end subroutine config_deallocate
+end subroutine config_material_deallocate
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_numerics if present.
+!--------------------------------------------------------------------------------------------------
+subroutine config_numerics_deallocate()
+
+  if (.not. associated(config_numerics, emptyDict)) then
+    print'(/,1x,a)', 'deallocating numerics configuration'; flush(IO_STDOUT)
+    deallocate(config_numerics)
+  end if
+
+end subroutine config_numerics_deallocate
 
 end module config
