@@ -166,8 +166,8 @@ end function IO_isBlank
 function IO_insertEOL(string,separator,length)
 
   character(len=*),    intent(in) :: string                                                         !< string to split
-  character, optional, intent(in) :: separator                                                      !< possible splitting positions
-  integer,   optional, intent(in) :: length                                                         !< (soft) line limit
+  character, optional, intent(in) :: separator                                                      !< line breaks are possible after this character, defaults to ','
+  integer,   optional, intent(in) :: length                                                         !< (soft) line limit, defaults to 80
   character(len=:), allocatable :: IO_insertEOL
 
   integer, dimension(:), allocatable :: pos_sep, pos_split
@@ -190,10 +190,10 @@ function IO_insertEOL(string,separator,length)
     end do
     pos_sep = [pos_sep,len(string)]
 
-    pos_split = [integer::]
+    pos_split = emptyIntArray
     s = 1
     e = 2
-    IO_insertEOL= ''
+    IO_insertEOL = ''
     do while (e < size(pos_sep))
       if (pos_sep(e+1) - pos_sep(s) >= misc_optional(length,80)) then
         IO_insertEOL = IO_insertEOL//string(pos_sep(s)+1:pos_sep(e))//IO_EOL
