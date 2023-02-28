@@ -6,7 +6,7 @@ if (CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 18.0)
 endif ()
 
 if (OPENMP)
-  set (OPENMP_FLAGS "-qopenmp")
+  set (OPENMP_FLAGS "-fiopenmp")
 endif ()
 
 if (OPTIMIZATION STREQUAL "OFF" OR OPTIMIZATION STREQUAL "DEBUG")
@@ -23,6 +23,8 @@ endif ()
 set (STANDARD_CHECK "-stand f18 -assume nostd_mod_proc_name")
 set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel")
 # Link against shared Intel libraries instead of static ones
+set (LINKER_FLAGS   "${LINKER_FLAGS} -shared-intel -fc=ifx")
+# enforce use of ifx for MPI wrapper
 
 #------------------------------------------------------------------------------------------------
 # Fine tuning compilation options
