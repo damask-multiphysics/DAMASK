@@ -62,7 +62,7 @@ module function anisobrittle_init() result(mySources)
 
       associate(prm  => param(ph))
 
-        print'(a,i0,a)', ' phase ',ph,' '//material_references(src)
+        print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(src)
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))

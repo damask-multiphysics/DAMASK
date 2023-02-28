@@ -18,8 +18,9 @@ module config
 
   public :: &
     config_init, &
-    config_material_deallocate,&
-    config_numerics_deallocate
+    config_material_deallocate, &
+    config_numerics_deallocate, &
+    config_fetchReferences
 
 contains
 
@@ -34,6 +35,54 @@ subroutine config_init()
   call parse_numerics()
 
 end subroutine config_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_material.
+!--------------------------------------------------------------------------------------------------
+subroutine config_material_deallocate()
+
+  print'(/,1x,a)', 'deallocating material configuration'; flush(IO_STDOUT)
+  deallocate(config_material)
+
+end subroutine config_material_deallocate
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_numerics if present.
+!--------------------------------------------------------------------------------------------------
+subroutine config_numerics_deallocate()
+
+  if (.not. associated(config_numerics, emptyDict)) then
+    print'(/,1x,a)', 'deallocating numerics configuration'; flush(IO_STDOUT)
+    deallocate(config_numerics)
+  end if
+
+end subroutine config_numerics_deallocate
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return string with references from dict.
+!--------------------------------------------------------------------------------------------------
+function config_fetchReferences(config) result(references)
+
+  type(tDict) :: config
+  character(len=:), allocatable :: references
+
+  type(tList), pointer :: ref
+  integer :: r
+
+
+  ref => config%get_list('references',emptyList)
+  if (ref%length > 0) then
+    references = 'references:'
+    do r = 1, ref%length
+      references = references//IO_EOL//' '//IO_insertEOL(ref%get_asString(r))
+    end do
+  else
+    references = ''
+  end if
+
+end function config_fetchReferences
 
 
 !--------------------------------------------------------------------------------------------------
@@ -92,28 +141,5 @@ subroutine parse_numerics()
   end if
 
 end subroutine parse_numerics
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Deallocate config_material.
-!--------------------------------------------------------------------------------------------------
-subroutine config_material_deallocate()
-
-  print'(/,1x,a)', 'deallocating material configuration'; flush(IO_STDOUT)
-  deallocate(config_material)
-
-end subroutine config_material_deallocate
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Deallocate config_numerics if present.
-!--------------------------------------------------------------------------------------------------
-subroutine config_numerics_deallocate()
-
-  if (.not. associated(config_numerics, emptyDict)) then
-    print'(/,1x,a)', 'deallocating numerics configuration'; flush(IO_STDOUT)
-    deallocate(config_numerics)
-  end if
-
-end subroutine config_numerics_deallocate
 
 end module config

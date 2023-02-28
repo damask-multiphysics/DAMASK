@@ -394,7 +394,7 @@ subroutine phase_init
 
   do ph = 1,phases%length
     phase => phases%get_dict(ph)
-    print'(a,i0,a)', ' phase ',ph,' '//material_references(phase)
+    print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(phase)
     phase_lattice(ph) = phase%get_asString('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
       call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))

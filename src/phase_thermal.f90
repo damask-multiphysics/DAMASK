@@ -107,7 +107,7 @@ module subroutine thermal_init(phases)
 
     ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
-      print'(a,i0,a)', ' phase ',ph,' '//material_references(thermal)
+      print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(thermal)
       param(ph)%C_p = thermal%get_asFloat('C_p')
       param(ph)%K(1,1) = thermal%get_asFloat('K_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asFloat('K_33')

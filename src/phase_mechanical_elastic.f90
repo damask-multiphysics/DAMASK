@@ -42,7 +42,7 @@ module subroutine elastic_init(phases)
     phase   => phases%get_dict(ph)
     mech    => phase%get_dict('mechanical')
     elastic => mech%get_dict('elastic')
-    print'(a,i0,a)', ' phase ',ph,' '//material_references(elastic)
+    print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(elastic)
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
 
     associate(prm => param(ph))

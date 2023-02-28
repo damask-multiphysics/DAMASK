@@ -56,7 +56,7 @@ module function dissipation_init(source_length) result(mySources)
       if (mySources(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)
-          print'(a,i0,a,i0,a)', ' phase ',ph,' source ',so,' '//material_references(src)
+          print'(a,i0,a,i0,a)', ' phase ',ph,' source ',so,' '//config_fetchReferences(src)
 
           prm%kappa = src%get_asFloat('kappa')
           Nmembers = count(material_ID_phase == ph)

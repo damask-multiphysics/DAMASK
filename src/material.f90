@@ -49,8 +49,7 @@ module material
     material_v                                                                                      ! fraction
 
   public :: &
-    material_init, &
-    material_references
+    material_init
 
 contains
 
@@ -77,31 +76,6 @@ subroutine material_init(restart)
   end if
 
 end subroutine material_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Return string with references from dict.
-!--------------------------------------------------------------------------------------------------
-function material_references(config) result(references)
-
-  type(tDict) :: config
-  character(len=:), allocatable :: references
-
-  type(tList), pointer :: ref
-  integer :: r
-
-
-  ref => config%get_list('references',emptyList)
-  if (ref%length > 0) then
-    references = 'references:'
-    do r = 1, ref%length
-      references = references//IO_EOL//' '//IO_insertEOL(ref%get_asString(r))
-    end do
-  else
-    references = ''
-  end if
-
-end function material_references
 
 
 !--------------------------------------------------------------------------------------------------
