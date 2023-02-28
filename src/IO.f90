@@ -173,14 +173,9 @@ function IO_wrapLines(string,separator,filler,length)
 
   integer, dimension(:), allocatable :: pos_sep, pos_split
   integer :: i,s,e
-  character :: sep
-  character(len=:), allocatable :: fill
 
 
-  sep = misc_optional(separator,',')
-  fill = misc_optional(filler,'')
-
-  i = index(string,sep)
+  i = index(string,misc_optional(separator,','))
   if (i == 0) then
     IO_wrapLines = string
   else
@@ -188,7 +183,7 @@ function IO_wrapLines(string,separator,filler,length)
     s = i
     do while (i /= 0 .and. s < len(string))
       pos_sep = [pos_sep,s]
-      i = index(string(s+1:),sep)
+      i = index(string(s+1:),misc_optional(separator,','))
       s = s + i
     end do
     pos_sep = [pos_sep,len(string)]
@@ -199,7 +194,7 @@ function IO_wrapLines(string,separator,filler,length)
     IO_wrapLines = ''
     do while (e < size(pos_sep))
       if (pos_sep(e+1) - pos_sep(s) >= misc_optional(length,80)) then
-        IO_wrapLines = IO_wrapLines//adjustl(string(pos_sep(s)+1:pos_sep(e)))//IO_EOL//fill
+        IO_wrapLines = IO_wrapLines//adjustl(string(pos_sep(s)+1:pos_sep(e)))//IO_EOL//misc_optional(filler,'')
         s = e
       end if
       e = e + 1
