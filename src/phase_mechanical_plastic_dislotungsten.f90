@@ -93,7 +93,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -128,7 +130,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     mech  => phase%get_dict('mechanical')
     pl  => mech%get_dict('plastic')
 
-    print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(pl)
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)

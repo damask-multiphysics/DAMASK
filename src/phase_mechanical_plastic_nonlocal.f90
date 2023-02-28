@@ -188,7 +188,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     s, t, l
   real(pReal), dimension(:), allocatable :: &
     a
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tInitialParameters) :: &
     ini
   type(tDict), pointer :: &
@@ -234,7 +236,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
-    print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(pl)
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)

@@ -36,6 +36,7 @@ module function externalheat_init(source_length) result(mySources)
     src
   type(tList), pointer :: &
     sources
+  character(len=:), allocatable :: refs
   integer :: so,Nmembers,ph
 
 
@@ -60,7 +61,9 @@ module function externalheat_init(source_length) result(mySources)
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
           src => sources%get_dict(so)
-          print'(a,i0,a,i0,a)', ' phase ',ph,' source ',so,' '//config_fetchReferences(src)
+          print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
+          refs = config_listReferences(src,indent=3)
+          if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%f = table(src,'t','f')
 

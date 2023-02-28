@@ -382,6 +382,7 @@ subroutine phase_init
   type(tDict), pointer :: &
     phases, &
     phase
+  character(len=:), allocatable :: refs
 
 
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
@@ -393,8 +394,10 @@ subroutine phase_init
   allocate(phase_O_0(phases%length))
 
   do ph = 1,phases%length
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
     phase => phases%get_dict(ph)
-    print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(phase)
+    refs = config_listReferences(phase,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
     phase_lattice(ph) = phase%get_asString('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
       call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))

@@ -79,9 +79,10 @@ module subroutine damage_init()
     ph, &
     Nmembers
   type(tDict), pointer :: &
-   phases, &
-   phase, &
-   source
+    phases, &
+    phase, &
+    source
+  character(len=:), allocatable :: refs
   logical:: damage_active
 
 
@@ -103,7 +104,9 @@ module subroutine damage_init()
     phase => phases%get_dict(ph)
     source => phase%get_dict('damage',defaultVal=emptyDict)
     if (source%length > 0) then
-      print'(a,i0,a)', ' phase ',ph,' '//config_fetchReferences(source)
+      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+      refs = config_listReferences(source,indent=3)
+      if (len(refs) > 0) print'(/,1x,a)', refs
       damage_active = .true.
       param(ph)%mu = source%get_asFloat('mu')
       param(ph)%l_c = source%get_asFloat('l_c')

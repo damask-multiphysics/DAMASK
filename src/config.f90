@@ -4,6 +4,7 @@
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
+  use misc
   use YAML_parse
   use YAML_types
   use result
@@ -20,7 +21,7 @@ module config
     config_init, &
     config_material_deallocate, &
     config_numerics_deallocate, &
-    config_fetchReferences
+    config_listReferences
 
 contains
 
@@ -63,26 +64,30 @@ end subroutine config_numerics_deallocate
 !--------------------------------------------------------------------------------------------------
 !> @brief Return string with references from dict.
 !--------------------------------------------------------------------------------------------------
-function config_fetchReferences(config) result(references)
+function config_listReferences(config,indent) result(references)
 
   type(tDict) :: config
+  integer, optional :: indent
   character(len=:), allocatable :: references
 
+
   type(tList), pointer :: ref
+  character(len=:), allocatable :: filler
   integer :: r
 
 
+  filler = repeat(' ',misc_optional(indent,0))
   ref => config%get_list('references',emptyList)
-  if (ref%length > 0) then
+  if (ref%length == 0) then
+    references = ''
+  else
     references = 'references:'
     do r = 1, ref%length
-      references = references//IO_EOL//' '//IO_insertEOL(ref%get_asString(r))
+      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asString(r),filler=filler//'  ')
     end do
-  else
-    references = ''
   end if
 
-end function config_fetchReferences
+end function config_listReferences
 
 
 !--------------------------------------------------------------------------------------------------
