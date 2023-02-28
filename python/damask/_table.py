@@ -299,11 +299,18 @@ class Table:
 
 
     @staticmethod
-    def load_ang(fname: FileHandle) -> 'Table':
+    def load_ang(fname: FileHandle,
+                 shapes = {'eu':3,
+                           'pos':2,
+                           'IQ':1,
+                           'CI':1,
+                           'ID':1,
+                           'intensity':1,
+                           'fit':1}) -> 'Table':
         """
-        Load from ang file.
+        Load from ANG file.
 
-        A valid TSL ang file has to have the following columns:
+        Regular ANG files feature the following columns:
 
         - Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
         - Spatial position in meters, 2 floats, label 'pos'.
@@ -316,7 +323,10 @@ class Table:
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file to read.
+        shapes : dict with str:int pairs, optional
+            Column labels and their width.
+            Defaults to standard TSL ANG format.
 
         Returns
         -------
@@ -338,7 +348,6 @@ class Table:
 
         data = np.loadtxt(content)
 
-        shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
         if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 

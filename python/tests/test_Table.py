@@ -81,13 +81,15 @@ class TestTable:
         assert default[N:].get('F').shape == (len(default)-N,3,3)
         assert default[:N,['v','s']].data.equals(default['v','s'][:N].data)
 
-    @pytest.mark.parametrize('mode',['str','path'])
-    def test_write_read(self,default,tmp_path,mode):
-        default.save(tmp_path/'default.txt')
-        if   mode == 'path':
-            new = Table.load(tmp_path/'default.txt')
-        elif mode == 'str':
-            new = Table.load(str(tmp_path/'default.txt'))
+    @pytest.mark.parametrize('mode',['str','path','file'])
+    def test_write_read_mode(self,default,tmp_path,mode):
+        path = tmp_path/'default.txt'
+        if mode == 'file':
+            default.save(open(path,'w'))
+            new = Table.load(open(path))
+        else:
+            default.save(str(path) if mode == 'str' else path)
+            new = Table.load(str(path) if mode == 'str' else path)
         assert all(default.data == new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmp_path):
@@ -101,20 +103,19 @@ class TestTable:
         with pytest.raises(TypeError):
             default.save(tmp_path/'shouldnotbethere.txt',format='invalid')
 
-    @pytest.mark.parametrize('mode',['str','path'])
-    def test_read_ang(self,ref_path,mode):
-        if   mode == 'path':
-            new = Table.load_ang(ref_path/'simple.ang')
-        elif mode == 'str':
-            new = Table.load_ang(str(ref_path/'simple.ang'))
+    @pytest.mark.parametrize('mode',['str','path','file'])
+    def test_read_ang_mode(self,ref_path,mode):
+        where = ref_path/'simple.ang'
+        fname = {'path': where,
+                 'str':  str(where),
+                 'file': open(where)}[mode]
+        new = Table.load_ang(fname)
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
-    def test_read_ang_file(self,ref_path):
-        f = open(ref_path/'simple.ang')
-        new = Table.load_ang(f)
-        assert new.data.shape == (4,10) and \
-               new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
+    def test_read_ang_shapes(self,ref_path):
+        new = Table.load_ang(str(ref_path/'simple.ang'),shapes={})
+        assert new.data.shape == (4,10) and new.labels == ['unknown']
 
     def test_save_ang(self,ref_path,tmp_path):
         orig = Table.load_ang(ref_path/'simple.ang')
