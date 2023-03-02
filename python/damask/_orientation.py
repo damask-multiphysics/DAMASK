@@ -9,31 +9,6 @@ from . import Crystal
 from . import util
 from . import tensor
 
-
-_parameter_doc = \
-       """
-        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
-            Name of the crystal family.
-            Family will be inferred if 'lattice' is given.
-        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
-            Name of the Bravais lattice in Pearson notation.
-        a : float, optional
-            Length of lattice parameter 'a'.
-        b : float, optional
-            Length of lattice parameter 'b'.
-        c : float, optional
-            Length of lattice parameter 'c'.
-        alpha : float, optional
-            Angle between b and c lattice basis.
-        beta : float, optional
-            Angle between c and a lattice basis.
-        gamma : float, optional
-            Angle between a and b lattice basis.
-        degrees : bool, optional
-            Angles are given in degrees. Defaults to False.
-
-       """
-
 MyType = TypeVar('MyType', bound='Orientation')
 
 class Orientation(Rotation,Crystal):
@@ -93,7 +68,7 @@ class Orientation(Rotation,Crystal):
 
     """
 
-    @util.extend_docstring(extra_parameters=_parameter_doc)
+    @util.extend_docstring(adopted_parameters=Crystal.__init__)
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
@@ -267,84 +242,84 @@ class Orientation(Rotation,Crystal):
 
     @classmethod
     @util.extend_docstring(Rotation.from_random,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_random, wrapped=__init__)
     def from_random(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_quaternion,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_quaternion, wrapped=__init__)
     def from_quaternion(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_Euler_angles,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_Euler_angles, wrapped=__init__)
     def from_Euler_angles(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_axis_angle,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_axis_angle, wrapped=__init__)
     def from_axis_angle(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_basis,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_basis, wrapped=__init__)
     def from_basis(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_matrix,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_matrix, wrapped=__init__)
     def from_matrix(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_Rodrigues_vector,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_Rodrigues_vector, wrapped=__init__)
     def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_homochoric,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_homochoric, wrapped=__init__)
     def from_homochoric(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_cubochoric,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_cubochoric, wrapped=__init__)
     def from_cubochoric(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_spherical_component,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_spherical_component, wrapped=__init__)
     def from_spherical_component(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_fiber_component,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
     @util.pass_on('rotation', Rotation.from_fiber_component, wrapped=__init__)
     def from_fiber_component(cls, **kwargs) -> 'Orientation':
         return cls(**kwargs)
 
 
     @classmethod
-    @util.extend_docstring(extra_parameters=_parameter_doc)
+    @util.extend_docstring(adopted_parameters=Crystal.__init__)
     def from_directions(cls,
                         uvw: FloatSequence,
                         hkl: FloatSequence,
