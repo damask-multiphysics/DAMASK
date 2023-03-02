@@ -41,7 +41,9 @@ module function anisobrittle_init() result(mySources)
     src
   integer :: Nmembers,ph
   integer, dimension(:), allocatable :: N_cl
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
 
 
   mySources = source_active('anisobrittle')
@@ -61,6 +63,10 @@ module function anisobrittle_init() result(mySources)
       src => phase%get_dict('damage')
 
       associate(prm  => param(ph))
+
+        print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+        refs = config_listReferences(src,indent=3)
+        if (len(refs) > 0) print'(/,1x,a)', refs
 
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))

@@ -39,7 +39,9 @@ module function isobrittle_init() result(mySources)
     phase, &
     src
   integer :: Nmembers,ph
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
 
 
   mySources = source_active('isobrittle')
@@ -63,6 +65,10 @@ module function isobrittle_init() result(mySources)
       associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
 
         prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
+
+        print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+        refs = config_listReferences(src,indent=3)
+        if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(src)

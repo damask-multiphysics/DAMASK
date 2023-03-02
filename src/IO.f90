@@ -11,6 +11,7 @@ module IO
     IO_STDERR => ERROR_UNIT
 
   use prec
+  use misc
 
   implicit none(type,external)
   private
@@ -30,6 +31,7 @@ module IO
     IO_read, &
     IO_readlines, &
     IO_isBlank, &
+    IO_wrapLines, &
     IO_stringPos, &
     IO_stringValue, &
     IO_intValue, &
@@ -156,6 +158,51 @@ logical pure function IO_isBlank(string)
   IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(string,IO_COMMENT)
 
 end function IO_isBlank
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Insert EOL at separator trying to keep line length below limit.
+!--------------------------------------------------------------------------------------------------
+function IO_wrapLines(string,separator,filler,length)
+
+  character(len=*),    intent(in) :: string                                                         !< string to split
+  character, optional, intent(in) :: separator                                                      !< line breaks are possible after this character, defaults to ','
+  character(len=*), optional, intent(in) :: filler                                                  !< character(s) to insert after line break, defaults to none
+  integer,   optional, intent(in) :: length                                                         !< (soft) line limit, defaults to 80
+  character(len=:), allocatable :: IO_wrapLines
+
+  integer, dimension(:), allocatable :: pos_sep, pos_split
+  integer :: i,s,e
+
+
+  i = index(string,misc_optional(separator,','))
+  if (i == 0) then
+    IO_wrapLines = string
+  else
+    pos_sep = [0]
+    s = i
+    do while (i /= 0 .and. s < len(string))
+      pos_sep = [pos_sep,s]
+      i = index(string(s+1:),misc_optional(separator,','))
+      s = s + i
+    end do
+    pos_sep = [pos_sep,len(string)]
+
+    pos_split = emptyIntArray
+    s = 1
+    e = 2
+    IO_wrapLines = ''
+    do while (e < size(pos_sep))
+      if (pos_sep(e+1) - pos_sep(s) >= misc_optional(length,80)) then
+        IO_wrapLines = IO_wrapLines//adjustl(string(pos_sep(s)+1:pos_sep(e)))//IO_EOL//misc_optional(filler,'')
+        s = e
+      end if
+      e = e + 1
+    end do
+    IO_wrapLines = IO_wrapLines//adjustl(string(pos_sep(s)+1:))
+  end if
+
+end function IO_wrapLines
 
 
 !--------------------------------------------------------------------------------------------------
@@ -747,6 +794,21 @@ subroutine selfTest()
   if (out /= ' a' .or. len(out) /= 2)                error stop 'IO_rmComment/5'
   str=' ab #';out=IO_rmComment(str)
   if (out /= ' ab'.or. len(out) /= 3)                error stop 'IO_rmComment/6'
+
+  if ('abc, def' /= IO_wrapLines('abc, def')) &
+                                                     error stop 'IO_wrapLines/1'
+  if ('abc,'//IO_EOL//'def' /= IO_wrapLines('abc,def',length=3)) &
+                                                     error stop 'IO_wrapLines/2'
+  if ('abc,'//IO_EOL//'def' /= IO_wrapLines('abc,def',length=5)) &
+                                                     error stop 'IO_wrapLines/3'
+  if ('abc, def' /= IO_wrapLines('abc, def',length=3,separator='.')) &
+                                                     error stop 'IO_wrapLines/4'
+  if ('abc.'//IO_EOL//'def' /= IO_wrapLines('abc. def',length=3,separator='.')) &
+                                                     error stop 'IO_wrapLines/5'
+  if ('abc,'//IO_EOL//'defg,'//IO_EOL//'hij' /= IO_wrapLines('abc,defg,hij',length=4)) &
+                                                     error stop 'IO_wrapLines/6'
+  if ('abc,'//IO_EOL//'xxdefg,'//IO_EOL//'xxhij' /= IO_wrapLines('abc,defg, hij',filler='xx',length=4)) &
+                                                     error stop 'IO_wrapLines/7'
 
 end subroutine selfTest
 

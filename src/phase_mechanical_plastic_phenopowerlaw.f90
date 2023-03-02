@@ -91,7 +91,9 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     xi_0_sl, &                                                                                      !< initial critical shear stress for slip
     xi_0_tw, &                                                                                      !< initial critical shear stress for twin
     a                                                                                               !< non-Schmid coefficients
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -121,6 +123,16 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
+
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
+
+#if defined (__GFORTRAN__)
+    prm%output = output_as1dString(pl)
+#else
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -216,15 +228,6 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       allocate(prm%h_tw_sl(prm%sum_N_tw,prm%sum_N_sl))                                              ! at least one dimension is 0
       prm%h_0_tw_sl = 0.0_pReal
     end if slipAndTwinActive
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-
-#if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
-#else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays

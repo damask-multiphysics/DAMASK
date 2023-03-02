@@ -84,14 +84,13 @@ module subroutine thermal_init(phases)
     thermal
   type(tList), pointer :: &
     sources
-
+  character(len=:), allocatable :: refs
   integer :: &
     ph, so, &
     Nmembers
 
 
   print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
-
 
   allocate(current(phases%length))
   allocate(thermalState(phases%length))
@@ -107,6 +106,9 @@ module subroutine thermal_init(phases)
 
     ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
+      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+      refs = config_listReferences(thermal,indent=3)
+      if (len(refs) > 0) print'(/,1x,a)', refs
       param(ph)%C_p = thermal%get_asFloat('C_p')
       param(ph)%K(1,1) = thermal%get_asFloat('K_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asFloat('K_33')

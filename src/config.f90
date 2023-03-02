@@ -4,6 +4,7 @@
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
+  use misc
   use YAML_parse
   use YAML_types
   use result
@@ -18,8 +19,9 @@ module config
 
   public :: &
     config_init, &
-    config_material_deallocate,&
-    config_numerics_deallocate
+    config_material_deallocate, &
+    config_numerics_deallocate, &
+    config_listReferences
 
 contains
 
@@ -34,6 +36,58 @@ subroutine config_init()
   call parse_numerics()
 
 end subroutine config_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_material.
+!--------------------------------------------------------------------------------------------------
+subroutine config_material_deallocate()
+
+  print'(/,1x,a)', 'deallocating material configuration'; flush(IO_STDOUT)
+  deallocate(config_material)
+
+end subroutine config_material_deallocate
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_numerics if present.
+!--------------------------------------------------------------------------------------------------
+subroutine config_numerics_deallocate()
+
+  if (.not. associated(config_numerics, emptyDict)) then
+    print'(/,1x,a)', 'deallocating numerics configuration'; flush(IO_STDOUT)
+    deallocate(config_numerics)
+  end if
+
+end subroutine config_numerics_deallocate
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return string with references from dict.
+!--------------------------------------------------------------------------------------------------
+function config_listReferences(config,indent) result(references)
+
+  type(tDict) :: config
+  integer, optional :: indent
+  character(len=:), allocatable :: references
+
+
+  type(tList), pointer :: ref
+  character(len=:), allocatable :: filler
+  integer :: r
+
+
+  filler = repeat(' ',misc_optional(indent,0))
+  ref => config%get_list('references',emptyList)
+  if (ref%length == 0) then
+    references = ''
+  else
+    references = 'references:'
+    do r = 1, ref%length
+      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asString(r),filler=filler//'  ')
+    end do
+  end if
+
+end function config_listReferences
 
 
 !--------------------------------------------------------------------------------------------------
@@ -92,28 +146,5 @@ subroutine parse_numerics()
   end if
 
 end subroutine parse_numerics
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Deallocate config_material.
-!--------------------------------------------------------------------------------------------------
-subroutine config_material_deallocate()
-
-  print'(/,1x,a)', 'deallocating material configuration'; flush(IO_STDOUT)
-  deallocate(config_material)
-
-end subroutine config_material_deallocate
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Deallocate config_numerics if present.
-!--------------------------------------------------------------------------------------------------
-subroutine config_numerics_deallocate()
-
-  if (.not. associated(config_numerics, emptyDict)) then
-    print'(/,1x,a)', 'deallocating numerics configuration'; flush(IO_STDOUT)
-    deallocate(config_numerics)
-  end if
-
-end subroutine config_numerics_deallocate
 
 end module config

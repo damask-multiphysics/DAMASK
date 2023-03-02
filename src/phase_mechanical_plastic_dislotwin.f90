@@ -140,7 +140,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
   real(pReal), allocatable, dimension(:) :: &
     rho_mob_0, &                                                                                    !< initial unipolar dislocation density per slip system
     rho_dip_0                                                                                       !< initial dipole dislocation density per slip system
-  character(len=:), allocatable :: extmsg
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -180,6 +182,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl  => mech%get_dict('plastic')
+
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)

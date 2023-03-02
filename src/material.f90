@@ -79,7 +79,7 @@ end subroutine material_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parse material.yaml to get the global structure
+!> @brief Parse material.yaml to get the global structure.
 !--------------------------------------------------------------------------------------------------
 subroutine parse()
 
