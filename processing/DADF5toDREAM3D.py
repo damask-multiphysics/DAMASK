@@ -2,6 +2,7 @@
 
 import argparse
 import os
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -51,23 +52,20 @@ class DAMASKtoDREAM3D():
     There can be various different types of ways DAMASK data can be represented. 
     Therefore, there are multiple functions available for different purposes.
     """
-    def __init__(self,simulation_folder,job_file,geom_file,load_file):
+    def __init__(self,job_file,geom_file,load_file):
         """
         Defining the common quantities for all the functions in this class.
        
         Parameters
         ----------
-        simulation_folder: str
-            Path of the simulation folder.
-        job_file: str
-            Name of the job file (DADF5 file).
+        job_file: str or pathlib.Path
+            Full path of the DAMASK results file.
         geom_file : str
           name of the geom file.
         load_file : 
           name of the load file.
         """
-        self.simulation_folder = simulation_folder
-        self.job_file = job_file   
+        self.job_file = Path(job_file).expanduser().absolute()
         self.geom_file = geom_file   
         self.load_file = load_file   
 
@@ -84,7 +82,7 @@ class DAMASKtoDREAM3D():
         inc: int
           increment of interest for DREAM3D processing.
         """
-        os.chdir(self.simulation_folder)
+        os.chdir(self.job_file.parents[0])
         #--------------------------------------------------------------------------
         #Build array of euler angles for each cell
         #--------------------------------------------------------------------------
