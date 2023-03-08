@@ -7,7 +7,7 @@ import sys
 import pytest
 import numpy as np
 import numpy.ma as ma
-import vtk
+from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import VTK
 from damask import Table
@@ -32,7 +32,7 @@ class TestVTK:
         print('patched damask.util.execution_stamp')
 
     @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'strain'])
-    @pytest.mark.skipif(sys.platform == 'win32', reason='DISPLAY has no effect on windows')
+    @pytest.mark.skipif(sys.platform == 'win32', reason='DISPLAY has no effect on Windows OS')
     def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show(colormap=cmap)
@@ -222,7 +222,7 @@ class TestVTK:
         new = VTK.load(tmp_path/'with_comments.vti')
         assert new.comments == ['this is a comment']
 
-    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
+    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
     def test_compare_reference_polyData(self,update,ref_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
         polyData = VTK.from_poly_data(points).set('coordinates',points)
@@ -233,7 +233,7 @@ class TestVTK:
             assert polyData.as_ASCII() == reference.as_ASCII() and \
                    np.allclose(polyData.get('coordinates'),points)
 
-    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
+    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
     def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
         grid = [np.arange(4)**2.,
                 np.arange(5)**2.,
