@@ -4,10 +4,54 @@ from pathlib import Path
 from typing import Optional, Union, Literal, List, Sequence
 
 import numpy as np
-import vtk
-from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
-from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
-from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
+from vtkmodules.vtkCommonCore import (
+    vtkPoints,
+    vtkStringArray,
+    vtkLookupTable,
+)
+from vtkmodules.vtkCommonDataModel import (
+    vtkDataSet,
+    vtkCellArray,
+    vtkImageData,
+    vtkRectilinearGrid,
+    vtkUnstructuredGrid,
+    vtkPolyData,
+)
+from vtkmodules.vtkIOLegacy import (
+    vtkGenericDataObjectReader,
+    vtkDataSetWriter,
+)
+from vtkmodules.vtkIOXML import (
+    vtkXMLImageDataReader,
+    vtkXMLImageDataWriter,
+    vtkXMLRectilinearGridReader,
+    vtkXMLRectilinearGridWriter,
+    vtkXMLUnstructuredGridReader,
+    vtkXMLUnstructuredGridWriter,
+    vtkXMLPolyDataReader,
+    vtkXMLPolyDataWriter,
+)
+from vtkmodules.vtkRenderingCore import (
+    vtkDataSetMapper,
+    vtkActor,
+    vtkRenderer,
+    vtkRenderWindow,
+    vtkRenderWindowInteractor,
+)
+from vtkmodules.vtkRenderingAnnotation import (
+    vtkScalarBarActor,
+)
+from vtkmodules.util.vtkConstants import (
+    VTK_TRIANGLE,
+    VTK_QUAD,
+    VTK_TETRA,
+    VTK_HEXAHEDRON,
+)
+from vtkmodules.util.numpy_support import (
+    numpy_to_vtk,
+    numpy_to_vtkIdTypeArray,
+    vtk_to_numpy,
+)
 
 from ._typehints import FloatSequence, IntSequence
 from . import util
@@ -23,16 +67,16 @@ class VTK:
     """
 
     def __init__(self,
-                 vtk_data: vtk.vtkDataSet):
+                 vtk_data: vtkDataSet):
         """
         New spatial visualization.
 
         Parameters
         ----------
-        vtk_data : subclass of vtk.vtkDataSet
+        vtk_data : subclass of vtkDataSet
             Description of geometry and topology, optionally with attached data.
-            Valid types are vtk.vtkImageData, vtk.vtkUnstructuredGrid,
-            vtk.vtkPolyData, and vtk.vtkRectilinearGrid.
+            Valid types are vtkImageData, vtkUnstructuredGrid,
+            vtkPolyData, and vtkRectilinearGrid.
 
         """
         self.vtk_data = vtk_data
@@ -76,14 +120,14 @@ class VTK:
 
 
     def copy(self):
-        if   isinstance(self.vtk_data,vtk.vtkImageData):
-            dup = vtk.vtkImageData()
-        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
-            dup = vtk.vtkUnstructuredGrid()
-        elif isinstance(self.vtk_data,vtk.vtkPolyData):
-            dup = vtk.vtkPolyData()
-        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
-            dup = vtk.vtkRectilinearGrid()
+        if   isinstance(self.vtk_data,vtkImageData):
+            dup = vtkImageData()
+        elif isinstance(self.vtk_data,vtkUnstructuredGrid):
+            dup = vtkUnstructuredGrid()
+        elif isinstance(self.vtk_data,vtkPolyData):
+            dup = vtkPolyData()
+        elif isinstance(self.vtk_data,vtkRectilinearGrid):
+            dup = vtkRectilinearGrid()
         else:
             raise TypeError
 
@@ -114,7 +158,7 @@ class VTK:
             Comments.
 
         """
-        s = vtk.vtkStringArray()
+        s = vtkStringArray()
         s.SetName('comments')
         for c in comments:
             s.InsertNextValue(c)
@@ -154,7 +198,7 @@ class VTK:
                         size: FloatSequence,
                         origin: FloatSequence = np.zeros(3)) -> 'VTK':
         """
-        Create VTK of type vtk.vtkImageData.
+        Create VTK of type vtkImageData.
 
         This is the common type for grid solver results.
 
@@ -173,7 +217,7 @@ class VTK:
             VTK-based geometry without nodal or cell data.
 
         """
-        vtk_data = vtk.vtkImageData()
+        vtk_data = vtkImageData()
         vtk_data.SetDimensions(*(np.array(cells)+1))
         vtk_data.SetOrigin(*(np.array(origin)))
         vtk_data.SetSpacing(*(np.array(size)/np.array(cells)))
@@ -186,7 +230,7 @@ class VTK:
                                connectivity: np.ndarray,
                                cell_type: str) -> 'VTK':
         """
-        Create VTK of type vtk.vtkUnstructuredGrid.
+        Create VTK of type vtkUnstructuredGrid.
 
         This is the common type for mesh solver results.
 
@@ -198,7 +242,7 @@ class VTK:
             Cell connectivity (0-based), first dimension determines #Cells,
             second dimension determines #Nodes/Cell.
         cell_type : str
-            Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
+            Name of the vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
 
         Returns
         -------
@@ -206,18 +250,18 @@ class VTK:
             VTK-based geometry without nodal or cell data.
 
         """
-        vtk_nodes = vtk.vtkPoints()
-        vtk_nodes.SetData(np_to_vtk(np.ascontiguousarray(nodes)))
-        cells = vtk.vtkCellArray()
+        vtk_nodes = vtkPoints()
+        vtk_nodes.SetData(numpy_to_vtk(np.ascontiguousarray(nodes)))
+        cells = vtkCellArray()
         cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
                             connectivity),axis=1).ravel()
-        cells.SetCells(connectivity.shape[0],np_to_vtkIdTypeArray(T,deep=True))
+        cells.SetCells(connectivity.shape[0],numpy_to_vtkIdTypeArray(T,deep=True))
 
-        vtk_data = vtk.vtkUnstructuredGrid()
+        vtk_data = vtkUnstructuredGrid()
         vtk_data.SetPoints(vtk_nodes)
-        cell_types = {'TRIANGLE':vtk.VTK_TRIANGLE, 'QUAD':vtk.VTK_QUAD,
-                      'TETRA'   :vtk.VTK_TETRA,    'HEXAHEDRON':vtk.VTK_HEXAHEDRON}
+        cell_types = {'TRIANGLE':VTK_TRIANGLE, 'QUAD':VTK_QUAD,
+                      'TETRA'   :VTK_TETRA,    'HEXAHEDRON':VTK_HEXAHEDRON}
         vtk_data.SetCells(cell_types[cell_type.split("_",1)[-1].upper()],cells)
 
         return VTK(vtk_data)
@@ -226,7 +270,7 @@ class VTK:
     @staticmethod
     def from_poly_data(points: np.ndarray) -> 'VTK':
         """
-        Create VTK of type vtk.polyData.
+        Create VTK of type polyData.
 
         This is the common type for point-wise data.
 
@@ -242,15 +286,15 @@ class VTK:
 
         """
         N = points.shape[0]
-        vtk_points = vtk.vtkPoints()
-        vtk_points.SetData(np_to_vtk(np.ascontiguousarray(points)))
+        vtk_points = vtkPoints()
+        vtk_points.SetData(numpy_to_vtk(np.ascontiguousarray(points)))
 
-        vtk_cells = vtk.vtkCellArray()
+        vtk_cells = vtkCellArray()
         vtk_cells.SetNumberOfCells(N)
-        vtk_cells.SetCells(N,np_to_vtkIdTypeArray(np.stack((np.ones  (N,dtype=np.int64),
+        vtk_cells.SetCells(N,numpy_to_vtkIdTypeArray(np.stack((np.ones  (N,dtype=np.int64),
                                                             np.arange(N,dtype=np.int64)),axis=1).ravel(),deep=True))
 
-        vtk_data = vtk.vtkPolyData()
+        vtk_data = vtkPolyData()
         vtk_data.SetPoints(vtk_points)
         vtk_data.SetVerts(vtk_cells)
 
@@ -260,7 +304,7 @@ class VTK:
     @staticmethod
     def from_rectilinear_grid(grid: FloatSequence) -> 'VTK':
         """
-        Create VTK of type vtk.vtkRectilinearGrid.
+        Create VTK of type vtkRectilinearGrid.
 
         Parameters
         ----------
@@ -273,9 +317,9 @@ class VTK:
             VTK-based geometry without nodal or cell data.
 
         """
-        vtk_data = vtk.vtkRectilinearGrid()
+        vtk_data = vtkRectilinearGrid()
         vtk_data.SetDimensions(*map(len,grid))
-        coord = [np_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
+        coord = [numpy_to_vtk(np.array(grid[i]),deep=True) for i in [0,1,2]]
         [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
         vtk_data.SetXCoordinates(coord[0])
         vtk_data.SetYCoordinates(coord[1])
@@ -296,7 +340,7 @@ class VTK:
             Filename to read.
             Valid extensions are .vti, .vtu, .vtp, .vtr, and .vtk.
         dataset_type : {'ImageData', 'UnstructuredGrid', 'PolyData', 'RectilinearGrid'}, optional
-            Name of the vtk.vtkDataSet subclass when opening a .vtk file.
+            Name of the vtkDataSet subclass when opening a .vtk file.
 
         Returns
         -------
@@ -307,7 +351,7 @@ class VTK:
         if not Path(fname).expanduser().is_file():                                                  # vtk has a strange error handling
             raise FileNotFoundError(f'file "{fname}" not found')
         if (ext := Path(fname).suffix) == '.vtk' or dataset_type is not None:
-            reader = vtk.vtkGenericDataObjectReader()
+            reader = vtkGenericDataObjectReader()
             reader.SetFileName(str(Path(fname).expanduser()))
             if dataset_type is None:
                 raise TypeError('dataset type for *.vtk file not given')
@@ -327,13 +371,13 @@ class VTK:
                 raise TypeError(f'unknown dataset type "{dataset_type}" for vtk file')
         else:
             if   ext == '.vti':
-                reader = vtk.vtkXMLImageDataReader()
+                reader = vtkXMLImageDataReader()
             elif ext == '.vtu':
-                reader = vtk.vtkXMLUnstructuredGridReader()
+                reader = vtkXMLUnstructuredGridReader()
             elif ext == '.vtp':
-                reader = vtk.vtkXMLPolyDataReader()
+                reader = vtkXMLPolyDataReader()
             elif ext == '.vtr':
-                reader = vtk.vtkXMLRectilinearGridReader()
+                reader = vtkXMLRectilinearGridReader()
             else:
                 raise TypeError(f'unknown file extension "{ext}"')
 
@@ -352,7 +396,7 @@ class VTK:
 
     def as_ASCII(self) -> str:
         """ASCII representation of the VTK data."""
-        writer = vtk.vtkDataSetWriter()
+        writer = vtkDataSetWriter()
         writer.SetHeader(f'# {util.execution_stamp("VTK")}')
         writer.WriteToOutputStringOn()
         writer.SetInputData(self.vtk_data)
@@ -377,14 +421,14 @@ class VTK:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        if   isinstance(self.vtk_data,vtk.vtkImageData):
-            writer = vtk.vtkXMLImageDataWriter()
-        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
-            writer = vtk.vtkXMLUnstructuredGridWriter()
-        elif isinstance(self.vtk_data,vtk.vtkPolyData):
-            writer = vtk.vtkXMLPolyDataWriter()
-        elif isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
-            writer = vtk.vtkXMLRectilinearGridWriter()
+        if   isinstance(self.vtk_data,vtkImageData):
+            writer = vtkXMLImageDataWriter()
+        elif isinstance(self.vtk_data,vtkUnstructuredGrid):
+            writer = vtkXMLUnstructuredGridWriter()
+        elif isinstance(self.vtk_data,vtkPolyData):
+            writer = vtkXMLPolyDataWriter()
+        elif isinstance(self.vtk_data,vtkRectilinearGrid):
+            writer = vtkXMLRectilinearGridWriter()
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
@@ -456,11 +500,11 @@ class VTK:
                         .astype(np.single if data.dtype in [np.double,np.longdouble] else data.dtype)
 
             if data.dtype.type is np.str_:
-                d = vtk.vtkStringArray()
+                d = vtkStringArray()
                 for s in np.squeeze(data_):
                     d.InsertNextValue(s)
             else:
-                d = np_to_vtk(data_,deep=True)
+                d = numpy_to_vtk(data_,deep=True)
 
             d.SetName(label)
 
@@ -518,7 +562,7 @@ class VTK:
         for a in range(cell_data.GetNumberOfArrays()):
             if cell_data.GetArrayName(a) == label:
                 try:
-                    return vtk_to_np(cell_data.GetArray(a))
+                    return vtk_to_numpy(cell_data.GetArray(a))
                 except AttributeError:
                     vtk_array = cell_data.GetAbstractArray(a)                                       # string array
 
@@ -526,7 +570,7 @@ class VTK:
         for a in range(point_data.GetNumberOfArrays()):
             if point_data.GetArrayName(a) == label:
                 try:
-                    return vtk_to_np(point_data.GetArray(a))
+                    return vtk_to_numpy(point_data.GetArray(a))
                 except AttributeError:
                     vtk_array = point_data.GetAbstractArray(a)                                      # string array
 
@@ -572,7 +616,7 @@ class VTK:
                 width  = 1024
                 height =  768
 
-        lut = vtk.vtkLookupTable()
+        lut = vtkLookupTable()
         colormap_ = Colormap.from_predefined(colormap) if isinstance(colormap,str) else \
                     colormap
         lut.SetNumberOfTableValues(len(colormap_.colors))
@@ -581,33 +625,33 @@ class VTK:
         lut.Build()
 
         self.vtk_data.GetCellData().SetActiveScalars(label)
-        mapper = vtk.vtkDataSetMapper()
+        mapper = vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
         mapper.SetLookupTable(lut)
         mapper.SetScalarRange(self.vtk_data.GetScalarRange())
 
-        actor = vtk.vtkActor()
+        actor = vtkActor()
         actor.SetMapper(mapper)
         actor.GetProperty().SetColor(230/255,150/255,68/255)
 
-        ren = vtk.vtkRenderer()
+        ren = vtkRenderer()
         ren.AddActor(actor)
         if label is None:
             ren.SetBackground(67/255,128/255,208/255)
         else:
-            colormap_vtk = vtk.vtkScalarBarActor()
+            colormap_vtk = vtkScalarBarActor()
             colormap_vtk.SetLookupTable(lut)
             colormap_vtk.SetTitle(label)
             colormap_vtk.SetMaximumWidthInPixels(width//100)
             ren.AddActor2D(colormap_vtk)
             ren.SetBackground(0.3,0.3,0.3)
 
-        window = vtk.vtkRenderWindow()
+        window = vtkRenderWindow()
         window.AddRenderer(ren)
         window.SetSize(width,height)
         window.SetWindowName(util.execution_stamp('VTK','show'))
 
-        iren = vtk.vtkRenderWindowInteractor()
+        iren = vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
         if os.name == 'posix' and 'DISPLAY' not in os.environ:
             print('Found no rendering device')

@@ -10,7 +10,12 @@ import random
 from datetime import datetime
 
 import pytest
-import vtk
+from vtkmodules.vtkIOXML import vtkXMLImageDataReader
+from vtkmodules.vtkCommonCore import vtkVersion
+try:
+    from vtkmodules.vtkIOXdmf2 import vtkXdmfReader
+except ImportError:
+    vtkXdmfReader=None                                                                              # noqa type: ignore
 import h5py
 import numpy as np
 
@@ -389,7 +394,7 @@ class TestResult:
                                       '4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'],ids=range(3))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
-    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<9, reason='missing "Direction" attribute')
+    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<9, reason='missing "Direction" attribute')
     def test_export_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
         result = Result(ref_path/fname).view(increments=inc)
         result.export_VTK(output,target_dir=tmp_path,parallel=False)
@@ -442,12 +447,11 @@ class TestResult:
             shutil.copy(xdmf_path,ref_path/xdmf_path.name)
         assert sorted(open(xdmf_path).read()) == sorted(open(ref_path/xdmf_path.name).read())
 
-    @pytest.mark.skipif(not (hasattr(vtk,'vtkXdmfReader') and hasattr(vtk.vtkXdmfReader(),'GetOutput')),
-                        reason='https://discourse.vtk.org/t/2450')
+    @pytest.mark.skipif(not hasattr(vtkXdmfReader,'GetOutput'),reason='https://discourse.vtk.org/t/2450')
     def test_XDMF_shape(self,tmp_path,single_phase):
         single_phase.export_XDMF(target_dir=single_phase.fname.parent)
         fname = single_phase.fname.with_suffix('.xdmf')
-        reader_xdmf = vtk.vtkXdmfReader()
+        reader_xdmf = vtkXdmfReader()
         reader_xdmf.SetFileName(fname)
         reader_xdmf.Update()
         dim_xdmf = reader_xdmf.GetOutput().GetDimensions()
@@ -455,7 +459,7 @@ class TestResult:
 
         single_phase.view(increments=0).export_VTK(target_dir=single_phase.fname.parent,parallel=False)
         fname = single_phase.fname.with_name(single_phase.fname.stem+'_inc00.vti')
-        reader_vti = vtk.vtkXMLImageDataReader()
+        reader_vti = vtkXMLImageDataReader()
         reader_vti.SetFileName(fname)
         reader_vti.Update()
         dim_vti = reader_vti.GetOutput().GetDimensions()
@@ -474,11 +478,10 @@ class TestResult:
         single_phase.export_XDMF(target_dir=export_dir)
         assert single_phase.fname.with_suffix('.xdmf').name in os.listdir(export_dir)
 
-    @pytest.mark.skipif(not (hasattr(vtk,'vtkXdmfReader') and hasattr(vtk.vtkXdmfReader(),'GetOutput')),
-                        reason='https://discourse.vtk.org/t/2450')
+    @pytest.mark.skipif(not hasattr(vtkXdmfReader,'GetOutput'),reason='https://discourse.vtk.org/t/2450')
     def test_XDMF_relabs_path(self,single_phase,tmp_path):
         def dims(xdmf):
-            reader_xdmf = vtk.vtkXdmfReader()
+            reader_xdmf = vtkXdmfReader()
             reader_xdmf.SetFileName(xdmf)
             reader_xdmf.Update()
             return reader_xdmf.GetOutput().GetDimensions()

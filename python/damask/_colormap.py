@@ -276,7 +276,7 @@ class Colormap(mpl.colors.ListedColormap):
     def shade(self,
               field: np.ndarray,
               bounds: Optional[FloatSequence] = None,
-              gap: Optional[float] = None) -> Image:
+              gap: Optional[float] = None) -> Image.Image:
         """
         Generate PIL image of 2D field using colormap.
 
