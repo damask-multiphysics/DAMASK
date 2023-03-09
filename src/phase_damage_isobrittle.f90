@@ -143,8 +143,8 @@ module subroutine isobrittle_result(phase,group)
 
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
-        case ('f_phi')
-          call result_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
+        case ('r_W')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'ratio between actual and critical strain energy density','-')
       end select
     end do outputsLoop
 
