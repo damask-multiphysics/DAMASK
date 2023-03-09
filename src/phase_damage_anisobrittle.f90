@@ -121,22 +121,22 @@ module subroutine anisobrittle_dotState(S, ph,en)
     S
 
   integer :: &
-    i
+    a
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
 
   associate(prm => param(ph))
     damageState(ph)%dotState(1,en) = 0.0_pReal
-    do i = 1, prm%sum_N_cl
-      traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
-      traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
-      traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
+    do a = 1, prm%sum_N_cl
+      traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,a))
+      traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,a))
+      traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,a))
 
-      traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2
+      traction_crit = prm%g_crit(a)*damage_phi(ph,en)**2
 
       damageState(ph)%dotState(1,en) = damageState(ph)%dotState(1,en) &
-          + prm%dot_o / prm%s_crit(i) &
+          + prm%dot_o / prm%s_crit(a) &
             * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
                (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
                (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%q)
@@ -184,48 +184,48 @@ module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
 
   integer :: &
-    i, k, l, m, n
+    a, k, l, m, n
   real(pReal) :: &
-    traction_d, traction_t, traction_n, traction_crit, &
-    udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
+    traction, traction_crit, &
+    udot, dudot_dt
 
 
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
   associate(prm => param(ph))
-  do i = 1,prm%sum_N_cl
-    traction_crit = prm%g_crit(i)*damage_phi(ph,en)**2
+    do a = 1,prm%sum_N_cl
+      traction_crit = prm%g_crit(a)*damage_phi(ph,en)**2
 
-    traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
-    if (abs(traction_d) > traction_crit + tol_math_check) then
-      udotd = sign(1.0_pReal,traction_d)* prm%dot_o * ((abs(traction_d) - traction_crit)/traction_crit)**prm%q
-      Ld = Ld + udotd*prm%cleavage_systems(1:3,1:3,1,i)
-      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%q / (abs(traction_d) - traction_crit)
-      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
-                            + dudotd_dt*prm%cleavage_systems(k,l,1,i) * prm%cleavage_systems(m,n,1,i)
-    end if
+      traction = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,a))
+      if (abs(traction) > traction_crit + tol_math_check) then
+        udot = sign(1.0_pReal,traction)* prm%dot_o * ((abs(traction) - traction_crit)/traction_crit)**prm%q
+        Ld = Ld + udot*prm%cleavage_systems(1:3,1:3,1,a)
+        dudot_dt = sign(1.0_pReal,traction)*udot*prm%q / (abs(traction) - traction_crit)
+        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                              + dudot_dt*prm%cleavage_systems(k,l,1,a) * prm%cleavage_systems(m,n,1,a)
+      end if
 
-    traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
-    if (abs(traction_t) > traction_crit + tol_math_check) then
-      udott = sign(1.0_pReal,traction_t)* prm%dot_o * ((abs(traction_t) - traction_crit)/traction_crit)**prm%q
-      Ld = Ld + udott*prm%cleavage_systems(1:3,1:3,2,i)
-      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%q / (abs(traction_t) - traction_crit)
-      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
-                            + dudott_dt*prm%cleavage_systems(k,l,2,i) * prm%cleavage_systems(m,n,2,i)
-    end if
+      traction = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,a))
+      if (abs(traction) > traction_crit + tol_math_check) then
+        udot = sign(1.0_pReal,traction)* prm%dot_o * ((abs(traction) - traction_crit)/traction_crit)**prm%q
+        Ld = Ld + udot*prm%cleavage_systems(1:3,1:3,2,a)
+        dudot_dt = sign(1.0_pReal,traction)*udot*prm%q / (abs(traction) - traction_crit)
+        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                              + dudot_dt*prm%cleavage_systems(k,l,2,a) * prm%cleavage_systems(m,n,2,a)
+      end if
 
-    traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
-    if (abs(traction_n) > traction_crit + tol_math_check) then
-      udotn = sign(1.0_pReal,traction_n)* prm%dot_o * ((abs(traction_n) - traction_crit)/traction_crit)**prm%q
-      Ld = Ld + udotn*prm%cleavage_systems(1:3,1:3,3,i)
-      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%q / (abs(traction_n) - traction_crit)
-      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
-                            + dudotn_dt*prm%cleavage_systems(k,l,3,i) * prm%cleavage_systems(m,n,3,i)
-    end if
-  end do
+      traction = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,a))
+      if (abs(traction) > traction_crit + tol_math_check) then
+        udot = sign(1.0_pReal,traction)* prm%dot_o * ((abs(traction) - traction_crit)/traction_crit)**prm%q
+        Ld = Ld + udot*prm%cleavage_systems(1:3,1:3,3,a)
+        dudot_dt = sign(1.0_pReal,traction)*udot*prm%q / (abs(traction) - traction_crit)
+        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                              + dudot_dt*prm%cleavage_systems(k,l,3,a) * prm%cleavage_systems(m,n,3,a)
+      end if
+    end do
   end associate
 
 end subroutine damage_anisobrittle_LiAndItsTangent
