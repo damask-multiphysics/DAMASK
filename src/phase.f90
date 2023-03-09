@@ -314,14 +314,14 @@ module phase
     end subroutine plastic_dependentState
 
 
-    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
+    module subroutine damage_anisobrittle_LiAndItsTangent(L_i, dL_i_dM_i, M_i, ph,en)
       integer, intent(in) :: ph, en
       real(pReal),   intent(in),  dimension(3,3) :: &
-        S
+        M_i
       real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
+        L_i                                                                                         !< damage velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+        dL_i_dM_i                                                                                   !< derivative of L_i with respect to M_i
     end subroutine damage_anisobrittle_LiAndItsTangent
 
   end interface
