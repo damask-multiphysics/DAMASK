@@ -49,10 +49,10 @@ submodule(phase) damage
     end subroutine isobrittle_deltaState
 
 
-    module subroutine anisobrittle_dotState(S, ph, en)
+    module subroutine anisobrittle_dotState(M_i, ph, en)
       integer, intent(in) :: ph,en
       real(pReal),  intent(in), dimension(3,3) :: &
-        S
+        M_i
     end subroutine anisobrittle_dotState
 
 
@@ -384,7 +384,7 @@ function phase_damage_collectDotState(ph,en) result(broken)
     sourceType: select case (phase_damage(ph))
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_dotState(mechanical_S(ph,en), ph,en) ! correct stress?
+        call anisobrittle_dotState(mechanical_S(ph,en), ph,en) ! ToDo: use M_d
 
     end select sourceType
 
