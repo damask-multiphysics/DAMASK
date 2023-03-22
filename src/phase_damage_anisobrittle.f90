@@ -72,7 +72,7 @@ module function anisobrittle_init() result(mySources)
         prm%sum_N_cl = sum(abs(N_cl))
 
         prm%p       = src%get_asFloat('p')
-        prm%dot_o_0   = src%get_asFloat('dot_o_0')
+        prm%dot_o_0 = src%get_asFloat('dot_o_0')
 
         prm%s_crit  = src%get_as1dFloat('s_crit',  requiredSize=size(N_cl))
         prm%g_crit  = src%get_as1dFloat('g_crit',  requiredSize=size(N_cl))
@@ -158,7 +158,7 @@ module subroutine anisobrittle_result(phase,group)
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
         case ('Psi_D')
-          call result_writeDataset(stt,group,trim(prm%output(o)),'damage energy density','-')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'damage energy density','J/m³')
       end select
     end do outputsLoop
   end associate
