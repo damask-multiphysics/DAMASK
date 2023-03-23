@@ -1203,7 +1203,7 @@ class Result:
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'unit':        F['meta']['unit'],
-                          'description': f'strain tensor of order {m} based on {side} stretch tensor '+\
+                          'description': f'Seth-Hill strain tensor of order {m} based on {side} stretch tensor '+\
                                          f"of {F['label']} ({F['meta']['description']})",
                           'creator':     'add_strain'
                           }
@@ -1212,10 +1212,11 @@ class Result:
                    F: str = 'F',
                    t: Literal['V', 'U'] = 'V',
                    m: float = 0.0):
-        """
-        Add strain tensor of a deformation gradient.
+        r"""
+        Add strain tensor (Seth-Hill family) of a deformation gradient.
 
-        For details, see damask.mechanics.strain.
+        By default, the logarithmic strain based on the
+        left stretch tensor is added.
 
         Parameters
         ----------
@@ -1248,6 +1249,18 @@ class Result:
         material/Lagragian strain measures (based on 'U') for plastic strains and
         spatial/Eulerian strain measures (based on 'V') for elastic strains
         when calculating averages.
+
+        The strain is defined as:
+
+        .. math::
+
+            \vb*{\epsilon}_V^{(m)} = \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \\\\
+            \vb*{\epsilon}_U^{(m)} = \frac{1}{2m} (\vb{U}^{2m} - \vb{I})
+
+        References
+        ----------
+        | https://en.wikipedia.org/wiki/Finite_strain_theory
+        | https://de.wikipedia.org/wiki/Verzerrungstensor
 
         """
         self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
