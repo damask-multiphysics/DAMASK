@@ -15,7 +15,7 @@ from typing import Optional, Union, Callable, Any, Sequence, Literal, Dict, List
 
 import h5py
 import numpy as np
-import numpy.ma as ma
+from numpy import ma
 
 import damask
 from . import VTK
