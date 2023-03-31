@@ -1,0 +1,23 @@
+type: kinehardening
+
+references:
+  - J.A. Wollmershauser et al.,
+    International Journal of Fatigue 36(1):181-193, 2012,
+    https://doi.org/10.1016/j.ijfatigue.2011.07.008
+
+output: [xi, chi, chi_flip, gamma_flip, gamma, sgn(gamma)]
+
+N_sl: [12]
+
+xi_0:     [0.070e+9] # τ_0,for
+xi_inf:   [0.015e+9] # τ_1,for
+h_0_xi:   [0.065e+9] # θ_0,for
+h_inf_xi: [0.045e+9] # θ_1,for
+
+chi_inf:  [0.027e+9] # τ_1,bs
+h_0_chi:     [55e+9] # θ_0,bs
+h_inf_chi:  [1.3e+9] # θ_1,bs
+
+n: 20                # not mentioned in the reference
+dot_gamma_0: 1e-4    # not mentioned in the reference
+h_sl-sl: [1, 1, 1, 1, 1, 1, 1]

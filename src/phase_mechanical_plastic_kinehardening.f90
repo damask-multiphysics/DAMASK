@@ -2,8 +2,8 @@
 !> @author Philip Eisenlohr, Michigan State University
 !> @author Zhuowen Zhao, Michigan State University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief  Phenomenological crystal plasticity using a power law formulation for the shear rates
-!! and a Voce-type kinematic hardening rule
+!> @brief  Phenomenological crystal plasticity using a power-law formulation for the shear rates
+!! and a Voce-type kinematic hardening rule.
 !--------------------------------------------------------------------------------------------------
 submodule(phase:plastic) kinehardening
 
@@ -12,14 +12,18 @@ submodule(phase:plastic) kinehardening
       n           = 1.0_pReal, &                                                                    !< stress exponent for slip
       dot_gamma_0 = 1.0_pReal                                                                       !< reference shear strain rate for slip
     real(pReal),              allocatable, dimension(:) :: &
-      h_0_f, &                                                                                      !< initial hardening rate of forward stress for each slip
-      h_inf_f, &                                                                                    !< asymptotic hardening rate of forward stress for each slip
-      h_0_b, &                                                                                      !< initial hardening rate of back stress for each slip
-      h_inf_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip
-      xi_inf_f, &
-      xi_inf_b
+      h_0_xi, &                                                                                     !< initial hardening rate of forest stress per slip family
+                                                                                                    !! θ_0,for
+      h_0_chi, &                                                                                    !< initial hardening rate of back stress per slip family
+                                                                                                    !! θ_0,bs
+      h_inf_xi, &                                                                                   !< asymptotic hardening rate of forest stress per slip family
+                                                                                                    !! θ_1,for
+      h_inf_chi, &                                                                                  !< asymptotic hardening rate of back stress per slip family
+                                                                                                    !! θ_1,bs
+      xi_inf, &                                                                                     !< back-extrapolated forest stress from terminal linear hardening
+      chi_inf                                                                                       !< back-extrapolated back stress from terminal linear hardening
     real(pReal),              allocatable, dimension(:,:) :: &
-      h_sl_sl                                                                                       !< slip resistance from slip activity
+      h_sl_sl                                                                                       !< slip resistance change per slip activity
     real(pReal),              allocatable, dimension(:,:,:) :: &
       P, &
       P_nS_pos, &
@@ -43,11 +47,15 @@ submodule(phase:plastic) kinehardening
 
   type :: tKinehardeningState
     real(pReal), pointer, dimension(:,:) :: &
-      xi, &                                                                                         !< resistance against plastic slip
+      xi, &                                                                                         !< forest stress
+                                                                                                    !! τ_for
       chi, &                                                                                        !< back stress
-      chi_0, &                                                                                      !< back stress at last switch of stress sense
+                                                                                                    !! τ_bs
+      chi_flip, &                                                                                   !< back stress at last reversal of stress sense
+                                                                                                    !! χ_0
       gamma, &                                                                                      !< accumulated (absolute) shear
-      gamma_0, &                                                                                    !< accumulated shear at last switch of stress sense
+      gamma_flip, &                                                                                 !< accumulated shear at last reversal of stress sense
+                                                                                                    !! γ_0
       sgn_gamma                                                                                     !< sense of acting shear stress (-1 or +1)
   end type tKinehardeningState
 
@@ -75,7 +83,8 @@ module function plastic_kinehardening_init() result(myPlasticity)
   integer,     dimension(:), allocatable :: &
     N_sl
   real(pReal), dimension(:), allocatable :: &
-    xi_0, &                                                                                         !< initial resistance against plastic flow
+    xi_0, &                                                                                         !< initial forest stress
+                                                                                                    !! τ_for,0
     a                                                                                               !< non-Schmid coefficients
   character(len=:), allocatable :: &
     refs, &
@@ -133,8 +142,8 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%P = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
-        if (size(a) > 0) prm%nonSchmidActive = .true.
+        a = pl%get_as1dFloat('a_nonSchmid',defaultVal=emptyRealArray)
+        prm%nonSchmidActive = size(a) > 0
         prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -144,45 +153,49 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
                                                    phase_lattice(ph))
 
-      xi_0          = pl%get_as1dFloat('xi_0',       requiredSize=size(N_sl))
-      prm%xi_inf_f  = pl%get_as1dFloat('xi_inf_f',   requiredSize=size(N_sl))
-      prm%xi_inf_b  = pl%get_as1dFloat('xi_inf_b',   requiredSize=size(N_sl))
-      prm%h_0_f     = pl%get_as1dFloat('h_0_f',      requiredSize=size(N_sl))
-      prm%h_inf_f   = pl%get_as1dFloat('h_inf_f',    requiredSize=size(N_sl))
-      prm%h_0_b     = pl%get_as1dFloat('h_0_b',      requiredSize=size(N_sl))
-      prm%h_inf_b   = pl%get_as1dFloat('h_inf_b',    requiredSize=size(N_sl))
+      xi_0          = pl%get_as1dFloat('xi_0',      requiredSize=size(N_sl))
+      prm%xi_inf    = pl%get_as1dFloat('xi_inf',    requiredSize=size(N_sl))
+      prm%chi_inf   = pl%get_as1dFloat('chi_inf',   requiredSize=size(N_sl))
+      prm%h_0_xi    = pl%get_as1dFloat('h_0_xi',    requiredSize=size(N_sl))
+      prm%h_0_chi   = pl%get_as1dFloat('h_0_chi',   requiredSize=size(N_sl))
+      prm%h_inf_xi  = pl%get_as1dFloat('h_inf_xi',  requiredSize=size(N_sl))
+      prm%h_inf_chi = pl%get_as1dFloat('h_inf_chi', requiredSize=size(N_sl))
 
       prm%dot_gamma_0  = pl%get_asFloat('dot_gamma_0')
       prm%n            = pl%get_asFloat('n')
 
       ! expand: family => system
-      xi_0          = math_expand(xi_0,            N_sl)
-      prm%xi_inf_f  = math_expand(prm%xi_inf_f,    N_sl)
-      prm%xi_inf_b  = math_expand(prm%xi_inf_b,    N_sl)
-      prm%h_0_f     = math_expand(prm%h_0_f,       N_sl)
-      prm%h_inf_f   = math_expand(prm%h_inf_f,     N_sl)
-      prm%h_0_b     = math_expand(prm%h_0_b,       N_sl)
-      prm%h_inf_b   = math_expand(prm%h_inf_b,     N_sl)
+      xi_0          = math_expand(xi_0,          N_sl)
+      prm%xi_inf    = math_expand(prm%xi_inf,    N_sl)
+      prm%chi_inf   = math_expand(prm%chi_inf,   N_sl)
+      prm%h_0_xi    = math_expand(prm%h_0_xi,    N_sl)
+      prm%h_0_chi   = math_expand(prm%h_0_chi,   N_sl)
+      prm%h_inf_xi  = math_expand(prm%h_inf_xi,  N_sl)
+      prm%h_inf_chi = math_expand(prm%h_inf_chi, N_sl)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
       if (    prm%dot_gamma_0  <= 0.0_pReal)   extmsg = trim(extmsg)//' dot_gamma_0'
       if (    prm%n            <= 0.0_pReal)   extmsg = trim(extmsg)//' n'
       if (any(xi_0             <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_0'
-      if (any(prm%xi_inf_f     <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_f'
-      if (any(prm%xi_inf_b     <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_b'
+      if (any(prm%xi_inf       <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf'
+      if (any(prm%chi_inf      <= 0.0_pReal))  extmsg = trim(extmsg)//' chi_inf'
 
     else slipActive
       xi_0 = emptyRealArray
-      allocate(prm%xi_inf_f,prm%xi_inf_b,prm%h_0_f,prm%h_inf_f,prm%h_0_b,prm%h_inf_b,source=emptyRealArray)
+      allocate(prm%xi_inf,prm%chi_inf,prm%h_0_xi,prm%h_inf_xi,prm%h_0_chi,prm%h_inf_chi,source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
     end if slipActive
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     Nmembers = count(material_ID_phase == ph)
-    sizeDotState   = size(['xi   ','chi  ', 'gamma']) * prm%sum_N_sl
-    sizeDeltaState = size(['sgn_gamma',   'chi_0    ',    'gamma_0  ']) * prm%sum_N_sl
+    sizeDotState   = prm%sum_N_sl * size(['xi   ',&
+                                          'chi  ',&
+                                          'gamma'])
+    sizeDeltaState = prm%sum_N_sl * size(['sgn_gamma ',&
+                                          'chi_flip  ',&
+                                          'gamma_flip'])
     sizeState = sizeDotState + sizeDeltaState
 
     call phase_allocateState(plasticState(ph),Nmembers,sizeState,sizeDotState,sizeDeltaState)
@@ -219,13 +232,13 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%chi_0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
-    dlt%chi_0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
+    stt%chi_flip => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%chi_flip => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex +  prm%sum_N_sl
-    stt%gamma_0 => plasticState(ph)%state     (startIndex  :endIndex  ,:)
-    dlt%gamma_0 => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
+    stt%gamma_flip => plasticState(ph)%state     (startIndex  :endIndex  ,:)
+    dlt%gamma_flip => plasticState(ph)%deltaState(startIndex-o:endIndex-o,:)
 
     end associate
 
@@ -266,7 +279,7 @@ pure module subroutine kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   associate(prm => param(ph))
 
-  call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
+  call kinetics(Mp,ph,en, dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
 
   do i = 1, prm%sum_N_sl
     Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P(1:3,1:3,i)
@@ -305,23 +318,24 @@ module function plastic_kinehardening_dotState(Mp,ph,en) result(dotState)
             dot_chi => dotState(IndexDotState(ph)%chi(1):IndexDotState(ph)%chi(2)),&
             dot_gamma => dotState(IndexDotState(ph)%gamma(1):IndexDotState(ph)%gamma(2)))
 
-    call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
+    call kinetics(Mp,ph,en, dot_gamma_pos,dot_gamma_neg)
     dot_gamma = abs(dot_gamma_pos+dot_gamma_neg)
     sumGamma = sum(stt%gamma(:,en))
 
 
     dot_xi = matmul(prm%h_sl_sl,dot_gamma) &
-                   * (  prm%h_inf_f &
-                       + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
-                       * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
-                     )
+           * ( prm%h_inf_xi &
+               + ( prm%h_0_xi  &
+                 - prm%h_inf_xi * (1_pReal -sumGamma*prm%h_0_xi/prm%xi_inf) ) &
+               *                       exp(-sumGamma*prm%h_0_xi/prm%xi_inf) &
+             )
 
     dot_chi = stt%sgn_gamma(:,en)*dot_gamma &
-            * ( prm%h_inf_b &
-               + (prm%h_0_b - prm%h_inf_b &
-                 + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi_0(:,en))*(stt%gamma(:,en)-stt%gamma_0(:,en))&
-               ) *exp(-(stt%gamma(:,en)-stt%gamma_0(:,en)) *prm%h_0_b/(prm%xi_inf_b+stt%chi_0(:,en))) &
-             )
+            * ( prm%h_inf_chi &
+               + ( prm%h_0_chi &
+                 - prm%h_inf_chi*(1_pReal -(stt%gamma(:,en)-stt%gamma_flip(:,en))*prm%h_0_chi/(prm%chi_inf+stt%chi_flip(:,en))) ) &
+               *                      exp(-(stt%gamma(:,en)-stt%gamma_flip(:,en))*prm%h_0_chi/(prm%chi_inf+stt%chi_flip(:,en))) &
+              )
 
   end associate
 
@@ -346,19 +360,19 @@ module subroutine plastic_kinehardening_deltaState(Mp,ph,en)
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    call kinetics(Mp,ph,en,dot_gamma_pos,dot_gamma_neg)
+    call kinetics(Mp,ph,en, dot_gamma_pos,dot_gamma_neg)
     sgn_gamma = merge(state(ph)%sgn_gamma(:,en), &
                       sign(1.0_pReal,dot_gamma_pos+dot_gamma_neg), &
                       dEq0(dot_gamma_pos+dot_gamma_neg,1e-10_pReal))
 
     where(dNeq(sgn_gamma,stt%sgn_gamma(:,en),0.1_pReal)) ! ToDo sgn_gamma*stt%sgn_gamma(:,en)<0
-      dlt%sgn_gamma (:,en) = sgn_gamma - stt%sgn_gamma(:,en)
-      dlt%chi_0  (:,en) = abs(stt%chi(:,en)) - stt%chi_0(:,en)
-      dlt%gamma_0(:,en) = stt%gamma(:,en) - stt%gamma_0(:,en)
+      dlt%sgn_gamma (:,en) = sgn_gamma            - stt%sgn_gamma (:,en)
+      dlt%chi_flip  (:,en) = abs(stt%chi  (:,en)) - stt%chi_flip  (:,en)
+      dlt%gamma_flip(:,en) =     stt%gamma(:,en)  - stt%gamma_flip(:,en)
     else where
       dlt%sgn_gamma (:,en) = 0.0_pReal
-      dlt%chi_0  (:,en) = 0.0_pReal
-      dlt%gamma_0(:,en) = 0.0_pReal
+      dlt%chi_flip  (:,en) = 0.0_pReal
+      dlt%gamma_flip(:,en) = 0.0_pReal
     end where
 
   end associate
@@ -385,19 +399,19 @@ module subroutine plastic_kinehardening_result(ph,group)
 
         case ('xi')
           call result_writeDataset(stt%xi,group,trim(prm%output(ou)), &
-                                   'resistance against plastic slip','Pa',prm%systems_sl)
+                                   'forest stress','Pa',prm%systems_sl)
         case ('chi')
           call result_writeDataset(stt%chi,group,trim(prm%output(ou)), &
                                    'back stress','Pa',prm%systems_sl)
         case ('sgn(gamma)')
           call result_writeDataset(int(stt%sgn_gamma),group,trim(prm%output(ou)), &
                                    'sense of shear','1',prm%systems_sl)
-        case ('chi_0')
-          call result_writeDataset(stt%chi_0,group,trim(prm%output(ou)), &
-                                   'back stress at last switch of stress sense','Pa',prm%systems_sl)
-        case ('gamma_0')
-          call result_writeDataset(stt%gamma_0,group,trim(prm%output(ou)), &
-                                   'plastic shear at last switch of stress sense','1',prm%systems_sl)
+        case ('chi_flip')
+          call result_writeDataset(stt%chi_flip,group,trim(prm%output(ou)), &
+                                   'back stress at last reversal of stress sense','Pa',prm%systems_sl)
+        case ('gamma_flip')
+          call result_writeDataset(stt%gamma_flip,group,trim(prm%output(ou)), &
+                                   'plastic shear at last reversal of stress sense','1',prm%systems_sl)
         case ('gamma')
           call result_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
                                    'plastic shear','1',prm%systems_sl)
