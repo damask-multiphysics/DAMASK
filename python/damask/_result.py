@@ -20,6 +20,7 @@ import numpy.ma as ma
 import damask
 from . import VTK
 from . import Orientation
+from . import Rotation
 from . import grid_filters
 from . import mechanics
 from . import tensor
@@ -1966,24 +1967,23 @@ class Result:
         Phase_types = {'Primary': 0} #further additions to these can be done by looking at 'Create Ensemble Info' filter, other options could be 'Precipitate' and so on. 
 
         dx = self.size/self.cells
+        
+        at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
         for inc in util.show_progress(self.visible['increments']):
-            for label in self.visible['phases']:
-                try:
-                    data = ma.array(_read(f['/'.join([inc,'phase',label,'mechanical/O'])]))
-                except ValueError: #check if the exception is correct
-                    print("Orientation data is not present")
-                    exit()  # need to check if such a statement would really work. 
-
             cell_orientation_array = np.zeros((np.prod(self.cells),3))
             phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
-
-            at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
             for c in range(self.N_constituents):
-                for ph in self.phases:
-                    cell_orientation_array[at_cell_ph[c][ph],:] = data[,:]# need to figure out these mappings a bit 
-                    cell_orientation_array[in_data_ph[ph],:] = # need to figure out these mappings a bit 
-                    phase_ID_array[phase_index] = count + 1  #need to figure out these mappings a bit  
+                for count,label in enumerate(self.visible['phases']):
+                    try:
+                        data = ma.array(_read(f['/'.join([inc,'phase',label,'mechanical/O'])]))
+                        cell_orientation_array[at_cell_ph[c][label],:] = Rotation(data[in_data_ph[c][label],:]).as_Euler_angles()   # TODO: convert DAMASK quats to Dream3D quats?
+                    except ValueError: #check if the exception is correct
+                        print("Orientation data is not present")
+                        exit()  # need to check if such a statement would really work. 
+
+
+                    phase_ID_array[at_cell_ph[c][label]] = count + 1  #need to figure out these mappings a bit  
 
             job_file_no_ext = os.path.splitext(self.fname)[0]
             o = h5py.File(f'{job_file_no_ext}_increment{inc}.dream3D','w')
