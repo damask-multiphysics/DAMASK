@@ -2172,7 +2172,7 @@ pure function lattice_isotropic_nu(C,assumption,lattice) result(nu)
     error stop 'invalid assumption'
   end if
 
-  mu = lattice_isotropic_mu(C,assumption,misc_optional(lattice,''))
+  mu = lattice_isotropic_mu(C,assumption,lattice)
   nu = (1.5_pReal*K-mu)/(3.0_pReal*K+mu)
 
 end function lattice_isotropic_nu
