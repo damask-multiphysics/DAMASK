@@ -8,6 +8,7 @@ module materialpoint
   use signal
   use CLI
   use prec
+  use misc
   use IO
   use YAML_types
   use YAML_parse
@@ -47,6 +48,7 @@ subroutine materialpoint_initAll()
   call CLI_init()                                                                                   ! grid and mesh commandline interface
   call signal_init()
   call prec_init()
+  call misc_init()
   call IO_init()
 #if   defined(MESH)
   call FEM_quadrature_init()
