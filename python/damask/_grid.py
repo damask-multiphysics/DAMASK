@@ -1044,7 +1044,7 @@ class Grid:
         Parameters
         ----------
         idx : numpy.ndarray of int, shape (:,:,:) or (:,:,:,3)
-          Grid of flat indices or coordinate indices.
+            Grid of flat indices or coordinate indices.
 
         Returns
         -------
