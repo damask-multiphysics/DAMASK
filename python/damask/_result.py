@@ -1945,7 +1945,8 @@ class Result:
                 v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
                        
-    def export_DREAM3D(self):
+    def export_DREAM3D(self,
+                       target_dir: Union[None, str, Path] = None):
         """
         Export the visible components to DREAM3D compatible files. 
         
@@ -1957,7 +1958,8 @@ class Result:
         
         Parameters
         ----------
-        
+        target_dir : str or pathlib.Path, optional
+            Directory to save DREAM3D files. Will be created if non-existent.
         """
         Crystal_structures = {'fcc': 1,
                               'bcc': 1,
@@ -1970,93 +1972,98 @@ class Result:
         
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
-        for inc in util.show_progress(self.visible['increments']):
-            cell_orientation_array = np.zeros((np.prod(self.cells),3))
-            phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
-            for c in range(self.N_constituents):
-                for count,label in enumerate(self.visible['phases']):
-                    try:
-                        data = ma.array(_read(f['/'.join([inc,'phase',label,'mechanical/O'])]))
-                        cell_orientation_array[at_cell_ph[c][label],:] = Rotation(data[in_data_ph[c][label],:]).as_Euler_angles()   # TODO: convert DAMASK quats to Dream3D quats?
-                    except ValueError: #check if the exception is correct
-                        print("Orientation data is not present")
-                        exit()  # need to check if such a statement would really work. 
+        dream_dir = Path.cwd() if target_dir is None else Path(target_dir)
+        dream_dir.mkdir(parents=True,exist_ok=True)
 
+        with h5py.File(self.fname,'r') as f:
+            for inc in util.show_progress(self.visible['increments']):
+                cell_orientation_array = np.zeros((np.prod(self.cells),3))
+                phase_ID_array = np.zeros((np.prod(self.cells)),dtype=np.int32) #need to reshape it later
+                for c in range(self.N_constituents):
+                    for count,label in enumerate(self.visible['phases']):
+                        try:
+                            data = ma.array(_read(f['/'.join([inc,'phase',label,'mechanical/O'])]))
+                            cell_orientation_array[at_cell_ph[c][label],:] = \
+                                Rotation(data[in_data_ph[c][label],:]).as_Euler_angles()   
+                            # Dream3D handles euler angles better
+                        except ValueError: #check if the exception is correct
+                            print("Orientation data is not present")
+                            exit()  # need to check if such a statement would really work. 
 
-                    phase_ID_array[at_cell_ph[c][label]] = count + 1  #need to figure out these mappings a bit  
+                        phase_ID_array[at_cell_ph[c][label]] = count + 1  
 
-            job_file_no_ext = os.path.splitext(self.fname)[0]
-            o = h5py.File(f'{job_file_no_ext}_increment{inc}.dream3D','w')
-            o.attrs['DADF5toDREAM3D'] = '1.0'
-            o.attrs['FileVersion']    = '7.0'
+                job_file_no_ext = os.path.splitext(self.fname)[0]
+                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3D','w')
+                o.attrs['DADF5toDREAM3D'] = '1.0'
+                o.attrs['FileVersion']    = '7.0'
 
-            for g in ['DataContainerBundles','Pipeline']: # empty groups (needed)
-              o.create_group(g)
+                for g in ['DataContainerBundles','Pipeline']: # empty groups (needed)
+                  o.create_group(g)
     
-            data_container_label = 'DataContainers/SyntheticVolumeDataContainer'        
-            cell_data_label      = data_container_label + '/CellData'
+                data_container_label = 'DataContainers/SyntheticVolumeDataContainer'        
+                cell_data_label      = data_container_label + '/CellData'
 
-            # Data phases
-            o[cell_data_label + '/Phases'] = np.reshape(phase_ID_array, \
-                                                        tuple(np.flip(self.cells))+(1,))
+                # Data phases
+                o[cell_data_label + '/Phases'] = np.reshape(phase_ID_array, \
+                                                            tuple(np.flip(self.cells))+(1,))
     
-            # Data eulers
-            orientation_data = cell_orientation_array.astype(np.float32)
-            o[cell_data_label + '/Eulers'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
+                # Data eulers
+                orientation_data = cell_orientation_array.astype(np.float32)
+                o[cell_data_label + '/Eulers'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
 
-            # Attributes to CellData group
-            o[cell_data_label].attrs['AttributeMatrixType'] = np.array([3],np.uint32)
-            o[cell_data_label].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                # Attributes to CellData group
+                o[cell_data_label].attrs['AttributeMatrixType'] = np.array([3],np.uint32)
+                o[cell_data_label].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
 
-            # Common Attributes for groups in CellData
-            for group in ['/Phases','/Eulers']:
-              o[cell_data_label + group].attrs['DataArrayVersion']      = np.array([2],np.int32)
-              o[cell_data_label + group].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*np.array(self.cells))
+                # Common Attributes for groups in CellData
+                for group in ['/Phases','/Eulers']:
+                  o[cell_data_label + group].attrs['DataArrayVersion']      = np.array([2],np.int32)
+                  o[cell_data_label + group].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*np.array(self.cells))
 
-            # phase attributes
-            o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
-            o[cell_data_label + '/Phases'].attrs['ObjectType']          = 'DataArray<int32_t>'
-            o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                # phase attributes
+                o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
+                o[cell_data_label + '/Phases'].attrs['ObjectType']          = 'DataArray<int32_t>'
+                o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
         
-            # Eulers attributes
-            o[cell_data_label + '/Eulers'].attrs['ComponentDimensions'] = np.array([3],np.uint64)
-            o[cell_data_label + '/Eulers'].attrs['ObjectType']          = 'DataArray<float>'        
-            o[cell_data_label + '/Eulers'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                # Eulers attributes
+                o[cell_data_label + '/Eulers'].attrs['ComponentDimensions'] = np.array([3],np.uint64)
+                o[cell_data_label + '/Eulers'].attrs['ObjectType']          = 'DataArray<float>'        
+                o[cell_data_label + '/Eulers'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
     
-            # Create EnsembleAttributeMatrix
-            ensemble_label = data_container_label + '/CellEnsembleData'
+                # Create EnsembleAttributeMatrix
+                ensemble_label = data_container_label + '/CellEnsembleData'
     
-            # Data CrystalStructures
-            o[ensemble_label + '/CrystalStructures'] = np.uint32(np.array([999] + [1]*len(self.phases)))
-            # assuming only cubic crystal structures
-            # Damask can give the crystal structure info but need to look into dream3d which crystal structure corresponds to which number
-            o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases))).reshape((len(self.phases)+1,1))
-            # also assuming Primary phases
-            # there can be precipitates etc as well
-            # Attributes Ensemble Matrix
-            o[ensemble_label].attrs['AttributeMatrixType'] = np.array([11],np.uint32)
-            o[ensemble_label].attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
+                # Data CrystalStructures
+                o[ensemble_label + '/CrystalStructures'] = np.uint32(np.array([999] + [1]*len(self.phases)))
+                # assuming only cubic crystal structures
+                # Damask can give the crystal structure info but need to look into dream3d which crystal structure corresponds to which number
+                o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases))).reshape((len(self.phases)+1,1))
+                # also assuming Primary phases
+                # there can be precipitates etc as well
+                # Attributes Ensemble Matrix
+                o[ensemble_label].attrs['AttributeMatrixType'] = np.array([11],np.uint32)
+                o[ensemble_label].attrs['TupleDimensions']     = np.array([len(self.phases) + 1], np.uint64)
 
-            # Attributes for data in Ensemble matrix
-            for group in ['CrystalStructures','PhaseTypes']: # 'PhaseName' not required MD: But would be nice to take the phase name mapping
-              o[ensemble_label+'/'+group].attrs['ComponentDimensions']   = np.array([1],np.uint64)
-              o[ensemble_label+'/'+group].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
-              o[ensemble_label+'/'+group].attrs['DataArrayVersion']      = np.array([2],np.int32)
-              o[ensemble_label+'/'+group].attrs['ObjectType']            = 'DataArray<uint32_t>'
-              o[ensemble_label+'/'+group].attrs['TupleDimensions']       = np.array([len(self.phases) + 1],np.uint64)
+                # Attributes for data in Ensemble matrix
+                for group in ['CrystalStructures','PhaseTypes']: # 'PhaseName' not required MD: But would be nice to take the phase name mapping
+                  o[ensemble_label+'/'+group].attrs['ComponentDimensions']   = np.array([1],np.uint64)
+                  o[ensemble_label+'/'+group].attrs['Tuple Axis Dimensions'] = f'x={len(self.phases)+1}'
+                  o[ensemble_label+'/'+group].attrs['DataArrayVersion']      = np.array([2],np.int32)
+                  o[ensemble_label+'/'+group].attrs['ObjectType']            = 'DataArray<uint32_t>'
+                  o[ensemble_label+'/'+group].attrs['TupleDimensions']       = np.array([len(self.phases) + 1],np.uint64)
 
-            # Create geometry info
-            geom_label = data_container_label + '/_SIMPL_GEOMETRY'
+                # Create geometry info
+                geom_label = data_container_label + '/_SIMPL_GEOMETRY'
         
-            o[geom_label + '/DIMENSIONS'] = np.int64(np.array(self.cells))
-            o[geom_label + '/ORIGIN']     = np.float32(np.zeros(3))
-            o[geom_label + '/SPACING']    = np.float32(dx)
+                o[geom_label + '/DIMENSIONS'] = np.int64(np.array(self.cells))
+                o[geom_label + '/ORIGIN']     = np.float32(np.zeros(3))
+                o[geom_label + '/SPACING']    = np.float32(dx)
 
-            o[geom_label].attrs['GeometryName']     = 'ImageGeometry'
-            o[geom_label].attrs['GeometryTypeName'] = 'ImageGeometry'
-            o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32) 
-            o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32) 
-            o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32) 
+                o[geom_label].attrs['GeometryName']     = 'ImageGeometry'
+                o[geom_label].attrs['GeometryTypeName'] = 'ImageGeometry'
+                o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32) 
+                o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32) 
+                o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32) 
 
 
 
