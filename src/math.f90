@@ -514,7 +514,7 @@ end subroutine math_invert33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Inversion of symmetriced 3x3x3x3 matrix
+!> @brief Invert symmetriced 3x3x3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_invSym3333(A)
 
@@ -530,7 +530,7 @@ pure function math_invSym3333(A)
 
   temp66 = math_sym3333to66(A)
   call dgetrf(6,6,temp66,6,ipiv6,ierr_i)
-  call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr_f)
+  call dgetri(6,temp66,6,ipiv6,work,size(work),ierr_f)
   if (ierr_i /= 0 .or. ierr_f /= 0) then
     error stop 'matrix inversion error'
   else
@@ -541,7 +541,7 @@ end function math_invSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief invert quadratic matrix of arbitrary dimension
+!> @brief Invert quadratic matrix of arbitrary dimension.
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert(InvA, error, A)
 
@@ -557,14 +557,14 @@ pure subroutine math_invert(InvA, error, A)
   invA = A
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
   error = (ierr /= 0)
-  call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(work,1),ierr)
+  call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(work),ierr)
   error = error .or. (ierr /= 0)
 
 end subroutine math_invert
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 3x3 matrix
+!> @brief Symmetrize a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric33(m)
 
@@ -578,7 +578,7 @@ end function math_symmetric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief skew part of a 3x3 matrix
+!> @brief Calculate skew part of a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_skew33(m)
 
@@ -592,7 +592,7 @@ end function math_skew33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief hydrostatic part of a 3x3 matrix
+!> @brief Calculate hydrostatic part of a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_spherical33(m)
 
@@ -606,7 +606,7 @@ end function math_spherical33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief deviatoric part of a 3x3 matrix
+!> @brief Calculate deviatoric part of a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_deviatoric33(m)
 
@@ -620,7 +620,7 @@ end function math_deviatoric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief trace of a 3x3 matrix
+!> @brief Calculate trace of a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
 
@@ -633,7 +633,7 @@ end function math_trace33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determinant of a 3x3 matrix
+!> @brief Calculate determinant of a 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_det33(m)
 
@@ -648,7 +648,7 @@ end function math_det33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determinant of a symmetric 3x3 matrix
+!> @brief Calculate determinant of a symmetric 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_detSym33(m)
 
@@ -662,7 +662,7 @@ end function  math_detSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 3x3 matrix into vector 9
+!> @brief Convert 3x3 matrix into 9 vector.
 !--------------------------------------------------------------------------------------------------
 pure function math_33to9(m33)
 
@@ -678,7 +678,7 @@ end function math_33to9
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 9 vector into 3x3 matrix
+!> @brief Convert 9 vector into 3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_9to33(v9)
 
@@ -696,7 +696,7 @@ end function math_9to33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3x3 matrix into 6 vector
+!> @brief Convert symmetric 3x3 matrix into 6 vector.
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -718,7 +718,7 @@ end function math_sym33to6
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 6 vector into symmetric 3x3 matrix
+!> @brief Convert 6 vector into symmetric 3x3 matrix.
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -744,7 +744,7 @@ end function math_6toSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 3x3x3x3 matrix into 9x9 matrix
+!> @brief Convert 3x3x3x3 matrix into 9x9 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_3333to99(m3333)
 
@@ -766,7 +766,7 @@ end function math_3333to99
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 9x9 matrix into 3x3x3x3 matrix
+!> @brief Convert 9x9 matrix into 3x3x3x3 matrix.
 !--------------------------------------------------------------------------------------------------
 pure function math_99to3333(m99)
 
@@ -788,7 +788,7 @@ end function math_99to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3x3x3x3 matrix into 6x6 matrix
+!> @brief Convert symmetric 3x3x3x3 matrix into 6x6 matrix.
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only rearranges order according to Nye
@@ -817,7 +817,7 @@ end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 6x6 matrix into symmetric 3x3x3x3 matrix
+!> @brief Convert 6x6 matrix into symmetric 3x3x3x3 matrix.
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only rearranges order according to Nye
@@ -971,7 +971,7 @@ end subroutine math_normal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric matrix
+!> @brief Calculate eigenvalues and eigenvectors of symmetric matrix.
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_eigh(w,v,error,m)
 
@@ -1052,7 +1052,7 @@ end subroutine math_eigh33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate rotational part of a deformation gradient
+!> @brief Calculate rotational part of a deformation gradient.
 !> @details https://www.jstor.org/stable/43637254
 !!          https://www.jstor.org/stable/43637372
 !!          https://doi.org/10.1023/A:1007407802076
@@ -1100,7 +1100,7 @@ end function math_rotationalPart
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric matrix
+!> @brief Calculate eigenvalues of symmetric matrix.
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
 pure function math_eigvalsh(m)
@@ -1113,8 +1113,8 @@ pure function math_eigvalsh(m)
   real(pReal), dimension(size(m,1)**2) :: work
 
 
-  m_= m                                                                                             ! copy matrix to input (will be destroyed)
-  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigvalsh,work,size(work,1),ierr)
+  m_ = m                                                                                            ! m_ will be destroyed
+  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigvalsh,work,size(work),ierr)
   if (ierr /= 0) math_eigvalsh = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
 
 end function math_eigvalsh

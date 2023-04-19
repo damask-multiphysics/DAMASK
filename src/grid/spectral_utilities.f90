@@ -339,8 +339,8 @@ end subroutine spectral_utilities_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief updates reference stiffness and potentially precalculated gamma operator
-!> @details Sets the current reference stiffness to the stiffness given as an argument.
+!> @brief Update reference stiffness and potentially precalculated gamma operator.
+!> @details Set the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of an on-the-fly calculation, only the reference stiffness is updated.
 !---------------------------------------------------------------------------------------------------
@@ -399,19 +399,8 @@ end subroutine utilities_updateGamma
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorBackward()
-
-  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTvectorBackward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
+!> @brief Calculate gamma_hat * field_real (convolution).
+!> @details The average value equals the given aim.
 !--------------------------------------------------------------------------------------------------
 function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
@@ -830,7 +819,7 @@ end subroutine utilities_constitutiveResponse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates forward rate, either guessing or just add delta/Delta_t
+!> @brief Calculate forward rate, either as local guess or as homogeneous add on.
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
 
