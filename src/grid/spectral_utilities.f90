@@ -399,18 +399,6 @@ end subroutine utilities_updateGamma
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorBackward()
-
-  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTvectorBackward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
 !--------------------------------------------------------------------------------------------------
 function utilities_GammaConvolution(field, fieldAim) result(gammaField)
