@@ -1992,7 +1992,7 @@ class Result:
 
                         phase_ID_array[at_cell_ph[c][label]] = count + 1  
 
-                job_file_no_ext = os.path.splitext(self.fname)[0]
+                job_file_no_ext = self.fname.name 
                 o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3D','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
