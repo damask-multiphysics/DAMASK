@@ -1992,7 +1992,7 @@ class Result:
 
                         phase_ID_array[at_cell_ph[c][label]] = count + 1  
 
-                job_file_no_ext = self.fname.name 
+                job_file_no_ext = self.fname.stem 
                 o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3D','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
@@ -2016,9 +2016,9 @@ class Result:
                 o[cell_data_label].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
 
                 # Common Attributes for groups in CellData
-                for group in ['/Phases','/Eulers']:
-                  o[cell_data_label + group].attrs['DataArrayVersion']      = np.array([2],np.int32)
-                  o[cell_data_label + group].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*np.array(self.cells))
+                for dataset in ['/Phases','/Eulers']:
+                  o[cell_data_label + dataset].attrs['DataArrayVersion']      = np.array([2],np.int32)
+                  o[cell_data_label + dataset].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*np.array(self.cells))
 
                 # phase attributes
                 o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
