@@ -2009,7 +2009,7 @@ class Result:
     
                 # Data eulers
                 orientation_data = cell_orientation_array.astype(np.float32)
-                o[cell_data_label + '/Eulers'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
+                o[cell_data_label + '/EulersAngles'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
 
                 # Attributes to CellData group
                 o[cell_data_label].attrs['AttributeMatrixType'] = np.array([3],np.uint32)
