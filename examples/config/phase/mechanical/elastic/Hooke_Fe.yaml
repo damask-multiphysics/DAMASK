@@ -3,7 +3,7 @@ type: Hooke
 references:
   - D.J. Dever,
     Journal of Applied Physics 43(8):3293-3301, 1972,
-    https://doi.org/10.1063/1.1661710
+    https://doi.org/10.1063/1.1661710,
     fit to Tab. II (T_min=25ºC, T_max=880ºC)
 
 C_11: 232.2e+9
