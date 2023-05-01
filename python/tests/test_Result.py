@@ -28,23 +28,23 @@ from damask import grid_filters
 
 
 @pytest.fixture
-def default(tmp_path,ref_path):
+def default(tmp_path,res_path):
     """Small Result file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
-    shutil.copy(ref_path/fname,tmp_path)
+    shutil.copy(res_path/fname,tmp_path)
     return Result(tmp_path/fname).view(times=20.0)
 
 @pytest.fixture
-def single_phase(tmp_path,ref_path):
+def single_phase(tmp_path,res_path):
     """Single phase Result file in temp location for modification."""
     fname = '6grains6x7x8_single_phase_tensionY.hdf5'
-    shutil.copy(ref_path/fname,tmp_path)
+    shutil.copy(res_path/fname,tmp_path)
     return Result(tmp_path/fname)
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'Result'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Result'
 
 def dict_equal(d1, d2):
     for k in d1:
@@ -295,8 +295,8 @@ class TestResult:
         with pytest.raises(TypeError):
             default.add_calculation('#invalid#*2')
 
-    def test_add_generic_grid_invalid(self,ref_path):
-        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+    def test_add_generic_grid_invalid(self,res_path):
+        result = Result(res_path/'4grains2x4x3_compressionY.hdf5')
         with pytest.raises(NotImplementedError):
             result.add_curl('F')
 
@@ -395,8 +395,8 @@ class TestResult:
                                       '6grains6x7x8_single_phase_tensionY.hdf5'],ids=range(3))
     @pytest.mark.parametrize('inc',[4,0],ids=range(2))
     @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<9, reason='missing "Direction" attribute')
-    def test_export_vtk(self,request,tmp_path,ref_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
-        result = Result(ref_path/fname).view(increments=inc)
+    def test_export_vtk(self,request,tmp_path,res_path,update,patch_execution_stamp,patch_datetime_now,output,fname,inc):
+        result = Result(res_path/fname).view(increments=inc)
         result.export_VTK(output,target_dir=tmp_path,parallel=False)
         fname = fname.split('.')[0]+f'_inc{(inc if type(inc) == int else inc[0]):0>2}.vti'
         v = VTK.load(tmp_path/fname)
@@ -405,20 +405,20 @@ class TestResult:
         with open(tmp_path/fname,'rb') as f:
             cur = hashlib.md5(f.read()).hexdigest()
         if update:
-            with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
+            with open((res_path/'export_VTK'/request.node.name).with_suffix('.md5'),'w') as f:
                 f.write(cur+'\n')
-        with open((ref_path/'export_VTK'/request.node.name).with_suffix('.md5')) as f:
+        with open((res_path/'export_VTK'/request.node.name).with_suffix('.md5')) as f:
             assert cur == f.read().strip('\n')
 
     @pytest.mark.parametrize('mode',['point','cell'])
     @pytest.mark.parametrize('output',[False,True])
-    def test_export_vtk_marc(self,tmp_path,ref_path,mode,output):
+    def test_export_vtk_marc(self,tmp_path,res_path,mode,output):
         os.chdir(tmp_path)
-        result = Result(ref_path/'check_compile_job1.hdf5')
+        result = Result(res_path/'check_compile_job1.hdf5')
         result.export_VTK(output,mode)
 
-    def test_marc_coordinates(self,ref_path):
-        result = Result(ref_path/'check_compile_job1.hdf5').view(increments=-1)
+    def test_marc_coordinates(self,res_path):
+        result = Result(res_path/'check_compile_job1.hdf5').view(increments=-1)
         c_n = result.coordinates0_node + result.get('u_n')
         c_p = result.coordinates0_point + result.get('u_p')
         assert len(c_n) > len(c_p)
@@ -437,15 +437,15 @@ class TestResult:
         single_phase.export_VTK(mode='point',target_dir=export_dir,parallel=False)
         assert set(os.listdir(export_dir)) == set([f'{single_phase.fname.stem}_inc{i:02}.vtp' for i in range(0,40+1,4)])
 
-    def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):
+    def test_XDMF_datatypes(self,tmp_path,single_phase,update,res_path):
         for what,shape in {'scalar':(),'vector':(3,),'tensor':(3,3),'matrix':(12,)}.items():
             for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
                 single_phase.add_calculation(f"np.ones(np.shape(#F#)[0:1]+{shape},'{dtype}')",f'{what}_{dtype}')
         xdmf_path = tmp_path/single_phase.fname.with_suffix('.xdmf').name
         single_phase.export_XDMF(target_dir=tmp_path)
         if update:
-            shutil.copy(xdmf_path,ref_path/xdmf_path.name)
-        assert sorted(open(xdmf_path).read()) == sorted(open(ref_path/xdmf_path.name).read())
+            shutil.copy(xdmf_path,res_path/xdmf_path.name)
+        assert sorted(open(xdmf_path).read()) == sorted(open(res_path/xdmf_path.name).read())
 
     @pytest.mark.skipif(not hasattr(vtkXdmfReader,'GetOutput'),reason='https://discourse.vtk.org/t/2450')
     def test_XDMF_shape(self,tmp_path,single_phase):
@@ -513,18 +513,18 @@ class TestResult:
              ({'phases':False},['Delta_V'],True,True),
              ({},['u_p','u_n'],False,False)],
             ids=list(range(8)))
-    def test_get(self,update,request,ref_path,view,output,flatten,prune):
-        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+    def test_get(self,update,request,res_path,view,output,flatten,prune):
+        result = Result(res_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
             result = result.view(**{key:value})
 
         fname = request.node.name
         cur = result.get(output,flatten,prune)
         if update:
-            with bz2.BZ2File((ref_path/'get'/fname).with_suffix('.pbz2'),'w') as f:
+            with bz2.BZ2File((res_path/'get'/fname).with_suffix('.pbz2'),'w') as f:
                 pickle.dump(cur,f)
 
-        with bz2.BZ2File((ref_path/'get'/fname).with_suffix('.pbz2')) as f:
+        with bz2.BZ2File((res_path/'get'/fname).with_suffix('.pbz2')) as f:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
 
@@ -538,18 +538,18 @@ class TestResult:
              ({'phases':False},['Delta_V'],True,True,[1,2,4]),
              ({},['u_p','u_n'],False,False,None)],
             ids=list(range(8)))
-    def test_place(self,update,request,ref_path,view,output,flatten,prune,constituents):
-        result = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+    def test_place(self,update,request,res_path,view,output,flatten,prune,constituents):
+        result = Result(res_path/'4grains2x4x3_compressionY.hdf5')
         for key,value in view.items():
             result = result.view(**{key:value})
 
         fname = request.node.name
         cur = result.place(output,flatten,prune,constituents)
         if update:
-            with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2'),'w') as f:
+            with bz2.BZ2File((res_path/'place'/fname).with_suffix('.pbz2'),'w') as f:
                 pickle.dump(cur,f)
 
-        with bz2.BZ2File((ref_path/'place'/fname).with_suffix('.pbz2')) as f:
+        with bz2.BZ2File((res_path/'place'/fname).with_suffix('.pbz2')) as f:
             ref = pickle.load(f)
             assert cur is None if ref is None else dict_equal(cur,ref)
 
@@ -576,27 +576,27 @@ class TestResult:
     @pytest.mark.parametrize('output',['12grains6x7x8.vti',
                                        'tensionY.yaml',
                                       ])
-    def test_export_simulation_setup_content(self,ref_path,tmp_path,default,output):
+    def test_export_simulation_setup_content(self,res_path,tmp_path,default,output):
         default.export_simulation_setup(output,target_dir=tmp_path,overwrite=True)
-        assert open(tmp_path/output).read() == open(ref_path/output).read()
+        assert open(tmp_path/output).read() == open(res_path/output).read()
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
     @pytest.mark.parametrize('output',['material.yaml','*'])
-    def test_export_simulation_setup_consistency(self,ref_path,tmp_path,fname,output):
-        r = Result(ref_path/fname)
+    def test_export_simulation_setup_consistency(self,res_path,tmp_path,fname,output):
+        r = Result(res_path/fname)
         r.export_simulation_setup(output,target_dir=tmp_path)
-        with h5py.File(ref_path/fname,'r') as f_hdf5:
+        with h5py.File(res_path/fname,'r') as f_hdf5:
             for file in fnmatch.filter(f_hdf5['setup'].keys(),output):
                 with open(tmp_path/file) as f:
                     assert f_hdf5[f'setup/{file}'][()][0].decode() == f.read()
 
-    def test_export_simulation_setup_custom_path(self,ref_path,tmp_path):
+    def test_export_simulation_setup_custom_path(self,res_path,tmp_path):
         subdir = 'export_dir'
         absdir = tmp_path/subdir
         absdir.mkdir(exist_ok=True)
 
-        r = Result(ref_path/'4grains2x4x3_compressionY.hdf5')
+        r = Result(res_path/'4grains2x4x3_compressionY.hdf5')
         for t,cwd in zip([absdir,subdir,None],[tmp_path,tmp_path,absdir]):
             os.chdir(cwd)
             r.export_simulation_setup('material.yaml',target_dir=t)
@@ -606,8 +606,8 @@ class TestResult:
                                       '6grains6x7x8_single_phase_tensionY.hdf5',
                                       '12grains6x7x8_tensionY.hdf5',
                                       'check_compile_job1.hdf5',])
-    def test_export_DADF5(self,ref_path,tmp_path,fname):
-        r = Result(ref_path/fname)
+    def test_export_DADF5(self,res_path,tmp_path,fname):
+        r = Result(res_path/fname)
         r = r.view(phases = random.sample(r.phases,1))
         r = r.view(increments = random.sample(r.increments,np.random.randint(1,len(r.increments))))
         r.export_DADF5(tmp_path/fname)
@@ -617,16 +617,16 @@ class TestResult:
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5'])
-    def test_export_DADF5_name_clash(self,ref_path,tmp_path,fname):
-        r = Result(ref_path/fname)
+    def test_export_DADF5_name_clash(self,res_path,tmp_path,fname):
+        r = Result(res_path/fname)
         with pytest.raises(PermissionError):
             r.export_DADF5(r.fname)
 
     @pytest.mark.parametrize('fname',['4grains2x4x3_compressionY.hdf5',
                                       '6grains6x7x8_single_phase_tensionY.hdf5',
                                       '12grains6x7x8_tensionY.hdf5'])
-    def test_export_DADF5_regrid(self,ref_path,tmp_path,fname):
-        r = Result(ref_path/fname)
+    def test_export_DADF5_regrid(self,res_path,tmp_path,fname):
+        r = Result(res_path/fname)
         m = grid_filters.regrid(r.size,np.broadcast_to(np.eye(3),tuple(r.cells)+(3,3)),r.cells*2)
         r.export_DADF5(tmp_path/'regridded.hdf5',mapping=m)
         assert np.all(Result(tmp_path/'regridded.hdf5').cells == r.cells*2)
