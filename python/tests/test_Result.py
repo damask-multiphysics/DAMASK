@@ -437,7 +437,7 @@ class TestResult:
     @pytest.mark.parametrize('fname',['2phase_irregularGrid_tensionX.hdf5'],ids=range(1))
     def test_export_DREAM3D(self,tmp_path,ref_path,fname):
         result = Result(ref_path/fname).view(increments=0)  #comparing the initial data only
-        result.export_VTK(target_dir=tmp_path)
+        result.export_DREAM3D(target_dir=tmp_path)
 
         ref_file = h5py.File(ref_path/'2phase_irregularGrid.dream3d','r')
         job_file_no_ext = result.fname.stem 
@@ -457,7 +457,7 @@ class TestResult:
             error_messages.append('Phase array does not match')
 
         # check euler angles
-        results_eulers = np.array(results_file[cell_data_label + '/EulersAngles'])
+        results_eulers = np.array(results_file[cell_data_label + '/EulerAngles'])
         ref_eulers = np.array(ref_file[cell_data_label + '/EulerAngles'])
         if not np.allclose(results_eulers,ref_eulers,atol=1E-06):
             error_messages.append('Euler angles array does not match')
@@ -466,7 +466,7 @@ class TestResult:
         for attrs in ['AttributeMatrixType','TupleDimensions']:
             ref_val = ref_file[cell_data_label].attrs[attrs]
             actual_val = results_file[cell_data_label].attrs[attrs]
-            if ref_val != actual_val:
+            if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Cell Data attributes do not match")
 
         # Common Attributes for groups in CellData
@@ -474,7 +474,7 @@ class TestResult:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
                 ref_val = ref_file[cell_data_label + '/' + dataset].attrs[attrs]   
                 actual_val = results_file[cell_data_label + '/' + dataset].attrs[attrs]   
-                if ref_val != actual_val:
+                if not np.array_equal(ref_val,actual_val):
                     error_messages.append("Common attributes in datasets of CellData do not match")
 
         # TODO: check for the array of CrystalStructures too. However, currently crystal structure is set to cubic by default.
@@ -483,7 +483,7 @@ class TestResult:
         for attrs in ['AttributeMatrixType','TupleDimensions']:
             ref_val = ref_file[ensemble_label].attrs[attrs]   
             actual_val = results_file[ensemble_label].attrs[attrs]   
-            if ref_val != actual_val:
+            if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Attributes of CellEnsembleData do not match")
 
         # check attributes of the data in ensemble matrix
@@ -492,20 +492,20 @@ class TestResult:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
                 ref_value = ref_file['DataContainers/StatsGeneratorDataContainer/CellEnsembleData/' + dataset].attrs[attrs]
                 actual_val = results_file[ensemble_label + '/' + dataset].attrs[attrs]
-                if ref_val != actual_val:
-                    error_messages.append("Attributes of datasets within CellEnsembleData do not match")
+                if not np.array_equal(ref_value,actual_val):
+                    error_messages.append(f'Attributes of {dataset}s within CellEnsembleData do not match for this {attrs}')
 
         # check geometry data
         for dataset in ['DIMENSIONS','ORIGIN','SPACING']:
             results_val = np.array(results_file[geom_label + '/' + dataset]) 
             ref_val = np.array(ref_file[geom_label + '/' + dataset])
-            if not np.array_equal(results_val,ref_val):
+            if not np.array_equal(ref_val,actual_val):
                 error_messages.append(f'The {dataset} values are incorrect')
 
         for attrs in ['GeometryName','GeometryTypeName','GeometryType','SpatialDimensionality','UnitDimensionality']:
             ref_value = ref_file[geom_label].attrs[attrs]
             actual_val = results_file[geom_label].attrs[attrs]
-            if ref_val != actual_val:
+            if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Geometry attributes do not match")
         
         assert not error_messages
