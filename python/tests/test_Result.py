@@ -499,13 +499,13 @@ class TestResult:
         for dataset in ['DIMENSIONS','ORIGIN','SPACING']:
             results_val = np.array(results_file[geom_label + '/' + dataset]) 
             ref_val = np.array(ref_file[geom_label + '/' + dataset])
-            if not np.array_equal(ref_val,actual_val):
+            if not np.array_equal(ref_val,results_val):
                 error_messages.append(f'The {dataset} values are incorrect')
 
         for attrs in ['GeometryName','GeometryTypeName','GeometryType','SpatialDimensionality','UnitDimensionality']:
             ref_value = ref_file[geom_label].attrs[attrs]
             actual_val = results_file[geom_label].attrs[attrs]
-            if not np.array_equal(ref_val,actual_val):
+            if not np.array_equal(ref_value,actual_val):
                 error_messages.append("Geometry attributes do not match")
         
         assert not error_messages

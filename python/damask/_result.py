@@ -1944,32 +1944,31 @@ class Result:
 
                 v.save(vtk_dir/f'{self.fname.stem}_inc{inc.split(prefix_inc)[-1].zfill(N_digits)}',
                        parallel=parallel)
-                       
+
     def export_DREAM3D(self,
                        target_dir: Union[None, str, Path] = None):
         """
-        Export the visible components to DREAM3D compatible files. 
-        
+        Export the visible components to DREAM3D compatible files.
+
         One DREAM3D file per visible increment is created.
-        The DREAM3D file is based on HDF5 file format. 
-        Without any regridding. 
-        Considers the original grid from DAMASK. 
-        Needs orientation data, O, present in the file. 
-        
+        The DREAM3D file is based on HDF5 file format.
+        Without any regridding.
+        Considers the original grid from DAMASK.
+        Needs orientation data, O, present in the file.
+
         Parameters
         ----------
         target_dir : str or pathlib.Path, optional
             Directory to save DREAM3D files. Will be created if non-existent.
+
         """
-        Crystal_structures = {'fcc': 1,
-                              'bcc': 1,
-                              'hcp': 0,
-                              'bct': 7,
-                              'ort': 6} #TODO: is bct Tetragonal low/Tetragonal high?
-        Phase_types = {'Primary': 0} #further additions to these can be done by looking at 'Create Ensemble Info' filter, other options could be 'Precipitate' and so on. 
+        Phase_types = {'Primary': 0}
+        #further additions to these can be done by looking at 'Create Ensemble Info' filter
+        # other options could be 'Precipitate' and so on.
+        # also crystal structures be added in a similar way
 
         dx = self.size/self.cells
-        
+
         at_cell_ph,in_data_ph,at_cell_ho,in_data_ho = self._mappings()
 
         dream_dir = Path.cwd() if target_dir is None else Path(target_dir)
@@ -1984,29 +1983,29 @@ class Result:
                         try:
                             data = ma.array(_read(f['/'.join([inc,'phase',label,'mechanical/O'])]))
                             cell_orientation_array[at_cell_ph[c][label],:] = \
-                                Rotation(data[in_data_ph[c][label],:]).as_Euler_angles()   
+                                Rotation(data[in_data_ph[c][label],:]).as_Euler_angles()
                             # Dream3D handles euler angles better
-                        except ValueError: #check if the exception is correct
+                        except ValueError:
                             print("Orientation data is not present")
-                            exit()  # need to check if such a statement would really work. 
+                            exit()  # need to check if such a statement would really work.
 
-                        phase_ID_array[at_cell_ph[c][label]] = count + 1  
+                        phase_ID_array[at_cell_ph[c][label]] = count + 1
 
-                job_file_no_ext = self.fname.stem 
+                job_file_no_ext = self.fname.stem
                 o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3d','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
 
                 for g in ['DataContainerBundles','Pipeline']: # empty groups (needed)
                   o.create_group(g)
-    
-                data_container_label = 'DataContainers/SyntheticVolumeDataContainer'        
+
+                data_container_label = 'DataContainers/SyntheticVolumeDataContainer'
                 cell_data_label      = data_container_label + '/CellData'
 
                 # Data phases
                 o[cell_data_label + '/Phases'] = np.reshape(phase_ID_array, \
                                                             tuple(np.flip(self.cells))+(1,))
-    
+
                 # Data eulers
                 orientation_data = cell_orientation_array.astype(np.float32)
                 o[cell_data_label + '/EulerAngles'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
@@ -2024,20 +2023,22 @@ class Result:
                 o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
                 o[cell_data_label + '/Phases'].attrs['ObjectType']          = 'DataArray<int32_t>'
                 o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
-        
+
                 # Eulers attributes
                 o[cell_data_label + '/EulerAngles'].attrs['ComponentDimensions'] = np.array([3],np.uint64)
-                o[cell_data_label + '/EulerAngles'].attrs['ObjectType']          = 'DataArray<float>'        
+                o[cell_data_label + '/EulerAngles'].attrs['ObjectType']          = 'DataArray<float>'
                 o[cell_data_label + '/EulerAngles'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
-    
+
                 # Create EnsembleAttributeMatrix
                 ensemble_label = data_container_label + '/CellEnsembleData'
-    
+
                 # Data CrystalStructures
                 o[ensemble_label + '/CrystalStructures'] = np.uint32(np.array([999] + [1]*len(self.phases)))
                 # assuming only cubic crystal structures
-                # Damask can give the crystal structure info but need to look into dream3d which crystal structure corresponds to which number
-                o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases))).reshape((len(self.phases)+1,1))
+                # Damask can give the crystal structure info
+                # but need to look into dream3d which crystal structure corresponds to which number
+                o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999] + [Phase_types['Primary']]*len(self.phases)))\
+                                                                                        .reshape((len(self.phases)+1,1))
                 # also assuming Primary phases
                 # there can be precipitates etc as well
                 # Attributes Ensemble Matrix
@@ -2054,23 +2055,16 @@ class Result:
 
                 # Create geometry info
                 geom_label = data_container_label + '/_SIMPL_GEOMETRY'
-        
+
                 o[geom_label + '/DIMENSIONS'] = np.int64(np.array(self.cells))
                 o[geom_label + '/ORIGIN']     = np.float32(np.zeros(3))
                 o[geom_label + '/SPACING']    = np.float32(dx)
 
                 o[geom_label].attrs['GeometryName']     = 'ImageGeometry'
                 o[geom_label].attrs['GeometryTypeName'] = 'ImageGeometry'
-                o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32) 
-                o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32) 
-                o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32) 
-
-
-
-
-
-
-
+                o[geom_label].attrs['GeometryType']          = np.array([0],np.uint32)
+                o[geom_label].attrs['SpatialDimensionality'] = np.array([3],np.uint32)
+                o[geom_label].attrs['UnitDimensionality']    = np.array([3],np.uint32)
 
     def export_DADF5(self,
                      fname,
