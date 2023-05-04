@@ -15,4 +15,4 @@ loadstep:
     discretization:
       t: 10
       N: 40
-    f_out: 40 
+    f_out: 40

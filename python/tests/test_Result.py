@@ -440,12 +440,12 @@ class TestResult:
         result.export_DREAM3D(target_dir=tmp_path)
 
         ref_file = h5py.File(ref_path/'2phase_irregularGrid.dream3d','r')
-        job_file_no_ext = result.fname.stem 
+        job_file_no_ext = result.fname.stem
         results_file = h5py.File(tmp_path/f'{job_file_no_ext}_increment_0.dream3d','r')
 
         error_messages = []
 
-        data_container_label = 'DataContainers/SyntheticVolumeDataContainer'        
+        data_container_label = 'DataContainers/SyntheticVolumeDataContainer'
         cell_data_label      = data_container_label + '/CellData'
         ensemble_label = data_container_label + '/CellEnsembleData'
         geom_label = data_container_label + '/_SIMPL_GEOMETRY'
@@ -462,7 +462,7 @@ class TestResult:
         if not np.allclose(results_eulers,ref_eulers,atol=1E-06):
             error_messages.append('Euler angles array does not match')
 
-        # check CellData group attributes 
+        # check CellData group attributes
         for attrs in ['AttributeMatrixType','TupleDimensions']:
             ref_val = ref_file[cell_data_label].attrs[attrs]
             actual_val = results_file[cell_data_label].attrs[attrs]
@@ -472,8 +472,8 @@ class TestResult:
         # Common Attributes for groups in CellData
         for dataset in ['/Phases','/EulerAngles']:
             for attrs in ['DataArrayVersion','Tuple Axis Dimensions','ComponentDimensions','ObjectType','TupleDimensions']:
-                ref_val = ref_file[cell_data_label + '/' + dataset].attrs[attrs]   
-                actual_val = results_file[cell_data_label + '/' + dataset].attrs[attrs]   
+                ref_val = ref_file[cell_data_label + '/' + dataset].attrs[attrs]
+                actual_val = results_file[cell_data_label + '/' + dataset].attrs[attrs]
                 if not np.array_equal(ref_val,actual_val):
                     error_messages.append("Common attributes in datasets of CellData do not match")
 
@@ -481,8 +481,8 @@ class TestResult:
         # TODO: check for the array of PhaseTypes too. However, currently phase is assumed Primary by default.
         # check attributes ensemble matrix
         for attrs in ['AttributeMatrixType','TupleDimensions']:
-            ref_val = ref_file[ensemble_label].attrs[attrs]   
-            actual_val = results_file[ensemble_label].attrs[attrs]   
+            ref_val = ref_file[ensemble_label].attrs[attrs]
+            actual_val = results_file[ensemble_label].attrs[attrs]
             if not np.array_equal(ref_val,actual_val):
                 error_messages.append("Attributes of CellEnsembleData do not match")
 
@@ -497,7 +497,7 @@ class TestResult:
 
         # check geometry data
         for dataset in ['DIMENSIONS','ORIGIN','SPACING']:
-            results_val = np.array(results_file[geom_label + '/' + dataset]) 
+            results_val = np.array(results_file[geom_label + '/' + dataset])
             ref_val = np.array(ref_file[geom_label + '/' + dataset])
             if not np.array_equal(ref_val,results_val):
                 error_messages.append(f'The {dataset} values are incorrect')
@@ -507,7 +507,7 @@ class TestResult:
             actual_val = results_file[geom_label].attrs[attrs]
             if not np.array_equal(ref_value,actual_val):
                 error_messages.append("Geometry attributes do not match")
-        
+
         assert not error_messages
 
     def test_XDMF_datatypes(self,tmp_path,single_phase,update,ref_path):

@@ -4,156 +4,156 @@ homogenization:
     mechanical: {type: pass}
 
 material:
-- constituents:
-  - phase: Matrix
-    O: [0.8187747463221231, -0.08229869824739107, -0.23862386376219033, 0.5156486116486025]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.00779831139193156, 0.7057005186849878, 0.4364671152861853, -0.5580523465956659]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.763519780435354, -0.6341076355496138, -0.02362571418162295, -0.11994530858285005]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.12614487663761753, -0.8035237781612357, 0.25955390004292433, -0.5206426615252359]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.48292196055798753, -0.30383592620213656, -0.8207195717084866, -0.02982439562435001]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.1452072201906719, 0.7407701788901938, 0.1287976412080835, -0.6431061909908207]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.5316733275631504, 0.7576742409600085, -0.2279332109770712, -0.3021583503351908]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.012530734285763205, -0.8421540617546023, 0.36033136071804023, -0.4009748464075655]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.3514389344252332, 0.8568665179478536, -0.17341773236704325, -0.3349578121057187]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.76356540695731, -0.3617980794479095, -0.43846188228764454, -0.3063024596484616]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.9095149225033018, -0.19373544305446247, 0.22396846149682248, 0.2916972953303654]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.970610319121379, -0.13311785615618685, 0.11180707998050228, -0.16641641040987878]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.6287688081865394, -0.6302336350205486, -0.3761307109109609, 0.2568677470023825]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.12531050713142944, 0.19657688811579793, 0.6027691849279488, 0.7631016403877463]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.18259170951798273, -0.31054301971972864, 0.8072489897893745, -0.46751723925721395]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.4168282152811351, -0.5768096639037343, -0.7024973683589526, -0.006503692916398199]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.05471025301089859, -0.268817424064983, -0.6917019637366119, 0.6680511762563296]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.13569225124175605, -0.09630046286744257, 0.7749305390613668, 0.6097511733769111]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.08841126630455641, -0.7157581775246106, -0.5306029868829643, 0.44534722364459606]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.829829557415482, 0.42749665734836506, -0.33483536599612435, 0.12850988784463693]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.777231609910349, 0.32977105742045876, 0.085330226652726, -0.5290376420098611]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.6146318348936916, -0.42410349858615193, -0.5078633108637103, 0.42946337154727193]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.7875431634281553, -0.2145125018495351, 0.11484062958440554, 0.5661905881277826]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.0073874257920942465, -0.6809023239643809, -0.3622565714334207, 0.636464946099449]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.4869613101239914, -0.7794418563496424, -0.15730145456933006, 0.3613797551093897]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.026777372910297224, -0.6567053919161102, -0.7129731040925348, -0.24431609314366995]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Precipitate
-    O: [0.7446524239501089, 0.09381317531371008, -0.06467616066163769, -0.6576540503067374]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.3999921641350174, -0.8372033940679338, -0.2294372785031889, -0.29403278868991367]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.30872213423241257, -0.6538189159753086, 0.6905797899219358, -0.017635835654472017]
-    v: 1.0
-  homogenization: direct
-- constituents:
-  - phase: Matrix
-    O: [0.20977668146688438, 0.8051532219239168, -0.03830522823579576, 0.5534028755148287]
-    v: 1.0
-  homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.8187747463221231, -0.08229869824739107, -0.23862386376219033, 0.5156486116486025]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.00779831139193156, 0.7057005186849878, 0.4364671152861853, -0.5580523465956659]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.763519780435354, -0.6341076355496138, -0.02362571418162295, -0.11994530858285005]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.12614487663761753, -0.8035237781612357, 0.25955390004292433, -0.5206426615252359]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.48292196055798753, -0.30383592620213656, -0.8207195717084866, -0.02982439562435001]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.1452072201906719, 0.7407701788901938, 0.1287976412080835, -0.6431061909908207]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.5316733275631504, 0.7576742409600085, -0.2279332109770712, -0.3021583503351908]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.012530734285763205, -0.8421540617546023, 0.36033136071804023, -0.4009748464075655]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.3514389344252332, 0.8568665179478536, -0.17341773236704325, -0.3349578121057187]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.76356540695731, -0.3617980794479095, -0.43846188228764454, -0.3063024596484616]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.9095149225033018, -0.19373544305446247, 0.22396846149682248, 0.2916972953303654]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.970610319121379, -0.13311785615618685, 0.11180707998050228, -0.16641641040987878]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.6287688081865394, -0.6302336350205486, -0.3761307109109609, 0.2568677470023825]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.12531050713142944, 0.19657688811579793, 0.6027691849279488, 0.7631016403877463]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.18259170951798273, -0.31054301971972864, 0.8072489897893745, -0.46751723925721395]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.4168282152811351, -0.5768096639037343, -0.7024973683589526, -0.006503692916398199]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.05471025301089859, -0.268817424064983, -0.6917019637366119, 0.6680511762563296]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.13569225124175605, -0.09630046286744257, 0.7749305390613668, 0.6097511733769111]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.08841126630455641, -0.7157581775246106, -0.5306029868829643, 0.44534722364459606]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.829829557415482, 0.42749665734836506, -0.33483536599612435, 0.12850988784463693]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.777231609910349, 0.32977105742045876, 0.085330226652726, -0.5290376420098611]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.6146318348936916, -0.42410349858615193, -0.5078633108637103, 0.42946337154727193]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.7875431634281553, -0.2145125018495351, 0.11484062958440554, 0.5661905881277826]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.0073874257920942465, -0.6809023239643809, -0.3622565714334207, 0.636464946099449]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.4869613101239914, -0.7794418563496424, -0.15730145456933006, 0.3613797551093897]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.026777372910297224, -0.6567053919161102, -0.7129731040925348, -0.24431609314366995]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Precipitate
+        O: [0.7446524239501089, 0.09381317531371008, -0.06467616066163769, -0.6576540503067374]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.3999921641350174, -0.8372033940679338, -0.2294372785031889, -0.29403278868991367]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.30872213423241257, -0.6538189159753086, 0.6905797899219358, -0.017635835654472017]
+        v: 1.0
+    homogenization: direct
+  - constituents:
+      - phase: Matrix
+        O: [0.20977668146688438, 0.8051532219239168, -0.03830522823579576, 0.5534028755148287]
+        v: 1.0
+    homogenization: direct
 
 phase:
   Matrix:
@@ -178,4 +178,3 @@ phase:
     mechanical:
       output: [F, P, F_e, F_p, L_p, O]
       elastic: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: Hooke}
-
