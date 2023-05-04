@@ -439,9 +439,9 @@ class TestResult:
         result = Result(ref_path/fname).view(increments=0)  #comparing the initial data only
         result.export_VTK(target_dir=tmp_path)
 
-        ref_file = h5py.File(ref_path/'2phase_irregularGrid.dream3D','r')
+        ref_file = h5py.File(ref_path/'2phase_irregularGrid.dream3d','r')
         job_file_no_ext = result.fname.stem 
-        results_file = h5py.File(tmp_path/f'{job_file_no_ext}_increment_0.dream3D','r')
+        results_file = h5py.File(tmp_path/f'{job_file_no_ext}_increment_0.dream3d','r')
 
         error_messages = []
 

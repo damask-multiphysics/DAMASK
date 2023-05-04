@@ -1993,7 +1993,7 @@ class Result:
                         phase_ID_array[at_cell_ph[c][label]] = count + 1  
 
                 job_file_no_ext = self.fname.stem 
-                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3D','w')
+                o = h5py.File(f'{dream_dir}/{job_file_no_ext}_{inc}.dream3d','w')
                 o.attrs['DADF5toDREAM3D'] = '1.0'
                 o.attrs['FileVersion']    = '7.0'
 
@@ -2009,14 +2009,14 @@ class Result:
     
                 # Data eulers
                 orientation_data = cell_orientation_array.astype(np.float32)
-                o[cell_data_label + '/EulersAngles'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
+                o[cell_data_label + '/EulerAngles'] = orientation_data.reshape(tuple(np.flip(self.cells))+(3,))
 
                 # Attributes to CellData group
                 o[cell_data_label].attrs['AttributeMatrixType'] = np.array([3],np.uint32)
                 o[cell_data_label].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
 
                 # Common Attributes for groups in CellData
-                for dataset in ['/Phases','/Eulers']:
+                for dataset in ['/Phases','/EulerAngles']:
                   o[cell_data_label + dataset].attrs['DataArrayVersion']      = np.array([2],np.int32)
                   o[cell_data_label + dataset].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*np.array(self.cells))
 
@@ -2026,9 +2026,9 @@ class Result:
                 o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
         
                 # Eulers attributes
-                o[cell_data_label + '/Eulers'].attrs['ComponentDimensions'] = np.array([3],np.uint64)
-                o[cell_data_label + '/Eulers'].attrs['ObjectType']          = 'DataArray<float>'        
-                o[cell_data_label + '/Eulers'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
+                o[cell_data_label + '/EulerAngles'].attrs['ComponentDimensions'] = np.array([3],np.uint64)
+                o[cell_data_label + '/EulerAngles'].attrs['ObjectType']          = 'DataArray<float>'        
+                o[cell_data_label + '/EulerAngles'].attrs['TupleDimensions']     = np.array(self.cells,np.uint64)
     
                 # Create EnsembleAttributeMatrix
                 ensemble_label = data_container_label + '/CellEnsembleData'
