@@ -1,5 +1,4 @@
 import bz2
-from ftplib import error_temp
 import pickle
 import time
 import shutil
@@ -9,7 +8,6 @@ import hashlib
 import fnmatch
 import random
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 import vtk
