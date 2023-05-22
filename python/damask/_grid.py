@@ -317,6 +317,11 @@ class Grid:
         loaded : damask.Grid
             Grid-based geometry from file.
 
+        Notes
+        -----
+        Material indices in Neper usually start at 1 unless
+        a buffer material with index 0 is added.
+
         Examples
         --------
         Read a periodic polycrystal generated with Neper.
@@ -325,7 +330,7 @@ class Grid:
         >>> N_grains = 20
         >>> cells = (32,32,32)
         >>> damask.util.run(f'neper -T -n {N_grains} -tesrsize {cells[0]}:{cells[1]}:{cells[2]} -periodicity all -format vtk')
-        >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk')
+        >>> damask.Grid.load_Neper(f'n{N_grains}-id1.vtk').renumber()
         cells:  32 × 32 × 32
         size:   1.0 × 1.0 × 1.0 m³
         origin: 0.0   0.0   0.0 m
@@ -336,7 +341,7 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return Grid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe') - 1,
+        return Grid(material = v.get('MaterialId').reshape(cells,order='F').astype('int32',casting='unsafe'),
                     size     = bbox[1] - bbox[0],
                     origin   = bbox[0],
                     comments = util.execution_stamp('Grid','load_Neper'),
