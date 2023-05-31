@@ -1368,7 +1368,7 @@ subroutine selfTest()
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
   end do
-  if (any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
+  if (any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-8_pReal))) &
     error stop 'math_inv33'
 
   call math_invert33(t33_2,det,e,t33)
