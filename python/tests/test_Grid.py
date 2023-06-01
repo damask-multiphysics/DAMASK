@@ -501,7 +501,7 @@ class TestGrid:
         assert current == reference
 
     def test_load_Neper_reference(self,res_path,update):
-        current   = Grid.load_Neper(res_path/'n10-id1_scaled.vtk')
+        current   = Grid.load_Neper(res_path/'n10-id1_scaled.vtk').renumber()
         reference = Grid.load(res_path/'n10-id1_scaled.vti')
         if update:
             current.save(res_path/'n10-id1_scaled.vti')
