@@ -109,9 +109,9 @@ module subroutine thermal_init(phases)
       print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
       refs = config_listReferences(thermal,indent=3)
       if (len(refs) > 0) print'(/,1x,a)', refs
-      param(ph)%C_p = thermal%get_asFloat('C_p')
-      param(ph)%K(1,1) = thermal%get_asFloat('K_11')
-      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asFloat('K_33')
+      param(ph)%C_p = thermal%get_asReal('C_p')
+      param(ph)%K(1,1) = thermal%get_asReal('K_11')
+      if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asReal('K_33')
       param(ph)%K = lattice_symmetrize_33(param(ph)%K,phase_lattice(ph))
 
 #if defined(__GFORTRAN__)

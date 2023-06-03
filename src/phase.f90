@@ -402,8 +402,8 @@ subroutine phase_init
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
       call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
     if (any(phase_lattice(ph) == ['hP','tI'])) &
-      phase_cOverA(ph) = phase%get_asFloat('c/a')
-    phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
+      phase_cOverA(ph) = phase%get_asReal('c/a')
+    phase_rho(ph) = phase%get_asReal('rho',defaultVal=0.0_pReal)
     allocate(phase_O_0(ph)%data(count(material_ID_phase==ph)))
   end do
 
@@ -538,17 +538,17 @@ subroutine crystallite_init()
 
   num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
-  num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
-  num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
-  num%stepIncreaseCryst      = num_crystallite%get_asFloat ('stepIncrease',     defaultVal=1.5_pReal)
-  num%subStepSizeLp          = num_crystallite%get_asFloat ('subStepSizeLp',    defaultVal=0.5_pReal)
-  num%subStepSizeLi          = num_crystallite%get_asFloat ('subStepSizeLi',    defaultVal=0.5_pReal)
-  num%rtol_crystalliteState  = num_crystallite%get_asFloat ('rtol_State',       defaultVal=1.0e-6_pReal)
-  num%rtol_crystalliteStress = num_crystallite%get_asFloat ('rtol_Stress',      defaultVal=1.0e-6_pReal)
-  num%atol_crystalliteStress = num_crystallite%get_asFloat ('atol_Stress',      defaultVal=1.0e-8_pReal)
-  num%iJacoLpresiduum        = num_crystallite%get_asInt   ('iJacoLpresiduum',  defaultVal=1)
-  num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
-  num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
+  num%subStepMinCryst        = num_crystallite%get_asReal ('subStepMin',       defaultVal=1.0e-3_pReal)
+  num%subStepSizeCryst       = num_crystallite%get_asReal ('subStepSize',      defaultVal=0.25_pReal)
+  num%stepIncreaseCryst      = num_crystallite%get_asReal ('stepIncrease',     defaultVal=1.5_pReal)
+  num%subStepSizeLp          = num_crystallite%get_asReal ('subStepSizeLp',    defaultVal=0.5_pReal)
+  num%subStepSizeLi          = num_crystallite%get_asReal ('subStepSizeLi',    defaultVal=0.5_pReal)
+  num%rtol_crystalliteState  = num_crystallite%get_asReal ('rtol_State',       defaultVal=1.0e-6_pReal)
+  num%rtol_crystalliteStress = num_crystallite%get_asReal ('rtol_Stress',      defaultVal=1.0e-6_pReal)
+  num%atol_crystalliteStress = num_crystallite%get_asReal ('atol_Stress',      defaultVal=1.0e-8_pReal)
+  num%iJacoLpresiduum        = num_crystallite%get_asInt  ('iJacoLpresiduum',  defaultVal=1)
+  num%nState                 = num_crystallite%get_asInt  ('nState',           defaultVal=20)
+  num%nStress                = num_crystallite%get_asInt  ('nStress',          defaultVal=40)
 
   extmsg = ''
   if (num%subStepMinCryst   <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepMinCryst'

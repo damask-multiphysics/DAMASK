@@ -108,8 +108,8 @@ module subroutine damage_init()
       refs = config_listReferences(source,indent=3)
       if (len(refs) > 0) print'(/,1x,a)', refs
       damage_active = .true.
-      param(ph)%mu = source%get_asFloat('mu')
-      param(ph)%l_c = source%get_asFloat('l_c')
+      param(ph)%mu = source%get_asReal('mu')
+      param(ph)%l_c = source%get_asReal('l_c')
     end if
 
   end do

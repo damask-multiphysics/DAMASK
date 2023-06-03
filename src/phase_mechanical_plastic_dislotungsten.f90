@@ -151,7 +151,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dReal('a_nonSchmid',defaultVal = emptyRealArray)
         prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -159,30 +159,30 @@ module function plastic_dislotungsten_init() result(myPlasticity)
         prm%P_nS_neg = prm%P_sl
       end if
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),&
                                                            phase_cOverA(ph))
       prm%forestProjection = transpose(prm%forestProjection)
 
-      rho_mob_0       = pl%get_as1dFloat('rho_mob_0',     requiredSize=size(N_sl))
-      rho_dip_0       = pl%get_as1dFloat('rho_dip_0',     requiredSize=size(N_sl))
-      prm%b_sl        = pl%get_as1dFloat('b_sl',          requiredSize=size(N_sl))
-      prm%Q_s         = pl%get_as1dFloat('Q_s',           requiredSize=size(N_sl))
+      rho_mob_0       = pl%get_as1dReal('rho_mob_0',     requiredSize=size(N_sl))
+      rho_dip_0       = pl%get_as1dReal('rho_dip_0',     requiredSize=size(N_sl))
+      prm%b_sl        = pl%get_as1dReal('b_sl',          requiredSize=size(N_sl))
+      prm%Q_s         = pl%get_as1dReal('Q_s',           requiredSize=size(N_sl))
 
-      prm%i_sl        = pl%get_as1dFloat('i_sl',          requiredSize=size(N_sl))
-      prm%tau_Peierls = pl%get_as1dFloat('tau_Peierls',   requiredSize=size(N_sl))
-      prm%p           = pl%get_as1dFloat('p_sl',          requiredSize=size(N_sl))
-      prm%q           = pl%get_as1dFloat('q_sl',          requiredSize=size(N_sl))
-      prm%h           = pl%get_as1dFloat('h',             requiredSize=size(N_sl))
-      prm%w           = pl%get_as1dFloat('w',             requiredSize=size(N_sl))
-      prm%omega       = pl%get_as1dFloat('omega',         requiredSize=size(N_sl))
-      prm%B           = pl%get_as1dFloat('B',             requiredSize=size(N_sl))
+      prm%i_sl        = pl%get_as1dReal('i_sl',          requiredSize=size(N_sl))
+      prm%tau_Peierls = pl%get_as1dReal('tau_Peierls',   requiredSize=size(N_sl))
+      prm%p           = pl%get_as1dReal('p_sl',          requiredSize=size(N_sl))
+      prm%q           = pl%get_as1dReal('q_sl',          requiredSize=size(N_sl))
+      prm%h           = pl%get_as1dReal('h',             requiredSize=size(N_sl))
+      prm%w           = pl%get_as1dReal('w',             requiredSize=size(N_sl))
+      prm%omega       = pl%get_as1dReal('omega',         requiredSize=size(N_sl))
+      prm%B           = pl%get_as1dReal('B',             requiredSize=size(N_sl))
 
-      prm%D    = pl%get_asFloat('D')
-      prm%D_0  = pl%get_asFloat('D_0')
-      prm%Q_cl = pl%get_asFloat('Q_cl')
-      prm%f_at = pl%get_asFloat('f_at') * prm%b_sl**3
+      prm%D    = pl%get_asReal('D')
+      prm%D_0  = pl%get_asReal('D_0')
+      prm%Q_cl = pl%get_asReal('Q_cl')
+      prm%f_at = pl%get_asReal('f_at') * prm%b_sl**3
 
       prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
@@ -200,7 +200,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       prm%B              = math_expand(prm%B,           N_sl)
       prm%i_sl           = math_expand(prm%i_sl,        N_sl)
       prm%f_at           = math_expand(prm%f_at,        N_sl)
-      prm%d_caron        = pl%get_asFloat('D_a') * prm%b_sl
+      prm%d_caron        = pl%get_asReal('D_a') * prm%b_sl
 
       ! sanity checks
       if (    prm%D_0          <  0.0_pReal)  extmsg = trim(extmsg)//' D_0'
@@ -239,7 +239,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     idx_dot%rho_mob = [startIndex,endIndex]
     stt%rho_mob => plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_mob =  spread(rho_mob_0,2,Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
@@ -247,13 +247,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     idx_dot%rho_dip = [startIndex,endIndex]
     stt%rho_dip => plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_dip =  spread(rho_dip_0,2,Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%gamma_sl = [startIndex,endIndex]
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pReal)

@@ -61,7 +61,7 @@ module function dissipation_init(source_length) result(mySources)
           refs = config_listReferences(src,indent=3)
           if (len(refs) > 0) print'(/,1x,a)', refs
 
-          prm%kappa = src%get_asFloat('kappa')
+          prm%kappa = src%get_asReal('kappa')
           Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 

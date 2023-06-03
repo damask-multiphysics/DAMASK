@@ -216,11 +216,11 @@ subroutine cellsSizeOrigin(c,s,o,header)
   c = [(IO_intValue(temp,IO_stringPos(temp),i),i=2,6,2)]
 
   temp = getXMLValue(header,'Spacing')
-  delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+  delta = [(IO_realValue(temp,IO_stringPos(temp),i),i=1,3)]
   s = delta * real(c,pReal)
 
   temp = getXMLValue(header,'Origin')
-  o = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+  o = [(IO_realValue(temp,IO_stringPos(temp),i),i=1,3)]
 
 end subroutine cellsSizeOrigin
 

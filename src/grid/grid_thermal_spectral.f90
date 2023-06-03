@@ -92,9 +92,9 @@ subroutine grid_thermal_spectral_init()
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
-  num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
-  num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
-  num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
+  num%itmax            = num_grid%get_asInt ('itmax',           defaultVal=250)
+  num%eps_thermal_atol = num_grid%get_asReal('eps_thermal_atol',defaultVal=1.0e-2_pReal)
+  num%eps_thermal_rtol = num_grid%get_asReal('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
 
   if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
   if (num%eps_thermal_atol <= 0.0_pReal) call IO_error(301,ext_msg='eps_thermal_atol')

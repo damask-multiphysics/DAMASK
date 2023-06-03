@@ -20,13 +20,13 @@ module FEM_quadrature
                            -1.0_pReal,  1.0_pReal, -1.0_pReal, &
                            -1.0_pReal, -1.0_pReal,  1.0_pReal], shape=[3,4])
 
-  type :: group_float                                                                               !< variable length datatype
+  type :: group_real                                                                               !< variable length datatype
     real(pReal), dimension(:), allocatable :: p
-  end type group_float
+  end type group_real
 
   integer,             dimension(2:3,maxOrder), public, protected :: &
     FEM_nQuadrature                                                                                 !< number of quadrature points for spatial dimension(2-3) and interpolation order (1-maxOrder)
-  type(group_float),   dimension(2:3,maxOrder), public, protected :: &
+  type(group_real),   dimension(2:3,maxOrder), public, protected :: &
     FEM_quadrature_weights, &                                                                       !< quadrature weights for each quadrature rule
     FEM_quadrature_points                                                                           !< quadrature point coordinates (in simplical system) for each quadrature rule
 

@@ -75,7 +75,7 @@ function table_from_dict(dict,x_label,y_label) result(t)
   type(tTable) :: t
 
 
-  t = tTable(dict%get_as1dFloat(x_label),dict%get_as1dFloat(y_label))
+  t = tTable(dict%get_as1dReal(x_label),dict%get_as1dReal(y_label))
 
 end function table_from_dict
 

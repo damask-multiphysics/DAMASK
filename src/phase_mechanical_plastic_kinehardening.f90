@@ -142,7 +142,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%P = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dFloat('a_nonSchmid',defaultVal=emptyRealArray)
+        a = pl%get_as1dReal('a_nonSchmid',defaultVal=emptyRealArray)
         prm%nonSchmidActive = size(a) > 0
         prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
@@ -150,19 +150,19 @@ module function plastic_kinehardening_init() result(myPlasticity)
         prm%P_nS_pos = prm%P
         prm%P_nS_neg = prm%P
       end if
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
-      xi_0          = pl%get_as1dFloat('xi_0',      requiredSize=size(N_sl))
-      prm%xi_inf    = pl%get_as1dFloat('xi_inf',    requiredSize=size(N_sl))
-      prm%chi_inf   = pl%get_as1dFloat('chi_inf',   requiredSize=size(N_sl))
-      prm%h_0_xi    = pl%get_as1dFloat('h_0_xi',    requiredSize=size(N_sl))
-      prm%h_0_chi   = pl%get_as1dFloat('h_0_chi',   requiredSize=size(N_sl))
-      prm%h_inf_xi  = pl%get_as1dFloat('h_inf_xi',  requiredSize=size(N_sl))
-      prm%h_inf_chi = pl%get_as1dFloat('h_inf_chi', requiredSize=size(N_sl))
+      xi_0          = pl%get_as1dReal('xi_0',      requiredSize=size(N_sl))
+      prm%xi_inf    = pl%get_as1dReal('xi_inf',    requiredSize=size(N_sl))
+      prm%chi_inf   = pl%get_as1dReal('chi_inf',   requiredSize=size(N_sl))
+      prm%h_0_xi    = pl%get_as1dReal('h_0_xi',    requiredSize=size(N_sl))
+      prm%h_0_chi   = pl%get_as1dReal('h_0_chi',   requiredSize=size(N_sl))
+      prm%h_inf_xi  = pl%get_as1dReal('h_inf_xi',  requiredSize=size(N_sl))
+      prm%h_inf_chi = pl%get_as1dReal('h_inf_chi', requiredSize=size(N_sl))
 
-      prm%dot_gamma_0  = pl%get_asFloat('dot_gamma_0')
-      prm%n            = pl%get_asFloat('n')
+      prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
+      prm%n           = pl%get_asReal('n')
 
       ! expand: family => system
       xi_0          = math_expand(xi_0,          N_sl)
@@ -208,20 +208,20 @@ module function plastic_kinehardening_init() result(myPlasticity)
     idx_dot%xi = [startIndex,endIndex]
     stt%xi => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi = spread(xi_0, 2, Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%chi = [startIndex,endIndex]
     stt%chi => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%gamma = [startIndex,endIndex]
     stt%gamma => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     o = plasticState(ph)%offsetDeltaState

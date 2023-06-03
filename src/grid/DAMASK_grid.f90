@@ -234,14 +234,14 @@ program DAMASK_grid
           call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
 #endif
       end select
-      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dFloat('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
+      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
     end do readMech
     if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
 
     step_discretization => load_step%get_dict('discretization')
-    loadCases(l)%t = step_discretization%get_asFloat('t')
+    loadCases(l)%t = step_discretization%get_asReal('t')
     loadCases(l)%N = step_discretization%get_asInt  ('N')
-    loadCases(l)%r = step_discretization%get_asFloat('r',defaultVal= 1.0_pReal)
+    loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
     if (load_step%get_asString('f_out',defaultVal='n/a') == 'none') then
@@ -526,7 +526,7 @@ subroutine getMaskedTensor(values,mask,tensor)
     row => tensor%get_list(i)
     do j = 1,3
       mask(i,j) = row%get_asString(j) == 'x'
-      if (.not. mask(i,j)) values(i,j) = row%get_asFloat(j)
+      if (.not. mask(i,j)) values(i,j) = row%get_asReal(j)
     end do
   end do
 

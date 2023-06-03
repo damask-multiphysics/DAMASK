@@ -32,10 +32,10 @@ module YAML_types
     contains
     procedure :: &
       asFormattedString => tScalar_asFormattedString, &
-      asFloat   => tScalar_asFloat, &
-      asInt     => tScalar_asInt, &
-      asBool    => tScalar_asBool, &
-      asString  => tScalar_asString
+      asReal   => tScalar_asReal, &
+      asInt    => tScalar_asInt, &
+      asBool   => tScalar_asBool, &
+      asString => tScalar_asString
   end type tScalar
 
   type, extends(tNode), public :: tList
@@ -46,8 +46,8 @@ module YAML_types
     procedure :: &
       asFormattedString => tList_asFormattedString, &
       append            => tList_append, &
-      as1dFloat         => tList_as1dFloat, &
-      as2dFloat         => tList_as2dFloat, &
+      as1dReal          => tList_as1dReal, &
+      as2dReal          => tList_as2dReal, &
       as1dInt           => tList_as1dInt, &
       as1dBool          => tList_as1dBool, &
       as1dString        => tList_as1dString, &
@@ -56,8 +56,8 @@ module YAML_types
       tList_get_scalar, &
       tList_get_list, &
       tList_get_dict, &
-      tList_get_asFloat, &
-      tList_get_as1dFloat, &
+      tList_get_asReal, &
+      tList_get_as1dReal, &
       tList_get_asInt, &
       tList_get_as1dInt, &
       tList_get_asBool, &
@@ -68,8 +68,8 @@ module YAML_types
     generic :: get_scalar     => tList_get_scalar
     generic :: get_list       => tList_get_list
     generic :: get_dict       => tList_get_dict
-    generic :: get_asFloat    => tList_get_asFloat
-    generic :: get_as1dFloat  => tList_get_as1dFloat
+    generic :: get_asReal     => tList_get_asReal
+    generic :: get_as1dReal   => tList_get_as1dReal
     generic :: get_asInt      => tList_get_asInt
     generic :: get_as1dInt    => tList_get_as1dInt
     generic :: get_asBool     => tList_get_asBool
@@ -92,9 +92,9 @@ module YAML_types
       tDict_get_scalar, &
       tDict_get_list, &
       tDict_get_dict, &
-      tDict_get_asFloat, &
-      tDict_get_as1dFloat, &
-      tDict_get_as2dFloat, &
+      tDict_get_asReal, &
+      tDict_get_as1dReal, &
+      tDict_get_as2dReal, &
       tDict_get_asInt, &
       tDict_get_as1dInt, &
       tDict_get_asBool, &
@@ -105,9 +105,9 @@ module YAML_types
     generic :: get_scalar     => tDict_get_scalar
     generic :: get_list       => tDict_get_list
     generic :: get_dict       => tDict_get_dict
-    generic :: get_asFloat    => tDict_get_asFloat
-    generic :: get_as1dFloat  => tDict_get_as1dFloat
-    generic :: get_as2dFloat  => tDict_get_as2dFloat
+    generic :: get_asReal     => tDict_get_asReal
+    generic :: get_as1dReal   => tDict_get_as1dReal
+    generic :: get_as2dReal   => tDict_get_as2dReal
     generic :: get_asInt      => tDict_get_asInt
     generic :: get_as1dInt    => tDict_get_as1dInt
     generic :: get_asBool     => tDict_get_asBool
@@ -183,7 +183,7 @@ subroutine selfTest()
     s = '1'
     if (s%asInt() /= 1)                   error stop 'tScalar_asInt'
     if (s_pointer%asInt() /= 1)           error stop 'tScalar_asInt(pointer)'
-    if (dNeq(s%asFloat(),1.0_pReal))      error stop 'tScalar_asFloat'
+    if (dNeq(s%asReal(),1.0_pReal))       error stop 'tScalar_asReal'
     s = 'true'
     if (.not. s%asBool())                 error stop 'tScalar_asBool'
     if (.not. s_pointer%asBool())         error stop 'tScalar_asBool(pointer)'
@@ -209,11 +209,11 @@ subroutine selfTest()
     call l%append(s1)
     call l%append(s2)
     if (l%length /= 2)                                   error stop 'tList%len'
-    if (dNeq(l%get_asFloat(1),1.0_pReal))                error stop 'tList_get_asFloat'
+    if (dNeq(l%get_asReal(1),1.0_pReal))                 error stop 'tList_get_asReal'
     if (l%get_asInt(1) /= 1)                             error stop 'tList_get_asInt'
     if (l%get_asString(2) /= '2')                        error stop 'tList_get_asString'
     if (any(l%as1dInt() /= [1,2]))                       error stop 'tList_as1dInt'
-    if (any(dNeq(l%as1dFloat(),real([1.0,2.0],pReal))))  error stop 'tList_as1dFloat'
+    if (any(dNeq(l%as1dReal(),real([1.0,2.0],pReal))))   error stop 'tList_as1dReal'
     s1 = 'true'
     s2 = 'false'
     if (any(l%as1dBool() .neqv. [.true.,.false.]))       error stop 'tList_as1dBool'
@@ -253,7 +253,7 @@ subroutine selfTest()
     if (d%asFormattedString() /= '{one-two: [1, 2], three: 3, four: 4}') &
                                                          error stop 'tDict_asFormattedString'
     if (d%get_asInt('three') /= 3)                       error stop 'tDict_get_asInt'
-    if (dNeq(d%get_asFloat('three'),3.0_pReal))          error stop 'tDict_get_asFloat'
+    if (dNeq(d%get_asReal('three'),3.0_pReal))           error stop 'tDict_get_asReal'
     if (d%get_asString('three') /= '3')                  error stop 'tDict_get_asString'
     if (any(d%get_as1dInt('one-two') /= [1,2]))          error stop 'tDict_get_as1dInt'
     call d%set('one-two',s4)
@@ -371,17 +371,17 @@ end function tNode_asDict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to float.
+!> @brief Convert to real.
 !--------------------------------------------------------------------------------------------------
-function tScalar_asFloat(self)
+function tScalar_asReal(self)
 
   class(tScalar), intent(in), target :: self
-  real(pReal) :: tScalar_asFloat
+  real(pReal) :: tScalar_asReal
 
 
-  tScalar_asFloat = IO_stringAsFloat(self%value)
+  tScalar_asReal = IO_stringAsReal(self%value)
 
-end function tScalar_asFloat
+end function tScalar_asReal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -476,51 +476,51 @@ end subroutine tList_append
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to float array (1D).
+!> @brief Convert to real array (1D).
 !--------------------------------------------------------------------------------------------------
-function tList_as1dFloat(self)
+function tList_as1dReal(self)
 
   class(tList), intent(in), target :: self
-  real(pReal), dimension(:), allocatable :: tList_as1dFloat
+  real(pReal), dimension(:), allocatable :: tList_as1dReal
 
   integer :: i
   type(tItem),   pointer :: item
   type(tScalar), pointer :: scalar
 
 
-  allocate(tList_as1dFloat(self%length))
+  allocate(tList_as1dReal(self%length))
   item => self%first
   do i = 1, self%length
     scalar => item%node%asScalar()
-    tList_as1dFloat(i) = scalar%asFloat()
+    tList_as1dReal(i) = scalar%asReal()
     item => item%next
   end do
 
-end function tList_as1dFloat
+end function tList_as1dReal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Convert to float array (2D).
+!> @brief Convert to real array (2D).
 !--------------------------------------------------------------------------------------------------
-function tList_as2dFloat(self)
+function tList_as2dReal(self)
 
   class(tList), intent(in), target :: self
-  real(pReal), dimension(:,:), allocatable :: tList_as2dFloat
+  real(pReal), dimension(:,:), allocatable :: tList_as2dReal
 
   integer :: i
   type(tList), pointer :: row_data
 
 
   row_data => self%get_list(1)
-  allocate(tList_as2dFloat(self%length,row_data%length))
+  allocate(tList_as2dReal(self%length,row_data%length))
 
   do i = 1, self%length
     row_data => self%get_list(i)
-    if (row_data%length /= size(tList_as2dFloat,2)) call IO_error(709,ext_msg='inconsistent column count in tList_as2dFloat')
-    tList_as2dFloat(i,:) = self%get_as1dFloat(i)
+    if (row_data%length /= size(tList_as2dReal,2)) call IO_error(709,ext_msg='inconsistent column count in tList_as2dReal')
+    tList_as2dReal(i,:) = self%get_as1dReal(i)
   end do
 
-end function tList_as2dFloat
+end function tList_as2dReal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -718,39 +718,39 @@ end function tList_get_dict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get scalar by index and convert to float.
+!> @brief Get scalar by index and convert to real.
 !--------------------------------------------------------------------------------------------------
-function tList_get_asFloat(self,i) result(nodeAsFloat)
+function tList_get_asReal(self,i) result(nodeAsReal)
 
   class(tList), intent(in) :: self
   integer,      intent(in) :: i
-  real(pReal) :: nodeAsFloat
+  real(pReal) :: nodeAsReal
 
   class(tScalar),  pointer :: scalar
 
 
   scalar => self%get_scalar(i)
-  nodeAsFloat = scalar%asFloat()
+  nodeAsReal = scalar%asReal()
 
-end function tList_get_asFloat
+end function tList_get_asReal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get list by index and convert to float array (1D).
+!> @brief Get list by index and convert to real array (1D).
 !--------------------------------------------------------------------------------------------------
-function tList_get_as1dFloat(self,i) result(nodeAs1dFloat)
+function tList_get_as1dReal(self,i) result(nodeAs1dReal)
 
   class(tList), intent(in) :: self
   integer,      intent(in) :: i
-  real(pReal), dimension(:), allocatable :: nodeAs1dFloat
+  real(pReal), dimension(:), allocatable :: nodeAs1dReal
 
   class(tList),  pointer :: list
 
 
   list => self%get_list(i)
-  nodeAs1dFloat = list%as1dFloat()
+  nodeAs1dReal = list%as1dReal()
 
-end function tList_get_as1dFloat
+end function tList_get_as1dReal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1118,88 +1118,88 @@ end function tDict_get_dict
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get scalar by key and convert to float.
+!> @brief Get scalar by key and convert to real.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_asFloat(self,k,defaultVal) result(nodeAsFloat)
+function tDict_get_asReal(self,k,defaultVal) result(nodeAsReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
   real(pReal),      intent(in), optional :: defaultVal
-  real(pReal) :: nodeAsFloat
+  real(pReal) :: nodeAsReal
 
   type(tScalar), pointer :: scalar
 
 
   if (self%contains(k)) then
     scalar => self%get_scalar(k)
-    nodeAsFloat = scalar%asFloat()
+    nodeAsReal = scalar%asReal()
   elseif (present(defaultVal)) then
-    nodeAsFloat = defaultVal
+    nodeAsReal = defaultVal
   else
     call IO_error(143,ext_msg=k)
   end if
 
-end function tDict_get_asFloat
+end function tDict_get_asReal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get list by key and convert to float array (1D).
+!> @brief Get list by key and convert to real array (1D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dFloat(self,k,defaultVal,requiredSize) result(nodeAs1dFloat)
+function tDict_get_as1dReal(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
   real(pReal),      intent(in), dimension(:), optional :: defaultVal
   integer,          intent(in),               optional :: requiredSize
-  real(pReal), dimension(:), allocatable :: nodeAs1dFloat
+  real(pReal), dimension(:), allocatable :: nodeAs1dReal
 
   type(tList), pointer :: list
 
 
   if (self%contains(k)) then
     list => self%get_list(k)
-    nodeAs1dFloat = list%as1dFloat()
+    nodeAs1dReal = list%as1dReal()
   elseif (present(defaultVal)) then
-    nodeAs1dFloat = defaultVal
+    nodeAs1dReal = defaultVal
   else
     call IO_error(143,ext_msg=k)
   end if
 
   if (present(requiredSize)) then
-    if (requiredSize /= size(nodeAs1dFloat)) call IO_error(146,ext_msg=k)
+    if (requiredSize /= size(nodeAs1dReal)) call IO_error(146,ext_msg=k)
   end if
 
-end function tDict_get_as1dFloat
+end function tDict_get_as1dReal
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get list of lists by key and convert to float array (2D).
+!> @brief Get list of lists by key and convert to real array (2D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as2dFloat(self,k,defaultVal,requiredShape) result(nodeAs2dFloat)
+function tDict_get_as2dReal(self,k,defaultVal,requiredShape) result(nodeAs2dReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
   real(pReal),      intent(in), dimension(:,:), optional :: defaultVal
   integer,          intent(in), dimension(2),   optional :: requiredShape
-  real(pReal), dimension(:,:), allocatable :: nodeAs2dFloat
+  real(pReal), dimension(:,:), allocatable :: nodeAs2dReal
 
   type(tList), pointer :: list
 
 
   if (self%contains(k)) then
     list => self%get_list(k)
-    nodeAs2dFloat = list%as2dFloat()
+    nodeAs2dReal = list%as2dReal()
   elseif (present(defaultVal)) then
-    nodeAs2dFloat = defaultVal
+    nodeAs2dReal = defaultVal
   else
     call IO_error(143,ext_msg=k)
   end if
 
   if (present(requiredShape)) then
-    if (any(requiredShape /= shape(nodeAs2dFloat))) call IO_error(146,ext_msg=k)
+    if (any(requiredShape /= shape(nodeAs2dReal))) call IO_error(146,ext_msg=k)
   end if
 
-end function tDict_get_as2dFloat
+end function tDict_get_as2dReal
 
 
 !--------------------------------------------------------------------------------------------------

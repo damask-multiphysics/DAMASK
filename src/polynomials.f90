@@ -73,17 +73,17 @@ function polynomial_from_dict(dict,y,x) result(p)
   character(len=1) :: o_s
 
 
-  allocate(coef(1),source=dict%get_asFloat(y))
+  allocate(coef(1),source=dict%get_asReal(y))
 
   if (dict%contains(y//','//x)) then
-    x_ref = dict%get_asFloat(x//'_ref')
-    coef = [coef,dict%get_asFloat(y//','//x)]
+    x_ref = dict%get_asReal(x//'_ref')
+    coef = [coef,dict%get_asReal(y//','//x)]
   end if
   do o = 2,4
     write(o_s,'(I0.0)') o
     if (dict%contains(y//','//x//'^'//o_s)) then
-      x_ref = dict%get_asFloat(x//'_ref')
-      coef = [coef,[(0.0_pReal,i=size(coef),o-1)],dict%get_asFloat(y//','//x//'^'//o_s)]
+      x_ref = dict%get_asReal(x//'_ref')
+      coef = [coef,[(0.0_pReal,i=size(coef),o-1)],dict%get_asReal(y//','//x//'^'//o_s)]
     end if
   end do
 

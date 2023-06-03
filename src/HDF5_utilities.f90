@@ -28,7 +28,7 @@ module HDF5_utilities
   private
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read integer or float data of defined shape from file.
+!> @brief Read integer or real data of defined shape from file.
 !> @details for parallel IO, all dimension except for the last need to match
 !--------------------------------------------------------------------------------------------------
   interface HDF5_read

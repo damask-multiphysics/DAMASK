@@ -71,11 +71,11 @@ module function anisobrittle_init() result(mySources)
         N_cl = src%get_as1dInt('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
 
-        prm%p       = src%get_asFloat('p')
-        prm%dot_o_0 = src%get_asFloat('dot_o_0')
+        prm%p       = src%get_asReal('p')
+        prm%dot_o_0 = src%get_asReal('dot_o_0')
 
-        prm%s_crit  = src%get_as1dFloat('s_crit',  requiredSize=size(N_cl))
-        prm%g_crit  = src%get_as1dFloat('g_crit',  requiredSize=size(N_cl))
+        prm%s_crit  = src%get_as1dReal('s_crit',requiredSize=size(N_cl))
+        prm%g_crit  = src%get_as1dReal('g_crit',requiredSize=size(N_cl))
 
         prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase_lattice(ph),phase_cOverA(ph))
 
@@ -97,7 +97,7 @@ module function anisobrittle_init() result(mySources)
 
         Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,0)
-        damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
+        damageState(ph)%atol = src%get_asReal('atol_phi',defaultVal=1.0e-9_pReal)
         if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
       end associate

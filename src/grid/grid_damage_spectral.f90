@@ -98,11 +98,11 @@ subroutine grid_damage_spectral_init()
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
   num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
-  num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
-  num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
+  num%eps_damage_atol = num_grid%get_asReal ('eps_damage_atol',defaultVal=1.0e-2_pReal)
+  num%eps_damage_rtol = num_grid%get_asReal ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
 
   num_generic => config_numerics%get_dict('generic',defaultVal=emptyDict)
-  num%phi_min = num_generic%get_asFloat('phi_min', defaultVal=1.0e-6_pReal)
+  num%phi_min = num_generic%get_asReal('phi_min', defaultVal=1.0e-6_pReal)
 
   if (num%phi_min < 0.0_pReal) call IO_error(301,ext_msg='phi_min')
   if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')

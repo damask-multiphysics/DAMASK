@@ -75,7 +75,7 @@ subroutine discretization_Marc_init
   print'(/,a)', ' <<<+-  discretization_Marc init  -+>>>'; flush(6)
 
   num_commercialFEM => config_numerics%get_dict('commercialFEM',defaultVal = emptyDict)
-  mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
+  mesh_unitlength = num_commercialFEM%get_asReal('unitlength',defaultVal=1.0_pReal)                 ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,'unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,materialAt)
@@ -552,7 +552,7 @@ subroutine inputRead_elemNodes(nodes, &
       chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
         m = discretization_Marc_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
-        nodes(1:3,m) = [(mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
+        nodes(1:3,m) = [(mesh_unitlength * IO_realValue(fileContent(l+1+i),chunkPos,j+1),j=1,3)]
       end do
       exit
     end if
@@ -735,8 +735,8 @@ subroutine inputRead_material(materialAt,&
       if (sv == 2) then                                                                             ! state var 2 gives material ID
         m = 1
         chunkPos = IO_stringPos(fileContent(l+k+m))
-        do while (scan(IO_stringValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)           ! is noEfloat value?
-          ID = nint(IO_floatValue(fileContent(l+k+m),chunkPos,1))
+        do while (scan(IO_stringValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)           ! is no Efloat value?
+          ID = nint(IO_realValue(fileContent(l+k+m),chunkPos,1))
           if (initialcondTableStyle == 2) m = m + 2
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)

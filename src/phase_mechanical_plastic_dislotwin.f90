@@ -202,7 +202,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     slipActive: if (prm%sum_N_sl > 0) then
       prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
       prm%P_sl    = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'),phase_lattice(ph))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
       prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),phase_cOverA(ph))
       prm%forestProjection = transpose(prm%forestProjection)
 
@@ -210,26 +210,26 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%fccTwinTransNucleation = phase_lattice(ph) == 'cF' .and. (N_sl(1) == 12)
       if (prm%fccTwinTransNucleation) prm%fcc_twinNucleationSlipPair = lattice_CF_TWINNUCLEATIONSLIPPAIR
 
-      rho_mob_0                = pl%get_as1dFloat('rho_mob_0',   requiredSize=size(N_sl))
-      rho_dip_0                = pl%get_as1dFloat('rho_dip_0',   requiredSize=size(N_sl))
-      prm%v_0                  = pl%get_as1dFloat('v_0',         requiredSize=size(N_sl))
-      prm%b_sl                 = pl%get_as1dFloat('b_sl',        requiredSize=size(N_sl))
-      prm%Q_sl                 = pl%get_as1dFloat('Q_sl',        requiredSize=size(N_sl))
-      prm%i_sl                 = pl%get_as1dFloat('i_sl',        requiredSize=size(N_sl))
-      prm%p                    = pl%get_as1dFloat('p_sl',        requiredSize=size(N_sl))
-      prm%q                    = pl%get_as1dFloat('q_sl',        requiredSize=size(N_sl))
-      prm%tau_0                = pl%get_as1dFloat('tau_0',       requiredSize=size(N_sl))
-      prm%B                    = pl%get_as1dFloat('B',           requiredSize=size(N_sl), &
-                                                  defaultVal=[(0.0_pReal, i=1,size(N_sl))])
+      rho_mob_0                = pl%get_as1dReal('rho_mob_0',   requiredSize=size(N_sl))
+      rho_dip_0                = pl%get_as1dReal('rho_dip_0',   requiredSize=size(N_sl))
+      prm%v_0                  = pl%get_as1dReal('v_0',         requiredSize=size(N_sl))
+      prm%b_sl                 = pl%get_as1dReal('b_sl',        requiredSize=size(N_sl))
+      prm%Q_sl                 = pl%get_as1dReal('Q_sl',        requiredSize=size(N_sl))
+      prm%i_sl                 = pl%get_as1dReal('i_sl',        requiredSize=size(N_sl))
+      prm%p                    = pl%get_as1dReal('p_sl',        requiredSize=size(N_sl))
+      prm%q                    = pl%get_as1dReal('q_sl',        requiredSize=size(N_sl))
+      prm%tau_0                = pl%get_as1dReal('tau_0',       requiredSize=size(N_sl))
+      prm%B                    = pl%get_as1dReal('B',           requiredSize=size(N_sl), &
+                                                 defaultVal=[(0.0_pReal, i=1,size(N_sl))])
 
-      prm%Q_cl = pl%get_asFloat('Q_cl')
+      prm%Q_cl = pl%get_asReal('Q_cl')
 
       prm%extendedDislocations = pl%get_asBool('extend_dislocations',defaultVal = .false.)
       prm%omitDipoles          = pl%get_asBool('omit_dipoles',defaultVal = .false.)
 
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
       ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
-      prm%omega = pl%get_asFloat('omega',  defaultVal = 1000.0_pReal) &
+      prm%omega = pl%get_asReal('omega',  defaultVal = 1000.0_pReal) &
                 * merge(12.0_pReal,8.0_pReal,any(phase_lattice(ph) == ['cF','hP']))
 
       ! expand: family => system
@@ -243,7 +243,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%q            = math_expand(prm%q,           N_sl)
       prm%tau_0        = math_expand(prm%tau_0,       N_sl)
       prm%B            = math_expand(prm%B,           N_sl)
-      prm%d_caron      = pl%get_asFloat('D_a') * prm%b_sl
+      prm%d_caron      = pl%get_asReal('D_a') * prm%b_sl
 
       ! sanity checks
       if (    prm%Q_cl          <= 0.0_pReal)          extmsg = trim(extmsg)//' Q_cl'
@@ -270,15 +270,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
     twinActive: if (prm%sum_N_tw > 0) then
       prm%systems_tw = lattice_labels_twin(prm%N_tw,phase_lattice(ph))
       prm%P_tw  = lattice_SchmidMatrix_twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%h_tw_tw   = lattice_interaction_TwinByTwin(prm%N_tw,pl%get_as1dFloat('h_tw-tw'), &
+      prm%h_tw_tw   = lattice_interaction_TwinByTwin(prm%N_tw,pl%get_as1dReal('h_tw-tw'), &
                                                      phase_lattice(ph))
 
-      prm%b_tw      = pl%get_as1dFloat('b_tw',     requiredSize=size(prm%N_tw))
-      prm%t_tw      = pl%get_as1dFloat('t_tw',     requiredSize=size(prm%N_tw))
-      prm%r         = pl%get_as1dFloat('p_tw',     requiredSize=size(prm%N_tw))
+      prm%b_tw      = pl%get_as1dReal('b_tw',     requiredSize=size(prm%N_tw))
+      prm%t_tw      = pl%get_as1dReal('t_tw',     requiredSize=size(prm%N_tw))
+      prm%r         = pl%get_as1dReal('p_tw',     requiredSize=size(prm%N_tw))
 
-      prm%L_tw      = pl%get_asFloat('L_tw')
-      prm%i_tw      = pl%get_asFloat('i_tw')
+      prm%L_tw      = pl%get_asReal('L_tw')
+      prm%i_tw      = pl%get_asReal('i_tw')
 
       prm%gamma_char_tw = lattice_characteristicShear_Twin(prm%N_tw,phase_lattice(ph),phase_cOverA(ph))
 
@@ -304,25 +304,25 @@ module function plastic_dislotwin_init() result(myPlasticity)
     prm%N_tr = pl%get_as1dInt('N_tr', defaultVal=emptyIntArray)
     prm%sum_N_tr = sum(abs(prm%N_tr))
     transActive: if (prm%sum_N_tr > 0) then
-      prm%b_tr = pl%get_as1dFloat('b_tr')
+      prm%b_tr = pl%get_as1dReal('b_tr')
       prm%b_tr = math_expand(prm%b_tr,prm%N_tr)
 
-      prm%i_tr       = pl%get_asFloat('i_tr')
+      prm%i_tr       = pl%get_asReal('i_tr')
       prm%Delta_G    = polynomial(pl,'Delta_G','T')
-      prm%L_tr       = pl%get_asFloat('L_tr')
+      prm%L_tr       = pl%get_asReal('L_tr')
       a_cF           = prm%b_tr(1)*sqrt(6.0_pReal)                                                  ! b_tr is Shockley partial
       prm%h          = 5.0_pReal * a_cF/sqrt(3.0_pReal)
-      prm%cOverA_hP  = pl%get_asFloat('c/a_hP')
+      prm%cOverA_hP  = pl%get_asReal('c/a_hP')
       prm%rho        = 4.0_pReal/(sqrt(3.0_pReal)*a_cF**2)/N_A
-      prm%V_mol      = pl%get_asFloat('V_mol')
-      prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,pl%get_as1dFloat('h_tr-tr'),&
+      prm%V_mol      = pl%get_asReal('V_mol')
+      prm%h_tr_tr = lattice_interaction_TransByTrans(prm%N_tr,pl%get_as1dReal('h_tr-tr'),&
                                                      phase_lattice(ph))
 
       prm%P_tr    = lattice_SchmidMatrix_trans(prm%N_tr,'hP',prm%cOverA_hP)
 
-      prm%t_tr = pl%get_as1dFloat('t_tr')
+      prm%t_tr = pl%get_as1dReal('t_tr')
       prm%t_tr = math_expand(prm%t_tr,prm%N_tr)
-      prm%s    = pl%get_as1dFloat('p_tr')
+      prm%s    = pl%get_as1dReal('p_tr')
       prm%s    = math_expand(prm%s,prm%N_tr)
 
       ! sanity checks
@@ -339,12 +339,12 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! shearband related parameters
-    prm%gamma_0_sb = pl%get_asFloat('gamma_0_sb',defaultVal=0.0_pReal)
+    prm%gamma_0_sb = pl%get_asReal('gamma_0_sb',defaultVal=0.0_pReal)
     if (prm%gamma_0_sb > 0.0_pReal) then
-      prm%tau_sb       = pl%get_asFloat('tau_sb')
-      prm%E_sb         = pl%get_asFloat('Q_sb')
-      prm%p_sb         = pl%get_asFloat('p_sb')
-      prm%q_sb         = pl%get_asFloat('q_sb')
+      prm%tau_sb       = pl%get_asReal('tau_sb')
+      prm%E_sb         = pl%get_asReal('Q_sb')
+      prm%p_sb         = pl%get_asReal('p_sb')
+      prm%q_sb         = pl%get_asReal('q_sb')
 
       ! sanity checks
       if (prm%tau_sb <  0.0_pReal) extmsg = trim(extmsg)//' tau_sb'
@@ -356,11 +356,11 @@ module function plastic_dislotwin_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! parameters required for several mechanisms and their interactions
     if (prm%sum_N_sl + prm%sum_N_tw + prm%sum_N_tw > 0) &
-      prm%D = pl%get_asFloat('D')
+      prm%D = pl%get_asReal('D')
 
     if (prm%sum_N_tw + prm%sum_N_tr > 0) then
-      prm%x_c  = pl%get_asFloat('x_c')
-      prm%V_cs = pl%get_asFloat('V_cs')
+      prm%x_c  = pl%get_asReal('x_c')
+      prm%V_cs = pl%get_asReal('V_cs')
       if (prm%x_c  < 0.0_pReal)  extmsg = trim(extmsg)//' x_c'
       if (prm%V_cs < 0.0_pReal)  extmsg = trim(extmsg)//' V_cs'
     end if
@@ -369,13 +369,13 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%Gamma_sf = polynomial(pl,'Gamma_sf','T')
 
     slipAndTwinActive: if (prm%sum_N_sl * prm%sum_N_tw > 0) then
-      prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,prm%N_tw,pl%get_as1dFloat('h_sl-tw'), &
+      prm%h_sl_tw = lattice_interaction_SlipByTwin(N_sl,prm%N_tw,pl%get_as1dReal('h_sl-tw'), &
                                                    phase_lattice(ph))
       if (prm%fccTwinTransNucleation .and. size(prm%N_tw) /= 1) extmsg = trim(extmsg)//' N_tw: nucleation'
     end if slipAndTwinActive
 
     slipAndTransActive: if (prm%sum_N_sl * prm%sum_N_tr > 0) then
-      prm%h_sl_tr = lattice_interaction_SlipByTrans(N_sl,prm%N_tr,pl%get_as1dFloat('h_sl-tr'), &
+      prm%h_sl_tr = lattice_interaction_SlipByTrans(N_sl,prm%N_tr,pl%get_as1dReal('h_sl-tr'), &
                                                     phase_lattice(ph))
       if (prm%fccTwinTransNucleation .and. size(prm%N_tr) /= 1) extmsg = trim(extmsg)//' N_tr: nucleation'
     end if slipAndTransActive
@@ -402,7 +402,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     idx_dot%rho_mob = [startIndex,endIndex]
     stt%rho_mob=>plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_mob= spread(rho_mob_0,2,Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
@@ -410,27 +410,27 @@ module function plastic_dislotwin_init() result(myPlasticity)
     idx_dot%rho_dip = [startIndex,endIndex]
     stt%rho_dip=>plasticState(ph)%state(startIndex:endIndex,:)
     stt%rho_dip= spread(rho_dip_0,2,Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%gamma_sl = [startIndex,endIndex]
     stt%gamma_sl=>plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     idx_dot%f_tw = [startIndex,endIndex]
     stt%f_tw=>plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_f_tw',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_f_tw',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_f_tw'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tr
     idx_dot%f_tr = [startIndex,endIndex]
     stt%f_tr=>plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_f_tr',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_f_tr',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_f_tr'
 
     allocate(dst%tau_pass (prm%sum_N_sl,Nmembers),source=0.0_pReal)

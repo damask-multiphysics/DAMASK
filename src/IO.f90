@@ -35,12 +35,12 @@ module IO
     IO_stringPos, &
     IO_stringValue, &
     IO_intValue, &
-    IO_floatValue, &
+    IO_realValue, &
     IO_lc, &
     IO_rmComment, &
     IO_intAsString, &
     IO_stringAsInt, &
-    IO_stringAsFloat, &
+    IO_stringAsReal, &
     IO_stringAsBool, &
     IO_error, &
     IO_warning, &
@@ -272,17 +272,17 @@ end function IO_intValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Read float value at myChunk from string.
+!> @brief Read real value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_floatValue(string,chunkPos,myChunk)
+real(pReal) function IO_realValue(string,chunkPos,myChunk)
 
   character(len=*),        intent(in) :: string                                                     !< raw input with known start and end of each chunk
   integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
   integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
 
-  IO_floatValue = IO_stringAsFloat(IO_stringValue(string,chunkPos,myChunk))
+  IO_realValue = IO_stringAsReal(IO_stringValue(string,chunkPos,myChunk))
 
-end function IO_floatValue
+end function IO_realValue
 
 
 !--------------------------------------------------------------------------------------------------
@@ -371,25 +371,25 @@ end function IO_stringAsInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return float value from given string.
+!> @brief Return real value from given string.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_stringAsFloat(string)
+real(pReal) function IO_stringAsReal(string)
 
-  character(len=*), intent(in) :: string                                                            !< string for conversion to float value
+  character(len=*), intent(in) :: string                                                            !< string for conversion to real value
 
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
 
 
   valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) IO_stringAsFloat
+    read(string,*,iostat=readStatus) IO_stringAsReal
     if (readStatus /= 0) call IO_error(112,string)
   else valid
-    IO_stringAsFloat = 0.0_pReal
+    IO_stringAsReal = 0.0_pReal
     call IO_error(112,string)
   end if valid
 
-end function IO_stringAsFloat
+end function IO_stringAsReal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -441,7 +441,7 @@ subroutine IO_error(error_ID,ext_msg,label1,ID1,label2,ID2)
     case (111)
       msg = 'invalid character for int:'
     case (112)
-      msg = 'invalid character for float:'
+      msg = 'invalid character for real:'
     case (113)
       msg = 'invalid character for logical:'
     case (114)
@@ -733,12 +733,12 @@ subroutine selfTest()
   character(len=:),      allocatable :: str,out
 
 
-  if (dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
-  if (dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
-  if (dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
-  if (dNeq(0.1_pReal, IO_stringAsFloat('1.0e-1')))   error stop 'IO_stringAsFloat'
-  if (dNeq(0.1_pReal, IO_stringAsFloat('1.00e-1')))  error stop 'IO_stringAsFloat'
-  if (dNeq(10._pReal, IO_stringAsFloat(' 1.0e+1 '))) error stop 'IO_stringAsFloat'
+  if (dNeq(1.0_pReal, IO_stringAsReal('1.0')))       error stop 'IO_stringAsReal'
+  if (dNeq(1.0_pReal, IO_stringAsReal('1e0')))       error stop 'IO_stringAsReal'
+  if (dNeq(0.1_pReal, IO_stringAsReal('1e-1')))      error stop 'IO_stringAsReal'
+  if (dNeq(0.1_pReal, IO_stringAsReal('1.0e-1')))    error stop 'IO_stringAsReal'
+  if (dNeq(0.1_pReal, IO_stringAsReal('1.00e-1')))   error stop 'IO_stringAsReal'
+  if (dNeq(10._pReal, IO_stringAsReal(' 1.0e+1 ')))  error stop 'IO_stringAsReal'
 
   if (3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
   if (3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
@@ -760,7 +760,7 @@ subroutine selfTest()
 
   str = ' 1.0 xxx'
   chunkPos = IO_stringPos(str)
-  if (dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
+  if (dNeq(1.0_pReal,IO_realValue(str,chunkPos,1)))  error stop 'IO_realValue'
 
   str = 'M 3112019 F'
   chunkPos = IO_stringPos(str)

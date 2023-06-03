@@ -98,19 +98,19 @@ module function plastic_isotropic_init() result(myPlasticity)
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
-    xi_0            = pl%get_asFloat('xi_0')
-    prm%xi_inf      = pl%get_asFloat('xi_inf')
-    prm%dot_gamma_0 = pl%get_asFloat('dot_gamma_0')
-    prm%n           = pl%get_asFloat('n')
-    prm%h_0         = pl%get_asFloat('h_0')
-    prm%h           = pl%get_asFloat('h',    defaultVal=3.0_pReal)                                  ! match for fcc random polycrystal
-    prm%M           = pl%get_asFloat('M')
-    prm%h_ln        = pl%get_asFloat('h_ln', defaultVal=0.0_pReal)
-    prm%c_1         = pl%get_asFloat('c_1',  defaultVal=0.0_pReal)
-    prm%c_4         = pl%get_asFloat('c_4',  defaultVal=0.0_pReal)
-    prm%c_3         = pl%get_asFloat('c_3',  defaultVal=0.0_pReal)
-    prm%c_2         = pl%get_asFloat('c_2',  defaultVal=0.0_pReal)
-    prm%a           = pl%get_asFloat('a')
+    xi_0            = pl%get_asReal('xi_0')
+    prm%xi_inf      = pl%get_asReal('xi_inf')
+    prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
+    prm%n           = pl%get_asReal('n')
+    prm%h_0         = pl%get_asReal('h_0')
+    prm%h           = pl%get_asReal('h',    defaultVal=3.0_pReal)                                   ! match for fcc random polycrystal
+    prm%M           = pl%get_asReal('M')
+    prm%h_ln        = pl%get_asReal('h_ln', defaultVal=0.0_pReal)
+    prm%c_1         = pl%get_asReal('c_1',  defaultVal=0.0_pReal)
+    prm%c_4         = pl%get_asReal('c_4',  defaultVal=0.0_pReal)
+    prm%c_3         = pl%get_asReal('c_3',  defaultVal=0.0_pReal)
+    prm%c_2         = pl%get_asReal('c_2',  defaultVal=0.0_pReal)
+    prm%a           = pl%get_asReal('a')
 
     prm%dilatation  = pl%get_asBool('dilatation',defaultVal = .false.)
 
@@ -135,7 +135,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 ! state aliases and initialization
     stt%xi => plasticState(ph)%state(1,:)
     stt%xi = xi_0
-    plasticState(ph)%atol(1) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(1) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
     if (plasticState(ph)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
 
     end associate

@@ -142,17 +142,17 @@ subroutine grid_mechanical_spectral_polarisation_init()
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool ('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
-  num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)
-  num%eps_curl_atol   = num_grid%get_asFloat('eps_curl_atol',  defaultVal=1.0e-10_pReal)
-  num%eps_curl_rtol   = num_grid%get_asFloat('eps_curl_rtol',  defaultVal=5.0e-4_pReal)
-  num%eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
-  num%eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=1.0e-3_pReal)
-  num%itmin           = num_grid%get_asInt  ('itmin',          defaultVal=1)
-  num%itmax           = num_grid%get_asInt  ('itmax',          defaultVal=250)
-  num%alpha           = num_grid%get_asFloat('alpha',          defaultVal=1.0_pReal)
-  num%beta            = num_grid%get_asFloat('beta',           defaultVal=1.0_pReal)
+  num%update_gamma    = num_grid%get_asBool('update_gamma',   defaultVal=.false.)
+  num%eps_div_atol    = num_grid%get_asReal('eps_div_atol',   defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asReal('eps_div_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_curl_atol   = num_grid%get_asReal('eps_curl_atol',  defaultVal=1.0e-10_pReal)
+  num%eps_curl_rtol   = num_grid%get_asReal('eps_curl_rtol',  defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asReal('eps_stress_atol',defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid%get_asReal('eps_stress_rtol',defaultVal=1.0e-3_pReal)
+  num%itmin           = num_grid%get_asInt ('itmin',          defaultVal=1)
+  num%itmax           = num_grid%get_asInt ('itmax',          defaultVal=250)
+  num%alpha           = num_grid%get_asReal('alpha',          defaultVal=1.0_pReal)
+  num%beta            = num_grid%get_asReal('beta',           defaultVal=1.0_pReal)
 
   if (num%eps_div_atol <= 0.0_pReal)                      extmsg = trim(extmsg)//' eps_div_atol'
   if (num%eps_div_rtol < 0.0_pReal)                       extmsg = trim(extmsg)//' eps_div_rtol'

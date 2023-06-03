@@ -64,7 +64,7 @@ module function isobrittle_init() result(mySources)
 
       associate(prm => param(ph), dlt => deltaState(ph), stt => state(ph))
 
-        prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
+        prm%W_crit = src%get_asReal('G_crit')/src%get_asReal('l_c')
 
         print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
         refs = config_listReferences(src,indent=3)
@@ -81,7 +81,7 @@ module function isobrittle_init() result(mySources)
 
         Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,0,1)
-        damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
+        damageState(ph)%atol = src%get_asReal('atol_phi',defaultVal=1.0e-9_pReal)
         if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
 
         stt%r_W => damageState(ph)%state(1,:)

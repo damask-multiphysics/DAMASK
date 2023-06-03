@@ -248,7 +248,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
     prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
-    prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
+    prm%atol_rho = pl%get_asReal('atol_rho',defaultVal=1.0_pReal)
 
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(ini%N_sl))
@@ -257,7 +257,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%P_sl = lattice_SchmidMatrix_slip(ini%N_sl,phase_lattice(ph), phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dFloat('a_nonSchmid',defaultVal = emptyRealArray)
+        a = pl%get_as1dReal('a_nonSchmid',defaultVal = emptyRealArray)
         if (size(a) > 0) prm%nonSchmidActive = .true.
         prm%P_nS_pos = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
@@ -266,7 +266,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
         prm%P_nS_neg = prm%P_sl
       end if
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl,pl%get_as1dFloat('h_sl-sl'), &
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl,pl%get_as1dReal('h_sl-sl'), &
                                                    phase_lattice(ph))
 
       prm%forestProjection_edge  = lattice_forestProjection_edge (ini%N_sl,phase_lattice(ph),&
@@ -288,65 +288,65 @@ module function plastic_nonlocal_init() result(myPlasticity)
         end do
       end do
 
-      ini%rho_u_ed_pos_0  = pl%get_as1dFloat('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_ed_neg_0  = pl%get_as1dFloat('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_sc_pos_0  = pl%get_as1dFloat('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rho_u_sc_neg_0  = pl%get_as1dFloat('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rho_d_ed_0      = pl%get_as1dFloat('rho_d_ed_0',       requiredSize=size(ini%N_sl))
-      ini%rho_d_sc_0      = pl%get_as1dFloat('rho_d_sc_0',       requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_pos_0  = pl%get_as1dReal('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_neg_0  = pl%get_as1dReal('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_sc_pos_0  = pl%get_as1dReal('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_sc_neg_0  = pl%get_as1dReal('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
+      ini%rho_d_ed_0      = pl%get_as1dReal('rho_d_ed_0',       requiredSize=size(ini%N_sl))
+      ini%rho_d_sc_0      = pl%get_as1dReal('rho_d_sc_0',       requiredSize=size(ini%N_sl))
 
-      prm%i_sl            = pl%get_as1dFloat('i_sl',             requiredSize=size(ini%N_sl))
-      prm%b_sl            = pl%get_as1dFloat('b_sl',             requiredSize=size(ini%N_sl))
+      prm%i_sl            = pl%get_as1dReal('i_sl',             requiredSize=size(ini%N_sl))
+      prm%b_sl            = pl%get_as1dReal('b_sl',             requiredSize=size(ini%N_sl))
 
       prm%i_sl = math_expand(prm%i_sl,ini%N_sl)
       prm%b_sl = math_expand(prm%b_sl,ini%N_sl)
 
-      prm%d_ed            = pl%get_as1dFloat('d_ed',             requiredSize=size(ini%N_sl))
-      prm%d_sc            = pl%get_as1dFloat('d_sc',             requiredSize=size(ini%N_sl))
+      prm%d_ed            = pl%get_as1dReal('d_ed',             requiredSize=size(ini%N_sl))
+      prm%d_sc            = pl%get_as1dReal('d_sc',             requiredSize=size(ini%N_sl))
       prm%d_ed            = math_expand(prm%d_ed,ini%N_sl)
       prm%d_sc            = math_expand(prm%d_sc,ini%N_sl)
       allocate(prm%minDipoleHeight(prm%sum_N_sl,2))
       prm%minDipoleHeight(:,1)  = prm%d_ed
       prm%minDipoleHeight(:,2)  = prm%d_sc
 
-      prm%tau_Peierls_ed    = pl%get_as1dFloat('tau_Peierls_ed', requiredSize=size(ini%N_sl))
-      prm%tau_Peierls_sc    = pl%get_as1dFloat('tau_Peierls_sc', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_ed    = pl%get_as1dReal('tau_Peierls_ed', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_sc    = pl%get_as1dReal('tau_Peierls_sc', requiredSize=size(ini%N_sl))
       prm%tau_Peierls_ed    = math_expand(prm%tau_Peierls_ed,ini%N_sl)
       prm%tau_Peierls_sc    = math_expand(prm%tau_Peierls_sc,ini%N_sl)
       allocate(prm%peierlsstress(prm%sum_N_sl,2))
       prm%peierlsstress(:,1)    = prm%tau_Peierls_ed
       prm%peierlsstress(:,2)    = prm%tau_Peierls_sc
 
-      prm%rho_significant       = pl%get_asFloat('rho_significant')
-      prm%rho_min               = pl%get_asFloat('rho_min', 0.0_pReal)
-      prm%C_CFL                 = pl%get_asFloat('C_CFL',defaultVal=2.0_pReal)
+      prm%rho_significant       = pl%get_asReal('rho_significant')
+      prm%rho_min               = pl%get_asReal('rho_min', 0.0_pReal)
+      prm%C_CFL                 = pl%get_asReal('C_CFL',defaultVal=2.0_pReal)
 
-      prm%V_at                  = pl%get_asFloat('V_at')
-      prm%D_0                   = pl%get_asFloat('D_0')
-      prm%Q_cl                  = pl%get_asFloat('Q_cl')
-      prm%f_F                   = pl%get_asFloat('f_F')
-      prm%f_ed                  = pl%get_asFloat('f_ed')
-      prm%w                     = pl%get_asFloat('w')
-      prm%Q_sol                 = pl%get_asFloat('Q_sol')
-      prm%f_sol                 = pl%get_asFloat('f_sol')
-      prm%c_sol                 = pl%get_asFloat('c_sol')
+      prm%V_at                  = pl%get_asReal('V_at')
+      prm%D_0                   = pl%get_asReal('D_0')
+      prm%Q_cl                  = pl%get_asReal('Q_cl')
+      prm%f_F                   = pl%get_asReal('f_F')
+      prm%f_ed                  = pl%get_asReal('f_ed')
+      prm%w                     = pl%get_asReal('w')
+      prm%Q_sol                 = pl%get_asReal('Q_sol')
+      prm%f_sol                 = pl%get_asReal('f_sol')
+      prm%c_sol                 = pl%get_asReal('c_sol')
 
-      prm%p                     = pl%get_asFloat('p_sl')
-      prm%q                     = pl%get_asFloat('q_sl')
-      prm%B                     = pl%get_asFloat('B')
-      prm%nu_a                  = pl%get_asFloat('nu_a')
+      prm%p                     = pl%get_asReal('p_sl')
+      prm%q                     = pl%get_asReal('q_sl')
+      prm%B                     = pl%get_asReal('B')
+      prm%nu_a                  = pl%get_asReal('nu_a')
 
       ! ToDo: discuss logic
-      ini%sigma_rho_u           = pl%get_asFloat('sigma_rho_u')
-      ini%random_rho_u          = pl%get_asFloat('random_rho_u',defaultVal= 0.0_pReal)
+      ini%sigma_rho_u           = pl%get_asReal('sigma_rho_u')
+      ini%random_rho_u          = pl%get_asReal('random_rho_u',defaultVal= 0.0_pReal)
       if (pl%contains('random_rho_u')) &
-        ini%random_rho_u_binning      = pl%get_asFloat('random_rho_u_binning',defaultVal=0.0_pReal) !ToDo: useful default?
+        ini%random_rho_u_binning      = pl%get_asReal('random_rho_u_binning',defaultVal=0.0_pReal) !ToDo: useful default?
      ! if (rhoSglRandom(instance) < 0.0_pReal) &
      ! if (rhoSglRandomBinning(instance) <= 0.0_pReal) &
 
-      prm%chi_surface                 = pl%get_asFloat('chi_surface',defaultVal=1.0_pReal)
-      prm%chi_GB                      = pl%get_asFloat('chi_GB',     defaultVal=-1.0_pReal)
-      prm%f_ed_mult                   = pl%get_asFloat('f_ed_mult')
+      prm%chi_surface                 = pl%get_asReal('chi_surface',defaultVal=1.0_pReal)
+      prm%chi_GB                      = pl%get_asReal('chi_GB',     defaultVal=-1.0_pReal)
+      prm%f_ed_mult                   = pl%get_asReal('f_ed_mult')
       prm%shortRangeStressCorrection  = pl%get_asBool('short_range_stress_correction', defaultVal = .false.)
 
 
@@ -491,7 +491,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     stt%gamma => plasticState(ph)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     dot%gamma => plasticState(ph)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
     del%gamma => plasticState(ph)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nmembers)
-    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-6_pReal)
+    plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asReal('atol_gamma', defaultVal = 1.0e-6_pReal)
     if (any(plasticState(ph)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
 

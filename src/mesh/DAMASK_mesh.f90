@@ -166,7 +166,7 @@ program DAMASK_mesh
           end do
           if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
         case('t')
-          loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1)
+          loadCases(currentLoadCase)%time = IO_realValue(line,chunkPos,i+1)
         case('N')
           loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1)
         case('f_out')
@@ -191,7 +191,7 @@ program DAMASK_mesh
                loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Mask (currentFaceSet) = &
                    .true.
                loadCases(currentLoadCase)%fieldBC(1)%componentBC(component)%Value(currentFaceSet) = &
-                   IO_floatValue(line,chunkPos,i+1)
+                   IO_realValue(line,chunkPos,i+1)
              end if
            end do
       end select

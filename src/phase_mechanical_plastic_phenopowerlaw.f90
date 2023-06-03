@@ -143,7 +143,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
-        a = pl%get_as1dFloat('a_nonSchmid',defaultVal=emptyRealArray)
+        a = pl%get_as1dReal('a_nonSchmid',defaultVal=emptyRealArray)
         if (size(a) > 0) prm%nonSchmidActive = .true.
         prm%P_nS_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%P_nS_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
@@ -151,17 +151,17 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
       end if
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dFloat('h_sl-sl'),phase_lattice(ph))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
-      xi_0_sl             = pl%get_as1dFloat('xi_0_sl',   requiredSize=size(N_sl))
-      prm%xi_inf_sl       = pl%get_as1dFloat('xi_inf_sl', requiredSize=size(N_sl))
-      prm%h_int           = pl%get_as1dFloat('h_int',     requiredSize=size(N_sl), &
+      xi_0_sl             = pl%get_as1dReal('xi_0_sl',   requiredSize=size(N_sl))
+      prm%xi_inf_sl       = pl%get_as1dReal('xi_inf_sl', requiredSize=size(N_sl))
+      prm%h_int           = pl%get_as1dReal('h_int',     requiredSize=size(N_sl), &
                                             defaultVal=[(0.0_pReal,i=1,size(N_sl))])
 
-      prm%dot_gamma_0_sl  = pl%get_asFloat('dot_gamma_0_sl')
-      prm%n_sl            = pl%get_asFloat('n_sl')
-      prm%a_sl            = pl%get_asFloat('a_sl')
-      prm%h_0_sl_sl       = pl%get_asFloat('h_0_sl-sl')
+      prm%dot_gamma_0_sl  = pl%get_asReal('dot_gamma_0_sl')
+      prm%n_sl            = pl%get_asReal('n_sl')
+      prm%a_sl            = pl%get_asReal('a_sl')
+      prm%h_0_sl_sl       = pl%get_asReal('h_0_sl-sl')
 
       ! expand: family => system
       xi_0_sl             = math_expand(xi_0_sl,      N_sl)
@@ -187,20 +187,20 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
       prm%systems_tw = lattice_labels_twin(N_tw,phase_lattice(ph))
-      prm%P_tw     = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%h_tw_tw  = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dFloat('h_tw-tw'),phase_lattice(ph))
+      prm%P_tw       = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%h_tw_tw    = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
       prm%gamma_char = lattice_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
 
-      xi_0_tw             = pl%get_as1dFloat('xi_0_tw',requiredSize=size(N_tw))
+      xi_0_tw            = pl%get_as1dReal('xi_0_tw',requiredSize=size(N_tw))
 
-      prm%c_1             = pl%get_asFloat('c_1',defaultVal=0.0_pReal)
-      prm%c_2             = pl%get_asFloat('c_2',defaultVal=1.0_pReal)
-      prm%c_3             = pl%get_asFloat('c_3',defaultVal=0.0_pReal)
-      prm%c_4             = pl%get_asFloat('c_4',defaultVal=0.0_pReal)
-      prm%dot_gamma_0_tw  = pl%get_asFloat('dot_gamma_0_tw')
-      prm%n_tw            = pl%get_asFloat('n_tw')
-      prm%f_sat_sl_tw     = pl%get_asFloat('f_sat_sl-tw')
-      prm%h_0_tw_tw       = pl%get_asFloat('h_0_tw-tw')
+      prm%c_1            = pl%get_asReal('c_1',defaultVal=0.0_pReal)
+      prm%c_2            = pl%get_asReal('c_2',defaultVal=1.0_pReal)
+      prm%c_3            = pl%get_asReal('c_3',defaultVal=0.0_pReal)
+      prm%c_4            = pl%get_asReal('c_4',defaultVal=0.0_pReal)
+      prm%dot_gamma_0_tw = pl%get_asReal('dot_gamma_0_tw')
+      prm%n_tw           = pl%get_asReal('n_tw')
+      prm%f_sat_sl_tw    = pl%get_asReal('f_sat_sl-tw')
+      prm%h_0_tw_tw      = pl%get_asReal('h_0_tw-tw')
 
       ! expand: family => system
       xi_0_tw       = math_expand(xi_0_tw,N_tw)
@@ -218,10 +218,10 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 !--------------------------------------------------------------------------------------------------
 ! slip-twin related parameters
     slipAndTwinActive: if (prm%sum_N_sl > 0 .and. prm%sum_N_tw > 0) then
-      prm%h_0_tw_sl  = pl%get_asFloat('h_0_tw-sl')
-      prm%h_sl_tw    = lattice_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dFloat('h_sl-tw'), &
+      prm%h_0_tw_sl  = pl%get_asReal('h_0_tw-sl')
+      prm%h_sl_tw    = lattice_interaction_SlipByTwin(N_sl,N_tw,pl%get_as1dReal('h_sl-tw'), &
                                                       phase_lattice(ph))
-      prm%h_tw_sl    = lattice_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dFloat('h_tw-sl'), &
+      prm%h_tw_sl    = lattice_interaction_TwinBySlip(N_tw,N_sl,pl%get_as1dReal('h_tw-sl'), &
                                                       phase_lattice(ph))
     else slipAndTwinActive
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0
@@ -246,7 +246,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     idx_dot%xi_sl = [startIndex,endIndex]
     stt%xi_sl => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi_sl =  spread(xi_0_sl, 2, Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
@@ -254,20 +254,20 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     idx_dot%xi_tw = [startIndex,endIndex]
     stt%xi_tw => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi_tw =  spread(xi_0_tw, 2, Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%gamma_sl = [startIndex,endIndex]
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     idx_dot%gamma_tw = [startIndex,endIndex]
     stt%gamma_tw => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
 
     end associate
 
