@@ -2,7 +2,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Handling of UNIX signals.
 !--------------------------------------------------------------------------------------------------
-module signals
+module signal
   use prec
   use system_routines
 
@@ -10,15 +10,15 @@ module signals
   private
 
   logical, volatile, public, protected :: &
-    signals_SIGINT = .false., &                                                                     !< interrupt signal
-    signals_SIGUSR1 = .false., &                                                                    !< 1. user-defined signal
-    signals_SIGUSR2 = .false.                                                                       !< 2. user-defined signal
+    signal_SIGINT  = .false., &                                                                    !< interrupt signal
+    signal_SIGUSR1 = .false., &                                                                    !< 1. user-defined signal
+    signal_SIGUSR2 = .false.                                                                       !< 2. user-defined signal
 
   public :: &
-    signals_init, &
-    signals_setSIGINT, &
-    signals_setSIGUSR1, &
-    signals_setSIGUSR2
+    signal_init, &
+    signal_setSIGINT, &
+    signal_setSIGUSR1, &
+    signal_setSIGUSR2
 
 contains
 
@@ -26,100 +26,100 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief Register signal handlers.
 !--------------------------------------------------------------------------------------------------
-subroutine signals_init()
+subroutine signal_init()
 
   call signalint_c(c_funloc(catchSIGINT))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
 
-end subroutine signals_init
+end subroutine signal_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGINT to .true.
-!> @details This function can be registered to catch signals send to the executable.
+!> @brief Set global variable signal_SIGINT to .true.
+!> @details This function can be registered to catch signals sent to the executable.
 !--------------------------------------------------------------------------------------------------
-subroutine catchSIGINT(signal) bind(C)
+subroutine catchSIGINT(sig) bind(C)
 
-  integer(C_INT), value :: signal
+  integer(C_INT), value :: sig
 
 
-  print'(a,i0)', ' received signal ',signal
-  call signals_setSIGINT(.true.)
+  print'(a,i0)', ' received signal ',sig
+  call signal_setSIGINT(.true.)
 
 end subroutine catchSIGINT
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGUSR1 to .true.
-!> @details This function can be registered to catch signals send to the executable.
+!> @brief Set global variable signal_SIGUSR1 to .true.
+!> @details This function can be registered to catch signals sent to the executable.
 !--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR1(signal) bind(C)
+subroutine catchSIGUSR1(sig) bind(C)
 
-  integer(C_INT), value :: signal
+  integer(C_INT), value :: sig
 
 
-  print'(a,i0)', ' received signal ',signal
-  call signals_setSIGUSR1(.true.)
+  print'(a,i0)', ' received signal ',sig
+  call signal_setSIGUSR1(.true.)
 
 end subroutine catchSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGUSR2 to .true.
-!> @details This function can be registered to catch signals send to the executable.
+!> @brief Set global variable signal_SIGUSR2 to .true.
+!> @details This function can be registered to catch signals sent to the executable.
 !--------------------------------------------------------------------------------------------------
-subroutine catchSIGUSR2(signal) bind(C)
+subroutine catchSIGUSR2(sig) bind(C)
 
-  integer(C_INT), value :: signal
+  integer(C_INT), value :: sig
 
 
-  print'(a,i0,a)', ' received signal ',signal
-  call signals_setSIGUSR2(.true.)
+  print'(a,i0,a)', ' received signal ',sig
+  call signal_setSIGUSR2(.true.)
 
 end subroutine catchSIGUSR2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGINT.
+!> @brief Set global variable signal_SIGINT.
 !--------------------------------------------------------------------------------------------------
-subroutine signals_setSIGINT(state)
+subroutine signal_setSIGINT(state)
 
   logical, intent(in) :: state
 
 
-  signals_SIGINT = state
+  signal_SIGINT = state
   print*, 'set SIGINT to',state
 
-end subroutine signals_setSIGINT
+end subroutine signal_setSIGINT
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGUSR.
+!> @brief Set global variable signal_SIGUSR.
 !--------------------------------------------------------------------------------------------------
-subroutine signals_setSIGUSR1(state)
+subroutine signal_setSIGUSR1(state)
 
   logical, intent(in) :: state
 
 
-  signals_SIGUSR1 = state
+  signal_SIGUSR1 = state
   print*, 'set SIGUSR1 to',state
 
-end subroutine signals_setSIGUSR1
+end subroutine signal_setSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Set global variable signals_SIGUSR2.
+!> @brief Set global variable signal_SIGUSR2.
 !--------------------------------------------------------------------------------------------------
-subroutine signals_setSIGUSR2(state)
+subroutine signal_setSIGUSR2(state)
 
   logical, intent(in) :: state
 
 
-  signals_SIGUSR2 = state
+  signal_SIGUSR2 = state
   print*, 'set SIGUSR2 to',state
 
-end subroutine signals_setSIGUSR2
+end subroutine signal_setSIGUSR2
 
 
-end module signals
+end module signal

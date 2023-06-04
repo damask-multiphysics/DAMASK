@@ -12,9 +12,9 @@ n = 1000
 atol=1.e-4
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'Rotation'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Rotation'
 
 @pytest.fixture
 def set_of_rotations(set_of_quaternions):
@@ -774,9 +774,11 @@ class TestRotation:
                             ).all()
 
 
-    def test_matrix(self,multidim_rotations):
+    @pytest.mark.parametrize('normalize',[True,False])
+    def test_matrix(self,multidim_rotations,normalize):
         m = multidim_rotations
-        o = Rotation.from_matrix(m.as_matrix())
+        o = Rotation.from_matrix(m.as_matrix()*(0.9 if normalize else 1.0),
+                                 normalize=normalize)
         f = Rotation(np.where(np.isclose(m.as_quaternion()[...,0],0.0,atol=atol)[...,np.newaxis],~o,o))
         assert np.logical_or(m.isclose(o,atol=atol),
                              m.isclose(f,atol=atol)
@@ -1177,12 +1179,12 @@ class TestRotation:
     @pytest.mark.parametrize('fractions',[True,False])
     @pytest.mark.parametrize('degrees',[True,False])
     @pytest.mark.parametrize('shape',[2**13,2**14,2**15,(2**8,2**6)])
-    def test_ODF_cell(self,ref_path,fractions,degrees,shape):
+    def test_ODF_cell(self,res_path,fractions,degrees,shape):
         steps = np.array([144,36,36])
         limits = np.array([360.,90.,90.])
         rng = tuple(zip(np.zeros(3),limits))
 
-        weights = Table.load(ref_path/'ODF_experimental_cell.txt').get('intensity').flatten()
+        weights = Table.load(res_path/'ODF_experimental_cell.txt').get('intensity').flatten()
         Eulers = grid_filters.coordinates0_point(steps,limits)
         Eulers = np.radians(Eulers) if not degrees else Eulers
 
@@ -1193,12 +1195,12 @@ class TestRotation:
 
     @pytest.mark.parametrize('degrees',[True,False])
     @pytest.mark.parametrize('shape',[2**13,2**14,2**15,(2**8,2**6)])
-    def test_ODF_node(self,ref_path,degrees,shape):
+    def test_ODF_node(self,res_path,degrees,shape):
         steps = np.array([144,36,36])
         limits = np.array([360.,90.,90.])
         rng = tuple(zip(-limits/steps*.5,limits-limits/steps*.5))
 
-        weights = Table.load(ref_path/'ODF_experimental.txt').get('intensity')
+        weights = Table.load(res_path/'ODF_experimental.txt').get('intensity')
         weights = weights.reshape(steps+1,order='F')[:-1,:-1,:-1].reshape(-1,order='F')
 
         Eulers = grid_filters.coordinates0_node(steps,limits)[:-1,:-1,:-1]

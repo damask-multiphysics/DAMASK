@@ -1,12 +1,13 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Read in the configuration of material, numerics, and debug from their respective file
+!> @brief Read in the material and numerics configuration from their respective file.
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
+  use misc
   use YAML_parse
   use YAML_types
-  use results
+  use result
   use parallelization
 
   implicit none(type,external)
@@ -14,17 +15,18 @@ module config
 
   type(tDict), pointer, public :: &
     config_material, &
-    config_numerics, &
-    config_debug
+    config_numerics
 
   public :: &
     config_init, &
-    config_deallocate
+    config_material_deallocate, &
+    config_numerics_deallocate, &
+    config_listReferences
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Real *.yaml configuration files.
+!> @brief Read *.yaml configuration files.
 !--------------------------------------------------------------------------------------------------
 subroutine config_init()
 
@@ -32,9 +34,60 @@ subroutine config_init()
 
   call parse_material()
   call parse_numerics()
-  call parse_debug()
 
 end subroutine config_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_material.
+!--------------------------------------------------------------------------------------------------
+subroutine config_material_deallocate()
+
+  print'(/,1x,a)', 'deallocating material configuration'; flush(IO_STDOUT)
+  deallocate(config_material)
+
+end subroutine config_material_deallocate
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Deallocate config_numerics if present.
+!--------------------------------------------------------------------------------------------------
+subroutine config_numerics_deallocate()
+
+  if (.not. associated(config_numerics, emptyDict)) then
+    print'(/,1x,a)', 'deallocating numerics configuration'; flush(IO_STDOUT)
+    deallocate(config_numerics)
+  end if
+
+end subroutine config_numerics_deallocate
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Return string with references from dict.
+!--------------------------------------------------------------------------------------------------
+function config_listReferences(config,indent) result(references)
+
+  type(tDict) :: config
+  integer, optional :: indent
+  character(len=:), allocatable :: references
+
+
+  type(tList), pointer :: ref
+  character(len=:), allocatable :: filler
+  integer :: r
+
+
+  filler = repeat(' ',misc_optional(indent,0))
+  ref => config%get_list('references',emptyList)
+  if (ref%length == 0) then
+    references = ''
+  else
+    references = 'references:'
+    do r = 1, ref%length
+      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asString(r),filler=filler//'  ')
+    end do
+  end if
+
+end function config_listReferences
 
 
 !--------------------------------------------------------------------------------------------------
@@ -52,9 +105,9 @@ subroutine parse_material()
   if (worldrank == 0) then
     print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
     fileContent = IO_read('material.yaml')
-    call results_openJobFile(parallel=.false.)
-    call results_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
-    call results_closeJobFile
+    call result_openJobFile(parallel=.false.)
+    call result_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
+    call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)
 
@@ -81,9 +134,9 @@ subroutine parse_numerics()
       print'(1x,a)', 'reading numerics.yaml'; flush(IO_STDOUT)
       fileContent = IO_read('numerics.yaml')
       if (len(fileContent) > 0) then
-        call results_openJobFile(parallel=.false.)
-        call results_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
-        call results_closeJobFile
+        call result_openJobFile(parallel=.false.)
+        call result_writeDataset_str(fileContent,'setup','numerics.yaml','numerics configuration')
+        call result_closeJobFile()
       end if
     end if
     call parallelization_bcast_str(fileContent)
@@ -93,48 +146,5 @@ subroutine parse_numerics()
   end if
 
 end subroutine parse_numerics
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Read debug.yaml.
-!--------------------------------------------------------------------------------------------------
-subroutine parse_debug()
-
-  logical :: fileExists
-  character(len=:), allocatable :: fileContent
-
-
-  config_debug => emptyDict
-
-  inquire(file='debug.yaml', exist=fileExists)
-  if (fileExists) then
-
-    if (worldrank == 0) then
-      print'(1x,a)', 'reading debug.yaml'; flush(IO_STDOUT)
-      fileContent = IO_read('debug.yaml')
-      if (len(fileContent) > 0) then
-        call results_openJobFile(parallel=.false.)
-        call results_writeDataset_str(fileContent,'setup','debug.yaml','debug configuration')
-        call results_closeJobFile
-      end if
-    end if
-    call parallelization_bcast_str(fileContent)
-
-    config_debug => YAML_parse_str_asDict(fileContent)
-
-  end if
-
-end subroutine parse_debug
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Deallocate config_material.
-!ToDo: deallocation of numerics and debug (optional)
-!--------------------------------------------------------------------------------------------------
-subroutine config_deallocate
-
-  deallocate(config_material)
-
-end subroutine config_deallocate
 
 end module config

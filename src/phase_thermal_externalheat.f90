@@ -36,11 +36,13 @@ module function externalheat_init(source_length) result(mySources)
     src
   type(tList), pointer :: &
     sources
+  character(len=:), allocatable :: refs
   integer :: so,Nmembers,ph
 
 
   mySources = thermal_active('externalheat',source_length)
   if (count(mySources) == 0) return
+
   print'(/,1x,a)', '<<<+-  phase:thermal:externalheat init  -+>>>'
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
@@ -59,10 +61,13 @@ module function externalheat_init(source_length) result(mySources)
         source_thermal_externalheat_offset(ph) = so
         associate(prm  => param(ph))
           src => sources%get_dict(so)
+          print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
+          refs = config_listReferences(src,indent=3)
+          if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%f = table(src,'t','f')
 
-          Nmembers = count(material_phaseID == ph)
+          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,1,1,0)
         end associate
       end if

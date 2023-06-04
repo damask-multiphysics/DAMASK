@@ -2,7 +2,7 @@ import sys
 
 import pytest
 import numpy as np
-import vtk
+from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import VTK
 from damask import Grid
@@ -34,9 +34,9 @@ def random():
     return Grid.from_Voronoi_tessellation(cells,size,s)
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'Grid'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Grid'
 
 
 class TestGrid:
@@ -98,19 +98,16 @@ class TestGrid:
                  size=np.ones(3),
                  origin=np.ones(4))
 
-
     def test_invalid_materials_shape(self,default):
         material = np.ones((3,3))
         with pytest.raises(ValueError):
             Grid(material,
                  size=np.ones(3))
 
-
     def test_invalid_materials_type(self,default):
         material = np.random.randint(1,300,(3,4,5))==1
         with pytest.raises(TypeError):
             Grid(material)
-
 
     @pytest.mark.parametrize('directions,reflect',[
                                                    (['x'],        False),
@@ -119,19 +116,23 @@ class TestGrid:
                                                    (['y','z'],    False)
                                                   ]
                             )
-    def test_mirror(self,default,update,ref_path,directions,reflect):
+    def test_mirror(self,default,update,res_path,directions,reflect):
         modified = default.mirror(directions,reflect)
         tag = f'directions_{"-".join(directions)}+reflect_{reflect}'
-        reference = ref_path/f'mirror_{tag}.vti'
+        reference = res_path/f'mirror_{tag}.vti'
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
-
 
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
     def test_mirror_invalid(self,default,directions):
         with pytest.raises(ValueError):
             default.mirror(directions)
 
+    @pytest.mark.parametrize('reflect',[True,False])
+    def test_mirror_order_invariant(self,default,reflect):
+        direction = np.array(['x','y','z'])
+        assert default.mirror(np.random.permutation(direction),reflect=reflect) \
+            == default.mirror(np.random.permutation(direction),reflect=reflect)
 
     @pytest.mark.parametrize('directions',[
                                            ['x'],
@@ -140,35 +141,43 @@ class TestGrid:
                                            ['y','z'],
                                           ]
                             )
-    def test_flip(self,default,update,ref_path,directions):
+    def test_flip(self,default,update,res_path,directions):
         modified = default.flip(directions)
         tag = f'directions_{"-".join(directions)}'
-        reference = ref_path/f'flip_{tag}.vti'
+        reference = res_path/f'flip_{tag}.vti'
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
 
+    def test_flip_order_invariant(self,default):
+        direction = np.array(['x','y','z'])
+        assert default.flip(np.random.permutation(direction)) \
+            == default.flip(np.random.permutation(direction))
 
-    def test_flip_invariant(self,default):
-        assert default == default.flip([])
+    def test_flip_mirrored_invariant(self,default):
+        direction = np.random.permutation(['x','y','z'])
+        assert default.mirror(direction,True) == default.mirror(direction,True).flip(direction)
 
+    def test_flip_equal_halfspin(self,default):
+        direction = ['x','y','z']
+        i = np.random.choice(3)
+        assert default.rotate(Rotation.from_axis_angle(np.hstack((np.identity(3)[i],180)),degrees=True)) \
+            == default.flip(direction[:i]+direction[i+1:])
 
     @pytest.mark.parametrize('direction',[['x'],['x','y']])
     def test_flip_double(self,default,direction):
         assert default == default.flip(direction).flip(direction)
-
 
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
     def test_flip_invalid(self,default,directions):
         with pytest.raises(ValueError):
             default.flip(directions)
 
-
     @pytest.mark.parametrize('distance',[1.,np.sqrt(3)])
     @pytest.mark.parametrize('selection',[None,1,[1],[1,2,3]])
     @pytest.mark.parametrize('periodic',[True,False])
-    def test_clean_reference(self,default,update,ref_path,distance,selection,periodic):
+    def test_clean_reference(self,default,update,res_path,distance,selection,periodic):
         current = default.clean(distance,selection,periodic=periodic,rng_seed=0)
-        reference = ref_path/f'clean_{distance}_{util.srepr(selection,"+")}_{periodic}.vti'
+        reference = res_path/f'clean_{distance}_{util.srepr(selection,"+")}_{periodic}.vti'
         if update:
             current.save(reference)
         assert Grid.load(reference) == current
@@ -184,7 +193,6 @@ class TestGrid:
         assert random.clean(selection=None,invert_selection=True,rng_seed=0) == random.clean(rng_seed=0) and \
                random.clean(selection=None,invert_selection=False,rng_seed=0) == random.clean(rng_seed=0)
 
-
     @pytest.mark.parametrize('cells',[
                                      (10,11,10),
                                      [10,13,10],
@@ -194,13 +202,12 @@ class TestGrid:
                                      np.array((10,20,2))
                                     ]
                             )
-    def test_scale(self,default,update,ref_path,cells):
+    def test_scale(self,default,update,res_path,cells):
         modified = default.scale(cells)
         tag = f'grid_{util.srepr(cells,"-")}'
-        reference = ref_path/f'scale_{tag}.vti'
+        reference = res_path/f'scale_{tag}.vti'
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
-
 
     def test_renumber(self,default):
         material = default.material.copy()
@@ -213,14 +220,12 @@ class TestGrid:
         assert not default == modified
         assert     default == modified.renumber()
 
-
     def test_assemble(self):
         cells = np.random.randint(8,16,3)
         N = cells.prod()
         g = Grid(np.arange(N).reshape(cells),np.ones(3))
         idx = np.random.randint(0,N,N).reshape(cells)
         assert (idx == g.assemble(idx).material).all
-
 
     def test_substitute(self,default):
         offset = np.random.randint(1,500)
@@ -257,16 +262,14 @@ class TestGrid:
             modified.rotate(Rotation.from_axis_angle(axis_angle,degrees=True))
         assert default == modified
 
-
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
-    def test_rotate(self,default,update,ref_path,Eulers):
+    def test_rotate(self,default,update,res_path,Eulers):
         modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
-        reference = ref_path/f'rotate_{tag}.vti'
+        reference = res_path/f'rotate_{tag}.vti'
         if update: modified.save(reference)
         assert Grid.load(reference) == modified
-
 
     def test_canvas_extend(self,default):
         cells = default.cells
@@ -364,13 +367,11 @@ class TestGrid:
         assert random.vicinity_offset(selection=None,invert_selection=False) == random.vicinity_offset() and \
                random.vicinity_offset(selection=None,invert_selection=True ) == random.vicinity_offset()
 
-
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
         offset = default.vicinity_offset(selection=[default.material.max()+1,
                                                     default.material.min()-1])
         assert np.all(offset.material==default.material)
-
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):
@@ -382,7 +383,6 @@ class TestGrid:
         Laguerre = Grid.from_Laguerre_tessellation(cells,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
         assert Laguerre == Voronoi
 
-
     def test_Laguerre_weights(self):
         cells  = np.random.randint(10,20,3)
         size   = np.random.random(3) + 1.0
@@ -393,7 +393,6 @@ class TestGrid:
         weights[ms] = np.random.random()
         Laguerre = Grid.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.material == ms)
-
 
     @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
     def test_tessellate_bicrystal(self,approach):
@@ -407,7 +406,6 @@ class TestGrid:
         elif approach == 'Voronoi':
             grid = Grid.from_Voronoi_tessellation(cells,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(grid.material == material)
-
 
     @pytest.mark.parametrize('surface',['Schwarz P',
                                         'Double Primitive',
@@ -450,7 +448,6 @@ class TestGrid:
         grid = Grid.from_minimal_surface(cells,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(grid.material==1)/np.prod(grid.cells),.5,rtol=1e-3)
 
-
     def test_from_table(self):
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
@@ -462,7 +459,6 @@ class TestGrid:
         g = Grid.from_table(t,'coords',['indicator','z'])
         assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
 
-
     def test_from_table_recover(self,tmp_path):
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
@@ -472,16 +468,15 @@ class TestGrid:
         t = Table({'c':3,'m':1},np.column_stack((coords.reshape(-1,3,order='F'),grid.material.flatten(order='F'))))
         assert grid.sort().renumber() == Grid.from_table(t,'c',['m'])
 
-
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
-    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
-    def test_get_grain_boundaries(self,update,ref_path,periodic,direction):
-        grid = Grid.load(ref_path/'get_grain_boundaries_8g12x15x20.vti')
+    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
+    def test_get_grain_boundaries(self,update,res_path,periodic,direction):
+        grid = Grid.load(res_path/'get_grain_boundaries_8g12x15x20.vti')
         current = grid.get_grain_boundaries(periodic,direction)
         if update:
-            current.save(ref_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
-        reference = VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
+            current.save(res_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
+        reference = VTK.load(res_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
         assert current.__repr__() == reference.__repr__()
 
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
@@ -489,27 +484,26 @@ class TestGrid:
         with pytest.raises(ValueError):
             default.get_grain_boundaries(directions=directions)
 
-    def test_load_DREAM3D(self,ref_path):
-        grain = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d','FeatureIds')
-        point = Grid.load_DREAM3D(ref_path/'2phase_irregularGrid.dream3d')
+    def test_load_DREAM3D(self,res_path):
+        grain = Grid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d','FeatureIds')
+        point = Grid.load_DREAM3D(res_path/'2phase_irregularGrid.dream3d')
 
         assert np.allclose(grain.origin,point.origin) and \
                np.allclose(grain.size,point.size) and \
                (grain.sort().material == point.material+1).all()
 
-
-    def test_load_DREAM3D_reference(self,ref_path,update):
-        current   = Grid.load_DREAM3D(ref_path/'measured.dream3d')
-        reference = Grid.load(ref_path/'measured.vti')
+    def test_load_DREAM3D_reference(self,res_path,update):
+        current   = Grid.load_DREAM3D(res_path/'measured.dream3d')
+        reference = Grid.load(res_path/'measured.vti')
         if update:
-            current.save(ref_path/'measured.vti')
+            current.save(res_path/'measured.vti')
 
         assert current == reference
 
-    def test_load_Neper_reference(self,ref_path,update):
-        current   = Grid.load_Neper(ref_path/'n10-id1_scaled.vtk')
-        reference = Grid.load(ref_path/'n10-id1_scaled.vti')
+    def test_load_Neper_reference(self,res_path,update):
+        current   = Grid.load_Neper(res_path/'n10-id1_scaled.vtk').renumber()
+        reference = Grid.load(res_path/'n10-id1_scaled.vti')
         if update:
-            current.save(ref_path/'n10-id1_scaled.vti')
+            current.save(res_path/'n10-id1_scaled.vti')
 
         assert current == reference

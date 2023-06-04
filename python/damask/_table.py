@@ -41,7 +41,7 @@ class Table:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         self._relabel('shapes')
@@ -255,8 +255,8 @@ class Table:
         """
         Load from ASCII table file.
 
-        Initial comments are marked by '#', the first non-comment line
-        containing the column labels.
+        Initial comments are marked by '#'.
+        The first non-comment line contains the column labels.
 
         - Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
         - Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
@@ -264,7 +264,7 @@ class Table:
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file to read.
 
         Returns
         -------
@@ -299,11 +299,18 @@ class Table:
 
 
     @staticmethod
-    def load_ang(fname: FileHandle) -> 'Table':
+    def load_ang(fname: FileHandle,
+                 shapes = {'eu':3,
+                           'pos':2,
+                           'IQ':1,
+                           'CI':1,
+                           'ID':1,
+                           'intensity':1,
+                           'fit':1}) -> 'Table':
         """
-        Load from ang file.
+        Load from ANG file.
 
-        A valid TSL ang file has to have the following columns:
+        Regular ANG files feature the following columns:
 
         - Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
         - Spatial position in meters, 2 floats, label 'pos'.
@@ -316,7 +323,10 @@ class Table:
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file to read.
+        shapes : dict with str:int pairs, optional
+            Column labels and their width.
+            Defaults to standard TSL ANG format.
 
         Returns
         -------
@@ -338,7 +348,6 @@ class Table:
 
         data = np.loadtxt(content)
 
-        shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
         if (remainder := data.shape[1]-sum(shapes.values())) > 0:
             shapes['unknown'] = remainder
 
@@ -458,9 +467,9 @@ class Table:
         Parameters
         ----------
         label_old : (iterable of) str
-            Old column label(s).
+            Old column labels.
         label_new : (iterable of) str
-            New column label(s).
+            New column labels.
 
         Returns
         -------
@@ -488,7 +497,7 @@ class Table:
         label : str or list
             Column labels for sorting.
         ascending : bool or list, optional
-            Set sort order.
+            Set sort order. Defaults to True.
 
         Returns
         -------
@@ -574,7 +583,7 @@ class Table:
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for writing.
+            Filename or file to write.
         with_labels : bool, optional
             Write column labels. Defaults to True.
 
@@ -594,4 +603,7 @@ class Table:
         f = util.open_text(fname,'w')
 
         f.write('\n'.join([f'# {c}' for c in self.comments] + [' '.join(labels)])+('\n' if labels else ''))
-        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')
+        try:                                                                                        # backward compatibility
+            self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,lineterminator='\n')
+        except TypeError:
+            self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False,line_terminator='\n')

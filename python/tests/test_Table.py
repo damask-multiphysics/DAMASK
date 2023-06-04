@@ -13,9 +13,9 @@ def default():
                  ['test data','contains five rows of only ones'])
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'Table'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Table'
 
 class TestTable:
 
@@ -81,13 +81,15 @@ class TestTable:
         assert default[N:].get('F').shape == (len(default)-N,3,3)
         assert default[:N,['v','s']].data.equals(default['v','s'][:N].data)
 
-    @pytest.mark.parametrize('mode',['str','path'])
-    def test_write_read(self,default,tmp_path,mode):
-        default.save(tmp_path/'default.txt')
-        if   mode == 'path':
-            new = Table.load(tmp_path/'default.txt')
-        elif mode == 'str':
-            new = Table.load(str(tmp_path/'default.txt'))
+    @pytest.mark.parametrize('mode',['str','path','file'])
+    def test_write_read_mode(self,default,tmp_path,mode):
+        path = tmp_path/'default.txt'
+        if mode == 'file':
+            default.save(open(path,'w'))
+            new = Table.load(open(path))
+        else:
+            default.save(str(path) if mode == 'str' else path)
+            new = Table.load(str(path) if mode == 'str' else path)
         assert all(default.data == new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmp_path):
@@ -101,30 +103,29 @@ class TestTable:
         with pytest.raises(TypeError):
             default.save(tmp_path/'shouldnotbethere.txt',format='invalid')
 
-    @pytest.mark.parametrize('mode',['str','path'])
-    def test_read_ang(self,ref_path,mode):
-        if   mode == 'path':
-            new = Table.load_ang(ref_path/'simple.ang')
-        elif mode == 'str':
-            new = Table.load_ang(str(ref_path/'simple.ang'))
+    @pytest.mark.parametrize('mode',['str','path','file'])
+    def test_read_ang_mode(self,res_path,mode):
+        where = res_path/'simple.ang'
+        fname = {'path': where,
+                 'str':  str(where),
+                 'file': open(where)}[mode]
+        new = Table.load_ang(fname)
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
-    def test_read_ang_file(self,ref_path):
-        f = open(ref_path/'simple.ang')
-        new = Table.load_ang(f)
-        assert new.data.shape == (4,10) and \
-               new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
+    def test_read_ang_shapes(self,res_path):
+        new = Table.load_ang(str(res_path/'simple.ang'),shapes={})
+        assert new.data.shape == (4,10) and new.labels == ['unknown']
 
-    def test_save_ang(self,ref_path,tmp_path):
-        orig = Table.load_ang(ref_path/'simple.ang')
+    def test_save_ang(self,res_path,tmp_path):
+        orig = Table.load_ang(res_path/'simple.ang')
         orig.save(tmp_path/'simple.ang',with_labels=False)
         saved = Table.load_ang(tmp_path/'simple.ang')
         assert saved == orig
 
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
-    def test_read_strange(self,ref_path,fname):
-        with open(ref_path/fname) as f:
+    def test_read_strange(self,res_path,fname):
+        with open(res_path/fname) as f:
             Table.load(f)
 
     def test_rename_equivalent(self):

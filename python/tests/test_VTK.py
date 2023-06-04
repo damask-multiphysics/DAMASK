@@ -7,16 +7,16 @@ import sys
 import pytest
 import numpy as np
 import numpy.ma as ma
-import vtk
+from vtkmodules.vtkCommonCore import vtkVersion
 
 from damask import VTK
 from damask import Table
 from damask import Colormap
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'VTK'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'VTK'
 
 @pytest.fixture
 def default():
@@ -32,7 +32,7 @@ class TestVTK:
         print('patched damask.util.execution_stamp')
 
     @pytest.mark.parametrize('cmap',[Colormap.from_predefined('cividis'),'strain'])
-    @pytest.mark.skipif(sys.platform == 'win32', reason='DISPLAY has no effect on windows')
+    @pytest.mark.skipif(sys.platform == 'win32', reason='DISPLAY has no effect on Windows OS')
     def test_show(sef,default,cmap,monkeypatch):
         monkeypatch.delenv('DISPLAY',raising=False)
         default.show(colormap=cmap)
@@ -222,19 +222,19 @@ class TestVTK:
         new = VTK.load(tmp_path/'with_comments.vti')
         assert new.comments == ['this is a comment']
 
-    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
-    def test_compare_reference_polyData(self,update,ref_path,tmp_path):
+    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
+    def test_compare_reference_polyData(self,update,res_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
         polyData = VTK.from_poly_data(points).set('coordinates',points)
         if update:
-            polyData.save(ref_path/'polyData')
+            polyData.save(res_path/'polyData')
         else:
-            reference = VTK.load(ref_path/'polyData.vtp')
+            reference = VTK.load(res_path/'polyData.vtp')
             assert polyData.as_ASCII() == reference.as_ASCII() and \
                    np.allclose(polyData.get('coordinates'),points)
 
-    @pytest.mark.xfail(int(vtk.vtkVersion.GetVTKVersion().split('.')[0])<8, reason='missing METADATA')
-    def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
+    @pytest.mark.xfail(vtkVersion.GetVTKMajorVersion()<8, reason='missing METADATA')
+    def test_compare_reference_rectilinearGrid(self,update,res_path,tmp_path):
         grid = [np.arange(4)**2.,
                 np.arange(5)**2.,
                 np.arange(6)**2.]                                               # ParaView renders tetrahedral meshing unless using float coordinates!
@@ -245,8 +245,8 @@ class TestVTK:
                         .set('cell',np.ascontiguousarray(c)) \
                         .set('node',np.ascontiguousarray(n))
         if update:
-            rectilinearGrid.save(ref_path/'rectilinearGrid')
+            rectilinearGrid.save(res_path/'rectilinearGrid')
         else:
-            reference = VTK.load(ref_path/'rectilinearGrid.vtr')
+            reference = VTK.load(res_path/'rectilinearGrid.vtr')
             assert rectilinearGrid.as_ASCII() == reference.as_ASCII() and \
                    np.allclose(rectilinearGrid.get('cell'),c)

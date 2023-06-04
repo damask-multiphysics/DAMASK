@@ -54,8 +54,9 @@ module function plastic_isotropic_init() result(myPlasticity)
     sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -72,9 +73,11 @@ module function plastic_isotropic_init() result(myPlasticity)
   print'(/,1x,a)', 'T. Maiti and P. Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print'(  1x,a)', 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
+
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(state(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -84,6 +87,10 @@ module function plastic_isotropic_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
+
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -105,7 +112,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     prm%c_2         = pl%get_asFloat('c_2',  defaultVal=0.0_pReal)
     prm%a           = pl%get_asFloat('a')
 
-    prm%dilatation  = pl%get_AsBool('dilatation',defaultVal = .false.)
+    prm%dilatation  = pl%get_asBool('dilatation',defaultVal = .false.)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
@@ -117,7 +124,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
     sizeDotState = size(['xi'])
     sizeState = sizeDotState
 
@@ -285,7 +292,7 @@ end function isotropic_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_results(ph,group)
+module subroutine plastic_isotropic_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -296,13 +303,13 @@ module subroutine plastic_isotropic_results(ph,group)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('xi')
-        call results_writeDataset(stt%xi,group,trim(prm%output(o)), &
-                                    'resistance against plastic flow','Pa')
+        call result_writeDataset(stt%xi,group,trim(prm%output(o)), &
+                                 'resistance against plastic flow','Pa')
     end select
   end do outputsLoop
   end associate
 
-end subroutine plastic_isotropic_results
+end subroutine plastic_isotropic_result
 
 
 end submodule isotropic

@@ -64,9 +64,9 @@ submodule(phase:plastic) dislotwin
       P_tw, &
       P_tr
     integer :: &
-      sum_N_sl, &                                                                                   !< total number of active slip system
-      sum_N_tw, &                                                                                   !< total number of active twin system
-      sum_N_tr                                                                                      !< total number of active transformation system
+      sum_N_sl, &                                                                                   !< total number of active slip systems
+      sum_N_tw, &                                                                                   !< total number of active twin systems
+      sum_N_tr                                                                                      !< total number of active transformation systems
     integer,                   allocatable, dimension(:)   :: &
       N_tw, &
       N_tr
@@ -140,8 +140,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
   real(pReal), allocatable, dimension(:) :: &
     rho_mob_0, &                                                                                    !< initial unipolar dislocation density per slip system
     rho_dip_0                                                                                       !< initial dipole dislocation density per slip system
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -170,6 +171,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -180,6 +182,10 @@ module function plastic_dislotwin_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl  => mech%get_dict('plastic')
+
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -380,7 +386,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers  = count(material_phaseID == ph)
+    Nmembers  = count(material_ID_phase == ph)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl &
                  + size(['f_tw'])                           * prm%sum_N_tw &
                  + size(['f_tr'])                           * prm%sum_N_tr
@@ -768,7 +774,7 @@ end subroutine dislotwin_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_results(ph,group)
+module subroutine plastic_dislotwin_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -783,30 +789,30 @@ module subroutine plastic_dislotwin_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
-                                       'mobile dislocation density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                   'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
-                                       'dislocation dipole density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                   'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                       'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
-                                       'mean free path for slip','m',prm%systems_sl)
+          call result_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                   'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                       'passing stress for slip','Pa',prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'passing stress for slip','Pa',prm%systems_sl)
 
         case('f_tw')
-          call results_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
-                                       'twinned volume fraction','m³/m³',prm%systems_tw)
+          call result_writeDataset(stt%f_tw,group,trim(prm%output(ou)), &
+                                   'twinned volume fraction','m³/m³',prm%systems_tw)
         case('Lambda_tw')
-          call results_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
-                                       'mean free path for twinning','m',prm%systems_tw)
+          call result_writeDataset(dst%Lambda_tw,group,trim(prm%output(ou)), &
+                                   'mean free path for twinning','m',prm%systems_tw)
 
         case('f_tr')
-          if (prm%sum_N_tr>0) call results_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
+          if (prm%sum_N_tr>0) call result_writeDataset(stt%f_tr,group,trim(prm%output(ou)), &
                                                        'martensite volume fraction','m³/m³')
 
       end select
@@ -815,15 +821,15 @@ module subroutine plastic_dislotwin_results(ph,group)
 
   end associate
 
-end subroutine plastic_dislotwin_results
+end subroutine plastic_dislotwin_result
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate shear rates on slip systems, their derivatives with respect to resolved
 !         stress, and the resolved stress.
 !> @details Derivatives and resolved stress are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,T,ph,en, &
                             dot_gamma_sl,ddot_gamma_dtau_sl,tau_sl)
@@ -898,8 +904,8 @@ end subroutine kinetics_sl
 !> @brief Calculate shear rates on twin systems and their derivatives with respect to resolved
 !         stress.
 !> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tw(Mp,T,abs_dot_gamma_sl,ph,en,&
                             dot_gamma_tw,ddot_gamma_dtau_tw)
@@ -974,8 +980,8 @@ end subroutine kinetics_tw
 !> @brief Calculate shear rates on transformation systems and their derivatives with respect to
 !         resolved stress.
 !> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tr(Mp,T,abs_dot_gamma_sl,ph,en,&
                             dot_gamma_tr,ddot_gamma_dtau_tr)

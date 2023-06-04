@@ -25,7 +25,7 @@ module subroutine isostrain_init
   do ho = 1, size(mechanical_type)
     if (mechanical_type(ho) /= MECHANICAL_ISOSTRAIN_ID) cycle
 
-    Nmembers = count(material_homogenizationID == ho)
+    Nmembers = count(material_ID_homogenization == ho)
     homogState(ho)%sizeState = 0
     allocate(homogState(ho)%state0(0,Nmembers))
     allocate(homogState(ho)%state (0,Nmembers))

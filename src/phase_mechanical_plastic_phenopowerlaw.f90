@@ -85,13 +85,15 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
-    N_sl, N_tw
+    N_sl, &                                                                                         !< number of slip-systems for a given slip family
+    N_tw                                                                                            !< number of twin-systems for a given twin family
   real(pReal), dimension(:), allocatable :: &
     xi_0_sl, &                                                                                      !< initial critical shear stress for slip
     xi_0_tw, &                                                                                      !< initial critical shear stress for twin
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -110,6 +112,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -120,6 +123,16 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
+
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
+
+#if defined (__GFORTRAN__)
+    prm%output = output_as1dString(pl)
+#else
+    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+#endif
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -217,17 +230,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     end if slipAndTwinActive
 
 !--------------------------------------------------------------------------------------------------
-!  output pararameters
-
-#if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
-#else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
-#endif
-
-!--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
     sizeDotState = size(['xi_sl   ','gamma_sl']) * prm%sum_N_sl &
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
@@ -278,7 +282,7 @@ end function plastic_phenopowerlaw_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
-!> @details asummes that deformation by dislocation glide affects twinned and untwinned volume
+!> @details assumes that deformation by dislocation glide affects twinned and untwinned volume
 !  equally (Taylor assumption). Twinning happens only in untwinned volume
 !--------------------------------------------------------------------------------------------------
 pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
@@ -380,7 +384,7 @@ end function phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_phenopowerlaw_results(ph,group)
+module subroutine plastic_phenopowerlaw_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -395,18 +399,18 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('xi_sl')
-          call results_writeDataset(stt%xi_sl,group,trim(prm%output(ou)), &
-                                    'resistance against plastic slip','Pa',prm%systems_sl)
+          call result_writeDataset(stt%xi_sl,group,trim(prm%output(ou)), &
+                                   'resistance against plastic slip','Pa',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                    'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
 
         case('xi_tw')
-          call results_writeDataset(stt%xi_tw,group,trim(prm%output(ou)), &
-                                    'resistance against twinning','Pa',prm%systems_tw)
+          call result_writeDataset(stt%xi_tw,group,trim(prm%output(ou)), &
+                                   'resistance against twinning','Pa',prm%systems_tw)
         case('gamma_tw')
-          call results_writeDataset(stt%gamma_tw,group,trim(prm%output(ou)), &
-                                    'twinning shear','1',prm%systems_tw)
+          call result_writeDataset(stt%gamma_tw,group,trim(prm%output(ou)), &
+                                   'twinning shear','1',prm%systems_tw)
 
       end select
 
@@ -414,15 +418,15 @@ module subroutine plastic_phenopowerlaw_results(ph,group)
 
   end associate
 
-end subroutine plastic_phenopowerlaw_results
+end subroutine plastic_phenopowerlaw_result
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate shear rates on slip systems and their derivatives with respect to resolved
 !         stress.
 !> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_sl(Mp,ph,en, &
                             dot_gamma_sl_pos,dot_gamma_sl_neg,ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg)
@@ -489,10 +493,10 @@ end subroutine kinetics_sl
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate shear rates on twin systems and their derivatives with respect to resolved
-!         stress. Twinning is assumed to take place only in untwinned volume.
-!> @details Derivatives are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end.
+!         stress. Twinning is assumed to take place only in an untwinned volume.
+!> @details Derivatives are calculated and returned if corresponding output variables are present in the argument list.
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics_tw(Mp,ph,en,&
                             dot_gamma_tw,ddot_gamma_dtau_tw)

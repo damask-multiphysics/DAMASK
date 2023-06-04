@@ -8,6 +8,7 @@ import numpy as np
 
 FloatSequence = Union[np.ndarray,Sequence[float]]
 IntSequence = Union[np.ndarray,Sequence[int]]
+StrSequence = Union[np.ndarray,Sequence[str]]
 FileHandle = Union[TextIO, str, Path]
 CrystalFamily = Union[None,Literal['triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic']]
 CrystalLattice = Union[None,Literal['aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF']]

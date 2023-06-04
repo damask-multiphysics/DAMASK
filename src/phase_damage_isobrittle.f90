@@ -39,7 +39,9 @@ module function isobrittle_init() result(mySources)
     phase, &
     src
   integer :: Nmembers,ph
-  character(len=pStringLen) :: extmsg = ''
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
 
 
   mySources = source_active('isobrittle')
@@ -53,6 +55,7 @@ module function isobrittle_init() result(mySources)
   allocate(param(phases%length))
   allocate(state(phases%length))
   allocate(deltaState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (mySources(ph)) then
@@ -63,6 +66,10 @@ module function isobrittle_init() result(mySources)
 
         prm%W_crit = src%get_asFloat('G_crit')/src%get_asFloat('l_c')
 
+        print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+        refs = config_listReferences(src,indent=3)
+        if (len(refs) > 0) print'(/,1x,a)', refs
+
 #if defined (__GFORTRAN__)
         prm%output = output_as1dString(src)
 #else
@@ -72,7 +79,7 @@ module function isobrittle_init() result(mySources)
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        Nmembers = count(material_phaseID==ph)
+        Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,0,1)
         damageState(ph)%atol = src%get_asFloat('atol_phi',defaultVal=1.0e-9_pReal)
         if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
@@ -113,7 +120,7 @@ module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = (2.0_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
+    r_W = (0.5_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
     dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
 
   end associate
@@ -124,7 +131,7 @@ end subroutine isobrittle_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine isobrittle_results(phase,group)
+module subroutine isobrittle_result(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -136,13 +143,13 @@ module subroutine isobrittle_results(phase,group)
 
     outputsLoop: do o = 1,size(prm%output)
       select case(trim(prm%output(o)))
-        case ('f_phi')
-          call results_writeDataset(stt,group,trim(prm%output(o)),'driving force','-')
+        case ('r_W')
+          call result_writeDataset(stt,group,trim(prm%output(o)),'ratio between actual and critical strain energy density','-')
       end select
     end do outputsLoop
 
   end associate
 
-end subroutine isobrittle_results
+end subroutine isobrittle_result
 
 end submodule isobrittle

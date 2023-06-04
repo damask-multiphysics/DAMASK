@@ -43,10 +43,10 @@ submodule(homogenization) mechanical
     end function RGC_updateState
 
 
-    module subroutine RGC_results(ho,group)
+    module subroutine RGC_result(ho,group)
       integer,          intent(in) :: ho                                                            !< homogenization type
       character(len=*), intent(in) :: group                                                         !< group name in HDF5 file
-    end subroutine RGC_results
+    end subroutine RGC_result
 
   end interface
 
@@ -99,10 +99,10 @@ module subroutine mechanical_partition(subF,ce)
     ce
 
   integer :: co
-  real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationID(ce))) :: Fs
+  real(pReal), dimension (3,3,homogenization_Nconstituents(material_ID_homogenization(ce))) :: Fs
 
 
-  chosenHomogenization: select case(mechanical_type(material_homogenizationID(ce)))
+  chosenHomogenization: select case(mechanical_type(material_ID_homogenization(ce)))
 
     case (MECHANICAL_PASS_ID) chosenHomogenization
       Fs(1:3,1:3,1) = subF
@@ -115,7 +115,7 @@ module subroutine mechanical_partition(subF,ce)
 
   end select chosenHomogenization
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
+  do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
     call phase_set_F(Fs(1:3,1:3,co),co,ce)
   end do
 
@@ -136,7 +136,7 @@ module subroutine mechanical_homogenize(Delta_t,ce)
 
   homogenization_P(1:3,1:3,ce)            = phase_P(1,ce)*material_v(1,ce)
   homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = phase_mechanical_dPdF(Delta_t,1,ce)*material_v(1,ce)
-  do co = 2, homogenization_Nconstituents(material_homogenizationID(ce))
+  do co = 2, homogenization_Nconstituents(material_ID_homogenization(ce))
     homogenization_P(1:3,1:3,ce)            = homogenization_P(1:3,1:3,ce) &
                                             + phase_P(co,ce)*material_v(co,ce)
     homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = homogenization_dPdF(1:3,1:3,1:3,1:3,ce) &
@@ -161,13 +161,13 @@ module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
   logical, dimension(2) :: doneAndHappy
 
   integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
-  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
-  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_homogenizationID(ce)))
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
+  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
+  real(pReal) :: Ps(3,3,homogenization_Nconstituents(material_ID_homogenization(ce)))
 
 
-  if (mechanical_type(material_homogenizationID(ce)) == MECHANICAL_RGC_ID) then
-      do co = 1, homogenization_Nconstituents(material_homogenizationID(ce))
+  if (mechanical_type(material_ID_homogenization(ce)) == MECHANICAL_RGC_ID) then
+      do co = 1, homogenization_Nconstituents(material_ID_homogenization(ce))
         dPdFs(:,:,:,:,co) = phase_mechanical_dPdF(subdt,co,ce)
         Fs(:,:,co)        = phase_F(co,ce)
         Ps(:,:,co)        = phase_P(co,ce)
@@ -183,7 +183,7 @@ end function mechanical_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to file.
 !--------------------------------------------------------------------------------------------------
-module subroutine mechanical_results(group_base,ho)
+module subroutine mechanical_result(group_base,ho)
 
   character(len=*), intent(in) :: group_base
   integer, intent(in)          :: ho
@@ -193,12 +193,12 @@ module subroutine mechanical_results(group_base,ho)
 
 
   group = trim(group_base)//'/mechanical'
-  call results_closeGroup(results_addGroup(group))
+  call result_closeGroup(result_addGroup(group))
 
   select case(mechanical_type(ho))
 
     case(MECHANICAL_RGC_ID)
-      call RGC_results(ho,group)
+      call RGC_result(ho,group)
 
   end select
 
@@ -206,15 +206,15 @@ module subroutine mechanical_results(group_base,ho)
 
     select case (output_mechanical(ho)%label(ou))
       case('F')
-        call results_writeDataset(reshape(homogenization_F,[3,3,discretization_nCells]),group,'F', &
-                                  'deformation gradient','1')
+        call result_writeDataset(reshape(homogenization_F,[3,3,discretization_nCells]),group,'F', &
+                                 'deformation gradient','1')
       case('P')
-        call results_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
-                                  'first Piola-Kirchhoff stress','Pa')
+        call result_writeDataset(reshape(homogenization_P,[3,3,discretization_nCells]),group,'P', &
+                                 'first Piola-Kirchhoff stress','Pa')
     end select
   end do
 
-end subroutine mechanical_results
+end subroutine mechanical_result
 
 
 !--------------------------------------------------------------------------------------------------

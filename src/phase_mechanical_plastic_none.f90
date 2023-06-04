@@ -27,10 +27,12 @@ module function plastic_none_init() result(myPlasticity)
   print'(/,1x,a)', '<<<+-  phase:mechanical:plastic:none init  -+>>>'
   print'(/,a,i0)', ' # phases: ',count(myPlasticity); flush(IO_STDOUT)
 
+
   phases => config_material%get_dict('phase')
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
-    call phase_allocateState(plasticState(ph),count(material_phaseID == ph),0,0,0)
+    print'(a,i0,a)', ' phase ',ph
+    call phase_allocateState(plasticState(ph),count(material_ID_phase == ph),0,0,0)
   end do
 
 end function plastic_none_init

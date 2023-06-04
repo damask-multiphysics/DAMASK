@@ -93,8 +93,9 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tDict), pointer :: &
     phases, &
     phase, &
@@ -111,11 +112,13 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   print'(/,1x,a)', 'D. Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2015.09.002'
 
+
   phases => config_material%get_dict('phase')
   allocate(param(phases%length))
   allocate(indexDotState(phases%length))
   allocate(state(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -126,6 +129,10 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl  => mech%get_dict('plastic')
+
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
@@ -218,7 +225,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
@@ -403,7 +410,7 @@ end subroutine dislotungsten_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotungsten_results(ph,group)
+module subroutine plastic_dislotungsten_result(ph,group)
 
   integer,          intent(in) :: ph
   character(len=*), intent(in) :: group
@@ -418,35 +425,35 @@ module subroutine plastic_dislotungsten_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_mob')
-          call results_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
-                                    'mobile dislocation density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_mob,group,trim(prm%output(ou)), &
+                                   'mobile dislocation density','1/m²',prm%systems_sl)
         case('rho_dip')
-          call results_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
-                                    'dislocation dipole density','1/m²',prm%systems_sl)
+          call result_writeDataset(stt%rho_dip,group,trim(prm%output(ou)), &
+                                   'dislocation dipole density','1/m²',prm%systems_sl)
         case('gamma_sl')
-          call results_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
-                                    'plastic shear','1',prm%systems_sl)
+          call result_writeDataset(stt%gamma_sl,group,trim(prm%output(ou)), &
+                                   'plastic shear','1',prm%systems_sl)
         case('Lambda_sl')
-          call results_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
-                                    'mean free path for slip','m',prm%systems_sl)
+          call result_writeDataset(dst%Lambda_sl,group,trim(prm%output(ou)), &
+                                   'mean free path for slip','m',prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                    'threshold stress for slip','Pa',prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'threshold stress for slip','Pa',prm%systems_sl)
       end select
 
     end do
 
   end associate
 
-end subroutine plastic_dislotungsten_results
+end subroutine plastic_dislotungsten_result
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate shear rates on slip systems, their derivatives with respect to resolved
 !         stress, and the resolved stress.
 !> @details Derivatives and resolved stress are calculated only optionally.
-! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
-! have the optional arguments at the end
+! NOTE: Contrary to common convention, here the result (i.e. intent(out)) variables have to be put
+! at the end since some of them are optional.
 !--------------------------------------------------------------------------------------------------
 pure subroutine kinetics(Mp,T,ph,en, &
                  dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg,tau_pos_out,tau_neg_out)

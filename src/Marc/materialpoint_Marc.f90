@@ -10,7 +10,7 @@ module materialpoint_Marc
   use YAML_types
   use YAML_parse
   use HDF5_utilities
-  use results
+  use result
   use config
   use math
   use rotations
@@ -50,22 +50,10 @@ module materialpoint_Marc
 
   type(tNumerics), private :: num
 
-  type, private :: tDebugOptions
-    logical :: &
-      basic, &
-      extensive, &
-      selective
-    integer:: &
-      element, &
-      ip
-  end type tDebugOptions
-
-  type(tDebugOptions), private :: debugmaterialpoint
-
   public :: &
     materialpoint_general, &
     materialpoint_initAll, &
-    materialpoint_results
+    materialpoint_result
 
 contains
 
@@ -81,7 +69,7 @@ subroutine materialpoint_initAll()
   call YAML_types_init()
   call YAML_parse_init()
   call HDF5_utilities_init()
-  call results_init(.false.)
+  call result_init(.false.)
   call config_init()
   call math_init()
   call rotations_init()
@@ -93,19 +81,17 @@ subroutine materialpoint_initAll()
   call phase_init()
   call homogenization_init()
   call materialpoint_init()
-  call config_deallocate()
+  call config_material_deallocate()
+  call config_numerics_deallocate()
+
 
 end subroutine materialpoint_initAll
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocate the arrays defined in module materialpoint and initialize them
+!> @brief Allocate the arrays defined in module materialpoint and initialize them.
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_init()
-
-  type(tList), pointer :: &
-    debug_materialpoint
-
 
   print'(/,1x,a)', '<<<+-  materialpoint init  -+>>>'; flush(IO_STDOUT)
 
@@ -113,22 +99,6 @@ subroutine materialpoint_init()
   allocate(materialpoint_dcsdE(          6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
   allocate(materialpoint_dcsdE_knownGood(6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
 
-!------------------------------------------------------------------------------
-! read debug options
-
-  debug_materialpoint => config_debug%get_list('materialpoint',defaultVal=emptyList)
-  debugmaterialpoint%basic     = debug_materialpoint%contains('basic')
-  debugmaterialpoint%extensive = debug_materialpoint%contains('extensive')
-  debugmaterialpoint%selective = debug_materialpoint%contains('selective')
-  debugmaterialpoint%element   = config_debug%get_asInt('element',defaultVal = 1)
-  debugmaterialpoint%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
-
-  if (debugmaterialpoint%basic) then
-    print'(a32,1x,6(i8,1x))',   'materialpoint_cs:              ', shape(materialpoint_cs)
-    print'(a32,1x,6(i8,1x))',   'materialpoint_dcsdE:           ', shape(materialpoint_dcsdE)
-    print'(a32,1x,6(i8,1x),/)', 'materialpoint_dcsdE_knownGood: ', shape(materialpoint_dcsdE_knownGood)
-    flush(IO_STDOUT)
-  end if
 
 end subroutine materialpoint_init
 
@@ -164,16 +134,6 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
   elCP = discretization_Marc_FEM2DAMASK_elem(elFE)
   ce   = discretization_Marc_FEM2DAMASK_cell(ip,elFE)
 
-  if (debugmaterialpoint%basic .and. elCP == debugmaterialpoint%element .and. ip == debugmaterialpoint%ip) then
-    print'(/,a)', '#############################################'
-    print'(a1,a22,1x,i8,a13)',   '#','element',        elCP,         '#'
-    print'(a1,a22,1x,i8,a13)',   '#','ip',             ip,           '#'
-    print'(a1,a22,1x,i8,a13)',   '#','cycleCounter',   cycleCounter, '#'
-    print'(a1,a22,1x,i8,a13)',   '#','computationMode',mode,         '#'
-    if (terminallyIll) &
-    print'(a,/)', '#           --- terminallyIll ---           #'
-    print'(a,/)', '#############################################'; flush (6)
-  end if
 
   if (iand(mode, materialpoint_BACKUPJACOBIAN) /= 0) &
     materialpoint_dcsde_knownGood = materialpoint_dcsde
@@ -194,7 +154,6 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
       materialpoint_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      if (debugmaterialpoint%extensive)  print'(a,i8,1x,i2)', '<< materialpoint >> calculation for elFE ip ',elFE,ip
       call homogenization_mechanical_response(dt,(elCP-1)*discretization_nIPs + ip,(elCP-1)*discretization_nIPs + ip)
       if (.not. terminallyIll) &
         call homogenization_mechanical_response2(dt,[ip,ip],[elCP,elCP])
@@ -232,15 +191,6 @@ subroutine materialpoint_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip,
       end if terminalIllness
     end if validCalculation
 
-    if (debugmaterialpoint%extensive &
-        .and. ((debugmaterialpoint%element == elCP .and. debugmaterialpoint%ip == ip) .or. .not. debugmaterialpoint%selective)) then
-        print'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)', &
-          '<< materialpoint >> stress/MPa at elFE ip ',   elFE, ip, materialpoint_cs(1:6,ip,elCP)*1.0e-6_pReal
-        print'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))', &
-          '<< materialpoint >> Jacobian/GPa at elFE ip ', elFE, ip, transpose(materialpoint_dcsdE(1:6,1:6,ip,elCP))*1.0e-9_pReal
-        flush(IO_STDOUT)
-    end if
-
   end if
 
   if (all(abs(materialpoint_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) &
@@ -257,8 +207,8 @@ end subroutine materialpoint_general
 !--------------------------------------------------------------------------------------------------
 subroutine materialpoint_forward
 
-  call homogenization_forward
-  call phase_forward
+  call homogenization_forward()
+  call phase_forward()
 
 end subroutine materialpoint_forward
 
@@ -266,19 +216,19 @@ end subroutine materialpoint_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_results(inc,time)
+subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
 
-  call results_openJobFile
-  call results_addIncrement(inc,time)
-  call phase_results
-  call homogenization_results
-  call discretization_results
-  call results_finalizeIncrement
-  call results_closeJobFile
+  call result_openJobFile()
+  call result_addIncrement(inc,time)
+  call phase_result()
+  call homogenization_result()
+  call discretization_result()
+  call result_finalizeIncrement()
+  call result_closeJobFile()
 
-end subroutine materialpoint_results
+end subroutine materialpoint_result
 
 end module materialpoint_Marc

@@ -46,6 +46,7 @@ end subroutine parallelization_bcast_str
 #else
   public :: &
     parallelization_init, &
+    parallelization_chkerr, &
     parallelization_bcast_str
 
 contains
@@ -65,10 +66,12 @@ subroutine parallelization_init()
   PetscErrorCode :: err_PETSc
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
-  ! Otherwise, the first call to PETSc will do the initialization.
   call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND)   error stop 'MPI init failed'
   if (threadLevel<MPI_THREAD_FUNNELED) error stop 'MPI library does not support OpenMP'
+#else
+  call MPI_Init(err_MPI)
+  if (err_MPI /= 0_MPI_INTEGER_KIND)   error stop 'MPI init failed'
 #endif
 
 #if defined(DEBUG)
@@ -150,6 +153,19 @@ subroutine parallelization_init()
 !$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check for MPI error.
+!--------------------------------------------------------------------------------------------------
+subroutine parallelization_chkerr(e)
+
+  integer(MPI_INTEGER_KIND), intent(in) :: e
+
+
+  if (e/=0_MPI_INTEGER_KIND) error stop 'MPI error'
+
+end subroutine parallelization_chkerr
 
 
 !--------------------------------------------------------------------------------------------------

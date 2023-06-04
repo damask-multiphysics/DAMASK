@@ -402,7 +402,7 @@ def displacement_node(size: _FloatSequence,
 
     Returns
     -------
-    u_p : numpy.ndarray, shape (:,:,:,3)
+    u_n : numpy.ndarray, shape (:,:,:,3)
         Nodal displacements.
 
     """
@@ -564,17 +564,10 @@ def unravel_index(idx: _np.ndarray) -> _np.ndarray:
     >>> seq = np.arange(6).reshape((3,2,1),order='F')
     >>> (coord_idx := damask.grid_filters.unravel_index(seq))
     array([[[[0, 0, 0]],
-
             [[0, 1, 0]]],
-
-
            [[[1, 0, 0]],
-
             [[1, 1, 0]]],
-
-
            [[[2, 0, 0]],
-
             [[2, 1, 0]]]])
     >>> coord_idx[1,1,0]
     array([1, 1, 0])
@@ -608,17 +601,12 @@ def ravel_index(idx: _np.ndarray) -> _np.ndarray:
     >>> import damask
     >>> (rev := np.array([[1,1,0],[0,1,0],[1,0,0],[0,0,0]]).reshape((2,2,1,3)))
     array([[[[1, 1, 0]],
-
             [[0, 1, 0]]],
-
-
            [[[1, 0, 0]],
-
             [[0, 0, 0]]]])
     >>> (flat_idx := damask.grid_filters.ravel_index(rev))
     array([[[3],
             [2]],
-
            [[1],
             [0]]])
 

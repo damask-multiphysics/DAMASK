@@ -1,12 +1,14 @@
+from typing import Optional, Union, Sequence, Dict, Any, List
+
 import numpy as np
 import h5py
-from typing import Optional, Union, Sequence, Dict, Any, Collection
 
-from ._typehints import FileHandle
+from ._typehints import FileHandle, FloatSequence, StrSequence
 from . import Config
 from . import Rotation
 from . import Orientation
 from . import util
+from . import tensor
 from . import Table
 
 
@@ -22,33 +24,43 @@ class ConfigMaterial(Config):
     """
 
     def __init__(self,
-                 d: Optional[Dict[str, Any]] = None,
-                 **kwargs):
+                 config: Optional[Union[str,Dict[str,Any]]] = None,*,
+                 homogenization: Optional[Dict[str,Dict]] = None,
+                 phase: Optional[Dict[str,Dict]] = None,
+                 material: Optional[List[Dict[str,Any]]] = None):
         """
         New material configuration.
 
         Parameters
         ----------
-        d : dictionary or YAML string, optional
-            Initial content. Defaults to None, in which case empty entries for
-            any missing material, homogenization, and phase entry are created.
-        kwargs : key=value pairs, optional
-            Initial content specified as pairs of key=value.
+        config : dict or str, optional
+            Material configuration. String needs to be valid YAML.
+        homogenization : dict, optional
+            Homogenization configuration.
+            Defaults to an empty dict if 'config' is not given.
+        phase : dict, optional
+            Phase configuration.
+            Defaults to an empty dict if 'config' is not given.
+        material : dict, optional
+            Materialpoint configuration.
+            Defaults to an empty list if 'config' is not given.
 
         """
-        default: Collection
-        if d is None:
-            for section, default in {'material':[],'homogenization':{},'phase':{}}.items():
-                if section not in kwargs: kwargs.update({section:default})
+        kwargs: Dict[str,Union[Dict[str,Dict],List[Dict[str,Any]]]] = {}
+        for arg,value in zip(['homogenization','phase','material'],[homogenization,phase,material]):
+            if value is None and config is None:
+                kwargs[arg] = [] if arg == 'material' else {}
+            elif value is not None:
+                kwargs[arg] = value
 
-        super().__init__(d,**kwargs)
+        super().__init__(config,**kwargs)
 
 
     def save(self,
              fname: FileHandle = 'material.yaml',
              **kwargs):
         """
-        Save to yaml file.
+        Save to YAML file.
 
         Parameters
         ----------
@@ -65,7 +77,7 @@ class ConfigMaterial(Config):
     def load(cls,
              fname: FileHandle = 'material.yaml') -> 'ConfigMaterial':
         """
-        Load from yaml file.
+        Load from YAML file.
 
         Parameters
         ----------
@@ -168,8 +180,12 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table: Table,
-                   **kwargs) -> 'ConfigMaterial':
+    def from_table(table: Table,*,
+                   homogenization: Optional[Union[str,StrSequence]] = None,
+                   phase: Optional[Union[str,StrSequence]] = None,
+                   v: Optional[Union[str,FloatSequence]] = None,
+                   O: Optional[Union[str,FloatSequence]] = None,
+                   V_e: Optional[Union[str,FloatSequence]] = None) -> 'ConfigMaterial':
         """
         Generate from an ASCII table.
 
@@ -177,15 +193,32 @@ class ConfigMaterial(Config):
         ----------
         table : damask.Table
             Table that contains material information.
-        **kwargs
-            Keyword arguments where the key is the property name and
-            the value specifies either the label of the data column in the table
-            or a constant value.
+        homogenization: (array-like) of str, optional
+            Homogenization label.
+        phase: (array-like) of str, optional
+            Phase label (per constituent).
+        v: (array-like) of float or str, optional
+            Constituent volume fraction (per constituent).
+            Defaults to 1/N_constituent.
+        O: (array-like) of damask.Rotation or np.array/list of shape(4) or str, optional
+            Orientation as unit quaternion (per constituent).
+        V_e: (array-like) of np.array/list of shape(3,3) or str, optional
+            Left elastic stretch (per constituent).
+
 
         Returns
         -------
         new : damask.ConfigMaterial
             Material configuration from values in table.
+
+        Notes
+        -----
+        If the value of an argument is a string that is a column label,
+        data from the table is used to fill the corresponding entry in
+        the material configuration. Otherwise, the value is used directly.
+
+        First index of array-like values that are defined per constituent
+        runs over materials, whereas second index runs over constituents.
 
         Examples
         --------
@@ -228,15 +261,16 @@ class ConfigMaterial(Config):
         phase: {Aluminum: null, Steel: null}
 
         """
-        kwargs_ = {k:table.get(v) if v in table.labels else np.atleast_2d([v]*len(table)).T for k,v in kwargs.items()}
+        kwargs = {}
+        for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
+            if val is not None:
+                kwargs[arg] = table.get(val) if val in table.labels else np.atleast_2d([val]*len(table)).T # type: ignore
 
-        _,idx = np.unique(np.hstack(list(kwargs_.values())),return_index=True,axis=0)
+        _,idx = np.unique(np.hstack(list(kwargs.values())),return_index=True,axis=0)
         idx = np.sort(idx)
-        kwargs_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
-        for what in ['phase','homogenization']:
-            if what not in kwargs_: kwargs_[what] = what+'_label'
+        kwargs = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs.items()}
 
-        return ConfigMaterial().material_add(**kwargs_)
+        return ConfigMaterial().material_add(**kwargs)
 
 
     @property
@@ -361,7 +395,7 @@ class ConfigMaterial(Config):
 
         Parameters
         ----------
-        mapping: dictionary
+        mapping: dict
             Mapping from old name to new name
         ID: list of ints, optional
             Limit renaming to selected material IDs.
@@ -394,7 +428,7 @@ class ConfigMaterial(Config):
 
         Parameters
         ----------
-        mapping: dictionary
+        mapping: dict
             Mapping from old name to new name
         ID: list of ints, optional
             Limit renaming to selected homogenization IDs.
@@ -416,11 +450,11 @@ class ConfigMaterial(Config):
 
 
     def material_add(self,*,
-                     homogenization: Any = None,
-                     phase: Any = None,
-                     v: Any = None,
-                     O: Any = None,
-                     V_e: Any = None) -> 'ConfigMaterial':
+                     homogenization: Optional[Union[str,StrSequence]] = None,
+                     phase: Optional[Union[str,StrSequence]] = None,
+                     v: Optional[Union[float,FloatSequence]] = None,
+                     O: Optional[Union[float,FloatSequence]] = None,
+                     V_e: Optional[Union[float,FloatSequence]] = None) -> 'ConfigMaterial':
         """
         Add material entries.
 
@@ -432,6 +466,7 @@ class ConfigMaterial(Config):
             Phase label (per constituent).
         v: (array-like) of float, optional
             Constituent volume fraction (per constituent).
+            Defaults to 1/N_constituent.
         O: (array-like) of damask.Rotation or np.array/list of shape(4), optional
             Orientation as unit quaternion (per constituent).
         V_e: (array-like) of np.array/list of shape(3,3), optional
@@ -444,9 +479,8 @@ class ConfigMaterial(Config):
 
         Notes
         -----
-            First index of array-like values that are defined per
-            consituent runs over materials, whereas second index runs
-            over constituents.
+        First index of array-like values that are defined per constituent
+        runs over materials, whereas second index runs over constituents.
 
         Examples
         --------
@@ -525,49 +559,48 @@ class ConfigMaterial(Config):
         phase: {Austenite: null, Ferrite: null}
 
         """
-        kwargs = {}
-        for keyword,value in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
-            if value is not None: kwargs[keyword] = value
+        dim = {'O':(4,),'V_e':(3,3,)}
+        ex = dict((keyword, -len(val)) for keyword,val in dim.items())
 
-        _constituent_properties = ['phase','O','v','V_e']
-        _dim = {'O':(4,),'V_e':(3,3,)}
-        _ex = dict((k, -len(v)) for k, v in _dim.items())
+        N_materials,N_constituents = 1,1
+        shape = {}
+        for arg,val in zip(['homogenization','phase','v','O','V_e'],[homogenization,phase,v,O,V_e]):
+            if val is None: continue
+            shape[arg] = np.array(val)
+            s = shape[arg].shape[:ex.get(arg,None)]                                                 # type: ignore
+            N_materials = max(N_materials,s[0]) if len(s)>0 else N_materials
+            N_constituents = max(N_constituents,s[1]) if len(s)>1 else N_constituents
 
-        N,n = 1,1
-        shaped : Dict[str, Union[None,np.ndarray]] = \
-                 {'v': None,
-                  'phase': None,
-                  'homogenization': None,
-                  }
+        shape['v'] = np.array(shape.get('v',1./N_constituents),float)
 
-        for k,v in kwargs.items():
-            shaped[k] = np.array(v)
-            s = shaped[k].shape[:_ex.get(k,None)]                               # type: ignore
-            N = max(N,s[0]) if len(s)>0 else N
-            n = max(n,s[1]) if len(s)>1 else n
+        mat: Sequence[dict] = [{'constituents':[{} for _ in range(N_constituents)]} for _ in range(N_materials)]
 
-        shaped['v'] = np.array(1./n) if shaped['v'] is None else shaped['v']
-
-        mat: Sequence[dict] = [{'constituents':[{} for _ in range(n)]} for _ in range(N)]
-
-        for k,v in shaped.items():
-            target = (N,n) + _dim.get(k,())
-            obj = np.broadcast_to(np.array(v).reshape(util.shapeshifter(() if v is None else v.shape,
-                                                                        target,
-                                                                        mode = 'right')),
-                                  target)
-            for i in range(N):
-                if k in _constituent_properties:
-                    for j in range(n):
-                        mat[i]['constituents'][j][k] = obj[i,j].item() if isinstance(obj[i,j],np.generic) else obj[i,j]
+        for k,v in shape.items():
+            target = (N_materials,N_constituents) + dim.get(k,())
+            broadcasted = np.broadcast_to(np.array(v).reshape(util.shapeshifter(np.array(v).shape,target,'right')),target)
+            if k == 'v':
+                if np.min(broadcasted) < 0 or np.max(broadcasted) > 1:
+                    raise ValueError('volume fraction "v" out of range')
+                if len(np.atleast_1d(broadcasted)) > 1:
+                    total = np.sum(broadcasted,axis=-1)
+                    if np.min(total) < 0 or np.max(total) > 1:
+                        raise ValueError('volume fraction "v" out of range')
+            if k == 'O' and not np.allclose(1.0,np.linalg.norm(broadcasted,axis=-1)):
+                raise ValueError('orientation "O" is not a unit quaterion')
+            elif k == 'V_e' and not np.allclose(broadcasted,tensor.symmetric(broadcasted)):
+                raise ValueError('elastic stretch "V_e" is not symmetric')
+            for i in range(N_materials):
+                if k == 'homogenization':
+                    mat[i][k] = broadcasted[i,0]
                 else:
-                    mat[i][k] = obj[i,0].item() if isinstance(obj[i,0],np.generic) else obj[i,0]
+                    for j in range(N_constituents):
+                        mat[i]['constituents'][j][k] = broadcasted[i,j]
 
         dup = self.copy()
         dup['material'] = dup['material'] + mat if 'material' in dup else mat
 
-        for what in [item for item in ['phase','homogenization'] if shaped[item] is not None]:
-            for k in np.unique(shaped[what]):                                   # type: ignore
+        for what in [item for item in ['phase','homogenization'] if item in shape]:
+            for k in np.unique(shape[what]):                                                        # type: ignore
                 if k not in dup[what]: dup[what][str(k)] = None
 
         return dup

@@ -13,9 +13,9 @@ crystal_families = set(_crystal.lattice_symmetries.values())
 
 
 @pytest.fixture
-def ref_path(ref_path_base):
-    """Directory containing reference results."""
-    return ref_path_base/'Orientation'
+def res_path(res_path_base):
+    """Directory containing testing resources."""
+    return res_path_base/'Orientation'
 
 @pytest.fixture
 def set_of_rodrigues(set_of_quaternions):
@@ -313,8 +313,8 @@ class TestOrientation:
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])
-    def test_relationship_reference(self,update,ref_path,model,lattice):
-        reference = ref_path/f'{lattice}_{model}.txt'
+    def test_relationship_reference(self,update,res_path,model,lattice):
+        reference = res_path/f'{lattice}_{model}.txt'
         o = Orientation(lattice=lattice)
         eu = o.related(model).as_Euler_angles(degrees=True)
         if update:
@@ -363,10 +363,10 @@ class TestOrientation:
             == o.shape + vector.shape[:-1] + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape[-1:]
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF']) #tI not included yet
-    def test_Schmid(self,update,ref_path,lattice):
+    def test_Schmid(self,update,res_path,lattice):
         O = Orientation(lattice=lattice)                                                            # noqa
         for mode in ['slip','twin']:
-            reference = ref_path/f'{lattice}_{mode}.txt'
+            reference = res_path/f'{lattice}_{mode}.txt'
             P = O.Schmid(N_slip='*') if mode == 'slip' else O.Schmid(N_twin='*')
             if update:
                 table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})

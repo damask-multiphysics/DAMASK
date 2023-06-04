@@ -178,7 +178,7 @@ subroutine FEM_quadrature_init()
     permutationStar211([0.3523052600879940_pReal, 0.0992057202494530_pReal]), &
     permutationStar31([0.1344783347929940_pReal]) ]
 
-  call selfTest
+  call selfTest()
 
 end subroutine FEM_quadrature_init
 

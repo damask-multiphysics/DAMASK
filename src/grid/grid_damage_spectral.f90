@@ -298,7 +298,7 @@ subroutine grid_damage_spectral_forward(cutBack)
     end do; end do; end do
   else
     phi_lastInc = phi
-    call updateReference
+    call updateReference()
   end if
 
 end subroutine grid_damage_spectral_forward

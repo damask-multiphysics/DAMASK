@@ -106,7 +106,7 @@ subroutine rotations_init
   print'(/,1x,a)', 'D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
   print'(  1x,a)', 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
-  call selfTest
+  call selfTest()
 
 end subroutine rotations_init
 
@@ -178,11 +178,7 @@ subroutine fromEulers(self,eu,degrees)
   real(pReal), dimension(3)             :: Eulers
 
 
-  if (.not. present(degrees)) then
-    Eulers = eu
-  else
-    Eulers = merge(eu*INRAD,eu,degrees)
-  end if
+  Eulers = merge(eu*INRAD,eu,misc_optional(degrees,.false.))
 
   if (any(Eulers<0.0_pReal) .or. any(Eulers>TAU) .or. Eulers(2) > PI) &
     call IO_error(402,ext_msg='fromEulers')
@@ -202,18 +198,10 @@ subroutine fromAxisAngle(self,ax,degrees,P)
   real(pReal),dimension(3)              :: axis
 
 
-  if (.not. present(degrees)) then
-    angle = ax(4)
-  else
-    angle = merge(ax(4)*INRAD,ax(4),degrees)
-  end if
+  angle = merge(ax(4)*INRAD,ax(4),misc_optional(degrees,.false.))
 
-  if (.not. present(P)) then
-    axis = ax(1:3)
-  else
-    axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,P == 1)
-    if (abs(P) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
-  end if
+  axis = ax(1:3) * merge(-1.0_pReal,1.0_pReal,misc_optional(P,-1) == 1)
+  if (abs(misc_optional(P,-1)) /= 1) call IO_error(402,ext_msg='fromAxisAngle (P)')
 
   if (dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
     call IO_error(402,ext_msg='fromAxisAngle')
@@ -277,22 +265,15 @@ pure function rotVector(self,v,active) result(vRot)
   logical,         intent(in), optional     :: active
 
   real(pReal), dimension(4) :: v_normed, q
-  logical                   :: passive
 
-
-  if (present(active)) then
-    passive = .not. active
-  else
-    passive = .true.
-  end if
 
   if (dEq0(norm2(v))) then
     vRot = v
   else
     v_normed = [0.0_pReal,v]/norm2(v)
-    q = merge(multiplyQuaternion(self%q, multiplyQuaternion(v_normed, conjugateQuaternion(self%q))), &
-              multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
-              passive)
+    q = merge(multiplyQuaternion(conjugateQuaternion(self%q), multiplyQuaternion(v_normed, self%q)), &
+              multiplyQuaternion(self%q, multiplyQuaternion(v_normed, conjugateQuaternion(self%q))), &
+              misc_optional(active,.false.))
     vRot = q(2:4)*norm2(v)
   end if
 
@@ -311,18 +292,10 @@ pure function rotTensor2(self,T,active) result(tRot)
   real(pReal),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
 
-  logical           :: passive
 
-
-  if (present(active)) then
-    passive = .not. active
-  else
-    passive = .true.
-  end if
-
-  tRot = merge(matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
-               matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
-               passive)
+  tRot = merge(matmul(matmul(transpose(self%asMatrix()),T),self%asMatrix()), &
+               matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix())), &
+               misc_optional(active,.false.))
 
 end function rotTensor2
 
@@ -342,12 +315,7 @@ pure function rotTensor4(self,T,active) result(tRot)
   real(pReal), dimension(3,3) :: R
   integer :: i,j,k,l,m,n,o,p
 
-
-  if (present(active)) then
-    R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
-  else
-    R = self%asMatrix()
-  end if
+  R = merge(transpose(self%asMatrix()),self%asMatrix(),misc_optional(active,.false.))
 
   tRot = 0.0_pReal
   do i = 1,3;do j = 1,3;do k = 1,3;do l = 1,3
@@ -375,11 +343,7 @@ pure function rotStiffness(self,C,active) result(cRot)
   real(pReal), dimension(6,6) :: M
 
 
-  if (present(active)) then
-    R = merge(transpose(self%asMatrix()),self%asMatrix(),active)
-  else
-    R = self%asMatrix()
-  end if
+  R = merge(transpose(self%asMatrix()),self%asMatrix(),misc_optional(active,.false.))
 
   M = reshape([R(1,1)**2,                   R(2,1)**2,                   R(3,1)**2, &
                R(2,1)*R(3,1),               R(1,1)*R(3,1),               R(1,1)*R(2,1), &

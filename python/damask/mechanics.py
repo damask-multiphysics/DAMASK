@@ -5,7 +5,7 @@ All routines operate on numpy.ndarrays of shape (...,3,3).
 
 """
 
-from typing import Sequence as _Sequence
+from typing import Sequence as _Sequence#, Literal as _Literal
 
 import numpy as _np
 
@@ -14,7 +14,7 @@ from . import _rotation
 
 
 def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate left Cauchy-Green deformation tensor (Finger deformation tensor).
 
     Parameters
@@ -27,12 +27,18 @@ def deformation_Cauchy_Green_left(F: _np.ndarray) -> _np.ndarray:
     B : numpy.ndarray, shape (...,3,3)
         Left Cauchy-Green deformation tensor.
 
+    Notes
+    -----
+    .. math::
+
+       \vb{B} = \vb{F} \vb{F}^\text{T}
+
     """
     return _np.matmul(F,_tensor.transpose(F))
 
 
 def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate right Cauchy-Green deformation tensor.
 
     Parameters
@@ -45,12 +51,18 @@ def deformation_Cauchy_Green_right(F: _np.ndarray) -> _np.ndarray:
     C : numpy.ndarray, shape (...,3,3)
         Right Cauchy-Green deformation tensor.
 
+    Notes
+    -----
+    .. math::
+
+       \vb{C} = \vb{F}^\text{T} \vb{F}
+
     """
     return _np.matmul(_tensor.transpose(F),F)
 
 
 def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate the Mises equivalent of a strain tensor.
 
     Parameters
@@ -63,12 +75,23 @@ def equivalent_strain_Mises(epsilon: _np.ndarray) -> _np.ndarray:
     epsilon_vM : numpy.ndarray, shape (...)
         Von Mises equivalent strain of epsilon.
 
+    Notes
+    -----
+    The von Mises equivalent of a strain tensor is defined as:
+
+    .. math::
+
+       \epsilon_\text{vM} = \sqrt{\frac{2}{3}\,\epsilon^\prime_{ij} \epsilon^\prime_{ij}}
+
+    where :math:`\vb*{\epsilon}^\prime` is the deviatoric part
+    of the strain tensor.
+
     """
     return _equivalent_Mises(epsilon,2.0/3.0)
 
 
 def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate the Mises equivalent of a stress tensor.
 
     Parameters
@@ -80,6 +103,17 @@ def equivalent_stress_Mises(sigma: _np.ndarray) -> _np.ndarray:
     -------
     sigma_vM : numpy.ndarray, shape (...)
         Von Mises equivalent stress of sigma.
+
+    Notes
+    -----
+    The von Mises equivalent of a stress tensor is defined as:
+
+    .. math::
+
+       \sigma_\text{vM} = \sqrt{\frac{3}{2}\,\sigma^\prime_{ij} \sigma^\prime_{ij}}
+
+    where :math:`\vb*{\sigma}^\prime` is the deviatoric part
+    of the stress tensor.
 
     """
     return _equivalent_Mises(sigma,3.0/2.0)
@@ -105,7 +139,7 @@ def maximum_shear(T_sym: _np.ndarray) -> _np.ndarray:
 
 
 def rotation(T: _np.ndarray) -> _rotation.Rotation:
-    """
+    r"""
     Calculate the rotational part of a tensor.
 
     Parameters
@@ -118,23 +152,35 @@ def rotation(T: _np.ndarray) -> _rotation.Rotation:
     R : damask.Rotation, shape (...)
         Rotational part of the vector.
 
+    Notes
+    -----
+    The rotational part is calculated from the polar decomposition:
+
+    .. math::
+
+       \vb{R} = \vb{T} \vb{U}^{-1} = \vb{V}^{-1} \vb{T}
+
+    where :math:`\vb{V}` and :math:`\vb{U}` are the left
+    and right stretch tensor, respectively.
+
     """
     return _rotation.Rotation.from_matrix(_polar_decomposition(T,'R')[0])
 
 
 def strain(F: _np.ndarray,
+           #t: _Literal['V', 'U'],   should work, but rejected by SC
            t: str,
            m: float) -> _np.ndarray:
-    """
+    r"""
     Calculate strain tensor (Seth–Hill family).
 
     Parameters
     ----------
     F : numpy.ndarray, shape (...,3,3)
         Deformation gradient.
-    t : {‘V’, ‘U’}
-        Type of the polar decomposition, ‘V’ for left stretch tensor
-        and ‘U’ for right stretch tensor.
+    t : {'V', 'U'}
+        Type of the polar decomposition, 'V' for left stretch tensor
+        or 'U' for right stretch tensor.
     m : float
         Order of the strain.
 
@@ -143,25 +189,25 @@ def strain(F: _np.ndarray,
     epsilon : numpy.ndarray, shape (...,3,3)
         Strain of F.
 
+    Notes
+    -----
+    The strain is defined as:
+
+    .. math::
+
+        \vb*{\epsilon}_V^{(m)} = \frac{1}{2m} (\vb{V}^{2m} - \vb{I}) \\\\
+        \vb*{\epsilon}_U^{(m)} = \frac{1}{2m} (\vb{U}^{2m} - \vb{I})
+
     References
     ----------
-    https://en.wikipedia.org/wiki/Finite_strain_theory
-    https://de.wikipedia.org/wiki/Verzerrungstensor
+    | https://en.wikipedia.org/wiki/Finite_strain_theory
+    | https://de.wikipedia.org/wiki/Verzerrungstensor
 
     """
-    if   t == 'V':
-        w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F))
-    elif t == 'U':
-        w,n = _np.linalg.eigh(deformation_Cauchy_Green_right(F))
-
-    if   m > 0.0:
-        eps = 1.0/(2.0*abs(m)) * (+ _np.einsum('...j,...kj,...lj',w**m,n,n) - _np.eye(3))
-    elif m < 0.0:
-        eps = 1.0/(2.0*abs(m)) * (- _np.einsum('...j,...kj,...lj',w**m,n,n) + _np.eye(3))
-    else:
-        eps = _np.einsum('...j,...kj,...lj',0.5*_np.log(w),n,n)
-
-    return eps
+    if t not in ['V', 'U']: raise ValueError('polar decomposition type not in {V, U}')
+    w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F) if t=='V' else deformation_Cauchy_Green_right(F))
+    return    0.5   *  _np.einsum('...j,...kj,...lj',_np.log(w),n,n) if m == 0.0 \
+        else  0.5/m * (_np.einsum('...j,...kj,...lj',      w**m,n,n) - _np.eye(3))
 
 
 def stress_Cauchy(P: _np.ndarray,
@@ -212,7 +258,7 @@ def stress_second_Piola_Kirchhoff(P: _np.ndarray,
 
 
 def stretch_left(T: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate left stretch of a tensor.
 
     Parameters
@@ -225,12 +271,23 @@ def stretch_left(T: _np.ndarray) -> _np.ndarray:
     V : numpy.ndarray, shape (...,3,3)
         Left stretch tensor from Polar decomposition of T.
 
+    Notes
+    -----
+    The left stretch tensor is calculated from the
+    polar decomposition:
+
+    .. math::
+
+       \vb{V} = \vb{T} \vb{R}^\text{T}
+
+    where :math:`\vb{R}` is a rotation.
+
     """
     return _polar_decomposition(T,'V')[0]
 
 
 def stretch_right(T: _np.ndarray) -> _np.ndarray:
-    """
+    r"""
     Calculate right stretch of a tensor.
 
     Parameters
@@ -242,6 +299,17 @@ def stretch_right(T: _np.ndarray) -> _np.ndarray:
     -------
     U : numpy.ndarray, shape (...,3,3)
         Left stretch tensor from Polar decomposition of T.
+
+    Notes
+    -----
+    The right stretch tensor is calculated from the
+    polar decomposition:
+
+    .. math::
+
+       \vb{U} = \vb{R}^\text{T} \vb{T}
+
+    where :math:`\vb{R}` is a rotation.
 
     """
     return _polar_decomposition(T,'U')[0]
@@ -257,8 +325,13 @@ def _polar_decomposition(T: _np.ndarray,
     T : numpy.ndarray, shape (...,3,3)
         Tensor of which the singular values are computed.
     requested : sequence of {'R', 'U', 'V'}
-        Requested outputs: ‘R’ for the rotation tensor,
-        ‘V’ for left stretch tensor, and ‘U’ for right stretch tensor.
+        Requested outputs: 'R' for the rotation tensor,
+        'V' for left stretch tensor, and 'U' for right stretch tensor.
+
+    Returns
+    -------
+    VRU : tuple of numpy.ndarray, shape (...,3,3)
+       Requested components of the singular value decomposition.
 
     """
     u, _, vh = _np.linalg.svd(T)
@@ -289,6 +362,11 @@ def _equivalent_Mises(T_sym: _np.ndarray,
         Symmetric tensor of which the von Mises equivalent is computed.
     s : float
         Scaling factor (2/3 for strain, 3/2 for stress).
+
+    Returns
+    -------
+    eq : numpy.ndarray, shape (...)
+        Scaled second invariant of the deviatoric part of T_sym.
 
     """
     d = _tensor.deviatoric(T_sym)

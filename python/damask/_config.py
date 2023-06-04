@@ -2,6 +2,7 @@ import copy
 from io import StringIO
 from collections.abc import Iterable
 import abc
+import platform
 from typing import Optional, Union, Dict, Any, Type, TypeVar
 
 import numpy as np
@@ -43,7 +44,7 @@ class NiceDumper(SafeDumper):
             return self.represent_data(data.tolist())
         if isinstance(data, Rotation):
             return self.represent_data(data.quaternion.tolist())
-        if hasattr(data, 'dtype'):
+        if isinstance(data, np.generic):
             return self.represent_data(data.item())
 
         return super().represent_data(data)
@@ -57,15 +58,42 @@ class Config(dict):
     """YAML-based configuration."""
 
     def __init__(self,
-                 yml: Union[None, str, Dict[str, Any]] = None,
+                 config: Optional[Union[str, Dict[str, Any]]] = None,
                  **kwargs):
-        """Initialize from YAML, dict, or key=value pairs."""
-        if isinstance(yml,str):
-            kwargs.update(yaml.load(yml, Loader=SafeLoader))
-        elif isinstance(yml,dict):
-            kwargs.update(yml)
+        """
+        New YAML-based configuration.
 
-        super().__init__(**kwargs)
+        Parameters
+        ----------
+        config : dict or str, optional
+            Configuration. String needs to be valid YAML.
+        **kwargs: arbitray keyword-value pairs, optional
+            Top level entries of the configuration.
+
+        Notes
+        -----
+        Values given as keyword-value pairs take precedence
+        over entries with the same keyword in 'config'.
+
+        """
+        if int(platform.python_version_tuple()[1]) >= 9:
+            if isinstance(config,str):
+                kwargs = yaml.load(config, Loader=SafeLoader) | kwargs
+            elif isinstance(config,dict):
+                kwargs = config | kwargs                                                            # type: ignore
+
+            super().__init__(**kwargs)
+        else:
+            if isinstance(config,str):
+                c = yaml.load(config, Loader=SafeLoader)
+            elif isinstance(config,dict):
+                c = config.copy()
+            else:
+                c = {}
+            c.update(kwargs)
+
+            super().__init__(**c)
+
 
     def __repr__(self) -> str:
         """

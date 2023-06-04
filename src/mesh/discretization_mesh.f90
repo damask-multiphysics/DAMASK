@@ -20,7 +20,7 @@ module discretization_mesh
   use IO
   use config
   use discretization
-  use results
+  use result
   use FEM_quadrature
   use YAML_types
   use prec
@@ -56,11 +56,10 @@ module discretization_mesh
   real(pReal), dimension(:,:,:), allocatable :: &
     mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
-  external :: &
 #ifdef PETSC_USE_64BIT_INDICES
-    DMDestroy, &
+  external :: &
+    DMDestroy
 #endif
-    DMView                                                                                          ! ToDo: write interface
   public :: &
     discretization_mesh_init, &
     mesh_FEM_build_ipVolumes, &
@@ -79,8 +78,7 @@ subroutine discretization_mesh_init(restart)
 
   PetscInt :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, &
-    debug_element, debug_ip
+    j
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets, Nboundaries, NelemsGlobal, Nelems
@@ -104,11 +102,6 @@ subroutine discretization_mesh_init(restart)
   num_mesh => config_numerics%get_dict('mesh',defaultVal=emptyDict)
   p_i = num_mesh%get_asInt('p_i',defaultVal = 2)
 
-!---------------------------------------------------------------------------------
-! read debug parameters
-  debug_element = config_debug%get_asInt('element',defaultVal=1)
-  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
-
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>16)
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,CLI_geomFile,'n/a',PETSC_TRUE,globalMesh,err_PETSc)
 #else
@@ -120,8 +113,6 @@ subroutine discretization_mesh_init(restart)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,NelemsGlobal,err_PETSc)
   CHKERRQ(err_PETSc)
   mesh_NcpElemsGlobal = int(NelemsGlobal)
-  call DMView(globalMesh, PETSC_VIEWER_STDOUT_WORLD,err_PETSc)
-  CHKERRQ(err_PETSc)
 
   ! get number of IDs in face sets (for boundary conditions?)
   call DMGetLabelSize(globalMesh,'Face Sets',Nboundaries,err_PETSc)
@@ -184,9 +175,6 @@ subroutine discretization_mesh_init(restart)
     CHKERRQ(err_PETSc)
   end do
   materialAt = materialAt + 1_pPETSCINT
-
-  if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
-  if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
   mesh_node0(1:dimPlex,:) = reshape(mesh_node0_temp,[dimPlex,mesh_Nnodes])
@@ -275,16 +263,16 @@ subroutine writeGeometry(coordinates_points,coordinates_nodes)
   coordinates_nodes, &
   coordinates_points
 
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
+  call result_openJobFile()
+  call result_closeGroup(result_addGroup('geometry'))
 
-  call results_writeDataset(coordinates_nodes,'geometry','x_n', &
-        'initial coordinates of the nodes','m')
+  call result_writeDataset(coordinates_nodes,'geometry','x_n', &
+                           'initial coordinates of the nodes','m')
 
-  call results_writeDataset(coordinates_points,'geometry','x_p', &
-        'initial coordinates of the materialpoints (cell centers)','m')
+  call result_writeDataset(coordinates_points,'geometry','x_p', &
+                           'initial coordinates of the materialpoints (cell centers)','m')
 
-  call results_closeJobFile
+  call result_closeJobFile()
 
   end subroutine writeGeometry
 

@@ -36,12 +36,13 @@ module function thermalexpansion_init(kinematics_length) result(myKinematics)
     mech
 
 
-  print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
-
   myKinematics = kinematics_active('thermalexpansion',kinematics_length)
   Ninstances = count(myKinematics)
   print'(/,a,i2)', ' # phases: ',Ninstances; flush(IO_STDOUT)
   if (Ninstances == 0) return
+
+  print'(/,1x,a)', '<<<+-  phase:mechanical:eigen:thermalexpansion init  -+>>>'
+
 
   phases => config_material%get_dict('phase')
   allocate(param(Ninstances))

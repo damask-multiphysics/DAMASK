@@ -5,9 +5,8 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse command line interface for PETSc-based solvers
 !--------------------------------------------------------------------------------------------------
-#define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 12
-#define PETSC_MINOR_MAX 18
+#define PETSC_MINOR_MAX 19
 
 module CLI
   use, intrinsic :: ISO_fortran_env
@@ -131,7 +130,7 @@ subroutine CLI_init
         print'(a)',  '        Make sure the file "material.yaml" exists in the working'
         print'(a)',  '            directory.'
         print'(a)',  '        For further configuration place "numerics.yaml"'
-        print'(a)','            and "debug.yaml" in that directory.'
+        print'(a)','              in that directory.'
         print'(/,a)','   --restart N'
         print'(a)',  '        Reads in increment N and continues with calculating'
         print'(a)',  '            increment N+1, N+2, ... based on this.'

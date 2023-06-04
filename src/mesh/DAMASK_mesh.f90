@@ -229,8 +229,9 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call FEM_Utilities_init
+  call FEM_Utilities_init()
   call FEM_mechanical_init(loadCases(1)%fieldBC(1))
+  call config_numerics_deallocate()
 
   if (worldrank == 0) then
     open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
@@ -239,7 +240,7 @@ program DAMASK_mesh
 
   print'(/,1x,a)', '... writing initial configuration to file .................................'
   flush(IO_STDOUT)
-  call materialpoint_results(0,0.0_pReal)
+  call materialpoint_result(0,0.0_pReal)
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
@@ -324,8 +325,8 @@ program DAMASK_mesh
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
         print'(/,1x,a)', '... writing results to file ...............................................'
-        call FEM_mechanical_updateCoords
-        call materialpoint_results(totalIncsCounter,time)
+        call FEM_mechanical_updateCoords()
+        call materialpoint_result(totalIncsCounter,time)
       end if
 
 

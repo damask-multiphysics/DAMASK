@@ -28,6 +28,7 @@ module subroutine elastic_init(phases)
     phase, &
     mech, &
     elastic
+  character(len=:), allocatable :: refs
 
 
   print'(/,1x,a)', '<<<+-  phase:mechanical:elastic init  -+>>>'
@@ -35,12 +36,16 @@ module subroutine elastic_init(phases)
 
   print'(/,a,i0)', ' # phases: ',phases%length; flush(IO_STDOUT)
 
+
   allocate(param(phases%length))
 
   do ph = 1, phases%length
     phase   => phases%get_dict(ph)
     mech    => phase%get_dict('mechanical')
     elastic => mech%get_dict('elastic')
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(elastic,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
     if (elastic%get_asString('type') /= 'Hooke') call IO_error(200,ext_msg=elastic%get_asString('type'))
 
     associate(prm => param(ph))

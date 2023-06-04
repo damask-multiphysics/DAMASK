@@ -188,8 +188,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
     s, t, l
   real(pReal), dimension(:), allocatable :: &
     a
-  character(len=pStringLen) :: &
-    extmsg  = ''
+  character(len=:), allocatable :: &
+    refs, &
+    extmsg
   type(tInitialParameters) :: &
     ini
   type(tDict), pointer :: &
@@ -201,7 +202,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   myPlasticity = plastic_active('nonlocal')
   Ninstances = count(myPlasticity)
   if (Ninstances == 0) then
-    call geometry_plastic_nonlocal_disable
+    call geometry_plastic_nonlocal_disable()
     return
   end if
 
@@ -216,15 +217,14 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 
   phases => config_material%get_dict('phase')
-
   allocate(geom(phases%length))
-
   allocate(param(phases%length))
   allocate(state(phases%length))
   allocate(state0(phases%length))
   allocate(dotState(phases%length))
   allocate(deltaState(phases%length))
   allocate(dependentState(phases%length))
+  extmsg = ''
 
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
@@ -236,13 +236,17 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
-    plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    refs = config_listReferences(pl,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
+
 #if defined (__GFORTRAN__)
     prm%output = output_as1dString(pl)
 #else
     prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
 #endif
 
+    plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
     prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
     prm%atol_rho = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
@@ -396,7 +400,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    Nmembers  = count(material_phaseID == ph)
+    Nmembers  = count(material_ID_phase == ph)
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -524,7 +528,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if (.not. myPlasticity(ph)) cycle
 
     phase => phases%get_dict(ph)
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
     l = 0
     do t = 1,4
       do s = 1,param(ph)%sum_N_sl
@@ -664,8 +668,8 @@ module subroutine nonlocal_dependentState(ph, en)
       neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
 
       if (neighbor_el > 0 .and. neighbor_ip > 0) then
-        if (material_phaseID(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip) == ph) then
-            no = material_phaseEntry(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+        if (material_ID_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip) == ph) then
+            no = material_entry_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
             nRealNeighbors = nRealNeighbors + 1.0_pReal
             rho_neighbor0 = getRho0(ph,no)
 
@@ -1116,12 +1120,6 @@ module subroutine nonlocal_dotState(Mp,timestep, &
 
   if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
      .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
-#ifdef DEBUG
-    if (debugConstitutive%extensive) then
-      print'(a,i5,a,i2)', '<< CONST >> evolution rate leads to negative density at ph ',ph,' en ',en
-      print'(a)', '<< CONST >> enforcing cutback !!!'
-    end if
-#endif
     plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   else
     dot%rho(:,en) = pack(rhoDot,.true.)
@@ -1221,17 +1219,6 @@ function rhoDotFlux(timestep,ph,en)
     if (any( abs(dot_gamma) > 0.0_pReal &                                                           ! any active slip system ...
             .and. prm%C_CFL * abs(v0) * timestep &
                 > geom(ph)%V_0(en)/ maxval(geom(ph)%IParea(:,en)))) then                            ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
-#ifdef DEBUG
-    if (debugConstitutive%extensive) then
-      print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at ph ',ph,' en ',en
-      print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
-        maxval(abs(v0), abs(dot_gamma) > 0.0_pReal &
-                       .and.  prm%C_CFL * abs(v0) * timestep &
-                             > geom(ph)%V_0(en) / maxval(geom(ph)%IParea(:,en))), &
-        ' at a timestep of ',timestep
-      print*, '<< CONST >> enforcing cutback !!!'
-    end if
-#endif
       rhoDotFlux = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                                             ! enforce cutback
       return
     end if
@@ -1253,8 +1240,8 @@ function rhoDotFlux(timestep,ph,en)
       neighbor_el = geom(ph)%IPneighborhood(1,n,en)
       neighbor_ip = geom(ph)%IPneighborhood(2,n,en)
       neighbor_n  = geom(ph)%IPneighborhood(3,n,en)
-      np = material_phaseID(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
-      no = material_phaseEntry(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      np = material_ID_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
+      no = material_entry_phase(1,(neighbor_el-1)*discretization_nIPs + neighbor_ip)
 
       opposite_neighbor = n + mod(n,2) - mod(n+1,2)
       opposite_el = geom(ph)%IPneighborhood(1,opposite_neighbor,en)
@@ -1401,7 +1388,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
   associate(prm => param(ph))
     ns = prm%sum_N_sl
 
-    en = material_phaseEntry(1,(el-1)*discretization_nIPs + ip)
+    en = material_entry_phase(1,(el-1)*discretization_nIPs + ip)
     !*** start out fully compatible
     my_compatibility = 0.0_pReal
     forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
@@ -1409,8 +1396,8 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
     neighbors: do n = 1,nIPneighbors
       neighbor_e = IPneighborhood(1,n,ip,el)
       neighbor_i = IPneighborhood(2,n,ip,el)
-      neighbor_me = material_phaseEntry(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
-      neighbor_phase = material_phaseID(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
+      neighbor_me = material_entry_phase(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
+      neighbor_phase = material_ID_phase(1,(neighbor_e-1)*discretization_nIPs + neighbor_i)
 
       if (neighbor_e <= 0 .or. neighbor_i <= 0) then
         !* FREE SURFACE
@@ -1469,7 +1456,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,ph,ip,el)
 
     end do neighbors
 
-    dependentState(ph)%compatibility(:,:,:,:,material_phaseEntry(1,(el-1)*discretization_nIPs + ip)) = my_compatibility
+    dependentState(ph)%compatibility(:,:,:,:,material_entry_phase(1,(el-1)*discretization_nIPs + ip)) = my_compatibility
 
   end associate
 
@@ -1479,7 +1466,7 @@ end subroutine plastic_nonlocal_updateCompatibility
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_results(ph,group)
+module subroutine plastic_nonlocal_result(ph,group)
 
   integer,         intent(in) :: ph
   character(len=*),intent(in) :: group
@@ -1493,63 +1480,63 @@ module subroutine plastic_nonlocal_results(ph,group)
       select case(trim(prm%output(ou)))
 
         case('rho_u_ed_pos')
-          call results_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), &
-                                    'positive mobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_edg_pos,group,trim(prm%output(ou)), &
+                                   'positive mobile edge density','1/m²', prm%systems_sl)
         case('rho_b_ed_pos')
-          call results_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), &
-                                    'positive immobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_edg_pos,group,trim(prm%output(ou)), &
+                                   'positive immobile edge density','1/m²', prm%systems_sl)
         case('rho_u_ed_neg')
-          call results_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), &
-                                    'negative mobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_edg_neg,group,trim(prm%output(ou)), &
+                                   'negative mobile edge density','1/m²', prm%systems_sl)
         case('rho_b_ed_neg')
-          call results_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), &
-                                    'negative immobile edge density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_edg_neg,group,trim(prm%output(ou)), &
+                                   'negative immobile edge density','1/m²', prm%systems_sl)
         case('rho_d_ed')
-          call results_writeDataset(stt%rho_dip_edg,group,trim(prm%output(ou)), &
-                                    'edge dipole density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_dip_edg,group,trim(prm%output(ou)), &
+                                   'edge dipole density','1/m²', prm%systems_sl)
         case('rho_u_sc_pos')
-          call results_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), &
-                                    'positive mobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_scr_pos,group,trim(prm%output(ou)), &
+                                   'positive mobile screw density','1/m²', prm%systems_sl)
         case('rho_b_sc_pos')
-          call results_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), &
-                                    'positive immobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_scr_pos,group,trim(prm%output(ou)), &
+                                   'positive immobile screw density','1/m²', prm%systems_sl)
         case('rho_u_sc_neg')
-          call results_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), &
-                                    'negative mobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_mob_scr_neg,group,trim(prm%output(ou)), &
+                                   'negative mobile screw density','1/m²', prm%systems_sl)
         case('rho_b_sc_neg')
-          call results_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), &
-                                    'negative immobile screw density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_sgl_imm_scr_neg,group,trim(prm%output(ou)), &
+                                   'negative immobile screw density','1/m²', prm%systems_sl)
         case('rho_d_sc')
-          call results_writeDataset(stt%rho_dip_scr,group,trim(prm%output(ou)), &
-                                    'screw dipole density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_dip_scr,group,trim(prm%output(ou)), &
+                                   'screw dipole density','1/m²', prm%systems_sl)
         case('rho_f')
-          call results_writeDataset(stt%rho_forest,group,trim(prm%output(ou)), &
-                                    'forest density','1/m²', prm%systems_sl)
+          call result_writeDataset(stt%rho_forest,group,trim(prm%output(ou)), &
+                                   'forest density','1/m²', prm%systems_sl)
         case('v_ed_pos')
-          call results_writeDataset(stt%v_edg_pos,group,trim(prm%output(ou)), &
-                                    'positive edge velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_edg_pos,group,trim(prm%output(ou)), &
+                                   'positive edge velocity','m/s', prm%systems_sl)
         case('v_ed_neg')
-          call results_writeDataset(stt%v_edg_neg,group,trim(prm%output(ou)), &
-                                    'negative edge velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_edg_neg,group,trim(prm%output(ou)), &
+                                   'negative edge velocity','m/s', prm%systems_sl)
         case('v_sc_pos')
-          call results_writeDataset(stt%v_scr_pos,group,trim(prm%output(ou)), &
-                                    'positive srew velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_scr_pos,group,trim(prm%output(ou)), &
+                                   'positive srew velocity','m/s', prm%systems_sl)
         case('v_sc_neg')
-          call results_writeDataset(stt%v_scr_neg,group,trim(prm%output(ou)), &
-                                    'negative screw velocity','m/s', prm%systems_sl)
+          call result_writeDataset(stt%v_scr_neg,group,trim(prm%output(ou)), &
+                                   'negative screw velocity','m/s', prm%systems_sl)
         case('gamma')
-          call results_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
-                                    'plastic shear','1', prm%systems_sl)
+          call result_writeDataset(stt%gamma,group,trim(prm%output(ou)), &
+                                   'plastic shear','1', prm%systems_sl)
         case('tau_pass')
-          call results_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
-                                    'passing stress for slip','Pa', prm%systems_sl)
+          call result_writeDataset(dst%tau_pass,group,trim(prm%output(ou)), &
+                                   'passing stress for slip','Pa', prm%systems_sl)
       end select
 
     end do
 
   end associate
 
-end subroutine plastic_nonlocal_results
+end subroutine plastic_nonlocal_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1774,14 +1761,14 @@ subroutine storeGeometry(ph)
   areaNormal = reshape(IPareaNormal,[3,nIPneighbors,nCell])
   coords = reshape(discretization_IPcoords,[3,nCell])
 
-  do ce = 1, size(material_homogenizationEntry,1)
+  do ce = 1, size(material_entry_homogenization,1)
     do co = 1, homogenization_maxNconstituents
-      if (material_phaseID(co,ce) == ph) then
-        geom(ph)%V_0(material_phaseEntry(co,ce)) = V(ce)
-        geom(ph)%IPneighborhood(:,:,material_phaseEntry(co,ce)) = neighborhood(:,:,ce)
-        geom(ph)%IParea(:,material_phaseEntry(co,ce)) = area(:,ce)
-        geom(ph)%IPareaNormal(:,:,material_phaseEntry(co,ce)) = areaNormal(:,:,ce)
-        geom(ph)%IPcoordinates(:,material_phaseEntry(co,ce)) = coords(:,ce)
+      if (material_ID_phase(co,ce) == ph) then
+        geom(ph)%V_0(material_entry_phase(co,ce)) = V(ce)
+        geom(ph)%IPneighborhood(:,:,material_entry_phase(co,ce)) = neighborhood(:,:,ce)
+        geom(ph)%IParea(:,material_entry_phase(co,ce)) = area(:,ce)
+        geom(ph)%IPareaNormal(:,:,material_entry_phase(co,ce)) = areaNormal(:,:,ce)
+        geom(ph)%IPcoordinates(:,material_entry_phase(co,ce)) = coords(:,ce)
       end if
     end do
   end do

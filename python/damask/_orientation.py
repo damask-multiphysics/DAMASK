@@ -1,6 +1,5 @@
-import inspect
 import copy
-from typing import Optional, Union, Callable, Dict, Any, Tuple, TypeVar
+from typing import Optional, Union, TypeVar
 
 import numpy as np
 
@@ -9,31 +8,6 @@ from . import Rotation
 from . import Crystal
 from . import util
 from . import tensor
-
-
-_parameter_doc = \
-       """
-        family : {'triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'hexagonal', 'cubic'}, optional.
-            Name of the crystal family.
-            Family will be inferred if 'lattice' is given.
-        lattice : {'aP', 'mP', 'mS', 'oP', 'oS', 'oI', 'oF', 'tP', 'tI', 'hP', 'cP', 'cI', 'cF'}, optional.
-            Name of the Bravais lattice in Pearson notation.
-        a : float, optional
-            Length of lattice parameter 'a'.
-        b : float, optional
-            Length of lattice parameter 'b'.
-        c : float, optional
-            Length of lattice parameter 'c'.
-        alpha : float, optional
-            Angle between b and c lattice basis.
-        beta : float, optional
-            Angle between c and a lattice basis.
-        gamma : float, optional
-            Angle between a and b lattice basis.
-        degrees : bool, optional
-            Angles are given in degrees. Defaults to False.
-
-       """
 
 MyType = TypeVar('MyType', bound='Orientation')
 
@@ -94,7 +68,7 @@ class Orientation(Rotation,Crystal):
 
     """
 
-    @util.extend_docstring(extra_parameters=_parameter_doc)
+    @util.extend_docstring(adopted_parameters=Crystal.__init__)
     def __init__(self,
                  rotation: Union[FloatSequence, Rotation] = np.array([1.,0.,0.,0.]),
                  *,
@@ -108,7 +82,7 @@ class Orientation(Rotation,Crystal):
 
         Parameters
         ----------
-        rotation : list, numpy.ndarray, Rotation, optional
+        rotation : list, numpy.ndarray, or Rotation, optional
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
@@ -123,7 +97,7 @@ class Orientation(Rotation,Crystal):
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         return util.srepr([Crystal.__repr__(self),
@@ -261,134 +235,91 @@ class Orientation(Rotation,Crystal):
             Compound rotation self*other, i.e. first other then self rotation.
 
         """
-        if isinstance(other, (Orientation,Rotation)):
-            return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
-        else:
+        if not isinstance(other, (Orientation,Rotation)):
             raise TypeError('use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
-
-
-    @staticmethod
-    def _split_kwargs(kwargs: Dict[str, Any],
-                      target: Callable) -> Tuple[Dict[str, Any], ...]:
-        """
-        Separate keyword arguments in 'kwargs' targeted at 'target' from general keyword arguments of Orientation objects.
-
-        Parameters
-        ----------
-        kwargs : dictionary
-            Contains all **kwargs.
-        target: method
-            Function to scan for kwarg signature.
-
-        Returns
-        -------
-        rot_kwargs: dictionary
-            Valid keyword arguments of 'target' function of Rotation class.
-        ori_kwargs: dictionary
-            Valid keyword arguments of Orientation object.
-
-        """
-        kws: Tuple[Dict[str, Any], ...] = ()
-        for t in (target,Orientation.__init__):
-            kws += ({key: kwargs[key] for key in set(inspect.signature(t).parameters) & set(kwargs)},)
-
-        invalid_keys = set(kwargs)-(set(kws[0])|set(kws[1]))
-        if invalid_keys:
-            raise TypeError(f"{inspect.stack()[1][3]}() got an unexpected keyword argument '{invalid_keys.pop()}'")
-
-        return kws
+        return self.copy(Rotation(self.quaternion)*Rotation(other.quaternion))
 
 
     @classmethod
     @util.extend_docstring(Rotation.from_random,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_random, wrapped=__init__)
     def from_random(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_random)
-        return cls(rotation=Rotation.from_random(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_quaternion,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_quaternion, wrapped=__init__)
     def from_quaternion(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_quaternion)
-        return cls(rotation=Rotation.from_quaternion(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_Euler_angles,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_Euler_angles, wrapped=__init__)
     def from_Euler_angles(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Euler_angles)
-        return cls(rotation=Rotation.from_Euler_angles(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_axis_angle,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_axis_angle, wrapped=__init__)
     def from_axis_angle(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_axis_angle)
-        return cls(rotation=Rotation.from_axis_angle(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_basis,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_basis, wrapped=__init__)
     def from_basis(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_basis)
-        return cls(rotation=Rotation.from_basis(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_matrix,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_matrix, wrapped=__init__)
     def from_matrix(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_matrix)
-        return cls(rotation=Rotation.from_matrix(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_Rodrigues_vector,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_Rodrigues_vector, wrapped=__init__)
     def from_Rodrigues_vector(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_Rodrigues_vector)
-        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_homochoric,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_homochoric, wrapped=__init__)
     def from_homochoric(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_homochoric)
-        return cls(rotation=Rotation.from_homochoric(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_cubochoric,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_cubochoric, wrapped=__init__)
     def from_cubochoric(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_cubochoric)
-        return cls(rotation=Rotation.from_cubochoric(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_spherical_component,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_spherical_component, wrapped=__init__)
     def from_spherical_component(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_spherical_component)
-        return cls(rotation=Rotation.from_spherical_component(**kwargs_rot),**kwargs_ori)
-
+        return cls(**kwargs)
 
     @classmethod
     @util.extend_docstring(Rotation.from_fiber_component,
-                           extra_parameters=_parameter_doc)
+                           adopted_parameters=Crystal.__init__)
+    @util.pass_on('rotation', Rotation.from_fiber_component, wrapped=__init__)
     def from_fiber_component(cls, **kwargs) -> 'Orientation':
-        kwargs_rot,kwargs_ori = Orientation._split_kwargs(kwargs,Rotation.from_fiber_component)
-        return cls(rotation=Rotation.from_fiber_component(**kwargs_rot),**kwargs_ori)
+        return cls(**kwargs)
 
 
     @classmethod
-    @util.extend_docstring(extra_parameters=_parameter_doc)
+    @util.extend_docstring(adopted_parameters=Crystal.__init__)
     def from_directions(cls,
                         uvw: FloatSequence,
                         hkl: FloatSequence,
@@ -467,24 +398,24 @@ class Orientation(Rotation,Crystal):
             if   self.family == 'cubic':
                 return (np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
                                    (1. >= np.sum(rho_abs,axis=-1))).astype(bool)
-            elif self.family == 'hexagonal':
+            if self.family == 'hexagonal':
                 return (np.prod(1.  >= rho_abs,axis=-1) *
                                 (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
                                 (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
                                 (2. >= np.sqrt(3)                + rho_abs[...,2])).astype(bool)
-            elif self.family == 'tetragonal':
+            if self.family == 'tetragonal':
                 return (np.prod(1.  >= rho_abs[...,:2],axis=-1) *
                         (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
                         (np.sqrt(2) >= rho_abs[...,2] + 1.)).astype(bool)
-            elif self.family == 'orthorhombic':
+            if self.family == 'orthorhombic':
                 return (np.prod(1. >= rho_abs,axis=-1)).astype(bool)
-            elif self.family == 'monoclinic':
+            if self.family == 'monoclinic':
                 return np.logical_or(   1. >= rho_abs[...,1],
                                      np.isnan(rho_abs[...,1]))
-            elif self.family == 'triclinic':
+            if self.family == 'triclinic':
                 return np.ones(rho_abs.shape[:-1]).astype(bool)
-            else:
-                raise TypeError(f'unknown symmetry "{self.family}"')
+
+            raise TypeError(f'unknown symmetry "{self.family}"')
 
 
     @property
@@ -510,38 +441,40 @@ class Orientation(Rotation,Crystal):
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= rho[...,2]) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'hexagonal':
+            if self.family == 'hexagonal':
                 return ((rho[...,0] >= rho[...,1]*np.sqrt(3)) &
                         (rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'tetragonal':
+            if self.family == 'tetragonal':
                 return ((rho[...,0] >= rho[...,1]) &
                         (rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'orthorhombic':
+            if self.family == 'orthorhombic':
                 return ((rho[...,0] >= 0) &
                         (rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            elif self.family == 'monoclinic':
+            if self.family == 'monoclinic':
                 return ((rho[...,1] >= 0) &
                         (rho[...,2] >= 0)).astype(bool)
-            else:
-                return np.ones_like(rho[...,0],dtype=bool)
+
+            return np.ones_like(rho[...,0],dtype=bool)
 
     def disorientation(self,
                        other: 'Orientation',
                        return_operators: bool = False) -> object:
         """
-        Calculate disorientation between myself and given other orientation.
+        Calculate disorientation between self and given other orientation.
 
         Parameters
         ----------
         other : Orientation
             Orientation to calculate disorientation for.
             Shape of other blends with shape of own rotation array.
-            For example, shapes of (2,3) for own rotations and (3,2) for other's result in (2,3,2) disorientations.
+            For example, shapes of (2,3) for own rotations
+            and (3,2) for other's result in (2,3,2) disorientations.
         return_operators : bool, optional
-            Return index pair of symmetrically equivalent orientations that result in disorientation axis falling into FZ.
+            Return index pair of symmetrically equivalent orientations
+            that result in disorientation axis falling into FZ.
             Defaults to False.
 
         Returns
@@ -578,8 +511,8 @@ class Orientation(Rotation,Crystal):
         >>> N = 10000
         >>> a = damask.Orientation.from_random(shape=N,family='cubic')
         >>> b = damask.Orientation.from_random(shape=N,family='cubic')
-        >>> d = a.disorientation(b).as_axis_angle(degrees=True,pair=True)[1]
-        >>> plt.hist(d,25)
+        >>> n,omega = a.disorientation(b).as_axis_angle(degrees=True,pair=True)
+        >>> plt.hist(omega,25)
         >>> plt.show()
 
         """
@@ -626,6 +559,7 @@ class Orientation(Rotation,Crystal):
         ----------
         weights : numpy.ndarray, shape (self.shape), optional
             Relative weights of orientations.
+            Defaults to equal weights.
         return_cloud : bool, optional
             Return the specific (symmetrically equivalent) orientations that were averaged.
             Defaults to False.
@@ -895,8 +829,8 @@ class Orientation(Rotation,Crystal):
         Schmid matrix (in lab frame) of first octahedral slip system of a face-centered
         cubic crystal in "Goss" orientation.
 
-        >>> import damask
         >>> import numpy as np
+        >>> import damask
         >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
         >>> O = damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF')
         >>> O.Schmid(N_slip=[1])
@@ -936,8 +870,9 @@ class Orientation(Rotation,Crystal):
 
         Returns
         -------
-        Orientations related to self following the selected
-        model for the orientation relationship.
+        rel : Orientation, shape (:,self.shape)
+            Orientations related to self according to the selected
+            model for the orientation relationship.
 
         Examples
         --------

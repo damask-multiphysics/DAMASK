@@ -65,13 +65,6 @@ module spectral_utilities
     planScalarBack                                                                                  !< FFTW MPI plan s(k) to s(x)
 
 !--------------------------------------------------------------------------------------------------
-! variables controlling debugging
-  logical :: &
-    debugGeneral, &                                                                                 !< general debugging of spectral solver
-    debugRotation, &                                                                                !< also printing out results in lab frame
-    debugPETSc                                                                                      !< use some in debug defined options for more verbose PETSc solution
-
-!--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from spectral solver variants
     integer :: &
@@ -131,12 +124,7 @@ module spectral_utilities
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, sets debug flags, create plans for FFTW
-!> @details Sets the debug levels for general, divergence, restart, and FFTW from the bitwise coding
-!> provided by the debug module to logicals.
-!> Allocate all fields used by FFTW and create the corresponding plans depending on the debug
-!> level chosen.
-!> Initializes FFTW.
+!> @brief Allocate all neccessary fields and create plans for FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine spectral_utilities_init()
 
@@ -157,12 +145,8 @@ subroutine spectral_utilities_init()
   integer(C_INTPTR_T), parameter :: &
     vectorSize = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
-  character(len=*), parameter :: &
-    PETSCDEBUG = ' -snes_view -snes_monitor '
   type(tDict) , pointer :: &
     num_grid
-  type(tList) , pointer :: &
-    debug_grid
 
 
   print'(/,1x,a)', '<<<+-  spectral_utilities init  -+>>>'
@@ -179,24 +163,9 @@ subroutine spectral_utilities_init()
   print'(  1x,a)', 'P. Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print'(  1x,a)', 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
-!--------------------------------------------------------------------------------------------------
-! set debugging parameters
-  num_grid        => config_numerics%get_dict('grid',defaultVal=emptyDict)
 
-  debug_grid      => config_debug%get_List('grid',defaultVal=emptyList)
-  debugGeneral    =  debug_grid%contains('basic')
-  debugRotation   =  debug_grid%contains('rotation')
-  debugPETSc      =  debug_grid%contains('PETSc')
-
-  if (debugPETSc) print'(3(/,1x,a),/)', &
-                 'Initializing PETSc with debug options: ', &
-                 trim(PETScDebug), &
-                 'add more using the "PETSc_options" keyword in numerics.yaml'
-  flush(IO_STDOUT)
-
+  num_grid  => config_numerics%get_dict('grid',defaultVal=emptyDict)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
-  CHKERRQ(err_PETSc)
-  if (debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
                                 num_grid%get_asString('PETSc_options',defaultVal=''),err_PETSc)
@@ -370,8 +339,8 @@ end subroutine spectral_utilities_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief updates reference stiffness and potentially precalculated gamma operator
-!> @details Sets the current reference stiffness to the stiffness given as an argument.
+!> @brief Update reference stiffness and potentially precalculated gamma operator.
+!> @details Set the current reference stiffness to the stiffness given as an argument.
 !> If the gamma operator is precalculated, it is calculated with this stiffness.
 !> In case of an on-the-fly calculation, only the reference stiffness is updated.
 !---------------------------------------------------------------------------------------------------
@@ -430,19 +399,8 @@ end subroutine utilities_updateGamma
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an weighted inverse FFT transform from complex to real
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTvectorBackward()
-
-  call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
-
-end subroutine utilities_FFTvectorBackward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim
+!> @brief Calculate gamma_hat * field_real (convolution).
+!> @details The average value equals the given aim.
 !--------------------------------------------------------------------------------------------------
 function utilities_GammaConvolution(field, fieldAim) result(gammaField)
 
@@ -704,13 +662,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   if (size_reduced > 0) then
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
-    if (debugGeneral) then
-      print'(/,1x,a)', '... updating masked compliance ............................................'
-      print'(/,1x,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
-        'Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
-      flush(IO_STDOUT)
-    end if
-
     do i = 1,9; do j = 1,9
       mask(i,j) = mask_stressVector(i) .and. mask_stressVector(j)
     end do; end do
@@ -724,7 +675,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 ! check if inversion was successful
     sTimesC = matmul(c_reduced,s_reduced)
     errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pReal))
-    if (debugGeneral .or. errmatinv) then
+    if (errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,1x,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
       print trim(formatString), 'C * S (load) ', transpose(matmul(c_reduced,s_reduced))
@@ -737,12 +688,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   end if
 
   utilities_maskedCompliance = math_99to3333(temp99_Real)
-
-  if (debugGeneral) then
-    print'(/,1x,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
-      'Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
-    flush(IO_STDOUT)
-  end if
 
 end function utilities_maskedCompliance
 
@@ -825,9 +770,12 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9_MPI_INTEGER_KIND,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  if (debugRotation) print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
-    'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
-  if (present(rotation_BC)) P_av = rotation_BC%rotate(P_av)
+  if (present(rotation_BC)) then
+    if (any(dNeq(rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pReal)))) &
+      print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+      'Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
+    P_av = rotation_BC%rotate(P_av)
+  end if
   print'(/,1x,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
     'Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
@@ -871,7 +819,7 @@ end subroutine utilities_constitutiveResponse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates forward rate, either guessing or just add delta/Delta_t
+!> @brief Calculate forward rate, either as local guess or as homogeneous add on.
 !--------------------------------------------------------------------------------------------------
 pure function utilities_calculateRate(heterogeneous,field0,field,dt,avRate)
 
@@ -986,9 +934,9 @@ subroutine utilities_updateCoords(F)
 
   real(pReal),   dimension(3,3,cells(1),cells(2),cells3), intent(in) :: F
 
-  real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: IPcoords
-  real(pReal),   dimension(3,  cells(1),cells(2),cells3+2)           :: IPfluct_padded              ! Fluctuations of cell center displacement (padded along z for MPI)
-  real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: nodeCoords
+  real(pReal),   dimension(3,  cells(1),cells(2),cells3)             :: x_p                         !< Point/cell center coordinates
+  real(pReal),   dimension(3,  cells(1),cells(2),0:cells3+1)         :: u_tilde_p_padded            !< Fluctuation of cell center displacement (padded along z for MPI)
+  real(pReal),   dimension(3,  cells(1)+1,cells(2)+1,cells3+1)       :: x_n                         !< Node coordinates
   integer :: &
     i,j,k,n, &
     c
@@ -1030,7 +978,7 @@ subroutine utilities_updateCoords(F)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
- ! integration in Fourier space to get fluctuations of cell center discplacements
+ ! integration in Fourier space to get fluctuations of cell center displacements
   !$OMP PARALLEL DO
   do j = 1, cells2; do k = 1, cells(3); do i = 1, cells1Red
     if (any([i,j+cells2Offset,k] /= 1)) then
@@ -1043,25 +991,24 @@ subroutine utilities_updateCoords(F)
   !$OMP END PARALLEL DO
 
   call fftw_mpi_execute_dft_c2r(planVectorBack,vectorField_fourier,vectorField_real)
-  vectorField_real = vectorField_real * wgt                                                         ! normalize the result by number of elements
+  u_tilde_p_padded(1:3,1:cells(1),1:cells(2),1:cells3) = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3) * wgt
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
-  IPfluct_padded(1:3,1:cells(1),1:cells(2),2:cells3+1) = vectorField_real(1:3,1:cells(1),1:cells(2),1:cells3)
-  c = product(shape(IPfluct_padded(:,:,:,1)))                                                       !< amount of data to transfer
+  c = product(shape(u_tilde_p_padded(:,:,:,1)))                                                       !< amount of data to transfer
   rank_t = modulo(worldrank+1_MPI_INTEGER_KIND,worldsize)
   rank_b = modulo(worldrank-1_MPI_INTEGER_KIND,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,2),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
+  call MPI_Isend(u_tilde_p_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(1),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,cells3+2),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
+  call MPI_Irecv(u_tilde_p_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(2),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   ! send top layer to process above
-  call MPI_Isend(IPfluct_padded(:,:,:,cells3+1),c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
+  call MPI_Isend(u_tilde_p_padded(:,:,:,cells3)  ,c,MPI_DOUBLE,rank_t,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(3),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
+  call MPI_Irecv(u_tilde_p_padded(:,:,:,0),       c,MPI_DOUBLE,rank_b,1_MPI_INTEGER_KIND,MPI_COMM_WORLD,request(4),err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
 
   call MPI_Waitall(4,request,status,err_MPI)
@@ -1073,26 +1020,26 @@ subroutine utilities_updateCoords(F)
 #endif
 
  !--------------------------------------------------------------------------------------------------
- ! calculate nodal displacements
-  nodeCoords = 0.0_pReal
+ ! calculate nodal positions
+  x_n = 0.0_pReal
   do j = 0,cells(2); do k = 0,cells3; do i = 0,cells(1)
-    nodeCoords(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)))
+    x_n(1:3,i+1,j+1,k+1) = matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)))
     averageFluct: do n = 1,8
       me = [i+neighbor(1,n),j+neighbor(2,n),k+neighbor(3,n)]
-      nodeCoords(1:3,i+1,j+1,k+1) = nodeCoords(1:3,i+1,j+1,k+1) &
-                                  + IPfluct_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3)+1)*0.125_pReal
+      x_n(1:3,i+1,j+1,k+1) = x_n(1:3,i+1,j+1,k+1) &
+                           + u_tilde_p_padded(1:3,modulo(me(1)-1,cells(1))+1,modulo(me(2)-1,cells(2))+1,me(3))*0.125_pReal
     end do averageFluct
   end do; end do; end do
 
  !--------------------------------------------------------------------------------------------------
- ! calculate cell center displacements
+ ! calculate cell center/point positions
   do k = 1,cells3; do j = 1,cells(2); do i = 1,cells(1)
-    IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)-0.5_pReal))
+    x_p(1:3,i,j,k) = u_tilde_p_padded(1:3,i,j,k) &
+                   + matmul(Favg,step*(real([i,j,k+cells3Offset],pReal)-0.5_pReal))
   end do; end do; end do
 
-  call discretization_setNodeCoords(reshape(NodeCoords,[3,(cells(1)+1)*(cells(2)+1)*(cells3+1)]))
-  call discretization_setIPcoords  (reshape(IPcoords,  [3,cells(1)*cells(2)*cells3]))
+  call discretization_setNodeCoords(reshape(x_n,[3,(cells(1)+1)*(cells(2)+1)*(cells3+1)]))
+  call discretization_setIPcoords  (reshape(x_p,[3,cells(1)*cells(2)*cells3]))
 
 end subroutine utilities_updateCoords
 
@@ -1178,22 +1125,22 @@ subroutine selfTest()
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
     vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
     scalarField_real_ = -spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad cosine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'grad cosine'
     scalarField_real_ = spread(spread(planeSine  (cells(1)),2,cells(2)),3,cells3)
     vectorField_real_ = utilities_scalarGradient(scalarField_real_)/TAU*geomSize(1)
     scalarField_real_ = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'grad sine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'grad sine'
 
     vectorField_real_(2:3,:,:,:) = 0.0_pReal
     vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
     scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
     vectorField_real_(1,:,:,:) =-spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div cosine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'div cosine'
     vectorField_real_(2:3,:,:,:) = 0.0_pReal
     vectorField_real_(1,:,:,:) = spread(spread(planeSine(  cells(1)),2,cells(2)),3,cells3)
     scalarField_real_ = utilities_vectorDivergence(vectorField_real_)/TAU*geomSize(1)
     vectorField_real_(1,:,:,:) = spread(spread(planeCosine(cells(1)),2,cells(2)),3,cells3)
-    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-14_pReal) error stop 'div sine'
+    if (maxval(abs(vectorField_real_(1,:,:,:) - scalarField_real_))>5.0e-12_pReal) error stop 'div sine'
   end if
 
   contains

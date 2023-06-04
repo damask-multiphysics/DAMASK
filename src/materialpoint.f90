@@ -5,15 +5,16 @@
 !--------------------------------------------------------------------------------------------------
 module materialpoint
   use parallelization
-  use signals
+  use signal
   use CLI
   use prec
+  use misc
   use IO
   use YAML_types
   use YAML_parse
   use HDF5
   use HDF5_utilities
-  use results
+  use result
   use config
   use math
   use rotations
@@ -45,8 +46,9 @@ subroutine materialpoint_initAll()
 
   call parallelization_init()
   call CLI_init()                                                                                   ! grid and mesh commandline interface
-  call signals_init()
+  call signal_init()
   call prec_init()
+  call misc_init()
   call IO_init()
 #if   defined(MESH)
   call FEM_quadrature_init()
@@ -56,7 +58,7 @@ subroutine materialpoint_initAll()
   call YAML_types_init()
   call YAML_parse_init()
   call HDF5_utilities_init()
-  call results_init(restart=CLI_restartInc>0)
+  call result_init(restart=CLI_restartInc>0)
   call config_init()
   call math_init()
   call rotations_init()
@@ -72,7 +74,7 @@ subroutine materialpoint_initAll()
   call phase_init()
   call homogenization_init()
   call materialpoint_init()
-  call config_deallocate()
+  call config_material_deallocate()
 
 end subroutine materialpoint_initAll
 
@@ -136,19 +138,19 @@ end subroutine materialpoint_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_results(inc,time)
+subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
   real(pReal), intent(in) :: time
 
-  call results_openJobFile()
-  call results_addIncrement(inc,time)
-  call phase_results()
-  call homogenization_results()
-  call discretization_results()
-  call results_finalizeIncrement()
-  call results_closeJobFile()
+  call result_openJobFile()
+  call result_addIncrement(inc,time)
+  call phase_result()
+  call homogenization_result()
+  call discretization_result()
+  call result_finalizeIncrement()
+  call result_closeJobFile()
 
-end subroutine materialpoint_results
+end subroutine materialpoint_result
 
 end module materialpoint

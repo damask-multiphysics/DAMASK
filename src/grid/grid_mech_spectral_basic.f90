@@ -49,8 +49,6 @@ module grid_mechanical_spectral_basic
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  logical :: debugRotation
-
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM   :: da
@@ -115,15 +113,8 @@ subroutine grid_mechanical_spectral_basic_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3,product(cells(1:2))*cells3) :: temp33n
   integer(HID_T) :: fileHandle, groupHandle
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
-  type(MPI_File) :: fileUnit
-#else
-  integer :: fileUnit
-#endif
   type(tDict), pointer :: &
     num_grid
-  type(tList), pointer :: &
-    debug_grid
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -135,11 +126,6 @@ subroutine grid_mechanical_spectral_basic_init()
 
   print'(  1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
-
-!-------------------------------------------------------------------------------------------------
-! debugging options
-  debug_grid => config_debug%get_list('grid',defaultVal=emptyList)
-  debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
@@ -523,7 +509,8 @@ subroutine formResidual(residual_subdomain, F, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (debugRotation) print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    if (any(dNeq(params%rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pReal)))) &
+      print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim       =', transpose(F_aim)

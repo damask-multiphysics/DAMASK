@@ -49,22 +49,22 @@ submodule(phase) damage
     end subroutine isobrittle_deltaState
 
 
-    module subroutine anisobrittle_dotState(S, ph, en)
+    module subroutine anisobrittle_dotState(M_i, ph, en)
       integer, intent(in) :: ph,en
       real(pReal),  intent(in), dimension(3,3) :: &
-        S
+        M_i
     end subroutine anisobrittle_dotState
 
 
-    module subroutine anisobrittle_results(phase,group)
+    module subroutine anisobrittle_result(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
-    end subroutine anisobrittle_results
+    end subroutine anisobrittle_result
 
-    module subroutine isobrittle_results(phase,group)
+    module subroutine isobrittle_result(phase,group)
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
-    end subroutine isobrittle_results
+    end subroutine isobrittle_result
 
  end interface
 
@@ -79,15 +79,17 @@ module subroutine damage_init()
     ph, &
     Nmembers
   type(tDict), pointer :: &
-   phases, &
-   phase, &
-   source
+    phases, &
+    phase, &
+    source
+  character(len=:), allocatable :: refs
   logical:: damage_active
+
 
   print'(/,1x,a)', '<<<+-  phase:damage init  -+>>>'
 
-  phases => config_material%get_dict('phase')
 
+  phases => config_material%get_dict('phase')
   allocate(current(phases%length))
   allocate(damageState(phases%length))
   allocate(param(phases%length))
@@ -95,13 +97,16 @@ module subroutine damage_init()
   damage_active = .false.
   do ph = 1,phases%length
 
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
 
     allocate(current(ph)%phi(Nmembers),source=1.0_pReal)
 
     phase => phases%get_dict(ph)
     source => phase%get_dict('damage',defaultVal=emptyDict)
     if (source%length > 0) then
+      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+      refs = config_listReferences(source,indent=3)
+      if (len(refs) > 0) print'(/,1x,a)', refs
       damage_active = .true.
       param(ph)%mu = source%get_asFloat('mu')
       param(ph)%l_c = source%get_asFloat('l_c')
@@ -136,8 +141,8 @@ module function phase_damage_constitutive(Delta_t,co,ce) result(converged_)
     ph, en
 
 
-  ph = material_phaseID(co,ce)
-  en = material_phaseEntry(co,ce)
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
 
   converged_ = .not. integrateDamageState(Delta_t,ph,en)
 
@@ -175,10 +180,10 @@ module subroutine damage_restore(ce)
     co
 
 
-  do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-    if (damageState(material_phaseID(co,ce))%sizeState > 0) &
-    damageState(material_phaseID(co,ce))%state( :,material_phaseEntry(co,ce)) = &
-      damageState(material_phaseID(co,ce))%state0(:,material_phaseEntry(co,ce))
+  do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
+    if (damageState(material_ID_phase(co,ce))%sizeState > 0) &
+    damageState(material_ID_phase(co,ce))%state( :,material_entry_phase(co,ce)) = &
+      damageState(material_ID_phase(co,ce))%state0(:,material_entry_phase(co,ce))
   end do
 
 end subroutine damage_restore
@@ -199,8 +204,8 @@ module function phase_f_phi(phi,co,ce) result(f)
     ph, &
     en
 
-  ph = material_phaseID(co,ce)
-  en = material_phaseEntry(co,ce)
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
 
   select case(phase_damage(ph))
     case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
@@ -339,26 +344,26 @@ end subroutine damage_restartRead
 !----------------------------------------------------------------------------------------------
 !< @brief writes damage sources results to HDF5 output file
 !----------------------------------------------------------------------------------------------
-module subroutine damage_results(group,ph)
+module subroutine damage_result(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
 
   if (phase_damage(ph) /= DAMAGE_UNDEFINED_ID) &
-    call results_closeGroup(results_addGroup(group//'damage'))
+    call result_closeGroup(result_addGroup(group//'damage'))
 
   sourceType: select case (phase_damage(ph))
 
     case (DAMAGE_ISOBRITTLE_ID) sourceType
-      call isobrittle_results(ph,group//'damage/')
+      call isobrittle_result(ph,group//'damage/')
 
     case (DAMAGE_ANISOBRITTLE_ID) sourceType
-      call anisobrittle_results(ph,group//'damage/')
+      call anisobrittle_result(ph,group//'damage/')
 
   end select sourceType
 
-end subroutine damage_results
+end subroutine damage_result
 
 
 !--------------------------------------------------------------------------------------------------
@@ -379,7 +384,7 @@ function phase_damage_collectDotState(ph,en) result(broken)
     sourceType: select case (phase_damage(ph))
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call anisobrittle_dotState(mechanical_S(ph,en), ph,en) ! correct stress?
+        call anisobrittle_dotState(mechanical_S(ph,en), ph,en) ! ToDo: use M_d
 
     end select sourceType
 
@@ -399,7 +404,7 @@ module function phase_mu_phi(co,ce) result(mu)
   real(pReal) :: mu
 
 
-  mu = param(material_phaseID(co,ce))%mu
+  mu = param(material_ID_phase(co,ce))%mu
 
 end function phase_mu_phi
 
@@ -413,7 +418,7 @@ module function phase_K_phi(co,ce) result(K)
   real(pReal), dimension(3,3) :: K
 
 
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%l_c**2*math_I3)
+  K = crystallite_push33ToRef(co,ce,param(material_ID_phase(co,ce))%l_c**2*math_I3)
 
 end function phase_K_phi
 
@@ -471,8 +476,6 @@ function source_active(source_label)  result(active_source)
     phases, &
     phase, &
     src
-  type(tList), pointer :: &
-    sources
   integer :: ph
 
 
@@ -497,7 +500,7 @@ module subroutine phase_set_phi(phi,co,ce)
   integer, intent(in) :: ce, co
 
 
-  current(material_phaseID(co,ce))%phi(material_phaseEntry(co,ce)) = phi
+  current(material_ID_phase(co,ce))%phi(material_entry_phase(co,ce)) = phi
 
 end subroutine phase_set_phi
 

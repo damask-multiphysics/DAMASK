@@ -15,7 +15,7 @@ module homogenization
   use discretization
   use HDF5
   use HDF5_utilities
-  use results
+  use result
   use lattice
 
   implicit none(type,external)
@@ -101,20 +101,20 @@ module homogenization
        ce                                                                                           !< cell
     end subroutine mechanical_homogenize
 
-    module subroutine mechanical_results(group_base,ho)
+    module subroutine mechanical_result(group_base,ho)
       character(len=*), intent(in) :: group_base
       integer, intent(in)          :: ho
-    end subroutine mechanical_results
+    end subroutine mechanical_result
 
-    module subroutine damage_results(ho,group)
+    module subroutine damage_result(ho,group)
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-    end subroutine damage_results
+    end subroutine damage_result
 
-    module subroutine thermal_results(ho,group)
+    module subroutine thermal_result(ho,group)
       integer,          intent(in) :: ho
       character(len=*), intent(in) :: group
-    end subroutine thermal_results
+    end subroutine thermal_result
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
       real(pReal), intent(in) :: &
@@ -194,7 +194,7 @@ module homogenization
     homogenization_f_phi, &
     homogenization_set_phi, &
     homogenization_forward, &
-    homogenization_results, &
+    homogenization_result, &
     homogenization_restartRead, &
     homogenization_restartWrite
 
@@ -250,8 +250,8 @@ subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
   !$OMP PARALLEL DO PRIVATE(en,ho,co,NiterationMPstate,converged,doneAndHappy)
   do ce = cell_start, cell_end
 
-    en = material_homogenizationEntry(ce)
-    ho = material_homogenizationID(ce)
+    en = material_entry_homogenization(ce)
+    ho = material_ID_homogenization(ce)
 
     call phase_restore(ce,.false.) ! wrong name (is more a forward function)
 
@@ -303,9 +303,9 @@ subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
   !$OMP PARALLEL DO PRIVATE(ho)
   do ce = cell_start, cell_end
     if (terminallyIll) continue
-    ho = material_homogenizationID(ce)
+    ho = material_ID_homogenization(ce)
     do co = 1, homogenization_Nconstituents(ho)
-      if (.not. phase_thermal_constitutive(Delta_t,material_phaseID(co,ce),material_phaseEntry(co,ce))) then
+      if (.not. phase_thermal_constitutive(Delta_t,material_ID_phase(co,ce),material_entry_phase(co,ce))) then
         if (.not. terminallyIll) print*, ' Cell ', ce, ' terminally ill'
         terminallyIll = .true.
       end if
@@ -333,7 +333,7 @@ subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolvin
   elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
     IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       ce = (el-1)*discretization_nIPs + ip
-      ho = material_homogenizationID(ce)
+      ho = material_ID_homogenization(ce)
       do co = 1, homogenization_Nconstituents(ho)
         call crystallite_orientations(co,ip,el)
       end do
@@ -349,35 +349,35 @@ end subroutine homogenization_mechanical_response2
 !--------------------------------------------------------------------------------------------------
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_results
+subroutine homogenization_result
 
   integer :: ho
   character(len=:), allocatable :: group_base,group
 
 
-  call results_closeGroup(results_addGroup('current/homogenization/'))
+  call result_closeGroup(result_addGroup('current/homogenization/'))
 
   do ho=1,size(material_name_homogenization)
     group_base = 'current/homogenization/'//trim(material_name_homogenization(ho))
-    call results_closeGroup(results_addGroup(group_base))
+    call result_closeGroup(result_addGroup(group_base))
 
-    call mechanical_results(group_base,ho)
+    call mechanical_result(group_base,ho)
 
     if (damage_active(ho)) then
       group = trim(group_base)//'/damage'
-      call results_closeGroup(results_addGroup(group))
-      call damage_results(ho,group)
+      call result_closeGroup(result_addGroup(group))
+      call damage_result(ho,group)
     end if
 
     if (thermal_active(ho)) then
       group = trim(group_base)//'/thermal'
-      call results_closeGroup(results_addGroup(group))
-      call thermal_results(ho,group)
+      call result_closeGroup(result_addGroup(group))
+      call thermal_result(ho,group)
     end if
 
  end do
 
-end subroutine homogenization_results
+end subroutine homogenization_result
 
 
 !--------------------------------------------------------------------------------------------------

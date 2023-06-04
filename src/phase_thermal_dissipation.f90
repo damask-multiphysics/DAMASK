@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
@@ -33,11 +34,13 @@ module function dissipation_init(source_length) result(mySources)
     src
   class(tList), pointer :: &
     sources
+  character(len=:), allocatable :: refs
   integer :: so,Nmembers,ph
 
 
   mySources = thermal_active('dissipation',source_length)
   if (count(mySources) == 0) return
+
   print'(/,1x,a)', '<<<+-  phase:thermal:dissipation init  -+>>>'
   print'(/,a,i2)', ' # phases: ',count(mySources); flush(IO_STDOUT)
 
@@ -54,9 +57,12 @@ module function dissipation_init(source_length) result(mySources)
       if (mySources(so,ph)) then
         associate(prm  => param(ph))
           src => sources%get_dict(so)
+          print'(1x,a,i0,a,i0)', 'phase ',ph,' source ',so
+          refs = config_listReferences(src,indent=3)
+          if (len(refs) > 0) print'(/,1x,a)', refs
 
           prm%kappa = src%get_asFloat('kappa')
-          Nmembers = count(material_phaseID == ph)
+          Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
         end associate
@@ -76,10 +82,13 @@ module function dissipation_f_T(ph,en) result(f_T)
   integer, intent(in) :: ph, en
   real(pReal) :: &
     f_T
+  real(pReal), dimension(3,3) :: &
+    Mp                                                                                              !< Mandel stress work conjugate with Lp
 
+  Mp = matmul(matmul(transpose(mechanical_F_i(ph,en)),mechanical_F_i(ph,en)),mechanical_S(ph,en))
 
   associate(prm => param(ph))
-    f_T = prm%kappa*sum(abs(mechanical_S(ph,en)*mechanical_L_p(ph,en)))
+    f_T = prm%kappa*sum(abs(Mp*mechanical_L_p(ph,en)))
   end associate
 
 end function dissipation_f_T

@@ -84,7 +84,7 @@ module subroutine thermal_init(phases)
     thermal
   type(tList), pointer :: &
     sources
-
+  character(len=:), allocatable :: refs
   integer :: &
     ph, so, &
     Nmembers
@@ -93,13 +93,12 @@ module subroutine thermal_init(phases)
   print'(/,1x,a)', '<<<+-  phase:thermal init  -+>>>'
 
   allocate(current(phases%length))
-
   allocate(thermalState(phases%length))
   allocate(thermal_Nsources(phases%length),source = 0)
   allocate(param(phases%length))
 
   do ph = 1, phases%length
-    Nmembers = count(material_phaseID == ph)
+    Nmembers = count(material_ID_phase == ph)
     allocate(current(ph)%T(Nmembers),source=T_ROOM)
     allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
     phase => phases%get_dict(ph)
@@ -107,6 +106,9 @@ module subroutine thermal_init(phases)
 
     ! ToDo: temperature dependency of K and C_p
     if (thermal%length > 0) then
+      print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+      refs = config_listReferences(thermal,indent=3)
+      if (len(refs) > 0) print'(/,1x,a)', refs
       param(ph)%C_p = thermal%get_asFloat('C_p')
       param(ph)%K(1,1) = thermal%get_asFloat('K_11')
       if (any(phase_lattice(ph) == ['hP','tI'])) param(ph)%K(3,3) = thermal%get_asFloat('K_33')
@@ -212,8 +214,8 @@ module function phase_mu_T(co,ce) result(mu)
   real(pReal) :: mu
 
 
-  mu = phase_rho(material_phaseID(co,ce)) &
-     * param(material_phaseID(co,ce))%C_p
+  mu = phase_rho(material_ID_phase(co,ce)) &
+     * param(material_ID_phase(co,ce))%C_p
 
 end function phase_mu_T
 
@@ -227,7 +229,7 @@ module function phase_K_T(co,ce) result(K)
   real(pReal), dimension(3,3) :: K
 
 
-  K = crystallite_push33ToRef(co,ce,param(material_phaseID(co,ce))%K)
+  K = crystallite_push33ToRef(co,ce,param(material_ID_phase(co,ce))%K)
 
 end function phase_K_T
 
@@ -352,8 +354,8 @@ module subroutine phase_thermal_setField(T,dot_T, co,ce)
   integer, intent(in) :: ce, co
 
 
-  current(material_phaseID(co,ce))%T(material_phaseEntry(co,ce)) = T
-  current(material_phaseID(co,ce))%dot_T(material_phaseEntry(co,ce)) = dot_T
+  current(material_ID_phase(co,ce))%T(material_entry_phase(co,ce)) = T
+  current(material_ID_phase(co,ce))%dot_T(material_entry_phase(co,ce)) = dot_T
 
 end subroutine phase_thermal_setField
 
@@ -394,9 +396,9 @@ end function thermal_active
 
 
 !----------------------------------------------------------------------------------------------
-!< @brief writes thermal sources results to HDF5 output file
+!< @brief Write thermal sources results to HDF5 output file.
 !----------------------------------------------------------------------------------------------
-module subroutine thermal_results(group,ph)
+module subroutine thermal_result(group,ph)
 
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
@@ -406,20 +408,20 @@ module subroutine thermal_results(group,ph)
 
   if (.not. allocated(param(ph)%output)) return
 
-  call results_closeGroup(results_addGroup(group//'thermal'))
+  call result_closeGroup(result_addGroup(group//'thermal'))
 
   do ou = 1, size(param(ph)%output)
 
     select case(trim(param(ph)%output(ou)))
 
       case ('T')
-        call results_writeDataset(current(ph)%T,group//'thermal','T', 'temperature','K')
+        call result_writeDataset(current(ph)%T,group//'thermal','T', 'temperature','K')
 
     end select
 
   end do
 
-end subroutine thermal_results
+end subroutine thermal_result
 
 
 end submodule thermal

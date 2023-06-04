@@ -276,7 +276,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
   else
     dotT_lastInc = (T - T_lastInc)/params%Delta_t
     T_lastInc = T
-    call updateReference
+    call updateReference()
   end if
 
 end subroutine grid_thermal_spectral_forward

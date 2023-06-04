@@ -35,8 +35,8 @@ class Rotation:
     Rotate vector 'a' (defined in coordinate system 'A') to
     coordinates 'b' expressed in system 'B':
 
-    >>> import damask
     >>> import numpy as np
+    >>> import damask
     >>> Q = damask.Rotation.from_random()
     >>> a = np.random.rand(3)
     >>> b = Q @ a
@@ -45,8 +45,8 @@ class Rotation:
 
     Compound rotations R1 (first) and R2 (second):
 
-    >>> import damask
     >>> import numpy as np
+    >>> import damask
     >>> R1 = damask.Rotation.from_random()
     >>> R2 = damask.Rotation.from_random()
     >>> R = R2 * R1
@@ -69,7 +69,7 @@ class Rotation:
 
         Parameters
         ----------
-        rotation : list, numpy.ndarray, Rotation, optional
+        rotation : list, numpy.ndarray, or Rotation, optional
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
             Defaults to no rotation.
@@ -88,7 +88,7 @@ class Rotation:
         """
         Return repr(self).
 
-        Give short human-readable summary.
+        Give short, human-readable summary.
 
         """
         return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape[:-1])+chr(10)}'\
@@ -902,7 +902,8 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(R: np.ndarray) -> 'Rotation':
+    def from_matrix(R: np.ndarray,
+                    normalize: bool = False) -> 'Rotation':
         """
         Initialize from rotation matrix.
 
@@ -910,13 +911,17 @@ class Rotation:
         ----------
         R : numpy.ndarray, shape (...,3,3)
             Rotation matrix with det(R) = 1 and R.T ∙ R = I.
+        normalize : bool, optional
+            Rescales rotation matrix to unit determinant. Defaults to False.
 
         Returns
         -------
         new : damask.Rotation
 
         """
-        return Rotation.from_basis(R)
+        return Rotation.from_basis(np.array(R,dtype=float) * (np.linalg.det(R)**(-1./3.))[...,np.newaxis,np.newaxis]
+                                   if normalize else
+                                   R)
 
     @staticmethod
     def from_parallel(a: np.ndarray,

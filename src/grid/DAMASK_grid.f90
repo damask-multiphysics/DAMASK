@@ -15,7 +15,7 @@ program DAMASK_grid
 
   use prec
   use parallelization
-  use signals
+  use signal
   use CLI
   use IO
   use config
@@ -28,7 +28,7 @@ program DAMASK_grid
   use grid_mechanical_FEM
   use grid_damage_spectral
   use grid_thermal_spectral
-  use results
+  use result
 
 #if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>14) && !defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   implicit none(type,external)
@@ -37,7 +37,7 @@ program DAMASK_grid
 #endif
 
   type :: tLoadCase
-    type(tRotation)          :: rot                                                                !< rotation of BC
+    type(tRotation)          :: rot                                                                 !< rotation of BC
     type(tBoundaryCondition) :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
     real(pReal) ::              t, &                                                                !< length of increment
@@ -73,7 +73,7 @@ program DAMASK_grid
     guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
     cutBack = .false.,&
-    signal
+    sig
   integer :: &
     i, j, m, field, &
     errorID = 0, &
@@ -133,7 +133,7 @@ program DAMASK_grid
 
 
 !-------------------------------------------------------------------------------------------------
-! reading field paramters from numerics file and do sanity checks
+! read (and check) field parameters from numerics file
   num_grid => config_numerics%get_dict('grid', defaultVal=emptyDict)
   stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
@@ -145,9 +145,9 @@ program DAMASK_grid
     fileContent = IO_read(CLI_loadFile)
     fname = CLI_loadFile
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
-    call results_openJobFile(parallel=.false.)
-    call results_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
-    call results_closeJobFile
+    call result_openJobFile(parallel=.false.)
+    call result_writeDataset_str(fileContent,'setup',fname,'load case definition (grid solver)')
+    call result_closeJobFile()
   end if
 
   call parallelization_bcast_str(fileContent)
@@ -313,7 +313,8 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call spectral_Utilities_init
+  call spectral_Utilities_init()
+
   do field = 2, nActiveFields
     select case (ID(field))
 
@@ -327,6 +328,7 @@ program DAMASK_grid
   end do
 
   call mechanical_init()
+  call config_numerics_deallocate()
 
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
@@ -343,7 +345,7 @@ program DAMASK_grid
   writeUndeformed: if (CLI_restartInc < 1) then
     print'(/,1x,a)', '... writing initial configuration to file .................................'
     flush(IO_STDOUT)
-    call materialpoint_results(0,0.0_pReal)
+    call materialpoint_result(0,0.0_pReal)
   end if writeUndeformed
 
   loadCaseLooping: do l = 1, size(loadCases)
@@ -376,7 +378,7 @@ program DAMASK_grid
           stepFraction = stepFraction + 1                                                           ! count step
 
 !--------------------------------------------------------------------------------------------------
-! report begin of new step
+! report beginning of new step
           print'(/,1x,a)', '###########################################################################'
           print'(1x,a,1x,es12.5,6(a,i0))', &
                   'Time', t, &
@@ -430,11 +432,11 @@ program DAMASK_grid
           end do
 
 !--------------------------------------------------------------------------------------------------
-! check solution for either advance or retry
+! check solution and either advance or retry with smaller timestep
 
           if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
                .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
-            call mechanical_updateCoords
+            call mechanical_updateCoords()
             Delta_t_prev = Delta_t
             cutBack = .false.
             guess = .true.                                                                          ! start guessing after first converged (sub)inc
@@ -465,33 +467,33 @@ program DAMASK_grid
           print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
         end if; flush(IO_STDOUT)
 
-        call MPI_Allreduce(signals_SIGUSR1,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        call MPI_Allreduce(signal_SIGUSR1,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-        if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
+        if (mod(inc,loadCases(l)%f_out) == 0 .or. sig) then
           print'(/,1x,a)', '... writing results to file ...............................................'
           flush(IO_STDOUT)
-          call materialpoint_results(totalIncsCounter,t)
+          call materialpoint_result(totalIncsCounter,t)
         end if
-        if (signal) call signals_setSIGUSR1(.false.)
-        call MPI_Allreduce(signals_SIGUSR2,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (sig) call signal_setSIGUSR1(.false.)
+        call MPI_Allreduce(signal_SIGUSR2,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-        if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
+        if (mod(inc,loadCases(l)%f_restart) == 0 .or. sig) then
           do field = 1, nActiveFields
             select case (ID(field))
               case(FIELD_MECH_ID)
-                call mechanical_restartWrite
+                call mechanical_restartWrite()
               case(FIELD_THERMAL_ID)
-                call grid_thermal_spectral_restartWrite
+                call grid_thermal_spectral_restartWrite()
               case(FIELD_DAMAGE_ID)
-                call grid_damage_spectral_restartWrite
+                call grid_damage_spectral_restartWrite()
             end select
           end do
-          call materialpoint_restartWrite
+          call materialpoint_restartWrite()
         end if
-        if (signal) call signals_setSIGUSR2(.false.)
-        call MPI_Allreduce(signals_SIGINT,signal,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
+        if (sig) call signal_setSIGUSR2(.false.)
+        call MPI_Allreduce(signal_SIGINT,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
-        if (signal) exit loadCaseLooping
+        if (sig) exit loadCaseLooping
       end if skipping
 
     end do incLooping

@@ -13,7 +13,7 @@ module phase
   use IO
   use config
   use material
-  use results
+  use result
   use lattice
   use discretization
   use parallelization
@@ -76,17 +76,6 @@ module phase
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  type :: tDebugOptions
-    logical :: &
-      basic, &
-      extensive, &
-      selective
-    integer :: &
-      element, &
-      ip, &
-      grain
-  end type tDebugOptions
-
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tState),  allocatable, dimension(:), public :: &
@@ -108,20 +97,20 @@ module phase
     end subroutine thermal_init
 
 
-    module subroutine mechanical_results(group,ph)
+    module subroutine mechanical_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine mechanical_results
+    end subroutine mechanical_result
 
-    module subroutine damage_results(group,ph)
+    module subroutine damage_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine damage_results
+    end subroutine damage_result
 
-    module subroutine thermal_results(group,ph)
+    module subroutine thermal_result(group,ph)
       character(len=*), intent(in) :: group
       integer,          intent(in) :: ph
-    end subroutine thermal_results
+    end subroutine thermal_result
 
     module subroutine mechanical_forward()
     end subroutine mechanical_forward
@@ -196,6 +185,10 @@ module phase
       real(pReal), dimension(3,3) :: F_e
     end function mechanical_F_e
 
+    module function mechanical_F_i(ph,en) result(F_i)
+      integer, intent(in) :: ph,en
+      real(pReal), dimension(3,3) :: F_i
+    end function mechanical_F_i
 
     module function phase_F(co,ce) result(F)
       integer, intent(in) :: co, ce
@@ -321,20 +314,19 @@ module phase
     end subroutine plastic_dependentState
 
 
-    module subroutine damage_anisobrittle_LiAndItsTangent(Ld, dLd_dTstar, S, ph,en)
+    module subroutine damage_anisobrittle_LiAndItsTangent(L_i, dL_i_dM_i, M_i, ph,en)
       integer, intent(in) :: ph, en
       real(pReal),   intent(in),  dimension(3,3) :: &
-        S
+        M_i
       real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                          !< damage velocity gradient
+        L_i                                                                                         !< damage velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
+        dL_i_dM_i                                                                                   !< derivative of L_i with respect to M_i
     end subroutine damage_anisobrittle_LiAndItsTangent
 
   end interface
 
 
-  type(tDebugOptions) :: debugConstitutive
 #if __INTEL_COMPILER >= 1900
   public :: &
     prec, &
@@ -343,7 +335,7 @@ module phase
     IO, &
     config, &
     material, &
-    results, &
+    result, &
     lattice, &
     discretization, &
     HDF5_utilities
@@ -358,7 +350,7 @@ module phase
     phase_K_T, &
     phase_mu_phi, &
     phase_mu_T, &
-    phase_results, &
+    phase_result, &
     phase_allocateState, &
     phase_forward, &
     phase_restore, &
@@ -390,44 +382,36 @@ subroutine phase_init
   type(tDict), pointer :: &
     phases, &
     phase
-  type(tList), pointer :: &
-    debug_constitutive
+  character(len=:), allocatable :: refs
 
 
   print'(/,1x,a)', '<<<+-  phase init  -+>>>'; flush(IO_STDOUT)
 
-  debug_constitutive => config_debug%get_list('phase', defaultVal=emptyList)
-  debugConstitutive%basic     = debug_constitutive%contains('basic')
-  debugConstitutive%extensive = debug_constitutive%contains('extensive')
-  debugConstitutive%selective = debug_constitutive%contains('selective')
-  debugConstitutive%element   = config_debug%get_asInt('element',         defaultVal = 1)
-  debugConstitutive%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
-  debugConstitutive%grain     = config_debug%get_asInt('constituent',     defaultVal = 1)
-
-
   phases => config_material%get_dict('phase')
-
   allocate(phase_lattice(phases%length))
   allocate(phase_cOverA(phases%length),source=-1.0_pReal)
   allocate(phase_rho(phases%length))
   allocate(phase_O_0(phases%length))
 
   do ph = 1,phases%length
+    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
     phase => phases%get_dict(ph)
+    refs = config_listReferences(phase,indent=3)
+    if (len(refs) > 0) print'(/,1x,a)', refs
     phase_lattice(ph) = phase%get_asString('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
       call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
     if (any(phase_lattice(ph) == ['hP','tI'])) &
       phase_cOverA(ph) = phase%get_asFloat('c/a')
     phase_rho(ph) = phase%get_asFloat('rho',defaultVal=0.0_pReal)
-    allocate(phase_O_0(ph)%data(count(material_phaseID==ph)))
+    allocate(phase_O_0(ph)%data(count(material_ID_phase==ph)))
   end do
 
-  do ce = 1, size(material_phaseID,2)
+  do ce = 1, size(material_ID_phase,2)
     ma = discretization_materialAt((ce-1)/discretization_nIPs+1)
-    do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-      ph = material_phaseID(co,ce)
-      phase_O_0(ph)%data(material_phaseEntry(co,ce)) = material_O_0(ma)%data(co)
+    do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
+      ph = material_ID_phase(co,ce)
+      phase_O_0(ph)%data(material_entry_phase(co,ce)) = material_O_0(ma)%data(co)
     end do
   end do
 
@@ -437,7 +421,7 @@ subroutine phase_init
   end do
 
   call mechanical_init(phases)
-  call damage_init
+  call damage_init()
   call thermal_init(phases)
 
   call crystallite_init()
@@ -513,30 +497,30 @@ end subroutine phase_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine phase_results()
+subroutine phase_result()
 
   integer :: ph
   character(len=:), allocatable :: group
 
 
-  call results_closeGroup(results_addGroup('/current/phase/'))
+  call result_closeGroup(result_addGroup('/current/phase/'))
 
   do ph = 1, size(material_name_phase)
 
     group = '/current/phase/'//trim(material_name_phase(ph))//'/'
-    call results_closeGroup(results_addGroup(group))
+    call result_closeGroup(result_addGroup(group))
 
-    call mechanical_results(group,ph)
-    call damage_results(group,ph)
-    call thermal_results(group,ph)
+    call mechanical_result(group,ph)
+    call damage_result(group,ph)
+    call thermal_result(group,ph)
 
   end do
 
-end subroutine phase_results
+end subroutine phase_result
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates and initialize per grain variables
+!> @brief Allocate and initialize.
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init()
 
@@ -549,8 +533,8 @@ subroutine crystallite_init()
   type(tDict), pointer :: &
     num_crystallite, &
     phases
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=:), allocatable :: extmsg
+
 
   num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
@@ -566,6 +550,7 @@ subroutine crystallite_init()
   num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
   num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
+  extmsg = ''
   if (num%subStepMinCryst   <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepMinCryst'
   if (num%subStepSizeCryst  <= 0.0_pReal)      extmsg = trim(extmsg)//' subStepSizeCryst'
   if (num%stepIncreaseCryst <= 0.0_pReal)      extmsg = trim(extmsg)//' stepIncreaseCryst'
@@ -586,9 +571,9 @@ subroutine crystallite_init()
   do el = 1, discretization_Nelems
     do ip = 1, discretization_nIPs
       ce = (el-1)*discretization_nIPs + ip
-      do co = 1,homogenization_Nconstituents(material_homogenizationID(ce))
-        en = material_phaseEntry(co,ce)
-        ph = material_phaseID(co,ce)
+      do co = 1,homogenization_Nconstituents(material_ID_homogenization(ce))
+        en = material_entry_phase(co,ce)
+        ph = material_ID_phase(co,ce)
         call crystallite_orientations(co,ip,el)
         call plastic_dependentState(ph,en)                                                          ! update dependent state variables to be consistent with basic states
      end do
@@ -613,13 +598,13 @@ subroutine crystallite_orientations(co,ip,el)
   integer :: ph, en
 
 
-  ph = material_phaseID(co,(el-1)*discretization_nIPs + ip)
-  en = material_phaseEntry(co,(el-1)*discretization_nIPs + ip)
+  ph = material_ID_phase(co,(el-1)*discretization_nIPs + ip)
+  en = material_entry_phase(co,(el-1)*discretization_nIPs + ip)
 
   call phase_O(ph)%data(en)%fromMatrix(transpose(math_rotationalPart(mechanical_F_e(ph,en))))
 
-  if (plasticState(material_phaseID(1,(el-1)*discretization_nIPs + ip))%nonlocal) &
-    call plastic_nonlocal_updateCompatibility(phase_O,material_phaseID(1,(el-1)*discretization_nIPs + ip),ip,el)
+  if (plasticState(material_ID_phase(1,(el-1)*discretization_nIPs + ip))%nonlocal) &
+    call plastic_nonlocal_updateCompatibility(phase_O,material_ID_phase(1,(el-1)*discretization_nIPs + ip),ip,el)
 
 
 end subroutine crystallite_orientations
@@ -640,8 +625,8 @@ function crystallite_push33ToRef(co,ce, tensor33)
   integer :: ph, en
 
 
-  ph = material_phaseID(co,ce)
-  en = material_phaseEntry(co,ce)
+  ph = material_ID_phase(co,ce)
+  en = material_entry_phase(co,ce)
   T = matmul(phase_O_0(ph)%data(en)%asMatrix(),transpose(math_inv33(phase_F(co,ce))))               ! ToDo: initial orientation correct?
 
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))

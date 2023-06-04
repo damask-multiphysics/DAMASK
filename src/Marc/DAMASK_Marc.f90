@@ -142,12 +142,13 @@ end function solverIsSymmetric
 end module DAMASK_interface
 
 #include "../parallelization.f90"
+#include "../misc.f90"
 #include "../constants.f90"
 #include "../IO.f90"
 #include "../YAML_types.f90"
 #include "../YAML_parse.f90"
 #include "../HDF5_utilities.f90"
-#include "../results.f90"
+#include "../result.f90"
 #include "../config.f90"
 #include "../LAPACK_interface.f90"
 #include "../math.f90"
@@ -282,34 +283,15 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   logical, save :: &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
-    materialpoint_init_done   = .false., &                                                          !< remember whether init has been done already
-    debug_basic       = .true.
-  type(tList), pointer :: &
-    debug_Marc                                                                                      ! pointer to Marc debug options
+    materialpoint_init_done   = .false.                                                             !< remember whether init has been done already
 
-  if (debug_basic) then
-    print'(a,/,i8,i8,i2)', ' MSC.Marc information on shape of element(2), IP:', m, nn
-    print'(a,2(i1))',      ' Jacobian:                      ', ngens,ngens
-    print'(a,i1)',         ' Direct stress:                 ', ndi
-    print'(a,i1)',         ' Shear stress:                  ', nshear
-    print'(a,i2)',         ' DoF:                           ', ndeg
-    print'(a,i2)',         ' Coordinates:                   ', ncrd
-    print'(a,i12)',        ' Nodes:                         ', nnode
-    print'(a,i1)',         ' Deformation gradient:          ', itel
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
-                                  transpose(ffn)
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
-                                  transpose(ffn1)
-  end if
 
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1_pI32)                                                                  ! no openMP
 
   if (.not. materialpoint_init_done) then
     materialpoint_init_done = .true.
-    call materialpoint_initAll
-    debug_Marc => config_debug%get_list('Marc',defaultVal=emptyList)
-    debug_basic = debug_Marc%contains('basic')
+    call materialpoint_initAll()
   end if
 
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
@@ -434,7 +416,7 @@ subroutine uedinc(inc,incsub)
     end do
 
     call discretization_Marc_UpdateNodeAndIpCoords(d_n)
-    call materialpoint_results(int(inc),cptim)
+    call materialpoint_result(int(inc),cptim)
 
     inc_written = int(inc)
   end if
