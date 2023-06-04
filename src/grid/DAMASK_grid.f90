@@ -40,7 +40,7 @@ program DAMASK_grid
     type(tRotation)          :: rot                                                                 !< rotation of BC
     type(tBoundaryCondition) :: stress, &                                                           !< stress BC
                                 deformation                                                         !< deformation BC (dot_F, F, or L)
-    real(pReal) ::              t, &                                                                !< length of increment
+    real(pREAL) ::              t, &                                                                !< length of increment
                                 r                                                                   !< ratio of geometric progression
     integer ::                  N, &                                                                !< number of increments
                                 f_out, &                                                            !< frequency of result writes
@@ -63,12 +63,12 @@ program DAMASK_grid
 ! loop variables, convergence etc.
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
-  real(pReal) :: &
-    t = 0.0_pReal, &                                                                                !< elapsed time
-    t_0 = 0.0_pReal, &                                                                              !< begin of interval
-    Delta_t = 1.0_pReal, &                                                                          !< current time interval
-    Delta_t_prev = 0.0_pReal, &                                                                     !< previous time interval
-    t_remaining = 0.0_pReal                                                                         !< remaining time of current load case
+  real(pREAL) :: &
+    t = 0.0_pREAL, &                                                                                !< elapsed time
+    t_0 = 0.0_pREAL, &                                                                              !< begin of interval
+    Delta_t = 1.0_pREAL, &                                                                          !< current time interval
+    Delta_t_prev = 0.0_pREAL, &                                                                     !< previous time interval
+    t_remaining = 0.0_pREAL                                                                         !< remaining time of current load case
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
@@ -234,14 +234,14 @@ program DAMASK_grid
           call getMaskedTensor(loadCases(l)%stress%values,loadCases(l)%stress%mask,step_mech%get_list(m))
 #endif
       end select
-      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
+      call loadCases(l)%rot%fromAxisAngle(step_mech%get_as1dReal('R',defaultVal = real([0.0,0.0,1.0,0.0],pREAL)),degrees=.true.)
     end do readMech
     if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
 
     step_discretization => load_step%get_dict('discretization')
     loadCases(l)%t = step_discretization%get_asReal('t')
     loadCases(l)%N = step_discretization%get_asInt  ('N')
-    loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pReal)
+    loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pREAL)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
     if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
@@ -279,7 +279,7 @@ program DAMASK_grid
           if (loadCases(l)%stress%mask(i,j)) then
             write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
           else
-            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pReal
+            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pREAL
           end if
           end do; write(IO_STDOUT,'(/)',advance='no')
         end do
@@ -288,13 +288,13 @@ program DAMASK_grid
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
 
-      if (loadCases(l)%r <= 0.0_pReal) errorID = 833
-      if (loadCases(l)%t < 0.0_pReal)  errorID = 834
+      if (loadCases(l)%r <= 0.0_pREAL) errorID = 833
+      if (loadCases(l)%t < 0.0_pREAL)  errorID = 834
       if (loadCases(l)%N < 1)          errorID = 835
       if (loadCases(l)%f_out < 1)      errorID = 836
       if (loadCases(l)%f_restart < 1)  errorID = 839
 
-      if (dEq(loadCases(l)%r,1.0_pReal,1.e-9_pReal)) then
+      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then
         print'(2x,a)', 'r: 1 (constant step width)'
       else
         print'(2x,a,1x,f0.3)', 'r:', loadCases(l)%r
@@ -345,7 +345,7 @@ program DAMASK_grid
   writeUndeformed: if (CLI_restartInc < 1) then
     print'(/,1x,a)', '... writing initial configuration to file .................................'
     flush(IO_STDOUT)
-    call materialpoint_result(0,0.0_pReal)
+    call materialpoint_result(0,0.0_pREAL)
   end if writeUndeformed
 
   loadCaseLooping: do l = 1, size(loadCases)
@@ -358,13 +358,13 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       Delta_t_prev = Delta_t                                                                        ! last time intervall that brought former inc to an end
-      if (dEq(loadCases(l)%r,1.0_pReal,1.e-9_pReal)) then                                           ! linear scale
-        Delta_t = loadCases(l)%t/real(loadCases(l)%N,pReal)
+      if (dEq(loadCases(l)%r,1.0_pREAL,1.e-9_pREAL)) then                                           ! linear scale
+        Delta_t = loadCases(l)%t/real(loadCases(l)%N,pREAL)
       else
         Delta_t = loadCases(l)%t * (loadCases(l)%r**(inc-1)-loadCases(l)%r**inc) &
-                                 / (1.0_pReal-loadCases(l)%r**loadCases(l)%N)
+                                 / (1.0_pREAL-loadCases(l)%r**loadCases(l)%N)
       end if
-      Delta_t = Delta_t * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
+      Delta_t = Delta_t * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
 
       skipping: if (totalIncsCounter <= CLI_restartInc) then                                  ! not yet at restart inc?
         t = t + Delta_t                                                                             ! just advance time, skip already performed calculation
@@ -450,7 +450,7 @@ program DAMASK_grid
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
             t = t - Delta_t
-            Delta_t = Delta_t/real(subStepFactor,pReal)                                             ! cut timestep
+            Delta_t = Delta_t/real(subStepFactor,pREAL)                                             ! cut timestep
             print'(/,1x,a)', 'cutting back '
           else                                                                                      ! no more options to continue
             if (worldrank == 0) close(statUnit)
@@ -513,7 +513,7 @@ contains
 
 subroutine getMaskedTensor(values,mask,tensor)
 
-  real(pReal), intent(out), dimension(3,3) :: values
+  real(pREAL), intent(out), dimension(3,3) :: values
   logical,     intent(out), dimension(3,3) :: mask
   type(tList), pointer :: tensor
 
@@ -521,7 +521,7 @@ subroutine getMaskedTensor(values,mask,tensor)
   integer :: i,j
 
 
-  values = 0.0_pReal
+  values = 0.0_pREAL
   do i = 1,3
     row => tensor%get_list(i)
     do j = 1,3

@@ -8,7 +8,7 @@
 submodule(phase:thermal) dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal) :: &
+    real(pREAL) :: &
       kappa                                                                                         !< TAYLOR-QUINNEY factor
   end type tParameters
 
@@ -80,9 +80,9 @@ end function dissipation_init
 module function dissipation_f_T(ph,en) result(f_T)
 
   integer, intent(in) :: ph, en
-  real(pReal) :: &
+  real(pREAL) :: &
     f_T
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     Mp                                                                                              !< Mandel stress work conjugate with Lp
 
   Mp = matmul(matmul(transpose(mechanical_F_i(ph,en)),mechanical_F_i(ph,en)),mechanical_S(ph,en))

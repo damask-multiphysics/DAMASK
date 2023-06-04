@@ -14,7 +14,7 @@ submodule(homogenization) thermal
   end interface
 
   type :: tDataContainer
-    real(pReal), dimension(:), allocatable :: T, dot_T
+    real(pREAL), dimension(:), allocatable :: T, dot_T
   end type tDataContainer
 
   type(tDataContainer), dimension(:), allocatable :: current
@@ -51,7 +51,7 @@ module subroutine thermal_init()
 
   do ho = 1, configHomogenizations%length
     allocate(current(ho)%T(count(material_ID_homogenization==ho)), source=T_ROOM)
-    allocate(current(ho)%dot_T(count(material_ID_homogenization==ho)), source=0.0_pReal)
+    allocate(current(ho)%dot_T(count(material_ID_homogenization==ho)), source=0.0_pREAL)
     configHomogenization => configHomogenizations%get_dict(ho)
     associate(prm => param(ho))
 
@@ -100,7 +100,7 @@ module subroutine thermal_partition(ce)
 
   integer, intent(in) :: ce
 
-  real(pReal) :: T, dot_T
+  real(pREAL) :: T, dot_T
   integer :: co
 
 
@@ -119,7 +119,7 @@ end subroutine thermal_partition
 module function homogenization_mu_T(ce) result(mu)
 
   integer, intent(in) :: ce
-  real(pReal) :: mu
+  real(pREAL) :: mu
 
   integer :: co
 
@@ -138,7 +138,7 @@ end function homogenization_mu_T
 module function homogenization_K_T(ce) result(K)
 
   integer, intent(in) :: ce
-  real(pReal), dimension(3,3) :: K
+  real(pREAL), dimension(3,3) :: K
 
   integer :: co
 
@@ -157,7 +157,7 @@ end function homogenization_K_T
 module function homogenization_f_T(ce) result(f)
 
   integer, intent(in) :: ce
-  real(pReal) :: f
+  real(pREAL) :: f
 
   integer :: co
 
@@ -176,7 +176,7 @@ end function homogenization_f_T
 module subroutine homogenization_thermal_setField(T,dot_T, ce)
 
   integer, intent(in) :: ce
-  real(pReal), intent(in) :: T, dot_T
+  real(pREAL), intent(in) :: T, dot_T
 
 
   current(material_ID_homogenization(ce))%T(material_entry_homogenization(ce)) = T

@@ -4,8 +4,8 @@
 submodule(phase) thermal
 
   type :: tThermalParameters
-    real(pReal) :: C_p = 0.0_pReal                                                                  !< heat capacity
-    real(pReal), dimension(3,3) :: K = 0.0_pReal                                                    !< thermal conductivity
+    real(pREAL) :: C_p = 0.0_pREAL                                                                  !< heat capacity
+    real(pREAL), dimension(3,3) :: K = 0.0_pREAL                                                    !< thermal conductivity
     character(len=pSTRLEN), allocatable, dimension(:) :: output
   end type tThermalParameters
 
@@ -22,7 +22,7 @@ submodule(phase) thermal
   end enum
 
   type :: tDataContainer             ! ?? not very telling name. Better: "fieldQuantities" ??
-    real(pReal), dimension(:), allocatable :: T, dot_T
+    real(pREAL), dimension(:), allocatable :: T, dot_T
   end type tDataContainer
   integer(kind(THERMAL_UNDEFINED_ID)),  dimension(:,:), allocatable :: &
     thermal_source
@@ -57,14 +57,14 @@ submodule(phase) thermal
       integer, intent(in) :: &
         ph, &
         en
-      real(pReal) :: f_T
+      real(pREAL) :: f_T
     end function dissipation_f_T
 
     module function externalheat_f_T(ph,en)  result(f_T)
       integer, intent(in) :: &
         ph, &
         en
-      real(pReal) :: f_T
+      real(pREAL) :: f_T
     end function externalheat_f_T
 
  end interface
@@ -100,7 +100,7 @@ module subroutine thermal_init(phases)
   do ph = 1, phases%length
     Nmembers = count(material_ID_phase == ph)
     allocate(current(ph)%T(Nmembers),source=T_ROOM)
-    allocate(current(ph)%dot_T(Nmembers),source=0.0_pReal)
+    allocate(current(ph)%dot_T(Nmembers),source=0.0_pREAL)
     phase => phases%get_dict(ph)
     thermal => phase%get_dict('thermal',defaultVal=emptyDict)
 
@@ -156,13 +156,13 @@ end subroutine thermal_init
 module function phase_f_T(ph,en) result(f)
 
   integer, intent(in) :: ph, en
-  real(pReal) :: f
+  real(pREAL) :: f
 
 
   integer :: so
 
 
-  f = 0.0_pReal
+  f = 0.0_pREAL
 
   do so = 1, thermal_Nsources(ph)
    select case(thermal_source(so,ph))
@@ -211,7 +211,7 @@ end function phase_thermal_collectDotState
 module function phase_mu_T(co,ce) result(mu)
 
   integer, intent(in) :: co, ce
-  real(pReal) :: mu
+  real(pREAL) :: mu
 
 
   mu = phase_rho(material_ID_phase(co,ce)) &
@@ -226,7 +226,7 @@ end function phase_mu_T
 module function phase_K_T(co,ce) result(K)
 
   integer, intent(in) :: co, ce
-  real(pReal), dimension(3,3) :: K
+  real(pREAL), dimension(3,3) :: K
 
 
   K = crystallite_push33ToRef(co,ce,param(material_ID_phase(co,ce))%K)
@@ -236,7 +236,7 @@ end function phase_K_T
 
 module function phase_thermal_constitutive(Delta_t,ph,en) result(converged_)
 
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
   logical :: converged_
 
@@ -251,7 +251,7 @@ end function phase_thermal_constitutive
 !--------------------------------------------------------------------------------------------------
 function integrateThermalState(Delta_t, ph,en) result(broken)
 
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
   logical :: &
     broken
@@ -323,7 +323,7 @@ end subroutine thermal_forward
 pure module function thermal_T(ph,en) result(T)
 
   integer, intent(in) :: ph, en
-  real(pReal) :: T
+  real(pREAL) :: T
 
 
   T = current(ph)%T(en)
@@ -337,7 +337,7 @@ end function thermal_T
 module function thermal_dot_T(ph,en) result(dot_T)
 
   integer, intent(in) :: ph, en
-  real(pReal) :: dot_T
+  real(pREAL) :: dot_T
 
 
   dot_T = current(ph)%dot_T(en)
@@ -350,7 +350,7 @@ end function thermal_dot_T
 !----------------------------------------------------------------------------------------------
 module subroutine phase_thermal_setField(T,dot_T, co,ce)
 
-  real(pReal), intent(in) :: T, dot_T
+  real(pREAL), intent(in) :: T, dot_T
   integer, intent(in) :: ce, co
 
 

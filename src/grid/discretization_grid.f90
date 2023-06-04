@@ -35,9 +35,9 @@ module discretization_grid
   integer,                   public, protected :: &
     cells3, &                                                                                       !< (local) cells in 3rd direction
     cells3Offset                                                                                    !< (local) cells offset in 3rd direction
-  real(pReal), dimension(3), public, protected :: &
+  real(pREAL), dimension(3), public, protected :: &
     geomSize                                                                                        !< (global) physical size
-  real(pReal),               public, protected :: &
+  real(pREAL),               public, protected :: &
     size3, &                                                                                        !< (local) size in 3rd direction
     size3offset                                                                                     !< (local) size offset in 3rd direction
 
@@ -55,7 +55,7 @@ subroutine discretization_grid_init(restart)
 
   logical, intent(in) :: restart
 
-  real(pReal), dimension(3) :: &
+  real(pREAL), dimension(3) :: &
     mySize, &                                                                                       !< domain size of this process
     origin                                                                                          !< (global) distance to origin
   integer,     dimension(3) :: &
@@ -119,8 +119,8 @@ subroutine discretization_grid_init(restart)
 
   cells3       = int(z)
   cells3Offset = int(z_offset)
-  size3       = geomSize(3)*real(cells3,pReal)      /real(cells(3),pReal)
-  size3Offset = geomSize(3)*real(cells3Offset,pReal)/real(cells(3),pReal)
+  size3       = geomSize(3)*real(cells3,pREAL)      /real(cells(3),pREAL)
+  size3Offset = geomSize(3)*real(cells3Offset,pREAL)/real(cells(3),pREAL)
   myGrid = [cells(1:2),cells3]
   mySize = [geomSize(1:2),size3]
 
@@ -156,7 +156,7 @@ subroutine discretization_grid_init(restart)
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
-  call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pReal)),j=1,product(myGrid))], &
+  call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pREAL)),j=1,product(myGrid))], &
                                                      [1,product(myGrid)]))
   call geometry_plastic_nonlocal_setIParea        (cellSurfaceArea(mySize,myGrid))
   call geometry_plastic_nonlocal_setIPareaNormal  (cellSurfaceNormal(product(myGrid)))
@@ -171,10 +171,10 @@ end subroutine discretization_grid_init
 function IPcoordinates0(cells,geomSize,cells3Offset)
 
   integer,     dimension(3), intent(in) :: cells                                                    ! cells (for this process!)
-  real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
+  real(pREAL), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: cells3Offset                                             ! cells(3) offset
 
-  real(pReal), dimension(3,product(cells))  :: ipCoordinates0
+  real(pREAL), dimension(3,product(cells))  :: ipCoordinates0
 
   integer :: &
     a,b,c, &
@@ -184,7 +184,7 @@ function IPcoordinates0(cells,geomSize,cells3Offset)
   i = 0
   do c = 1, cells(3); do b = 1, cells(2); do a = 1, cells(1)
     i = i + 1
-    IPcoordinates0(1:3,i) = geomSize/real(cells,pReal) * (real([a,b,cells3Offset+c],pReal) -0.5_pReal)
+    IPcoordinates0(1:3,i) = geomSize/real(cells,pREAL) * (real([a,b,cells3Offset+c],pREAL) -0.5_pREAL)
   end do; end do; end do
 
 end function IPcoordinates0
@@ -196,10 +196,10 @@ end function IPcoordinates0
 pure function nodes0(cells,geomSize,cells3Offset)
 
   integer,     dimension(3), intent(in) :: cells                                                    ! cells (for this process!)
-  real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
+  real(pREAL), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,                   intent(in) :: cells3Offset                                             ! cells(3) offset
 
-  real(pReal), dimension(3,product(cells+1)) :: nodes0
+  real(pREAL), dimension(3,product(cells+1)) :: nodes0
 
   integer :: &
     a,b,c, &
@@ -208,7 +208,7 @@ pure function nodes0(cells,geomSize,cells3Offset)
   n = 0
   do c = 0, cells3; do b = 0, cells(2); do a = 0, cells(1)
     n = n + 1
-    nodes0(1:3,n) = geomSize/real(cells,pReal) * real([a,b,cells3Offset+c],pReal)
+    nodes0(1:3,n) = geomSize/real(cells,pREAL) * real([a,b,cells3Offset+c],pREAL)
   end do; end do; end do
 
 end function nodes0
@@ -219,15 +219,15 @@ end function nodes0
 !--------------------------------------------------------------------------------------------------
 pure function cellSurfaceArea(geomSize,cells)
 
-  real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
+  real(pREAL), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,     dimension(3), intent(in) :: cells                                                    ! cells (for this process!)
 
-  real(pReal), dimension(6,1,product(cells)) :: cellSurfaceArea
+  real(pREAL), dimension(6,1,product(cells)) :: cellSurfaceArea
 
 
-  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2),pReal) * geomSize(3)/real(cells(3),pReal)
-  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3),pReal) * geomSize(1)/real(cells(1),pReal)
-  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1),pReal) * geomSize(2)/real(cells(2),pReal)
+  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(cells(2),pREAL) * geomSize(3)/real(cells(3),pREAL)
+  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(cells(3),pREAL) * geomSize(1)/real(cells(1),pREAL)
+  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(cells(1),pREAL) * geomSize(2)/real(cells(2),pREAL)
 
 end function cellSurfaceArea
 
@@ -239,14 +239,14 @@ pure function cellSurfaceNormal(nElems)
 
   integer, intent(in) :: nElems
 
-  real(pReal), dimension(3,6,1,nElems) :: cellSurfaceNormal
+  real(pREAL), dimension(3,6,1,nElems) :: cellSurfaceNormal
 
-  cellSurfaceNormal(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
-  cellSurfaceNormal(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
-  cellSurfaceNormal(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,nElems)
-  cellSurfaceNormal(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,nElems)
-  cellSurfaceNormal(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,nElems)
-  cellSurfaceNormal(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,nElems)
+  cellSurfaceNormal(1:3,1,1,:) = spread([+1.0_pREAL, 0.0_pREAL, 0.0_pREAL],2,nElems)
+  cellSurfaceNormal(1:3,2,1,:) = spread([-1.0_pREAL, 0.0_pREAL, 0.0_pREAL],2,nElems)
+  cellSurfaceNormal(1:3,3,1,:) = spread([ 0.0_pREAL,+1.0_pREAL, 0.0_pREAL],2,nElems)
+  cellSurfaceNormal(1:3,4,1,:) = spread([ 0.0_pREAL,-1.0_pREAL, 0.0_pREAL],2,nElems)
+  cellSurfaceNormal(1:3,5,1,:) = spread([ 0.0_pREAL, 0.0_pREAL,+1.0_pREAL],2,nElems)
+  cellSurfaceNormal(1:3,6,1,:) = spread([ 0.0_pREAL, 0.0_pREAL,-1.0_pREAL],2,nElems)
 
 end function cellSurfaceNormal
 
@@ -314,9 +314,9 @@ end function IPneighborhood
 function discretization_grid_getInitialCondition(label) result(ic)
 
   character(len=*), intent(in) :: label
-  real(pReal), dimension(cells(1),cells(2),cells3) :: ic
+  real(pREAL), dimension(cells(1),cells(2),cells3) :: ic
 
-  real(pReal), dimension(:), allocatable :: ic_global, ic_local
+  real(pREAL), dimension(:), allocatable :: ic_global, ic_local
   integer(MPI_INTEGER_KIND) :: err_MPI
 
   integer, dimension(worldsize) :: &

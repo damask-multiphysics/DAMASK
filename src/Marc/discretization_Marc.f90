@@ -20,7 +20,7 @@ module discretization_Marc
   implicit none(type,external)
   private
 
-  real(pReal),                         public, protected :: &
+  real(pREAL),                         public, protected :: &
     mesh_unitlength                                                                                 !< physical length of one unit in mesh MD: needs systematic_name
 
   integer,  dimension(:), allocatable, public, protected :: &
@@ -51,7 +51,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_Marc_init
 
-  real(pReal), dimension(:,:),     allocatable :: &
+  real(pREAL), dimension(:,:),     allocatable :: &
    node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
    node0_cell
   type(tElement) :: elem
@@ -61,11 +61,11 @@ subroutine discretization_Marc_init
   integer:: &
     Nelems                                                                                          !< total number of elements in the mesh
 
-  real(pReal), dimension(:,:),     allocatable :: &
+  real(pREAL), dimension(:,:),     allocatable :: &
     IP_reshaped
   integer,     dimension(:,:),     allocatable :: &
     connectivity_elem
-  real(pReal), dimension(:,:,:,:), allocatable :: &
+  real(pREAL), dimension(:,:,:,:), allocatable :: &
     unscaledNormals
 
   type(tDict), pointer :: &
@@ -75,8 +75,8 @@ subroutine discretization_Marc_init
   print'(/,a)', ' <<<+-  discretization_Marc init  -+>>>'; flush(6)
 
   num_commercialFEM => config_numerics%get_dict('commercialFEM',defaultVal = emptyDict)
-  mesh_unitlength = num_commercialFEM%get_asReal('unitlength',defaultVal=1.0_pReal)                 ! set physical extent of a length unit in mesh
-  if (mesh_unitlength <= 0.0_pReal) call IO_error(301,'unitlength')
+  mesh_unitlength = num_commercialFEM%get_asReal('unitlength',defaultVal=1.0_pREAL)                 ! set physical extent of a length unit in mesh
+  if (mesh_unitlength <= 0.0_pREAL) call IO_error(301,'unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,materialAt)
   nElems = size(connectivity_elem,2)
@@ -113,9 +113,9 @@ end subroutine discretization_Marc_init
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_Marc_updateNodeAndIpCoords(d_n)
 
-  real(pReal), dimension(:,:), intent(in)  :: d_n
+  real(pREAL), dimension(:,:), intent(in)  :: d_n
 
-  real(pReal), dimension(:,:), allocatable :: node_cell
+  real(pREAL), dimension(:,:), allocatable :: node_cell
 
 
   node_cell = buildCellNodes(discretization_NodeCoords0(1:3,1:maxval(discretization_Marc_FEM2DAMASK_node)) + d_n)
@@ -134,7 +134,7 @@ function discretization_Marc_FEM2DAMASK_cell(IP_FEM,elem_FEM) result(cell)
   integer, intent(in) :: IP_FEM, elem_FEM
   integer :: cell
 
-  real(pReal), dimension(:,:), allocatable :: node_cell
+  real(pREAL), dimension(:,:), allocatable :: node_cell
 
 
   cell = (discretization_Marc_FEM2DAMASK_elem(elem_FEM)-1)*discretization_nIPs + IP_FEM
@@ -155,7 +155,7 @@ subroutine writeGeometry(elem, &
   integer, dimension(:,:),     intent(in) :: &
     connectivity_elem, &
     connectivity_cell_reshaped
-  real(pReal), dimension(:,:), intent(in) :: &
+  real(pREAL), dimension(:,:), intent(in) :: &
     coordinates_nodes, &
     coordinates_points
 
@@ -187,7 +187,7 @@ end subroutine writeGeometry
 subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
 
   type(tElement), intent(out) :: elem
-  real(pReal), dimension(:,:), allocatable, intent(out) :: &
+  real(pREAL), dimension(:,:), allocatable, intent(out) :: &
     node0_elem                                                                                      !< node x,y,z coordinates (initially!)
   integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
@@ -535,7 +535,7 @@ end subroutine inputRead_mapNodes
 subroutine inputRead_elemNodes(nodes, &
                                nNode,fileContent)
 
-  real(pReal), allocatable,  dimension(:,:), intent(out) :: nodes
+  real(pREAL), allocatable,  dimension(:,:), intent(out) :: nodes
   integer,                                   intent(in)  :: nNode
   character(len=*),            dimension(:), intent(in)  :: fileContent                             !< file content, separated per lines
 
@@ -914,8 +914,8 @@ end subroutine buildCells
 !--------------------------------------------------------------------------------------------------
 pure function buildCellNodes(node_elem)
 
-  real(pReal),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
-  real(pReal),               dimension(:,:), allocatable :: buildCellNodes                          !< cell node coordinates
+  real(pREAL),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
+  real(pREAL),               dimension(:,:), allocatable :: buildCellNodes                          !< cell node coordinates
 
   integer :: i, j, k, n
 
@@ -927,13 +927,13 @@ pure function buildCellNodes(node_elem)
   do i = 1, size(cellNodeDefinition)
     do j = 1, size(cellNodeDefinition(i)%parents,1)
       n = n+1
-      buildCellNodes(:,n) = 0.0_pReal
+      buildCellNodes(:,n) = 0.0_pREAL
       do k = 1, size(cellNodeDefinition(i)%parents,2)
         buildCellNodes(:,n) = buildCellNodes(:,n) &
                             + buildCellNodes(:,cellNodeDefinition(i)%parents(j,k)) &
-                            * real(cellNodeDefinition(i)%weights(j,k),pReal)
+                            * real(cellNodeDefinition(i)%weights(j,k),pREAL)
       end do
-      buildCellNodes(:,n) = buildCellNodes(:,n)/real(sum(cellNodeDefinition(i)%weights(j,:)),pReal)
+      buildCellNodes(:,n) = buildCellNodes(:,n)/real(sum(cellNodeDefinition(i)%weights(j,:)),pREAL)
     end do
   end do
 
@@ -945,8 +945,8 @@ end function buildCellNodes
 !--------------------------------------------------------------------------------------------------
 pure function buildIPcoordinates(node_cell)
 
-  real(pReal), dimension(:,:), intent(in)  :: node_cell                                             !< cell node coordinates
-  real(pReal), dimension(:,:), allocatable :: buildIPcoordinates                                    !< cell-center/IP coordinates
+  real(pREAL), dimension(:,:), intent(in)  :: node_cell                                             !< cell node coordinates
+  real(pREAL), dimension(:,:), allocatable :: buildIPcoordinates                                    !< cell-center/IP coordinates
 
   integer, dimension(:,:), allocatable :: connectivity_cell_reshaped
   integer :: i, n, NcellNodesPerCell,Ncells
@@ -959,12 +959,12 @@ pure function buildIPcoordinates(node_cell)
   allocate(buildIPcoordinates(3,Ncells))
 
   do i = 1, size(connectivity_cell_reshaped,2)
-    buildIPcoordinates(:,i) = 0.0_pReal
+    buildIPcoordinates(:,i) = 0.0_pREAL
     do n = 1, size(connectivity_cell_reshaped,1)
       buildIPcoordinates(:,i) = buildIPcoordinates(:,i) &
                               + node_cell(:,connectivity_cell_reshaped(n,i))
     end do
-    buildIPcoordinates(:,i) = buildIPcoordinates(:,i)/real(size(connectivity_cell_reshaped,1),pReal)
+    buildIPcoordinates(:,i) = buildIPcoordinates(:,i)/real(size(connectivity_cell_reshaped,1),pREAL)
   end do
 
 end function buildIPcoordinates
@@ -978,10 +978,10 @@ end function buildIPcoordinates
 pure function IPvolume(elem,node)
 
   type(tElement),                intent(in) :: elem
-  real(pReal), dimension(:,:),   intent(in) :: node
+  real(pREAL), dimension(:,:),   intent(in) :: node
 
-  real(pReal), dimension(elem%nIPs,size(connectivity_cell,3)) :: IPvolume
-  real(pReal), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
+  real(pREAL), dimension(elem%nIPs,size(connectivity_cell,3)) :: IPvolume
+  real(pREAL), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
 
   integer :: e,i
 
@@ -1022,7 +1022,7 @@ pure function IPvolume(elem,node)
           IPvolume(i,e) = dot_product((x7-x1)+(x6-x0),math_cross((x7-x2),        (x3-x0))) &
                         + dot_product((x6-x0),        math_cross((x7-x2)+(x5-x0),(x7-x4))) &
                         + dot_product((x7-x1),        math_cross((x5-x0),        (x7-x4)+(x3-x0)))
-          IPvolume(i,e) = IPvolume(i,e)/12.0_pReal
+          IPvolume(i,e) = IPvolume(i,e)/12.0_pREAL
       end select
     end do
   end do
@@ -1037,11 +1037,11 @@ pure function IPareaNormal(elem,nElem,node)
 
   type(tElement),                intent(in) :: elem
   integer,                       intent(in) :: nElem
-  real(pReal), dimension(:,:),   intent(in) :: node
+  real(pREAL), dimension(:,:),   intent(in) :: node
 
-  real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
+  real(pREAL), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
 
-  real(pReal), dimension (3,size(elem%cellFace,1)) :: nodePos
+  real(pREAL), dimension (3,size(elem%cellFace,1)) :: nodePos
   integer :: e,i,f,n,m
 
   m = size(elem%cellFace,1)
@@ -1055,7 +1055,7 @@ pure function IPareaNormal(elem,nElem,node)
           case (1,2)                                                                                ! 2D 3 or 4 node
             IPareaNormal(1,f,i,e) =   nodePos(2,2) - nodePos(2,1)                                   ! x_normal =  y_connectingVector
             IPareaNormal(2,f,i,e) = -(nodePos(1,2) - nodePos(1,1))                                  ! y_normal = -x_connectingVector
-            IPareaNormal(3,f,i,e) = 0.0_pReal
+            IPareaNormal(3,f,i,e) = 0.0_pREAL
           case (3)                                                                                  ! 3D 4node
             IPareaNormal(1:3,f,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                                  nodePos(1:3,3) - nodePos(1:3,1))
@@ -1063,11 +1063,11 @@ pure function IPareaNormal(elem,nElem,node)
             ! Get the normal of the quadrilateral face as the average of four normals of triangular
             ! subfaces. Since the face consists only of two triangles, the sum has to be divided
             ! by two. This procedure tries to compensate for probable non-planar cell surfaces
-            IPareaNormal(1:3,f,i,e) = 0.0_pReal
+            IPareaNormal(1:3,f,i,e) = 0.0_pREAL
             do n = 1, m
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &
                                       + math_cross(nodePos(1:3,mod(n+0,m)+1) - nodePos(1:3,n), &
-                                                   nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pReal
+                                                   nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pREAL
             end do
         end select
       end do

@@ -7,14 +7,14 @@
 submodule(phase:damage) isobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal) :: &
+    real(pREAL) :: &
       W_crit                                                                                        !< critical elastic strain energy
     character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
   type :: tIsobrittleState
-    real(pReal), pointer, dimension(:) :: &                                                         !< vectors along Nmembers
+    real(pREAL), pointer, dimension(:) :: &                                                         !< vectors along Nmembers
       r_W                                                                                           !< ratio between actual and critical strain energy density
   end type tIsobrittleState
 
@@ -77,12 +77,12 @@ module function isobrittle_init() result(mySources)
 #endif
 
         ! sanity checks
-        if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
+        if (prm%W_crit <= 0.0_pREAL) extmsg = trim(extmsg)//' W_crit'
 
         Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,0,1)
-        damageState(ph)%atol = src%get_asReal('atol_phi',defaultVal=1.0e-9_pReal)
-        if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+        damageState(ph)%atol = src%get_asReal('atol_phi',defaultVal=1.0e-9_pREAL)
+        if (any(damageState(ph)%atol < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_phi'
 
         stt%r_W => damageState(ph)%state(1,:)
         dlt%r_W => damageState(ph)%deltaState(1,:)
@@ -105,23 +105,23 @@ end function isobrittle_init
 module subroutine isobrittle_deltaState(C, Fe, ph,en)
 
   integer, intent(in) :: ph,en
-  real(pReal),  intent(in), dimension(3,3) :: &
+  real(pREAL),  intent(in), dimension(3,3) :: &
     Fe
-  real(pReal),  intent(in), dimension(6,6) :: &
+  real(pREAL),  intent(in), dimension(6,6) :: &
     C
 
-  real(pReal), dimension(6) :: &
+  real(pREAL), dimension(6) :: &
     epsilon
-  real(pReal) :: &
+  real(pREAL) :: &
     r_W
 
 
-  epsilon = math_33toVoigt6_strain(0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3))
+  epsilon = math_33toVoigt6_strain(0.5_pREAL*(matmul(transpose(Fe),Fe)-math_I3))
 
   associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph))
 
-    r_W = (0.5_pReal*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
-    dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pReal, r_W > stt%r_W(en))
+    r_W = (0.5_pREAL*dot_product(epsilon,matmul(C,epsilon)))/prm%W_crit
+    dlt%r_W(en) = merge(r_W - stt%r_W(en), 0.0_pREAL, r_W > stt%r_W(en))
 
   end associate
 

@@ -135,8 +135,8 @@ subroutine HDF5_utilities_init()
 
   call H5Tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
   call HDF5_chkerr(hdferr)
-  if (int(storage_size(0.0_pReal),SIZE_T)/=typeSize*8) &
-    error stop 'pReal does not match H5T_NATIVE_DOUBLE'
+  if (int(storage_size(0.0_pREAL),SIZE_T)/=typeSize*8) &
+    error stop 'pREAL does not match H5T_NATIVE_DOUBLE'
 
   call H5get_libversion_f(HDF5_major,HDF5_minor,HDF5_release,hdferr)
   call HDF5_chkerr(hdferr)
@@ -443,7 +443,7 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
 
   integer(HID_T),   intent(in)           :: loc_id
   character(len=*), intent(in)           :: attrLabel
-  real(pReal),      intent(in)           :: attrValue
+  real(pREAL),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
 
   integer(HID_T) :: attr_id, space_id
@@ -576,7 +576,7 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
 
   integer(HID_T),   intent(in)               :: loc_id
   character(len=*), intent(in)               :: attrLabel
-  real(pReal),      intent(in), dimension(:) :: attrValue
+  real(pREAL),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
   integer(HSIZE_T),dimension(1) :: array_size
@@ -640,7 +640,7 @@ end subroutine HDF5_setLink
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real1(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:) :: dataset                                            !< data read from file
+  real(pREAL),      intent(out), dimension(:) :: dataset                                            !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -674,7 +674,7 @@ end subroutine HDF5_read_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real2(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:) :: dataset                                          !< data read from file
+  real(pREAL),      intent(out), dimension(:,:) :: dataset                                          !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -708,7 +708,7 @@ end subroutine HDF5_read_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real3(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -742,7 +742,7 @@ end subroutine HDF5_read_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real4(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:) :: dataset                                      !< read data
+  real(pREAL),      intent(out), dimension(:,:,:,:) :: dataset                                      !< read data
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -777,7 +777,7 @@ end subroutine HDF5_read_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real5(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -812,7 +812,7 @@ end subroutine HDF5_read_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real6(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -847,7 +847,7 @@ end subroutine HDF5_read_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real7(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
+  real(pREAL),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1126,7 +1126,7 @@ end subroutine HDF5_read_int7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real1(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:) :: dataset                                             !< data written to file
+  real(pREAL),      intent(in), dimension(:) :: dataset                                             !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1163,7 +1163,7 @@ end subroutine HDF5_write_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real2(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:) :: dataset                                           !< data written to file
+  real(pREAL),      intent(in), dimension(:,:) :: dataset                                           !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1200,7 +1200,7 @@ end subroutine HDF5_write_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real3(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:) :: dataset                                         !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1237,7 +1237,7 @@ end subroutine HDF5_write_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real4(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:) :: dataset                                       !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1275,7 +1275,7 @@ end subroutine HDF5_write_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real5(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:,:) :: dataset                                     !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1312,7 +1312,7 @@ end subroutine HDF5_write_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real6(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:,:,:) :: dataset                                   !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1349,7 +1349,7 @@ end subroutine HDF5_write_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real7(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
+  real(pREAL),      intent(in), dimension(:,:,:,:,:,:,:) :: dataset                                 !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
@@ -1388,7 +1388,7 @@ end subroutine HDF5_write_real7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real(dataset,loc_id,datasetName,parallel)
 
-  real(pReal),      intent(in), dimension(..) :: dataset                                            !< data written to file
+  real(pREAL),      intent(in), dimension(..) :: dataset                                            !< data written to file
   integer(HID_T),   intent(in)  :: loc_id                                                           !< file or group handle
   character(len=*), intent(in)  :: datasetName                                                      !< name of the dataset in the file
   logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes

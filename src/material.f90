@@ -22,7 +22,7 @@ module material
   end type tRotationContainer
 
   type, public :: tTensorContainer
-    real(pReal), dimension(:,:,:), allocatable :: data
+    real(pREAL), dimension(:,:,:), allocatable :: data
   end type tTensorContainer
 
 
@@ -45,7 +45,7 @@ module material
     material_ID_phase, &                                                                            !< Number of the phase
     material_entry_phase                                                                            !< Position in array of used phase
 
-  real(pReal), dimension(:,:), allocatable, public, protected :: &
+  real(pREAL), dimension(:,:), allocatable, public, protected :: &
     material_v                                                                                      ! fraction
 
   public :: &
@@ -97,9 +97,9 @@ subroutine parse()
     counterHomogenization, &
     ho_of
   integer, dimension(:,:), allocatable :: ph_of
-  real(pReal), dimension(:,:), allocatable :: v_of
+  real(pREAL), dimension(:,:), allocatable :: v_of
 
-  real(pReal) :: v
+  real(pREAL) :: v
   integer :: &
     el, ip, &
     ho, ph, &
@@ -125,14 +125,14 @@ subroutine parse()
   end do
   homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
 
-  allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pReal)
+  allocate(material_v(homogenization_maxNconstituents,discretization_Ncells),source=0.0_pREAL)
 
   allocate(material_O_0(materials%length))
   allocate(material_V_e_0(materials%length))
 
   allocate(ho_of(materials%length))
   allocate(ph_of(materials%length,homogenization_maxNconstituents),source=-1)
-  allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pReal)
+  allocate( v_of(materials%length,homogenization_maxNconstituents),source=0.0_pREAL)
 
   ! Parse YAML structure. Manual loop over linked list to have O(n) instead of O(n^2) complexity
   item => materials%first
@@ -158,7 +158,7 @@ subroutine parse()
         call IO_error(147)
 
     end do
-    if (dNeq(sum(v_of(ma,:)),1.0_pReal,1.e-9_pReal)) call IO_error(153,ext_msg='constituent')
+    if (dNeq(sum(v_of(ma,:)),1.0_pREAL,1.e-9_pREAL)) call IO_error(153,ext_msg='constituent')
 
     item => item%next
   end do

@@ -78,9 +78,9 @@ end function misc_optional_int
 !--------------------------------------------------------------------------------------------------
 pure function misc_optional_real(given,default) result(var)
 
-  real(pReal), intent(in), optional :: given
-  real(pReal), intent(in)           :: default
-  real(pReal)                       :: var
+  real(pREAL), intent(in), optional :: given
+  real(pREAL), intent(in)           :: default
+  real(pREAL)                       :: var
 
 
   if (present(given)) then
@@ -116,7 +116,7 @@ end function misc_optional_str
 !--------------------------------------------------------------------------------------------------
 subroutine misc_selfTest()
 
-  real(pReal) :: r
+  real(pREAL) :: r
 
   call random_number(r)
   if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_str, present'
@@ -126,11 +126,11 @@ subroutine misc_selfTest()
   if (test_int() /= 42)                                      error stop 'optional_int, not present'
   if (misc_optional(default=20191102) /= 20191102)           error stop 'optional_int, default only'
   if (dNeq(test_real(r),r))                                  error stop 'optional_real, present'
-  if (dNeq(test_real(),0.0_pReal))                           error stop 'optional_real, not present'
+  if (dNeq(test_real(),0.0_pREAL))                           error stop 'optional_real, not present'
   if (dNeq(misc_optional(default=r),r))                      error stop 'optional_real, default only'
-  if (test_bool(r<0.5_pReal) .neqv. r<0.5_pReal)             error stop 'optional_bool, present'
+  if (test_bool(r<0.5_pREAL) .neqv. r<0.5_pREAL)             error stop 'optional_bool, present'
   if (.not. test_bool())                                     error stop 'optional_bool, not present'
-  if (misc_optional(default=r>0.5_pReal) .neqv. r>0.5_pReal) error stop 'optional_bool, default only'
+  if (misc_optional(default=r>0.5_pREAL) .neqv. r>0.5_pREAL) error stop 'optional_bool, default only'
 
 contains
 
@@ -158,11 +158,11 @@ contains
 
   function test_real(real_in) result(real_out)
 
-    real(pReal)                       :: real_out
-    real(pReal), intent(in), optional :: real_in
+    real(pREAL)                       :: real_out
+    real(pREAL), intent(in), optional :: real_in
 
 
-    real_out = misc_optional_real(real_in,0.0_pReal)
+    real_out = misc_optional_real(real_in,0.0_pREAL)
 
   end function test_real
 

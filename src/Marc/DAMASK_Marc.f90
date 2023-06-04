@@ -233,32 +233,32 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     matus, &                                                                                        !< (1) user material identification number, (2) internal material identification number
     kcus, &                                                                                         !< (1) layer number, (2) internal layer number
     lclass                                                                                          !< (1) element class, (2) 0: displacement, 1: low order Herrmann, 2: high order Herrmann
-  real(pReal),   dimension(*),           intent(in) :: &                                            ! has dimension(1) according to MSC.Marc 2012 Manual D, but according to example hypela2.f dimension(*)
+  real(pREAL),   dimension(*),           intent(in) :: &                                            ! has dimension(1) according to MSC.Marc 2012 Manual D, but according to example hypela2.f dimension(*)
     e, &                                                                                            !< total elastic strain
     de, &                                                                                           !< increment of strain
     dt                                                                                              !< increment of state variables
-  real(pReal),   dimension(itel),        intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
+  real(pREAL),   dimension(itel),        intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     strechn, &                                                                                      !< square of principal stretch ratios, lambda(i) at t=n
     strechn1                                                                                        !< square of principal stretch ratios, lambda(i) at t=n+1
-  real(pReal),   dimension(3,3),         intent(in) :: &                                            ! has dimension(itel,*) according to MSC.Marc 2012 Manual D, but we alway assume dimension(3,3)
+  real(pREAL),   dimension(3,3),         intent(in) :: &                                            ! has dimension(itel,*) according to MSC.Marc 2012 Manual D, but we alway assume dimension(3,3)
     ffn, &                                                                                          !< deformation gradient at t=n
     ffn1                                                                                            !< deformation gradient at t=n+1
-  real(pReal),   dimension(itel,*),      intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
+  real(pREAL),   dimension(itel,*),      intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     frotn, &                                                                                        !< rotation tensor at t=n
     eigvn, &                                                                                        !< i principal direction components for j eigenvalues at t=n
     frotn1, &                                                                                       !< rotation tensor at t=n+1
     eigvn1                                                                                          !< i principal direction components for j eigenvalues at t=n+1
-  real(pReal),   dimension(ndeg,*),      intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
+  real(pREAL),   dimension(ndeg,*),      intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     disp, &                                                                                         !< incremental displacements
     dispt                                                                                           !< displacements at t=n (at assembly, lovl=4) and displacements at t=n+1 (at stress recovery, lovl=6)
-  real(pReal),   dimension(ncrd,*),      intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
+  real(pREAL),   dimension(ncrd,*),      intent(in) :: &                                            ! according to MSC.Marc 2012 Manual D
     coord                                                                                           !< coordinates
-  real(pReal),   dimension(*),           intent(inout) :: &                                         ! according to MSC.Marc 2012 Manual D
+  real(pREAL),   dimension(*),           intent(inout) :: &                                         ! according to MSC.Marc 2012 Manual D
     t                                                                                               !< state variables (comes in at t=n, must be updated to have state variables at t=n+1)
-  real(pReal),   dimension(ndi+nshear),  intent(out) :: &                                           ! has dimension(*) according to MSC.Marc 2012 Manual D, but we need to loop over it
+  real(pREAL),   dimension(ndi+nshear),  intent(out) :: &                                           ! has dimension(*) according to MSC.Marc 2012 Manual D, but we need to loop over it
     s, &                                                                                            !< stress - should be updated by user
     g                                                                                               !< change in stress due to temperature effects
-  real(pReal),   dimension(ngens,ngens), intent(out) :: &                                           ! according to MSC.Marc 2012 Manual D, but according to example hypela2.f dimension(ngens,*)
+  real(pREAL),   dimension(ngens,ngens), intent(out) :: &                                           ! according to MSC.Marc 2012 Manual D, but according to example hypela2.f dimension(ngens,*)
     d                                                                                               !< stress-strain law to be formed
 
 !--------------------------------------------------------------------------------------------------
@@ -269,17 +269,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 #include QUOTE(PASTE(include/creeps,MARC4DAMASK))                                                   ! creeps is needed for timinc (time increment)
 
   logical :: cutBack
-  real(pReal), dimension(6) ::   stress
-  real(pReal), dimension(6,6) :: ddsdde
+  real(pREAL), dimension(6) ::   stress
+  real(pREAL), dimension(6,6) :: ddsdde
   integer :: computationMode, i, node, CPnodeID
   integer(pI32) :: defaultNumThreadsInt                                                             !< default value set by Marc
 
   integer, save :: &
     theInc       = -1, &                                                                            !< needs description
     lastLovl     =  0                                                                               !< lovl in previous call to marc hypela2
-  real(pReal), save :: &
-    theTime      = 0.0_pReal, &                                                                     !< needs description
-    theDelta     = 0.0_pReal
+  real(pREAL), save :: &
+    theTime      = 0.0_pREAL, &                                                                     !< needs description
+    theDelta     = 0.0_pREAL
   logical, save :: &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
@@ -351,8 +351,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
   d = ddsdde(1:ngens,1:ngens)
   s = stress(1:ndi+nshear)
-  g = 0.0_pReal
-  if (symmetricSolver) d = 0.5_pReal*(d+transpose(d))
+  g = 0.0_pREAL
+  if (symmetricSolver) d = 0.5_pREAL*(d+transpose(d))
 
   call omp_set_num_threads(defaultNumThreadsInt)                                                    ! reset number of threads to stored default value
 
@@ -368,18 +368,18 @@ subroutine flux(f,ts,n,time)
   use discretization_Marc
 
   implicit none(type,external)
-  real(pReal),   dimension(6),  intent(in) :: &
+  real(pREAL),   dimension(6),  intent(in) :: &
     ts
   integer(pI64), dimension(10), intent(in) :: &
     n
-  real(pReal),                  intent(in) :: &
+  real(pREAL),                  intent(in) :: &
     time
-  real(pReal),   dimension(2),  intent(out) :: &
+  real(pREAL),   dimension(2),  intent(out) :: &
     f
 
 
   f(1) = homogenization_f_T(discretization_Marc_FEM2DAMASK_cell(int(n(3)),int(n(1))))
-  f(2) = 0.0_pReal
+  f(2) = 0.0_pREAL
 
  end subroutine flux
 
@@ -402,7 +402,7 @@ subroutine uedinc(inc,incsub)
 
   integer :: n, nqncomp, nqdatatype
   integer, save :: inc_written
-  real(pReal), allocatable, dimension(:,:) :: d_n
+  real(pREAL), allocatable, dimension(:,:) :: d_n
 #include QUOTE(PASTE(include/creeps,MARC4DAMASK))                                                   ! creeps is needed for timinc (time increment)
 
 
@@ -411,7 +411,7 @@ subroutine uedinc(inc,incsub)
     do n = lbound(discretization_Marc_FEM2DAMASK_node,1), ubound(discretization_Marc_FEM2DAMASK_node,1)
       if (discretization_Marc_FEM2DAMASK_node(n) /= -1) then
         call nodvar(1,n,d_n(1:3,discretization_Marc_FEM2DAMASK_node(n)),nqncomp,nqdatatype)
-        if (nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pReal
+        if (nqncomp == 2) d_n(3,discretization_Marc_FEM2DAMASK_node(n)) = 0.0_pREAL
       end if
     end do
 

@@ -25,7 +25,7 @@ module homogenization
     integer :: &
       sizeState        = 0                                                                          !< size of state
     ! http://stackoverflow.com/questions/3948210
-    real(pReal), pointer,     dimension(:,:), contiguous :: &                                       !< is basically an allocatable+target, but in a type needs to be pointer
+    real(pREAL), pointer,     dimension(:,:), contiguous :: &                                       !< is basically an allocatable+target, but in a type needs to be pointer
       state0, &
       state
   end type
@@ -51,12 +51,12 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
-  real(pReal),   dimension(:,:,:),     allocatable, public :: &
+  real(pREAL),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
-  real(pReal),   dimension(:,:,:),     allocatable, public :: & !, protected :: &                   Issue with ifort
+  real(pREAL),   dimension(:,:,:),     allocatable, public :: & !, protected :: &                   Issue with ifort
     homogenization_P                                                                                !< first P--K stress of IP
-  real(pReal),   dimension(:,:,:,:,:), allocatable, public :: & !, protected ::  &
+  real(pREAL),   dimension(:,:,:,:,:), allocatable, public :: & !, protected ::  &
     homogenization_dPdF                                                                             !< tangent of first P--K stress at IP
 
 
@@ -81,7 +81,7 @@ module homogenization
     end subroutine damage_init
 
     module subroutine mechanical_partition(subF,ce)
-      real(pReal), intent(in), dimension(3,3) :: &
+      real(pREAL), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
         ce
@@ -96,7 +96,7 @@ module homogenization
     end subroutine damage_partition
 
     module subroutine mechanical_homogenize(Delta_t,ce)
-     real(pReal), intent(in) :: Delta_t
+     real(pREAL), intent(in) :: Delta_t
      integer, intent(in) :: &
        ce                                                                                           !< cell
     end subroutine mechanical_homogenize
@@ -117,9 +117,9 @@ module homogenization
     end subroutine thermal_result
 
     module function mechanical_updateState(subdt,subF,ce) result(doneAndHappy)
-      real(pReal), intent(in) :: &
+      real(pREAL), intent(in) :: &
         subdt                                                                                       !< current time step
-      real(pReal), intent(in), dimension(3,3) :: &
+      real(pREAL), intent(in), dimension(3,3) :: &
         subF
       integer,     intent(in) :: &
         ce                                                                                          !< cell
@@ -132,22 +132,22 @@ module homogenization
 
     module function homogenization_mu_T(ce) result(mu)
       integer, intent(in) :: ce
-      real(pReal) :: mu
+      real(pREAL) :: mu
     end function homogenization_mu_T
 
     module function homogenization_K_T(ce) result(K)
       integer, intent(in) :: ce
-      real(pReal), dimension(3,3) :: K
+      real(pREAL), dimension(3,3) :: K
     end function homogenization_K_T
 
     module function homogenization_f_T(ce) result(f)
       integer, intent(in) :: ce
-      real(pReal) :: f
+      real(pREAL) :: f
     end function homogenization_f_T
 
     module subroutine homogenization_thermal_setField(T,dot_T, ce)
       integer, intent(in) :: ce
-      real(pReal),   intent(in) :: T, dot_T
+      real(pREAL),   intent(in) :: T, dot_T
     end subroutine homogenization_thermal_setField
 
     module function homogenization_damage_active() result(active)
@@ -156,23 +156,23 @@ module homogenization
 
     module function homogenization_mu_phi(ce) result(mu)
       integer, intent(in) :: ce
-      real(pReal) :: mu
+      real(pREAL) :: mu
     end function homogenization_mu_phi
 
     module function homogenization_K_phi(ce) result(K)
       integer, intent(in) :: ce
-      real(pReal), dimension(3,3) :: K
+      real(pREAL), dimension(3,3) :: K
     end function homogenization_K_phi
 
     module function homogenization_f_phi(phi,ce) result(f)
       integer, intent(in) :: ce
-      real(pReal), intent(in) :: phi
-      real(pReal) :: f
+      real(pREAL), intent(in) :: phi
+      real(pREAL) :: f
     end function homogenization_f_phi
 
     module subroutine homogenization_set_phi(phi,ce)
       integer, intent(in) :: ce
-      real(pReal),   intent(in) :: &
+      real(pREAL),   intent(in) :: &
         phi
     end subroutine homogenization_set_phi
 
@@ -235,7 +235,7 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_mechanical_response(Delta_t,cell_start,cell_end)
 
-  real(pReal), intent(in) :: Delta_t                                                                !< time increment
+  real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
   integer :: &
@@ -293,7 +293,7 @@ end subroutine homogenization_mechanical_response
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_thermal_response(Delta_t,cell_start,cell_end)
 
-  real(pReal), intent(in) :: Delta_t                                                                !< time increment
+  real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, intent(in) :: &
     cell_start, cell_end
   integer :: &
@@ -321,7 +321,7 @@ end subroutine homogenization_thermal_response
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_mechanical_response2(Delta_t,FEsolving_execIP,FEsolving_execElem)
 
-  real(pReal), intent(in) :: Delta_t                                                                !< time increment
+  real(pREAL), intent(in) :: Delta_t                                                                !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
     ip, &                                                                                           !< integration point number

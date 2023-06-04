@@ -20,9 +20,9 @@ submodule(phase:mechanical) eigen
 
     module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
       integer, intent(in) :: ph, me
-      real(pReal),   intent(out), dimension(3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3) :: &
         Li                                                                                          !< thermal velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3,3,3) :: &
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine thermalexpansion_LiAndItsTangent
 
@@ -145,32 +145,32 @@ module subroutine phase_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 
   integer, intent(in) :: &
     ph,en
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     S                                                                                               !< 2nd Piola-Kirchhoff stress
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),   intent(out), dimension(3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3) :: &
     Li                                                                                              !< intermediate velocity gradient
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dLi_dS, &                                                                                       !< derivative of Li with respect to S
     dLi_dFi
 
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     my_Li, &                                                                                        !< intermediate velocity gradient
     FiInv, &
     temp_33
-  real(pReal), dimension(3,3,3,3) :: &
+  real(pREAL), dimension(3,3,3,3) :: &
     my_dLi_dS
-  real(pReal) :: &
+  real(pREAL) :: &
     detFi
   integer :: &
     k, i, j
   logical :: active
 
   active = .false.
-  Li = 0.0_pReal
-  dLi_dS  = 0.0_pReal
-  dLi_dFi = 0.0_pReal
+  Li = 0.0_pREAL
+  dLi_dS  = 0.0_pREAL
+  dLi_dFi = 0.0_pREAL
 
 
   plasticType: select case (phase_plasticity(ph))

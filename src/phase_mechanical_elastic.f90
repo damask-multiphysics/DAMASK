@@ -77,13 +77,13 @@ pure module function elastic_C66(ph,en) result(C66)
     ph, &
     en
 
-  real(pReal), dimension(6,6) :: C66
-  real(pReal) :: T
+  real(pREAL), dimension(6,6) :: C66
+  real(pREAL) :: T
 
 
   associate(prm => param(ph))
 
-    C66 = 0.0_pReal
+    C66 = 0.0_pREAL
     T = thermal_T(ph,en)
 
     C66(1,1) = prm%C_11%at(T)
@@ -113,7 +113,7 @@ pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
     ph, &
     en
   character(len=*), intent(in) :: isotropic_bound
-  real(pReal) :: &
+  real(pREAL) :: &
     mu
 
 
@@ -135,7 +135,7 @@ pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
     ph, &
     en
   character(len=*), intent(in) :: isotropic_bound
-  real(pReal) :: &
+  real(pREAL) :: &
     nu
 
 
@@ -160,18 +160,18 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     Fe, &                                                                                           !< elastic deformation gradient
     Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),   intent(out), dimension(3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3) :: &
     S                                                                                               !< 2nd Piola-Kirchhoff stress tensor in lattice configuration
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dS_dFe, &                                                                                       !< derivative of 2nd P-K stress with respect to elastic deformation gradient
     dS_dFi                                                                                          !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
 
-  real(pReal), dimension(3,3) :: E
-  real(pReal), dimension(6,6) :: C66
-  real(pReal), dimension(3,3,3,3) :: C
+  real(pREAL), dimension(3,3) :: E
+  real(pREAL), dimension(6,6) :: C66
+  real(pREAL), dimension(3,3,3,3) :: C
   integer :: &
     i, j
 
@@ -179,12 +179,12 @@ module subroutine phase_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   C66 = phase_damage_C66(phase_homogenizedC66(ph,en),ph,en)
   C = math_Voigt66to3333_stiffness(C66)
 
-  E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
+  E = 0.5_pREAL*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
   S = math_Voigt6to33_stress(matmul(C66,math_33toVoigt6_strain(matmul(matmul(transpose(Fi),E),Fi))))!< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
 
   do i =1,3; do j=1,3
     dS_dFe(i,j,1:3,1:3) = matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
-    dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                             !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
+    dS_dFi(i,j,1:3,1:3) = 2.0_pREAL*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                             !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
   end do; end do
 
 end subroutine phase_hooke_SandItsTangents
@@ -195,7 +195,7 @@ end subroutine phase_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 module function phase_homogenizedC66(ph,en) result(C)
 
-  real(pReal), dimension(6,6) :: C
+  real(pREAL), dimension(6,6) :: C
   integer,      intent(in)    :: ph, en
 
 

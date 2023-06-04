@@ -13,10 +13,10 @@ submodule(homogenization:mechanical) RGC
   type :: tParameters
     integer, dimension(:), allocatable :: &
       N_constituents
-    real(pReal) :: &
+    real(pREAL) :: &
       xi_alpha, &
       c_Alpha
-    real(pReal), dimension(:), allocatable :: &
+    real(pREAL), dimension(:), allocatable :: &
       D_alpha, &
       a_g
     character(len=pSTRLEN), allocatable, dimension(:) :: &
@@ -24,23 +24,23 @@ submodule(homogenization:mechanical) RGC
   end type tParameters
 
   type :: tRGCstate
-    real(pReal), pointer,     dimension(:,:) :: &
+    real(pREAL), pointer,     dimension(:,:) :: &
       relaxationVector
   end type tRGCstate
 
   type :: tRGCdependentState
-    real(pReal), allocatable,     dimension(:) :: &
+    real(pREAL), allocatable,     dimension(:) :: &
       volumeDiscrepancy, &
       relaxationRate_avg, &
       relaxationRate_max
-    real(pReal), allocatable,     dimension(:,:) :: &
+    real(pREAL), allocatable,     dimension(:,:) :: &
       mismatch
-    real(pReal), allocatable,     dimension(:,:,:) :: &
+    real(pREAL), allocatable,     dimension(:,:,:) :: &
       orientation
   end type tRGCdependentState
 
   type :: tNumerics_RGC
-    real(pReal) :: &
+    real(pREAL) :: &
       atol, &                                                                                       !< absolute tolerance of RGC residuum
       rtol, &                                                                                       !< relative tolerance of RGC residuum
       absMax, &                                                                                     !< absolute maximum of RGC residuum
@@ -108,33 +108,33 @@ module subroutine RGC_init()
   num_mechanical => num_homogenization%get_dict('mechanical',defaultVal=emptyDict)
   num_RGC => num_mechanical%get_dict('RGC',defaultVal=emptyDict)
 
-  num%atol         =  num_RGC%get_asReal('atol',              defaultVal=1.0e+4_pReal)
-  num%rtol         =  num_RGC%get_asReal('rtol',              defaultVal=1.0e-3_pReal)
-  num%absMax       =  num_RGC%get_asReal('amax',              defaultVal=1.0e+10_pReal)
-  num%relMax       =  num_RGC%get_asReal('rmax',              defaultVal=1.0e+2_pReal)
-  num%pPert        =  num_RGC%get_asReal('perturbpenalty',    defaultVal=1.0e-7_pReal)
-  num%xSmoo        =  num_RGC%get_asReal('relvantmismatch',   defaultVal=1.0e-5_pReal)
-  num%viscPower    =  num_RGC%get_asReal('viscositypower',    defaultVal=1.0e+0_pReal)
-  num%viscModus    =  num_RGC%get_asReal('viscositymodulus',  defaultVal=0.0e+0_pReal)
-  num%refRelaxRate =  num_RGC%get_asReal('refrelaxationrate', defaultVal=1.0e-3_pReal)
-  num%maxdRelax    =  num_RGC%get_asReal('maxrelaxationrate', defaultVal=1.0e+0_pReal)
-  num%maxVolDiscr  =  num_RGC%get_asReal('maxvoldiscrepancy', defaultVal=1.0e-5_pReal)
-  num%volDiscrMod  =  num_RGC%get_asReal('voldiscrepancymod', defaultVal=1.0e+12_pReal)
-  num%volDiscrPow  =  num_RGC%get_asReal('dicrepancypower',   defaultVal=5.0_pReal)
+  num%atol         =  num_RGC%get_asReal('atol',              defaultVal=1.0e+4_pREAL)
+  num%rtol         =  num_RGC%get_asReal('rtol',              defaultVal=1.0e-3_pREAL)
+  num%absMax       =  num_RGC%get_asReal('amax',              defaultVal=1.0e+10_pREAL)
+  num%relMax       =  num_RGC%get_asReal('rmax',              defaultVal=1.0e+2_pREAL)
+  num%pPert        =  num_RGC%get_asReal('perturbpenalty',    defaultVal=1.0e-7_pREAL)
+  num%xSmoo        =  num_RGC%get_asReal('relvantmismatch',   defaultVal=1.0e-5_pREAL)
+  num%viscPower    =  num_RGC%get_asReal('viscositypower',    defaultVal=1.0e+0_pREAL)
+  num%viscModus    =  num_RGC%get_asReal('viscositymodulus',  defaultVal=0.0e+0_pREAL)
+  num%refRelaxRate =  num_RGC%get_asReal('refrelaxationrate', defaultVal=1.0e-3_pREAL)
+  num%maxdRelax    =  num_RGC%get_asReal('maxrelaxationrate', defaultVal=1.0e+0_pREAL)
+  num%maxVolDiscr  =  num_RGC%get_asReal('maxvoldiscrepancy', defaultVal=1.0e-5_pREAL)
+  num%volDiscrMod  =  num_RGC%get_asReal('voldiscrepancymod', defaultVal=1.0e+12_pREAL)
+  num%volDiscrPow  =  num_RGC%get_asReal('dicrepancypower',   defaultVal=5.0_pREAL)
 
-  if (num%atol <= 0.0_pReal)         call IO_error(301,ext_msg='absTol_RGC')
-  if (num%rtol <= 0.0_pReal)         call IO_error(301,ext_msg='relTol_RGC')
-  if (num%absMax <= 0.0_pReal)       call IO_error(301,ext_msg='absMax_RGC')
-  if (num%relMax <= 0.0_pReal)       call IO_error(301,ext_msg='relMax_RGC')
-  if (num%pPert <= 0.0_pReal)        call IO_error(301,ext_msg='pPert_RGC')
-  if (num%xSmoo <= 0.0_pReal)        call IO_error(301,ext_msg='xSmoo_RGC')
-  if (num%viscPower < 0.0_pReal)     call IO_error(301,ext_msg='viscPower_RGC')
-  if (num%viscModus < 0.0_pReal)     call IO_error(301,ext_msg='viscModus_RGC')
-  if (num%refRelaxRate <= 0.0_pReal) call IO_error(301,ext_msg='refRelaxRate_RGC')
-  if (num%maxdRelax <= 0.0_pReal)    call IO_error(301,ext_msg='maxdRelax_RGC')
-  if (num%maxVolDiscr <= 0.0_pReal)  call IO_error(301,ext_msg='maxVolDiscr_RGC')
-  if (num%volDiscrMod < 0.0_pReal)   call IO_error(301,ext_msg='volDiscrMod_RGC')
-  if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
+  if (num%atol <= 0.0_pREAL)         call IO_error(301,ext_msg='absTol_RGC')
+  if (num%rtol <= 0.0_pREAL)         call IO_error(301,ext_msg='relTol_RGC')
+  if (num%absMax <= 0.0_pREAL)       call IO_error(301,ext_msg='absMax_RGC')
+  if (num%relMax <= 0.0_pREAL)       call IO_error(301,ext_msg='relMax_RGC')
+  if (num%pPert <= 0.0_pREAL)        call IO_error(301,ext_msg='pPert_RGC')
+  if (num%xSmoo <= 0.0_pREAL)        call IO_error(301,ext_msg='xSmoo_RGC')
+  if (num%viscPower < 0.0_pREAL)     call IO_error(301,ext_msg='viscPower_RGC')
+  if (num%viscModus < 0.0_pREAL)     call IO_error(301,ext_msg='viscModus_RGC')
+  if (num%refRelaxRate <= 0.0_pREAL) call IO_error(301,ext_msg='refRelaxRate_RGC')
+  if (num%maxdRelax <= 0.0_pREAL)    call IO_error(301,ext_msg='maxdRelax_RGC')
+  if (num%maxVolDiscr <= 0.0_pREAL)  call IO_error(301,ext_msg='maxVolDiscr_RGC')
+  if (num%volDiscrMod < 0.0_pREAL)   call IO_error(301,ext_msg='volDiscrMod_RGC')
+  if (num%volDiscrPow <= 0.0_pREAL)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
 
   do ho = 1, size(mechanical_type)
@@ -169,16 +169,16 @@ module subroutine RGC_init()
     sizeState = nIntFaceTot
 
     homogState(ho)%sizeState = sizeState
-    allocate(homogState(ho)%state0   (sizeState,Nmembers), source=0.0_pReal)
-    allocate(homogState(ho)%state    (sizeState,Nmembers), source=0.0_pReal)
+    allocate(homogState(ho)%state0   (sizeState,Nmembers), source=0.0_pREAL)
+    allocate(homogState(ho)%state    (sizeState,Nmembers), source=0.0_pREAL)
 
     stt%relaxationVector => homogState(ho)%state(1:nIntFaceTot,:)
     st0%relaxationVector => homogState(ho)%state0(1:nIntFaceTot,:)
 
-    allocate(dst%volumeDiscrepancy(   Nmembers), source=0.0_pReal)
-    allocate(dst%relaxationRate_avg(  Nmembers), source=0.0_pReal)
-    allocate(dst%relaxationRate_max(  Nmembers), source=0.0_pReal)
-    allocate(dst%mismatch(          3,Nmembers), source=0.0_pReal)
+    allocate(dst%volumeDiscrepancy(   Nmembers), source=0.0_pREAL)
+    allocate(dst%relaxationRate_avg(  Nmembers), source=0.0_pREAL)
+    allocate(dst%relaxationRate_max(  Nmembers), source=0.0_pREAL)
+    allocate(dst%mismatch(          3,Nmembers), source=0.0_pREAL)
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
@@ -197,13 +197,13 @@ end subroutine RGC_init
 !--------------------------------------------------------------------------------------------------
 module subroutine RGC_partitionDeformation(F,avgF,ce)
 
-  real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned F  per grain
+  real(pREAL),   dimension (:,:,:), intent(out) :: F                                                !< partitioned F  per grain
 
-  real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< averaged F
+  real(pREAL),   dimension (3,3),   intent(in)  :: avgF                                             !< averaged F
   integer,                          intent(in)  :: &
     ce
 
-  real(pReal), dimension(3) :: aVect,nVect
+  real(pREAL), dimension(3) :: aVect,nVect
   integer,     dimension(4) :: intFace
   integer,     dimension(3) :: iGrain3
   integer ::  iGrain,iFace,i,j,ho,en
@@ -214,7 +214,7 @@ module subroutine RGC_partitionDeformation(F,avgF,ce)
   en = material_entry_homogenization(ce)
 !--------------------------------------------------------------------------------------------------
 ! compute the deformation gradient of individual grains due to relaxations
-  F = 0.0_pReal
+  F = 0.0_pREAL
   do iGrain = 1,product(prm%N_constituents)
     iGrain3 = grain1to3(iGrain,prm%N_constituents)
     do iFace = 1,6
@@ -238,25 +238,25 @@ end subroutine RGC_partitionDeformation
 !--------------------------------------------------------------------------------------------------
 module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
-      real(pReal), dimension(:,:,:),     intent(in)    :: &
+      real(pREAL), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
         F                                                                                           !< partitioned deformation gradients
-      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
-      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
-      real(pReal),                       intent(in) :: dt                                           !< time increment
+      real(pREAL), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pREAL), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pREAL),                       intent(in) :: dt                                           !< time increment
       integer,                           intent(in) :: &
         ce                                                                                          !< cell
 
   integer, dimension(4) :: intFaceN,intFaceP,faceID
   integer, dimension(3) :: nGDim,iGr3N,iGr3P
   integer :: ho,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,nGrain, en
-  real(pReal), dimension(3,3,size(P,3)) :: R,pF,pR,D,pD
-  real(pReal), dimension(3,size(P,3))   :: NN,devNull
-  real(pReal), dimension(3)             :: normP,normN,mornP,mornN
-  real(pReal) :: residMax,stresMax
+  real(pREAL), dimension(3,3,size(P,3)) :: R,pF,pR,D,pD
+  real(pREAL), dimension(3,size(P,3))   :: NN,devNull
+  real(pREAL), dimension(3)             :: normP,normN,mornP,mornN
+  real(pREAL) :: residMax,stresMax
   logical :: error
-  real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
-  real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
+  real(pREAL), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
+  real(pREAL), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
 
   zeroTimeStep: if (dEq0(dt)) then
     doneAndHappy = .true.                                                                   ! pretend everything is fine and return
@@ -278,8 +278,8 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
-  allocate(resid(3*nIntFaceTot), source=0.0_pReal)
-  allocate(tract(nIntFaceTot,3), source=0.0_pReal)
+  allocate(resid(3*nIntFaceTot), source=0.0_pREAL)
+  allocate(tract(nIntFaceTot,3), source=0.0_pREAL)
   relax  = stt%relaxationVector(:,en)
   drelax = stt%relaxationVector(:,en) - st0%relaxationVector(:,en)
 
@@ -337,8 +337,8 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
     doneAndHappy = .true.
 
-    dst%mismatch(1:3,en)       = sum(NN,2)/real(nGrain,pReal)
-    dst%relaxationRate_avg(en) = sum(abs(drelax))/dt/real(3*nIntFaceTot,pReal)
+    dst%mismatch(1:3,en)       = sum(NN,2)/real(nGrain,pREAL)
+    dst%relaxationRate_avg(en) = sum(abs(drelax))/dt/real(3*nIntFaceTot,pREAL)
     dst%relaxationRate_max(en) = maxval(abs(drelax))/dt
 
     return
@@ -356,7 +356,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
 !--------------------------------------------------------------------------------------------------
 ! ... of the constitutive stress tangent, assembled from dPdF or material constitutive model "smatrix"
-  allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
+  allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pREAL)
   do iNum = 1,nIntFaceTot
     faceID = interface1to4(iNum,param(ho)%N_constituents)                                           ! assembling of local dPdF into global Jacobian matrix
 
@@ -403,9 +403,9 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 !--------------------------------------------------------------------------------------------------
 ! ... of the stress penalty tangent (mismatch penalty and volume penalty, computed using numerical
 ! perturbation method) "pmatrix"
-  allocate(pmatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
-  allocate(p_relax(3*nIntFaceTot),               source=0.0_pReal)
-  allocate(p_resid(3*nIntFaceTot),               source=0.0_pReal)
+  allocate(pmatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pREAL)
+  allocate(p_relax(3*nIntFaceTot),               source=0.0_pREAL)
+  allocate(p_resid(3*nIntFaceTot),               source=0.0_pREAL)
 
   do ipert = 1,3*nIntFaceTot
     p_relax = relax
@@ -417,7 +417,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
 !--------------------------------------------------------------------------------------------------
 ! computing the global stress residual array from the perturbed state
-    p_resid = 0.0_pReal
+    p_resid = 0.0_pREAL
     do iNum = 1,nIntFaceTot
       faceID = interface1to4(iNum,param(ho)%N_constituents)                                         ! identifying the interface ID in local coordinate system (4-dimensional index)
 
@@ -452,10 +452,10 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
 !--------------------------------------------------------------------------------------------------
 ! ... of the numerical viscosity traction "rmatrix"
-  allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
+  allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pREAL)
   do i=1,3*nIntFaceTot
     rmatrix(i,i) = num%viscModus*num%viscPower/(num%refRelaxRate*dt)* &                             ! tangent due to numerical viscosity traction appears
-                   (abs(drelax(i))/(num%refRelaxRate*dt))**(num%viscPower - 1.0_pReal)              ! only in the main diagonal term
+                   (abs(drelax(i))/(num%refRelaxRate*dt))**(num%viscPower - 1.0_pREAL)              ! only in the main diagonal term
   end do
 
 
@@ -465,12 +465,12 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
 !--------------------------------------------------------------------------------------------------
 ! computing the update of the state variable (relaxation vectors) using the Jacobian matrix
-  allocate(jnverse(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
+  allocate(jnverse(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pREAL)
   call math_invert(jnverse,error,jmatrix)
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the state update (global relaxation vectors) for the next Newton-Raphson iteration
-  drelax = 0.0_pReal
+  drelax = 0.0_pREAL
   do i = 1,3*nIntFaceTot;do j = 1,3*nIntFaceTot
     drelax(i) = drelax(i) - jnverse(i,j)*resid(j)                                                   ! Calculate the correction for the state variable
   end do; end do
@@ -492,26 +492,26 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   !------------------------------------------------------------------------------------------------
   subroutine stressPenalty(rPen,nMis,avgF,fDef,ho,en)
 
-    real(pReal),   dimension (:,:,:), intent(out) :: rPen                                           !< stress-like penalty
-    real(pReal),   dimension (:,:),   intent(out) :: nMis                                           !< total amount of mismatch
+    real(pREAL),   dimension (:,:,:), intent(out) :: rPen                                           !< stress-like penalty
+    real(pREAL),   dimension (:,:),   intent(out) :: nMis                                           !< total amount of mismatch
 
-    real(pReal),   dimension (:,:,:), intent(in)  :: fDef                                           !< deformation gradients
-    real(pReal),   dimension (3,3),   intent(in)  :: avgF                                           !< initial effective stretch tensor
+    real(pREAL),   dimension (:,:,:), intent(in)  :: fDef                                           !< deformation gradients
+    real(pREAL),   dimension (3,3),   intent(in)  :: avgF                                           !< initial effective stretch tensor
     integer,                          intent(in)  :: ho, en
 
     integer, dimension (4)   :: intFace
     integer, dimension (3)   :: iGrain3,iGNghb3,nGDim
-    real(pReal),   dimension (3,3) :: gDef,nDef
-    real(pReal),   dimension (3)   :: nVect,surfCorr
+    real(pREAL),   dimension (3,3) :: gDef,nDef
+    real(pREAL),   dimension (3)   :: nVect,surfCorr
     integer :: iGrain,iGNghb,iFace,i,j,k,l
-    real(pReal) :: muGrain,muGNghb,nDefNorm
-    real(pReal), parameter  :: &
-      nDefToler = 1.0e-10_pReal, &
-      b = 2.5e-10_pReal                                                                             ! Length of Burgers vector
+    real(pREAL) :: muGrain,muGNghb,nDefNorm
+    real(pREAL), parameter  :: &
+      nDefToler = 1.0e-10_pREAL, &
+      b = 2.5e-10_pREAL                                                                             ! Length of Burgers vector
 
     nGDim = param(ho)%N_constituents
-    rPen = 0.0_pReal
-    nMis = 0.0_pReal
+    rPen = 0.0_pREAL
+    nMis = 0.0_pREAL
 
     !----------------------------------------------------------------------------------------------
     ! get the correction factor the modulus of penalty stress representing the evolution of area of
@@ -532,17 +532,17 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
        nVect = interfaceNormal(intFace,ho,en)
        iGNghb3 = iGrain3                                                                            ! identify the neighboring grain across the interface
        iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) &
-                                + int(real(intFace(1),pReal)/real(abs(intFace(1)),pReal))
+                                + int(real(intFace(1),pREAL)/real(abs(intFace(1)),pREAL))
        where(iGNghb3 < 1)    iGNghb3 = nGDim
        where(iGNghb3 >nGDim) iGNghb3 = 1
        iGNghb  = grain3to1(iGNghb3,prm%N_constituents)                                              ! get the ID of the neighboring grain
        muGNghb = equivalentMu(iGNghb,ce)
-       gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                               ! difference/jump in deformation gradeint across the neighbor
+       gDef = 0.5_pREAL*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                               ! difference/jump in deformation gradeint across the neighbor
 
        !-------------------------------------------------------------------------------------------
        ! compute the mismatch tensor of all interfaces
-       nDefNorm = 0.0_pReal
-       nDef = 0.0_pReal
+       nDefNorm = 0.0_pREAL
+       nDef = 0.0_pREAL
        do i = 1,3; do j = 1,3
          do k = 1,3; do l = 1,3
            nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_LeviCivita(j,k,l)                        ! compute the interface mismatch tensor from the jump of deformation gradient
@@ -556,10 +556,10 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
        !-------------------------------------------------------------------------------------------
        ! compute the stress penalty of all interfaces
        do i = 1,3; do j = 1,3; do k = 1,3; do l = 1,3
-         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*b + muGNghb*b)*prm%xi_alpha &
+         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pREAL*(muGrain*b + muGNghb*b)*prm%xi_alpha &
                                                 *surfCorr(abs(intFace(1)))/prm%D_alpha(abs(intFace(1))) &
                                                 *cosh(prm%c_alpha*nDefNorm) &
-                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
+                                                *0.5_pREAL*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
                                                 *tanh(nDefNorm/num%xSmoo)
        end do; end do;end do; end do
      end do interfaceLoop
@@ -577,15 +577,15 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   !------------------------------------------------------------------------------------------------
   subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain)
 
-    real(pReal), dimension (:,:,:), intent(out) :: vPen                                             ! stress-like penalty due to volume
-    real(pReal),                    intent(out) :: vDiscrep                                         ! total volume discrepancy
+    real(pREAL), dimension (:,:,:), intent(out) :: vPen                                             ! stress-like penalty due to volume
+    real(pREAL),                    intent(out) :: vDiscrep                                         ! total volume discrepancy
 
-    real(pReal), dimension (:,:,:), intent(in)  :: fDef                                             ! deformation gradients
-    real(pReal), dimension (3,3),   intent(in)  :: fAvg                                             ! overall deformation gradient
+    real(pREAL), dimension (:,:,:), intent(in)  :: fDef                                             ! deformation gradients
+    real(pREAL), dimension (3,3),   intent(in)  :: fAvg                                             ! overall deformation gradient
     integer,                        intent(in) :: &
       Ngrain
 
-    real(pReal), dimension(size(vPen,3)) :: gVol
+    real(pREAL), dimension(size(vPen,3)) :: gVol
     integer :: i
 
     !----------------------------------------------------------------------------------------------
@@ -593,16 +593,16 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
     vDiscrep = math_det33(fAvg)                                                                     ! compute the volume of the cluster
     do i = 1,nGrain
       gVol(i) = math_det33(fDef(1:3,1:3,i))                                                         ! compute the volume of individual grains
-      vDiscrep     = vDiscrep - gVol(i)/real(nGrain,pReal)                                          ! calculate the difference/dicrepancy between
+      vDiscrep     = vDiscrep - gVol(i)/real(nGrain,pREAL)                                          ! calculate the difference/dicrepancy between
                                                                                                     ! the volume of the cluster and the the total volume of grains
     end do
 
     !----------------------------------------------------------------------------------------------
     ! calculate the stress and penalty due to volume discrepancy
-    vPen      = 0.0_pReal
+    vPen      = 0.0_pREAL
     do i = 1,nGrain
-      vPen(:,:,i) = -real(nGrain,pReal)**(-1)*num%volDiscrMod*num%volDiscrPow/num%maxVolDiscr &
-                  * sign((abs(vDiscrep)/num%maxVolDiscr)**(num%volDiscrPow - 1.0_pReal),vDiscrep) &
+      vPen(:,:,i) = -real(nGrain,pREAL)**(-1)*num%volDiscrMod*num%volDiscrPow/num%maxVolDiscr &
+                  * sign((abs(vDiscrep)/num%maxVolDiscr)**(num%volDiscrPow - 1.0_pREAL),vDiscrep) &
                   * gVol(i)*transpose(math_inv33(fDef(:,:,i)))
     end do
 
@@ -615,21 +615,21 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   !--------------------------------------------------------------------------------------------------
   function surfaceCorrection(avgF,ho,en)
 
-    real(pReal), dimension(3)               :: surfaceCorrection
+    real(pREAL), dimension(3)               :: surfaceCorrection
 
-    real(pReal), dimension(3,3), intent(in) :: avgF                                                 !< average F
+    real(pREAL), dimension(3,3), intent(in) :: avgF                                                 !< average F
     integer,                     intent(in) :: &
       ho, &
       en
-    real(pReal), dimension(3,3)             :: invC
-    real(pReal), dimension(3)               :: nVect
-    real(pReal)  :: detF
+    real(pREAL), dimension(3,3)             :: invC
+    real(pREAL), dimension(3)               :: nVect
+    real(pREAL)  :: detF
     integer :: i,j,iBase
     logical     ::  error
 
     call math_invert33(invC,detF,error,matmul(transpose(avgF),avgF))
 
-    surfaceCorrection = 0.0_pReal
+    surfaceCorrection = 0.0_pREAL
     do iBase = 1,3
       nVect = interfaceNormal([iBase,1,1,1],ho,en)
       do i = 1,3; do j = 1,3
@@ -644,13 +644,13 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   !-------------------------------------------------------------------------------------------------
   !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
   !-------------------------------------------------------------------------------------------------
-  real(pReal) function equivalentMu(co,ce)
+  real(pREAL) function equivalentMu(co,ce)
 
     integer, intent(in)    :: &
       co,&
       ce
 
-    real(pReal), dimension(6,6) :: C
+    real(pREAL), dimension(6,6) :: C
 
     C = phase_homogenizedC66(material_ID_phase(co,ce),material_entry_phase(co,ce))                  ! damage not included!
 
@@ -665,14 +665,14 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
   !-------------------------------------------------------------------------------------------------
   subroutine grainDeformation(F, avgF, ho, en)
 
-    real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
+    real(pREAL),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
 
-    real(pReal),   dimension(:,:),   intent(in)  :: avgF                                            !< averaged F
+    real(pREAL),   dimension(:,:),   intent(in)  :: avgF                                            !< averaged F
     integer,                         intent(in)  :: &
       ho, &
       en
 
-    real(pReal),   dimension(3) :: aVect,nVect
+    real(pREAL),   dimension(3) :: aVect,nVect
     integer,       dimension(4) :: intFace
     integer,       dimension(3) :: iGrain3
     integer :: iGrain,iFace,i,j
@@ -682,7 +682,7 @@ module function RGC_updateState(P,F,avgF,dt,dPdF,ce) result(doneAndHappy)
 
     associate (prm => param(ho))
 
-    F = 0.0_pReal
+    F = 0.0_pREAL
     do iGrain = 1,product(prm%N_constituents)
       iGrain3 = grain1to3(iGrain,prm%N_constituents)
       do iFace = 1,6
@@ -739,7 +739,7 @@ end subroutine RGC_result
 !--------------------------------------------------------------------------------------------------
 pure function relaxationVector(intFace,ho,en)
 
-  real(pReal), dimension (3)            :: relaxationVector
+  real(pREAL), dimension (3)            :: relaxationVector
 
   integer,                   intent(in) :: ho,en
   integer,     dimension(4), intent(in) :: intFace                                                  !< set of interface ID in 4D array (normal and position)
@@ -756,7 +756,7 @@ pure function relaxationVector(intFace,ho,en)
   if (iNum > 0) then
     relaxationVector = stt%relaxationVector((3*iNum-2):(3*iNum),en)
   else
-    relaxationVector = 0.0_pReal
+    relaxationVector = 0.0_pREAL
   end if
 
   end associate
@@ -769,7 +769,7 @@ end function relaxationVector
 !--------------------------------------------------------------------------------------------------
 pure function interfaceNormal(intFace,ho,en) result(n)
 
-  real(pReal), dimension(3)             :: n
+  real(pREAL), dimension(3)             :: n
   integer,     dimension(4), intent(in) :: intFace                                                  !< interface ID in 4D array (normal and position)
   integer,                   intent(in) :: &
     ho, &
@@ -778,8 +778,8 @@ pure function interfaceNormal(intFace,ho,en) result(n)
 
   associate (dst => dependentState(ho))
 
-    n = 0.0_pReal
-    n(abs(intFace(1))) = real(intFace(1)/abs(intFace(1)),pReal)                                     ! get the normal vector w.r.t. cluster axis
+    n = 0.0_pREAL
+    n(abs(intFace(1))) = real(intFace(1)/abs(intFace(1)),pREAL)                                     ! get the normal vector w.r.t. cluster axis
 
     n = matmul(dst%orientation(1:3,1:3,en),n)                                                       ! map the normal vector into sample coordinate system (basis)
 
@@ -800,7 +800,7 @@ pure function getInterface(iFace,iGrain3) result(i)
   integer :: iDir                                                                                   !< direction of interface normal
 
 
-  iDir = (int(real(iFace-1,pReal)/2.0_pReal)+1)*(-1)**iFace
+  iDir = (int(real(iFace-1,pREAL)/2.0_pREAL)+1)*(-1)**iFace
   i = [iDir,iGrain3]
   if (iDir < 0) i(1-iDir) = i(1-iDir)-1                                       ! to have a correlation with coordinate/position in real space
 
@@ -907,18 +907,18 @@ pure function interface1to4(iFace1D, nGDim)
   if (iFace1D > 0 .and. iFace1D <= nIntFace(1)) then                                                ! interface with normal || e1
     interface1to4(1) = 1
     interface1to4(3) = mod((iFace1D-1),nGDim(2))+1
-    interface1to4(4) = mod(int(real(iFace1D-1,pReal)/real(nGDim(2),pReal)),nGDim(3))+1
-    interface1to4(2) = int(real(iFace1D-1,pReal)/real(nGDim(2),pReal)/real(nGDim(3),pReal))+1
+    interface1to4(4) = mod(int(real(iFace1D-1,pREAL)/real(nGDim(2),pREAL)),nGDim(3))+1
+    interface1to4(2) = int(real(iFace1D-1,pREAL)/real(nGDim(2),pREAL)/real(nGDim(3),pREAL))+1
   elseif (iFace1D > nIntFace(1) .and. iFace1D <= (nIntFace(2) + nIntFace(1))) then                  ! interface with normal || e2
     interface1to4(1) = 2
     interface1to4(4) = mod((iFace1D-nIntFace(1)-1),nGDim(3))+1
-    interface1to4(2) = mod(int(real(iFace1D-nIntFace(1)-1,pReal)/real(nGDim(3),pReal)),nGDim(1))+1
-    interface1to4(3) = int(real(iFace1D-nIntFace(1)-1,pReal)/real(nGDim(3),pReal)/real(nGDim(1),pReal))+1
+    interface1to4(2) = mod(int(real(iFace1D-nIntFace(1)-1,pREAL)/real(nGDim(3),pREAL)),nGDim(1))+1
+    interface1to4(3) = int(real(iFace1D-nIntFace(1)-1,pREAL)/real(nGDim(3),pREAL)/real(nGDim(1),pREAL))+1
   elseif (iFace1D > nIntFace(2) + nIntFace(1) .and. iFace1D <= (nIntFace(3) + nIntFace(2) + nIntFace(1))) then ! interface with normal || e3
     interface1to4(1) = 3
     interface1to4(2) = mod((iFace1D-nIntFace(2)-nIntFace(1)-1),nGDim(1))+1
-    interface1to4(3) = mod(int(real(iFace1D-nIntFace(2)-nIntFace(1)-1,pReal)/real(nGDim(1),pReal)),nGDim(2))+1
-    interface1to4(4) = int(real(iFace1D-nIntFace(2)-nIntFace(1)-1,pReal)/real(nGDim(1),pReal)/real(nGDim(2),pReal))+1
+    interface1to4(3) = mod(int(real(iFace1D-nIntFace(2)-nIntFace(1)-1,pREAL)/real(nGDim(1),pREAL)),nGDim(2))+1
+    interface1to4(4) = int(real(iFace1D-nIntFace(2)-nIntFace(1)-1,pREAL)/real(nGDim(1),pREAL)/real(nGDim(2),pREAL))+1
   end if
 
 end function interface1to4

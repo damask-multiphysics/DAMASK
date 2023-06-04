@@ -23,7 +23,7 @@ program DAMASK_mesh
   implicit none(type,external)
 
   type :: tLoadCase
-    real(pReal)  :: time                   = 0.0_pReal                                              !< length of increment
+    real(pREAL)  :: time                   = 0.0_pREAL                                              !< length of increment
     integer      :: incs                   = 0, &                                                   !< number of increments
                     outputfrequency        = 1                                                      !< frequency of result writes
     logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
@@ -43,12 +43,12 @@ program DAMASK_mesh
 ! loop variables, convergence etc.
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
-  real(pReal) :: &
-    time = 0.0_pReal, &                                                                             !< elapsed time
-    time0 = 0.0_pReal, &                                                                            !< begin of interval
-    timeinc = 0.0_pReal, &                                                                          !< current time interval
-    timeIncOld = 0.0_pReal, &                                                                       !< previous time interval
-    remainingLoadCaseTime = 0.0_pReal                                                               !< remaining time of current load case
+  real(pREAL) :: &
+    time = 0.0_pREAL, &                                                                             !< elapsed time
+    time0 = 0.0_pREAL, &                                                                            !< begin of interval
+    timeinc = 0.0_pREAL, &                                                                          !< current time interval
+    timeIncOld = 0.0_pREAL, &                                                                       !< previous time interval
+    remainingLoadCaseTime = 0.0_pREAL                                                               !< remaining time of current load case
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate
@@ -140,7 +140,7 @@ program DAMASK_mesh
       end select
     end do
     do component = 1, loadCases(i)%fieldBC(1)%nComponents
-      allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pReal)
+      allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pREAL)
       allocate(loadCases(i)%fieldBC(1)%componentBC(component)%Mask (mesh_Nboundaries), source = .false.)
     end do
   end do
@@ -240,7 +240,7 @@ program DAMASK_mesh
 
   print'(/,1x,a)', '... writing initial configuration to file .................................'
   flush(IO_STDOUT)
-  call materialpoint_result(0,0.0_pReal)
+  call materialpoint_result(0,0.0_pREAL)
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
@@ -252,8 +252,8 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
-      timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
-      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
+      timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pREAL)
+      timeinc = timeinc * real(subStepFactor,pREAL)**real(-cutBackLevel,pREAL)                      ! depending on cut back level, decrease time step
       stepFraction = 0                                                                              ! fraction scaled by stepFactor**cutLevel
 
       subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
@@ -298,7 +298,7 @@ program DAMASK_mesh
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
-            timeinc = timeinc/2.0_pReal
+            timeinc = timeinc/2.0_pREAL
             print'(/,1x,a)', 'cutting back'
           else                                                                                      ! default behavior, exit if spectral solver does not converge
             if (worldrank == 0) close(statUnit)

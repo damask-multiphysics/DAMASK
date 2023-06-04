@@ -141,7 +141,7 @@ end subroutine result_closeJobFile
 subroutine result_addIncrement(inc,time)
 
   integer,       intent(in) :: inc
-  real(pReal),   intent(in) :: time
+  real(pREAL),   intent(in) :: time
 
   character(len=pSTRLEN) :: incChar
 
@@ -251,7 +251,7 @@ end subroutine result_addAttribute_int
 subroutine result_addAttribute_real(attrLabel,attrValue,path)
 
   character(len=*), intent(in)           :: attrLabel
-  real(pReal),      intent(in)           :: attrValue
+  real(pREAL),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
 
 
@@ -296,7 +296,7 @@ end subroutine result_addAttribute_int_array
 subroutine result_addAttribute_real_array(attrLabel,attrValue,path)
 
   character(len=*), intent(in)               :: attrLabel
-  real(pReal),      intent(in), dimension(:) :: attrValue
+  real(pREAL),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
 
@@ -345,7 +345,7 @@ subroutine result_writeScalarDataset_real(dataset,group,label,description,SIunit
 
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
-  real(pReal),      intent(in),    dimension(:) :: dataset
+  real(pREAL),      intent(in),    dimension(:) :: dataset
 
   integer(HID_T) :: groupHandle
 
@@ -366,7 +366,7 @@ subroutine result_writeVectorDataset_real(dataset,group,label,description,SIunit
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
   character(len=*), intent(in),    dimension(:), optional :: systems
-  real(pReal),      intent(in),    dimension(:,:) :: dataset
+  real(pREAL),      intent(in),    dimension(:,:) :: dataset
 
   integer(HID_T) :: groupHandle
 
@@ -390,11 +390,11 @@ subroutine result_writeTensorDataset_real(dataset,group,label,description,SIunit
   character(len=*), intent(in)                   :: label,group,description
   character(len=*), intent(in), optional         :: SIunit
   logical,          intent(in), optional         :: transposed
-  real(pReal),      intent(in), dimension(:,:,:) :: dataset
+  real(pREAL),      intent(in), dimension(:,:,:) :: dataset
 
   integer :: i
   integer(HID_T) :: groupHandle
-  real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
+  real(pREAL), dimension(:,:,:), allocatable :: dataset_transposed
 
 
   groupHandle = result_openGroup(group)

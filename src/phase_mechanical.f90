@@ -57,22 +57,22 @@ submodule(phase) mechanical
       integer, intent(in) :: &
         ph, &
         en
-      real(pReal),   intent(in),  dimension(3,3) :: &
+      real(pREAL),   intent(in),  dimension(3,3) :: &
         Fe, &                                                                                       !< elastic deformation gradient
         Fi                                                                                          !< intermediate deformation gradient
-      real(pReal),   intent(out), dimension(3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3) :: &
         S                                                                                           !< 2nd Piola-Kirchhoff stress tensor in lattice configuration
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3,3,3) :: &
         dS_dFe, &                                                                                   !< derivative of 2nd P-K stress with respect to elastic deformation gradient
         dS_dFi                                                                                      !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
     end subroutine phase_hooke_SandItsTangents
 
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,ph,en)
-      real(pReal), dimension(3,3),     intent(out) :: &
+      real(pREAL), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
-      real(pReal), dimension(3,3,3,3), intent(out)  :: &
+      real(pREAL), dimension(3,3,3,3), intent(out)  :: &
         dLi_dMi                                                                                     !< derivative of Li with respect to Mandel stress
-      real(pReal), dimension(3,3),     intent(in) :: &
+      real(pREAL), dimension(3,3),     intent(in) :: &
         Mi                                                                                          !< Mandel stress
       integer,                         intent(in) :: &
         ph, &
@@ -83,9 +83,9 @@ submodule(phase) mechanical
       integer, intent(in) :: &
         ph, &
         en
-      real(pReal),  intent(in) :: &
+      real(pREAL),  intent(in) :: &
         subdt                                                                                           !< timestep
-      real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+      real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
         dotState
     end function plastic_dotState
 
@@ -101,13 +101,13 @@ submodule(phase) mechanical
                                              S, Fi, ph,en)
       integer, intent(in) :: &
         ph,en
-      real(pReal),   intent(in),  dimension(3,3) :: &
+      real(pREAL),   intent(in),  dimension(3,3) :: &
         S                                                                                               !< 2nd Piola-Kirchhoff stress
-      real(pReal),   intent(in),  dimension(3,3) :: &
+      real(pREAL),   intent(in),  dimension(3,3) :: &
         Fi                                                                                              !< intermediate deformation gradient
-      real(pReal),   intent(out), dimension(3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3) :: &
         Li                                                                                              !< intermediate velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3,3,3) :: &
         dLi_dS, &                                                                                       !< derivative of Li with respect to S
         dLi_dFi
 
@@ -118,12 +118,12 @@ submodule(phase) mechanical
                                                S, Fi, ph,en)
       integer, intent(in) :: &
         ph,en
-      real(pReal),   intent(in),  dimension(3,3) :: &
+      real(pREAL),   intent(in),  dimension(3,3) :: &
         S, &                                                                                            !< 2nd Piola-Kirchhoff stress
         Fi                                                                                              !< intermediate deformation gradient
-      real(pReal),   intent(out), dimension(3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3) :: &
         Lp                                                                                              !< plastic velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+      real(pREAL),   intent(out), dimension(3,3,3,3) :: &
         dLp_dS, &
         dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
     end subroutine plastic_LpAndItsTangents
@@ -160,23 +160,23 @@ submodule(phase) mechanical
     end subroutine plastic_nonlocal_result
 
     module function plastic_dislotwin_homogenizedC(ph,en) result(homogenizedC)
-      real(pReal), dimension(6,6) :: homogenizedC
+      real(pREAL), dimension(6,6) :: homogenizedC
       integer,     intent(in) :: ph,en
     end function plastic_dislotwin_homogenizedC
 
     pure module function elastic_C66(ph,en) result(C66)
-      real(pReal), dimension(6,6) :: C66
+      real(pREAL), dimension(6,6) :: C66
       integer,     intent(in) :: ph, en
     end function elastic_C66
 
     pure module function elastic_mu(ph,en,isotropic_bound) result(mu)
-      real(pReal) :: mu
+      real(pREAL) :: mu
       integer, intent(in) :: ph, en
       character(len=*), intent(in) :: isotropic_bound
     end function elastic_mu
 
     pure module function elastic_nu(ph,en,isotropic_bound) result(nu)
-      real(pReal) :: nu
+      real(pREAL) :: nu
       integer, intent(in) :: ph, en
       character(len=*), intent(in) :: isotropic_bound
     end function elastic_nu
@@ -243,13 +243,13 @@ module subroutine mechanical_init(phases)
     allocate(phase_mechanical_Fi(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_Fp(ph)%data(3,3,Nmembers))
     allocate(phase_mechanical_F(ph)%data(3,3,Nmembers))
-    allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_S(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pReal)
-    allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pReal)
+    allocate(phase_mechanical_Li(ph)%data(3,3,Nmembers),source=0.0_pREAL)
+    allocate(phase_mechanical_Li0(ph)%data(3,3,Nmembers),source=0.0_pREAL)
+    allocate(phase_mechanical_Lp(ph)%data(3,3,Nmembers),source=0.0_pREAL)
+    allocate(phase_mechanical_Lp0(ph)%data(3,3,Nmembers),source=0.0_pREAL)
+    allocate(phase_mechanical_S(ph)%data(3,3,Nmembers),source=0.0_pREAL)
+    allocate(phase_mechanical_P(ph)%data(3,3,Nmembers),source=0.0_pREAL)
+    allocate(phase_mechanical_S0(ph)%data(3,3,Nmembers),source=0.0_pREAL)
 
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
@@ -359,11 +359,11 @@ end subroutine mechanical_result
 !--------------------------------------------------------------------------------------------------
 function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
 
-  real(pReal), dimension(3,3), intent(in) :: F,subFp0,subFi0
-  real(pReal),                 intent(in) :: Delta_t
+  real(pREAL), dimension(3,3), intent(in) :: F,subFp0,subFi0
+  real(pREAL),                 intent(in) :: Delta_t
   integer, intent(in) :: ph, en
 
-  real(pReal), dimension(3,3)::       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
+  real(pREAL), dimension(3,3)::       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
                                       invFp_new, &                                                  ! inverse of Fp_new
                                       invFp_current, &                                              ! inverse of Fp_current
                                       Lpguess, &                                                    ! current guess for plastic velocity gradient
@@ -386,11 +386,11 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
                                       A, &
                                       B, &
                                       temp_33
-  real(pReal), dimension(9) ::        temp_9                                                        ! needed for matrix inversion by LAPACK
+  real(pREAL), dimension(9) ::        temp_9                                                        ! needed for matrix inversion by LAPACK
   integer,     dimension(9) ::        devNull_9                                                     ! needed for matrix inversion by LAPACK
-  real(pReal), dimension(9,9) ::      dRLp_dLp, &                                                   ! partial derivative of residuum (Jacobian for Newton-Raphson scheme)
+  real(pREAL), dimension(9,9) ::      dRLp_dLp, &                                                   ! partial derivative of residuum (Jacobian for Newton-Raphson scheme)
                                       dRLi_dLi                                                      ! partial derivative of residuumI (Jacobian for Newton-Raphson scheme)
-  real(pReal), dimension(3,3,3,3)::   dS_dFe, &                                                     ! partial derivative of 2nd Piola-Kirchhoff stress
+  real(pREAL), dimension(3,3,3,3)::   dS_dFe, &                                                     ! partial derivative of 2nd Piola-Kirchhoff stress
                                       dS_dFi, &
                                       dFe_dLp, &                                                    ! partial derivative of elastic deformation gradient
                                       dFe_dLi, &
@@ -399,7 +399,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
                                       dLi_dFi, &
                                       dLp_dS, &
                                       dLi_dS
-  real(pReal)                         steplengthLp, &
+  real(pREAL)                         steplengthLp, &
                                       steplengthLi, &
                                       atol_Lp, &
                                       atol_Li
@@ -427,8 +427,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
 
   jacoCounterLi  = 0
-  steplengthLi   = 1.0_pReal
-  residuumLi_old = 0.0_pReal
+  steplengthLi   = 1.0_pREAL
+  residuumLi_old = 0.0_pREAL
   Liguess_old    = Liguess
 
   NiterationStressLi = 0
@@ -440,8 +440,8 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
     Fi_new    = math_inv33(invFi_new)
 
     jacoCounterLp  = 0
-    steplengthLp   = 1.0_pReal
-    residuumLp_old = 0.0_pReal
+    steplengthLp   = 1.0_pREAL
+    residuumLp_old = 0.0_pREAL
     Lpguess_old    = Lpguess
 
     NiterationStressLp = 0
@@ -469,7 +469,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
       elseif (NiterationStressLp == 1 .or. norm2(residuumLp) < norm2(residuumLp_old)) then          ! not converged, but improved norm of residuum (always proceed in first iteration)...
         residuumLp_old = residuumLp                                                                 ! ...remember old values and...
         Lpguess_old    = Lpguess
-        steplengthLp   = 1.0_pReal                                                                  ! ...proceed with normal step length (calculate new search direction)
+        steplengthLp   = 1.0_pREAL                                                                  ! ...proceed with normal step length (calculate new search direction)
       else                                                                                          ! not converged and residuum not improved...
         steplengthLp = num%subStepSizeLp * steplengthLp                                             ! ...try with smaller step length in same direction
         Lpguess      = Lpguess_old &
@@ -509,7 +509,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
     elseif (NiterationStressLi == 1 .or. norm2(residuumLi) < norm2(residuumLi_old)) then            ! not converged, but improved norm of residuum (always proceed in first iteration)...
       residuumLi_old = residuumLi                                                                   ! ...remember old values and...
       Liguess_old    = Liguess
-      steplengthLi   = 1.0_pReal                                                                    ! ...proceed with normal step length (calculate new search direction)
+      steplengthLi   = 1.0_pREAL                                                                    ! ...proceed with normal step length (calculate new search direction)
     else                                                                                            ! not converged and residuum not improved...
       steplengthLi = num%subStepSizeLi * steplengthLi                                               ! ...try with smaller step length in same direction
       Liguess      = Liguess_old &
@@ -550,7 +550,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,ph,en) result(broken)
   phase_mechanical_S(ph)%data(1:3,1:3,en)  = S
   phase_mechanical_Lp(ph)%data(1:3,1:3,en) = Lpguess
   phase_mechanical_Li(ph)%data(1:3,1:3,en) = Liguess
-  phase_mechanical_Fp(ph)%data(1:3,1:3,en) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
+  phase_mechanical_Fp(ph)%data(1:3,1:3,en) = Fp_new / math_det33(Fp_new)**(1.0_pREAL/3.0_pREAL)    ! regularize
   phase_mechanical_Fi(ph)%data(1:3,1:3,en) = Fi_new
   phase_mechanical_Fe(ph)%data(1:3,1:3,en) = matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
@@ -564,9 +564,9 @@ end function integrateStress
 !--------------------------------------------------------------------------------------------------
 function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
-  real(pReal), intent(in),dimension(:)   :: subState0
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pREAL), intent(in),dimension(:)   :: subState0
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     ph, &
     en
@@ -576,12 +576,12 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
     sizeDotState
-  real(pReal) :: &
+  real(pREAL) :: &
     zeta
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     r, &                                                                                            ! state residuum
     dotState
-  real(pReal), dimension(plasticState(ph)%sizeDotState,2) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState,2) :: &
     dotState_last
 
 
@@ -595,7 +595,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
 
   iteration: do NiterationState = 1, num%nState
 
-    dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0_pReal, nIterationState > 1)
+    dotState_last(1:sizeDotState,2) = merge(dotState_last(1:sizeDotState,1),0.0_pREAL, nIterationState > 1)
     dotState_last(1:sizeDotState,1) = dotState
 
     broken = integrateStress(F,subFp0,subFi0,Delta_t,ph,en)
@@ -606,7 +606,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
 
     zeta = damper(dotState,dotState_last(1:sizeDotState,1),dotState_last(1:sizeDotState,2))
     dotState = dotState * zeta &
-             + dotState_last(1:sizeDotState,1) * (1.0_pReal - zeta)
+             + dotState_last(1:sizeDotState,1) * (1.0_pREAL - zeta)
     r = plasticState(ph)%state(1:sizeDotState,en) &
       - subState0 &
       - dotState * Delta_t
@@ -625,21 +625,21 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(b
   !--------------------------------------------------------------------------------------------------
   !> @brief calculate the damping for correction of state and dot state
   !--------------------------------------------------------------------------------------------------
-  real(pReal) pure function damper(omega_0,omega_1,omega_2)
+  real(pREAL) pure function damper(omega_0,omega_1,omega_2)
 
-    real(pReal), dimension(:), intent(in) :: &
+    real(pREAL), dimension(:), intent(in) :: &
       omega_0, omega_1, omega_2
 
-    real(pReal) :: dot_prod12, dot_prod22
+    real(pREAL) :: dot_prod12, dot_prod22
 
 
     dot_prod12 = dot_product(omega_0-omega_1, omega_1-omega_2)
     dot_prod22 = dot_product(omega_1-omega_2, omega_1-omega_2)
 
-    if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pReal .and. dot_prod22 > 0.0_pReal) then
-      damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+    if (min(dot_product(omega_0,omega_1),dot_prod12) < 0.0_pREAL .and. dot_prod22 > 0.0_pREAL) then
+      damper = 0.75_pREAL + 0.25_pREAL * tanh(2.0_pREAL + 4.0_pREAL * dot_prod12 / dot_prod22)
     else
-      damper = 1.0_pReal
+      damper = 1.0_pREAL
     end if
 
   end function damper
@@ -652,16 +652,16 @@ end function integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
-  real(pReal), intent(in),dimension(:)   :: subState0
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pREAL), intent(in),dimension(:)   :: subState0
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     ph, &
     en                                                                                               !< grain index in grain loop
   logical :: &
     broken
 
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
   integer :: &
     sizeDotState
@@ -692,9 +692,9 @@ end function integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
-  real(pReal), intent(in),dimension(:)   :: subState0
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pREAL), intent(in),dimension(:)   :: subState0
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     ph, &
     en
@@ -703,7 +703,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
 
   integer :: &
     sizeDotState
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     r, &
     dotState
 
@@ -715,7 +715,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
 
   sizeDotState = plasticState(ph)%sizeDotState
 
-  r = - dotState * 0.5_pReal * Delta_t
+  r = - dotState * 0.5_pREAL * Delta_t
 #ifndef __INTEL_LLVM_COMPILER
   plasticState(ph)%state(1:sizeDotState,en) = subState0 + dotState*Delta_t
 #else
@@ -731,7 +731,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en
   dotState = plastic_dotState(Delta_t,ph,en)
   if (any(IEEE_is_NaN(dotState))) return
 
-  broken = .not. converged(r + 0.5_pReal * dotState * Delta_t, &
+  broken = .not. converged(r + 0.5_pREAL * dotState * Delta_t, &
                            plasticState(ph)%state(1:sizeDotState,en), &
                            plasticState(ph)%atol(1:sizeDotState))
 
@@ -743,22 +743,22 @@ end function integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 function integrateStateRK4(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
-  real(pReal), intent(in),dimension(:)   :: subState0
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pREAL), intent(in),dimension(:)   :: subState0
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
   logical :: broken
 
-  real(pReal), dimension(3,3), parameter :: &
+  real(pREAL), dimension(3,3), parameter :: &
     A = reshape([&
-      0.5_pReal, 0.0_pReal, 0.0_pReal, &
-      0.0_pReal, 0.5_pReal, 0.0_pReal, &
-      0.0_pReal, 0.0_pReal, 1.0_pReal],&
+      0.5_pREAL, 0.0_pREAL, 0.0_pREAL, &
+      0.0_pREAL, 0.5_pREAL, 0.0_pREAL, &
+      0.0_pREAL, 0.0_pREAL, 1.0_pREAL],&
       shape(A))
-  real(pReal), dimension(3), parameter :: &
-    C = [0.5_pReal, 0.5_pReal, 1.0_pReal]
-  real(pReal), dimension(4), parameter :: &
-    B = [6.0_pReal, 3.0_pReal, 3.0_pReal, 6.0_pReal]**(-1)
+  real(pREAL), dimension(3), parameter :: &
+    C = [0.5_pREAL, 0.5_pREAL, 1.0_pREAL]
+  real(pREAL), dimension(4), parameter :: &
+    B = [6.0_pREAL, 3.0_pREAL, 3.0_pREAL, 6.0_pREAL]**(-1)
 
 
   broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C)
@@ -771,29 +771,29 @@ end function integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 function integrateStateRKCK45(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
-  real(pReal), intent(in),dimension(:)   :: subState0
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pREAL), intent(in),dimension(:)   :: subState0
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: ph, en
   logical :: broken
 
-  real(pReal), dimension(5,5), parameter :: &
+  real(pREAL), dimension(5,5), parameter :: &
     A = reshape([&
-      1._pReal/5._pReal,       .0_pReal,             .0_pReal,               .0_pReal,                  .0_pReal, &
-      3._pReal/40._pReal,      9._pReal/40._pReal,   .0_pReal,               .0_pReal,                  .0_pReal, &
-      3_pReal/10._pReal,       -9._pReal/10._pReal,  6._pReal/5._pReal,      .0_pReal,                  .0_pReal, &
-      -11._pReal/54._pReal,    5._pReal/2._pReal,    -70.0_pReal/27.0_pReal, 35.0_pReal/27.0_pReal,     .0_pReal, &
-      1631._pReal/55296._pReal,175._pReal/512._pReal,575._pReal/13824._pReal,44275._pReal/110592._pReal,253._pReal/4096._pReal],&
+      1._pREAL/5._pREAL,       .0_pREAL,             .0_pREAL,               .0_pREAL,                  .0_pREAL, &
+      3._pREAL/40._pREAL,      9._pREAL/40._pREAL,   .0_pREAL,               .0_pREAL,                  .0_pREAL, &
+      3_pREAL/10._pREAL,       -9._pREAL/10._pREAL,  6._pREAL/5._pREAL,      .0_pREAL,                  .0_pREAL, &
+      -11._pREAL/54._pREAL,    5._pREAL/2._pREAL,    -70.0_pREAL/27.0_pREAL, 35.0_pREAL/27.0_pREAL,     .0_pREAL, &
+      1631._pREAL/55296._pREAL,175._pREAL/512._pREAL,575._pREAL/13824._pREAL,44275._pREAL/110592._pREAL,253._pREAL/4096._pREAL],&
       shape(A))
-  real(pReal), dimension(5), parameter :: &
-    C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]
-  real(pReal), dimension(6), parameter :: &
+  real(pREAL), dimension(5), parameter :: &
+    C = [0.2_pREAL, 0.3_pREAL, 0.6_pREAL, 1.0_pREAL, 0.875_pREAL]
+  real(pREAL), dimension(6), parameter :: &
     B = &
-      [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
-      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &
+      [37.0_pREAL/378.0_pREAL, .0_pREAL, 250.0_pREAL/621.0_pREAL, &
+      125.0_pREAL/594.0_pREAL, .0_pREAL, 512.0_pREAL/1771.0_pREAL], &
     DB = B - &
-      [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
-      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
+      [2825.0_pREAL/27648.0_pREAL,    .0_pREAL,                18575.0_pREAL/48384.0_pREAL,&
+      13525.0_pREAL/55296.0_pREAL, 277.0_pREAL/14336.0_pREAL,  1._pREAL/4._pREAL]
 
 
   broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB)
@@ -807,12 +807,12 @@ end function integrateStateRKCK45
 !--------------------------------------------------------------------------------------------------
 function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
-  real(pReal), intent(in),dimension(:)   :: subState0
-  real(pReal), intent(in) :: Delta_t
-  real(pReal), dimension(:,:), intent(in) :: A
-  real(pReal), dimension(:),   intent(in) :: B, C
-  real(pReal), dimension(:),   intent(in), optional :: DB
+  real(pREAL), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pREAL), intent(in),dimension(:)   :: subState0
+  real(pREAL), intent(in) :: Delta_t
+  real(pREAL), dimension(:,:), intent(in) :: A
+  real(pREAL), dimension(:),   intent(in) :: B, C
+  real(pREAL), dimension(:),   intent(in), optional :: DB
   integer, intent(in) :: &
     ph, &
     en
@@ -822,9 +822,9 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,ph,en,A,B,C,DB) 
     stage, &                                                                                        ! stage index in integration stage loop
     n, &
     sizeDotState
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
-  real(pReal), dimension(plasticState(ph)%sizeDotState,size(B)) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState,size(B)) :: &
     plastic_RKdotState
 
 
@@ -945,7 +945,7 @@ subroutine results(group,ph)
   function to_quaternion(dataset)
 
     type(tRotation), dimension(:), intent(in) :: dataset
-    real(pReal), dimension(4,size(dataset,1)) :: to_quaternion
+    real(pREAL), dimension(4,size(dataset,1)) :: to_quaternion
 
     integer :: i
 
@@ -986,26 +986,26 @@ end subroutine mechanical_forward
 !--------------------------------------------------------------------------------------------------
 module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
 
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &
     ce
   logical :: converged_
 
-  real(pReal) :: &
+  real(pREAL) :: &
     formerSubStep
   integer :: &
     ph, en, sizeDotState
   logical :: todo
-  real(pReal) :: subFrac,subStep
-  real(pReal), dimension(3,3) :: &
+  real(pREAL) :: subFrac,subStep
+  real(pREAL), dimension(3,3) :: &
     subFp0, &
     subFi0, &
     subLp0, &
     subLi0, &
     subF0, &
     subF
-  real(pReal), dimension(plasticState(material_ID_phase(co,ce))%sizeState) :: subState0
+  real(pREAL), dimension(plasticState(material_ID_phase(co,ce))%sizeState) :: subState0
 
 
   ph = material_ID_phase(co,ce)
@@ -1017,9 +1017,9 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
   subFp0 = phase_mechanical_Fp0(ph)%data(1:3,1:3,en)
   subFi0 = phase_mechanical_Fi0(ph)%data(1:3,1:3,en)
   subF0  = phase_mechanical_F0(ph)%data(1:3,1:3,en)
-  subFrac = 0.0_pReal
+  subFrac = 0.0_pREAL
   todo = .true.
-  subStep = 1.0_pReal/num%subStepSizeCryst
+  subStep = 1.0_pREAL/num%subStepSizeCryst
   converged_ = .false.                                                                              ! pretend failed step of 1/subStepSizeCryst
 
   todo = .true.
@@ -1028,9 +1028,9 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
     if (converged_) then
       formerSubStep = subStep
       subFrac = subFrac + subStep
-      subStep = min(1.0_pReal - subFrac, num%stepIncreaseCryst * subStep)
+      subStep = min(1.0_pREAL - subFrac, num%stepIncreaseCryst * subStep)
 
-      todo = subStep > 0.0_pReal                        ! still time left to integrate on?
+      todo = subStep > 0.0_pREAL                        ! still time left to integrate on?
 
       if (todo) then
         subF0  = subF
@@ -1047,7 +1047,7 @@ module function phase_mechanical_constitutive(Delta_t,co,ce) result(converged_)
       phase_mechanical_Fp(ph)%data(1:3,1:3,en) = subFp0
       phase_mechanical_Fi(ph)%data(1:3,1:3,en) = subFi0
       phase_mechanical_S(ph)%data(1:3,1:3,en) = phase_mechanical_S0(ph)%data(1:3,1:3,en)
-      if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
+      if (subStep < 1.0_pREAL) then                                                                 ! actual (not initial) cutback
         phase_mechanical_Lp(ph)%data(1:3,1:3,en) = subLp0
         phase_mechanical_Li(ph)%data(1:3,1:3,en) = subLi0
       end if
@@ -1105,19 +1105,19 @@ end subroutine mechanical_restore
 !--------------------------------------------------------------------------------------------------
 module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
 
-  real(pReal), intent(in) :: Delta_t
+  real(pREAL), intent(in) :: Delta_t
   integer, intent(in) :: &
     co, &                                                                                            !< counter in constituent loop
     ce
-  real(pReal), dimension(3,3,3,3) :: dPdF
+  real(pREAL), dimension(3,3,3,3) :: dPdF
 
   integer :: &
     o, &
     p, ph, en
-  real(pReal), dimension(3,3)     ::   devNull, &
+  real(pREAL), dimension(3,3)     ::   devNull, &
                                        invSubFp0,invSubFi0,invFp,invFi, &
                                        temp_33_1, temp_33_2, temp_33_3
-  real(pReal), dimension(3,3,3,3) ::   dSdFe, &
+  real(pREAL), dimension(3,3,3,3) ::   dSdFe, &
                                        dSdF, &
                                        dSdFi, &
                                        dLidS, &                                                     ! tangent in lattice configuration
@@ -1129,7 +1129,7 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
                                        rhs_3333, &
                                        lhs_3333, &
                                        temp_3333
-  real(pReal), dimension(9,9)::        temp_99
+  real(pREAL), dimension(9,9)::        temp_99
   logical :: error
 
 
@@ -1150,9 +1150,9 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
   invSubFi0 = math_inv33(phase_mechanical_Fi0(ph)%data(1:3,1:3,en))
 
   if (sum(abs(dLidS)) < tol_math_check) then
-    dFidS = 0.0_pReal
+    dFidS = 0.0_pREAL
   else
-    lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
+    lhs_3333 = 0.0_pREAL; rhs_3333 = 0.0_pREAL
     do o=1,3; do p=1,3
 #ifndef __INTEL_LLVM_COMPILER
       lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
@@ -1171,7 +1171,7 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
     if (error) then
       call IO_warning(600,'inversion error in analytic tangent calculation', &
                       label1='phase',ID1=ph,label2='entry',ID2=en)
-      dFidS = 0.0_pReal
+      dFidS = 0.0_pREAL
     else
       dFidS = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
     end if
@@ -1223,7 +1223,7 @@ module function phase_mechanical_dPdF(Delta_t,co,ce) result(dPdF)
   temp_33_2 = matmul(phase_mechanical_F(ph)%data(1:3,1:3,en),invFp)
   temp_33_3 = matmul(temp_33_2,phase_mechanical_S(ph)%data(1:3,1:3,en))
 
-  dPdF = 0.0_pReal
+  dPdF = 0.0_pREAL
   do p=1,3
     dPdF(p,1:3,p,1:3) = transpose(matmul(invFp,temp_33_1))
   end do
@@ -1283,7 +1283,7 @@ end subroutine mechanical_restartRead
 module function mechanical_S(ph,en) result(S)
 
   integer, intent(in) :: ph,en
-  real(pReal), dimension(3,3) :: S
+  real(pREAL), dimension(3,3) :: S
 
 
   S = phase_mechanical_S(ph)%data(1:3,1:3,en)
@@ -1297,7 +1297,7 @@ end function mechanical_S
 module function mechanical_L_p(ph,en) result(L_p)
 
   integer, intent(in) :: ph,en
-  real(pReal), dimension(3,3) :: L_p
+  real(pREAL), dimension(3,3) :: L_p
 
 
   L_p = phase_mechanical_Lp(ph)%data(1:3,1:3,en)
@@ -1311,7 +1311,7 @@ end function mechanical_L_p
 module function mechanical_F_e(ph,en) result(F_e)
 
   integer, intent(in) :: ph,en
-  real(pReal), dimension(3,3) :: F_e
+  real(pREAL), dimension(3,3) :: F_e
 
 
   F_e = phase_mechanical_Fe(ph)%data(1:3,1:3,en)
@@ -1325,7 +1325,7 @@ end function mechanical_F_e
 module function mechanical_F_i(ph,en) result(F_i)
 
   integer, intent(in) :: ph,en
-  real(pReal), dimension(3,3) :: F_i
+  real(pREAL), dimension(3,3) :: F_i
 
 
   F_i = phase_mechanical_Fi(ph)%data(1:3,1:3,en)
@@ -1339,7 +1339,7 @@ end function mechanical_F_i
 module function phase_P(co,ce) result(P)
 
   integer, intent(in) :: co, ce
-  real(pReal), dimension(3,3) :: P
+  real(pREAL), dimension(3,3) :: P
 
 
   P = phase_mechanical_P(material_ID_phase(co,ce))%data(1:3,1:3,material_entry_phase(co,ce))
@@ -1353,7 +1353,7 @@ end function phase_P
 module function phase_F(co,ce) result(F)
 
   integer, intent(in) :: co, ce
-  real(pReal), dimension(3,3) :: F
+  real(pREAL), dimension(3,3) :: F
 
 
   F = phase_mechanical_F(material_ID_phase(co,ce))%data(1:3,1:3,material_entry_phase(co,ce))
@@ -1366,7 +1366,7 @@ end function phase_F
 !--------------------------------------------------------------------------------------------------
 module subroutine phase_set_F(F,co,ce)
 
-  real(pReal), dimension(3,3), intent(in) :: F
+  real(pREAL), dimension(3,3), intent(in) :: F
   integer, intent(in) :: co, ce
 
 

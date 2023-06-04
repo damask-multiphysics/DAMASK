@@ -183,7 +183,7 @@ subroutine selfTest()
     s = '1'
     if (s%asInt() /= 1)                error stop 'tScalar_asInt'
     if (s_pointer%asInt() /= 1)        error stop 'tScalar_asInt(pointer)'
-    if (dNeq(s%asReal(),1.0_pReal))    error stop 'tScalar_asReal'
+    if (dNeq(s%asReal(),1.0_pREAL))    error stop 'tScalar_asReal'
     s = 'true'
     if (.not. s%asBool())              error stop 'tScalar_asBool'
     if (.not. s_pointer%asBool())      error stop 'tScalar_asBool(pointer)'
@@ -209,11 +209,11 @@ subroutine selfTest()
     call l%append(s1)
     call l%append(s2)
     if (l%length /= 2)                                 error stop 'tList%len'
-    if (dNeq(l%get_asReal(1),1.0_pReal))               error stop 'tList_get_asReal'
+    if (dNeq(l%get_asReal(1),1.0_pREAL))               error stop 'tList_get_asReal'
     if (l%get_asInt(1) /= 1)                           error stop 'tList_get_asInt'
     if (l%get_asStr(2) /= '2')                         error stop 'tList_get_asStr'
     if (any(l%as1dInt() /= [1,2]))                     error stop 'tList_as1dInt'
-    if (any(dNeq(l%as1dReal(),real([1.0,2.0],pReal)))) error stop 'tList_as1dReal'
+    if (any(dNeq(l%as1dReal(),real([1.0,2.0],pREAL)))) error stop 'tList_as1dReal'
     s1 = 'true'
     s2 = 'false'
     if (any(l%as1dBool() .neqv. [.true.,.false.]))     error stop 'tList_as1dBool'
@@ -253,7 +253,7 @@ subroutine selfTest()
     if (d%asFormattedStr() /= '{one-two: [1, 2], three: 3, four: 4}') &
                                                       error stop 'tDict_asFormattedStr'
     if (d%get_asInt('three') /= 3)                    error stop 'tDict_get_asInt'
-    if (dNeq(d%get_asReal('three'),3.0_pReal))        error stop 'tDict_get_asReal'
+    if (dNeq(d%get_asReal('three'),3.0_pREAL))        error stop 'tDict_get_asReal'
     if (d%get_asStr('three') /= '3')                  error stop 'tDict_get_asStr'
     if (any(d%get_as1dInt('one-two') /= [1,2]))       error stop 'tDict_get_as1dInt'
     call d%set('one-two',s4)
@@ -376,7 +376,7 @@ end function tNode_asDict
 function tScalar_asReal(self)
 
   class(tScalar), intent(in), target :: self
-  real(pReal) :: tScalar_asReal
+  real(pREAL) :: tScalar_asReal
 
 
   tScalar_asReal = IO_strAsReal(self%value)
@@ -481,7 +481,7 @@ end subroutine tList_append
 function tList_as1dReal(self)
 
   class(tList), intent(in), target :: self
-  real(pReal), dimension(:), allocatable :: tList_as1dReal
+  real(pREAL), dimension(:), allocatable :: tList_as1dReal
 
   integer :: i
   type(tItem),   pointer :: item
@@ -505,7 +505,7 @@ end function tList_as1dReal
 function tList_as2dReal(self)
 
   class(tList), intent(in), target :: self
-  real(pReal), dimension(:,:), allocatable :: tList_as2dReal
+  real(pREAL), dimension(:,:), allocatable :: tList_as2dReal
 
   integer :: i
   type(tList), pointer :: row_data
@@ -724,7 +724,7 @@ function tList_get_asReal(self,i) result(nodeAsReal)
 
   class(tList), intent(in) :: self
   integer,      intent(in) :: i
-  real(pReal) :: nodeAsReal
+  real(pREAL) :: nodeAsReal
 
   class(tScalar),  pointer :: scalar
 
@@ -742,7 +742,7 @@ function tList_get_as1dReal(self,i) result(nodeAs1dReal)
 
   class(tList), intent(in) :: self
   integer,      intent(in) :: i
-  real(pReal), dimension(:), allocatable :: nodeAs1dReal
+  real(pREAL), dimension(:), allocatable :: nodeAs1dReal
 
   class(tList),  pointer :: list
 
@@ -1124,8 +1124,8 @@ function tDict_get_asReal(self,k,defaultVal) result(nodeAsReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
-  real(pReal),      intent(in), optional :: defaultVal
-  real(pReal) :: nodeAsReal
+  real(pREAL),      intent(in), optional :: defaultVal
+  real(pREAL) :: nodeAsReal
 
   type(tScalar), pointer :: scalar
 
@@ -1149,9 +1149,9 @@ function tDict_get_as1dReal(self,k,defaultVal,requiredSize) result(nodeAs1dReal)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
-  real(pReal),      intent(in), dimension(:), optional :: defaultVal
+  real(pREAL),      intent(in), dimension(:), optional :: defaultVal
   integer,          intent(in),               optional :: requiredSize
-  real(pReal), dimension(:), allocatable :: nodeAs1dReal
+  real(pREAL), dimension(:), allocatable :: nodeAs1dReal
 
   type(tList), pointer :: list
 
@@ -1179,9 +1179,9 @@ function tDict_get_as2dReal(self,k,defaultVal,requiredShape) result(nodeAs2dReal
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
-  real(pReal),      intent(in), dimension(:,:), optional :: defaultVal
+  real(pREAL),      intent(in), dimension(:,:), optional :: defaultVal
   integer,          intent(in), dimension(2),   optional :: requiredShape
-  real(pReal), dimension(:,:), allocatable :: nodeAs2dReal
+  real(pREAL), dimension(:,:), allocatable :: nodeAs2dReal
 
   type(tList), pointer :: list
 

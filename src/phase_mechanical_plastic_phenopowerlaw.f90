@@ -7,30 +7,30 @@
 submodule(phase:plastic) phenopowerlaw
 
   type :: tParameters
-    real(pReal) :: &
-      dot_gamma_0_sl = 1.0_pReal, &                                                                 !< reference shear strain rate for slip
-      dot_gamma_0_tw = 1.0_pReal, &                                                                 !< reference shear strain rate for twin
-      n_sl           = 1.0_pReal, &                                                                 !< stress exponent for slip
-      n_tw           = 1.0_pReal, &                                                                 !< stress exponent for twin
-      f_sat_sl_tw    = 1.0_pReal, &                                                                 !< push-up factor for slip saturation due to twinning
-      c_1            = 1.0_pReal, &
-      c_2            = 1.0_pReal, &
-      c_3            = 1.0_pReal, &
-      c_4            = 1.0_pReal, &
-      h_0_sl_sl      = 1.0_pReal, &                                                                 !< reference hardening slip - slip
-      h_0_tw_sl      = 1.0_pReal, &                                                                 !< reference hardening twin - slip
-      h_0_tw_tw      = 1.0_pReal, &                                                                 !< reference hardening twin - twin
-      a_sl           = 1.0_pReal
-    real(pReal),               allocatable, dimension(:) :: &
+    real(pREAL) :: &
+      dot_gamma_0_sl = 1.0_pREAL, &                                                                 !< reference shear strain rate for slip
+      dot_gamma_0_tw = 1.0_pREAL, &                                                                 !< reference shear strain rate for twin
+      n_sl           = 1.0_pREAL, &                                                                 !< stress exponent for slip
+      n_tw           = 1.0_pREAL, &                                                                 !< stress exponent for twin
+      f_sat_sl_tw    = 1.0_pREAL, &                                                                 !< push-up factor for slip saturation due to twinning
+      c_1            = 1.0_pREAL, &
+      c_2            = 1.0_pREAL, &
+      c_3            = 1.0_pREAL, &
+      c_4            = 1.0_pREAL, &
+      h_0_sl_sl      = 1.0_pREAL, &                                                                 !< reference hardening slip - slip
+      h_0_tw_sl      = 1.0_pREAL, &                                                                 !< reference hardening twin - slip
+      h_0_tw_tw      = 1.0_pREAL, &                                                                 !< reference hardening twin - twin
+      a_sl           = 1.0_pREAL
+    real(pREAL),               allocatable, dimension(:) :: &
       xi_inf_sl, &                                                                                  !< maximum critical shear stress for slip
       h_int, &                                                                                      !< per family hardening activity (optional)
       gamma_char                                                                                    !< characteristic shear for twins
-    real(pReal),               allocatable, dimension(:,:) :: &
+    real(pREAL),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
       h_sl_tw, &                                                                                    !< slip resistance from twin activity
       h_tw_sl, &                                                                                    !< twin resistance from slip activity
       h_tw_tw                                                                                       !< twin resistance from twin activity
-    real(pReal),               allocatable, dimension(:,:,:) :: &
+    real(pREAL),               allocatable, dimension(:,:,:) :: &
       P_sl, &
       P_tw, &
       P_nS_pos, &
@@ -56,7 +56,7 @@ submodule(phase:plastic) phenopowerlaw
   end type tIndexDotState
 
   type :: tPhenopowerlawState
-    real(pReal), pointer, dimension(:,:) :: &
+    real(pREAL), pointer, dimension(:,:) :: &
       xi_sl, &
       xi_tw, &
       gamma_sl, &
@@ -87,7 +87,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   integer,     dimension(:), allocatable :: &
     N_sl, &                                                                                         !< number of slip-systems for a given slip family
     N_tw                                                                                            !< number of twin-systems for a given twin family
-  real(pReal), dimension(:), allocatable :: &
+  real(pREAL), dimension(:), allocatable :: &
     xi_0_sl, &                                                                                      !< initial critical shear stress for slip
     xi_0_tw, &                                                                                      !< initial critical shear stress for twin
     a                                                                                               !< non-Schmid coefficients
@@ -156,7 +156,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       xi_0_sl             = pl%get_as1dReal('xi_0_sl',   requiredSize=size(N_sl))
       prm%xi_inf_sl       = pl%get_as1dReal('xi_inf_sl', requiredSize=size(N_sl))
       prm%h_int           = pl%get_as1dReal('h_int',     requiredSize=size(N_sl), &
-                                            defaultVal=[(0.0_pReal,i=1,size(N_sl))])
+                                            defaultVal=[(0.0_pREAL,i=1,size(N_sl))])
 
       prm%dot_gamma_0_sl  = pl%get_asReal('dot_gamma_0_sl')
       prm%n_sl            = pl%get_asReal('n_sl')
@@ -169,11 +169,11 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%h_int           = math_expand(prm%h_int,    N_sl)
 
       ! sanity checks
-      if (    prm%dot_gamma_0_sl  <= 0.0_pReal)      extmsg = trim(extmsg)//' dot_gamma_0_sl'
-      if (    prm%a_sl            <= 0.0_pReal)      extmsg = trim(extmsg)//' a_sl'
-      if (    prm%n_sl            <= 0.0_pReal)      extmsg = trim(extmsg)//' n_sl'
-      if (any(xi_0_sl             <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_0_sl'
-      if (any(prm%xi_inf_sl       <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_inf_sl'
+      if (    prm%dot_gamma_0_sl  <= 0.0_pREAL)      extmsg = trim(extmsg)//' dot_gamma_0_sl'
+      if (    prm%a_sl            <= 0.0_pREAL)      extmsg = trim(extmsg)//' a_sl'
+      if (    prm%n_sl            <= 0.0_pREAL)      extmsg = trim(extmsg)//' n_sl'
+      if (any(xi_0_sl             <= 0.0_pREAL))     extmsg = trim(extmsg)//' xi_0_sl'
+      if (any(prm%xi_inf_sl       <= 0.0_pREAL))     extmsg = trim(extmsg)//' xi_inf_sl'
 
     else slipActive
       xi_0_sl = emptyRealArray
@@ -193,10 +193,10 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
       xi_0_tw            = pl%get_as1dReal('xi_0_tw',requiredSize=size(N_tw))
 
-      prm%c_1            = pl%get_asReal('c_1',defaultVal=0.0_pReal)
-      prm%c_2            = pl%get_asReal('c_2',defaultVal=1.0_pReal)
-      prm%c_3            = pl%get_asReal('c_3',defaultVal=0.0_pReal)
-      prm%c_4            = pl%get_asReal('c_4',defaultVal=0.0_pReal)
+      prm%c_1            = pl%get_asReal('c_1',defaultVal=0.0_pREAL)
+      prm%c_2            = pl%get_asReal('c_2',defaultVal=1.0_pREAL)
+      prm%c_3            = pl%get_asReal('c_3',defaultVal=0.0_pREAL)
+      prm%c_4            = pl%get_asReal('c_4',defaultVal=0.0_pREAL)
       prm%dot_gamma_0_tw = pl%get_asReal('dot_gamma_0_tw')
       prm%n_tw           = pl%get_asReal('n_tw')
       prm%f_sat_sl_tw    = pl%get_asReal('f_sat_sl-tw')
@@ -206,8 +206,8 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       xi_0_tw       = math_expand(xi_0_tw,N_tw)
 
       ! sanity checks
-      if (prm%dot_gamma_0_tw <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_gamma_0_tw'
-      if (prm%n_tw           <= 0.0_pReal)  extmsg = trim(extmsg)//' n_tw'
+      if (prm%dot_gamma_0_tw <= 0.0_pREAL)  extmsg = trim(extmsg)//' dot_gamma_0_tw'
+      if (prm%n_tw           <= 0.0_pREAL)  extmsg = trim(extmsg)//' n_tw'
 
     else twinActive
       xi_0_tw = emptyRealArray
@@ -226,7 +226,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     else slipAndTwinActive
       allocate(prm%h_sl_tw(prm%sum_N_sl,prm%sum_N_tw))                                              ! at least one dimension is 0
       allocate(prm%h_tw_sl(prm%sum_N_tw,prm%sum_N_sl))                                              ! at least one dimension is 0
-      prm%h_0_tw_sl = 0.0_pReal
+      prm%h_0_tw_sl = 0.0_pREAL
     end if slipAndTwinActive
 
 !--------------------------------------------------------------------------------------------------
@@ -246,28 +246,28 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     idx_dot%xi_sl = [startIndex,endIndex]
     stt%xi_sl => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi_sl =  spread(xi_0_sl, 2, Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
-    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pREAL)
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     idx_dot%xi_tw = [startIndex,endIndex]
     stt%xi_tw => plasticState(ph)%state(startIndex:endIndex,:)
     stt%xi_tw =  spread(xi_0_tw, 2, Nmembers)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_xi',defaultVal=1.0_pREAL)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%gamma_sl = [startIndex,endIndex]
     stt%gamma_sl => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
-    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pREAL)
+    if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_gamma'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     idx_dot%gamma_tw = [startIndex,endIndex]
     stt%gamma_tw => plasticState(ph)%state(startIndex:endIndex,:)
-    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pReal)
+    plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_gamma',defaultVal=1.0e-6_pREAL)
 
     end associate
 
@@ -287,12 +287,12 @@ end function plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
-  real(pReal), dimension(3,3),     intent(out) :: &
+  real(pREAL), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
-  real(pReal), dimension(3,3,3,3), intent(out) :: &
+  real(pREAL), dimension(3,3,3,3), intent(out) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to the Mandel stress
 
-  real(pReal), dimension(3,3), intent(in) :: &
+  real(pREAL), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,               intent(in) :: &
     ph, &
@@ -300,14 +300,14 @@ pure module subroutine phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,ph,en)
 
   integer :: &
     i,k,l,m,n
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_sl_pos,dot_gamma_sl_neg, &
     ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg
-  real(pReal), dimension(param(ph)%sum_N_tw) :: &
+  real(pREAL), dimension(param(ph)%sum_N_tw) :: &
     dot_gamma_tw,ddot_gamma_dtau_tw
 
-  Lp = 0.0_pReal
-  dLp_dMp = 0.0_pReal
+  Lp = 0.0_pREAL
+  dLp_dMp = 0.0_pREAL
 
   associate(prm => param(ph))
 
@@ -338,18 +338,18 @@ end subroutine phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
 
-  real(pReal), dimension(3,3),  intent(in) :: &
+  real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
-  real(pReal), dimension(plasticState(ph)%sizeDotState) :: &
+  real(pREAL), dimension(plasticState(ph)%sizeDotState) :: &
     dotState
 
-  real(pReal) :: &
+  real(pREAL) :: &
     xi_sl_sat_offset,&
     sumF
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_sl_pos,dot_gamma_sl_neg, &
     left_SlipSlip
 
@@ -365,10 +365,10 @@ module function phenopowerlaw_dotState(Mp,ph,en) result(dotState)
     sumF = sum(stt%gamma_tw(:,en)/prm%gamma_char)
 
     xi_sl_sat_offset = prm%f_sat_sl_tw*sqrt(sumF)
-    left_SlipSlip = sign(abs(1.0_pReal-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))**prm%a_sl, &
-                             1.0_pReal-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))
+    left_SlipSlip = sign(abs(1.0_pREAL-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))**prm%a_sl, &
+                             1.0_pREAL-stt%xi_sl(:,en) / (prm%xi_inf_sl+xi_sl_sat_offset))
 
-    dot_xi_sl = prm%h_0_sl_sl * (1.0_pReal + prm%c_1 * sumF**prm%c_2) * (1.0_pReal + prm%h_int) &
+    dot_xi_sl = prm%h_0_sl_sl * (1.0_pREAL + prm%c_1 * sumF**prm%c_2) * (1.0_pREAL + prm%h_int) &
                 * left_SlipSlip * matmul(prm%h_sl_sl,dot_gamma_sl) &
               + matmul(prm%h_sl_tw,dot_gamma_tw)
 
@@ -431,20 +431,20 @@ end subroutine plastic_phenopowerlaw_result
 pure subroutine kinetics_sl(Mp,ph,en, &
                             dot_gamma_sl_pos,dot_gamma_sl_neg,ddot_gamma_dtau_sl_pos,ddot_gamma_dtau_sl_neg)
 
-  real(pReal), dimension(3,3),  intent(in) :: &
+  real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
 
-  real(pReal),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL),                  intent(out), dimension(param(ph)%sum_N_sl) :: &
     dot_gamma_sl_pos, &
     dot_gamma_sl_neg
-  real(pReal),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL),                  intent(out), optional, dimension(param(ph)%sum_N_sl) :: &
     ddot_gamma_dtau_sl_pos, &
     ddot_gamma_dtau_sl_neg
 
-  real(pReal), dimension(param(ph)%sum_N_sl) :: &
+  real(pREAL), dimension(param(ph)%sum_N_sl) :: &
     tau_sl_pos, &
     tau_sl_neg
   integer :: i
@@ -454,35 +454,35 @@ pure subroutine kinetics_sl(Mp,ph,en, &
     do i = 1, prm%sum_N_sl
       tau_sl_pos(i) =       math_tensordot(Mp,prm%P_nS_pos(1:3,1:3,i))
       tau_sl_neg(i) = merge(math_tensordot(Mp,prm%P_nS_neg(1:3,1:3,i)), &
-                            0.0_pReal, prm%nonSchmidActive)
+                            0.0_pREAL, prm%nonSchmidActive)
     end do
 
     where(dNeq0(tau_sl_pos))
-      dot_gamma_sl_pos = prm%dot_gamma_0_sl * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &     ! 1/2 if non-Schmid active
+      dot_gamma_sl_pos = prm%dot_gamma_0_sl * merge(0.5_pREAL,1.0_pREAL, prm%nonSchmidActive) &     ! 1/2 if non-Schmid active
                        * sign(abs(tau_sl_pos/stt%xi_sl(:,en))**prm%n_sl,  tau_sl_pos)
     else where
-      dot_gamma_sl_pos = 0.0_pReal
+      dot_gamma_sl_pos = 0.0_pREAL
     end where
 
     where(dNeq0(tau_sl_neg))
-      dot_gamma_sl_neg = prm%dot_gamma_0_sl * 0.5_pReal &                                           ! only used if non-Schmid active, always 1/2
+      dot_gamma_sl_neg = prm%dot_gamma_0_sl * 0.5_pREAL &                                           ! only used if non-Schmid active, always 1/2
                        * sign(abs(tau_sl_neg/stt%xi_sl(:,en))**prm%n_sl,  tau_sl_neg)
     else where
-      dot_gamma_sl_neg = 0.0_pReal
+      dot_gamma_sl_neg = 0.0_pREAL
     end where
 
     if (present(ddot_gamma_dtau_sl_pos)) then
       where(dNeq0(dot_gamma_sl_pos))
         ddot_gamma_dtau_sl_pos = dot_gamma_sl_pos*prm%n_sl/tau_sl_pos
       else where
-        ddot_gamma_dtau_sl_pos = 0.0_pReal
+        ddot_gamma_dtau_sl_pos = 0.0_pREAL
       end where
     end if
     if (present(ddot_gamma_dtau_sl_neg)) then
       where(dNeq0(dot_gamma_sl_neg))
         ddot_gamma_dtau_sl_neg = dot_gamma_sl_neg*prm%n_sl/tau_sl_neg
       else where
-        ddot_gamma_dtau_sl_neg = 0.0_pReal
+        ddot_gamma_dtau_sl_neg = 0.0_pREAL
       end where
     end if
 
@@ -501,18 +501,18 @@ end subroutine kinetics_sl
 pure subroutine kinetics_tw(Mp,ph,en,&
                             dot_gamma_tw,ddot_gamma_dtau_tw)
 
-  real(pReal), dimension(3,3),  intent(in) :: &
+  real(pREAL), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     ph, &
     en
 
-  real(pReal), dimension(param(ph)%sum_N_tw), intent(out) :: &
+  real(pREAL), dimension(param(ph)%sum_N_tw), intent(out) :: &
     dot_gamma_tw
-  real(pReal), dimension(param(ph)%sum_N_tw), intent(out), optional :: &
+  real(pREAL), dimension(param(ph)%sum_N_tw), intent(out), optional :: &
     ddot_gamma_dtau_tw
 
-  real(pReal), dimension(param(ph)%sum_N_tw) :: &
+  real(pREAL), dimension(param(ph)%sum_N_tw) :: &
     tau_tw
   integer :: i
 
@@ -521,18 +521,18 @@ pure subroutine kinetics_tw(Mp,ph,en,&
 
     tau_tw = [(math_tensordot(Mp,prm%P_tw(1:3,1:3,i)),i=1,prm%sum_N_tw)]
 
-    where(tau_tw > 0.0_pReal)
-      dot_gamma_tw = (1.0_pReal-sum(stt%gamma_tw(:,en)/prm%gamma_char)) &                           ! only twin in untwinned volume fraction
+    where(tau_tw > 0.0_pREAL)
+      dot_gamma_tw = (1.0_pREAL-sum(stt%gamma_tw(:,en)/prm%gamma_char)) &                           ! only twin in untwinned volume fraction
                    * prm%dot_gamma_0_tw*(abs(tau_tw)/stt%xi_tw(:,en))**prm%n_tw
     else where
-      dot_gamma_tw = 0.0_pReal
+      dot_gamma_tw = 0.0_pREAL
     end where
 
     if (present(ddot_gamma_dtau_tw)) then
       where(dNeq0(dot_gamma_tw))
         ddot_gamma_dtau_tw = dot_gamma_tw*prm%n_tw/tau_tw
       else where
-        ddot_gamma_dtau_tw = 0.0_pReal
+        ddot_gamma_dtau_tw = 0.0_pREAL
       end where
     end if
 

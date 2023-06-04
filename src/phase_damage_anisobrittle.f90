@@ -7,13 +7,13 @@
 submodule (phase:damage) anisobrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal) :: &
+    real(pREAL) :: &
       dot_o_0, &                                                                                    !< opening rate of cleavage planes
       p                                                                                             !< damage rate sensitivity
-    real(pReal), dimension(:), allocatable :: &
+    real(pREAL), dimension(:), allocatable :: &
       s_crit, &                                                                                     !< critical displacement
       g_crit                                                                                        !< critical load
-    real(pReal), dimension(:,:,:,:), allocatable :: &
+    real(pREAL), dimension(:,:,:,:), allocatable :: &
       cleavage_systems
     integer :: &
       sum_N_cl                                                                                      !< total number of cleavage planes
@@ -90,15 +90,15 @@ module function anisobrittle_init() result(mySources)
 #endif
 
         ! sanity checks
-        if (prm%p          <= 0.0_pReal)  extmsg = trim(extmsg)//' p'
-        if (prm%dot_o_0    <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o_0'
-        if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
-        if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
+        if (prm%p          <= 0.0_pREAL)  extmsg = trim(extmsg)//' p'
+        if (prm%dot_o_0    <= 0.0_pREAL)  extmsg = trim(extmsg)//' dot_o_0'
+        if (any(prm%g_crit <  0.0_pREAL)) extmsg = trim(extmsg)//' g_crit'
+        if (any(prm%s_crit <  0.0_pREAL)) extmsg = trim(extmsg)//' s_crit'
 
         Nmembers = count(material_ID_phase==ph)
         call phase_allocateState(damageState(ph),Nmembers,1,1,0)
-        damageState(ph)%atol = src%get_asReal('atol_phi',defaultVal=1.0e-9_pReal)
-        if (any(damageState(ph)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' atol_phi'
+        damageState(ph)%atol = src%get_asReal('atol_phi',defaultVal=1.0e-9_pREAL)
+        if (any(damageState(ph)%atol < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_phi'
 
       end associate
 
@@ -117,17 +117,17 @@ module subroutine anisobrittle_dotState(M_i, ph,en)
 
   integer, intent(in) :: &
     ph,en
-  real(pReal),  intent(in), dimension(3,3) :: &
+  real(pREAL),  intent(in), dimension(3,3) :: &
     M_i
 
   integer :: &
     a, i
-  real(pReal) :: &
+  real(pREAL) :: &
     traction, traction_crit
 
 
   associate(prm => param(ph))
-    damageState(ph)%dotState(1,en) = 0.0_pReal
+    damageState(ph)%dotState(1,en) = 0.0_pREAL
     do a = 1, prm%sum_N_cl
       traction_crit = damage_phi(ph,en)**2 * prm%g_crit(a)
       do i = 1,3
@@ -135,7 +135,7 @@ module subroutine anisobrittle_dotState(M_i, ph,en)
 
         damageState(ph)%dotState(1,en) = damageState(ph)%dotState(1,en) &
           + prm%dot_o_0 / prm%s_crit(a) &
-            * (max(0.0_pReal, abs(traction) - traction_crit)/traction_crit)**prm%p
+            * (max(0.0_pREAL, abs(traction) - traction_crit)/traction_crit)**prm%p
       end do
     end do
   end associate
@@ -173,22 +173,22 @@ module subroutine damage_anisobrittle_LiAndItsTangent(L_i, dL_i_dM_i, M_i, ph,en
 
   integer, intent(in) :: &
     ph,en
-  real(pReal),   intent(in),  dimension(3,3) :: &
+  real(pREAL),   intent(in),  dimension(3,3) :: &
     M_i
-  real(pReal),   intent(out), dimension(3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3) :: &
     L_i                                                                                             !< damage velocity gradient
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dL_i_dM_i                                                                                       !< derivative of L_i with respect to M_i
 
   integer :: &
     a, k, l, m, n, i
-  real(pReal) :: &
+  real(pREAL) :: &
     traction, traction_crit, &
     udot, dudot_dt
 
 
-  L_i = 0.0_pReal
-  dL_i_dM_i = 0.0_pReal
+  L_i = 0.0_pREAL
+  dL_i_dM_i = 0.0_pREAL
   associate(prm => param(ph))
     do a = 1,prm%sum_N_cl
       traction_crit = damage_phi(ph,en)**2 * prm%g_crit(a)
@@ -196,9 +196,9 @@ module subroutine damage_anisobrittle_LiAndItsTangent(L_i, dL_i_dM_i, M_i, ph,en
       do i = 1, 3
         traction = math_tensordot(M_i,prm%cleavage_systems(1:3,1:3,i,a))
         if (abs(traction) > traction_crit + tol_math_check) then
-          udot = sign(1.0_pReal,traction)* prm%dot_o_0 * ((abs(traction) - traction_crit)/traction_crit)**prm%p
+          udot = sign(1.0_pREAL,traction)* prm%dot_o_0 * ((abs(traction) - traction_crit)/traction_crit)**prm%p
           L_i = L_i + udot*prm%cleavage_systems(1:3,1:3,i,a)
-          dudot_dt = sign(1.0_pReal,traction)*udot*prm%p / (abs(traction) - traction_crit)
+          dudot_dt = sign(1.0_pREAL,traction)*udot*prm%p / (abs(traction) - traction_crit)
           forall (k=1:3,l=1:3,m=1:3,n=1:3) &
             dL_i_dM_i(k,l,m,n) = dL_i_dM_i(k,l,m,n) &
                                + dudot_dt*prm%cleavage_systems(k,l,i,a) * prm%cleavage_systems(m,n,i,a)

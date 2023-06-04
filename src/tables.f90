@@ -13,7 +13,7 @@ module tables
   private
 
   type, public :: tTable
-    real(pReal), dimension(:), allocatable :: x,y
+    real(pREAL), dimension(:), allocatable :: x,y
     contains
     procedure, public :: at => eval
   end type tTable
@@ -47,7 +47,7 @@ end subroutine tables_init
 !--------------------------------------------------------------------------------------------------
 function table_from_values(x,y) result(t)
 
-  real(pReal), dimension(:), intent(in) :: x,y
+  real(pREAL), dimension(:), intent(in) :: x,y
   type(tTable) :: t
 
 
@@ -55,7 +55,7 @@ function table_from_values(x,y) result(t)
   if (size(y) < 1)         call IO_error(603,ext_msg='missing tabulated y data')
   if (size(x) /= size(y))  call IO_error(603,ext_msg='shape mismatch in tabulated data')
   if (size(x) /= 1) then
-    if (any(x(2:size(x))-x(1:size(x)-1) <= 0.0_pReal)) &
+    if (any(x(2:size(x))-x(1:size(x)-1) <= 0.0_pREAL)) &
                            call IO_error(603,ext_msg='ordinate data does not increase monotonically')
   end if
 
@@ -86,8 +86,8 @@ end function table_from_dict
 pure function eval(self,x) result(y)
 
   class(tTable), intent(in) :: self
-  real(pReal), intent(in) :: x
-  real(pReal) :: y
+  real(pREAL), intent(in) :: x
+  real(pREAL) :: y
 
   integer :: i
 
@@ -109,25 +109,25 @@ end function eval
 subroutine selfTest()
 
   type(tTable) :: t
-  real(pReal), dimension(*), parameter :: &
-    x = real([ 1., 2., 3., 4.],pReal), &
-    y = real([ 1., 3., 2.,-2.],pReal), &
-    x_eval = real([ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],pReal), &
-    y_true = real([-1.0, 0.0, 1.0, 2.0, 3.0, 2.5 ,2.0, 0.0,-2.0,-4.0,-6.0],pReal)
+  real(pREAL), dimension(*), parameter :: &
+    x = real([ 1., 2., 3., 4.],pREAL), &
+    y = real([ 1., 3., 2.,-2.],pREAL), &
+    x_eval = real([ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],pREAL), &
+    y_true = real([-1.0, 0.0, 1.0, 2.0, 3.0, 2.5 ,2.0, 0.0,-2.0,-4.0,-6.0],pREAL)
   integer :: i
   type(tDict), pointer :: dict
   type(tList), pointer :: l_x, l_y
-  real(pReal) :: r
+  real(pREAL) :: r
 
 
   call random_number(r)
-  t = table(real([0.],pReal),real([r],pReal))
-  if (dNeq(r,t%at(r),1.0e-9_pReal)) error stop 'table eval/mono'
+  t = table(real([0.],pREAL),real([r],pREAL))
+  if (dNeq(r,t%at(r),1.0e-9_pREAL)) error stop 'table eval/mono'
 
-  r = r-0.5_pReal
+  r = r-0.5_pREAL
   t = table(x+r,y)
   do i = 1, size(x_eval)
-    if (dNeq(y_true(i),t%at(x_eval(i)+r),1.0e-9_pReal)) error stop 'table eval/values'
+    if (dNeq(y_true(i),t%at(x_eval(i)+r),1.0e-9_pREAL)) error stop 'table eval/values'
   end do
 
   l_x => YAML_parse_str_asList('[1, 2, 3, 4]'//IO_EOL)

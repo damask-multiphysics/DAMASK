@@ -274,7 +274,7 @@ end function IO_intValue
 !--------------------------------------------------------------------------------------------------
 !> @brief Read real value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_realValue(str,chunkPos,myChunk)
+real(pREAL) function IO_realValue(str,chunkPos,myChunk)
 
   character(len=*),        intent(in) :: str                                                        !< raw input with known start and end of each chunk
   integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
@@ -373,7 +373,7 @@ end function IO_strAsInt
 !--------------------------------------------------------------------------------------------------
 !> @brief Return real value from given string.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_strAsReal(str)
+real(pREAL) function IO_strAsReal(str)
 
   character(len=*), intent(in) :: str                                                               !< string for conversion to real value
 
@@ -385,7 +385,7 @@ real(pReal) function IO_strAsReal(str)
     read(str,*,iostat=readStatus) IO_strAsReal
     if (readStatus /= 0) call IO_error(112,str)
   else valid
-    IO_strAsReal = 0.0_pReal
+    IO_strAsReal = 0.0_pREAL
     call IO_error(112,str)
   end if valid
 
@@ -733,12 +733,12 @@ subroutine selfTest()
   character(len=:),      allocatable :: str,out
 
 
-  if (dNeq(1.0_pReal, IO_strAsReal('1.0')))          error stop 'IO_strAsReal'
-  if (dNeq(1.0_pReal, IO_strAsReal('1e0')))          error stop 'IO_strAsReal'
-  if (dNeq(0.1_pReal, IO_strAsReal('1e-1')))         error stop 'IO_strAsReal'
-  if (dNeq(0.1_pReal, IO_strAsReal('1.0e-1')))       error stop 'IO_strAsReal'
-  if (dNeq(0.1_pReal, IO_strAsReal('1.00e-1')))      error stop 'IO_strAsReal'
-  if (dNeq(10._pReal, IO_strAsReal(' 1.0e+1 ')))     error stop 'IO_strAsReal'
+  if (dNeq(1.0_pREAL, IO_strAsReal('1.0')))          error stop 'IO_strAsReal'
+  if (dNeq(1.0_pREAL, IO_strAsReal('1e0')))          error stop 'IO_strAsReal'
+  if (dNeq(0.1_pREAL, IO_strAsReal('1e-1')))         error stop 'IO_strAsReal'
+  if (dNeq(0.1_pREAL, IO_strAsReal('1.0e-1')))       error stop 'IO_strAsReal'
+  if (dNeq(0.1_pREAL, IO_strAsReal('1.00e-1')))      error stop 'IO_strAsReal'
+  if (dNeq(10._pREAL, IO_strAsReal(' 1.0e+1 ')))     error stop 'IO_strAsReal'
 
   if (3112019  /= IO_strAsInt( '3112019'))           error stop 'IO_strAsInt'
   if (3112019  /= IO_strAsInt(' 3112019'))           error stop 'IO_strAsInt'
@@ -760,7 +760,7 @@ subroutine selfTest()
 
   str = ' 1.0 xxx'
   chunkPos = IO_strPos(str)
-  if (dNeq(1.0_pReal,IO_realValue(str,chunkPos,1)))  error stop 'IO_realValue'
+  if (dNeq(1.0_pREAL,IO_realValue(str,chunkPos,1)))  error stop 'IO_realValue'
 
   str = 'M 3112019 F'
   chunkPos = IO_strPos(str)

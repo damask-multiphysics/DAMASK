@@ -135,8 +135,8 @@ subroutine parallelization_init()
   call MPI_Type_size(MPI_DOUBLE,typeSize,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine size of MPI_DOUBLE'
-  if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pReal),MPI_INTEGER_KIND)) &
-    error stop 'Mismatch between MPI_DOUBLE and DAMASK pReal'
+  if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pREAL),MPI_INTEGER_KIND)) &
+    error stop 'Mismatch between MPI_DOUBLE and DAMASK pREAL'
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if (got_env /= 0) then

@@ -75,13 +75,13 @@ end function thermalexpansion_init
 module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   integer, intent(in) :: ph, me
-  real(pReal),   intent(out), dimension(3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3) :: &
     Li                                                                                              !< thermal velocity gradient
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+  real(pREAL),   intent(out), dimension(3,3,3,3) :: &
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
 
-  real(pReal) :: T, dot_T
-  real(pReal), dimension(3,3) :: Alpha
+  real(pREAL) :: T, dot_T
+  real(pREAL), dimension(3,3) :: Alpha
 
 
   T     = thermal_T(ph,me)
@@ -89,14 +89,14 @@ module subroutine thermalexpansion_LiAndItsTangent(Li, dLi_dTstar, ph,me)
 
   associate(prm => param(kinematics_thermal_expansion_instance(ph)))
 
-    Alpha = 0.0_pReal
+    Alpha = 0.0_pREAL
     Alpha(1,1) = prm%Alpha_11%at(T)
     if (any(phase_lattice(ph) == ['hP','tI'])) Alpha(3,3) = prm%Alpha_33%at(T)
     Alpha = lattice_symmetrize_33(Alpha,phase_lattice(ph))
     Li = dot_T * Alpha
 
   end associate
-  dLi_dTstar = 0.0_pReal
+  dLi_dTstar = 0.0_pREAL
 
 end subroutine thermalexpansion_LiAndItsTangent
 

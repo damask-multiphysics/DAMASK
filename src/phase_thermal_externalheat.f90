@@ -92,7 +92,7 @@ module subroutine externalheat_dotState(ph, en)
 
   so = source_thermal_externalheat_offset(ph)
 
-  thermalState(ph)%p(so)%dotState(1,en) = 1.0_pReal                                                 ! state is current time
+  thermalState(ph)%p(so)%dotState(1,en) = 1.0_pREAL                                                 ! state is current time
 
 end subroutine externalheat_dotState
 
@@ -105,7 +105,7 @@ module function externalheat_f_T(ph,en) result(f_T)
   integer, intent(in) :: &
     ph, &
     en
-  real(pReal) :: &
+  real(pREAL) :: &
     f_T
 
   integer :: &
