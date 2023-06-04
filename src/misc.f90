@@ -11,7 +11,7 @@ module misc
 
   interface misc_optional
     module procedure misc_optional_bool
-    module procedure misc_optional_integer
+    module procedure misc_optional_int
     module procedure misc_optional_real
     module procedure misc_optional_str
   end interface misc_optional
@@ -57,7 +57,7 @@ end function misc_optional_bool
 !--------------------------------------------------------------------------------------------------
 !> @brief Return integer value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_integer(given,default) result(var)
+pure function misc_optional_int(given,default) result(var)
 
   integer, intent(in), optional :: given
   integer, intent(in)           :: default
@@ -70,7 +70,7 @@ pure function misc_optional_integer(given,default) result(var)
     var = default
   end if
 
-end function misc_optional_integer
+end function misc_optional_int
 
 
 !--------------------------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ contains
 
   function test_str(str_in) result(str_out)
 
-    character(len=:), allocatable           :: str_out
+    character(len=:), allocatable          :: str_out
     character(len=*), intent(in), optional :: str_in
 
 
@@ -151,7 +151,7 @@ contains
     integer, intent(in), optional :: int_in
 
 
-    int_out = misc_optional_integer(int_in,42)
+    int_out = misc_optional_int(int_in,42)
 
   end function test_int
 
