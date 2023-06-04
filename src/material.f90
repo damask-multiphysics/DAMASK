@@ -138,7 +138,7 @@ subroutine parse()
   item => materials%first
   do ma = 1, materials%length
     material => item%node%asDict()
-    ho_of(ma) = homogenizations%index(material%get_asString('homogenization'))
+    ho_of(ma) = homogenizations%index(material%get_asStr('homogenization'))
     constituents => material%get_list('constituents')
 
     homogenization => homogenizations%get_dict(ho_of(ma))
@@ -150,7 +150,7 @@ subroutine parse()
     do co = 1, constituents%length
       constituent => constituents%get_dict(co)
        v_of(ma,co) = constituent%get_asReal('v')
-      ph_of(ma,co) = phases%index(constituent%get_asString('phase'))
+      ph_of(ma,co) = phases%index(constituent%get_asStr('phase'))
 
       call material_O_0(ma)%data(co)%fromQuaternion(constituent%get_as1dReal('O',requiredSize=4))
       material_V_e_0(ma)%data(1:3,1:3,co) = constituent%get_as2dReal('V_e',defaultVal=math_I3,requiredShape=[3,3])
@@ -212,8 +212,8 @@ end subroutine parse
 function getKeys(dict)
 
   type(tDict), intent(in) :: dict
-  character(len=:),          dimension(:), allocatable :: getKeys
-  character(len=pStringLen), dimension(:), allocatable :: temp
+  character(len=:),       dimension(:), allocatable :: getKeys
+  character(len=pSTRLEN), dimension(:), allocatable :: temp
 
   integer :: i,l
 

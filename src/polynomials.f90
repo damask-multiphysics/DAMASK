@@ -127,8 +127,8 @@ subroutine selfTest()
   integer :: i
   real(pReal) :: x_ref, x, y
   type(tDict), pointer :: dict
-  character(len=pStringLen), dimension(size(coef)) :: coef_s
-  character(len=pStringLen) :: x_ref_s, x_s, YAML_s
+  character(len=pSTRLEN), dimension(size(coef)) :: coef_s
+  character(len=pSTRLEN) :: x_ref_s, x_s, YAML_s
 
 
   call random_number(coef)

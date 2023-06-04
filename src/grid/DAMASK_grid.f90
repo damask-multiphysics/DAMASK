@@ -88,7 +88,7 @@ program DAMASK_grid
     maxCutBack, &                                                                                   !< max number of cut backs
     stagItMax                                                                                       !< max number of field level staggered iterations
   integer(MPI_INTEGER_KIND) :: err_MPI
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN) :: &
     incInfo
 
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
@@ -158,7 +158,7 @@ program DAMASK_grid
 ! assign mechanics solver depending on selected type
 
   nActiveFields = 1
-  select case (solver%get_asString('mechanical'))
+  select case (solver%get_asStr('mechanical'))
     case ('spectral_basic')
       mechanical_init         => grid_mechanical_spectral_basic_init
       mechanical_forward      => grid_mechanical_spectral_basic_forward
@@ -181,25 +181,25 @@ program DAMASK_grid
       mechanical_restartWrite => grid_mechanical_FEM_restartWrite
 
     case default
-      call IO_error(error_ID = 891, ext_msg = trim(solver%get_asString('mechanical')))
+      call IO_error(error_ID = 891, ext_msg = trim(solver%get_asStr('mechanical')))
 
   end select
 
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
-  if (solver%get_asString('thermal',defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
-  if (solver%get_asString('damage', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('thermal',defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
+  if (solver%get_asStr('damage', defaultVal = 'n/a') == 'spectral') nActiveFields = nActiveFields + 1
 
   allocate(solres(nActiveFields))
   allocate(    ID(nActiveFields))
 
   field = 1
   ID(field) = FIELD_MECH_ID                                                                         ! mechanical active by default
-  thermalActive: if (solver%get_asString('thermal',defaultVal = 'n/a') == 'spectral') then
+  thermalActive: if (solver%get_asStr('thermal',defaultVal = 'n/a') == 'spectral') then
     field = field + 1
     ID(field) = FIELD_THERMAL_ID
   end if thermalActive
-  damageActive: if (solver%get_asString('damage',defaultVal = 'n/a') == 'spectral') then
+  damageActive: if (solver%get_asStr('damage',defaultVal = 'n/a') == 'spectral') then
     field = field + 1
     ID(field) = FIELD_DAMAGE_ID
   end if damageActive
@@ -244,7 +244,7 @@ program DAMASK_grid
     loadCases(l)%r = step_discretization%get_asReal('r',defaultVal= 1.0_pReal)
 
     loadCases(l)%f_restart = load_step%get_asInt('f_restart', defaultVal=huge(0))
-    if (load_step%get_asString('f_out',defaultVal='n/a') == 'none') then
+    if (load_step%get_asStr('f_out',defaultVal='n/a') == 'none') then
       loadCases(l)%f_out = huge(0)
     else
       loadCases(l)%f_out = load_step%get_asInt('f_out', defaultVal=1)
@@ -525,7 +525,7 @@ subroutine getMaskedTensor(values,mask,tensor)
   do i = 1,3
     row => tensor%get_list(i)
     do j = 1,3
-      mask(i,j) = row%get_asString(j) == 'x'
+      mask(i,j) = row%get_asStr(j) == 'x'
       if (.not. mask(i,j)) values(i,j) = row%get_asReal(j)
     end do
   end do

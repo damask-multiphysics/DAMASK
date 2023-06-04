@@ -17,7 +17,7 @@ submodule (phase:damage) anisobrittle
       cleavage_systems
     integer :: &
       sum_N_cl                                                                                      !< total number of cleavage planes
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
@@ -84,9 +84,9 @@ module function anisobrittle_init() result(mySources)
         prm%g_crit = math_expand(prm%g_crit,N_cl)
 
 #if defined (__GFORTRAN__)
-        prm%output = output_as1dString(src)
+        prm%output = output_as1dStr(src)
 #else
-        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
         ! sanity checks

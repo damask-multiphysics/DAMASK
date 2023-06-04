@@ -84,7 +84,7 @@ subroutine grid_damage_spectral_init()
   type(tDict), pointer :: &
     num_grid, &
     num_generic
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN) :: &
     snes_type
 
   print'(/,1x,a)', '<<<+-  grid_spectral_damage init  -+>>>'
@@ -114,7 +114,7 @@ subroutine grid_damage_spectral_init()
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
                                &-damage_snes_ksp_ew -damage_ksp_type fgmres',err_PETSc)
  CHKERRQ(err_PETSc)
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

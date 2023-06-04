@@ -67,8 +67,8 @@ program DAMASK_mesh
     component
   type(tDict), pointer :: &
     num_mesh
-  character(len=pStringLen), dimension(:), allocatable :: fileContent
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN), dimension(:), allocatable :: fileContent
+  character(len=pSTRLEN) :: &
     incInfo, &
     loadcase_string
   integer :: &
@@ -109,9 +109,9 @@ program DAMASK_mesh
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
 
-    chunkPos = IO_stringPos(line)
+    chunkPos = IO_strPos(line)
     do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
-      select case (IO_stringValue(line,chunkPos,i))
+      select case (IO_strValue(line,chunkPos,i))
         case('$Loadcase')
           N_def = N_def + 1
       end select
@@ -151,9 +151,9 @@ program DAMASK_mesh
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
 
-    chunkPos = IO_stringPos(line)
+    chunkPos = IO_strPos(line)
     do i = 1, chunkPos(1)
-      select case (IO_stringValue(line,chunkPos,i))
+      select case (IO_strValue(line,chunkPos,i))
 !--------------------------------------------------------------------------------------------------
 ! loadcase information
         case('$Loadcase')
@@ -177,7 +177,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! boundary condition information
         case('X','Y','Z')
-          select case(IO_stringValue(line,chunkPos,i))
+          select case(IO_strValue(line,chunkPos,i))
             case('X')
               ID = COMPONENT_MECH_X_ID
             case('Y')

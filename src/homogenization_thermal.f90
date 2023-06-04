@@ -20,7 +20,7 @@ submodule(homogenization) thermal
   type(tDataContainer), dimension(:), allocatable :: current
 
   type :: tParameters
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
@@ -58,11 +58,11 @@ module subroutine thermal_init()
       if (configHomogenization%contains('thermal')) then
         configHomogenizationThermal => configHomogenization%get_dict('thermal')
 #if defined (__GFORTRAN__)
-        prm%output = output_as1dString(configHomogenizationThermal)
+        prm%output = output_as1dStr(configHomogenizationThermal)
 #else
-        prm%output = configHomogenizationThermal%get_as1dString('output',defaultVal=emptyStringArray)
+        prm%output = configHomogenizationThermal%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
-        select case (configHomogenizationThermal%get_asString('type'))
+        select case (configHomogenizationThermal%get_asStr('type'))
 
           case ('pass')
             call pass_init()
@@ -72,7 +72,7 @@ module subroutine thermal_init()
 
         end select
       else
-        prm%output = emptyStringArray
+        prm%output = emptyStrArray
       end if
 
     end associate

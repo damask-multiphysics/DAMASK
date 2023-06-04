@@ -19,7 +19,7 @@ submodule(homogenization:mechanical) RGC
     real(pReal), dimension(:), allocatable :: &
       D_alpha, &
       a_g
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
@@ -147,9 +147,9 @@ module subroutine RGC_init()
               dst => dependentState(ho))
 
 #if defined (__GFORTRAN__)
-    prm%output = output_as1dString(homogMech)
+    prm%output = output_as1dStr(homogMech)
 #else
-    prm%output = homogMech%get_as1dString('output',defaultVal=emptyStringArray)
+    prm%output = homogMech%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
     prm%N_constituents = homogMech%get_as1dInt('cluster_size',requiredSize=3)

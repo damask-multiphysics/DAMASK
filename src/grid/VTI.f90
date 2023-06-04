@@ -211,16 +211,16 @@ subroutine cellsSizeOrigin(c,s,o,header)
     call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
   temp = getXMLValue(header,'WholeExtent')
-  if (any([(IO_intValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
+  if (any([(IO_intValue(temp,IO_strPos(temp),i),i=1,5,2)] /= 0)) &
     call IO_error(error_ID = 844, ext_msg = 'coordinate start')
-  c = [(IO_intValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+  c = [(IO_intValue(temp,IO_strPos(temp),i),i=2,6,2)]
 
   temp = getXMLValue(header,'Spacing')
-  delta = [(IO_realValue(temp,IO_stringPos(temp),i),i=1,3)]
+  delta = [(IO_realValue(temp,IO_strPos(temp),i),i=1,3)]
   s = delta * real(c,pReal)
 
   temp = getXMLValue(header,'Origin')
-  o = [(IO_realValue(temp,IO_stringPos(temp),i),i=1,3)]
+  o = [(IO_realValue(temp,IO_strPos(temp),i),i=1,3)]
 
 end subroutine cellsSizeOrigin
 

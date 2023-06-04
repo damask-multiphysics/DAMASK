@@ -18,8 +18,8 @@ module YAML_types
     integer :: &
       length = 0
     contains
-    procedure(asFormattedString), deferred :: &
-      asFormattedString
+    procedure(asFormattedStr), deferred :: &
+      asFormattedStr
     procedure :: &
       asScalar => tNode_asScalar, &
       asList   => tNode_asList, &
@@ -31,11 +31,11 @@ module YAML_types
       value
     contains
     procedure :: &
-      asFormattedString => tScalar_asFormattedString, &
-      asReal   => tScalar_asReal, &
-      asInt    => tScalar_asInt, &
-      asBool   => tScalar_asBool, &
-      asString => tScalar_asString
+      asFormattedStr => tScalar_asFormattedStr, &
+      asReal => tScalar_asReal, &
+      asInt  => tScalar_asInt, &
+      asBool => tScalar_asBool, &
+      asStr  => tScalar_asStr
   end type tScalar
 
   type, extends(tNode), public :: tList
@@ -44,13 +44,13 @@ module YAML_types
       last => NULL()
     contains
     procedure :: &
-      asFormattedString => tList_asFormattedString, &
+      asFormattedStr => tList_asFormattedStr, &
       append            => tList_append, &
       as1dReal          => tList_as1dReal, &
       as2dReal          => tList_as2dReal, &
       as1dInt           => tList_as1dInt, &
       as1dBool          => tList_as1dBool, &
-      as1dString        => tList_as1dString, &
+      as1dStr           => tList_as1dStr, &
       contains          => tList_contains, &
       tList_get, &
       tList_get_scalar, &
@@ -62,32 +62,32 @@ module YAML_types
       tList_get_as1dInt, &
       tList_get_asBool, &
       tList_get_as1dBool, &
-      tList_get_asString, &
-      tList_get_as1dString
-    generic :: get            => tList_get
-    generic :: get_scalar     => tList_get_scalar
-    generic :: get_list       => tList_get_list
-    generic :: get_dict       => tList_get_dict
-    generic :: get_asReal     => tList_get_asReal
-    generic :: get_as1dReal   => tList_get_as1dReal
-    generic :: get_asInt      => tList_get_asInt
-    generic :: get_as1dInt    => tList_get_as1dInt
-    generic :: get_asBool     => tList_get_asBool
-    generic :: get_as1dBool   => tList_get_as1dBool
-    generic :: get_asString   => tList_get_asString
-    generic :: get_as1dString => tList_get_as1dString
+      tList_get_asStr, &
+      tList_get_as1dStr
+    generic :: get          => tList_get
+    generic :: get_scalar   => tList_get_scalar
+    generic :: get_list     => tList_get_list
+    generic :: get_dict     => tList_get_dict
+    generic :: get_asReal   => tList_get_asReal
+    generic :: get_as1dReal => tList_get_as1dReal
+    generic :: get_asInt    => tList_get_asInt
+    generic :: get_as1dInt  => tList_get_as1dInt
+    generic :: get_asBool   => tList_get_asBool
+    generic :: get_as1dBool => tList_get_as1dBool
+    generic :: get_asStr    => tList_get_asStr
+    generic :: get_as1dStr  => tList_get_as1dStr
     final :: tList_finalize
   end type tList
 
   type, extends(tList), public :: tDict
     contains
     procedure ::  &
-      asFormattedString      => tDict_asFormattedString, &
-      set                    => tDict_set, &
-      index                  => tDict_index, &
-      key                    => tDict_key, &
-      keys                   => tDict_keys, &
-      contains               => tDict_contains, &
+      asFormattedStr => tDict_asFormattedStr, &
+      set            => tDict_set, &
+      index          => tDict_index, &
+      key            => tDict_key, &
+      keys           => tDict_keys, &
+      contains       => tDict_contains, &
       tDict_get, &
       tDict_get_scalar, &
       tDict_get_list, &
@@ -99,21 +99,21 @@ module YAML_types
       tDict_get_as1dInt, &
       tDict_get_asBool, &
       tDict_get_as1dBool, &
-      tDict_get_asString, &
-      tDict_get_as1dString
-    generic :: get            => tDict_get
-    generic :: get_scalar     => tDict_get_scalar
-    generic :: get_list       => tDict_get_list
-    generic :: get_dict       => tDict_get_dict
-    generic :: get_asReal     => tDict_get_asReal
-    generic :: get_as1dReal   => tDict_get_as1dReal
-    generic :: get_as2dReal   => tDict_get_as2dReal
-    generic :: get_asInt      => tDict_get_asInt
-    generic :: get_as1dInt    => tDict_get_as1dInt
-    generic :: get_asBool     => tDict_get_asBool
-    generic :: get_as1dBool   => tDict_get_as1dBool
-    generic :: get_asString   => tDict_get_asString
-    generic :: get_as1dString => tDict_get_as1dString
+      tDict_get_asStr, &
+      tDict_get_as1dStr
+    generic :: get          => tDict_get
+    generic :: get_scalar   => tDict_get_scalar
+    generic :: get_list     => tDict_get_list
+    generic :: get_dict     => tDict_get_dict
+    generic :: get_asReal   => tDict_get_asReal
+    generic :: get_as1dReal => tDict_get_as1dReal
+    generic :: get_as2dReal => tDict_get_as2dReal
+    generic :: get_asInt    => tDict_get_asInt
+    generic :: get_as1dInt  => tDict_get_as1dInt
+    generic :: get_asBool   => tDict_get_asBool
+    generic :: get_as1dBool => tDict_get_as1dBool
+    generic :: get_asStr    => tDict_get_asStr
+    generic :: get_as1dStr  => tDict_get_as1dStr
    end type tDict
 
 
@@ -132,11 +132,11 @@ module YAML_types
 
   abstract interface
 
-    recursive function asFormattedString(self)
+    recursive function asFormattedStr(self)
       import tNode
-      character(len=:), allocatable      :: asFormattedString
+      character(len=:), allocatable      :: asFormattedStr
       class(tNode), intent(in), target   :: self
-    end function asFormattedString
+    end function asFormattedStr
 
   end interface
 
@@ -151,7 +151,7 @@ module YAML_types
   public :: &
     YAML_types_init, &
 #ifdef __GFORTRAN__
-    output_as1dString, &                                       !ToDo: Hack for GNU. Remove later
+    output_as1dStr, &                                       !ToDo: Hack for GNU. Remove later
 #endif
     assignment(=)
 
@@ -181,14 +181,14 @@ subroutine selfTest()
 
     s_pointer => s%asScalar()
     s = '1'
-    if (s%asInt() /= 1)                   error stop 'tScalar_asInt'
-    if (s_pointer%asInt() /= 1)           error stop 'tScalar_asInt(pointer)'
-    if (dNeq(s%asReal(),1.0_pReal))       error stop 'tScalar_asReal'
+    if (s%asInt() /= 1)                error stop 'tScalar_asInt'
+    if (s_pointer%asInt() /= 1)        error stop 'tScalar_asInt(pointer)'
+    if (dNeq(s%asReal(),1.0_pReal))    error stop 'tScalar_asReal'
     s = 'true'
-    if (.not. s%asBool())                 error stop 'tScalar_asBool'
-    if (.not. s_pointer%asBool())         error stop 'tScalar_asBool(pointer)'
-    if (s%asString() /= 'true')           error stop 'tScalar_asString'
-    if (s%asFormattedString() /= 'true')  error stop 'tScalar_asFormattedString'
+    if (.not. s%asBool())              error stop 'tScalar_asBool'
+    if (.not. s_pointer%asBool())      error stop 'tScalar_asBool(pointer)'
+    if (s%asStr() /= 'true')           error stop 'tScalar_asStr'
+    if (s%asFormattedStr() /= 'true')  error stop 'tScalar_asFormattedStr'
 
 
   end block scalar
@@ -204,23 +204,23 @@ subroutine selfTest()
     s2 = '2'
     allocate(l)
     l_pointer => l%asList()
-    if (l%contains('1'))                                 error stop 'empty tList_contains'
-    if (l_pointer%contains('1'))                         error stop 'empty tList_contains(pointer)'
+    if (l%contains('1'))                               error stop 'empty tList_contains'
+    if (l_pointer%contains('1'))                       error stop 'empty tList_contains(pointer)'
     call l%append(s1)
     call l%append(s2)
-    if (l%length /= 2)                                   error stop 'tList%len'
-    if (dNeq(l%get_asReal(1),1.0_pReal))                 error stop 'tList_get_asReal'
-    if (l%get_asInt(1) /= 1)                             error stop 'tList_get_asInt'
-    if (l%get_asString(2) /= '2')                        error stop 'tList_get_asString'
-    if (any(l%as1dInt() /= [1,2]))                       error stop 'tList_as1dInt'
-    if (any(dNeq(l%as1dReal(),real([1.0,2.0],pReal))))   error stop 'tList_as1dReal'
+    if (l%length /= 2)                                 error stop 'tList%len'
+    if (dNeq(l%get_asReal(1),1.0_pReal))               error stop 'tList_get_asReal'
+    if (l%get_asInt(1) /= 1)                           error stop 'tList_get_asInt'
+    if (l%get_asStr(2) /= '2')                         error stop 'tList_get_asStr'
+    if (any(l%as1dInt() /= [1,2]))                     error stop 'tList_as1dInt'
+    if (any(dNeq(l%as1dReal(),real([1.0,2.0],pReal)))) error stop 'tList_as1dReal'
     s1 = 'true'
     s2 = 'false'
-    if (any(l%as1dBool() .neqv. [.true.,.false.]))       error stop 'tList_as1dBool'
-    if (any(l%as1dString() /= ['true ','false']))        error stop 'tList_as1dString'
-    if (l%asFormattedString() /= '[true, false]')        error stop 'tList_asFormattedString'
+    if (any(l%as1dBool() .neqv. [.true.,.false.]))     error stop 'tList_as1dBool'
+    if (any(l%as1dStr() /= ['true ','false']))         error stop 'tList_as1dStr'
+    if (l%asFormattedStr() /= '[true, false]')         error stop 'tList_asFormattedStr'
     if (   .not. l%contains('true') &
-      .or. .not. l%contains('false'))                    error stop 'tList_contains'
+      .or. .not. l%contains('false'))                  error stop 'tList_contains'
 
   end block list
 
@@ -244,25 +244,25 @@ subroutine selfTest()
     s4 = '4'
     allocate(d)
     d_pointer => d%asDict()
-    if (d%contains('one-two'))                           error stop 'empty tDict_contains'
-    if (d_pointer%contains('one-two'))                   error stop 'empty tDict_contains(pointer)'
-    if (d%get_asInt('one-two',defaultVal=-1) /= -1)      error stop 'empty tDict_get'
+    if (d%contains('one-two'))                        error stop 'empty tDict_contains'
+    if (d_pointer%contains('one-two'))                error stop 'empty tDict_contains(pointer)'
+    if (d%get_asInt('one-two',defaultVal=-1) /= -1)   error stop 'empty tDict_get'
     call d%set('one-two',l)
     call d%set('three',s3)
     call d%set('four',s4)
-    if (d%asFormattedString() /= '{one-two: [1, 2], three: 3, four: 4}') &
-                                                         error stop 'tDict_asFormattedString'
-    if (d%get_asInt('three') /= 3)                       error stop 'tDict_get_asInt'
-    if (dNeq(d%get_asReal('three'),3.0_pReal))           error stop 'tDict_get_asReal'
-    if (d%get_asString('three') /= '3')                  error stop 'tDict_get_asString'
-    if (any(d%get_as1dInt('one-two') /= [1,2]))          error stop 'tDict_get_as1dInt'
+    if (d%asFormattedStr() /= '{one-two: [1, 2], three: 3, four: 4}') &
+                                                      error stop 'tDict_asFormattedStr'
+    if (d%get_asInt('three') /= 3)                    error stop 'tDict_get_asInt'
+    if (dNeq(d%get_asReal('three'),3.0_pReal))        error stop 'tDict_get_asReal'
+    if (d%get_asStr('three') /= '3')                  error stop 'tDict_get_asStr'
+    if (any(d%get_as1dInt('one-two') /= [1,2]))       error stop 'tDict_get_as1dInt'
     call d%set('one-two',s4)
-    if (d%asFormattedString() /= '{one-two: 4, three: 3, four: 4}') &
-                                                         error stop 'tDict_set overwrite'
+    if (d%asFormattedStr() /= '{one-two: 4, three: 3, four: 4}') &
+                                                      error stop 'tDict_set overwrite'
     if (   .not. d%contains('one-two') &
       .or. .not. d%contains('three') &
       .or. .not. d%contains('four') &
-      )                                                  error stop 'tDict_contains'
+      )                                               error stop 'tDict_contains'
 
   end block dict
 
@@ -299,7 +299,7 @@ end subroutine tScalar_assign__
 !--------------------------------------------------------------------------------------------------
 !> @brief Format as string (YAML flow style).
 !--------------------------------------------------------------------------------------------------
-recursive function tScalar_asFormattedString(self) result(str)
+recursive function tScalar_asFormattedStr(self) result(str)
 
   class (tScalar), intent(in), target    :: self
   character(len=:), allocatable          :: str
@@ -307,7 +307,7 @@ recursive function tScalar_asFormattedString(self) result(str)
 
   str = trim(self%value)
 
-end function tScalar_asFormattedString
+end function tScalar_asFormattedStr
 
 
 !--------------------------------------------------------------------------------------------------
@@ -324,7 +324,7 @@ function tNode_asScalar(self) result(scalar)
       scalar => self
     class default
       nullify(scalar)
-      call IO_error(706,'"'//trim(self%asFormattedString())//'" is not a scalar')
+      call IO_error(706,'"'//trim(self%asFormattedStr())//'" is not a scalar')
   end select
 
 end function tNode_asScalar
@@ -344,7 +344,7 @@ function tNode_asList(self) result(list)
       list => self
     class default
       nullify(list)
-      call IO_error(706,'"'//trim(self%asFormattedString())//'" is not a list')
+      call IO_error(706,'"'//trim(self%asFormattedStr())//'" is not a list')
   end select
 
 end function tNode_asList
@@ -364,7 +364,7 @@ function tNode_asDict(self) result(dict)
       dict => self
     class default
       nullify(dict)
-      call IO_error(706,'"'//trim(self%asFormattedString())//'" is not a dict')
+      call IO_error(706,'"'//trim(self%asFormattedStr())//'" is not a dict')
   end select
 
 end function tNode_asDict
@@ -379,7 +379,7 @@ function tScalar_asReal(self)
   real(pReal) :: tScalar_asReal
 
 
-  tScalar_asReal = IO_stringAsReal(self%value)
+  tScalar_asReal = IO_strAsReal(self%value)
 
 end function tScalar_asReal
 
@@ -393,7 +393,7 @@ function tScalar_asInt(self)
   integer :: tScalar_asInt
 
 
-  tScalar_asInt = IO_stringAsInt(self%value)
+  tScalar_asInt = IO_strAsInt(self%value)
 
 end function tScalar_asInt
 
@@ -407,7 +407,7 @@ function tScalar_asBool(self)
   logical :: tScalar_asBool
 
 
-  tScalar_asBool = IO_stringAsBool(self%value)
+  tScalar_asBool = IO_strAsBool(self%value)
 
 end function tScalar_asBool
 
@@ -415,21 +415,21 @@ end function tScalar_asBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert to string.
 !--------------------------------------------------------------------------------------------------
-function tScalar_asString(self)
+function tScalar_asStr(self)
 
   class(tScalar), intent(in), target :: self
-  character(len=:), allocatable :: tScalar_asString
+  character(len=:), allocatable :: tScalar_asStr
 
 
-  tScalar_asString = self%value
+  tScalar_asStr = self%value
 
-end function tScalar_asString
+end function tScalar_asStr
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Format as string (YAML flow style).
 !--------------------------------------------------------------------------------------------------
-recursive function tList_asFormattedString(self) result(str)
+recursive function tList_asFormattedStr(self) result(str)
 
   class(tList),intent(in),target      :: self
 
@@ -440,12 +440,12 @@ recursive function tList_asFormattedString(self) result(str)
   str = '['
   item => self%first
   do i = 2, self%length
-    str = str//item%node%asFormattedString()//', '
+    str = str//item%node%asFormattedStr()//', '
     item => item%next
   end do
-  str = str//item%node%asFormattedString()//']'
+  str = str//item%node%asFormattedStr()//']'
 
-end function tList_asFormattedString
+end function tList_asFormattedStr
 
 
 !--------------------------------------------------------------------------------------------------
@@ -574,13 +574,13 @@ end function tList_as1dBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert to string array (1D).
 !--------------------------------------------------------------------------------------------------
-function tList_as1dString(self)
+function tList_as1dStr(self)
 
   class(tList), intent(in), target :: self
 #ifdef __GFORTRAN__
-  character(len=pStringLen), allocatable, dimension(:) :: tList_as1dString
+  character(len=pSTRLEN), allocatable, dimension(:) :: tList_as1dStr
 #else
-  character(len=:), allocatable, dimension(:) :: tList_as1dString
+  character(len=:), allocatable, dimension(:) :: tList_as1dStr
 #endif
 
   integer :: j
@@ -589,27 +589,27 @@ function tList_as1dString(self)
 
 
 #ifdef __GFORTRAN__
-  allocate(tList_as1dString(self%length))
+  allocate(tList_as1dStr(self%length))
 #else
   integer :: len_max
   len_max = 0
   item => self%first
   do j = 1, self%length
     scalar => item%node%asScalar()
-    len_max = max(len_max, len_trim(scalar%asString()))
+    len_max = max(len_max, len_trim(scalar%asStr()))
     item => item%next
   end do
 
-  allocate(character(len=len_max) :: tList_as1dString(self%length))
+  allocate(character(len=len_max) :: tList_as1dStr(self%length))
 #endif
   item => self%first
   do j = 1, self%length
     scalar => item%node%asScalar()
-    tList_as1dString(j) = scalar%asString()
+    tList_as1dStr(j) = scalar%asStr()
     item => item%next
   end do
 
-end function tList_as1dString
+end function tList_as1dStr
 
 
 !-------------------------------------------------------------------------------------------------
@@ -652,8 +652,8 @@ function tList_get(self,i) result(node)
   integer :: j
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get @ '//IO_intAsString(i) &
-                                                                  //' of '//IO_intAsString(self%length) )
+  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tList_get @ '//IO_intAsStr(i) &
+                                                                  //' of '//IO_intAsStr(self%length) )
   item => self%first
   do j = 2, i
     item => item%next
@@ -828,37 +828,37 @@ end function tList_get_as1dBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by index and convert to string.
 !--------------------------------------------------------------------------------------------------
-function tList_get_asString(self,i) result(nodeAsString)
+function tList_get_asStr(self,i) result(nodeAsStr)
 
   class(tList), intent(in) :: self
   integer,      intent(in) :: i
-  character(len=:), allocatable :: nodeAsString
+  character(len=:), allocatable :: nodeAsStr
 
   class(tScalar),  pointer :: scalar
 
 
   scalar => self%get_scalar(i)
-  nodeAsString = scalar%asString()
+  nodeAsStr = scalar%asStr()
 
-end function tList_get_asString
+end function tList_get_asStr
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by index and convert to string array (1D).
 !--------------------------------------------------------------------------------------------------
-function tList_get_as1dString(self,i) result(nodeAs1dString)
+function tList_get_as1dStr(self,i) result(nodeAs1dStr)
 
   class(tList), intent(in) :: self
   integer,      intent(in) :: i
-  character(len=:), allocatable, dimension(:) :: nodeAs1dString
+  character(len=:), allocatable, dimension(:) :: nodeAs1dStr
 
   type(tList),  pointer :: list
 
 
   list => self%get_list(i)
-  nodeAs1dString = list%as1dString()
+  nodeAs1dStr = list%as1dStr()
 
-end function tList_get_as1dString
+end function tList_get_as1dStr
 
 
 !--------------------------------------------------------------------------------------------------
@@ -876,7 +876,7 @@ end subroutine tList_finalize
 !--------------------------------------------------------------------------------------------------
 !> @brief Format as string (YAML flow style).
 !--------------------------------------------------------------------------------------------------
-recursive function tDict_asFormattedString(self) result(str)
+recursive function tDict_asFormattedStr(self) result(str)
 
   class(tDict),intent(in),target      :: self
 
@@ -888,12 +888,12 @@ recursive function tDict_asFormattedString(self) result(str)
   str = '{'
   item => self%first
   do i = 2, self%length
-    str = str//trim(item%key)//': '//item%node%asFormattedString()//', '
+    str = str//trim(item%key)//': '//item%node%asFormattedStr()//', '
     item => item%next
   end do
-  str = str//trim(item%key)//': '//item%node%asFormattedString()//'}'
+  str = str//trim(item%key)//': '//item%node%asFormattedStr()//'}'
 
-end function tDict_asFormattedString
+end function tDict_asFormattedStr
 
 
 !--------------------------------------------------------------------------------------------------
@@ -967,8 +967,8 @@ function tDict_key(self,i)  result(key)
   type(tItem), pointer :: item
 
 
-  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsString(i) &
-                                                                  //' of '//IO_intAsString(self%length) )
+  if (i < 1 .or. i > self%length) call IO_error(150,ext_msg='tDict_key @ '//IO_intAsStr(i) &
+                                                                  //' of '//IO_intAsStr(self%length) )
   item => self%first
   do j = 2, i
     item => item%next
@@ -987,7 +987,7 @@ function tDict_keys(self) result(keys)
   class(tDict), intent(in) :: self
   character(len=:), dimension(:), allocatable :: keys
 
-  character(len=pStringLen), dimension(:), allocatable :: temp
+  character(len=pSTRLEN), dimension(:), allocatable :: temp
   integer :: j, l
 
 
@@ -1310,61 +1310,61 @@ end function tDict_get_as1dBool
 !--------------------------------------------------------------------------------------------------
 !> @brief Get scalar by key and convert to string.
 !--------------------------------------------------------------------------------------------------
-function tDict_get_asString(self,k,defaultVal) result(nodeAsString)
+function tDict_get_asStr(self,k,defaultVal) result(nodeAsStr)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
   character(len=*), intent(in), optional :: defaultVal
-  character(len=:), allocatable :: nodeAsString
+  character(len=:), allocatable :: nodeAsStr
 
   type(tScalar), pointer :: scalar
 
 
   if (self%contains(k)) then
     scalar => self%get_scalar(k)
-    nodeAsString = scalar%asString()
+    nodeAsStr = scalar%asStr()
   elseif (present(defaultVal)) then
-    nodeAsString = defaultVal
+    nodeAsStr = defaultVal
   else
     call IO_error(143,ext_msg=k)
   end if
 
-end function tDict_get_asString
+end function tDict_get_asStr
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Get list by key and convert to string array (1D).
 !--------------------------------------------------------------------------------------------------
-function tDict_get_as1dString(self,k,defaultVal) result(nodeAs1dString)
+function tDict_get_as1dStr(self,k,defaultVal) result(nodeAs1dStr)
 
   class(tDict),     intent(in) :: self
   character(len=*), intent(in) :: k
   character(len=*), intent(in), dimension(:), optional :: defaultVal
-  character(len=:), allocatable, dimension(:)          :: nodeAs1dString
+  character(len=:), allocatable, dimension(:)          :: nodeAs1dStr
 
   type(tList), pointer :: list
 
 
   if (self%contains(k)) then
     list => self%get_list(k)
-    nodeAs1dString = list%as1dString()
+    nodeAs1dStr = list%as1dStr()
   elseif (present(defaultVal)) then
-    nodeAs1dString = defaultVal
+    nodeAs1dStr = defaultVal
   else
     call IO_error(143,ext_msg=k)
   end if
 
-end function tDict_get_as1dString
+end function tDict_get_as1dStr
 
 
 #ifdef __GFORTRAN__
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns string output array (1D) (hack for GNU).
 !--------------------------------------------------------------------------------------------------
-function output_as1dString(self)  result(output)
+function output_as1dStr(self)  result(output)
 
   class(tDict), pointer,intent(in)   ::  self
-  character(len=pStringLen), allocatable, dimension(:) :: output
+  character(len=pSTRLEN), allocatable, dimension(:) :: output
 
   type(tList), pointer :: output_list
   integer :: o
@@ -1372,10 +1372,10 @@ function output_as1dString(self)  result(output)
   output_list => self%get_list('output',defaultVal=emptyList)
   allocate(output(output_list%length))
   do o = 1, output_list%length
-    output(o) = output_list%get_asString(o)
+    output(o) = output_list%get_asStr(o)
   end do
 
-end function output_as1dString
+end function output_as1dStr
 #endif
 
 

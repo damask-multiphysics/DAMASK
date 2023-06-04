@@ -168,7 +168,7 @@ subroutine spectral_utilities_init()
   call PetscOptionsClear(PETSC_NULL_OPTIONS,err_PETSc)
   CHKERRQ(err_PETSc)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
-                                num_grid%get_asString('PETSc_options',defaultVal=''),err_PETSc)
+                                num_grid%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
 
   cells1Red = cells(1)/2 + 1
@@ -180,7 +180,7 @@ subroutine spectral_utilities_init()
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
 
-  select case (num_grid%get_asString('derivative',defaultVal='continuous'))
+  select case (num_grid%get_asStr('derivative',defaultVal='continuous'))
     case ('continuous')
       spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
     case ('central_difference')
@@ -188,7 +188,7 @@ subroutine spectral_utilities_init()
     case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
-      call IO_error(892,ext_msg=trim(num_grid%get_asString('derivative')))
+      call IO_error(892,ext_msg=trim(num_grid%get_asStr('derivative')))
   end select
 
 !--------------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ subroutine spectral_utilities_init()
     scaledGeomSize = geomSize
   end if
 
-  select case(IO_lc(num_grid%get_asString('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
+  select case(IO_lc(num_grid%get_asStr('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
     case('fftw_measure')
@@ -219,7 +219,7 @@ subroutine spectral_utilities_init()
     case('fftw_exhaustive')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid%get_asString('fftw_plan_mode'))//'"')
+      call IO_warning(47,'using default FFTW_MEASURE instead of "'//trim(num_grid%get_asStr('fftw_plan_mode'))//'"')
       FFTW_planner_flag = FFTW_MEASURE
   end select
 
@@ -655,7 +655,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     c_reduced, &                                                                                    !< reduced stiffness (depending on number of stress BC)
     sTimesC                                                                                         !< temp variable to check inversion
   logical :: errmatinv
-  character(len=pStringLen):: formatString
+  character(len=pSTRLEN):: formatString
 
   mask_stressVector = .not. reshape(transpose(mask_stress), [9])
   size_reduced = count(mask_stressVector)

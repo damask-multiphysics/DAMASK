@@ -143,7 +143,7 @@ subroutine result_addIncrement(inc,time)
   integer,       intent(in) :: inc
   real(pReal),   intent(in) :: time
 
-  character(len=pStringLen) :: incChar
+  character(len=pSTRLEN) :: incChar
 
 
   write(incChar,'(i10)') inc
@@ -488,7 +488,7 @@ subroutine result_mapping_phase(ID,entry,label)
     plist_id, &
     dt_id
 
-  integer(SIZE_T) :: type_size_string, type_size_int
+  integer(SIZE_T) :: type_size_str, type_size_int
   integer         :: hdferr, ce, co
   integer(MPI_INTEGER_KIND) :: err_MPI
 
@@ -536,23 +536,23 @@ subroutine result_mapping_phase(ID,entry,label)
   call HDF5_chkerr(hdferr)
   call H5Tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
   call HDF5_chkerr(hdferr)
-  call H5Tget_size_f(dt_id, type_size_string, hdferr)
+  call H5Tget_size_f(dt_id, type_size_str, hdferr)
   call HDF5_chkerr(hdferr)
 
   pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
   call H5Tget_size_f(pI64_t, type_size_int, hdferr)
   call HDF5_chkerr(hdferr)
 
-  call H5Tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
+  call H5Tcreate_f(H5T_COMPOUND_F, type_size_str + type_size_int, dtype_id, hdferr)
   call HDF5_chkerr(hdferr)
   call H5Tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   call HDF5_chkerr(hdferr)
-  call H5Tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
+  call H5Tinsert_f(dtype_id, 'entry', type_size_str, pI64_t, hdferr)
   call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
-  call H5Tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
+  call H5Tcreate_f(H5T_COMPOUND_F, type_size_str, label_id, hdferr)
   call HDF5_chkerr(hdferr)
   call H5Tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
   call HDF5_chkerr(hdferr)
@@ -644,7 +644,7 @@ subroutine result_mapping_homogenization(ID,entry,label)
     plist_id, &
     dt_id
 
-  integer(SIZE_T) :: type_size_string, type_size_int
+  integer(SIZE_T) :: type_size_str, type_size_int
   integer         :: hdferr, ce
   integer(MPI_INTEGER_KIND) :: err_MPI
 
@@ -688,23 +688,23 @@ subroutine result_mapping_homogenization(ID,entry,label)
   call HDF5_chkerr(hdferr)
   call H5Tset_size_f(dt_id, int(len(label(1)),SIZE_T), hdferr)
   call HDF5_chkerr(hdferr)
-  call H5Tget_size_f(dt_id, type_size_string, hdferr)
+  call H5Tget_size_f(dt_id, type_size_str, hdferr)
   call HDF5_chkerr(hdferr)
 
   pI64_t = h5kind_to_type(kind(entryGlobal),H5_INTEGER_KIND)
   call H5Tget_size_f(pI64_t, type_size_int, hdferr)
   call HDF5_chkerr(hdferr)
 
-  call H5Tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, hdferr)
+  call H5Tcreate_f(H5T_COMPOUND_F, type_size_str + type_size_int, dtype_id, hdferr)
   call HDF5_chkerr(hdferr)
   call H5Tinsert_f(dtype_id, 'label', 0_SIZE_T, dt_id,hdferr)
   call HDF5_chkerr(hdferr)
-  call H5Tinsert_f(dtype_id, 'entry', type_size_string, pI64_t, hdferr)
+  call H5Tinsert_f(dtype_id, 'entry', type_size_str, pI64_t, hdferr)
   call HDF5_chkerr(hdferr)
 
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
-  call H5Tcreate_f(H5T_COMPOUND_F, type_size_string, label_id, hdferr)
+  call H5Tcreate_f(H5T_COMPOUND_F, type_size_str, label_id, hdferr)
   call HDF5_chkerr(hdferr)
   call H5Tinsert_f(label_id, 'label', 0_SIZE_T, dt_id, hdferr)
   call HDF5_chkerr(hdferr)

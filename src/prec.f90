@@ -28,7 +28,7 @@ module prec
   PetscScalar, private   :: dummy_scalar
   real(pReal), parameter, private :: pPETSCSCALAR = kind(dummy_scalar)
 #endif
-  integer,     parameter :: pSTRINGLEN = 256                                                        !< default string length
+  integer,     parameter :: pSTRLEN = 256                                                           !< default string length
   integer,     parameter :: pPATHLEN   = 4096                                                       !< maximum length of a path name on linux
 
   real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
@@ -37,9 +37,9 @@ module prec
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
 
-  integer,                   dimension(0), parameter :: emptyIntArray    = [integer::]
-  real(pReal),               dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
-  character(len=pStringLen), dimension(0), parameter :: emptyStringArray = [character(len=pStringLen)::]
+  integer,                dimension(0), parameter :: emptyIntArray  = [integer::]
+  real(pReal),            dimension(0), parameter :: emptyRealArray = [real(pReal)::]
+  character(len=pSTRLEN), dimension(0), parameter :: emptyStrArray  = [character(len=pSTRLEN)::]
 
 
 contains

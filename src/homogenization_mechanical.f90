@@ -51,7 +51,7 @@ submodule(homogenization) mechanical
   end interface
 
   type :: tOutput                                                                                   !< requested output (per phase)
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       label
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_mechanical
@@ -63,7 +63,7 @@ submodule(homogenization) mechanical
     MECHANICAL_RGC_ID
   end enum
   integer(kind(MECHANICAL_UNDEFINED_ID)), dimension(:),   allocatable :: &
-    mechanical_type                                                                             !< type of each homogenization
+    mechanical_type                                                                                 !< type of each homogenization
 
 contains
 
@@ -239,11 +239,11 @@ subroutine parseMechanical()
     homog => material_homogenization%get_dict(ho)
     mechanical => homog%get_dict('mechanical')
 #if defined(__GFORTRAN__)
-    output_mechanical(ho)%label = output_as1dString(mechanical)
+    output_mechanical(ho)%label = output_as1dStr(mechanical)
 #else
-    output_mechanical(ho)%label = mechanical%get_as1dString('output',defaultVal=emptyStringArray)
+    output_mechanical(ho)%label = mechanical%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
-    select case (mechanical%get_asString('type'))
+    select case (mechanical%get_asStr('type'))
       case('pass')
         mechanical_type(ho) = MECHANICAL_PASS_ID
       case('isostrain')
@@ -251,7 +251,7 @@ subroutine parseMechanical()
       case('RGC')
         mechanical_type(ho) = MECHANICAL_RGC_ID
       case default
-        call IO_error(500,ext_msg=mechanical%get_asString('type'))
+        call IO_error(500,ext_msg=mechanical%get_asStr('type'))
     end select
   end do
 

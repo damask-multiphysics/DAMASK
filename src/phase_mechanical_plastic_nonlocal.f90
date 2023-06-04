@@ -117,7 +117,7 @@ submodule(phase:plastic) nonlocal
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
     character(len=:),              allocatable :: &
       isotropic_bound
-    character(len=pStringLen), dimension(:), allocatable :: &
+    character(len=pSTRLEN), dimension(:), allocatable :: &
       output
     logical :: &
       shortRangeStressCorrection, &                                                                 !< use of short range stress correction by excess density gradient term
@@ -241,13 +241,13 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
+    prm%output = output_as1dStr(pl)
 #else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
     plasticState(ph)%nonlocal = pl%get_asBool('flux',defaultVal=.True.)
-    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
+    prm%isotropic_bound = pl%get_asStr('isotropic_bound',defaultVal='isostrain')
     prm%atol_rho = pl%get_asReal('atol_rho',defaultVal=1.0_pReal)
 
     ini%N_sl     = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)

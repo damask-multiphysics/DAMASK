@@ -6,7 +6,7 @@ submodule(phase) thermal
   type :: tThermalParameters
     real(pReal) :: C_p = 0.0_pReal                                                                  !< heat capacity
     real(pReal), dimension(3,3) :: K = 0.0_pReal                                                    !< thermal conductivity
-    character(len=pStringLen), allocatable, dimension(:) :: output
+    character(len=pSTRLEN), allocatable, dimension(:) :: output
   end type tThermalParameters
 
   integer, dimension(:), allocatable :: &
@@ -115,9 +115,9 @@ module subroutine thermal_init(phases)
       param(ph)%K = lattice_symmetrize_33(param(ph)%K,phase_lattice(ph))
 
 #if defined(__GFORTRAN__)
-      param(ph)%output = output_as1dString(thermal)
+      param(ph)%output = output_as1dStr(thermal)
 #else
-      param(ph)%output = thermal%get_as1dString('output',defaultVal=emptyStringArray)
+      param(ph)%output = thermal%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
       sources => thermal%get_list('source',defaultVal=emptyList)
       thermal_Nsources(ph) = sources%length
@@ -387,7 +387,7 @@ function thermal_active(source_label,src_length)  result(active_source)
     sources => thermal%get_list('source',defaultVal=emptyList)
     do s = 1, sources%length
       src => sources%get_dict(s)
-      active_source(s,p) = src%get_asString('type') == source_label
+      active_source(s,p) = src%get_asStr('type') == source_label
     end do
   end do
 

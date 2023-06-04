@@ -482,7 +482,7 @@ subroutine parseHomogenization
 
     if (homog%contains('thermal')) then
       homogThermal => homog%get_dict('thermal')
-        select case (homogThermal%get_asString('type'))
+        select case (homogThermal%get_asStr('type'))
           case('pass')
             thermal_type(h) = THERMAL_PASS_ID
             thermal_active(h) = .true.
@@ -490,17 +490,17 @@ subroutine parseHomogenization
             thermal_type(h) = THERMAL_ISOTEMPERATURE_ID
             thermal_active(h) = .true.
           case default
-            call IO_error(500,ext_msg=homogThermal%get_asString('type'))
+            call IO_error(500,ext_msg=homogThermal%get_asStr('type'))
         end select
     end if
 
     if (homog%contains('damage')) then
       homogDamage => homog%get_dict('damage')
-        select case (homogDamage%get_asString('type'))
+        select case (homogDamage%get_asStr('type'))
           case('pass')
             damage_active(h) = .true.
           case default
-            call IO_error(500,ext_msg=homogDamage%get_asString('type'))
+            call IO_error(500,ext_msg=homogDamage%get_asStr('type'))
         end select
     end if
   end do

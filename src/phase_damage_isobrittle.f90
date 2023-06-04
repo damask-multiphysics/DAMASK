@@ -9,7 +9,7 @@ submodule(phase:damage) isobrittle
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       W_crit                                                                                        !< critical elastic strain energy
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
@@ -71,9 +71,9 @@ module function isobrittle_init() result(mySources)
         if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
-        prm%output = output_as1dString(src)
+        prm%output = output_as1dStr(src)
 #else
-        prm%output = src%get_as1dString('output',defaultVal=emptyStringArray)
+        prm%output = src%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
         ! sanity checks

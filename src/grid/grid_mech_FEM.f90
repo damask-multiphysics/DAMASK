@@ -119,7 +119,7 @@ subroutine grid_mechanical_FEM_init
   integer(HID_T) :: fileHandle, groupHandle
   type(tDict), pointer :: &
     num_grid
-  character(len=pStringLen) :: &
+  character(len=pSTRLEN) :: &
     extmsg = ''
 
 
@@ -152,7 +152,7 @@ subroutine grid_mechanical_FEM_init
                                 &-mechanical_ksp_max_it 25', &
                                 err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------

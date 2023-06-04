@@ -37,7 +37,7 @@ submodule(phase:plastic) dislotungsten
       sum_N_sl                                                                                      !< total number of active slip system
     character(len=:),          allocatable               :: &
       isotropic_bound
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
     logical :: &
       dipoleFormation                                                                               !< flag indicating consideration of dipole formation
@@ -135,12 +135,12 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
+    prm%output = output_as1dStr(pl)
 #else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
-    prm%isotropic_bound = pl%get_asString('isotropic_bound',defaultVal='isostrain')
+    prm%isotropic_bound = pl%get_asStr('isotropic_bound',defaultVal='isostrain')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters

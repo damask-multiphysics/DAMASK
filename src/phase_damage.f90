@@ -484,7 +484,7 @@ function source_active(source_label)  result(active_source)
   do ph = 1, phases%length
     phase => phases%get_dict(ph)
     src => phase%get_dict('damage',defaultVal=emptyDict)
-    active_source(ph) = src%get_asString('type',defaultVal = 'x') == source_label
+    active_source(ph) = src%get_asStr('type',defaultVal = 'x') == source_label
   end do
 
 

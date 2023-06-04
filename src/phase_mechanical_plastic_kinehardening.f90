@@ -32,9 +32,9 @@ submodule(phase:plastic) kinehardening
       sum_N_sl
     logical :: &
       nonSchmidActive = .false.
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
-    character(len=:),          allocatable, dimension(:) :: &
+    character(len=:),       allocatable, dimension(:) :: &
       systems_sl
   end type tParameters
 
@@ -128,9 +128,9 @@ module function plastic_kinehardening_init() result(myPlasticity)
     if (len(refs) > 0) print'(/,1x,a)', refs
 
 #if defined (__GFORTRAN__)
-    prm%output = output_as1dString(pl)
+    prm%output = output_as1dStr(pl)
 #else
-    prm%output = pl%get_as1dString('output',defaultVal=emptyStringArray)
+    prm%output = pl%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
 
 !--------------------------------------------------------------------------------------------------

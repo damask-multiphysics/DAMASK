@@ -398,9 +398,9 @@ subroutine phase_init
     phase => phases%get_dict(ph)
     refs = config_listReferences(phase,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
-    phase_lattice(ph) = phase%get_asString('lattice')
+    phase_lattice(ph) = phase%get_asStr('lattice')
     if (all(phase_lattice(ph) /= ['cF','cI','hP','tI'])) &
-      call IO_error(130,ext_msg='phase_init: '//phase%get_asString('lattice'))
+      call IO_error(130,ext_msg='phase_init: '//phase%get_asStr('lattice'))
     if (any(phase_lattice(ph) == ['hP','tI'])) &
       phase_cOverA(ph) = phase%get_asReal('c/a')
     phase_rho(ph) = phase%get_asReal('rho',defaultVal=0.0_pReal)

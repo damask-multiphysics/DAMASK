@@ -98,7 +98,7 @@ end function getSolverJobName
 !--------------------------------------------------------------------------------------------------
 logical function solverIsSymmetric()
 
-  character(len=pStringLen) :: line
+  character(len=pSTRLEN) :: line
   integer :: myStat,fileUnit,s,e
 
   open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &

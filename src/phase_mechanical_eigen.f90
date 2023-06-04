@@ -101,7 +101,7 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
     kinematics => mechanics%get_list('eigen',defaultVal=emptyList)
     do k = 1, kinematics%length
       kinematic => kinematics%get_dict(k)
-      active_kinematics(k,ph) = kinematic%get_asString('type') == kinematics_label
+      active_kinematics(k,ph) = kinematic%get_asStr('type') == kinematics_label
     end do
   end do
 
@@ -129,7 +129,7 @@ function kinematics_active2(kinematics_label)  result(active_kinematics)
   do ph = 1, phases%length
     phase => phases%get_dict(ph)
     kinematics_type => phase%get_dict('damage',defaultVal=emptyDict)
-    active_kinematics(ph) = kinematics_type%get_asString('type',defaultVal='n/a') == kinematics_label
+    active_kinematics(ph) = kinematics_type%get_asStr('type',defaultVal='n/a') == kinematics_label
   end do
 
 

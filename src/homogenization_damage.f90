@@ -17,7 +17,7 @@ submodule(homogenization) damage
   type(tDataContainer), dimension(:), allocatable :: current
 
   type :: tParameters
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       output
   end type tParameters
 
@@ -54,15 +54,15 @@ module subroutine damage_init()
       if (configHomogenization%contains('damage')) then
         configHomogenizationDamage => configHomogenization%get_dict('damage')
 #if defined (__GFORTRAN__)
-        prm%output = output_as1dString(configHomogenizationDamage)
+        prm%output = output_as1dStr(configHomogenizationDamage)
 #else
-        prm%output = configHomogenizationDamage%get_as1dString('output',defaultVal=emptyStringArray)
+        prm%output = configHomogenizationDamage%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
         damageState_h(ho)%sizeState = 1
         allocate(damageState_h(ho)%state0(1,Nmembers), source=1.0_pReal)
         allocate(damageState_h(ho)%state (1,Nmembers), source=1.0_pReal)
       else
-        prm%output = emptyStringArray
+        prm%output = emptyStrArray
       end if
     end associate
   end do

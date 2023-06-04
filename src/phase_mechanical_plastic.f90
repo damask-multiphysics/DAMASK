@@ -434,7 +434,7 @@ function plastic_active(plastic_label) result(active_plastic)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
     pl    => mech%get_dict('plastic',defaultVal = emptyDict)
-    active_plastic(ph) = pl%get_asString('type',defaultVal='none') == plastic_label
+    active_plastic(ph) = pl%get_asStr('type',defaultVal='none') == plastic_label
   end do
 
 end function plastic_active

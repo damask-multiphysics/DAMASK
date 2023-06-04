@@ -13,7 +13,7 @@ module misc
     module procedure misc_optional_bool
     module procedure misc_optional_integer
     module procedure misc_optional_real
-    module procedure misc_optional_string
+    module procedure misc_optional_str
   end interface misc_optional
 
   public :: &
@@ -95,7 +95,7 @@ end function misc_optional_real
 !--------------------------------------------------------------------------------------------------
 !> @brief Return string value if given, otherwise default.
 !--------------------------------------------------------------------------------------------------
-pure function misc_optional_string(given,default) result(var)
+pure function misc_optional_str(given,default) result(var)
 
   character(len=*), intent(in), optional :: given
   character(len=*), intent(in)           :: default
@@ -108,7 +108,7 @@ pure function misc_optional_string(given,default) result(var)
     var = default
   end if
 
-end function misc_optional_string
+end function misc_optional_str
 
 
 !--------------------------------------------------------------------------------------------------
@@ -119,9 +119,9 @@ subroutine misc_selfTest()
   real(pReal) :: r
 
   call random_number(r)
-  if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_string, present'
-  if (test_str() /= 'default')                               error stop 'optional_string, not present'
-  if (misc_optional(default='default') /= 'default')         error stop 'optional_string, default only'
+  if (test_str('DAMASK') /= 'DAMASK')                        error stop 'optional_str, present'
+  if (test_str() /= 'default')                               error stop 'optional_str, not present'
+  if (misc_optional(default='default') /= 'default')         error stop 'optional_str, default only'
   if (test_int(20191102) /= 20191102)                        error stop 'optional_int, present'
   if (test_int() /= 42)                                      error stop 'optional_int, not present'
   if (misc_optional(default=20191102) /= 20191102)           error stop 'optional_int, default only'
@@ -140,7 +140,7 @@ contains
     character(len=*), intent(in), optional :: str_in
 
 
-    str_out = misc_optional_string(str_in,'default')
+    str_out = misc_optional_str(str_in,'default')
 
   end function test_str
 

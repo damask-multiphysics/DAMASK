@@ -184,7 +184,7 @@ submodule(phase) mechanical
   end interface
 
   type :: tOutput                                                                                   !< requested output (per phase)
-    character(len=pStringLen), allocatable, dimension(:) :: &
+    character(len=pSTRLEN), allocatable, dimension(:) :: &
       label
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_mechanical
@@ -254,9 +254,9 @@ module subroutine mechanical_init(phases)
     phase => phases%get_dict(ph)
     mech  => phase%get_dict('mechanical')
 #if defined(__GFORTRAN__)
-    output_mechanical(ph)%label = output_as1dString(mech)
+    output_mechanical(ph)%label = output_as1dStr(mech)
 #else
-    output_mechanical(ph)%label = mech%get_as1dString('output',defaultVal=emptyStringArray)
+    output_mechanical(ph)%label = mech%get_as1dStr('output',defaultVal=emptyStrArray)
 #endif
   end do
 
@@ -291,7 +291,7 @@ module subroutine mechanical_init(phases)
 
   num_crystallite => config_numerics%get_dict('crystallite',defaultVal=emptyDict)
 
-  select case(num_crystallite%get_asString('integrator',defaultVal='FPI'))
+  select case(num_crystallite%get_asStr('integrator',defaultVal='FPI'))
 
     case('FPI')
       integrateState => integrateStateFPI

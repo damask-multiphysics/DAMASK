@@ -92,7 +92,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_utilities_init
 
-  character(len=pStringLen) :: petsc_optionsOrder
+  character(len=pSTRLEN) :: petsc_optionsOrder
   type(tDict), pointer :: &
     num_mesh
   integer :: &
@@ -122,7 +122,7 @@ subroutine FEM_utilities_init
                                &-mechanical_snes_ksp_ew_rtol0 0.01 -mechanical_snes_ksp_ew_rtolmax 0.01 &
                                &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25', err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('PETSc_options',defaultVal=''),err_PETSc)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),err_PETSc)

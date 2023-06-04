@@ -32,16 +32,16 @@ module IO
     IO_readlines, &
     IO_isBlank, &
     IO_wrapLines, &
-    IO_stringPos, &
-    IO_stringValue, &
+    IO_strPos, &
+    IO_strValue, &
     IO_intValue, &
     IO_realValue, &
     IO_lc, &
     IO_rmComment, &
-    IO_intAsString, &
-    IO_stringAsInt, &
-    IO_stringAsReal, &
-    IO_stringAsBool, &
+    IO_intAsStr, &
+    IO_strAsInt, &
+    IO_strAsReal, &
+    IO_strAsBool, &
     IO_error, &
     IO_warning, &
     IO_STDOUT
@@ -66,11 +66,11 @@ end subroutine IO_init
 !--------------------------------------------------------------------------------------------------
 function IO_readlines(fileName) result(fileContent)
 
-  character(len=*),          intent(in)                :: fileName
-  character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
+  character(len=*),       intent(in)                :: fileName
+  character(len=pSTRLEN), dimension(:), allocatable :: fileContent                                  !< file content, separated per lines
 
-  character(len=pStringLen)                            :: line
-  character(len=:),                        allocatable :: rawData
+  character(len=pSTRLEN)                            :: line
+  character(len=:),                     allocatable :: rawData
   integer ::  &
     startPos, endPos, &
     N_lines, &                                                                                      !< # lines in file
@@ -90,8 +90,8 @@ function IO_readlines(fileName) result(fileContent)
   l = 1
   do while (l <= N_lines)
     endPos = startPos + scan(rawData(startPos:),IO_EOL) - 2
-    if (endPos - startPos > pStringLen-1) then
-      line = rawData(startPos:startPos+pStringLen-1)
+    if (endPos - startPos > pSTRLEN-1) then
+      line = rawData(startPos:startPos+pSTRLEN-1)
       if (.not. warned) then
         call IO_warning(207,trim(fileName),label1='line',ID1=l)
         warned = .true.
@@ -147,15 +147,15 @@ end function IO_read
 !--------------------------------------------------------------------------------------------------
 !> @brief Identifiy strings without content.
 !--------------------------------------------------------------------------------------------------
-logical pure function IO_isBlank(string)
+logical pure function IO_isBlank(str)
 
-  character(len=*), intent(in) :: string                                                            !< string to check for content
+  character(len=*), intent(in) :: str                                                               !< string to check for content
 
   integer :: posNonBlank
 
 
-  posNonBlank = verify(string,IO_WHITESPACE)
-  IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(string,IO_COMMENT)
+  posNonBlank = verify(str,IO_WHITESPACE)
+  IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(str,IO_COMMENT)
 
 end function IO_isBlank
 
@@ -163,9 +163,9 @@ end function IO_isBlank
 !--------------------------------------------------------------------------------------------------
 !> @brief Insert EOL at separator trying to keep line length below limit.
 !--------------------------------------------------------------------------------------------------
-function IO_wrapLines(string,separator,filler,length)
+function IO_wrapLines(str,separator,filler,length)
 
-  character(len=*),    intent(in) :: string                                                         !< string to split
+  character(len=*),    intent(in) :: str                                                            !< string to split
   character, optional, intent(in) :: separator                                                      !< line breaks are possible after this character, defaults to ','
   character(len=*), optional, intent(in) :: filler                                                  !< character(s) to insert after line break, defaults to none
   integer,   optional, intent(in) :: length                                                         !< (soft) line limit, defaults to 80
@@ -175,18 +175,18 @@ function IO_wrapLines(string,separator,filler,length)
   integer :: i,s,e
 
 
-  i = index(string,misc_optional(separator,','))
+  i = index(str,misc_optional(separator,','))
   if (i == 0) then
-    IO_wrapLines = string
+    IO_wrapLines = str
   else
     pos_sep = [0]
     s = i
-    do while (i /= 0 .and. s < len(string))
+    do while (i /= 0 .and. s < len(str))
       pos_sep = [pos_sep,s]
-      i = index(string(s+1:),misc_optional(separator,','))
+      i = index(str(s+1:),misc_optional(separator,','))
       s = s + i
     end do
-    pos_sep = [pos_sep,len(string)]
+    pos_sep = [pos_sep,len(str)]
 
     pos_split = emptyIntArray
     s = 1
@@ -194,12 +194,12 @@ function IO_wrapLines(string,separator,filler,length)
     IO_wrapLines = ''
     do while (e < size(pos_sep))
       if (pos_sep(e+1) - pos_sep(s) >= misc_optional(length,80)) then
-        IO_wrapLines = IO_wrapLines//adjustl(string(pos_sep(s)+1:pos_sep(e)))//IO_EOL//misc_optional(filler,'')
+        IO_wrapLines = IO_wrapLines//adjustl(str(pos_sep(s)+1:pos_sep(e)))//IO_EOL//misc_optional(filler,'')
         s = e
       end if
       e = e + 1
     end do
-    IO_wrapLines = IO_wrapLines//adjustl(string(pos_sep(s)+1:))
+    IO_wrapLines = IO_wrapLines//adjustl(str(pos_sep(s)+1:))
   end if
 
 end function IO_wrapLines
@@ -211,62 +211,62 @@ end function IO_wrapLines
 !! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
-pure function IO_stringPos(string)
+pure function IO_strPos(str)
 
-  character(len=*),                  intent(in) :: string                                           !< string in which chunk positions are searched for
-  integer, dimension(:), allocatable            :: IO_stringPos
+  character(len=*),                  intent(in) :: str                                              !< string in which chunk positions are searched for
+  integer, dimension(:), allocatable            :: IO_strPos
 
   integer                      :: left, right
 
 
-  allocate(IO_stringPos(1), source=0)
+  allocate(IO_strPos(1), source=0)
   right = 0
 
-  do while (verify(string(right+1:),IO_WHITESPACE)>0)
-    left  = right + verify(string(right+1:),IO_WHITESPACE)
-    right = left + scan(string(left:),IO_WHITESPACE) - 2
-    if ( string(left:left) == IO_COMMENT) exit
-    IO_stringPos = [IO_stringPos,left,right]
-    IO_stringPos(1) = IO_stringPos(1)+1
-    endOfString: if (right < left) then
-      IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
+  do while (verify(str(right+1:),IO_WHITESPACE)>0)
+    left  = right + verify(str(right+1:),IO_WHITESPACE)
+    right = left + scan(str(left:),IO_WHITESPACE) - 2
+    if ( str(left:left) == IO_COMMENT) exit
+    IO_strPos = [IO_strPos,left,right]
+    IO_strPos(1) = IO_strPos(1)+1
+    endOfStr: if (right < left) then
+      IO_strPos(IO_strPos(1)*2+1) = len_trim(str)
       exit
-    end if endOfString
+    end if endOfStr
   end do
 
-end function IO_stringPos
+end function IO_strPos
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read string value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
-function IO_stringValue(string,chunkPos,myChunk)
+function IO_strValue(str,chunkPos,myChunk)
 
-  character(len=*),             intent(in) :: string                                                !< raw input with known start and end of each chunk
+  character(len=*),             intent(in) :: str                                                   !< raw input with known start and end of each chunk
   integer,   dimension(:),      intent(in) :: chunkPos                                              !< positions of start and end of each tag/chunk in given string
   integer,                      intent(in) :: myChunk                                               !< position number of desired chunk
-  character(len=:), allocatable            :: IO_stringValue
+  character(len=:), allocatable            :: IO_strValue
 
   validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-    IO_stringValue = ''
-    call IO_error(110,'IO_stringValue: "'//trim(string)//'"',label1='chunk',ID1=myChunk)
+    IO_strValue = ''
+    call IO_error(110,'IO_strValue: "'//trim(str)//'"',label1='chunk',ID1=myChunk)
   else validChunk
-    IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
+    IO_strValue = str(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
   end if validChunk
 
-end function IO_stringValue
+end function IO_strValue
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read integer value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
-integer function IO_intValue(string,chunkPos,myChunk)
+integer function IO_intValue(str,chunkPos,myChunk)
 
-  character(len=*),      intent(in) :: string                                                       !< raw input with known start and end of each chunk
+  character(len=*),      intent(in) :: str                                                          !< raw input with known start and end of each chunk
   integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
   integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
 
-  IO_intValue = IO_stringAsInt(IO_stringValue(string,chunkPos,myChunk))
+  IO_intValue = IO_strAsInt(IO_strValue(str,chunkPos,myChunk))
 
 end function IO_intValue
 
@@ -274,13 +274,13 @@ end function IO_intValue
 !--------------------------------------------------------------------------------------------------
 !> @brief Read real value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_realValue(string,chunkPos,myChunk)
+real(pReal) function IO_realValue(str,chunkPos,myChunk)
 
-  character(len=*),        intent(in) :: string                                                     !< raw input with known start and end of each chunk
+  character(len=*),        intent(in) :: str                                                        !< raw input with known start and end of each chunk
   integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
   integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
 
-  IO_realValue = IO_stringAsReal(IO_stringValue(string,chunkPos,myChunk))
+  IO_realValue = IO_strAsReal(IO_strValue(str,chunkPos,myChunk))
 
 end function IO_realValue
 
@@ -288,10 +288,10 @@ end function IO_realValue
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert characters in string to lower case.
 !--------------------------------------------------------------------------------------------------
-pure function IO_lc(string)
+pure function IO_lc(str)
 
-  character(len=*), intent(in) :: string                                                            !< string to convert
-  character(len=len(string))   :: IO_lc
+  character(len=*), intent(in) :: str                                                               !< string to convert
+  character(len=len(str))   :: IO_lc
 
   character(len=*),          parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
   character(len=len(LOWER)), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -299,10 +299,10 @@ pure function IO_lc(string)
   integer :: i,n
 
 
-  do i = 1,len(string)
-    n = index(UPPER,string(i:i))
+  do i = 1,len(str)
+    n = index(UPPER,str(i:i))
     if (n==0) then
-      IO_lc(i:i) = string(i:i)
+      IO_lc(i:i) = str(i:i)
     else
       IO_lc(i:i) = LOWER(n:n)
     end if
@@ -336,80 +336,80 @@ end function IO_rmComment
 !--------------------------------------------------------------------------------------------------
 !> @brief Return given int value as string.
 !--------------------------------------------------------------------------------------------------
-function IO_intAsString(i)
+function IO_intAsStr(i)
 
   integer, intent(in)            :: i
 
-  character(len=:), allocatable  :: IO_intAsString
+  character(len=:), allocatable  :: IO_intAsStr
 
-  allocate(character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0))))))::IO_intAsString)
-  write(IO_intAsString,'(i0)') i
+  allocate(character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0))))))::IO_intAsStr)
+  write(IO_intAsStr,'(i0)') i
 
-end function IO_intAsString
+end function IO_intAsStr
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return integer value from given string.
 !--------------------------------------------------------------------------------------------------
-integer function IO_stringAsInt(string)
+integer function IO_strAsInt(str)
 
-  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+  character(len=*), intent(in) :: str                                                               !< string for conversion to int value
 
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
 
 
-  valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) IO_stringAsInt
-    if (readStatus /= 0) call IO_error(111,string)
+  valid: if (verify(str,VALIDCHARS) == 0) then
+    read(str,*,iostat=readStatus) IO_strAsInt
+    if (readStatus /= 0) call IO_error(111,str)
   else valid
-    IO_stringAsInt = 0
-    call IO_error(111,string)
+    IO_strAsInt = 0
+    call IO_error(111,str)
   end if valid
 
-end function IO_stringAsInt
+end function IO_strAsInt
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return real value from given string.
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_stringAsReal(string)
+real(pReal) function IO_strAsReal(str)
 
-  character(len=*), intent(in) :: string                                                            !< string for conversion to real value
+  character(len=*), intent(in) :: str                                                               !< string for conversion to real value
 
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
 
 
-  valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) IO_stringAsReal
-    if (readStatus /= 0) call IO_error(112,string)
+  valid: if (verify(str,VALIDCHARS) == 0) then
+    read(str,*,iostat=readStatus) IO_strAsReal
+    if (readStatus /= 0) call IO_error(112,str)
   else valid
-    IO_stringAsReal = 0.0_pReal
-    call IO_error(112,string)
+    IO_strAsReal = 0.0_pReal
+    call IO_error(112,str)
   end if valid
 
-end function IO_stringAsReal
+end function IO_strAsReal
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Return logical value from given string.
 !--------------------------------------------------------------------------------------------------
-logical function IO_stringAsBool(string)
+logical function IO_strAsBool(str)
 
-  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+  character(len=*), intent(in) :: str                                                               !< string for conversion to int value
 
 
-  if     (trim(adjustl(string)) == 'True' .or.  trim(adjustl(string)) == 'true') then
-    IO_stringAsBool = .true.
-  elseif (trim(adjustl(string)) == 'False' .or. trim(adjustl(string)) == 'false') then
-    IO_stringAsBool = .false.
+  if     (trim(adjustl(str)) == 'True' .or.  trim(adjustl(str)) == 'true') then
+    IO_strAsBool = .true.
+  elseif (trim(adjustl(str)) == 'False' .or. trim(adjustl(str)) == 'false') then
+    IO_strAsBool = .false.
   else
-    IO_stringAsBool = .false.
-    call IO_error(113,string)
+    IO_strAsBool = .false.
+    call IO_error(113,str)
   end if
 
-end function IO_stringAsBool
+end function IO_strAsBool
 
 
 
@@ -647,22 +647,22 @@ end subroutine IO_warning
 !--------------------------------------------------------------------------------------------------
 !> @brief Convert Windows (CRLF) to Unix (LF) line endings.
 !--------------------------------------------------------------------------------------------------
-pure function CRLF2LF(string)
+pure function CRLF2LF(str)
 
-  character(len=*), intent(in)  :: string
+  character(len=*), intent(in)  :: str
   character(len=:), allocatable :: CRLF2LF
 
   integer(pI64) :: c,n
 
 
-  allocate(character(len=len_trim(string,pI64))::CRLF2LF)
+  allocate(character(len=len_trim(str,pI64))::CRLF2LF)
   if (len(CRLF2LF,pI64) == 0) return
 
   n = 0_pI64
-  do c=1_pI64, len_trim(string,pI64)
-    CRLF2LF(c-n:c-n) = string(c:c)
-    if (c == len_trim(string,pI64)) exit
-    if (string(c:c+1_pI64) == CR//LF) n = n + 1_pI64
+  do c=1_pI64, len_trim(str,pI64)
+    CRLF2LF(c-n:c-n) = str(c:c)
+    if (c == len_trim(str,pI64)) exit
+    if (str(c:c+1_pI64) == CR//LF) n = n + 1_pI64
   end do
 
   CRLF2LF = CRLF2LF(:c-n)
@@ -680,7 +680,7 @@ subroutine panel(paneltype,ID,msg,ext_msg,label1,ID1,label2,ID2)
   integer,                    intent(in) :: ID
   integer,          optional, intent(in) :: ID1,ID2
 
-  character(len=pStringLen)              :: formatString
+  character(len=pSTRLEN)                 :: formatString
   integer, parameter                     :: panelwidth = 69
   character(len=*), parameter            :: DIVIDER = repeat('─',panelwidth)
 
@@ -733,37 +733,37 @@ subroutine selfTest()
   character(len=:),      allocatable :: str,out
 
 
-  if (dNeq(1.0_pReal, IO_stringAsReal('1.0')))       error stop 'IO_stringAsReal'
-  if (dNeq(1.0_pReal, IO_stringAsReal('1e0')))       error stop 'IO_stringAsReal'
-  if (dNeq(0.1_pReal, IO_stringAsReal('1e-1')))      error stop 'IO_stringAsReal'
-  if (dNeq(0.1_pReal, IO_stringAsReal('1.0e-1')))    error stop 'IO_stringAsReal'
-  if (dNeq(0.1_pReal, IO_stringAsReal('1.00e-1')))   error stop 'IO_stringAsReal'
-  if (dNeq(10._pReal, IO_stringAsReal(' 1.0e+1 ')))  error stop 'IO_stringAsReal'
+  if (dNeq(1.0_pReal, IO_strAsReal('1.0')))          error stop 'IO_strAsReal'
+  if (dNeq(1.0_pReal, IO_strAsReal('1e0')))          error stop 'IO_strAsReal'
+  if (dNeq(0.1_pReal, IO_strAsReal('1e-1')))         error stop 'IO_strAsReal'
+  if (dNeq(0.1_pReal, IO_strAsReal('1.0e-1')))       error stop 'IO_strAsReal'
+  if (dNeq(0.1_pReal, IO_strAsReal('1.00e-1')))      error stop 'IO_strAsReal'
+  if (dNeq(10._pReal, IO_strAsReal(' 1.0e+1 ')))     error stop 'IO_strAsReal'
 
-  if (3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
-  if (3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
-  if (-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
-  if (3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
-  if (3112019  /= IO_stringAsInt('03112019 '))       error stop 'IO_stringAsInt'
-  if (3112019  /= IO_stringAsInt('+03112019'))       error stop 'IO_stringAsInt'
+  if (3112019  /= IO_strAsInt( '3112019'))           error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt(' 3112019'))           error stop 'IO_strAsInt'
+  if (-3112019 /= IO_strAsInt('-3112019'))           error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt('+3112019 '))          error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt('03112019 '))          error stop 'IO_strAsInt'
+  if (3112019  /= IO_strAsInt('+03112019'))          error stop 'IO_strAsInt'
 
-  if (.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
-  if (.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
-  if (      IO_stringAsBool(' false'))               error stop 'IO_stringAsBool'
-  if (      IO_stringAsBool('False'))                error stop 'IO_stringAsBool'
+  if (.not. IO_strAsBool(' true'))                   error stop 'IO_strAsBool'
+  if (.not. IO_strAsBool(' True '))                  error stop 'IO_strAsBool'
+  if (      IO_strAsBool(' false'))                  error stop 'IO_strAsBool'
+  if (      IO_strAsBool('False'))                   error stop 'IO_strAsBool'
 
-  if ('1234' /= IO_intAsString(1234))                error stop 'IO_intAsString'
-  if ('-12'  /= IO_intAsString(-0012))               error stop 'IO_intAsString'
+  if ('1234' /= IO_intAsStr(1234))                   error stop 'IO_intAsStr'
+  if ('-12'  /= IO_intAsStr(-0012))                  error stop 'IO_intAsStr'
 
-  if (any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
-  if (any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
+  if (any([1,1,1]     /= IO_strPos('a')))            error stop 'IO_strPos'
+  if (any([2,2,3,5,5] /= IO_strPos(' aa b')))        error stop 'IO_strPos'
 
   str = ' 1.0 xxx'
-  chunkPos = IO_stringPos(str)
+  chunkPos = IO_strPos(str)
   if (dNeq(1.0_pReal,IO_realValue(str,chunkPos,1)))  error stop 'IO_realValue'
 
   str = 'M 3112019 F'
-  chunkPos = IO_stringPos(str)
+  chunkPos = IO_strPos(str)
   if (3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
 
   if (CRLF2LF('') /= '')                             error stop 'CRLF2LF/0'
