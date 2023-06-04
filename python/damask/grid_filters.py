@@ -186,8 +186,6 @@ def displacement_fluct_point(size: _FloatSequence,
         Fluctuating part of the cell center displacements.
 
     """
-    integrator = 0.5j*_np.ones(3)/_np.pi
-
     k_s = _ks(size,F.shape[:3],False)
     k_s_squared = _np.einsum('...l,...l',k_s,k_s)
     k_s_squared[0,0,0] = 1.0
@@ -195,8 +193,8 @@ def displacement_fluct_point(size: _FloatSequence,
     displacement = -_np.einsum('ijkml,ijkl,l->ijkm',
                               _np.fft.rfftn(F,axes=(0,1,2)),
                               k_s,
-                              integrator,
-                             ) / k_s_squared[...,_np.newaxis]
+                              _np.array([0.5j/_np.pi]*3),
+                              ) / k_s_squared[...,_np.newaxis]
 
     return _np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
