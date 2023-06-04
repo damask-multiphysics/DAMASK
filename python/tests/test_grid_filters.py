@@ -107,6 +107,33 @@ class TestGridFilters:
         assert np.allclose(grid_filters.displacement_point([1,1,1],F_no_avg),
                            grid_filters.displacement_fluct_point([1,1,1],F_no_avg))
 
+    displacement_fluct_test_data = [
+    (['np.sin(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0',
+      '0.0',                                  '0.0', '0.0',
+      '0.0',                                  '0.0', '0.0'],
+     ['-np.cos(np.pi*2*nodes[...,0]/size[0])/np.pi/2*size[0]', '0.0', '0.0']),
+
+    (['np.cos(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0',
+      '0.0',                                  '0.0', '0.0',
+      '0.0',                                  '0.0', 'np.cos(np.pi*2*nodes[...,2]/size[2])'],
+     ['np.sin(np.pi*2*nodes[...,0]/size[0])/np.pi/2*size[0]',
+      '0.0',
+      'np.sin(np.pi*2*nodes[...,2]/size[2])/np.pi/2*size[2]'])]
+    @pytest.mark.parametrize('F_def,u_def',displacement_fluct_test_data)
+    def test_displacment_fluct_analytic(self,F_def,u_def):
+        size = np.random.random(3)+1.0
+        cells = np.random.randint(8,32,(3))
+
+        nodes = grid_filters.coordinates0_point(cells,size)
+        my_locals = locals()                                                                        # needed for list comprehension
+
+        F = np.stack([np.broadcast_to(eval(F,globals(),my_locals),cells) for F in F_def],axis=-1).reshape(tuple(cells) + (3,3))
+        u = np.stack([np.broadcast_to(eval(u,globals(),my_locals),cells) for u in u_def],axis=-1).reshape(tuple(cells) + (3,))
+
+
+        assert np.allclose(u,grid_filters.displacement_fluct_point(size,F))
+
+
     @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_point,
                                          grid_filters.cellsSizeOrigin_coordinates0_node])
     def test_invalid_coordinates(self,function):
