@@ -210,7 +210,7 @@ module function phase_f_phi(phi,co,ce) result(f)
   select case(phase_damage(ph))
     case(DAMAGE_ISOBRITTLE_ID,DAMAGE_ANISOBRITTLE_ID)
       f = 1.0_pREAL &
-        - phi*damageState(ph)%state(1,en)
+        - 2.0_pREAL * phi*damageState(ph)%state(1,en)
     case default
       f = 0.0_pREAL
   end select
