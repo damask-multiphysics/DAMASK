@@ -4,6 +4,7 @@
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
+  use CLI
   use misc
   use YAML_parse
   use YAML_types
@@ -96,17 +97,16 @@ end function config_listReferences
 subroutine parse_material()
 
   logical :: fileExists
-  character(len=:), allocatable :: fileContent
-
-
-  inquire(file='material.yaml',exist=fileExists)
-  if (.not. fileExists) call IO_error(100,ext_msg='material.yaml')
+  character(len=:), allocatable :: &
+    fileContent, fname
 
   if (worldrank == 0) then
     print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
-    fileContent = IO_read('material.yaml')
+    fileContent = IO_read(CLI_materialFile)
+    fname = CLI_materialFile
+    if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup','material.yaml','main configuration')
+    call result_writeDataset_str(fileContent,'setup',fname,'main configuration')
     call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)

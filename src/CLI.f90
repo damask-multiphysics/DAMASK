@@ -23,7 +23,8 @@ module CLI
     CLI_restartInc = 0                                                                              !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
     CLI_geomFile, &                                                                                 !< parameter given for geometry file
-    CLI_loadFile                                                                                    !< parameter given for load case file
+    CLI_loadFile, &                                                                                 !< parameter given for load case file
+    CLI_materialFile
 
   public :: &
     getSolverJobName, &
@@ -46,9 +47,10 @@ subroutine CLI_init
     commandLine                                                                                     !< command line call as string
   character(len=pPathLen) :: &
     arg, &                                                                                          !< individual argument
-    loadCaseArg   = '', &                                                                           !< -l argument given to the executable
-    geometryArg   = '', &                                                                           !< -g argument given to the executable
-    workingDirArg = ''                                                                              !< -w argument given to the executable
+    loadCaseArg       = '', &                                                                       !< -l argument given to the executable
+    geometryArg       = '', &                                                                       !< -g argument given to the executable
+    materialFileArg   = '', &                                                                       !< -m argument given to the executable
+    workingDirArg     = ''                                                                          !< -w argument given to the executable
   integer :: &
     stat, &
     i
@@ -114,6 +116,7 @@ subroutine CLI_init
         print'(a,/)',' Valid command line switches:'
         print'(a)',  '    --geom         (-g, --geometry)'
         print'(a)',  '    --load         (-l, --loadcase)'
+        print'(a)',  '    --material     (-m, --materialConfig)'
         print'(a)',  '    --workingdir   (-w, --wd, --workingdirectory)'
         print'(a)',  '    --restart      (-r, --rs)'
         print'(a)',  '    --help         (-h)'
@@ -123,6 +126,8 @@ subroutine CLI_init
         print'(a)',  '        Specifies the location of the geometry definition file.'
         print'(/,a)','   --load PathToLoadFile/NameOfLoadFile'
         print'(a)',  '        Specifies the location of the load case definition file.'
+        print'(/,a)','   --material PathToMaterialConfigurationFile/NameOfMaterialConfigurationFile'
+        print'(a)',  '        Specifies the location of the material configuration file.'
         print'(/,a)',' -----------------------------------------------------------------------'
         print'(a)',  ' Optional arguments:'
         print'(/,a)','   --workingdirectory PathToWorkingDirectory'
@@ -147,6 +152,8 @@ subroutine CLI_init
         call get_command_argument(i+1,loadCaseArg,status=err)
       case ('-g', '--geom', '--geometry')
         call get_command_argument(i+1,geometryArg,status=err)
+      case ('-m', '--material', '--materialConfig')
+        call get_command_argument(i+1,materialFileArg,status=err)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
         call get_command_argument(i+1,workingDirArg,status=err)
       case ('-r', '--rs', '--restart')
@@ -160,14 +167,15 @@ subroutine CLI_init
     if (err /= 0) call quit(1)
   end do
 
-  if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
-    print'(/,a)', ' ERROR: Please specify geometry AND load case (-h for help)'
+  if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0 .or. len_trim(materialFileArg) == 0) then
+    print'(/,a)', ' ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
     call quit(1)
   end if
 
   if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
   CLI_geomFile = getGeometryFile(geometryArg)
   CLI_loadFile = getLoadCaseFile(loadCaseArg)
+  CLI_materialFile = getMaterialFile(materialFileArg)
 
   call get_command(commandLine)
   print'(/,a)',      ' Host name: '//getHostName()
@@ -178,6 +186,7 @@ subroutine CLI_init
     print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
   print'(a)',        ' Geometry argument:      '//trim(geometryArg)
   print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
+  print'(a)',        ' Material file argument: '//trim(materialFileArg)
   print'(/,a)',      ' Working directory:      '//getCWD()
   print'(a)',        ' Geometry file:          '//CLI_geomFile
   print'(a)',        ' Load case file:         '//CLI_loadFile
@@ -281,6 +290,29 @@ function getLoadCaseFile(loadCaseParameter)
   end if
 
 end function getLoadCaseFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief relative path of material configuration file from command line arguments
+!--------------------------------------------------------------------------------------------------
+function getMaterialFile(materialFileParameter)
+
+  character(len=:), allocatable :: getMaterialFile
+  character(len=*),  intent(in) :: materialFileParameter
+  logical                       :: file_exists
+  external                      :: quit
+
+  getMaterialFile = trim(materialFileParameter)
+  if (scan(getMaterialFile,'/') /= 1) getMaterialFile = getCWD()//'/'//trim(getMaterialFile)
+  getMaterialFile = trim(makeRelativePath(getCWD(), getMaterialFile))
+
+  inquire(file=getMaterialFile, exist=file_exists)
+  if (.not. file_exists) then
+    print*, 'ERROR: Material Configuration file does not exists: '//trim(getMaterialFile)
+    call quit(1)
+  end if
+
+end function getMaterialFile
 
 
 !--------------------------------------------------------------------------------------------------
