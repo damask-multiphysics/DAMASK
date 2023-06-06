@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from damask import grid_filters
+from damask import mechanics
 from damask import Grid
 from damask import seeds
 
@@ -36,7 +37,7 @@ class TestGridFilters:
          _cells,_size,_origin = eval(f'grid_filters.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"))')
          assert np.allclose(cells,_cells) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
-    def test_displacement_fluct_equivalence(self):
+    def test_displacement_fluct_periodic(self):
          """Ensure that fluctuations are periodic."""                                               # noqa
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
@@ -133,6 +134,19 @@ class TestGridFilters:
 
         assert np.allclose(u,grid_filters.displacement_fluct_point(size,F))
 
+    def test_coordinates(self):
+        cells = np.array([np.random.randint(40,100)*2,2,2])
+        size = (np.random.rand(3)+0.8)*cells
+        F = np.broadcast_to(np.eye(3),tuple(cells)+(3,3)).copy()
+        F[...,0,0] += np.expand_dims(0.1*np.sin(np.linspace(0,2*np.pi,cells[0],False))+
+                                     np.random.rand(cells[0])*0.05,(-1,-2))
+
+        c_n = grid_filters.coordinates_node(size,F)[:,0,0,0]
+        l_0 = (size/cells)[0]
+        l = c_n[1:] - c_n[:-1]
+        epsilon_reconstructed = (l-l_0)/l_0
+        epsilon_direct = mechanics.strain(F,'V',1)[:,0,0,0,0]
+        assert np.corrcoef(epsilon_reconstructed,epsilon_direct)[0,1] > 0.99
 
     @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_point,
                                          grid_filters.cellsSizeOrigin_coordinates0_node])
