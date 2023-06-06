@@ -122,7 +122,7 @@ recursive function parse_flow(YAML_flow) result(node)
       d = s + scan(flow_string(s+1_pI64:),':',kind=pI64)
       e = d + find_end(flow_string(d+1_pI64:),'}')
       key = trim(adjustl(flow_string(s+1_pI64:d-1_pI64)))
-      if (quotedString(key)) key = key(2:len(key)-1)
+      if (quotedStr(key)) key = key(2:len(key)-1)
       myVal => parse_flow(flow_string(d+1_pI64:e-1_pI64))                                           ! parse items (recursively)
 
       select type (node)
@@ -147,7 +147,7 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tScalar::node)
       select type (node)
         class is (tScalar)
-          if (quotedString(flow_string)) then
+          if (quotedStr(flow_string)) then
             node = trim(adjustl(flow_string(2:len(flow_string)-1)))
           else
             node = trim(adjustl(flow_string))
@@ -191,21 +191,21 @@ end function find_end
 !--------------------------------------------------------------------------------------------------
 ! @brief Check whether a string is enclosed with single or double quotes.
 !--------------------------------------------------------------------------------------------------
-logical function quotedString(line)
+logical function quotedStr(line)
 
   character(len=*), intent(in) :: line
 
 
-  quotedString = .false.
+  quotedStr = .false.
 
   if (len(line) == 0) return
 
   if (scan(line(:1),IO_QUOTES) == 1) then
-    quotedString = .true.
+    quotedStr = .true.
     if (line(len(line):len(line)) /= line(:1)) call IO_error(710,ext_msg=line)
   end if
 
-end function quotedString
+end function quotedStr
 
 
 #ifdef FYAML
@@ -876,7 +876,7 @@ subroutine selfTest()
   if (indentDepth('a')  /= 0)     error stop 'indentDepth'
   if (indentDepth('x ') /= 0)     error stop 'indentDepth'
 
-  if (.not. quotedString("'a'"))  error stop 'quotedString'
+  if (.not. quotedStr("'a'"))     error stop 'quotedStr'
 
   if (      isFlow(' a'))         error stop 'isFLow'
   if (.not. isFlow('{'))          error stop 'isFlow'
@@ -1025,9 +1025,9 @@ subroutine selfTest()
       dct = '{a: 1, b: 2}'
 
     list => YAML_parse_str_asList(lst//IO_EOL)
-    if (list%asFormattedString() /= lst) error stop 'str_asList'
+    if (list%asFormattedStr() /= lst) error stop 'str_asList'
     dict => YAML_parse_str_asDict(dct//IO_EOL)
-    if (dict%asFormattedString() /= dct) error stop 'str_asDict'
+    if (dict%asFormattedStr() /= dct) error stop 'str_asDict'
 
   end block parse
 

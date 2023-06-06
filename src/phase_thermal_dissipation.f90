@@ -8,7 +8,7 @@
 submodule(phase:thermal) dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
-    real(pReal) :: &
+    real(pREAL) :: &
       kappa                                                                                         !< TAYLOR-QUINNEY factor
   end type tParameters
 
@@ -61,7 +61,7 @@ module function dissipation_init(source_length) result(mySources)
           refs = config_listReferences(src,indent=3)
           if (len(refs) > 0) print'(/,1x,a)', refs
 
-          prm%kappa = src%get_asFloat('kappa')
+          prm%kappa = src%get_asReal('kappa')
           Nmembers = count(material_ID_phase == ph)
           call phase_allocateState(thermalState(ph)%p(so),Nmembers,0,0,0)
 
@@ -80,9 +80,9 @@ end function dissipation_init
 module function dissipation_f_T(ph,en) result(f_T)
 
   integer, intent(in) :: ph, en
-  real(pReal) :: &
+  real(pREAL) :: &
     f_T
-  real(pReal), dimension(3,3) :: &
+  real(pREAL), dimension(3,3) :: &
     Mp                                                                                              !< Mandel stress work conjugate with Lp
 
   Mp = matmul(matmul(transpose(mechanical_F_i(ph,en)),mechanical_F_i(ph,en)),mechanical_S(ph,en))

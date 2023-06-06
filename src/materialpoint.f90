@@ -141,7 +141,7 @@ end subroutine materialpoint_forward
 subroutine materialpoint_result(inc,time)
 
   integer,     intent(in) :: inc
-  real(pReal), intent(in) :: time
+  real(pREAL), intent(in) :: time
 
   call result_openJobFile()
   call result_addIncrement(inc,time)

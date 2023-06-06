@@ -50,7 +50,7 @@ function VTI_readDataset_real(fileContent,label) result(dataset)
   character(len=*), intent(in) :: &
     label, &
     fileContent
-  real(pReal),  dimension(:), allocatable :: &
+  real(pREAL),  dimension(:), allocatable :: &
     dataset
 
   character(len=:), allocatable :: dataType, headerType, base64Str
@@ -143,7 +143,7 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
 
   integer,     dimension(3), intent(out) :: &
     cells                                                                                           ! # of cells (across all processes!)
-  real(pReal), dimension(3), intent(out) :: &
+  real(pREAL), dimension(3), intent(out) :: &
     geomSize, &                                                                                     ! size (across all processes!)
     origin                                                                                          ! origin (across all processes!)
   character(len=*),          intent(in) :: &
@@ -156,7 +156,7 @@ subroutine VTI_readCellsSizeOrigin(cells,geomSize,origin, &
 
 
   cells = -1
-  geomSize = -1.0_pReal
+  geomSize = -1.0_pREAL
 
   inFile = .false.
   inImage = .false.
@@ -198,11 +198,11 @@ end subroutine VTI_readCellsSizeOrigin
 subroutine cellsSizeOrigin(c,s,o,header)
 
   integer, dimension(3),     intent(out) :: c
-  real(pReal), dimension(3), intent(out) :: s,o
+  real(pREAL), dimension(3), intent(out) :: s,o
   character(len=*),          intent(in) :: header
 
   character(len=:), allocatable :: temp
-  real(pReal), dimension(3) :: delta
+  real(pREAL), dimension(3) :: delta
   integer :: i
 
 
@@ -211,16 +211,16 @@ subroutine cellsSizeOrigin(c,s,o,header)
     call IO_error(error_ID = 844, ext_msg = 'coordinate order')
 
   temp = getXMLValue(header,'WholeExtent')
-  if (any([(IO_intValue(temp,IO_stringPos(temp),i),i=1,5,2)] /= 0)) &
+  if (any([(IO_intValue(temp,IO_strPos(temp),i),i=1,5,2)] /= 0)) &
     call IO_error(error_ID = 844, ext_msg = 'coordinate start')
-  c = [(IO_intValue(temp,IO_stringPos(temp),i),i=2,6,2)]
+  c = [(IO_intValue(temp,IO_strPos(temp),i),i=2,6,2)]
 
   temp = getXMLValue(header,'Spacing')
-  delta = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
-  s = delta * real(c,pReal)
+  delta = [(IO_realValue(temp,IO_strPos(temp),i),i=1,3)]
+  s = delta * real(c,pREAL)
 
   temp = getXMLValue(header,'Origin')
-  o = [(IO_floatValue(temp,IO_stringPos(temp),i),i=1,3)]
+  o = [(IO_realValue(temp,IO_strPos(temp),i),i=1,3)]
 
 end subroutine cellsSizeOrigin
 
@@ -255,7 +255,7 @@ end function as_Int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Interpret Base64 string in vtk XML file as real of kind pReal.
+!> @brief Interpret Base64 string in vtk XML file as real of kind pREAL.
 !--------------------------------------------------------------------------------------------------
 function as_real(base64Str,headerType,compressed,dataType)
 
@@ -264,18 +264,18 @@ function as_real(base64Str,headerType,compressed,dataType)
                                   dataType                                                          ! data type (Int32, Int64, Float32, Float64)
   logical,          intent(in) :: compressed                                                        ! indicate whether data is zlib compressed
 
-  real(pReal), dimension(:), allocatable :: as_real
+  real(pREAL), dimension(:), allocatable :: as_real
 
 
   select case(dataType)
     case('Int32')
-      as_real = real(prec_bytesToC_INT32_T(asBytes(base64Str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_INT32_T(asBytes(base64Str,headerType,compressed)),pREAL)
     case('Int64')
-      as_real = real(prec_bytesToC_INT64_T(asBytes(base64Str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_INT64_T(asBytes(base64Str,headerType,compressed)),pREAL)
     case('Float32')
-      as_real = real(prec_bytesToC_FLOAT  (asBytes(base64Str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_FLOAT  (asBytes(base64Str,headerType,compressed)),pREAL)
     case('Float64')
-      as_real = real(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)),pReal)
+      as_real = real(prec_bytesToC_DOUBLE (asBytes(base64Str,headerType,compressed)),pREAL)
     case default
       call IO_error(844,ext_msg='unknown data type: '//trim(dataType))
   end select
