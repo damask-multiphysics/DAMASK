@@ -4,13 +4,14 @@
 !--------------------------------------------------------------------------------------------------
 module config
   use IO
-  use CLI
   use misc
   use YAML_parse
   use YAML_types
   use result
   use parallelization
-
+#if   defined(MESH) || defined(GRID)
+  use CLI
+#endif
   implicit none(type,external)
   private
 
@@ -102,8 +103,13 @@ subroutine parse_material()
 
   if (worldrank == 0) then
     print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
+#if   defined(MESH) || defined(GRID)
     fileContent = IO_read(CLI_materialFile)
     fname = CLI_materialFile
+#else
+    fileContent = IO_read('material.yaml')
+    fname = 'material.yaml'
+#endif
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
     call result_writeDataset_str(fileContent,'setup',fname,'main configuration')
