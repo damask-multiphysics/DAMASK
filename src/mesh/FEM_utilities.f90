@@ -29,7 +29,7 @@ module FEM_utilities
   private
 
   logical,     public             :: cutBack = .false.                                              !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
-  real(pReal), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
+  real(pREAL), public, protected  :: wgt                                                            !< weighting factor 1/Nelems
 
 
 !--------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ module FEM_utilities
 
   type, public :: tComponentBC
     integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
-    real(pReal), allocatable, dimension(:) :: Value
+    real(pREAL), allocatable, dimension(:) :: Value
     logical,     allocatable, dimension(:) :: Mask
   end type tComponentBC
 
@@ -92,7 +92,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_utilities_init
 
-  character(len=pStringLen) :: petsc_optionsOrder
+  character(len=pSTRLEN) :: petsc_optionsOrder
   type(tDict), pointer :: &
     num_mesh
   integer :: &
@@ -122,13 +122,13 @@ subroutine FEM_utilities_init
                                &-mechanical_snes_ksp_ew_rtol0 0.01 -mechanical_snes_ksp_ew_rtolmax 0.01 &
                                &-mechanical_ksp_type fgmres -mechanical_ksp_max_it 25', err_PETSc)
   CHKERRQ(err_PETSc)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('PETSc_options',defaultVal=''),err_PETSc)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asStr('PETSc_options',defaultVal=''),err_PETSc)
   CHKERRQ(err_PETSc)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', p_s
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),err_PETSc)
   CHKERRQ(err_PETSc)
 
-  wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)**(-1)
+  wgt = real(mesh_maxNips*mesh_NcpElemsGlobal,pREAL)**(-1)
 
 
 end subroutine FEM_utilities_init
@@ -139,9 +139,9 @@ end subroutine FEM_utilities_init
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
-  real(pReal), intent(in)                 :: timeinc                                                !< loading time
+  real(pREAL), intent(in)                 :: timeinc                                                !< loading time
   logical,     intent(in)                 :: forwardData                                            !< age results
-  real(pReal),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
+  real(pREAL),intent(out), dimension(3,3) :: P_av                                                   !< average PK stress
 
   integer(MPI_INTEGER_KIND) :: err_MPI
 
@@ -170,8 +170,8 @@ subroutine utilities_projectBCValues(localVec,section,field,comp,bcPointsIS,BCVa
   PetscSection         :: section
   IS                   :: bcPointsIS
   PetscInt,    pointer :: bcPoints(:)
-  real(pReal), pointer :: localArray(:)
-  real(pReal)          :: BCValue,BCDotValue,timeinc
+  real(pREAL), pointer :: localArray(:)
+  real(pREAL)          :: BCValue,BCDotValue,timeinc
   PetscErrorCode       :: err_PETSc
 
 

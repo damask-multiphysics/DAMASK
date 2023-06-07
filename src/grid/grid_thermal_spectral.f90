@@ -35,7 +35,7 @@ module grid_thermal_spectral
   type :: tNumerics
     integer :: &
       itmax                                                                                         !< maximum number of iterations
-    real(pReal) :: &
+    real(pREAL) :: &
       eps_thermal_atol, &                                                                           !< absolute tolerance for thermal equilibrium
       eps_thermal_rtol                                                                              !< relative tolerance for thermal equilibrium
   end type tNumerics
@@ -47,7 +47,7 @@ module grid_thermal_spectral
 ! PETSc data
   SNES :: SNES_thermal
   Vec :: solution_vec
-  real(pReal), dimension(:,:,:), allocatable :: &
+  real(pREAL), dimension(:,:,:), allocatable :: &
     T, &                                                                                            !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
     T_stagInc, &                                                                                    !< field of staggered temperature
@@ -55,8 +55,8 @@ module grid_thermal_spectral
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc.
   integer                     :: totalIter = 0                                                      !< total iteration in current increment
-  real(pReal), dimension(3,3) :: K_ref
-  real(pReal)                 :: mu_ref
+  real(pREAL), dimension(3,3) :: K_ref
+  real(pREAL)                 :: mu_ref
 
   public :: &
     grid_thermal_spectral_init, &
@@ -74,11 +74,11 @@ subroutine grid_thermal_spectral_init()
   PetscInt, dimension(0:worldsize-1) :: localK
   integer :: i, j, k, ce
   DM :: thermal_grid
-  real(pReal), dimension(:,:,:), pointer :: T_PETSc
+  real(pREAL), dimension(:,:,:), pointer :: T_PETSc
   integer(MPI_INTEGER_KIND) :: err_MPI
   PetscErrorCode :: err_PETSc
   integer(HID_T) :: fileHandle, groupHandle
-  real(pReal), dimension(1,product(cells(1:2))*cells3) :: tempN
+  real(pREAL), dimension(1,product(cells(1:2))*cells3) :: tempN
   type(tDict), pointer :: &
     num_grid
 
@@ -92,20 +92,20 @@ subroutine grid_thermal_spectral_init()
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get_dict('grid',defaultVal=emptyDict)
-  num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
-  num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
-  num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
+  num%itmax            = num_grid%get_asInt ('itmax',           defaultVal=250)
+  num%eps_thermal_atol = num_grid%get_asReal('eps_thermal_atol',defaultVal=1.0e-2_pREAL)
+  num%eps_thermal_rtol = num_grid%get_asReal('eps_thermal_rtol',defaultVal=1.0e-6_pREAL)
 
   if (num%itmax <= 1)                    call IO_error(301,ext_msg='itmax')
-  if (num%eps_thermal_atol <= 0.0_pReal) call IO_error(301,ext_msg='eps_thermal_atol')
-  if (num%eps_thermal_rtol <= 0.0_pReal) call IO_error(301,ext_msg='eps_thermal_rtol')
+  if (num%eps_thermal_atol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_thermal_atol')
+  if (num%eps_thermal_rtol <= 0.0_pREAL) call IO_error(301,ext_msg='eps_thermal_rtol')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type newtonls -thermal_snes_mf &
                                &-thermal_snes_ksp_ew -thermal_ksp_type fgmres',err_PETSc)
  CHKERRQ(err_PETSc)
- call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),err_PETSc)
+ call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asStr('petsc_options',defaultVal=''),err_PETSc)
  CHKERRQ(err_PETSc)
 
 !--------------------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ subroutine grid_thermal_spectral_init()
   T = discretization_grid_getInitialCondition('T')
   T_lastInc = T
   T_stagInc = T
-  dotT_lastInc = 0.0_pReal * T
+  dotT_lastInc = 0.0_pREAL * T
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -165,7 +165,7 @@ subroutine grid_thermal_spectral_init()
   ce = 0
   do k = 1, cells3; do j = 1, cells(2); do i = 1, cells(1)
     ce = ce + 1
-    call homogenization_thermal_setField(T(i,j,k),0.0_pReal,ce)
+    call homogenization_thermal_setField(T(i,j,k),0.0_pREAL,ce)
   end do; end do; end do
 
   call DMDAVecGetArrayF90(thermal_grid,solution_vec,T_PETSc,err_PETSc)
@@ -184,7 +184,7 @@ end subroutine grid_thermal_spectral_init
 !--------------------------------------------------------------------------------------------------
 function grid_thermal_spectral_solution(Delta_t) result(solution)
 
-  real(pReal), intent(in) :: &
+  real(pREAL), intent(in) :: &
     Delta_t                                                                                         !< increment in time for current solution
   integer :: i, j, k, ce
   type(tSolutionState) :: solution
@@ -251,7 +251,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
 
   integer :: i, j, k, ce
   DM :: dm_local
-  real(pReal),  dimension(:,:,:), pointer :: T_PETSc
+  real(pREAL),  dimension(:,:,:), pointer :: T_PETSc
   PetscErrorCode :: err_PETSc
 
 
@@ -290,7 +290,7 @@ subroutine grid_thermal_spectral_restartWrite
   PetscErrorCode :: err_PETSc
   DM :: dm_local
   integer(HID_T) :: fileHandle, groupHandle
-  real(pReal), dimension(:,:,:), pointer :: T
+  real(pREAL), dimension(:,:,:), pointer :: T
 
   call SNESGetDM(SNES_thermal,dm_local,err_PETSc);
   CHKERRQ(err_PETSc)
@@ -321,15 +321,15 @@ subroutine formResidual(residual_subdomain,x_scal,r,dummy,err_PETSc)
 
   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
     residual_subdomain
-  real(pReal), dimension(cells(1),cells(2),cells3), intent(in) :: &
+  real(pREAL), dimension(cells(1),cells(2),cells3), intent(in) :: &
     x_scal
-  real(pReal), dimension(cells(1),cells(2),cells3), intent(out) :: &
+  real(pREAL), dimension(cells(1),cells(2),cells3), intent(out) :: &
     r                                                                                                     !< residual
   PetscObject :: dummy
   PetscErrorCode, intent(out) :: err_PETSc
 
   integer :: i, j, k, ce
-  real(pReal), dimension(3,cells(1),cells(2),cells3) :: vectorField
+  real(pREAL), dimension(3,cells(1),cells(2),cells3) :: vectorField
 
 
   T = x_scal
@@ -364,8 +364,8 @@ subroutine updateReference()
   integer(MPI_INTEGER_KIND) :: err_MPI
 
 
-  K_ref = 0.0_pReal
-  mu_ref = 0.0_pReal
+  K_ref = 0.0_pREAL
+  mu_ref = 0.0_pREAL
   do ce = 1, product(cells(1:2))*cells3
     K_ref  = K_ref  + homogenization_K_T(ce)
     mu_ref = mu_ref + homogenization_mu_T(ce)

@@ -18,13 +18,13 @@ module geometry_plastic_nonlocal
   integer,     dimension(:,:,:,:), allocatable, protected :: &
     geometry_plastic_nonlocal_IPneighborhood                                                        !< 6 or less neighboring IPs as [element ID, IP ID, face ID that point to me]
 
-  real(pReal), dimension(:,:),     allocatable, protected :: &
+  real(pREAL), dimension(:,:),     allocatable, protected :: &
     geometry_plastic_nonlocal_IPvolume0                                                             !< volume associated with IP (initially!)
 
-  real(pReal), dimension(:,:,:),   allocatable, protected :: &
+  real(pREAL), dimension(:,:,:),   allocatable, protected :: &
     geometry_plastic_nonlocal_IParea0                                                               !< area of interface to neighboring IP (initially!)
 
-  real(pReal), dimension(:,:,:,:), allocatable, protected :: &
+  real(pREAL), dimension(:,:,:,:), allocatable, protected :: &
     geometry_plastic_nonlocal_IPareaNormal0                                                         !< area normal of interface to neighboring IP (initially!)
 
 
@@ -54,7 +54,7 @@ end subroutine geometry_plastic_nonlocal_setIPneighborhood
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_setIPvolume(IPvolume)
 
-  real(pReal), dimension(:,:), intent(in) :: IPvolume
+  real(pREAL), dimension(:,:), intent(in) :: IPvolume
 
   geometry_plastic_nonlocal_IPvolume0 = IPvolume
 
@@ -67,7 +67,7 @@ end subroutine geometry_plastic_nonlocal_setIPvolume
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_setIParea(IParea)
 
-  real(pReal), dimension(:,:,:), intent(in) :: IParea
+  real(pREAL), dimension(:,:,:), intent(in) :: IParea
 
   geometry_plastic_nonlocal_IParea0 = IParea
 
@@ -80,7 +80,7 @@ end subroutine geometry_plastic_nonlocal_setIParea
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_setIPareaNormal(IPareaNormal)
 
-  real(pReal), dimension(:,:,:,:), intent(in) :: IPareaNormal
+  real(pREAL), dimension(:,:,:,:), intent(in) :: IPareaNormal
 
   geometry_plastic_nonlocal_IPareaNormal0 = IPareaNormal
 
@@ -117,7 +117,7 @@ subroutine geometry_plastic_nonlocal_result()
   call result_openJobFile()
 
   writeVolume: block
-    real(pReal), dimension(:), allocatable :: temp
+    real(pREAL), dimension(:), allocatable :: temp
     shp = shape(geometry_plastic_nonlocal_IPvolume0)
     temp = reshape(geometry_plastic_nonlocal_IPvolume0,[shp(1)*shp(2)])
     call result_writeDataset(temp,'geometry','v_0',&
@@ -125,7 +125,7 @@ subroutine geometry_plastic_nonlocal_result()
   end block writeVolume
 
   writeAreas: block
-    real(pReal), dimension(:,:), allocatable :: temp
+    real(pREAL), dimension(:,:), allocatable :: temp
     shp = shape(geometry_plastic_nonlocal_IParea0)
     temp = reshape(geometry_plastic_nonlocal_IParea0,[shp(1),shp(2)*shp(3)])
     call result_writeDataset(temp,'geometry','a_0',&
@@ -133,7 +133,7 @@ subroutine geometry_plastic_nonlocal_result()
   end block writeAreas
 
   writeNormals: block
-    real(pReal), dimension(:,:,:), allocatable :: temp
+    real(pREAL), dimension(:,:,:), allocatable :: temp
     shp = shape(geometry_plastic_nonlocal_IPareaNormal0)
     temp = reshape(geometry_plastic_nonlocal_IPareaNormal0,[shp(1),shp(2),shp(3)*shp(4)])
     call result_writeDataset(temp,'geometry','n_0',&

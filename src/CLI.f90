@@ -43,7 +43,7 @@ subroutine CLI_init
 --  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
 
-  character(len=pPathLen*3+pStringLen) :: &
+  character(len=pPathLen*3+pSTRLEN) :: &
     commandLine                                                                                     !< command line call as string
   character(len=pPathLen) :: &
     arg, &                                                                                          !< individual argument

@@ -39,8 +39,8 @@ module parallelization
 public :: parallelization_bcast_str
 
 contains
-subroutine parallelization_bcast_str(string)
-  character(len=:), allocatable, intent(inout) :: string
+subroutine parallelization_bcast_str(str)
+  character(len=:), allocatable, intent(inout) :: str
 end subroutine parallelization_bcast_str
 
 #else
@@ -135,8 +135,8 @@ subroutine parallelization_init()
   call MPI_Type_size(MPI_DOUBLE,typeSize,err_MPI)
   if (err_MPI /= 0_MPI_INTEGER_KIND) &
     error stop 'Could not determine size of MPI_DOUBLE'
-  if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pReal),MPI_INTEGER_KIND)) &
-    error stop 'Mismatch between MPI_DOUBLE and DAMASK pReal'
+  if (typeSize*8_MPI_INTEGER_KIND /= int(storage_size(0.0_pREAL),MPI_INTEGER_KIND)) &
+    error stop 'Mismatch between MPI_DOUBLE and DAMASK pREAL'
 
 !$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if (got_env /= 0) then
@@ -171,18 +171,18 @@ end subroutine parallelization_chkerr
 !--------------------------------------------------------------------------------------------------
 !> @brief Broadcast a string from process 0.
 !--------------------------------------------------------------------------------------------------
-subroutine parallelization_bcast_str(string)
+subroutine parallelization_bcast_str(str)
 
-  character(len=:), allocatable, intent(inout) :: string
+  character(len=:), allocatable, intent(inout) :: str
 
   integer(MPI_INTEGER_KIND) :: strlen, err_MPI
 
 
-  if (worldrank == 0) strlen = len(string,MPI_INTEGER_KIND)
+  if (worldrank == 0) strlen = len(str,MPI_INTEGER_KIND)
   call MPI_Bcast(strlen,1_MPI_INTEGER_KIND,MPI_INTEGER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
-  if (worldrank /= 0) allocate(character(len=strlen)::string)
+  if (worldrank /= 0) allocate(character(len=strlen)::str)
 
-  call MPI_Bcast(string,strlen,MPI_CHARACTER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
+  call MPI_Bcast(str,strlen,MPI_CHARACTER,0_MPI_INTEGER_KIND,MPI_COMM_WORLD, err_MPI)
 
 
 end subroutine parallelization_bcast_str

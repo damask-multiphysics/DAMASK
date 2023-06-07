@@ -18,7 +18,7 @@ module discretization
   integer,     public, protected, dimension(:),   allocatable :: &
     discretization_materialAt                                                                       !ToDo: discretization_ID_material
 
-  real(pReal), public, protected, dimension(:,:), allocatable :: &
+  real(pREAL), public, protected, dimension(:,:), allocatable :: &
     discretization_IPcoords0, &
     discretization_IPcoords, &
     discretization_NodeCoords0, &
@@ -44,7 +44,7 @@ subroutine discretization_init(materialAt,&
 
   integer,     dimension(:),   intent(in) :: &
     materialAt
-  real(pReal), dimension(:,:), intent(in) :: &
+  real(pREAL), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
   integer, optional,           intent(in) :: &
@@ -78,7 +78,7 @@ end subroutine discretization_init
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_result()
 
-  real(pReal), dimension(:,:), allocatable :: u
+  real(pREAL), dimension(:,:), allocatable :: u
 
   call result_closeGroup(result_addGroup('current/geometry'))
 
@@ -98,7 +98,7 @@ end subroutine discretization_result
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_setIPcoords(IPcoords)
 
-  real(pReal), dimension(:,:), intent(in) :: IPcoords
+  real(pREAL), dimension(:,:), intent(in) :: IPcoords
 
   discretization_IPcoords = IPcoords
 
@@ -110,7 +110,7 @@ end subroutine discretization_setIPcoords
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_setNodeCoords(NodeCoords)
 
-  real(pReal), dimension(:,:), intent(in) :: NodeCoords
+  real(pREAL), dimension(:,:), intent(in) :: NodeCoords
 
   discretization_NodeCoords = NodeCoords
 

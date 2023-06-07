@@ -84,7 +84,7 @@ function config_listReferences(config,indent) result(references)
   else
     references = 'references:'
     do r = 1, ref%length
-      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asString(r),filler=filler//'  ')
+      references = references//IO_EOL//filler//'- '//IO_wrapLines(ref%get_asStr(r),filler=filler//'  ')
     end do
   end if
 
