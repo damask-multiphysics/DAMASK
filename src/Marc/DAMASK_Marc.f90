@@ -33,7 +33,6 @@ module DAMASK_interface
 
   public :: &
     DAMASK_interface_init, &
-!    getMaterialFileName, &
     getSolverJobName
 
 contains
@@ -92,32 +91,6 @@ function getSolverJobName()
   getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
 
 end function getSolverJobName
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief material configuration file name
-!--------------------------------------------------------------------------------------------------
-!function getMaterialFileName()
-
-!  character(len=:), allocatable :: getMaterialFileName
-!  character(len=pSTRLEN) :: line
-!  integer :: myStat,fileUnit,s,e
-
-! open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
-!      status='old', position='rewind', action='read',iostat=myStat)
-! do
-!   read (fileUnit,'(A)',END=100) line
-!   if (index(trim(line),'materialConfig') == 1) then
-!     read (fileUnit,'(A)',END=100) line                                                            ! next line
-!       s =     verify(line,      ' ')                                                              ! start of first chunk
-!       s = s + verify(line(s+1:),' ')                                                              ! start of second chunk
-!       e = s + scan  (line(s+1:),' ')                                                              ! end of second chunk
-!     getMaterialFileName = line(s:e)
-!   end if
-! end do
-!100 close(fileUnit)
-
-!end function getMaterialFileName
 
 
 !--------------------------------------------------------------------------------------------------
