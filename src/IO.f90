@@ -38,6 +38,7 @@ module IO
     IO_realValue, &
     IO_lc, &
     IO_rmComment, &
+    IO_glueDiffering, &
     IO_intAsStr, &
     IO_strAsInt, &
     IO_strAsReal, &
@@ -331,6 +332,29 @@ function IO_rmComment(line)
   end if
 
 end function IO_rmComment
+
+
+!--------------------------------------------------------------------------------------------------
+! @brief Return first (with glued on second if they differ)
+!--------------------------------------------------------------------------------------------------
+function IO_glueDiffering(first,second,glue)
+
+  character(len=*),           intent(in)  :: first
+  character(len=*),           intent(in)  :: second
+  character(len=*), optional, intent(in)  :: glue
+  character(len=:), allocatable :: IO_glueDiffering
+  character(len=pSTRLEN)                  :: glue_
+
+  if (present(glue)) then
+    glue_ = glue
+  else
+    glue_ = '<--'
+  end if
+
+  IO_glueDiffering = trim(first)
+  if (trim(first) /= trim(second)) IO_glueDiffering = IO_glueDiffering//' '//trim(glue_)//' '//trim(second)
+
+end function IO_glueDiffering
 
 
 !--------------------------------------------------------------------------------------------------

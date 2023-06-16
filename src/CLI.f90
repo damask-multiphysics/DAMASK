@@ -16,6 +16,7 @@ module CLI
   use prec
   use parallelization
   use system_routines
+  use IO
 
   implicit none(type,external)
   private
@@ -49,7 +50,7 @@ subroutine CLI_init
     arg, &                                                                                          !< individual argument
     loadCaseArg       = '', &                                                                       !< -l argument given to the executable
     geometryArg       = '', &                                                                       !< -g argument given to the executable
-    materialFileArg   = '', &                                                                       !< -m argument given to the executable
+    materialArg       = '', &                                                                       !< -m argument given to the executable
     workingDirArg     = ''                                                                          !< -w argument given to the executable
   integer :: &
     stat, &
@@ -60,6 +61,8 @@ subroutine CLI_init
   external :: &
     quit
 
+
+  workingDirArg = getCWD()
 
   print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
@@ -153,7 +156,7 @@ subroutine CLI_init
       case ('-g', '--geom', '--geometry')
         call get_command_argument(i+1,geometryArg,status=err)
       case ('-m', '--material', '--materialConfig')
-        call get_command_argument(i+1,materialFileArg,status=err)
+        call get_command_argument(i+1,materialArg,status=err)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
         call get_command_argument(i+1,workingDirArg,status=err)
       case ('-r', '--rs', '--restart')
@@ -167,29 +170,25 @@ subroutine CLI_init
     if (err /= 0) call quit(1)
   end do
 
-  if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0 .or. len_trim(materialFileArg) == 0) then
+  if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0 .or. len_trim(materialArg) == 0) then
     print'(/,a)', ' ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
     call quit(1)
   end if
 
-  if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
-  CLI_geomFile = getGeometryFile(geometryArg)
-  CLI_loadFile = getLoadCaseFile(loadCaseArg)
-  CLI_materialFile = getMaterialFile(materialFileArg)
+  call setWorkingDirectory(trim(workingDirArg))
+  CLI_geomFile = getPathRelCWD(geometryArg,'geometry')
+  CLI_loadFile = getPathRelCWD(loadCaseArg,'load case')
+  CLI_materialFile = getPathRelCWD(materialArg,'material configuration')
 
   call get_command(commandLine)
   print'(/,a)',      ' Host name: '//getHostName()
   print'(a)',        ' User name: '//getUserName()
 
-  print'(/a)',       ' Command line call:      '//trim(commandLine)
-  if (len_trim(workingDirArg) > 0) &
-    print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
-  print'(a)',        ' Geometry argument:      '//trim(geometryArg)
-  print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
-  print'(a)',        ' Material file argument: '//trim(materialFileArg)
-  print'(/,a)',      ' Working directory:      '//getCWD()
-  print'(a)',        ' Geometry file:          '//CLI_geomFile
-  print'(a)',        ' Load case file:         '//CLI_loadFile
+  print'(/a/)',      ' Command line call:      '//trim(commandLine)
+  print'(a)',        ' Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
+  print'(a)',        ' Geometry:               '//IO_glueDiffering(CLI_geomFile,geometryArg)
+  print'(a)',        ' Load case:              '//IO_glueDiffering(CLI_loadFile,loadCaseArg)
+  print'(a)',        ' Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
   print'(a)',        ' Solver job name:        '//getSolverJobName()
   if (CLI_restartInc > 0) &
     print'(a,i6.6)', ' Restart from increment: ', CLI_restartInc
@@ -247,72 +246,27 @@ end function getSolverJobName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief basename of geometry file with extension from command line arguments
+!> @brief translate path as relative to CWD and check for existence
 !--------------------------------------------------------------------------------------------------
-function getGeometryFile(geometryParameter)
+function getPathRelCWD(path,fileType)
 
-  character(len=:), allocatable :: getGeometryFile
-  character(len=*),  intent(in) :: geometryParameter
+  character(len=:), allocatable :: getPathRelCWD
+  character(len=*),  intent(in) :: path
+  character(len=*),  intent(in) :: fileType
   logical                       :: file_exists
   external                      :: quit
 
-  getGeometryFile = trim(geometryParameter)
-  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = getCWD()//'/'//trim(getGeometryFile)
-  getGeometryFile = trim(makeRelativePath(getCWD(), getGeometryFile))
+  getPathRelCWD = trim(path)
+  if (scan(getPathRelCWD,'/') /= 1) getPathRelCWD = getCWD()//'/'//trim(getPathRelCWD)
+  getPathRelCWD = trim(makeRelativePath(getCWD(), getPathRelCWD))
 
-  inquire(file=getGeometryFile, exist=file_exists)
+  inquire(file=getPathRelCWD, exist=file_exists)
   if (.not. file_exists) then
-    print*, 'ERROR: Geometry file does not exists: '//trim(getGeometryFile)
+    print*, 'ERROR: '//fileType//' file does not exist: '//trim(getPathRelCWD)
     call quit(1)
   end if
 
-end function getGeometryFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief relative path of load case from command line arguments
-!--------------------------------------------------------------------------------------------------
-function getLoadCaseFile(loadCaseParameter)
-
-  character(len=:), allocatable :: getLoadCaseFile
-  character(len=*),  intent(in) :: loadCaseParameter
-  logical                       :: file_exists
-  external                      :: quit
-
-  getLoadCaseFile = trim(loadCaseParameter)
-  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = getCWD()//'/'//trim(getLoadCaseFile)
-  getLoadCaseFile = trim(makeRelativePath(getCWD(), getLoadCaseFile))
-
-  inquire(file=getLoadCaseFile, exist=file_exists)
-  if (.not. file_exists) then
-    print*, 'ERROR: Load case file does not exists: '//trim(getLoadCaseFile)
-    call quit(1)
-  end if
-
-end function getLoadCaseFile
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief relative path of material configuration file from command line arguments
-!--------------------------------------------------------------------------------------------------
-function getMaterialFile(materialFileParameter)
-
-  character(len=:), allocatable :: getMaterialFile
-  character(len=*),  intent(in) :: materialFileParameter
-  logical                       :: file_exists
-  external                      :: quit
-
-  getMaterialFile = trim(materialFileParameter)
-  if (scan(getMaterialFile,'/') /= 1) getMaterialFile = getCWD()//'/'//trim(getMaterialFile)
-  getMaterialFile = trim(makeRelativePath(getCWD(), getMaterialFile))
-
-  inquire(file=getMaterialFile, exist=file_exists)
-  if (.not. file_exists) then
-    print*, 'ERROR: Material Configuration file does not exists: '//trim(getMaterialFile)
-    call quit(1)
-  end if
-
-end function getMaterialFile
+end function getPathRelCWD
 
 
 !--------------------------------------------------------------------------------------------------
