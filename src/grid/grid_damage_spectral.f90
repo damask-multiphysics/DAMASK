@@ -319,7 +319,7 @@ subroutine grid_damage_spectral_restartWrite
   call DMDAVecGetArrayF90(dm_local,solution_vec,phi,err_PETSc);
   CHKERRQ(err_PETSc)
 
-  print'(1x,a)', 'writing damage solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'saving damage solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
   groupHandle = HDF5_openGroup(fileHandle,'solver')

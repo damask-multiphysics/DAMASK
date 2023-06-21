@@ -112,7 +112,7 @@ subroutine materialpoint_restartWrite()
   integer(HID_T) :: fileHandle
 
 
-  print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
+  print'(1x,a)', 'saving field and constitutive data required for restart';flush(IO_STDOUT)
 
   fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','a')
 

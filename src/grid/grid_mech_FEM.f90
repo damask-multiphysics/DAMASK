@@ -447,7 +447,7 @@ subroutine grid_mechanical_FEM_restartWrite
   call DMDAVecGetArrayF90(mechanical_grid,solution_lastInc,u_lastInc,err_PETSc)
   CHKERRQ(err_PETSc)
 
-  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')

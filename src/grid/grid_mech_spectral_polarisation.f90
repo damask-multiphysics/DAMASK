@@ -464,7 +464,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
 
-  print'(1x,a)', 'writing solver data required for restart to file'; flush(IO_STDOUT)
+  print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
