@@ -139,7 +139,18 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     N_sl         = pl%get_as1dInt('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
+      prm%dot_gamma_0_sl        = pl%get_asReal('dot_gamma_0_sl')
+      prm%n_sl                  = pl%get_asReal('n_sl')
+      prm%a_sl                  = pl%get_asReal('a_sl')
+      prm%h_0_sl_sl             = pl%get_asReal('h_0_sl-sl')
+
+      xi_0_sl       = math_expand(pl%get_as1dReal('xi_0_sl',   requiredSize=size(N_sl)),N_sl)
+      prm%xi_inf_sl = math_expand(pl%get_as1dReal('xi_inf_sl', requiredSize=size(N_sl)),N_sl)
+      prm%h_int     = math_expand(pl%get_as1dReal('h_int',     requiredSize=size(N_sl), &
+                                                        defaultVal=[(0.0_pREAL,i=1,size(N_sl))]),N_sl)
+
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
+
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       if (phase_lattice(ph) == 'cI') then
@@ -151,33 +162,21 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
         prm%P_nS_pos = prm%P_sl
         prm%P_nS_neg = prm%P_sl
       end if
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'),phase_lattice(ph))
 
-      xi_0_sl             = pl%get_as1dReal('xi_0_sl',   requiredSize=size(N_sl))
-      prm%xi_inf_sl       = pl%get_as1dReal('xi_inf_sl', requiredSize=size(N_sl))
-      prm%h_int           = pl%get_as1dReal('h_int',     requiredSize=size(N_sl), &
-                                            defaultVal=[(0.0_pREAL,i=1,size(N_sl))])
-
-      prm%dot_gamma_0_sl  = pl%get_asReal('dot_gamma_0_sl')
-      prm%n_sl            = pl%get_asReal('n_sl')
-      prm%a_sl            = pl%get_asReal('a_sl')
-      prm%h_0_sl_sl       = pl%get_asReal('h_0_sl-sl')
-
-      ! expand: family => system
-      xi_0_sl             = math_expand(xi_0_sl,      N_sl)
-      prm%xi_inf_sl       = math_expand(prm%xi_inf_sl,N_sl)
-      prm%h_int           = math_expand(prm%h_int,    N_sl)
+      prm%systems_sl = lattice_labels_slip(N_sl,phase_lattice(ph))
 
       ! sanity checks
-      if (    prm%dot_gamma_0_sl  <= 0.0_pREAL)      extmsg = trim(extmsg)//' dot_gamma_0_sl'
-      if (    prm%a_sl            <= 0.0_pREAL)      extmsg = trim(extmsg)//' a_sl'
-      if (    prm%n_sl            <= 0.0_pREAL)      extmsg = trim(extmsg)//' n_sl'
-      if (any(xi_0_sl             <= 0.0_pREAL))     extmsg = trim(extmsg)//' xi_0_sl'
-      if (any(prm%xi_inf_sl       <= 0.0_pREAL))     extmsg = trim(extmsg)//' xi_inf_sl'
+      if (    prm%dot_gamma_0_sl <= 0.0_pREAL)    extmsg = trim(extmsg)//' dot_gamma_0_sl'
+      if (    prm%a_sl           <= 0.0_pREAL)    extmsg = trim(extmsg)//' a_sl'
+      if (    prm%n_sl           <= 0.0_pREAL)    extmsg = trim(extmsg)//' n_sl'
+      if (any(xi_0_sl            <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_0_sl'
+      if (any(prm%xi_inf_sl      <= 0.0_pREAL))   extmsg = trim(extmsg)//' xi_inf_sl'
 
     else slipActive
       xi_0_sl = emptyRealArray
-      allocate(prm%xi_inf_sl,prm%h_int,source=emptyRealArray)
+      allocate(prm%xi_inf_sl, &
+               prm%h_int, &
+               source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
     end if slipActive
 
@@ -186,24 +185,22 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     N_tw         = pl%get_as1dInt('N_tw', defaultVal=emptyIntArray)
     prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
-      prm%systems_tw = lattice_labels_twin(N_tw,phase_lattice(ph))
-      prm%P_tw       = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
-      prm%h_tw_tw    = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
+      prm%c_1             = pl%get_asReal('c_1',defaultVal=0.0_pREAL)
+      prm%c_2             = pl%get_asReal('c_2',defaultVal=1.0_pREAL)
+      prm%c_3             = pl%get_asReal('c_3',defaultVal=0.0_pREAL)
+      prm%c_4             = pl%get_asReal('c_4',defaultVal=0.0_pREAL)
+      prm%dot_gamma_0_tw  = pl%get_asReal('dot_gamma_0_tw')
+      prm%n_tw            = pl%get_asReal('n_tw')
+      prm%f_sat_sl_tw     = pl%get_asReal('f_sat_sl-tw')
+      prm%h_0_tw_tw       = pl%get_asReal('h_0_tw-tw')
+
+      xi_0_tw = math_expand(pl%get_as1dReal('xi_0_tw',requiredSize=size(N_tw)),N_tw)
+
       prm%gamma_char = lattice_characteristicShear_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%h_tw_tw    = lattice_interaction_TwinByTwin(N_tw,pl%get_as1dReal('h_tw-tw'),phase_lattice(ph))
 
-      xi_0_tw            = pl%get_as1dReal('xi_0_tw',requiredSize=size(N_tw))
-
-      prm%c_1            = pl%get_asReal('c_1',defaultVal=0.0_pREAL)
-      prm%c_2            = pl%get_asReal('c_2',defaultVal=1.0_pREAL)
-      prm%c_3            = pl%get_asReal('c_3',defaultVal=0.0_pREAL)
-      prm%c_4            = pl%get_asReal('c_4',defaultVal=0.0_pREAL)
-      prm%dot_gamma_0_tw = pl%get_asReal('dot_gamma_0_tw')
-      prm%n_tw           = pl%get_asReal('n_tw')
-      prm%f_sat_sl_tw    = pl%get_asReal('f_sat_sl-tw')
-      prm%h_0_tw_tw      = pl%get_asReal('h_0_tw-tw')
-
-      ! expand: family => system
-      xi_0_tw       = math_expand(xi_0_tw,N_tw)
+      prm%P_tw       = lattice_SchmidMatrix_twin(N_tw,phase_lattice(ph),phase_cOverA(ph))
+      prm%systems_tw = lattice_labels_twin(N_tw,phase_lattice(ph))
 
       ! sanity checks
       if (prm%dot_gamma_0_tw <= 0.0_pREAL)  extmsg = trim(extmsg)//' dot_gamma_0_tw'
