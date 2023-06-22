@@ -185,7 +185,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     mech  => phase%get_dict('mechanical')
     pl    => mech%get_dict('plastic')
 
-    print'(/,1x,a,1x,i0,1x,a)', 'phase',ph,': '//phases%key(ph)
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(pl,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
 

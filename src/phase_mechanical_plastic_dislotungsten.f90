@@ -132,7 +132,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     mech  => phase%get_dict('mechanical')
     pl  => mech%get_dict('plastic')
 
-    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(pl,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
 
