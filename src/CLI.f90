@@ -44,14 +44,13 @@ subroutine CLI_init
 --  UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION --- UNSUPPORTED PETSc VERSION ---
 #endif
 
-  character(len=pPathLen*3+pSTRLEN) :: &
-    commandLine                                                                                     !< command line call as string
-  character(len=pPathLen) :: &
-    arg, &                                                                                          !< individual argument
-    loadCaseArg       = '', &                                                                       !< -l argument given to the executable
-    geometryArg       = '', &                                                                       !< -g argument given to the executable
-    materialArg       = '', &                                                                       !< -m argument given to the executable
-    workingDirArg     = ''                                                                          !< -w argument given to the executable
+  character(len=:), allocatable :: &
+    commandLine, &                                                                                     !< command line call as string
+    arg, &                                                                                             !< individual argument
+    loadCaseArg, &                                                                                     !< -l argument given to the executable
+    geometryArg, &                                                                                     !< -g argument given to the executable
+    materialArg, &                                                                                     !< -m argument given to the executable
+    workingDirArg                                                                                      !< -w argument given to the executable
   integer :: &
     stat, &
     i
@@ -108,8 +107,7 @@ subroutine CLI_init
   print'(a,2(i2.2,a),i2.2)',   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
 
   do i = 1, command_argument_count()
-    call get_command_argument(i,arg,status=err)
-    if (err /= 0) call quit(1)
+    arg = getArg(i)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
         print'(/,a)',' #######################################################################'
@@ -152,15 +150,15 @@ subroutine CLI_init
         print'(a,/)','        Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
-        call get_command_argument(i+1,loadCaseArg,status=err)
+        loadCaseArg = getArg(i+1)
       case ('-g', '--geom', '--geometry')
-        call get_command_argument(i+1,geometryArg,status=err)
+        geometryArg = getArg(i+1)
       case ('-m', '--material', '--materialConfig')
-        call get_command_argument(i+1,materialArg,status=err)
+        materialArg = getArg(i+1)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        call get_command_argument(i+1,workingDirArg,status=err)
+        workingDirArg = getArg(i+1)
       case ('-r', '--rs', '--restart')
-        call get_command_argument(i+1,arg,status=err)
+        arg = getArg(i+1)
         read(arg,*,iostat=stat) CLI_restartInc
         if (CLI_restartInc < 0 .or. stat /=0) then
           print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
@@ -170,7 +168,7 @@ subroutine CLI_init
     if (err /= 0) call quit(1)
   end do
 
-  if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0 .or. len_trim(materialArg) == 0) then
+  if (.not. all([allocated(loadcaseArg),allocated(geometryArg),allocated(materialArg)])) then
     print'(/,a)', ' ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
     call quit(1)
   end if
@@ -180,7 +178,7 @@ subroutine CLI_init
   CLI_loadFile = getPathRelCWD(loadCaseArg,'load case')
   CLI_materialFile = getPathRelCWD(materialArg,'material configuration')
 
-  call get_command(commandLine)
+  commandLine = getArg(0)
   print'(/,a)',      ' Host name: '//getHostName()
   print'(a)',        ' User name: '//getUserName()
 
@@ -192,6 +190,28 @@ subroutine CLI_init
   print'(a)',        ' Solver job name:        '//getSolverJobName()
   if (CLI_restartInc > 0) &
     print'(a,i6.6)', ' Restart from increment: ', CLI_restartInc
+
+  contains
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Get argument from command line.
+  !------------------------------------------------------------------------------------------------
+  function getArg(n)
+
+    integer, intent(in) :: n                                                                        !< number of the argument
+    character(len=:), allocatable :: getArg
+
+    integer :: l,err
+
+
+    allocate(character(len=0)::getArg)
+    call get_command_argument(n,getArg,length=l)
+    deallocate(getArg)
+    allocate(character(len=l)::getArg)
+    call get_command_argument(n,getArg,status=err)
+    if (err /= 0) call quit(1)
+
+  end function getArg
 
 end subroutine CLI_init
 
@@ -246,7 +266,7 @@ end function getSolverJobName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief translate path as relative to CWD and check for existence
+!> @brief Translate path as relative to CWD and check for existence.
 !--------------------------------------------------------------------------------------------------
 function getPathRelCWD(path,fileType)
 
@@ -270,8 +290,8 @@ end function getPathRelCWD
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief remove ../, /./, and // from path.
-!> @details works only if absolute path is given
+!> @brief Remove ../, /./, and // from path.
+!> @details Works only if absolute path is given.
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
@@ -317,21 +337,23 @@ end function rectifyPath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Determine relative path from absolute a to absolute b
+!> @brief Determine relative path from absolute a to absolute b.
 !--------------------------------------------------------------------------------------------------
 function makeRelativePath(a,b)
 
   character(len=*), intent(in)  :: a,b
-  character(len=pPathLen)       :: a_cleaned,b_cleaned
   character(len=:), allocatable :: makeRelativePath
+
+  character(len=:), allocatable :: a_cleaned,b_cleaned
   integer :: i,posLastCommonSlash,remainingSlashes
+
 
   posLastCommonSlash = 0
   remainingSlashes = 0
   a_cleaned = rectifyPath(trim(a)//'/')
   b_cleaned = rectifyPath(b)
 
-  do i = 1, min(len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
+  do i = 1, min(len_trim(a_cleaned),len_trim(b_cleaned))
     if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
     if (a_cleaned(i:i) == '/') posLastCommonSlash = i
   end do
