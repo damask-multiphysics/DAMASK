@@ -92,17 +92,13 @@ submodule(phase:plastic) nonlocal
       mu, &
       nu
     real(pREAL), dimension(:),      allocatable :: &
-      d_ed, &                                                                                       !< minimum stable edge dipole height
-      d_sc, &                                                                                       !< minimum stable screw dipole height
-      tau_Peierls_ed, &
-      tau_Peierls_sc, &
       i_sl, &                                                                                       !< mean free path prefactor for each
       b_sl                                                                                          !< absolute length of Burgers vector [m]
     real(pREAL), dimension(:,:),   allocatable :: &
       slip_normal, &
       slip_direction, &
       slip_transverse, &
-      minDipoleHeight, &                                                                            ! edge and screw
+      minDipoleHeight, &                                                                            ! minimum stable dipole height edge and screw
       peierlsstress, &                                                                              ! edge and screw
       h_sl_sl ,&                                                                                    !< coefficients for slip-slip interaction
       forestProjection_Edge, &                                                                      !< matrix of forest projections of edge dislocations
@@ -236,7 +232,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
-    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(pl,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
 
@@ -295,52 +291,41 @@ module function plastic_nonlocal_init() result(myPlasticity)
       ini%rho_d_ed_0      = pl%get_as1dReal('rho_d_ed_0',       requiredSize=size(ini%N_sl))
       ini%rho_d_sc_0      = pl%get_as1dReal('rho_d_sc_0',       requiredSize=size(ini%N_sl))
 
-      prm%i_sl            = pl%get_as1dReal('i_sl',             requiredSize=size(ini%N_sl))
-      prm%b_sl            = pl%get_as1dReal('b_sl',             requiredSize=size(ini%N_sl))
+      prm%i_sl            = math_expand(pl%get_as1dReal('i_sl', requiredSize=size(ini%N_sl)),ini%N_sl)
+      prm%b_sl            = math_expand(pl%get_as1dReal('b_sl', requiredSize=size(ini%N_sl)),ini%N_sl)
 
-      prm%i_sl = math_expand(prm%i_sl,ini%N_sl)
-      prm%b_sl = math_expand(prm%b_sl,ini%N_sl)
-
-      prm%d_ed            = pl%get_as1dReal('d_ed',             requiredSize=size(ini%N_sl))
-      prm%d_sc            = pl%get_as1dReal('d_sc',             requiredSize=size(ini%N_sl))
-      prm%d_ed            = math_expand(prm%d_ed,ini%N_sl)
-      prm%d_sc            = math_expand(prm%d_sc,ini%N_sl)
       allocate(prm%minDipoleHeight(prm%sum_N_sl,2))
-      prm%minDipoleHeight(:,1)  = prm%d_ed
-      prm%minDipoleHeight(:,2)  = prm%d_sc
+      prm%minDipoleHeight(:,1) = math_expand(pl%get_as1dReal('d_ed', requiredSize=size(ini%N_sl)),ini%N_sl)
+      prm%minDipoleHeight(:,2) = math_expand(pl%get_as1dReal('d_sc', requiredSize=size(ini%N_sl)),ini%N_sl)
 
-      prm%tau_Peierls_ed    = pl%get_as1dReal('tau_Peierls_ed', requiredSize=size(ini%N_sl))
-      prm%tau_Peierls_sc    = pl%get_as1dReal('tau_Peierls_sc', requiredSize=size(ini%N_sl))
-      prm%tau_Peierls_ed    = math_expand(prm%tau_Peierls_ed,ini%N_sl)
-      prm%tau_Peierls_sc    = math_expand(prm%tau_Peierls_sc,ini%N_sl)
       allocate(prm%peierlsstress(prm%sum_N_sl,2))
-      prm%peierlsstress(:,1)    = prm%tau_Peierls_ed
-      prm%peierlsstress(:,2)    = prm%tau_Peierls_sc
+      prm%peierlsstress(:,1)   = math_expand(pl%get_as1dReal('tau_Peierls_ed', requiredSize=size(ini%N_sl)),ini%N_sl)
+      prm%peierlsstress(:,2)   = math_expand(pl%get_as1dReal('tau_Peierls_sc', requiredSize=size(ini%N_sl)),ini%N_sl)
 
-      prm%rho_significant       = pl%get_asReal('rho_significant')
-      prm%rho_min               = pl%get_asReal('rho_min', 0.0_pREAL)
-      prm%C_CFL                 = pl%get_asReal('C_CFL',defaultVal=2.0_pREAL)
+      prm%rho_significant = pl%get_asReal('rho_significant')
+      prm%rho_min         = pl%get_asReal('rho_min', 0.0_pREAL)
+      prm%C_CFL           = pl%get_asReal('C_CFL',defaultVal=2.0_pREAL)
 
-      prm%V_at                  = pl%get_asReal('V_at')
-      prm%D_0                   = pl%get_asReal('D_0')
-      prm%Q_cl                  = pl%get_asReal('Q_cl')
-      prm%f_F                   = pl%get_asReal('f_F')
-      prm%f_ed                  = pl%get_asReal('f_ed')
-      prm%w                     = pl%get_asReal('w')
-      prm%Q_sol                 = pl%get_asReal('Q_sol')
-      prm%f_sol                 = pl%get_asReal('f_sol')
-      prm%c_sol                 = pl%get_asReal('c_sol')
+      prm%V_at            = pl%get_asReal('V_at')
+      prm%D_0             = pl%get_asReal('D_0')
+      prm%Q_cl            = pl%get_asReal('Q_cl')
+      prm%f_F             = pl%get_asReal('f_F')
+      prm%f_ed            = pl%get_asReal('f_ed')
+      prm%w               = pl%get_asReal('w')
+      prm%Q_sol           = pl%get_asReal('Q_sol')
+      prm%f_sol           = pl%get_asReal('f_sol')
+      prm%c_sol           = pl%get_asReal('c_sol')
 
-      prm%p                     = pl%get_asReal('p_sl')
-      prm%q                     = pl%get_asReal('q_sl')
-      prm%B                     = pl%get_asReal('B')
-      prm%nu_a                  = pl%get_asReal('nu_a')
+      prm%p               = pl%get_asReal('p_sl')
+      prm%q               = pl%get_asReal('q_sl')
+      prm%B               = pl%get_asReal('B')
+      prm%nu_a            = pl%get_asReal('nu_a')
 
       ! ToDo: discuss logic
-      ini%sigma_rho_u           = pl%get_asReal('sigma_rho_u')
-      ini%random_rho_u          = pl%get_asReal('random_rho_u',defaultVal= 0.0_pREAL)
+      ini%sigma_rho_u     = pl%get_asReal('sigma_rho_u')
+      ini%random_rho_u    = pl%get_asReal('random_rho_u',defaultVal= 0.0_pREAL)
       if (pl%contains('random_rho_u')) &
-        ini%random_rho_u_binning      = pl%get_asReal('random_rho_u_binning',defaultVal=0.0_pREAL) !ToDo: useful default?
+        ini%random_rho_u_binning = pl%get_asReal('random_rho_u_binning',defaultVal=0.0_pREAL) !ToDo: useful default?
      ! if (rhoSglRandom(instance) < 0.0_pREAL) &
      ! if (rhoSglRandomBinning(instance) <= 0.0_pREAL) &
 

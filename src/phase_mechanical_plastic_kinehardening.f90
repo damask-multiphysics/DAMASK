@@ -116,14 +116,15 @@ module function plastic_kinehardening_init() result(myPlasticity)
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), stt => state(ph), dlt => deltaState(ph), &
+    associate(prm => param(ph), &
+              stt => state(ph), dlt => deltaState(ph), &
               idx_dot => indexDotState(ph))
 
     phase => phases%get_dict(ph)
     mech => phase%get_dict('mechanical')
     pl => mech%get_dict('plastic')
 
-    print'(/,1x,a,i0,a)', 'phase ',ph,': '//phases%key(ph)
+    print'(/,1x,a,1x,i0,a)', 'phase',ph,': '//phases%key(ph)
     refs = config_listReferences(pl,indent=3)
     if (len(refs) > 0) print'(/,1x,a)', refs
 
@@ -150,28 +151,21 @@ module function plastic_kinehardening_init() result(myPlasticity)
         prm%P_nS_pos = prm%P
         prm%P_nS_neg = prm%P
       end if
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
-                                                   phase_lattice(ph))
-
-      xi_0          = pl%get_as1dReal('xi_0',      requiredSize=size(N_sl))
-      prm%xi_inf    = pl%get_as1dReal('xi_inf',    requiredSize=size(N_sl))
-      prm%chi_inf   = pl%get_as1dReal('chi_inf',   requiredSize=size(N_sl))
-      prm%h_0_xi    = pl%get_as1dReal('h_0_xi',    requiredSize=size(N_sl))
-      prm%h_0_chi   = pl%get_as1dReal('h_0_chi',   requiredSize=size(N_sl))
-      prm%h_inf_xi  = pl%get_as1dReal('h_inf_xi',  requiredSize=size(N_sl))
-      prm%h_inf_chi = pl%get_as1dReal('h_inf_chi', requiredSize=size(N_sl))
 
       prm%dot_gamma_0 = pl%get_asReal('dot_gamma_0')
       prm%n           = pl%get_asReal('n')
 
-      ! expand: family => system
-      xi_0          = math_expand(xi_0,          N_sl)
-      prm%xi_inf    = math_expand(prm%xi_inf,    N_sl)
-      prm%chi_inf   = math_expand(prm%chi_inf,   N_sl)
-      prm%h_0_xi    = math_expand(prm%h_0_xi,    N_sl)
-      prm%h_0_chi   = math_expand(prm%h_0_chi,   N_sl)
-      prm%h_inf_xi  = math_expand(prm%h_inf_xi,  N_sl)
-      prm%h_inf_chi = math_expand(prm%h_inf_chi, N_sl)
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
+                                                   phase_lattice(ph))
+
+      xi_0          = math_expand(pl%get_as1dReal('xi_0',      requiredSize=size(N_sl)),N_sl)
+      prm%xi_inf    = math_expand(pl%get_as1dReal('xi_inf',    requiredSize=size(N_sl)),N_sl)
+      prm%chi_inf   = math_expand(pl%get_as1dReal('chi_inf',   requiredSize=size(N_sl)),N_sl)
+      prm%h_0_xi    = math_expand(pl%get_as1dReal('h_0_xi',    requiredSize=size(N_sl)),N_sl)
+      prm%h_0_chi   = math_expand(pl%get_as1dReal('h_0_chi',   requiredSize=size(N_sl)),N_sl)
+      prm%h_inf_xi  = math_expand(pl%get_as1dReal('h_inf_xi',  requiredSize=size(N_sl)),N_sl)
+      prm%h_inf_chi = math_expand(pl%get_as1dReal('h_inf_chi', requiredSize=size(N_sl)),N_sl)
+
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
@@ -183,7 +177,13 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
     else slipActive
       xi_0 = emptyRealArray
-      allocate(prm%xi_inf,prm%chi_inf,prm%h_0_xi,prm%h_inf_xi,prm%h_0_chi,prm%h_inf_chi,source=emptyRealArray)
+      allocate(prm%xi_inf, &
+               prm%chi_inf, &
+               prm%h_0_xi, &
+               prm%h_0_chi, &
+               prm%h_inf_xi, &
+               prm%h_inf_chi, &
+               source=emptyRealArray)
       allocate(prm%h_sl_sl(0,0))
     end if slipActive
 
