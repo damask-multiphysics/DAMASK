@@ -83,13 +83,14 @@ module function plastic_dislotungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    ph, &
+    ph, i, &
     Nmembers, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,    dimension(:), allocatable :: &
     N_sl
   real(pREAL),dimension(:), allocatable :: &
+    f_edge, &                                                                                       !< edge character fraction of total dislocation density
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
@@ -123,7 +124,8 @@ module function plastic_dislotungsten_init() result(myPlasticity)
   do ph = 1, phases%length
     if (.not. myPlasticity(ph)) cycle
 
-    associate(prm => param(ph), stt => state(ph), dst => dependentState(ph), &
+    associate(prm => param(ph), &
+              stt => state(ph), dst => dependentState(ph), &
               idx_dot => indexDotState(ph))
 
     phase => phases%get_dict(ph)
@@ -159,48 +161,36 @@ module function plastic_dislotungsten_init() result(myPlasticity)
         prm%P_nS_neg = prm%P_sl
       end if
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
-                                                   phase_lattice(ph))
-      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase_lattice(ph),&
-                                                           phase_cOverA(ph))
-      prm%forestProjection = transpose(prm%forestProjection)
-
-      rho_mob_0       = pl%get_as1dReal('rho_mob_0',     requiredSize=size(N_sl))
-      rho_dip_0       = pl%get_as1dReal('rho_dip_0',     requiredSize=size(N_sl))
-      prm%b_sl        = pl%get_as1dReal('b_sl',          requiredSize=size(N_sl))
-      prm%Q_s         = pl%get_as1dReal('Q_s',           requiredSize=size(N_sl))
-
-      prm%i_sl        = pl%get_as1dReal('i_sl',          requiredSize=size(N_sl))
-      prm%tau_Peierls = pl%get_as1dReal('tau_Peierls',   requiredSize=size(N_sl))
-      prm%p           = pl%get_as1dReal('p_sl',          requiredSize=size(N_sl))
-      prm%q           = pl%get_as1dReal('q_sl',          requiredSize=size(N_sl))
-      prm%h           = pl%get_as1dReal('h',             requiredSize=size(N_sl))
-      prm%w           = pl%get_as1dReal('w',             requiredSize=size(N_sl))
-      prm%omega       = pl%get_as1dReal('omega',         requiredSize=size(N_sl))
-      prm%B           = pl%get_as1dReal('B',             requiredSize=size(N_sl))
+      prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal=.false.)
 
       prm%D    = pl%get_asReal('D')
       prm%D_0  = pl%get_asReal('D_0')
       prm%Q_cl = pl%get_asReal('Q_cl')
-      prm%f_at = pl%get_asReal('f_at') * prm%b_sl**3
 
-      prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
+      f_edge          = math_expand(pl%get_as1dReal('f_edge',      requiredSize=size(N_sl), &
+                                                    defaultVal=[(0.5_pREAL, i=1,size(N_sl))]),N_sl)
+      rho_mob_0       = math_expand(pl%get_as1dReal('rho_mob_0',   requiredSize=size(N_sl)),N_sl)
+      rho_dip_0       = math_expand(pl%get_as1dReal('rho_dip_0',   requiredSize=size(N_sl)),N_sl)
+      prm%b_sl        = math_expand(pl%get_as1dReal('b_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%Q_s         = math_expand(pl%get_as1dReal('Q_s',         requiredSize=size(N_sl)),N_sl)
+      prm%i_sl        = math_expand(pl%get_as1dReal('i_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%tau_Peierls = math_expand(pl%get_as1dReal('tau_Peierls', requiredSize=size(N_sl)),N_sl)
+      prm%p           = math_expand(pl%get_as1dReal('p_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%q           = math_expand(pl%get_as1dReal('q_sl',        requiredSize=size(N_sl)),N_sl)
+      prm%h           = math_expand(pl%get_as1dReal('h',           requiredSize=size(N_sl)),N_sl)
+      prm%w           = math_expand(pl%get_as1dReal('w',           requiredSize=size(N_sl)),N_sl)
+      prm%omega       = math_expand(pl%get_as1dReal('omega',       requiredSize=size(N_sl)),N_sl)
+      prm%B           = math_expand(pl%get_as1dReal('B',           requiredSize=size(N_sl)),N_sl)
+      prm%d_caron     = prm%b_sl *  pl%get_asReal('D_a')
+      prm%f_at        = prm%b_sl**3*pl%get_asReal('f_at')
 
-      ! expand: family => system
-      rho_mob_0          = math_expand(rho_mob_0,       N_sl)
-      rho_dip_0          = math_expand(rho_dip_0,       N_sl)
-      prm%q              = math_expand(prm%q,           N_sl)
-      prm%p              = math_expand(prm%p,           N_sl)
-      prm%Q_s            = math_expand(prm%Q_s,         N_sl)
-      prm%b_sl           = math_expand(prm%b_sl,        N_sl)
-      prm%h              = math_expand(prm%h,           N_sl)
-      prm%w              = math_expand(prm%w,           N_sl)
-      prm%omega          = math_expand(prm%omega,       N_sl)
-      prm%tau_Peierls    = math_expand(prm%tau_Peierls, N_sl)
-      prm%B              = math_expand(prm%B,           N_sl)
-      prm%i_sl           = math_expand(prm%i_sl,        N_sl)
-      prm%f_at           = math_expand(prm%f_at,        N_sl)
-      prm%d_caron        = pl%get_asReal('D_a') * prm%b_sl
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_as1dReal('h_sl-sl'), &
+                                                   phase_lattice(ph))
+
+      prm%forestProjection = spread(          f_edge,1,prm%sum_N_sl) &
+                           * lattice_forestProjection_edge (N_sl,phase_lattice(ph),phase_cOverA(ph)) &
+                           + spread(1.0_pREAL-f_edge,1,prm%sum_N_sl) &
+                           * lattice_forestProjection_screw(N_sl,phase_lattice(ph),phase_cOverA(ph))
 
       ! sanity checks
       if (    prm%D_0          <  0.0_pREAL)  extmsg = trim(extmsg)//' D_0'
@@ -215,9 +205,20 @@ module function plastic_dislotungsten_init() result(myPlasticity)
       if (any(prm%f_at         <= 0.0_pREAL)) extmsg = trim(extmsg)//' f_at or b_sl'
 
     else slipActive
-      rho_mob_0 = emptyRealArray; rho_dip_0 = emptyRealArray
-      allocate(prm%b_sl,prm%d_caron,prm%i_sl,prm%f_at,prm%tau_Peierls, &
-               prm%Q_s,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
+      rho_mob_0 = emptyRealArray
+      rho_dip_0 = emptyRealArray
+      allocate(prm%b_sl, &
+               prm%d_caron, &
+               prm%i_sl, &
+               prm%f_at, &
+               prm%tau_Peierls, &
+               prm%Q_s, &
+               prm%p, &
+               prm%q, &
+               prm%B, &
+               prm%h, &
+               prm%w, &
+               prm%omega, &
                source = emptyRealArray)
       allocate(prm%forestProjection(0,0))
       allocate(prm%h_sl_sl         (0,0))
@@ -238,7 +239,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     endIndex   = prm%sum_N_sl
     idx_dot%rho_mob = [startIndex,endIndex]
     stt%rho_mob => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_mob =  spread(rho_mob_0,2,Nmembers)
+    stt%rho_mob = spread(rho_mob_0,2,Nmembers)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pREAL)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_rho'
 
@@ -246,7 +247,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     endIndex   = endIndex + prm%sum_N_sl
     idx_dot%rho_dip = [startIndex,endIndex]
     stt%rho_dip => plasticState(ph)%state(startIndex:endIndex,:)
-    stt%rho_dip =  spread(rho_dip_0,2,Nmembers)
+    stt%rho_dip = spread(rho_dip_0,2,Nmembers)
     plasticState(ph)%atol(startIndex:endIndex) = pl%get_asReal('atol_rho',defaultVal=1.0_pREAL)
 
     startIndex = endIndex + 1
@@ -257,7 +258,7 @@ module function plastic_dislotungsten_init() result(myPlasticity)
     if (any(plasticState(ph)%atol(startIndex:endIndex) < 0.0_pREAL)) extmsg = trim(extmsg)//' atol_gamma'
 
     allocate(dst%Lambda_sl(prm%sum_N_sl,Nmembers), source=0.0_pREAL)
-    allocate(dst%tau_pass(prm%sum_N_sl,Nmembers),  source=0.0_pREAL)
+    allocate(dst%tau_pass (prm%sum_N_sl,Nmembers), source=0.0_pREAL)
 
     end associate
 
