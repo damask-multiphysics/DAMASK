@@ -345,7 +345,7 @@ function IO_glueDiffering(first,second,glue)
   character(len=*), optional, intent(in)  :: glue
   character(len=:), allocatable :: IO_glueDiffering
 
-  character(len=pSTRLEN)                  :: glue_
+  character(len=:), allocatable           :: glue_
 
 
   glue_ = misc_optional(glue,'<--')

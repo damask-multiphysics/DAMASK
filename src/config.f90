@@ -102,17 +102,16 @@ subroutine parse_material()
     fileContent, fname
 
   if (worldrank == 0) then
-    print'(/,1x,a)', 'reading material.yaml'; flush(IO_STDOUT)
+    print'(/,1x,a)', 'reading material configuration'; flush(IO_STDOUT)
 #if   defined(MESH) || defined(GRID)
-    fileContent = IO_read(CLI_materialFile)
     fname = CLI_materialFile
 #else
-    fileContent = IO_read('material.yaml')
     fname = 'material.yaml'
 #endif
+    fileContent = IO_read(fname)
     if (scan(fname,'/') /= 0) fname = fname(scan(fname,'/',.true.)+1:)
     call result_openJobFile(parallel=.false.)
-    call result_writeDataset_str(fileContent,'setup',fname,'main configuration')
+    call result_writeDataset_str(fileContent,'setup',fname,'material configuration')
     call result_closeJobFile()
   end if
   call parallelization_bcast_str(fileContent)

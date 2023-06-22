@@ -117,7 +117,7 @@ subroutine CLI_init()
         print'(a,/)',' Valid command line switches:'
         print'(a)',  '    --geom         (-g, --geometry)'
         print'(a)',  '    --load         (-l, --loadcase)'
-        print'(a)',  '    --material     (-m, --materialConfig)'
+        print'(a)',  '    --material     (-m, --materialconfig)'
         print'(a)',  '    --workingdir   (-w, --wd, --workingdirectory)'
         print'(a)',  '    --restart      (-r, --rs)'
         print'(a)',  '    --help         (-h)'
