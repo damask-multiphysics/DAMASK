@@ -320,6 +320,7 @@ function IO_rmComment(line)
 
   character(len=*), intent(in)  :: line
   character(len=:), allocatable :: IO_rmComment
+
   integer :: split
 
 
@@ -335,7 +336,7 @@ end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief Return first (with glued on second if they differ)
+! @brief Return first (with glued on second if they differ).
 !--------------------------------------------------------------------------------------------------
 function IO_glueDiffering(first,second,glue)
 
@@ -343,14 +344,11 @@ function IO_glueDiffering(first,second,glue)
   character(len=*),           intent(in)  :: second
   character(len=*), optional, intent(in)  :: glue
   character(len=:), allocatable :: IO_glueDiffering
+
   character(len=pSTRLEN)                  :: glue_
 
-  if (present(glue)) then
-    glue_ = glue
-  else
-    glue_ = '<--'
-  end if
 
+  glue_ = misc_optional(glue,'<--')
   IO_glueDiffering = trim(first)
   if (trim(first) /= trim(second)) IO_glueDiffering = IO_glueDiffering//' '//trim(glue_)//' '//trim(second)
 
@@ -363,8 +361,8 @@ end function IO_glueDiffering
 function IO_intAsStr(i)
 
   integer, intent(in)            :: i
-
   character(len=:), allocatable  :: IO_intAsStr
+
 
   allocate(character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0))))))::IO_intAsStr)
   write(IO_intAsStr,'(i0)') i
