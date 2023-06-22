@@ -37,7 +37,7 @@ contains
 !> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation to screen
 !--------------------------------------------------------------------------------------------------
-subroutine CLI_init
+subroutine CLI_init()
 #include <petsc/finclude/petscsys.h>
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
@@ -45,12 +45,12 @@ subroutine CLI_init
 #endif
 
   character(len=:), allocatable :: &
-    commandLine, &                                                                                     !< command line call as string
-    arg, &                                                                                             !< individual argument
-    loadCaseArg, &                                                                                     !< -l argument given to the executable
-    geometryArg, &                                                                                     !< -g argument given to the executable
-    materialArg, &                                                                                     !< -m argument given to the executable
-    workingDirArg                                                                                      !< -w argument given to the executable
+    commandLine, &                                                                                  !< command line call as string
+    arg, &                                                                                          !< individual argument
+    loadCaseArg, &                                                                                  !< -l argument given to the executable
+    geometryArg, &                                                                                  !< -g argument given to the executable
+    materialArg, &                                                                                  !< -m argument given to the executable
+    workingDirArg                                                                                   !< -w argument given to the executable
   integer :: &
     stat, &
     i
@@ -234,7 +234,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
     workingDirectory = trim(workingDirectory)//'/'//workingDirectoryArg
   end if absolutePath
 
-  workingDirectory = trim(rectifyPath(workingDirectory))
+  workingDirectory = trim(normpath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if (error) then
     print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
@@ -250,7 +250,9 @@ end subroutine setWorkingDirectory
 function getSolverJobName()
 
   character(len=:), allocatable :: getSolverJobName
+
   integer :: posExt,posSep
+
 
   posExt = scan(CLI_geomFile,'.',back=.true.)
   posSep = scan(CLI_geomFile,'/',back=.true.)
@@ -273,12 +275,14 @@ function getPathRelCWD(path,fileType)
   character(len=:), allocatable :: getPathRelCWD
   character(len=*),  intent(in) :: path
   character(len=*),  intent(in) :: fileType
+
   logical                       :: file_exists
   external                      :: quit
 
+
   getPathRelCWD = trim(path)
   if (scan(getPathRelCWD,'/') /= 1) getPathRelCWD = getCWD()//'/'//trim(getPathRelCWD)
-  getPathRelCWD = trim(makeRelativePath(getCWD(), getPathRelCWD))
+  getPathRelCWD = trim(relpath(getPathRelCWD,getCWD()))
 
   inquire(file=getPathRelCWD, exist=file_exists)
   if (.not. file_exists) then
@@ -293,76 +297,78 @@ end function getPathRelCWD
 !> @brief Remove ../, /./, and // from path.
 !> @details Works only if absolute path is given.
 !--------------------------------------------------------------------------------------------------
-function rectifyPath(path)
+function normpath(path)
 
   character(len=*), intent(in)  :: path
-  character(len=:), allocatable :: rectifyPath
+  character(len=:), allocatable :: normpath
+
   integer :: i,j,k,l
+
 
 !--------------------------------------------------------------------------------------------------
 ! remove /./ from path
-  rectifyPath = trim(path)
-  l = len_trim(rectifyPath)
+  normpath = trim(path)
+  l = len_trim(normpath)
   do i = l,3,-1
-    if (rectifyPath(i-2:i) == '/./') rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+    if (normpath(i-2:i) == '/./') normpath(i-1:l) = normpath(i+1:l)//'  '
   end do
 
 !--------------------------------------------------------------------------------------------------
 ! remove // from path
-  l = len_trim(rectifyPath)
+  l = len_trim(normpath)
   do i = l,2,-1
-    if (rectifyPath(i-1:i) == '//') rectifyPath(i-1:l) = rectifyPath(i:l)//' '
+    if (normpath(i-1:i) == '//') normpath(i-1:l) = normpath(i:l)//' '
   end do
 
 !--------------------------------------------------------------------------------------------------
-! remove ../ and corresponding directory from rectifyPath
-  l = len_trim(rectifyPath)
-  i = index(rectifyPath(i:l),'../')
+! remove ../ and corresponding directory from path
+  l = len_trim(normpath)
+  i = index(normpath(i:l),'../')
   j = 0
   do while (i > j)
-     j = scan(rectifyPath(1:i-2),'/',back=.true.)
-     rectifyPath(j+1:l) = rectifyPath(i+3:l)//repeat(' ',2+i-j)
-     if (rectifyPath(j+1:j+1) == '/') then                                                          !search for '//' that appear in case of XXX/../../XXX
-       k = len_trim(rectifyPath)
-       rectifyPath(j+1:k-1) = rectifyPath(j+2:k)
-       rectifyPath(k:k) = ' '
+     j = scan(normpath(1:i-2),'/',back=.true.)
+     normpath(j+1:l) = normpath(i+3:l)//repeat(' ',2+i-j)
+     if (normpath(j+1:j+1) == '/') then                                                             !search for '//' that appear in case of XXX/../../XXX
+       k = len_trim(normpath)
+       normpath(j+1:k-1) = normpath(j+2:k)
+       normpath(k:k) = ' '
      end if
-     i = j+index(rectifyPath(j+1:l),'../')
+     i = j+index(normpath(j+1:l),'../')
   end do
-  if (len_trim(rectifyPath) == 0) rectifyPath = '/'
+  if (len_trim(normpath) == 0) normpath = '/'
 
-  rectifyPath = trim(rectifyPath)
+  normpath = trim(normpath)
 
-end function rectifyPath
+end function normpath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Determine relative path from absolute a to absolute b.
+!> @brief Determine relative path.
 !--------------------------------------------------------------------------------------------------
-function makeRelativePath(a,b)
+function relpath(path,start)
 
-  character(len=*), intent(in)  :: a,b
-  character(len=:), allocatable :: makeRelativePath
+  character(len=*), intent(in)  :: start,path
+  character(len=:), allocatable :: relpath
 
-  character(len=:), allocatable :: a_cleaned,b_cleaned
+  character(len=:), allocatable :: start_cleaned,path_cleaned
   integer :: i,posLastCommonSlash,remainingSlashes
 
 
   posLastCommonSlash = 0
   remainingSlashes = 0
-  a_cleaned = rectifyPath(trim(a)//'/')
-  b_cleaned = rectifyPath(b)
+  start_cleaned = normpath(trim(start)//'/')
+  path_cleaned = normpath(path)
 
-  do i = 1, min(len_trim(a_cleaned),len_trim(b_cleaned))
-    if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
-    if (a_cleaned(i:i) == '/') posLastCommonSlash = i
+  do i = 1, min(len_trim(start_cleaned),len_trim(path_cleaned))
+    if (start_cleaned(i:i) /= path_cleaned(i:i)) exit
+    if (start_cleaned(i:i) == '/') posLastCommonSlash = i
   end do
-  do i = posLastCommonSlash+1,len_trim(a_cleaned)
-    if (a_cleaned(i:i) == '/') remainingSlashes = remainingSlashes + 1
+  do i = posLastCommonSlash+1,len_trim(start_cleaned)
+    if (start_cleaned(i:i) == '/') remainingSlashes = remainingSlashes + 1
   end do
 
-  makeRelativePath = repeat('..'//'/',remainingSlashes)//b_cleaned(posLastCommonSlash+1:len_trim(b_cleaned))
+  relpath = repeat('..'//'/',remainingSlashes)//path_cleaned(posLastCommonSlash+1:len_trim(path_cleaned))
 
-end function makeRelativePath
+end function relpath
 
 end module CLI
