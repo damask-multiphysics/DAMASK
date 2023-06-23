@@ -68,86 +68,82 @@ subroutine CLI_init()
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
   print*, achar(27)//'[31m'
-  print'(a,/)', ' debug version - debug version - debug version - debug version - debug version'
+  print'(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
 #else
-  print*, achar(27)//'[94m'
+  print '(a)', achar(27)//'[94m'
 #endif
-  print*, '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
-  print*, '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
-  print*, '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
-  print*, '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
-  print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
+  print '(1x,a)', '    _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
+  print '(1x,a)', '   _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
+  print '(1x,a)', '  _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
+  print '(1x,a)', ' _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
+  print '(1x,a)', '_/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
 #if   defined(GRID)
-  print*, ' Grid solver'
+  print '(1x,a)', 'Grid solver'
 #elif defined(MESH)
-  print*, ' Mesh solver'
+  print '(1x,a)', 'Mesh solver'
 #endif
 #ifdef DEBUG
-  print'(/,a)', ' debug version - debug version - debug version - debug version - debug version'
+  print'(/,1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
-  print*, achar(27)//'[0m'
+  print '(a)', achar(27)//'[0m'
 
-  print*, 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
-  print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
+  print '(1x,a)', 'F. Roters et al., Computational Materials Science 158:420–478, 2019'
+  print '(1x,a)', 'https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-  print'(/,a)', ' Version: '//DAMASKVERSION
+  print '(/,1x,a)', 'Version: '//DAMASKVERSION
 
-  print'(/,a)', ' Compiled with: '//compiler_version()
-  print'(a)',   ' Compiled on: '//CMAKE_SYSTEM
-  print'(a)',   ' Compiler options: '//compiler_options()
+  print '(/,1x,a)', 'Compiled with: '//compiler_version()
+  print '(1x,a)',   'Compiled on: '//CMAKE_SYSTEM
+  print '(1x,a)',   'Compiler options: '//compiler_options()
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-  print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
+  print '(/,1x,a)', 'Compiled on: '//__DATE__//' at '//__TIME__
 
-  print'(/,a,i0,a,i0,a,i0)', &
-                ' PETSc version: ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
+  print '(/,1x,a,1x,i0,a,i0,a,i0)', &
+                'PETSc version:',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 
   call date_and_time(values = dateAndTime)
-  print'(/,a,2(i2.2,a),i4.4)', ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
-  print'(a,2(i2.2,a),i2.2)',   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+  print '(/,1x,a,1x,2(i2.2,a),i4.4)', 'Date:',dateAndTime(3),'/',dateAndTime(2),'/',dateAndTime(1)
+  print '(1x,a,1x,2(i2.2,a),i2.2)',   'Time:',dateAndTime(5),':',dateAndTime(6),':',dateAndTime(7)
 
   do i = 1, command_argument_count()
     arg = getArg(i)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
-        print'(/,a)',' #######################################################################'
-        print'(a)',  ' DAMASK Command Line Interface:'
-        print'(a)',  ' Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
-        print'(a,/)',' #######################################################################'
-        print'(a,/)',' Valid command line switches:'
-        print'(a)',  '    --geom         (-g, --geometry)'
-        print'(a)',  '    --load         (-l, --loadcase)'
-        print'(a)',  '    --material     (-m, --materialconfig)'
-        print'(a)',  '    --workingdir   (-w, --wd, --workingdirectory)'
-        print'(a)',  '    --restart      (-r, --rs)'
-        print'(a)',  '    --help         (-h)'
-        print'(/,a)',' -----------------------------------------------------------------------'
-        print'(a)',  ' Mandatory arguments:'
-        print'(/,a)','   --geom PathToGeomFile/NameOfGeom'
-        print'(a)',  '        Specifies the location of the geometry definition file.'
-        print'(/,a)','   --load PathToLoadFile/NameOfLoadFile'
-        print'(a)',  '        Specifies the location of the load case definition file.'
-        print'(/,a)','   --material PathToMaterialConfigurationFile/NameOfMaterialConfigurationFile'
-        print'(a)',  '        Specifies the location of the material configuration file.'
-        print'(/,a)',' -----------------------------------------------------------------------'
-        print'(a)',  ' Optional arguments:'
-        print'(/,a)','   --workingdirectory PathToWorkingDirectory'
-        print'(a)',  '        Specifies the working directory and overwrites the default ./'
-        print'(a)',  '        Make sure the file "material.yaml" exists in the working'
-        print'(a)',  '            directory.'
-        print'(a)',  '        For further configuration place "numerics.yaml"'
-        print'(a)','              in that directory.'
-        print'(/,a)','   --restart N'
-        print'(a)',  '        Reads in increment N and continues with calculating'
-        print'(a)',  '            increment N+1, N+2, ... based on this.'
-        print'(a)',  '        Appends to existing results file'
-        print'(a)',  '            "NameOfGeom_NameOfLoadFile.hdf5".'
-        print'(a)',  '        Works only if the restart information for increment N'
-        print'(a)',  '            is available in the working directory.'
-        print'(/,a)',' -----------------------------------------------------------------------'
-        print'(a)',  ' Help:'
-        print'(/,a)','   --help'
-        print'(a,/)','        Prints this message and exits'
+        print '(/,1x,a)','#######################################################################'
+        print '(1x,a)',  'DAMASK Command Line Interface:'
+        print '(1x,a)',  'Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
+        print '(1x,a,/)','#######################################################################'
+        print '(1x,a,/)','Valid command line switches:'
+        print '(1x,a)',  '   --geom         (-g, --geometry)'
+        print '(1x,a)',  '   --load         (-l, --loadcase)'
+        print '(1x,a)',  '   --material     (-m, --materialconfig)'
+        print '(1x,a)',  '   --workingdir   (-w, --wd, --workingdirectory)'
+        print '(1x,a)',  '   --restart      (-r, --rs)'
+        print '(1x,a)',  '   --help         (-h)'
+        print '(/,1x,a)','-----------------------------------------------------------------------'
+        print '(1x,a)',  'Mandatory arguments:'
+        print '(/,1x,a)','  --geom PathToGeomFile/NameOfGeom'
+        print '(1x,a)',  '       Specifies the location of the geometry definition file.'
+        print '(/,1x,a)','  --load PathToLoadFile/NameOfLoadFile'
+        print '(1x,a)',  '       Specifies the location of the load case definition file.'
+        print '(/,1x,a)','  --material PathToMaterialConfigurationFile/NameOfMaterialConfigurationFile'
+        print '(1x,a)',  '       Specifies the location of the material configuration file.'
+        print '(/,1x,a)','-----------------------------------------------------------------------'
+        print '(1x,a)',  'Optional arguments:'
+        print '(/,1x,a)','  --workingdirectory PathToWorkingDirectory'
+        print '(1x,a)',  '       Specifies the base directory of relative paths.'
+        print '(/,1x,a)','  --restart N'
+        print '(1x,a)',  '       Reads in increment N and continues with calculating'
+        print '(1x,a)',  '           increment N+1, N+2, ... based on this.'
+        print '(1x,a)',  '       Appends to existing results file'
+        print '(1x,a)',  '           "NameOfGeom_NameOfLoadFile_NameOfMaterialConfigurationFile.hdf5".'
+        print '(1x,a)',  '       Works only if the restart information for increment N'
+        print '(1x,a)',  '           is available in the base directory.'
+        print '(/,1x,a)','-----------------------------------------------------------------------'
+        print '(1x,a)',  'Help:'
+        print '(/,1x,a)','  --help'
+        print '(1x,a,/)','       Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
         loadCaseArg = getArg(i+1)
@@ -160,8 +156,8 @@ subroutine CLI_init()
       case ('-r', '--rs', '--restart')
         arg = getArg(i+1)
         read(arg,*,iostat=stat) CLI_restartInc
-        if (CLI_restartInc < 0 .or. stat /=0) then
-          print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
+        if (CLI_restartInc < 0 .or. stat /= 0) then
+          print'(/,1x,a)', 'ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         end if
     end select
@@ -169,7 +165,7 @@ subroutine CLI_init()
   end do
 
   if (.not. all([allocated(loadcaseArg),allocated(geometryArg),allocated(materialArg)])) then
-    print'(/,a)', ' ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
+    print'(/,1x,a)', 'ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
     call quit(1)
   end if
 
@@ -178,18 +174,19 @@ subroutine CLI_init()
   CLI_loadFile = getPathRelCWD(loadCaseArg,'load case')
   CLI_materialFile = getPathRelCWD(materialArg,'material configuration')
 
-  commandLine = getArg(0)
-  print'(/,a)',      ' Host name: '//getHostName()
-  print'(a)',        ' User name: '//getUserName()
+  commandLine = getArg(-1)
 
-  print'(/a/)',      ' Command line call:      '//trim(commandLine)
-  print'(a)',        ' Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
-  print'(a)',        ' Geometry:               '//IO_glueDiffering(CLI_geomFile,geometryArg)
-  print'(a)',        ' Load case:              '//IO_glueDiffering(CLI_loadFile,loadCaseArg)
-  print'(a)',        ' Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
-  print'(a)',        ' Solver job name:        '//getSolverJobName()
+  print'(/,1x,a)',      'Host name: '//getHostName()
+  print'(1x,a)',        'User name: '//getUserName()
+
+  print'(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
+  print'(1x,a)',        'Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
+  print'(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geometryArg)
+  print'(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadCaseArg)
+  print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
+  print'(1x,a)',        'Solver job name:        '//getSolverJobName()
   if (CLI_restartInc > 0) &
-    print'(a,i6.6)', ' Restart from increment: ', CLI_restartInc
+    print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
 
   contains
 
@@ -205,10 +202,18 @@ subroutine CLI_init()
 
 
     allocate(character(len=0)::getArg)
-    call get_command_argument(n,getArg,length=l)
+    if (n<0) then
+      call get_command(getArg, length=l)
+    else
+      call get_command_argument(n,getArg,length=l)
+    endif
     deallocate(getArg)
     allocate(character(len=l)::getArg)
-    call get_command_argument(n,getArg,status=err)
+    if (n<0) then
+      call get_command(getArg, status=err)
+    else
+      call get_command_argument(n,getArg,status=err)
+    endif
     if (err /= 0) call quit(1)
 
   end function getArg
@@ -237,7 +242,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   workingDirectory = trim(normpath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if (error) then
-    print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
+    print '(1x,a)', 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   end if
 
@@ -286,7 +291,7 @@ function getPathRelCWD(path,fileType)
 
   inquire(file=getPathRelCWD, exist=file_exists)
   if (.not. file_exists) then
-    print*, 'ERROR: '//fileType//' file does not exist: '//trim(getPathRelCWD)
+    print '(1x,a)', 'ERROR: '//fileType//' file does not exist: '//trim(getPathRelCWD)
     call quit(1)
   end if
 
