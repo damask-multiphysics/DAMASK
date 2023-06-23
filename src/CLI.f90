@@ -56,7 +56,6 @@ subroutine CLI_init()
     i
   integer, dimension(8) :: &
     dateAndTime
-  integer        :: err
   external :: &
     quit
 
@@ -161,7 +160,6 @@ subroutine CLI_init()
           call quit(1)
         end if
     end select
-    if (err /= 0) call quit(1)
   end do
 
   if (.not. all([allocated(loadcaseArg),allocated(geometryArg),allocated(materialArg)])) then
@@ -188,37 +186,37 @@ subroutine CLI_init()
   if (CLI_restartInc > 0) &
     print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
 
-  contains
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief Get argument from command line.
-  !------------------------------------------------------------------------------------------------
-  function getArg(n)
-
-    integer, intent(in) :: n                                                                        !< number of the argument
-    character(len=:), allocatable :: getArg
-
-    integer :: l,err
-
-
-    allocate(character(len=0)::getArg)
-    if (n<0) then
-      call get_command(getArg, length=l)
-    else
-      call get_command_argument(n,getArg,length=l)
-    endif
-    deallocate(getArg)
-    allocate(character(len=l)::getArg)
-    if (n<0) then
-      call get_command(getArg, status=err)
-    else
-      call get_command_argument(n,getArg,status=err)
-    endif
-    if (err /= 0) call quit(1)
-
-  end function getArg
 
 end subroutine CLI_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get argument from command line.
+!--------------------------------------------------------------------------------------------------
+function getArg(n)
+
+  integer, intent(in) :: n                                                                          !< number of the argument
+  character(len=:), allocatable :: getArg
+
+  integer :: l,err
+  external :: quit
+
+
+  allocate(character(len=0)::getArg)
+  if (n<0) then
+    call get_command(getArg, length=l)
+  else
+    call get_command_argument(n,getArg,length=l)
+  endif
+  deallocate(getArg)
+  allocate(character(len=l)::getArg)
+  if (n<0) then
+    call get_command(getArg, status=err)
+  else
+    call get_command_argument(n,getArg,status=err)
+  endif
+  if (err /= 0) call quit(1)
+
+end function getArg
 
 
 !--------------------------------------------------------------------------------------------------
@@ -229,8 +227,10 @@ subroutine setWorkingDirectory(workingDirectoryArg)
 
   character(len=*), intent(in)  :: workingDirectoryArg                                              !< working directory argument
   character(len=:), allocatable :: workingDirectory
+
   logical                       :: error
   external                      :: quit
+
 
   absolutePath: if (workingDirectoryArg(1:1) == '/') then
     workingDirectory = workingDirectoryArg
