@@ -38,6 +38,7 @@ module IO
     IO_realValue, &
     IO_lc, &
     IO_rmComment, &
+    IO_glueDiffering, &
     IO_intAsStr, &
     IO_strAsInt, &
     IO_strAsReal, &
@@ -319,6 +320,7 @@ function IO_rmComment(line)
 
   character(len=*), intent(in)  :: line
   character(len=:), allocatable :: IO_rmComment
+
   integer :: split
 
 
@@ -334,13 +336,33 @@ end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
+! @brief Return first (with glued on second if they differ).
+!--------------------------------------------------------------------------------------------------
+function IO_glueDiffering(first,second,glue)
+
+  character(len=*),           intent(in)  :: first
+  character(len=*),           intent(in)  :: second
+  character(len=*), optional, intent(in)  :: glue
+  character(len=:), allocatable :: IO_glueDiffering
+
+  character(len=:), allocatable           :: glue_
+
+
+  glue_ = misc_optional(glue,'<--')
+  IO_glueDiffering = trim(first)
+  if (trim(first) /= trim(second)) IO_glueDiffering = IO_glueDiffering//' '//trim(glue_)//' '//trim(second)
+
+end function IO_glueDiffering
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Return given int value as string.
 !--------------------------------------------------------------------------------------------------
 function IO_intAsStr(i)
 
   integer, intent(in)            :: i
-
   character(len=:), allocatable  :: IO_intAsStr
+
 
   allocate(character(len=merge(2,1,i<0) + floor(log10(real(abs(merge(1,i,i==0))))))::IO_intAsStr)
   write(IO_intAsStr,'(i0)') i
