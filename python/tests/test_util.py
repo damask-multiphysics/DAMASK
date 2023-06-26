@@ -264,7 +264,8 @@ p2 : str, optional
                 p1 description
 
             Remaining description\n"""
-        assert util._docstringer(test_docstring,adopted_parameters) ==\
+        res = util._docstringer(test_docstring,adopted_parameters)
+        assert res ==\
         """
             Function description.
 
@@ -316,7 +317,8 @@ p2 : str, optional
             """
             pass
 
-        assert (test_docstring:=util._docstringer(test_docstring,adopted_references = testfunction_1)) == \
+        test_docstring = util._docstringer(test_docstring,adopted_references = testfunction_1)
+        assert test_docstring == \
         """
             Function description.
 
@@ -331,7 +333,8 @@ p2 : str, optional
             <reference link>
             Reference 2
             <reference link>\n"""
-        assert (test_docstring:=util._docstringer(test_docstring,adopted_notes = testfunction_1)) == \
+        test_docstring = util._docstringer(test_docstring,adopted_notes = testfunction_1)
+        assert test_docstring == \
         """
             Function description.
 
@@ -362,8 +365,8 @@ p2 : str, optional
             <reference link>
 
             """
-
-        assert (test_docstring:=util._docstringer(test_docstring,adopted_references = testfunction_2)) == \
+        test_docstring = util._docstringer(test_docstring,adopted_references = testfunction_2)
+        assert test_docstring == \
         """
             Function description.
 
