@@ -62,12 +62,12 @@ subroutine CLI_init()
 
   workingDirArg = getCWD()
 
-  print'(/,1x,a)', '<<<+-  CLI init  -+>>>'
+  print '(/,1x,a)', '<<<+-  CLI init  -+>>>'
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
-  print*, achar(27)//'[31m'
-  print'(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
+  print '(a)', achar(27)//'[31m'
+  print '(1x,a,/)', 'debug version - debug version - debug version - debug version - debug version'
 #else
   print '(a)', achar(27)//'[94m'
 #endif
@@ -82,7 +82,7 @@ subroutine CLI_init()
   print '(1x,a)', 'Mesh solver'
 #endif
 #ifdef DEBUG
-  print'(/,1x,a)', 'debug version - debug version - debug version - debug version - debug version'
+  print '(/,1x,a)', 'debug version - debug version - debug version - debug version - debug version'
 #endif
   print '(a)', achar(27)//'[0m'
 
@@ -163,7 +163,7 @@ subroutine CLI_init()
   end do
 
   if (.not. all([allocated(loadcaseArg),allocated(geometryArg),allocated(materialArg)])) then
-    print'(/,1x,a)', 'ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
+    print '(/,1x,a)', 'ERROR: Please specify geometry AND load case AND material configuration (-h for help)'
     call quit(1)
   end if
 
@@ -174,17 +174,17 @@ subroutine CLI_init()
 
   commandLine = getArg(-1)
 
-  print'(/,1x,a)',      'Host name: '//getHostName()
-  print'(1x,a)',        'User name: '//getUserName()
+  print '(/,1x,a)',      'Host name: '//getHostName()
+  print '(1x,a)',        'User name: '//getUserName()
 
-  print'(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
-  print'(1x,a)',        'Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
-  print'(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geometryArg)
-  print'(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadCaseArg)
-  print'(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
-  print'(1x,a)',        'Solver job name:        '//getSolverJobName()
+  print '(/,1x,a,/)',    'Command line call:      '//trim(commandLine)
+  print '(1x,a)',        'Working directory:      '//IO_glueDiffering(getCWD(),workingDirArg)
+  print '(1x,a)',        'Geometry:               '//IO_glueDiffering(CLI_geomFile,geometryArg)
+  print '(1x,a)',        'Load case:              '//IO_glueDiffering(CLI_loadFile,loadCaseArg)
+  print '(1x,a)',        'Material config:        '//IO_glueDiffering(CLI_materialFile,materialArg)
+  print '(1x,a)',        'Solver job name:        '//getSolverJobName()
   if (CLI_restartInc > 0) &
-    print'(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
+    print '(1x,a,i6.6)', 'Restart from increment: ', CLI_restartInc
 
 
 end subroutine CLI_init

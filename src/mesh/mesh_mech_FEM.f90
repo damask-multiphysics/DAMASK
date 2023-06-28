@@ -329,7 +329,7 @@ type(tSolutionState) function FEM_mechanical_solution( &
   SNESConvergedReason :: reason
 
   incInfo = incInfoIn
-  FEM_mechanical_solution%converged =.false.
+  FEM_mechanical_solution%converged = .false.
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
   params%timeinc = timeinc

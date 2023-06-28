@@ -200,7 +200,7 @@ subroutine grid_mechanical_spectral_basic_init()
   CHKERRQ(err_PETSc)
 
   restartRead: if (CLI_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
+    print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -236,7 +236,7 @@ subroutine grid_mechanical_spectral_basic_init()
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
-    print'(1x,a,i0,a)', 'reading more restart data of increment ', CLI_restartInc, ' from file'
+    print'(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
