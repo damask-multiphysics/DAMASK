@@ -91,7 +91,7 @@ subroutine materialpoint_init()
 
 
   if (CLI_restartInc > 0) then
-    print'(/,a,i0,a)', ' reading restart information of increment from file'; flush(IO_STDOUT)
+    print'(/,1x,a,1x,i0)', 'loading restart information of increment',CLI_restartInc; flush(IO_STDOUT)
 
     fileHandle = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
 

@@ -132,10 +132,10 @@ subroutine grid_mechanical_spectral_polarisation_init()
     extmsg = ''
 
 
-  print'(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
+  print '(/,1x,a)', '<<<+-  grid_mechanical_spectral_polarization init  -+>>>'; flush(IO_STDOUT)
 
-  print'(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  print'(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print '(/,1x,a)', 'P. Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print '(  1x,a)', 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 
 !-------------------------------------------------------------------------------------------------
@@ -223,7 +223,7 @@ subroutine grid_mechanical_spectral_polarisation_init()
   F_tau => FandF_tau(9:17,:,:,:)
 
   restartRead: if (CLI_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
+    print '(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -265,7 +265,7 @@ subroutine grid_mechanical_spectral_polarisation_init()
   CHKERRQ(err_PETSc)
 
   restartRead2: if (CLI_restartInc > 0) then
-    print'(1x,a,i0,a)', 'reading more restart data of increment ', CLI_restartInc, ' from file'
+    print '(1x,a,1x,i0)', 'loading additional restart data of increment', CLI_restartInc
     call HDF5_read(C_volAvg,groupHandle,'C_volAvg',.false.)
     call MPI_Bcast(C_volAvg,81_MPI_INTEGER_KIND,MPI_DOUBLE,0_MPI_INTEGER_KIND,MPI_COMM_WORLD,err_MPI)
     if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
@@ -464,7 +464,7 @@ subroutine grid_mechanical_spectral_polarisation_restartWrite
 
   if (num%update_gamma) C_minMaxAvgRestart = C_minMaxAvg
 
-  print'(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
+  print '(1x,a)', 'saving solver data required for restart'; flush(IO_STDOUT)
 
   fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
@@ -527,14 +527,14 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     reason = 0
   end if
 
-  print'(/,1x,a)', '... reporting .............................................................'
-  print'(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
+  print '(/,1x,a)', '... reporting .............................................................'
+  print '(/,1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error divergence = ', &
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
-  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
+  print   '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error mech BC    = ', &
+  print   '(1x,a,f12.2,a,es8.2,a,es9.2,a)', 'error mech BC    = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
-  print'(/,1x,a)', '==========================================================================='
+  print '(/,1x,a)', '==========================================================================='
   flush(IO_STDOUT)
   err_PETSc = 0
 
@@ -586,11 +586,11 @@ subroutine formResidual(residual_subdomain, FandF_tau, &
 
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
+    print '(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
     if (any(dNeq(params%rotation_BC%asQuaternion(), real([1.0, 0.0, 0.0, 0.0],pREAL)))) &
-      print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      print '(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    print'(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+    print '(/,1x,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
       'deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
   end if newIteration

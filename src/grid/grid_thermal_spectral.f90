@@ -149,7 +149,7 @@ subroutine grid_thermal_spectral_init()
 
 
   restartRead: if (CLI_restartInc > 0) then
-    print'(/,1x,a,i0,a)', 'reading restart data of increment ', CLI_restartInc, ' from file'
+    print'(/,1x,a,1x,i0)', 'loading restart data of increment', CLI_restartInc
 
     fileHandle  = HDF5_openFile(getSolverJobName()//'_restart.hdf5','r')
     groupHandle = HDF5_openGroup(fileHandle,'solver')
@@ -195,7 +195,7 @@ function grid_thermal_spectral_solution(Delta_t) result(solution)
   PetscErrorCode :: err_PETSc
   SNESConvergedReason :: reason
 
-  solution%converged =.false.
+  solution%converged = .false.
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data

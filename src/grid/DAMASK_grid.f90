@@ -343,7 +343,7 @@ program DAMASK_grid
   end if
 
   writeUndeformed: if (CLI_restartInc < 1) then
-    print'(/,1x,a)', '... writing initial configuration to file .................................'
+    print'(/,1x,a)', '... saving initial configuration ..........................................'
     flush(IO_STDOUT)
     call materialpoint_result(0,0.0_pREAL)
   end if writeUndeformed
@@ -462,15 +462,15 @@ program DAMASK_grid
         cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
 
         if (all(solres(:)%converged)) then
-          print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' converged'
+          print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'converged'
         else
-          print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
+          print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
         end if; flush(IO_STDOUT)
 
         call MPI_Allreduce(signal_SIGUSR1,sig,1_MPI_INTEGER_KIND,MPI_LOGICAL,MPI_LOR,MPI_COMM_WORLD,err_MPI)
         if (err_MPI /= 0_MPI_INTEGER_KIND) error stop 'MPI error'
         if (mod(inc,loadCases(l)%f_out) == 0 .or. sig) then
-          print'(/,1x,a)', '... writing results to file ...............................................'
+          print'(/,1x,a)', '... saving results ........................................................'
           flush(IO_STDOUT)
           call materialpoint_result(totalIncsCounter,t)
         end if

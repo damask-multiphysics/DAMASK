@@ -204,7 +204,7 @@ program DAMASK_mesh
   errorID = 0
   checkLoadcases: do currentLoadCase = 1, size(loadCases)
     write (loadcase_string, '(i0)' ) currentLoadCase
-    print'(/,1x,a,i0)', 'load case: ', currentLoadCase
+    print'(/,1x,a,1x,i0)', 'load case:', currentLoadCase
     if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
       print'(2x,a)', 'drop guessing along trajectory'
     print'(2x,a)', 'Field '//trim(FIELD_MECH_label)
@@ -238,7 +238,7 @@ program DAMASK_mesh
     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
   end if
 
-  print'(/,1x,a)', '... writing initial configuration to file .................................'
+  print'(/,1x,a)', '... saving initial configuration ..........................................'
   flush(IO_STDOUT)
   call materialpoint_result(0,0.0_pREAL)
 
@@ -318,13 +318,13 @@ program DAMASK_mesh
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
       if (all(solres(:)%converged)) then
-        print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' converged'
+        print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'converged'
       else
-        print'(/,1x,a,i0,a)', 'increment ', totalIncsCounter, ' NOT converged'
+        print'(/,1x,a,1x,i0,1x,a)', 'increment', totalIncsCounter, 'NOT converged'
       end if; flush(IO_STDOUT)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
-        print'(/,1x,a)', '... writing results to file ...............................................'
+        print'(/,1x,a)', '... saving results ........................................................'
         call FEM_mechanical_updateCoords()
         call materialpoint_result(totalIncsCounter,time)
       end if
