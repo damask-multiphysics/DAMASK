@@ -29,27 +29,18 @@ RUN make all
 RUN git clone https://github.com/eisenforschung/DAMASK.git /DAMASK
 WORKDIR /DAMASK
 
-# DAMASK_grid
+## DAMASK_grid
 RUN <<DAMASK_grid
     cmake -B build/grid -DDAMASK_SOLVER=grid -DCMAKE_INSTALL_PREFIX=${PWD}
     cmake --build build/grid --parallel
     cmake --install build/grid
     cp ./bin/DAMASK_grid /usr/bin/
 DAMASK_grid
-# DAMASK_mesh
-RUN <<DAMASK_mesh
-    cmake -B build/mesh -DDAMASK_SOLVER=mesh -DCMAKE_INSTALL_PREFIX=${PWD}
-    cmake --build build/mesh --parallel
-    cmake --install build/mesh
-    cp ./bin/DAMASK_mesh /usr/bin/
-DAMASK_mesh
-
 
 WORKDIR /wd
 
 ## Tests
 RUN DAMASK_grid -l tensionX.yaml -g 20grains16x16x16.vti -m material.yaml -w /DAMASK/examples/grid
-RUN DAMASK_mesh -h
 
 ENTRYPOINT ["DAMASK_grid"]
 CMD ["bash"]
