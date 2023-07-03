@@ -26,7 +26,7 @@ WORKDIR /petsc-${PETSC_VERSION}
 RUN ./configure --with-fc=gfortran --with-cc=gcc --with-cxx=g++ --download-openmpi --download-fftw --download-hdf5 --download-hdf5-fortran-bindings=1 --download-zlib --with-mpi-f90module-visibility=1 --download-fblaslapack=1
 RUN make all
 
-RUN git clone https://github.com/eisenforschung/DAMASK.git /DAMASK
+COPY . /DAMASK
 WORKDIR /DAMASK
 
 ## DAMASK_grid
